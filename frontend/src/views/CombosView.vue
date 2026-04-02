@@ -3,13 +3,14 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { api } from '@/api'
 import { useUserStore } from '@/stores/user'
 import { parseSanitizedDecimal, sanitizeDecimalInput } from '@/utils/number'
+import type { Combo } from '@/types'
 
 const userStore = useUserStore()
 
-const combos = ref<any[]>([])
+const combos = ref<Combo[]>([])
 const loading = ref(true)
 const purchasing = ref(false)
-const selectedCombo = ref<any>(null)
+const selectedCombo = ref<Combo | null>(null)
 const error = ref('')
 
 const paymentMethod = ref('ezpay')
@@ -195,7 +196,7 @@ onMounted(() => {
 
 <template>
   <div class="page">
-    <div class="page-header">
+    <div class="page-header stagger-enter stagger-1">
       <h1 class="page-title">Plans</h1>
       <p class="page-subtitle">Buy, renew, or top up your account. Pending payments expire automatically after 30 minutes.</p>
     </div>
@@ -203,7 +204,7 @@ onMounted(() => {
     <div v-if="error" class="card text-danger text-sm mb-md">{{ error }}</div>
     <div class="loading-page" v-if="loading"><div class="loading-spinner"></div></div>
 
-    <div class="stack" v-else>
+    <div class="stack stagger-enter stagger-2" v-else>
       <div v-for="combo in combos" :key="combo.uuid" class="card combo-card" @click="selectedCombo = combo">
         <div class="row-between combo-head">
           <div>

@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { api } from '@/api'
 import { useToast } from '@/composables/useToast'
+import type { JellyfinDevice } from '@/types'
 
 const userStore = useUserStore()
 const toast = useToast()
@@ -12,7 +13,7 @@ const qcLoading = ref(false)
 const qcMessage = ref('')
 const parentalRating = ref(0)
 const lastSavedRating = ref(0)
-const devices = ref<any[]>([])
+const devices = ref<JellyfinDevice[]>([])
 const showPwdForm = ref(false)
 const currentPwd = ref('')
 const newPwd = ref('')
@@ -144,14 +145,14 @@ watch(() => userStore.jellyfin, async (nextValue) => {
 
 <template>
   <div class="page">
-    <div class="page-header">
+    <div class="page-header stagger-enter stagger-1">
       <h1 class="page-title">Jellyfin</h1>
     </div>
 
     <div class="loading-page" v-if="loading"><div class="loading-spinner"></div></div>
 
     <template v-else-if="userStore.hasJellyfin">
-      <div class="card">
+      <div class="card stagger-enter stagger-2">
         <div class="row-between">
           <div>
             <h3>Account</h3>
@@ -209,7 +210,7 @@ watch(() => userStore.jellyfin, async (nextValue) => {
               <div class="text-sm">{{ dev.AppName || 'Unknown App' }}</div>
               <div class="text-xs text-muted">{{ dev.Name || dev.Id }}</div>
             </div>
-            <span class="text-xs text-muted">{{ new Date(dev.DateLastActivity).toLocaleDateString('en-US') }}</span>
+            <span class="text-xs text-muted">{{ dev.DateLastActivity ? new Date(dev.DateLastActivity).toLocaleDateString('en-US') : '—' }}</span>
           </div>
         </div>
       </div>

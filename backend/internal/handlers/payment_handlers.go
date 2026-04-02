@@ -20,9 +20,12 @@ import (
 )
 
 const (
-	paymentQuery1 = "SELECT uuid, name, squad_uuid, traffic_gb, strategy, cycle, price_rmb FROM combos WHERE uuid = ? AND active = 1"
+	queryComboByUUID = "SELECT uuid, name, squad_uuid, traffic_gb, strategy, cycle, price_rmb FROM combos WHERE uuid = ? AND active = 1"
 )
 
+// ─── Credit Handlers ─────────────────────────────────────────────────
+
+// GetCreditBalance returns the authenticated user's current credit balance.
 func (h *Handler) GetCreditBalance(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUser(r)
 	balance, _ := h.Credit.GetBalance(user.ID)
@@ -32,6 +35,7 @@ func (h *Handler) GetCreditBalance(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// CreditSignup awards a random daily credit to the user.
 func (h *Handler) CreditSignup(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUser(r)
 	value, newBalance, err := h.Credit.Signup(user.ID)
@@ -47,6 +51,7 @@ func (h *Handler) CreditSignup(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// CreditBet lets the user gamble an amount of credits.
 func (h *Handler) CreditBet(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUser(r)
 
@@ -55,6 +60,10 @@ func (h *Handler) CreditBet(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := middleware.DecodeJSON(r, &req); err != nil {
 		middleware.WriteError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+	if req.Amount <= 0 {
+		middleware.WriteError(w, http.StatusBadRequest, "amount must be greater than 0")
 		return
 	}
 
@@ -70,24 +79,32 @@ func (h *Handler) CreditBet(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// GetCreditHistory returns paginated credit transaction history.
 func (h *Handler) GetCreditHistory(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUser(r)
+
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
+	if offset < 0 {
+		offset = 0
+	}
 
 	logs, err := h.Credit.GetHistory(user.ID, limit, offset)
 	if err != nil {
+		slog.Error("credit-history: query failed", "user_id", user.ID, "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "failed to get history")
 		return
 	}
 	middleware.WriteSuccess(w, logs)
 }
 
-// --- Payment ---
+// ─── Payment Handlers ────────────────────────────────────────────────
 
+// CreatePayment creates a generic payment order through the configured
+// payment gateway (BEPusdt or EZPay).
 func (h *Handler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUser(r)
 
@@ -98,7 +115,7 @@ func (h *Handler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 	}
 	req.ClientIP = r.RemoteAddr
 
-	resp, err := h.Payment.CreatePayment(user.ID, req)
+	resp, err := h.Payment.CreatePayment(r.Context(), user.ID, req)
 	if err != nil {
 		middleware.WriteError(w, http.StatusBadRequest, err.Error())
 		return
@@ -107,6 +124,7 @@ func (h *Handler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteSuccess(w, resp)
 }
 
+// BEPusdtCallback handles payment-success webhook callbacks from BEPusdt.
 func (h *Handler) BEPusdtCallback(w http.ResponseWriter, r *http.Request) {
 	var data bepusdt.CallbackData
 	if err := middleware.DecodeJSON(r, &data); err != nil {
@@ -121,9 +139,9 @@ func (h *Handler) BEPusdtCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if data.Status == 2 { // Payment success
+	if data.Status == 2 { // Status 2 = Payment success
 		if err := h.Payment.CompleteOrder(data.OrderID); err != nil {
-			slog.Error("bepusdt-callback: complete order error", "error", err)
+			slog.Error("bepusdt-callback: complete order failed", "order_id", data.OrderID, "error", err)
 		}
 	}
 
@@ -131,9 +149,14 @@ func (h *Handler) BEPusdtCallback(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "success")
 }
 
+// EZPayCallback handles payment-success webhook callbacks from EZPay.
 func (h *Handler) EZPayCallback(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	params := make(map[string]string)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	params := make(map[string]string, len(r.Form))
 	for k, v := range r.Form {
 		if len(v) > 0 {
 			params[k] = v[0]
@@ -150,14 +173,20 @@ func (h *Handler) EZPayCallback(w http.ResponseWriter, r *http.Request) {
 	if params["trade_status"] == "TRADE_SUCCESS" {
 		orderID := params["out_trade_no"]
 		if err := h.Payment.CompleteOrder(orderID); err != nil {
-			slog.Error("ezpay-callback: complete order error", "error", err)
+			slog.Error("ezpay-callback: complete order failed", "order_id", orderID, "error", err)
 		}
 	}
 
 	fmt.Fprint(w, "success")
 }
 
+// ─── Combo Purchase ──────────────────────────────────────────────────
+
+// PurchaseCombo creates a payment order for a subscription combo plan.
+// It resolves the combo details, calculates the expiry based on the billing
+// cycle, and delegates to the payment service.
 func (h *Handler) PurchaseCombo(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	user := middleware.GetUser(r)
 
 	var req struct {
@@ -171,22 +200,25 @@ func (h *Handler) PurchaseCombo(w http.ResponseWriter, r *http.Request) {
 		middleware.WriteError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
-
-	// Get combo details
-	var combo models.Combo
-	err := database.DB().QueryRowContext(r.Context(), paymentQuery1, req.ComboUUID).
-		Scan(&combo.UUID, &combo.Name, &combo.SquadUUID, &combo.TrafficGB, &combo.Strategy, &combo.Cycle, &combo.PriceRMB)
-	if err != nil {
-		middleware.WriteError(w, http.StatusNotFound, "combo not found")
+	if req.ComboUUID == "" {
+		middleware.WriteError(w, http.StatusBadRequest, "combo_uuid is required")
 		return
 	}
 
-	// Create username from telegram ID
+	// Fetch combo details from the database.
+	var combo models.Combo
+	if err := database.DB().QueryRowContext(ctx, queryComboByUUID, req.ComboUUID).
+		Scan(&combo.UUID, &combo.Name, &combo.SquadUUID, &combo.TrafficGB, &combo.Strategy, &combo.Cycle, &combo.PriceRMB); err != nil {
+		middleware.WriteError(w, http.StatusNotFound, "combo not found or inactive")
+		return
+	}
+
+	// Derive a username from the Telegram ID for Remnawave account creation.
 	username := fmt.Sprintf("tg_%d", user.TelegramID)
 
-	// Calculate expiry based on cycle
-	var expiry time.Time
+	// Calculate expiry based on the combo's billing cycle.
 	now := time.Now()
+	var expiry time.Time
 	switch combo.Cycle {
 	case "monthly":
 		expiry = now.AddDate(0, 1, 0)
@@ -197,7 +229,7 @@ func (h *Handler) PurchaseCombo(w http.ResponseWriter, r *http.Request) {
 	case "annual":
 		expiry = now.AddDate(1, 0, 0)
 	default:
-		expiry = now.AddDate(0, 1, 0)
+		expiry = now.AddDate(0, 1, 0) // Default to monthly
 	}
 
 	metadata, _ := json.Marshal(map[string]interface{}{
@@ -210,8 +242,7 @@ func (h *Handler) PurchaseCombo(w http.ResponseWriter, r *http.Request) {
 		"expiry":     expiry.Format(time.RFC3339),
 	})
 
-	// Create payment
-	payResp, err := h.Payment.CreatePayment(user.ID, services.CreatePaymentRequest{
+	payResp, err := h.Payment.CreatePayment(ctx, user.ID, services.CreatePaymentRequest{
 		OrderType:     "combo",
 		Amount:        combo.PriceRMB,
 		PaymentMethod: req.PaymentMethod,
@@ -229,19 +260,32 @@ func (h *Handler) PurchaseCombo(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteSuccess(w, payResp)
 }
 
+// ─── Order Handlers ──────────────────────────────────────────────────
+
+// ListOrders returns paginated orders for the authenticated user.
 func (h *Handler) ListOrders(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUser(r)
+
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
 
 	orders, err := h.Payment.GetUserOrders(user.ID, limit, offset)
 	if err != nil {
+		slog.Error("list-orders: query failed", "user_id", user.ID, "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "failed to load orders")
 		return
 	}
 	middleware.WriteSuccess(w, orders)
 }
 
+// GetOrder returns a single order by UUID. Non-admin users may only
+// access their own orders.
 func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUser(r)
 	orderUUID := chi.URLParam(r, "uuid")
@@ -252,6 +296,7 @@ func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 			middleware.WriteError(w, http.StatusNotFound, "order not found")
 			return
 		}
+		slog.Error("get-order: query failed", "uuid", orderUUID, "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "failed to load order")
 		return
 	}
@@ -264,6 +309,8 @@ func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteSuccess(w, order)
 }
 
+// CustomPayment creates a freeform payment order (e.g. custom donation or
+// manual renewal) with an optional user-supplied message.
 func (h *Handler) CustomPayment(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUser(r)
 
@@ -279,7 +326,6 @@ func (h *Handler) CustomPayment(w http.ResponseWriter, r *http.Request) {
 		middleware.WriteError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
-
 	if req.Amount <= 0 {
 		middleware.WriteError(w, http.StatusBadRequest, "amount must be greater than 0")
 		return
@@ -289,7 +335,7 @@ func (h *Handler) CustomPayment(w http.ResponseWriter, r *http.Request) {
 		"message": req.Message,
 	})
 
-	payResp, err := h.Payment.CreatePayment(user.ID, services.CreatePaymentRequest{
+	payResp, err := h.Payment.CreatePayment(r.Context(), user.ID, services.CreatePaymentRequest{
 		OrderType:     "custom",
 		Amount:        req.Amount,
 		PaymentMethod: req.PaymentMethod,

@@ -2,17 +2,18 @@
 import { onMounted, ref } from 'vue'
 import { api } from '@/api'
 import { useUserStore } from '@/stores/user'
+import type { CreditLog, Order, OrderEvent } from '@/types'
 import { parseSanitizedDecimal, sanitizeDecimalInput } from '@/utils/number'
 
 const userStore = useUserStore()
 
-const history = ref<any[]>([])
+const history = ref<CreditLog[]>([])
 const loading = ref(false)
 const signupResult = ref<{ value: number; balance: number } | null>(null)
 const betAmount = ref('')
 const betResult = ref<{ result: number; balance: number } | null>(null)
 const error = ref('')
-const selectedOrder = ref<any>(null)
+const selectedOrder = ref<(Order & { events?: OrderEvent[] }) | null>(null)
 const orderLoading = ref(false)
 
 function onBetAmountInput(event: Event) {
@@ -83,12 +84,12 @@ onMounted(async () => {
 
 <template>
   <div class="page">
-    <div class="page-header">
+    <div class="page-header stagger-enter stagger-1">
       <h1 class="page-title">{{ userStore.appConfig?.credit_name || 'Credits' }}</h1>
       <p class="page-subtitle">Use daily rewards, betting, and discounts across payments.</p>
     </div>
 
-    <div class="card credit-hero">
+    <div class="card credit-hero stagger-enter stagger-2">
       <span class="stat-label">Current Balance</span>
       <div class="stat-value">{{ userStore.credit.toFixed(2) }}</div>
       <span class="text-xs text-muted">
@@ -96,7 +97,7 @@ onMounted(async () => {
       </span>
     </div>
 
-    <div class="grid-2 mt-md credit-actions">
+    <div class="grid-2 mt-md credit-actions stagger-enter stagger-3">
       <div class="card action-section">
         <h3 class="mb-sm">Daily Check-in</h3>
         <p class="text-sm text-muted mb-md">Claim the daily reward once every day.</p>
@@ -129,7 +130,7 @@ onMounted(async () => {
 
     <div v-if="error" class="card mt-md text-danger text-sm">{{ error }}</div>
 
-    <div class="card mt-md">
+    <div class="card mt-md stagger-enter stagger-4">
       <h3 class="mb-md">Credit History</h3>
       <div v-if="history.length === 0" class="text-muted text-sm text-center">No credit history yet.</div>
       <div v-else class="history-list">
@@ -145,7 +146,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div class="card mt-md">
+    <div class="card mt-md stagger-enter stagger-5">
       <h3 class="mb-md">Recent Orders</h3>
       <div v-if="userStore.recentOrders.length === 0" class="text-muted text-sm text-center">No orders yet.</div>
       <div v-else class="history-list">

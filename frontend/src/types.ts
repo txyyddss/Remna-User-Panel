@@ -147,8 +147,15 @@ export interface JellyfinAccount {
 }
 
 // ─── App Configuration ──────────────────────────────────────────────
+export interface UsdtNetwork {
+    value: string
+    label: string
+}
+
 export interface AppConfig {
     credit_name?: string
+    rmb_to_txb_rate?: number
+    txb_to_rmb_rate?: number
     credit?: {
         name?: string
         txb_to_rmb_rate?: number
@@ -162,8 +169,9 @@ export interface AppConfig {
     jellyfin?: {
         monthly_price_rmb?: number
     }
-    txb_to_rmb_rate?: number
-    payments?: any
+    payments?: {
+        usdt_networks?: UsdtNetwork[]
+    }
     [key: string]: unknown
 }
 
@@ -197,6 +205,50 @@ export interface Squad {
     name: string
 }
 
+// ─── IP Change ──────────────────────────────────────────────────────
+export interface IPChangeStatus {
+    can_change: boolean
+    last_change: string
+    next_available: string
+    cooldown_hours: number
+}
+
+export interface IPChangeResponse {
+    status: string
+    message: string
+    subscription?: string
+    next_change_after?: string
+}
+
+// ─── Jellyfin Devices ───────────────────────────────────────────────
+export interface JellyfinDevice {
+    Id: string
+    Name: string
+    AppName?: string
+    AppVersion?: string
+    DateLastActivity?: string
+    LastUserId?: string
+}
+
+export interface JellyfinDevicesResponse {
+    Items: JellyfinDevice[]
+    TotalRecordCount: number
+}
+
+// ─── IP List ────────────────────────────────────────────────────────
+export interface IPListResponse {
+    ips?: string[]
+    [key: string]: unknown
+}
+
+// ─── Payment Response ───────────────────────────────────────────────
+export interface PaymentResponse {
+    order_uuid: string
+    payment_url?: string
+    qrcode_url?: string
+    amount?: number
+}
+
 // ─── API Responses ──────────────────────────────────────────────────
 export interface ApiResponse<T = unknown> {
     success: boolean
@@ -208,3 +260,4 @@ export interface PaginatedResponse<T> {
     items: T[]
     total: number
 }
+

@@ -1,52 +1,88 @@
 package handlers
 
 import (
+	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/user/remna-user-panel/internal/config"
 	"github.com/user/remna-user-panel/internal/database"
 	"github.com/user/remna-user-panel/internal/middleware"
-	"github.com/user/remna-user-panel/internal/models"
 	"github.com/user/remna-user-panel/internal/sdk/remnawave"
 )
 
 const (
-	userQuery1 = "SELECT id, user_id, combo_uuid, remnawave_uuid, status, expires_at, created_at FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1"
-	userQuery2 = "SELECT id, user_id, jellyfin_user_id, username, parental_rating, expires_at FROM jellyfin_accounts WHERE user_id = ?"
-	userQuery3 = "SELECT COUNT(*) FROM users WHERE remnawave_uuid = ? AND id != ?"
-	userQuery4 = "UPDATE users SET remnawave_uuid = ?, updated_at = ? WHERE id = ?"
-	userQuery5 = "SELECT uuid FROM combos WHERE squad_uuid = ? ORDER BY created_at DESC LIMIT 1"
-	userQuery6 = "INSERT INTO subscriptions (user_id, combo_uuid, remnawave_uuid, status, expires_at, created_at, updated_at) VALUES (?, ?, ?, 'active', ?, ?, ?)"
+	queryActiveSub    = "SELECT id, user_id, combo_uuid, remnawave_uuid, status, expires_at, created_at FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1"
+	queryJellyfinAcct = "SELECT id, user_id, jellyfin_user_id, username, parental_rating, expires_at FROM jellyfin_accounts WHERE user_id = ?"
+	queryBoundCount   = "SELECT COUNT(*) FROM users WHERE remnawave_uuid = ? AND id != ?"
+	queryBindUser     = "UPDATE users SET remnawave_uuid = ?, updated_at = ? WHERE id = ?"
+	queryComboBySquad = "SELECT uuid FROM combos WHERE squad_uuid = ? ORDER BY created_at DESC LIMIT 1"
+	queryInsertSub    = "INSERT INTO subscriptions (user_id, combo_uuid, remnawave_uuid, status, expires_at, created_at, updated_at) VALUES (?, ?, ?, 'active', ?, ?, ?)"
 )
 
+// GetMe returns the authenticated user's profile, active subscription,
+// Jellyfin account (if any), and the public application configuration.
 func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	user := middleware.GetUser(r)
 	if user == nil {
 		middleware.WriteError(w, http.StatusUnauthorized, "not authenticated")
 		return
 	}
 
-	// Get subscription info
-	var sub *models.Subscription
-	var subData models.Subscription
-	err := database.DB().QueryRowContext(r.Context(), 
-		userQuery1,
-		user.ID,
-	).Scan(&subData.ID, &subData.UserID, &subData.ComboUUID, &subData.RemnawaveUUID, &subData.Status, &subData.ExpiresAt, &subData.CreatedAt)
-	if err == nil {
-		sub = &subData
+	// Fetch active subscription (soft-fail: absence is normal for new users).
+	var sub *struct {
+		ID            int       `json:"id"`
+		UserID        int       `json:"user_id"`
+		ComboUUID     string    `json:"combo_uuid"`
+		RemnawaveUUID string    `json:"remnawave_uuid"`
+		Status        string    `json:"status"`
+		ExpiresAt     time.Time `json:"expires_at"`
+		CreatedAt     time.Time `json:"created_at"`
+	}
+	var s struct {
+		ID            int
+		UserID        int
+		ComboUUID     string
+		RemnawaveUUID string
+		Status        string
+		ExpiresAt     time.Time
+		CreatedAt     time.Time
+	}
+	if err := database.DB().QueryRowContext(ctx, queryActiveSub, user.ID).
+		Scan(&s.ID, &s.UserID, &s.ComboUUID, &s.RemnawaveUUID, &s.Status, &s.ExpiresAt, &s.CreatedAt); err == nil {
+		sub = &struct {
+			ID            int       `json:"id"`
+			UserID        int       `json:"user_id"`
+			ComboUUID     string    `json:"combo_uuid"`
+			RemnawaveUUID string    `json:"remnawave_uuid"`
+			Status        string    `json:"status"`
+			ExpiresAt     time.Time `json:"expires_at"`
+			CreatedAt     time.Time `json:"created_at"`
+		}{s.ID, s.UserID, s.ComboUUID, s.RemnawaveUUID, s.Status, s.ExpiresAt, s.CreatedAt}
 	}
 
-	// Get Jellyfin account info
-	var jfAccount *models.JellyfinAccount
-	var jf models.JellyfinAccount
-	err = database.DB().QueryRowContext(r.Context(), 
-		userQuery2,
-		user.ID,
-	).Scan(&jf.ID, &jf.UserID, &jf.JellyfinUserID, &jf.Username, &jf.ParentalRating, &jf.ExpiresAt)
-	if err == nil {
-		jfAccount = &jf
+	// Fetch Jellyfin account (soft-fail).
+	var jfAccount interface{}
+	var jf struct {
+		ID             int
+		UserID         int
+		JellyfinUserID string
+		Username       string
+		ParentalRating int
+		ExpiresAt      time.Time
+	}
+	if err := database.DB().QueryRowContext(ctx, queryJellyfinAcct, user.ID).
+		Scan(&jf.ID, &jf.UserID, &jf.JellyfinUserID, &jf.Username, &jf.ParentalRating, &jf.ExpiresAt); err == nil {
+		jfAccount = map[string]interface{}{
+			"id":               jf.ID,
+			"user_id":          jf.UserID,
+			"jellyfin_user_id": jf.JellyfinUserID,
+			"username":         jf.Username,
+			"parental_rating":  jf.ParentalRating,
+			"expires_at":       jf.ExpiresAt,
+		}
 	}
 
 	cfg := config.Get()
@@ -78,7 +114,10 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// BindSubscription links an existing Remnawave subscription to the
+// authenticated panel user via short UUID extraction from a subscription URL.
 func (h *Handler) BindSubscription(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	user := middleware.GetUser(r)
 	cfg := config.Get()
 
@@ -94,60 +133,57 @@ func (h *Handler) BindSubscription(w http.ResponseWriter, r *http.Request) {
 		middleware.WriteError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
-
 	if req.SubURL == "" {
 		middleware.WriteError(w, http.StatusBadRequest, "please provide subscription URL")
 		return
 	}
 
-	// Extract short UUID from subscription URL
-	// Typical format: https://panel.example.com/api/sub/SHORTUUID or just the short UUID
-	shortUUID := req.SubURL
-	// Try to extract from URL path
-	if idx := len(shortUUID) - 1; idx >= 0 {
-		parts := make([]string, 0)
-		for _, p := range splitURL(shortUUID) {
-			if p != "" {
-				parts = append(parts, p)
-			}
-		}
-		if len(parts) > 0 {
-			shortUUID = parts[len(parts)-1]
-		}
+	// Extract short UUID from the subscription link.
+	shortUUID := extractShortUUID(req.SubURL)
+	if shortUUID == "" {
+		middleware.WriteError(w, http.StatusBadRequest, "could not extract short UUID from the provided URL")
+		return
 	}
 
 	rwClient := remnawave.NewClient(cfg.Remnawave.URL, cfg.Remnawave.Token)
 
-	// Look up the user by short UUID
+	// Look up the Remnawave user by short UUID.
 	rwUser, err := rwClient.GetUserByShortUUID(shortUUID)
 	if err != nil {
-		middleware.WriteError(w, http.StatusNotFound, "subscription not found: "+err.Error())
+		slog.Warn("bind-sub: remnawave lookup failed", "short_uuid", shortUUID, "error", err)
+		middleware.WriteError(w, http.StatusNotFound, fmt.Sprintf("subscription not found: %v", err))
 		return
 	}
 
-	// Verify the Remnawave user isn't already bound to another panel user
+	// Prevent double-binding: ensure this Remnawave UUID isn't already bound to another panel user.
 	var existingCount int
-	database.DB().QueryRowContext(r.Context(), userQuery3, rwUser.UUID, user.ID).Scan(&existingCount)
+	if err := database.DB().QueryRowContext(ctx, queryBoundCount, rwUser.UUID, user.ID).Scan(&existingCount); err != nil {
+		slog.Error("bind-sub: count query failed", "error", err)
+	}
 	if existingCount > 0 {
 		middleware.WriteError(w, http.StatusConflict, "this subscription is already bound to another user")
 		return
 	}
 
-	// Bind user
-	database.DB().ExecContext(r.Context(), userQuery4, rwUser.UUID, time.Now(), user.ID)
-
-	var comboUUID string
-	if len(rwUser.ActiveInternalSquads) > 0 {
-		_ = database.DB().QueryRowContext(r.Context(), 
-			userQuery5,
-			rwUser.ActiveInternalSquads[0].UUID,
-		).Scan(&comboUUID)
+	// Bind the UUID to this user.
+	now := time.Now()
+	if _, err := database.DB().ExecContext(ctx, queryBindUser, rwUser.UUID, now, user.ID); err != nil {
+		slog.Error("bind-sub: failed to update user", "error", err)
+		middleware.WriteError(w, http.StatusInternalServerError, "failed to bind subscription")
+		return
 	}
-	if comboUUID != "" {
-		database.DB().ExecContext(r.Context(), 
-			userQuery6,
-			user.ID, comboUUID, rwUser.UUID, rwUser.ExpireAt, time.Now(), time.Now(),
-		)
+
+	// Auto-create a local subscription record if the Remnawave user belongs to a known squad.
+	if len(rwUser.ActiveInternalSquads) > 0 {
+		var comboUUID string
+		_ = database.DB().QueryRowContext(ctx, queryComboBySquad, rwUser.ActiveInternalSquads[0].UUID).Scan(&comboUUID)
+		if comboUUID != "" {
+			if _, err := database.DB().ExecContext(ctx, queryInsertSub,
+				user.ID, comboUUID, rwUser.UUID, rwUser.ExpireAt, now, now,
+			); err != nil {
+				slog.Error("bind-sub: failed to create subscription record", "error", err)
+			}
+		}
 	}
 
 	middleware.WriteSuccess(w, map[string]interface{}{
@@ -156,24 +192,4 @@ func (h *Handler) BindSubscription(w http.ResponseWriter, r *http.Request) {
 		"rw_uuid": rwUser.UUID,
 		"expires": rwUser.ExpireAt,
 	})
-}
-
-func splitURL(u string) []string {
-	// Simple URL path splitter
-	result := make([]string, 0)
-	current := ""
-	for _, c := range u {
-		if c == '/' || c == '?' {
-			if current != "" {
-				result = append(result, current)
-			}
-			current = ""
-		} else {
-			current += string(c)
-		}
-	}
-	if current != "" {
-		result = append(result, current)
-	}
-	return result
 }

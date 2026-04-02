@@ -1,181 +1,320 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { api } from '@/api'
 import { formatBytes } from '@/utils/format'
 
 const userStore = useUserStore()
-const subUrl = ref('')
-const bindLoading = ref(false)
-const bindMessage = ref('')
-const subInfo = computed(() => userStore.liveSubInfo)
-const loading = computed(() => userStore.loading && !userStore.user)
+const loading = ref(true)
 
+const sub = computed(() => userStore.liveSubInfo)
+const hasSub = computed(() => sub.value?.has_subscription && sub.value.user)
+
+const usedTraffic = computed(() =>
+  sub.value?.user?.userTraffic?.usedTrafficBytes ?? sub.value?.user?.usedTrafficBytes ?? 0,
+)
+const trafficLimit = computed(() => sub.value?.user?.trafficLimitBytes ?? 0)
 const usedPercent = computed(() => {
-  if (!subInfo.value?.user?.trafficLimitBytes) return 0
-  return Math.min(100, (subInfo.value.user.usedTrafficBytes / subInfo.value.user.trafficLimitBytes) * 100)
+  if (!trafficLimit.value) return 0
+  return Math.min(100, (usedTraffic.value / trafficLimit.value) * 100)
 })
 
-const daysRemaining = computed(() => {
-  if (!subInfo.value?.user?.expireAt) return 0
-  const diff = new Date(subInfo.value.user.expireAt).getTime() - Date.now()
-  return Math.max(0, Math.ceil(diff / 86400000))
+const greeting = computed(() => {
+  const hour = new Date().getHours()
+  if (hour < 6) return 'Good Night'
+  if (hour < 12) return 'Good Morning'
+  if (hour < 18) return 'Good Afternoon'
+  return 'Good Evening'
 })
 
+const expiresText = computed(() => {
+  if (!sub.value?.user?.expireAt) return ''
+  const d = new Date(sub.value.user.expireAt)
+  const now = new Date()
+  const diffD = Math.ceil((d.getTime() - now.getTime()) / 86400000)
+  if (diffD <= 0) return 'Expired'
+  if (diffD <= 3) return `${diffD}d left`
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+})
 
-async function bindSub() {
-  if (!subUrl.value) return
-  bindLoading.value = true
-  bindMessage.value = ''
-  try {
-    const resp = await api.bindSubscription(subUrl.value)
-    bindMessage.value = `✅ Binding successful! User: ${resp.rw_user}`
-    subUrl.value = ''
-    window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success')
-    await userStore.refreshState()
-  } catch (e: any) {
-    bindMessage.value = '❌ ' + e.message
-  }
-  bindLoading.value = false
-}
-
+onMounted(async () => {
+  await userStore.refreshState({ background: true })
+  loading.value = false
+})
 </script>
 
 <template>
   <div class="page">
-    <div class="page-header">
-      <div class="greeting">
-        <span class="greeting-emoji">👋</span>
-        <div>
-          <h1 class="greeting-name">{{ userStore.telegramName }}</h1>
-          <p class="page-subtitle">Welcome back</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Credit Card -->
-    <div class="credit-card card">
-      <div class="credit-header">
-        <span class="stat-label">{{ userStore.appConfig?.credit_name || 'TXB' }} Balance</span>
-        <router-link to="/credits" class="text-sm text-accent">View Details →</router-link>
-      </div>
-      <div class="stat-value">{{ userStore.credit.toFixed(2) }}</div>
-    </div>
-
-    <!-- Quick Actions -->
-    <div class="grid-2 mt-md">
-      <router-link to="/combos" class="action-card card">
-        <span class="action-icon">🚀</span>
-        <span class="action-label">Purchase Combo</span>
-      </router-link>
-      <router-link to="/ip" class="action-card card">
-        <span class="action-icon">🔄</span>
-        <span class="action-label">Change IP</span>
-      </router-link>
-      <router-link to="/squads" class="action-card card">
-        <span class="action-icon">🌐</span>
-        <span class="action-label">Switch Squad</span>
-      </router-link>
-      <router-link to="/jellyfin" class="action-card card">
-        <span class="action-icon">🎬</span>
-        <span class="action-label">Video Management</span>
-      </router-link>
-    </div>
-
-    <!-- Subscription Summary -->
-    <div class="card mt-md" v-if="subInfo?.has_subscription && subInfo.user">
-      <div class="row-between mb-sm">
-        <h3>📡 Subscription Status</h3>
-        <span class="badge" :class="{
-          'badge-success': subInfo.user.status === 'ACTIVE',
-          'badge-warning': subInfo.user.status === 'LIMITED',
-          'badge-danger': subInfo.user.status === 'DISABLED' || subInfo.user.status === 'EXPIRED'
-        }">
-          {{ subInfo.user.status }}
-        </span>
-      </div>
-
-      <div class="row-between text-sm text-muted mb-sm">
-        <span>{{ formatBytes(subInfo.user.usedTrafficBytes) }} / {{ subInfo.user.trafficLimitBytes ? formatBytes(subInfo.user.trafficLimitBytes) : '♾️' }}</span>
-        <span>{{ daysRemaining }} days</span>
-      </div>
-
-      <div class="progress">
-        <div
-          class="progress-bar"
-          :class="{ 'warning': usedPercent > 70, 'danger': usedPercent > 90 }"
-          :style="{ width: usedPercent + '%' }"
-        ></div>
-      </div>
-    </div>
-
-    <div class="card mt-md empty-state" v-else-if="!loading">
-      <span class="empty-state-icon">📡</span>
-      <p class="empty-state-text">No subscription yet</p>
-      <router-link to="/combos" class="btn btn-primary btn-sm mt-md">Browse Combos</router-link>
-
-      <!-- Subscription Binding -->
-      <div class="bind-section mt-lg">
-        <p class="text-sm text-muted mb-sm">Already have a sub link? Bind directly</p>
-        <div class="row" style="gap:var(--space-sm)">
-          <input class="input" v-model="subUrl" placeholder="Paste subscription link" style="flex:1" />
-          <button class="btn btn-sm btn-secondary" @click="bindSub" :disabled="bindLoading">
-            {{ bindLoading ? '...' : 'Bind' }}
-          </button>
-        </div>
-        <div v-if="bindMessage" class="text-sm mt-sm">{{ bindMessage }}</div>
-      </div>
-    </div>
-
+    <!-- Loading -->
     <div class="loading-page" v-if="loading">
       <div class="loading-spinner"></div>
     </div>
+
+    <template v-else>
+      <!-- Greeting -->
+      <div class="hero-section stagger-enter stagger-1">
+        <h1 class="hero-greeting">{{ greeting }}</h1>
+        <p class="hero-name">{{ userStore.user?.telegram_name || 'User' }}</p>
+      </div>
+
+      <!-- Credit Balance -->
+      <div class="credit-card card stagger-enter stagger-2">
+        <div class="credit-inner">
+          <div class="credit-label">{{ userStore.appConfig?.credit_name || 'TXB' }} Balance</div>
+          <div class="credit-value">{{ userStore.credit.toFixed(2) }}</div>
+        </div>
+        <router-link to="/credits" class="credit-action">
+          <span>Earn</span>
+          <span class="credit-arrow">→</span>
+        </router-link>
+      </div>
+
+      <!-- Subscription Status -->
+      <div v-if="hasSub" class="sub-card card stagger-enter stagger-3">
+        <div class="sub-header">
+          <div>
+            <span class="sub-label">Subscription</span>
+            <span class="badge" :class="{
+              'badge-success': sub?.user?.status === 'ACTIVE',
+              'badge-warning': sub?.user?.status === 'LIMITED',
+              'badge-danger': sub?.user?.status === 'DISABLED' || sub?.user?.status === 'EXPIRED',
+            }">{{ sub?.user?.status }}</span>
+          </div>
+          <span class="sub-expires mono">{{ expiresText }}</span>
+        </div>
+        <div class="sub-progress">
+          <div class="progress">
+            <div
+              class="progress-bar"
+              :class="{ warning: usedPercent >= 70, danger: usedPercent >= 90 }"
+              :style="{ width: `${usedPercent}%` }"
+            ></div>
+          </div>
+          <div class="sub-stats">
+            <span>{{ formatBytes(usedTraffic) }} used</span>
+            <span>{{ trafficLimit ? formatBytes(trafficLimit) : '∞' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="sub-card card stagger-enter stagger-3 empty-sub">
+        <span class="empty-sub-icon">🚀</span>
+        <p>No active subscription</p>
+        <router-link to="/combos" class="btn btn-primary btn-sm">Browse Plans</router-link>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="actions-grid stagger-enter stagger-4">
+        <router-link to="/sub" class="action-tile card">
+          <span class="action-icon">📡</span>
+          <span class="action-label">VPN</span>
+        </router-link>
+        <router-link to="/jellyfin" class="action-tile card">
+          <span class="action-icon">🎬</span>
+          <span class="action-label">Jellyfin</span>
+        </router-link>
+        <router-link to="/ip" class="action-tile card">
+          <span class="action-icon">🌐</span>
+          <span class="action-label">Change IP</span>
+        </router-link>
+        <router-link to="/combos" class="action-tile card">
+          <span class="action-icon">💎</span>
+          <span class="action-label">Plans</span>
+        </router-link>
+      </div>
+
+      <!-- Recent Activity -->
+      <div v-if="userStore.recentOrders.length" class="card stagger-enter stagger-5">
+        <h3 class="mb-sm">Recent Activity</h3>
+        <div class="activity-list">
+          <div v-for="order in userStore.recentOrders.slice(0, 3)" :key="order.uuid" class="activity-item">
+            <div class="activity-info">
+              <span class="text-sm">{{ order.order_type }}</span>
+              <span class="text-xs text-muted">{{ order.status }}</span>
+            </div>
+            <span class="mono text-sm">¥{{ Number(order.final_amount || 0).toFixed(2) }}</span>
+          </div>
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
 <style scoped>
-.greeting {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
+.hero-section {
+  margin-bottom: var(--space-lg);
 }
 
-.greeting-emoji {
-  font-size: 2rem;
+.hero-greeting {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+  font-weight: 400;
 }
 
-.greeting-name {
-  font-size: 1.25rem;
+.hero-name {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
+/* Credit Card */
 .credit-card {
-  background: linear-gradient(135deg, rgba(108, 92, 231, 0.15), rgba(0, 206, 201, 0.1));
-  border-color: rgba(108, 92, 231, 0.2);
-}
-
-.credit-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--space-sm);
+  background: linear-gradient(135deg, rgba(124, 106, 240, 0.12), rgba(0, 210, 198, 0.08));
+  border-color: rgba(124, 106, 240, 0.2);
+  margin-bottom: var(--space-md);
+}
+.credit-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(124, 106, 240, 0.35);
 }
 
-.action-card {
+.credit-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.credit-value {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.credit-action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.credit-action:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.credit-arrow {
+  transition: transform 0.2s;
+}
+
+.credit-action:hover .credit-arrow {
+  transform: translateX(3px);
+}
+
+/* Subscription Card */
+.sub-card {
+  margin-bottom: var(--space-md);
+}
+
+.sub-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+}
+
+.sub-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-right: var(--space-sm);
+}
+
+.sub-expires {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.sub-stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: var(--space-xs);
+}
+
+.empty-sub {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--space-sm);
-  padding: var(--space-lg) var(--space-md);
+  text-align: center;
+  padding: var(--space-xl);
+}
+
+.empty-sub-icon {
+  font-size: 2rem;
+}
+
+/* Action Grid */
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.action-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
   text-decoration: none;
-  color: var(--text-primary);
+  color: inherit;
+  padding: var(--space-md) var(--space-sm);
+  text-align: center;
 }
 
 .action-icon {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
 }
 
 .action-label {
-  font-size: 0.8125rem;
+  font-size: 0.6875rem;
   font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* Activity List */
+.activity-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.activity-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 </style>

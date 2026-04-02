@@ -57,8 +57,8 @@ async function bootstrapTelegramApp() {
   isTelegram.value = true
   tg.ready()
   tg.expand()
-  tg.setBackgroundColor('#0a0a0f')
-  tg.setHeaderColor('#0a0a0f')
+  tg.setBackgroundColor('#07070d')
+  tg.setHeaderColor('#07070d')
 
   // Disable vertical swipes if available (prevents accidental close on mobile)
   if (typeof (tg as any).disableVerticalSwipes === 'function') {

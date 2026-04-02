@@ -3,10 +3,11 @@ import { computed, onMounted, ref } from 'vue'
 import { api } from '@/api'
 import { useUserStore } from '@/stores/user'
 import { useToast } from '@/composables/useToast'
+import type { Squad } from '@/types'
 
 const userStore = useUserStore()
 const toast = useToast()
-const squads = ref<any[]>([])
+const squads = ref<Squad[]>([])
 const loading = ref(true)
 const updating = ref(false)
 const currentSquadUUID = computed(() => userStore.currentExternalSquadUUID)
@@ -44,7 +45,7 @@ onMounted(loadSquads)
 
 <template>
   <div class="page">
-    <div class="page-header">
+    <div class="page-header stagger-enter stagger-1">
       <h1 class="page-title">Switch Route</h1>
       <p class="page-subtitle">Choose the external route group to use for your subscription</p>
     </div>
@@ -53,7 +54,7 @@ onMounted(loadSquads)
       <div class="loading-spinner"></div>
     </div>
 
-    <div class="stack" v-else>
+    <div class="stack stagger-enter stagger-2" v-else>
       <button
         v-for="squad in squads"
         :key="squad.uuid"

@@ -43,7 +43,7 @@ onMounted(async () => {
 
 <template>
   <div class="page">
-    <div class="page-header">
+    <div class="page-header stagger-enter stagger-1">
       <h1 class="page-title">Subscription</h1>
       <p class="page-subtitle">Connection keys, plan status, and usage details from Remnawave.</p>
     </div>
@@ -53,7 +53,7 @@ onMounted(async () => {
     </div>
 
     <template v-else-if="subInfo?.has_subscription && subInfo.user">
-      <div class="card">
+      <div class="card stagger-enter stagger-2">
         <div class="row-between mb-sm">
           <h3>Overview</h3>
           <span class="badge" :class="{
@@ -95,7 +95,7 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div class="card mt-md" v-if="keys">
+      <div class="card mt-md stagger-enter stagger-3" v-if="keys">
         <div class="row-between">
           <div>
             <h3>Connection Keys</h3>
@@ -136,7 +136,7 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div class="grid-2 mt-md">
+      <div class="grid-2 mt-md stagger-enter stagger-4">
         <router-link to="/info" class="action-card card">
           <strong>Usage</strong>
           <span class="text-sm text-muted">Bandwidth, devices, and history</span>
@@ -156,7 +156,7 @@ onMounted(async () => {
       </div>
     </template>
 
-    <div class="empty-state" v-else>
+    <div class="empty-state stagger-enter stagger-2" v-else>
       <p class="empty-state-text">No subscription is currently bound to this account.</p>
       <router-link to="/combos" class="btn btn-primary mt-md">Browse Plans</router-link>
     </div>

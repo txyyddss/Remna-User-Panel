@@ -57,12 +57,12 @@ onMounted(async () => {
 
 <template>
   <div class="page">
-    <div class="page-header">
+    <div class="page-header stagger-enter stagger-1">
       <h1 class="page-title">Usage</h1>
       <p class="page-subtitle">Traffic by node, active devices, and subscription fetch history.</p>
     </div>
 
-    <div class="tabs">
+    <div class="tabs stagger-enter stagger-2">
       <button class="tab" :class="{ active: activeTab === 'bandwidth' }" @click="activeTab = 'bandwidth'">Traffic</button>
       <button class="tab" :class="{ active: activeTab === 'devices' }" @click="activeTab = 'devices'">Devices</button>
       <button class="tab" :class="{ active: activeTab === 'history' }" @click="activeTab = 'history'">History</button>

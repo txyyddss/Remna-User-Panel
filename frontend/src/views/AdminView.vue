@@ -4,6 +4,37 @@ import { api } from '@/api'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import AppSelect from '@/components/AppSelect.vue'
+import type { AppConfig, Combo, User, Squad, OrderDetail, OrderEvent } from '@/types'
+
+interface UserFormData {
+  credit: number
+  is_admin: boolean
+  remnawave_uuid: string
+  jellyfin_user_id: string
+  subscription: {
+    remnawave_uuid: string
+    combo_uuid: string
+    status: string
+    expires_at: string
+  }
+  jellyfin: {
+    jellyfin_user_id: string
+    username: string
+    parental_rating: number
+    expires_at: string
+  }
+}
+
+interface OrderEditData {
+  amount: number
+  final_amount: number
+  status: string
+  service_status: string
+  payment_method: string
+  payment_type: string
+  upstream_id: string
+  admin_note: string
+}
 
 const toast = useToast()
 const { confirm } = useConfirm()
@@ -12,15 +43,15 @@ const activeTab = ref('combos')
 const loading = ref(true)
 const saving = ref(false)
 
-const config = ref<any>(null)
-const editableConfig = ref<any>(null)
+const config = ref<AppConfig | null>(null)
+const editableConfig = ref<AppConfig | null>(null)
 const configEditing = ref(false)
 const configSaving = ref(false)
 
-const internalSquads = ref<any[]>([])
-const combos = ref<any[]>([])
+const internalSquads = ref<Squad[]>([])
+const combos = ref<Combo[]>([])
 const showComboForm = ref(false)
-const editingCombo = ref<any>(null)
+const editingCombo = ref<Combo | null>(null)
 const comboForm = ref({
   name: '',
   description: '',
@@ -32,14 +63,14 @@ const comboForm = ref({
   reset_price: 5,
 })
 
-const users = ref<any[]>([])
+const users = ref<User[]>([])
 const userTotal = ref(0)
 const userSearch = ref('')
 const userPage = ref(0)
 const usersLoading = ref(false)
-const editingUser = ref<any>(null)
+const editingUser = ref<User | null>(null)
 const userDetailLoading = ref(false)
-const userForm = ref<any>({
+const userForm = ref<UserFormData>({
   credit: 0,
   is_admin: false,
   remnawave_uuid: '',
@@ -58,7 +89,7 @@ const userForm = ref<any>({
   },
 })
 
-const orders = ref<any[]>([])
+const orders = ref<OrderDetail[]>([])
 const orderTotal = ref(0)
 const ordersLoading = ref(false)
 const orderFilters = ref({
@@ -68,9 +99,9 @@ const orderFilters = ref({
   order_type: '',
   page: 0,
 })
-const selectedOrder = ref<any>(null)
+const selectedOrder = ref<(OrderDetail & { events?: OrderEvent[] }) | null>(null)
 const orderDetailLoading = ref(false)
-const orderEdit = ref<any>({
+const orderEdit = ref<OrderEditData>({
   amount: 0,
   final_amount: 0,
   status: '',
@@ -322,23 +353,26 @@ async function loadOrders() {
   }
 }
 
-async function openOrder(order: any) {
+async function openOrder(order: OrderDetail) {
   selectedOrder.value = null
   orderDetailLoading.value = true
   try {
-    selectedOrder.value = await api.getOrder(order.uuid)
-    orderEdit.value = {
-      amount: selectedOrder.value.amount,
-      final_amount: selectedOrder.value.final_amount,
-      status: selectedOrder.value.status,
-      service_status: selectedOrder.value.service_status,
-      payment_method: selectedOrder.value.payment_method || '',
-      payment_type: selectedOrder.value.payment_type || '',
-      upstream_id: selectedOrder.value.upstream_id || '',
-      admin_note: selectedOrder.value.admin_note || '',
+    const detail = await api.getOrder(order.uuid)
+    selectedOrder.value = { ...detail, user_telegram_id: order.user_telegram_id, user_telegram_name: order.user_telegram_name }
+    if (selectedOrder.value) {
+      orderEdit.value = {
+        amount: selectedOrder.value.amount,
+        final_amount: selectedOrder.value.final_amount,
+        status: selectedOrder.value.status,
+        service_status: selectedOrder.value.service_status,
+        payment_method: selectedOrder.value.payment_method || '',
+        payment_type: selectedOrder.value.payment_type || '',
+        upstream_id: selectedOrder.value.upstream_id || '',
+        admin_note: selectedOrder.value.admin_note || '',
+      }
     }
-  } catch (e: any) {
-    toast.error(e.message)
+  } catch (e: unknown) {
+    toast.error(e instanceof Error ? e.message : 'Failed to load order')
   } finally {
     orderDetailLoading.value = false
   }
@@ -380,7 +414,7 @@ function startEditConfig() {
 async function saveConfig() {
   configSaving.value = true
   try {
-    await api.updateConfig(editableConfig.value)
+    await api.updateConfig(editableConfig.value!)
     await loadConfig()
     configEditing.value = false
     toast.success('Config saved.')
@@ -416,7 +450,7 @@ onMounted(initialize)
 
 <template>
   <div class="page">
-    <div class="page-header">
+    <div class="page-header stagger-enter stagger-1">
       <h1 class="page-title">Admin Panel</h1>
     </div>
 
@@ -425,7 +459,7 @@ onMounted(initialize)
     </div>
 
     <template v-else>
-      <div class="tab-bar">
+      <div class="tab-bar stagger-enter stagger-2">
         <button class="tab" :class="{ active: activeTab === 'combos' }" @click="activeTab = 'combos'">Plans</button>
         <button class="tab" :class="{ active: activeTab === 'users' }" @click="activeTab = 'users'; if (!users.length) loadUsers()">Users</button>
         <button class="tab" :class="{ active: activeTab === 'billing' }" @click="activeTab = 'billing'; if (!orders.length) loadOrders()">Billing</button>
@@ -569,15 +603,15 @@ onMounted(initialize)
           </div>
 
           <div v-if="configEditing && editableConfig" class="stack-sm">
-            <template v-for="(section, sKey) in editableConfig" :key="sKey">
+            <template v-for="(section, sKey) in (editableConfig as Record<string, unknown>)" :key="sKey">
               <div class="config-section">
                 <h4 class="text-sm mb-sm">{{ sKey }}</h4>
                 <div class="stack-xs" v-if="typeof section === 'object' && section !== null">
-                  <div v-for="(val, key) in section" :key="key" class="config-edit-row">
+                  <div v-for="(val, key) in (section as Record<string, unknown>)" :key="key" class="config-edit-row">
                     <label class="text-xs text-muted">{{ key }}</label>
-                    <input v-if="typeof val === 'number'" class="input input-sm" type="number" v-model.number="editableConfig[sKey][key]" step="any" />
-                    <input v-else-if="typeof val === 'boolean'" type="checkbox" v-model="editableConfig[sKey][key]" />
-                    <input v-else class="input input-sm" v-model="editableConfig[sKey][key]" />
+                    <input v-if="typeof val === 'number'" class="input input-sm" type="number" v-model.number="(editableConfig as Record<string, Record<string, unknown>>)[sKey as string][key as string]" step="any" />
+                    <input v-else-if="typeof val === 'boolean'" type="checkbox" v-model="(editableConfig as Record<string, Record<string, unknown>>)[sKey as string][key as string]" />
+                    <input v-else class="input input-sm" v-model="(editableConfig as Record<string, Record<string, unknown>>)[sKey as string][key as string]" />
                   </div>
                 </div>
               </div>
