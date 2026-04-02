@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useUserStore } from '@/stores/user'
+import { formatBytes } from '@/utils/format'
 
 const userStore = useUserStore()
 const loading = ref(true)
@@ -22,14 +23,6 @@ const usedPercent = computed(() => {
   return Math.min(100, (usedTraffic.value / trafficLimit.value) * 100)
 })
 
-function formatBytes(bytes: number): string {
-  if (!bytes) {
-    return '0 B'
-  }
-  const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
-  return `${(bytes / 1024 ** index).toFixed(index === 0 ? 0 : 2)} ${units[index]}`
-}
 
 async function copyValue(value?: string) {
   if (!value) {
@@ -59,7 +52,7 @@ onMounted(async () => {
       <div class="loading-spinner"></div>
     </div>
 
-    <template v-else-if="subInfo?.has_subscription">
+    <template v-else-if="subInfo?.has_subscription && subInfo.user">
       <div class="card">
         <div class="row-between mb-sm">
           <h3>Overview</h3>

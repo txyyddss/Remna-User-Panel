@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -23,7 +23,11 @@ import (
 )
 
 func main() {
-	log.Println("[main] starting Remna User Panel Backend...")
+	slog.Info("main: starting Remna User Panel Backend")
+
+	// Application-wide context for graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// Load config
 	configPath := "config.json"
@@ -35,23 +39,27 @@ func main() {
 	if err != nil {
 		// If config doesn't exist, copy from example
 		if os.IsNotExist(err) {
-			log.Println("[main] config.json not found, creating from example...")
+			slog.Info("main: config.json not found, creating from example")
 			exampleData, readErr := os.ReadFile("config.example.json")
 			if readErr != nil {
-				log.Fatalf("[main] failed to read config.example.json: %v", readErr)
+				slog.Error("main: failed to read config.example.json", "error", readErr)
+				os.Exit(1)
 			}
 			if writeErr := os.WriteFile(configPath, exampleData, 0644); writeErr != nil {
-				log.Fatalf("[main] failed to create config.json: %v", writeErr)
+				slog.Error("main: failed to create config.json", "error", writeErr)
+				os.Exit(1)
 			}
 			cfg, err = config.Load(configPath)
 			if err != nil {
-				log.Fatalf("[main] failed to load config: %v", err)
+				slog.Error("main: failed to load config", "error", err)
+				os.Exit(1)
 			}
 		} else {
-			log.Fatalf("[main] failed to load config: %v", err)
+			slog.Error("main: failed to load config", "error", err)
+			os.Exit(1)
 		}
 	}
-	config.WatchConfig()
+	config.WatchConfig(ctx)
 
 	// Initialize database
 	dbPath := "data/panel.db"
@@ -59,7 +67,8 @@ func main() {
 		dbPath = env
 	}
 	if err := database.Init(dbPath); err != nil {
-		log.Fatalf("[main] database init: %v", err)
+		slog.Error("main: database init failed", "error", err)
+		os.Exit(1)
 	}
 	defer database.Close()
 
@@ -171,12 +180,9 @@ func main() {
 	cron.Start(creditSvc, h.Payment)
 
 	// Start Telegram bot
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	bot, err := telegram.NewBot(creditSvc)
 	if err != nil {
-		log.Printf("[main] telegram bot init: %v", err)
+		slog.Error("main: telegram bot init failed", "error", err)
 	}
 	if bot != nil {
 		go bot.Start(ctx)
@@ -193,9 +199,10 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("[main] HTTP server listening on %s", addr)
+		slog.Info("main: HTTP server listening", "addr", addr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("[main] server error: %v", err)
+			slog.Error("main: server error", "error", err)
+			os.Exit(1)
 		}
 	}()
 
@@ -204,12 +211,12 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("[main] shutting down...")
+	slog.Info("main: shutting down")
 	cancel()
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 	srv.Shutdown(shutdownCtx)
 
-	log.Println("[main] server stopped")
+	slog.Info("main: server stopped")
 }

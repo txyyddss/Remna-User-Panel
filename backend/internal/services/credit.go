@@ -1,8 +1,10 @@
 package services
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"math"
 	"math/rand"
 	"time"
@@ -21,14 +23,14 @@ func NewCreditService() *CreditService {
 }
 
 // GetBalance gets a user's current TXB balance
-func (s *CreditService) GetBalance(userID int64) (float64, error) {
+func (s *CreditService) GetBalance(ctx context.Context, userID int64) (float64, error) {
 	var credit float64
-	err := database.DB().QueryRow("SELECT credit FROM users WHERE id = ?", userID).Scan(&credit)
+	err := database.DB().QueryRowContext(ctx, "SELECT credit FROM users WHERE id = ?", userID).Scan(&credit)
 	return credit, err
 }
 
 // AddCredit adds/deducts credit and logs it
-func (s *CreditService) AddCredit(userID int64, amount float64, reason string) (float64, error) {
+func (s *CreditService) AddCredit(ctx context.Context, userID int64, amount float64, reason string) (float64, error) {
 	tx, err := database.DB().Begin()
 	if err != nil {
 		return 0, err
@@ -36,7 +38,7 @@ func (s *CreditService) AddCredit(userID int64, amount float64, reason string) (
 	defer tx.Rollback()
 
 	// Update balance
-	_, err = tx.Exec("UPDATE users SET credit = credit + ?, updated_at = ? WHERE id = ?",
+	_, err = tx.ExecContext(ctx, "UPDATE users SET credit = credit + ?, updated_at = ? WHERE id = ?",
 		amount, time.Now(), userID)
 	if err != nil {
 		return 0, err
@@ -44,7 +46,7 @@ func (s *CreditService) AddCredit(userID int64, amount float64, reason string) (
 
 	// Get new balance
 	var newBalance float64
-	err = tx.QueryRow("SELECT credit FROM users WHERE id = ?", userID).Scan(&newBalance)
+	err = tx.QueryRowContext(ctx, "SELECT credit FROM users WHERE id = ?", userID).Scan(&newBalance)
 	if err != nil {
 		return 0, err
 	}
@@ -53,7 +55,7 @@ func (s *CreditService) AddCredit(userID int64, amount float64, reason string) (
 	newBalance = math.Round(newBalance*100) / 100
 
 	// Log the change
-	_, err = tx.Exec(
+	_, err = tx.ExecContext(ctx,
 		"INSERT INTO credit_logs (user_id, amount, balance, reason, created_at) VALUES (?, ?, ?, ?, ?)",
 		userID, math.Round(amount*100)/100, newBalance, reason, time.Now(),
 	)
@@ -65,7 +67,7 @@ func (s *CreditService) AddCredit(userID int64, amount float64, reason string) (
 }
 
 // ConsumeCredit deducts credit atomically and avoids concurrent overspending.
-func (s *CreditService) ConsumeCredit(userID int64, amount float64, reason string) (float64, error) {
+func (s *CreditService) ConsumeCredit(ctx context.Context, userID int64, amount float64, reason string) (float64, error) {
 	if amount <= 0 {
 		return 0, fmt.Errorf("amount must be positive")
 	}
@@ -76,7 +78,7 @@ func (s *CreditService) ConsumeCredit(userID int64, amount float64, reason strin
 	}
 	defer tx.Rollback()
 
-	result, err := tx.Exec(
+	result, err := tx.ExecContext(ctx,
 		"UPDATE users SET credit = credit - ?, updated_at = ? WHERE id = ? AND credit >= ?",
 		amount, time.Now(), userID, amount,
 	)
@@ -93,14 +95,14 @@ func (s *CreditService) ConsumeCredit(userID int64, amount float64, reason strin
 	}
 
 	var newBalance float64
-	err = tx.QueryRow("SELECT credit FROM users WHERE id = ?", userID).Scan(&newBalance)
+	err = tx.QueryRowContext(ctx, "SELECT credit FROM users WHERE id = ?", userID).Scan(&newBalance)
 	if err != nil {
 		return 0, err
 	}
 
 	newBalance = math.Round(newBalance*100) / 100
 
-	_, err = tx.Exec(
+	_, err = tx.ExecContext(ctx,
 		"INSERT INTO credit_logs (user_id, amount, balance, reason, created_at) VALUES (?, ?, ?, ?, ?)",
 		userID, -math.Round(amount*100)/100, newBalance, reason, time.Now(),
 	)
@@ -112,11 +114,11 @@ func (s *CreditService) ConsumeCredit(userID int64, amount float64, reason strin
 }
 
 // Signup performs daily signup (check-in) with weighted random reward
-func (s *CreditService) Signup(userID int64) (float64, float64, error) {
+func (s *CreditService) Signup(ctx context.Context, userID int64) (float64, float64, error) {
 	cfg := config.Get()
 
 	// Check if credit is below zero
-	balance, err := s.GetBalance(userID)
+	balance, err := s.GetBalance(ctx, userID)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -127,7 +129,7 @@ func (s *CreditService) Signup(userID int64) (float64, float64, error) {
 	// Check if already signed up today
 	today := time.Now().Format("2006-01-02")
 	var count int
-	err = database.DB().QueryRow(
+	err = database.DB().QueryRowContext(ctx,
 		"SELECT COUNT(*) FROM signup_logs WHERE user_id = ? AND date = ?",
 		userID, today,
 	).Scan(&count)
@@ -151,7 +153,7 @@ func (s *CreditService) Signup(userID int64) (float64, float64, error) {
 	value = math.Round(value*100) / 100              // 2 decimal places
 
 	// Record signup
-	_, err = database.DB().Exec(
+	_, err = database.DB().ExecContext(ctx,
 		"INSERT INTO signup_logs (user_id, date, value, created_at) VALUES (?, ?, ?, ?)",
 		userID, today, value, time.Now(),
 	)
@@ -160,7 +162,7 @@ func (s *CreditService) Signup(userID int64) (float64, float64, error) {
 	}
 
 	// Add credit
-	newBalance, err := s.AddCredit(userID, value, fmt.Sprintf("daily check-in +%.2f", value))
+	newBalance, err := s.AddCredit(ctx, userID, value, fmt.Sprintf("daily check-in +%.2f", value))
 	if err != nil {
 		return 0, 0, err
 	}
@@ -169,13 +171,13 @@ func (s *CreditService) Signup(userID int64) (float64, float64, error) {
 }
 
 // Bet performs a betting operation with weighted probabilities
-func (s *CreditService) Bet(userID int64, betAmount float64) (float64, float64, error) {
-	if betAmount <= 0 {
-		return 0, 0, fmt.Errorf("bet amount must be greater than 0")
+func (s *CreditService) Bet(ctx context.Context, userID int64, betAmount float64) (float64, float64, error) {
+	if math.IsNaN(betAmount) || math.IsInf(betAmount, 0) || betAmount <= 0 {
+		return 0, 0, fmt.Errorf("bet amount must be a finite positive number")
 	}
 
 	cfg := config.Get()
-	balance, err := s.GetBalance(userID)
+	balance, err := s.GetBalance(ctx, userID)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -189,13 +191,13 @@ func (s *CreditService) Bet(userID int64, betAmount float64) (float64, float64, 
 	winMax := betAmount * cfg.Credit.BetWinMultiplier   // e.g., 2x
 
 	// Factors affecting probability:
-	// 1. Higher balance → lower chance of winning
-	// 2. More bets this month → lower chance of positive result
+	// 1. Higher balance ?lower chance of winning
+	// 2. More bets this month ?lower chance of positive result
 
 	// Get monthly bet count
 	monthStart := time.Now().Format("2006-01") + "-01"
 	var monthlyBets int
-	database.DB().QueryRow(
+	database.DB().QueryRowContext(ctx,
 		"SELECT COUNT(*) FROM bet_logs WHERE user_id = ? AND created_at >= ?",
 		userID, monthStart,
 	).Scan(&monthlyBets)
@@ -220,19 +222,19 @@ func (s *CreditService) Bet(userID int64, betAmount float64) (float64, float64, 
 	result = math.Round(result*100) / 100
 
 	// Deduct bet amount first
-	_, err = s.ConsumeCredit(userID, betAmount, fmt.Sprintf("bet -%.2f", betAmount))
+	_, err = s.ConsumeCredit(ctx, userID, betAmount, fmt.Sprintf("bet -%.2f", betAmount))
 	if err != nil {
 		return 0, 0, err
 	}
 
 	// Add result (can be negative, further reducing balance)
-	newBalance, err := s.AddCredit(userID, result, fmt.Sprintf("bet result %+.2f", result))
+	newBalance, err := s.AddCredit(ctx, userID, result, fmt.Sprintf("bet result %+.2f", result))
 	if err != nil {
 		return 0, 0, err
 	}
 
 	// Record bet
-	database.DB().Exec(
+	database.DB().ExecContext(ctx,
 		"INSERT INTO bet_logs (user_id, bet_amount, result, created_at) VALUES (?, ?, ?, ?)",
 		userID, betAmount, result, time.Now(),
 	)
@@ -242,13 +244,13 @@ func (s *CreditService) Bet(userID int64, betAmount float64) (float64, float64, 
 
 // ApplyDiscount calculates a TXB discount on a bill.
 // Returns: discountRMB, consumedTXB, finalBillRMB.
-func (s *CreditService) ApplyDiscount(userID int64, billRMB float64, useTXB bool, requestedDiscountRMB float64) (float64, float64, float64, error) {
+func (s *CreditService) ApplyDiscount(ctx context.Context, userID int64, billRMB float64, useTXB bool, requestedDiscountRMB float64) (float64, float64, float64, error) {
 	if !useTXB || billRMB <= 0 {
 		return 0, 0, billRMB, nil
 	}
 
 	cfg := config.Get()
-	balance, err := s.GetBalance(userID)
+	balance, err := s.GetBalance(ctx, userID)
 	if err != nil {
 		return 0, 0, billRMB, err
 	}
@@ -290,18 +292,18 @@ func (s *CreditService) ApplyDiscount(userID int64, billRMB float64, useTXB bool
 }
 
 // ConvertPaymentToCredit adds TXB for a payment
-func (s *CreditService) ConvertPaymentToCredit(userID int64, amountRMB float64) (float64, error) {
+func (s *CreditService) ConvertPaymentToCredit(ctx context.Context, userID int64, amountRMB float64) (float64, error) {
 	cfg := config.Get()
 	txb := amountRMB * cfg.Credit.RMBToTXBRate
 	txb = math.Round(txb*100) / 100
 
-	newBalance, err := s.AddCredit(userID, txb, fmt.Sprintf("purchase bonus +%.2f (spent %.2f RMB)", txb, amountRMB))
+	newBalance, err := s.AddCredit(ctx, userID, txb, fmt.Sprintf("purchase bonus +%.2f (spent %.2f RMB)", txb, amountRMB))
 	return newBalance, err
 }
 
 // GetHistory gets credit history for a user
-func (s *CreditService) GetHistory(userID int64, limit, offset int) ([]models.CreditLog, error) {
-	rows, err := database.DB().Query(
+func (s *CreditService) GetHistory(ctx context.Context, userID int64, limit, offset int) ([]models.CreditLog, error) {
+	rows, err := database.DB().QueryContext(ctx,
 		"SELECT id, user_id, amount, balance, reason, created_at FROM credit_logs WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
 		userID, limit, offset,
 	)
@@ -318,20 +320,23 @@ func (s *CreditService) GetHistory(userID int64, limit, offset int) ([]models.Cr
 		}
 		logs = append(logs, log)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("credit: iterate history: %w", err)
+	}
 	return logs, nil
 }
 
 // CleanupOldLogs deletes credit logs older than retention period
-func (s *CreditService) CleanupOldLogs() error {
+func (s *CreditService) CleanupOldLogs(ctx context.Context) error {
 	cfg := config.Get()
 	cutoff := time.Now().AddDate(0, 0, -cfg.Credit.LogRetentionDays)
-	result, err := database.DB().Exec("DELETE FROM credit_logs WHERE created_at < ?", cutoff)
+	result, err := database.DB().ExecContext(ctx, "DELETE FROM credit_logs WHERE created_at < ?", cutoff)
 	if err != nil {
 		return err
 	}
 	affected, _ := result.RowsAffected()
 	if affected > 0 {
-		fmt.Printf("[credit] cleaned up %d old log entries\n", affected)
+		slog.Info("credit: cleaned up old log entries", "count", affected)
 	}
 	return nil
 }

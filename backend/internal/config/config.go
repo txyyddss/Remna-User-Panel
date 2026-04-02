@@ -1,8 +1,10 @@
 package config
 
 import (
+	"context"
 	"encoding/json"
-	"log"
+	"fmt"
+	"log/slog"
 	"os"
 	"sync"
 
@@ -63,25 +65,25 @@ type EZPayConfig struct {
 }
 
 type CreditConfig struct {
-	Name             string  `json:"name"`
-	SignupMin        float64 `json:"signup_min"`
-	SignupMax        float64 `json:"signup_max"`
-	RMBToTXBRate     float64 `json:"rmb_to_txb_rate"`
-	TXBToRMBRate     float64 `json:"txb_to_rmb_rate"`
+	Name              string  `json:"name"`
+	SignupMin         float64 `json:"signup_min"`
+	SignupMax         float64 `json:"signup_max"`
+	RMBToTXBRate      float64 `json:"rmb_to_txb_rate"`
+	TXBToRMBRate      float64 `json:"txb_to_rmb_rate"`
 	BetLossMultiplier float64 `json:"bet_loss_multiplier"`
 	BetWinMultiplier  float64 `json:"bet_win_multiplier"`
 	LogRetentionDays  int     `json:"log_retention_days"`
 }
 
 type AIConfig struct {
-	Enabled            bool    `json:"enabled"`
-	BaseURL            string  `json:"base_url"`
-	APIKey             string  `json:"api_key"`
-	Model              string  `json:"model"`
-	MessageBatchSize   int     `json:"message_batch_size"`
-	CreditMin          float64 `json:"credit_min"`
-	CreditMax          float64 `json:"credit_max"`
-	LeaderboardInterval int    `json:"leaderboard_interval"`
+	Enabled             bool    `json:"enabled"`
+	BaseURL             string  `json:"base_url"`
+	APIKey              string  `json:"api_key"`
+	Model               string  `json:"model"`
+	MessageBatchSize    int     `json:"message_batch_size"`
+	CreditMin           float64 `json:"credit_min"`
+	CreditMax           float64 `json:"credit_max"`
+	LeaderboardInterval int     `json:"leaderboard_interval"`
 }
 
 type BackupConfig struct {
@@ -129,15 +131,27 @@ func Save() error {
 func Update(fn func(cfg *Config)) error {
 	mu.Lock()
 	defer mu.Unlock()
-	fn(current)
-	return writeToFile(path, current)
+
+	// Struct copy — safe because Config contains only value types and slices.
+	// The old pointer remains valid for concurrent readers until we swap.
+	newCfg := *current
+
+	fn(&newCfg)
+
+	if err := writeToFile(path, &newCfg); err != nil {
+		return fmt.Errorf("config: persist update: %w", err)
+	}
+
+	current = &newCfg
+	return nil
 }
 
-// WatchConfig watches the config file for changes and hot-reloads
-func WatchConfig() {
+// WatchConfig watches the config file for changes and hot-reloads.
+// It respects ctx cancellation for graceful shutdown.
+func WatchConfig(ctx context.Context) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Printf("[config] failed to create watcher: %v", err)
+		slog.Error("config: failed to create watcher", "error", err)
 		return
 	}
 
@@ -145,6 +159,9 @@ func WatchConfig() {
 		defer watcher.Close()
 		for {
 			select {
+			case <-ctx.Done():
+				slog.Info("config: watcher stopped")
+				return
 			case event, ok := <-watcher.Events:
 				if !ok {
 					return
@@ -152,36 +169,36 @@ func WatchConfig() {
 				if event.Has(fsnotify.Write) {
 					cfg, err := readFromFile(path)
 					if err != nil {
-						log.Printf("[config] hot-reload failed: %v", err)
+						slog.Error("config: hot-reload failed", "error", err)
 						continue
 					}
 					mu.Lock()
 					current = cfg
 					mu.Unlock()
-					log.Println("[config] hot-reloaded successfully")
+					slog.Info("config: hot-reloaded successfully")
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
 					return
 				}
-				log.Printf("[config] watcher error: %v", err)
+				slog.Error("config: watcher error", "error", err)
 			}
 		}
 	}()
 
 	if err := watcher.Add(path); err != nil {
-		log.Printf("[config] failed to watch file: %v", err)
+		slog.Error("config: failed to watch file", "error", err)
 	}
 }
 
 func readFromFile(filePath string) (*Config, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("config: read %s: %w", filePath, err)
 	}
 	var cfg Config
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("config: parse %s: %w", filePath, err)
 	}
 	return &cfg, nil
 }

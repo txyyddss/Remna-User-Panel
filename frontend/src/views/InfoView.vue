@@ -1,21 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { api } from '@/api'
+import { formatBytes } from '@/utils/format'
+import type { BandwidthEntry, DeviceEntry, HistoryEntry } from '@/types'
 
-const bandwidth = ref<any[]>([])
-const devices = ref<any[]>([])
-const history = ref<any[]>([])
+const bandwidth = ref<BandwidthEntry[]>([])
+const devices = ref<DeviceEntry[]>([])
+const history = ref<HistoryEntry[]>([])
 const loading = ref(true)
 const activeTab = ref<'bandwidth' | 'devices' | 'history'>('bandwidth')
 
-function formatBytes(bytes: number): string {
-  if (!bytes) {
-    return '0 B'
-  }
-  const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
-  return `${(bytes / 1024 ** index).toFixed(index === 0 ? 0 : 2)} ${units[index]}`
-}
 
 const nodeAggregated = computed(() => {
   const map: Record<string, { name: string; country: string; total: number }> = {}

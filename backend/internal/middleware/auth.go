@@ -54,13 +54,13 @@ func TelegramAuth(next http.Handler) http.Handler {
 		}
 
 		// Find or create user
-		user, err := getOrCreateUser(telegramID, name)
+		user, err := getOrCreateUser(r.Context(), telegramID, name)
 		if err != nil {
 			WriteError(w, http.StatusInternalServerError, "failed to load user")
 			return
 		}
 
-		if err := ensureGroupMembership(user); err != nil {
+		if err := ensureGroupMembership(r.Context(), user); err != nil {
 			WriteError(w, http.StatusForbidden, err.Error())
 			return
 		}
@@ -82,7 +82,7 @@ func APITokenAuth(next http.Handler) http.Handler {
 
 		hash := hashToken(token)
 		var apiToken models.APIToken
-		err := database.DB().QueryRow(
+		err := database.DB().QueryRowContext(r.Context(),
 			"SELECT id, token_hash, name, permissions, created_by FROM api_tokens WHERE token_hash = ?",
 			hash,
 		).Scan(&apiToken.ID, &apiToken.TokenHash, &apiToken.Name, &apiToken.Permissions, &apiToken.CreatedBy)
@@ -92,10 +92,10 @@ func APITokenAuth(next http.Handler) http.Handler {
 		}
 
 		// Update last used
-		database.DB().Exec("UPDATE api_tokens SET last_used_at = ? WHERE id = ?", time.Now(), apiToken.ID)
+		database.DB().ExecContext(r.Context(), "UPDATE api_tokens SET last_used_at = ? WHERE id = ?", time.Now(), apiToken.ID)
 
 		var user models.User
-		err = database.DB().QueryRow(
+		err = database.DB().QueryRowContext(r.Context(),
 			"SELECT id, telegram_id, telegram_name, remnawave_uuid, jellyfin_user_id, credit, is_admin, created_at, updated_at FROM users WHERE id = ?",
 			apiToken.CreatedBy,
 		).Scan(&user.ID, &user.TelegramID, &user.TelegramName, &user.RemnawaveUUID, &user.JellyfinUserID, &user.Credit, &user.IsAdmin, &user.CreatedAt, &user.UpdatedAt)
@@ -254,9 +254,9 @@ func hasAnyPermission(permissions []string, required ...string) bool {
 	return false
 }
 
-func getOrCreateUser(telegramID int64, name string) (*models.User, error) {
+func getOrCreateUser(ctx context.Context, telegramID int64, name string) (*models.User, error) {
 	var user models.User
-	err := database.DB().QueryRow(
+	err := database.DB().QueryRowContext(ctx,
 		"SELECT id, telegram_id, telegram_name, remnawave_uuid, jellyfin_user_id, credit, is_admin, created_at, updated_at FROM users WHERE telegram_id = ?",
 		telegramID,
 	).Scan(&user.ID, &user.TelegramID, &user.TelegramName, &user.RemnawaveUUID, &user.JellyfinUserID, &user.Credit, &user.IsAdmin, &user.CreatedAt, &user.UpdatedAt)
@@ -277,7 +277,7 @@ func getOrCreateUser(telegramID int64, name string) (*models.User, error) {
 			adminInt = 1
 		}
 
-		result, err := database.DB().Exec(
+		result, err := database.DB().ExecContext(ctx,
 			"INSERT INTO users (telegram_id, telegram_name, is_admin) VALUES (?, ?, ?)",
 			telegramID, name, adminInt,
 		)
@@ -297,14 +297,14 @@ func getOrCreateUser(telegramID int64, name string) (*models.User, error) {
 	} else {
 		// Update name if changed
 		if user.TelegramName != name {
-			database.DB().Exec("UPDATE users SET telegram_name = ?, updated_at = ? WHERE id = ?", name, time.Now(), user.ID)
+			database.DB().ExecContext(ctx, "UPDATE users SET telegram_name = ?, updated_at = ? WHERE id = ?", name, time.Now(), user.ID)
 			user.TelegramName = name
 		}
 		// Check if admin status should update
 		cfg := config.Get()
 		for _, id := range cfg.Telegram.AdminIDs {
 			if id == telegramID && !user.IsAdmin {
-				database.DB().Exec("UPDATE users SET is_admin = 1 WHERE id = ?", user.ID)
+				database.DB().ExecContext(ctx, "UPDATE users SET is_admin = 1 WHERE id = ?", user.ID)
 				user.IsAdmin = true
 			}
 		}
@@ -313,7 +313,7 @@ func getOrCreateUser(telegramID int64, name string) (*models.User, error) {
 	return &user, nil
 }
 
-func ensureGroupMembership(user *models.User) error {
+func ensureGroupMembership(ctx context.Context, user *models.User) error {
 	if user == nil || user.IsAdmin {
 		return nil
 	}
@@ -323,7 +323,7 @@ func ensureGroupMembership(user *models.User) error {
 		return nil
 	}
 
-	status, err := fetchChatMemberStatus(cfg.Telegram.BotToken, cfg.Telegram.GroupID, user.TelegramID)
+	status, err := fetchChatMemberStatus(ctx, cfg.Telegram.BotToken, cfg.Telegram.GroupID, user.TelegramID)
 	if err != nil {
 		return fmt.Errorf("failed to verify group membership")
 	}
@@ -333,7 +333,7 @@ func ensureGroupMembership(user *models.User) error {
 	return nil
 }
 
-func fetchChatMemberStatus(botToken string, chatID, userID int64) (string, error) {
+func fetchChatMemberStatus(ctx context.Context, botToken string, chatID, userID int64) (string, error) {
 	body, err := json.Marshal(map[string]int64{
 		"chat_id": chatID,
 		"user_id": userID,
@@ -342,7 +342,7 @@ func fetchChatMemberStatus(botToken string, chatID, userID int64) (string, error
 		return "", err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, "https://api.telegram.org/bot"+botToken+"/getChatMember", strings.NewReader(string(body)))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.telegram.org/bot"+botToken+"/getChatMember", strings.NewReader(string(body)))
 	if err != nil {
 		return "", err
 	}

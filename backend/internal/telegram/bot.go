@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"math"
 	"net/http"
 	"sort"
@@ -32,7 +32,7 @@ type Bot struct {
 func NewBot(credit *services.CreditService) (*Bot, error) {
 	cfg := config.Get()
 	if cfg.Telegram.BotToken == "" {
-		log.Println("[telegram] bot token not configured, skipping bot initialization")
+		slog.Info("telegram: bot token not configured, skipping bot initialization")
 		return nil, nil
 	}
 
@@ -68,10 +68,10 @@ func (b *Bot) Start(ctx context.Context) {
 		DropPendingUpdates: true,
 	})
 	if err != nil {
-		log.Printf("[telegram] warning: failed to delete webhook (can be ignored if none exists): %v", err)
+		slog.Warn("telegram: failed to delete webhook (can be ignored if none exists)", "error", err)
 	}
 
-	log.Println("[telegram] bot started")
+	slog.Info("telegram: bot started")
 	b.bot.Start(ctx)
 }
 
@@ -385,7 +385,7 @@ func (b *Bot) evaluateMessages(ctx context.Context, bot *tgbot.Bot, chatID int64
 
 	rows, err := database.DB().Query("SELECT id, user_id, telegram_name, text FROM group_messages ORDER BY id ASC")
 	if err != nil {
-		log.Printf("[ai] query messages error: %v", err)
+		slog.Error("ai: query messages error", "error", err)
 		return
 	}
 	defer rows.Close()
@@ -399,8 +399,14 @@ func (b *Bot) evaluateMessages(ctx context.Context, bot *tgbot.Bot, chatID int64
 	var messages []msg
 	for rows.Next() {
 		var m msg
-		rows.Scan(&m.ID, &m.User, &m.Name, &m.Text)
+		if err := rows.Scan(&m.ID, &m.User, &m.Name, &m.Text); err != nil {
+			slog.Error("ai: scan message row", "error", err)
+			continue
+		}
 		messages = append(messages, m)
+	}
+	if err := rows.Err(); err != nil {
+		slog.Error("ai: message iteration error", "error", err)
 	}
 
 	if len(messages) == 0 {
@@ -433,7 +439,7 @@ Message list:
 	// Call AI
 	aiResp, err := callAI(cfg.AI.BaseURL, cfg.AI.APIKey, cfg.AI.Model, prompt)
 	if err != nil {
-		log.Printf("[ai] evaluation error: %v", err)
+		slog.Error("ai: evaluation error", "error", err)
 		return
 	}
 
@@ -443,7 +449,7 @@ Message list:
 		Score float64 `json:"score"`
 	}
 	if err := json.Unmarshal([]byte(aiResp), &scores); err != nil {
-		log.Printf("[ai] parse scores error: %v (response: %s)", err, aiResp)
+		slog.Error("ai: parse scores error", "response", aiResp, "error", err)
 		return
 	}
 
@@ -498,9 +504,15 @@ func (b *Bot) sendLeaderboard(ctx context.Context, bot *tgbot.Bot, chatID int64)
 	for rows.Next() {
 		var name string
 		var total float64
-		rows.Scan(&name, &total)
+		if err := rows.Scan(&name, &total); err != nil {
+			slog.Error("telegram: scan leaderboard row", "error", err)
+			continue
+		}
 		text.WriteString(fmt.Sprintf("%s %s: %+.1f TXB\n", medals[i], name, total))
 		i++
+	}
+	if err := rows.Err(); err != nil {
+		slog.Error("telegram: leaderboard iteration error", "error", err)
 	}
 
 	if i > 0 {

@@ -2,7 +2,7 @@ package cron
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -26,7 +26,7 @@ func Start(credit *services.CreditService, payment *services.PaymentService) {
 	// Daily credit log cleanup at 4:00 AM
 	c.AddFunc("0 4 * * *", func() {
 		if err := credit.CleanupOldLogs(); err != nil {
-			log.Printf("[cron] credit cleanup error: %v", err)
+			slog.Error("cron: credit cleanup failed", "error", err)
 		}
 	})
 
@@ -46,12 +46,12 @@ func Start(credit *services.CreditService, payment *services.PaymentService) {
 			return
 		}
 		if err := payment.CancelExpiredPendingOrders(); err != nil {
-			log.Printf("[cron] pending payment cleanup error: %v", err)
+			slog.Error("cron: pending payment cleanup failed", "error", err)
 		}
 	})
 
 	c.Start()
-	log.Println("[cron] scheduled tasks started")
+	slog.Info("cron: scheduled tasks started")
 }
 
 func backup() {
@@ -66,9 +66,9 @@ func backup() {
 	// Backup database
 	dbBackupPath := filepath.Join(backupDir, fmt.Sprintf("db_%s.sqlite3", timestamp))
 	if err := database.Backup(dbBackupPath); err != nil {
-		log.Printf("[backup] database backup failed: %v", err)
+		slog.Error("backup: database backup failed", "error", err)
 	} else {
-		log.Printf("[backup] database backed up to %s", dbBackupPath)
+		slog.Info("backup: database backed up", "path", dbBackupPath)
 	}
 
 	// Backup config
@@ -77,7 +77,7 @@ func backup() {
 		configBackupPath := filepath.Join(backupDir, fmt.Sprintf("config_%s.json", timestamp))
 		os.MkdirAll(backupDir, 0755)
 		os.WriteFile(configBackupPath, configData, 0644)
-		log.Printf("[backup] config backed up to %s", configBackupPath)
+		slog.Info("backup: config backed up", "path", configBackupPath)
 	}
 
 	// Clean up old backups (> max_days)
@@ -103,7 +103,7 @@ func cleanupOldBackups(dir string, maxDays int) {
 		if info.ModTime().Before(cutoff) {
 			path := filepath.Join(dir, e.Name())
 			if err := os.Remove(path); err == nil {
-				log.Printf("[backup] removed old backup: %s", path)
+				slog.Info("backup: removed old backup", "path", path)
 			}
 		}
 	}
@@ -115,6 +115,7 @@ func cleanupExpiredJellyfin() {
 		time.Now(),
 	)
 	if err != nil {
+		slog.Error("cron: query expired jellyfin accounts", "error", err)
 		return
 	}
 	defer rows.Close()
@@ -123,13 +124,16 @@ func cleanupExpiredJellyfin() {
 	for rows.Next() {
 		var id, userID int64
 		var jfUserID string
-		rows.Scan(&id, &userID, &jfUserID)
+		if err := rows.Scan(&id, &userID, &jfUserID); err != nil {
+			slog.Error("cron: scan jellyfin row", "error", err)
+			continue
+		}
 
 		// Delete from Jellyfin
 		jfClient := jellyfinClient(cfg)
 		if jfClient != nil {
 			if err := jfClient.DeleteUser(jfUserID); err != nil {
-				log.Printf("[cron] delete jellyfin user %s failed: %v", jfUserID, err)
+				slog.Error("cron: delete jellyfin user failed", "jellyfin_id", jfUserID, "error", err)
 				continue
 			}
 		}
@@ -137,15 +141,20 @@ func cleanupExpiredJellyfin() {
 		// Remove from database
 		database.DB().Exec("DELETE FROM jellyfin_accounts WHERE id = ?", id)
 		database.DB().Exec("UPDATE users SET jellyfin_user_id = '' WHERE id = ?", userID)
-		log.Printf("[cron] expired Jellyfin account removed for user %d", userID)
+		slog.Info("cron: expired Jellyfin account removed", "user_id", userID)
+	}
+	if err := rows.Err(); err != nil {
+		slog.Error("cron: jellyfin cleanup iteration error", "error", err)
 	}
 }
 
 func checkExpiredSubscriptions() {
-	database.DB().Exec(
+	if _, err := database.DB().Exec(
 		"UPDATE subscriptions SET status = 'expired', updated_at = ? WHERE status = 'active' AND expires_at < ?",
 		time.Now(), time.Now(),
-	)
+	); err != nil {
+		slog.Error("cron: check expired subscriptions failed", "error", err)
+	}
 }
 
 // Helper to create Jellyfin client

@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { api } from '@/api'
+import { formatBytes } from '@/utils/format'
 
 const userStore = useUserStore()
 const subUrl = ref('')
@@ -21,12 +22,6 @@ const daysRemaining = computed(() => {
   return Math.max(0, Math.ceil(diff / 86400000))
 })
 
-function formatBytes(b: number): string {
-  if (b < 1024) return `${b} B`
-  if (b < 1048576) return `${(b / 1024).toFixed(1)} KB`
-  if (b < 1073741824) return `${(b / 1048576).toFixed(2)} MB`
-  return `${(b / 1073741824).toFixed(2)} GB`
-}
 
 async function bindSub() {
   if (!subUrl.value) return
@@ -88,7 +83,7 @@ async function bindSub() {
     </div>
 
     <!-- Subscription Summary -->
-    <div class="card mt-md" v-if="subInfo?.has_subscription">
+    <div class="card mt-md" v-if="subInfo?.has_subscription && subInfo.user">
       <div class="row-between mb-sm">
         <h3>📡 Subscription Status</h3>
         <span class="badge" :class="{

@@ -161,7 +161,7 @@ watch(() => userStore.jellyfin, async (nextValue) => {
           <span class="badge badge-success">Active</span>
         </div>
         <div class="text-sm text-muted mt-sm">
-          Expires: {{ new Date(userStore.jellyfin?.expires_at).toLocaleDateString('en-US') }}
+          Expires: {{ userStore.jellyfin?.expires_at ? new Date(userStore.jellyfin.expires_at).toLocaleDateString('en-US') : '' }}
         </div>
         <button class="btn btn-primary btn-sm mt-md" @click="showPurchase = true">Renew Service</button>
       </div>

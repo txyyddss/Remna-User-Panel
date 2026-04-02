@@ -29,7 +29,7 @@ async function changeIP() {
   try {
     const subscription = subscriptionInput.value.trim() || suggestedSubscription.value
     const resp = await api.changeIP({ subscription })
-    result.value = resp.message
+    result.value = resp.message || ''
     await loadStatus()
   } catch (e: any) {
     result.value = e.message

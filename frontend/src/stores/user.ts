@@ -1,15 +1,16 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '@/api'
+import type { User, Subscription, JellyfinAccount, AppConfig, SubInfo, SubKeys, Order } from '@/types'
 
 export const useUserStore = defineStore('user', () => {
-    const user = ref<any>(null)
-    const subscription = ref<any>(null)
-    const jellyfin = ref<any>(null)
-    const appConfig = ref<any>(null)
-    const liveSubInfo = ref<any>(null)
-    const subKeys = ref<any>(null)
-    const recentOrders = ref<any[]>([])
+    const user = ref<User | null>(null)
+    const subscription = ref<Subscription | null>(null)
+    const jellyfin = ref<JellyfinAccount | null>(null)
+    const appConfig = ref<AppConfig | null>(null)
+    const liveSubInfo = ref<{ has_subscription?: boolean; user?: SubInfo } | null>(null)
+    const subKeys = ref<SubKeys | null>(null)
+    const recentOrders = ref<Order[]>([])
     const loading = ref(false)
     const refreshing = ref(false)
     const error = ref<string | null>(null)
@@ -20,7 +21,7 @@ export const useUserStore = defineStore('user', () => {
     const hasJellyfin = computed(() => !!jellyfin.value)
     const credit = computed(() => user.value?.credit || 0)
     const telegramName = computed(() => user.value?.telegram_name || 'User')
-    const currentExternalSquadUUID = computed(() => liveSubInfo.value?.user?.externalSquadUuid || liveSubInfo.value?.user?.externalSquadUUID || '')
+    const currentExternalSquadUUID = computed(() => liveSubInfo.value?.user?.externalSquadUuid || '')
 
     async function fetchMe(background = false) {
         if (!background) {
@@ -30,9 +31,9 @@ export const useUserStore = defineStore('user', () => {
         try {
             const data = await api.getMe()
             user.value = data.user
-            subscription.value = data.subscription
-            jellyfin.value = data.jellyfin
-            appConfig.value = data.config
+            subscription.value = data.subscription || null
+            jellyfin.value = data.jellyfin || null
+            appConfig.value = data.config || null
         } catch (e: any) {
             error.value = e.message
         } finally {

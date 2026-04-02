@@ -3,10 +3,9 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -35,7 +34,7 @@ func Init(dbPath string) error {
 		return fmt.Errorf("migration: %w", err)
 	}
 
-	log.Println("[database] initialized successfully")
+	slog.Info("database: initialized successfully")
 	return nil
 }
 
@@ -123,9 +122,6 @@ func migrate() error {
 		`CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)`,
 		`CREATE INDEX IF NOT EXISTS idx_orders_upstream ON orders(upstream_id)`,
-		`ALTER TABLE orders ADD COLUMN admin_note TEXT NOT NULL DEFAULT ''`,
-		`ALTER TABLE orders ADD COLUMN paid_at DATETIME`,
-		`ALTER TABLE orders ADD COLUMN service_status TEXT NOT NULL DEFAULT 'pending'`,
 
 		`CREATE TABLE IF NOT EXISTS order_events (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -199,9 +195,6 @@ func migrate() error {
 
 	for _, m := range migrations {
 		if _, err := db.Exec(m); err != nil {
-			if isIgnorableMigrationError(err) {
-				continue
-			}
 			excerpt := m
 			if len(excerpt) > 60 {
 				excerpt = excerpt[:60] + "..."
@@ -210,23 +203,59 @@ func migrate() error {
 		}
 	}
 
+	// Safe column alterations
+	if !columnExists("orders", "admin_note") {
+		if _, err := db.Exec(`ALTER TABLE orders ADD COLUMN admin_note TEXT NOT NULL DEFAULT ''`); err != nil {
+			return fmt.Errorf("add admin_note column: %w", err)
+		}
+	}
+	if !columnExists("orders", "paid_at") {
+		if _, err := db.Exec(`ALTER TABLE orders ADD COLUMN paid_at DATETIME`); err != nil {
+			return fmt.Errorf("add paid_at column: %w", err)
+		}
+	}
+	if !columnExists("orders", "service_status") {
+		if _, err := db.Exec(`ALTER TABLE orders ADD COLUMN service_status TEXT NOT NULL DEFAULT 'pending'`); err != nil {
+			return fmt.Errorf("add service_status column: %w", err)
+		}
+	}
+
 	return nil
 }
 
-func isIgnorableMigrationError(err error) bool {
-	if err == nil {
+func columnExists(tableName, columnName string) bool {
+	rows, err := db.Query("PRAGMA table_info(" + tableName + ")")
+	if err != nil {
 		return false
 	}
+	defer rows.Close()
 
-	msg := err.Error()
-	return strings.Contains(msg, "duplicate column name")
+	for rows.Next() {
+		var cid int
+		var name, ctype string
+		var notnull int
+		var dfltValue interface{}
+		var pk int
+
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dfltValue, &pk); err == nil {
+			if name == columnName {
+				return true
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		slog.Error("database: column check iteration error", "table", tableName, "error", err)
+	}
+	return false
 }
 
 // Backup creates a backup of the database
 func Backup(destPath string) error {
 	if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
-		return err
+		return fmt.Errorf("database: create backup dir: %w", err)
 	}
-	_, err := db.Exec("VACUUM INTO ?", destPath)
-	return err
+	if _, err := db.Exec("VACUUM INTO ?", destPath); err != nil {
+		return fmt.Errorf("database: vacuum into %s: %w", destPath, err)
+	}
+	return nil
 }
