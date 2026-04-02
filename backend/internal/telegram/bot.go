@@ -85,18 +85,22 @@ func (b *Bot) handleSignup(ctx context.Context, bot *tgbot.Bot, update *tgmodels
 	value, newBalance, err := b.credit.Signup(userID)
 	if err != nil {
 		bot.SendMessage(ctx, &tgbot.SendMessageParams{
-			ChatID:           update.Message.Chat.ID,
-			Text:             "❌ " + err.Error(),
-			ReplyToMessageID: update.Message.ID,
+			ChatID: update.Message.Chat.ID,
+			Text:   "❌ " + err.Error(),
+			ReplyParameters: &tgmodels.ReplyParameters{
+				MessageID: update.Message.ID,
+			},
 		})
 		return
 	}
 
 	text := fmt.Sprintf("🎁 签到成功！\n获得: +%.2f TXB\n当前余额: %.2f TXB", value, newBalance)
 	msg, _ := bot.SendMessage(ctx, &tgbot.SendMessageParams{
-		ChatID:           update.Message.Chat.ID,
-		Text:             text,
-		ReplyToMessageID: update.Message.ID,
+		ChatID: update.Message.Chat.ID,
+		Text:   text,
+		ReplyParameters: &tgmodels.ReplyParameters{
+			MessageID: update.Message.ID,
+		},
 	})
 
 	// Auto-delete if value < 1
@@ -122,9 +126,11 @@ func (b *Bot) handleBet(ctx context.Context, bot *tgbot.Bot, update *tgmodels.Up
 	parts := strings.Fields(update.Message.Text)
 	if len(parts) < 2 {
 		bot.SendMessage(ctx, &tgbot.SendMessageParams{
-			ChatID:           update.Message.Chat.ID,
-			Text:             "用法: /bet <金额>",
-			ReplyToMessageID: update.Message.ID,
+			ChatID: update.Message.Chat.ID,
+			Text:   "用法: /bet <金额>",
+			ReplyParameters: &tgmodels.ReplyParameters{
+				MessageID: update.Message.ID,
+			},
 		})
 		return
 	}
@@ -132,9 +138,11 @@ func (b *Bot) handleBet(ctx context.Context, bot *tgbot.Bot, update *tgmodels.Up
 	amount, err := strconv.ParseFloat(parts[1], 64)
 	if err != nil || amount <= 0 {
 		bot.SendMessage(ctx, &tgbot.SendMessageParams{
-			ChatID:           update.Message.Chat.ID,
-			Text:             "❌ 请输入有效金额",
-			ReplyToMessageID: update.Message.ID,
+			ChatID: update.Message.Chat.ID,
+			Text:   "❌ 请输入有效金额",
+			ReplyParameters: &tgmodels.ReplyParameters{
+				MessageID: update.Message.ID,
+			},
 		})
 		return
 	}
@@ -142,9 +150,11 @@ func (b *Bot) handleBet(ctx context.Context, bot *tgbot.Bot, update *tgmodels.Up
 	result, newBalance, err := b.credit.Bet(userID, amount)
 	if err != nil {
 		bot.SendMessage(ctx, &tgbot.SendMessageParams{
-			ChatID:           update.Message.Chat.ID,
-			Text:             "❌ " + err.Error(),
-			ReplyToMessageID: update.Message.ID,
+			ChatID: update.Message.Chat.ID,
+			Text:   "❌ " + err.Error(),
+			ReplyParameters: &tgmodels.ReplyParameters{
+				MessageID: update.Message.ID,
+			},
 		})
 		return
 	}
@@ -158,9 +168,11 @@ func (b *Bot) handleBet(ctx context.Context, bot *tgbot.Bot, update *tgmodels.Up
 
 	text := fmt.Sprintf("%s 赌博结果: %+.2f TXB\n当前余额: %.2f TXB", emoji, result, newBalance)
 	bot.SendMessage(ctx, &tgbot.SendMessageParams{
-		ChatID:           update.Message.Chat.ID,
-		Text:             text,
-		ReplyToMessageID: update.Message.ID,
+		ChatID: update.Message.Chat.ID,
+		Text:   text,
+		ReplyParameters: &tgmodels.ReplyParameters{
+			MessageID: update.Message.ID,
+		},
 	})
 }
 
@@ -179,9 +191,11 @@ func (b *Bot) handleSub(ctx context.Context, bot *tgbot.Bot, update *tgmodels.Up
 
 	if rwUUID == "" {
 		bot.SendMessage(ctx, &tgbot.SendMessageParams{
-			ChatID:           update.Message.Chat.ID,
-			Text:             "❌ 未找到订阅信息",
-			ReplyToMessageID: update.Message.ID,
+			ChatID: update.Message.Chat.ID,
+			Text:   "❌ 未找到订阅信息",
+			ReplyParameters: &tgmodels.ReplyParameters{
+				MessageID: update.Message.ID,
+			},
 		})
 		return
 	}
@@ -190,19 +204,23 @@ func (b *Bot) handleSub(ctx context.Context, bot *tgbot.Bot, update *tgmodels.Up
 	rwUser, err := rwClient.GetUserByUUID(rwUUID)
 	if err != nil {
 		bot.SendMessage(ctx, &tgbot.SendMessageParams{
-			ChatID:           update.Message.Chat.ID,
-			Text:             "❌ 获取订阅信息失败",
-			ReplyToMessageID: update.Message.ID,
+			ChatID: update.Message.Chat.ID,
+			Text:   "❌ 获取订阅信息失败",
+			ReplyParameters: &tgmodels.ReplyParameters{
+				MessageID: update.Message.ID,
+			},
 		})
 		return
 	}
 
 	text := b.formatSubMessage(rwUser, rwClient)
 	bot.SendMessage(ctx, &tgbot.SendMessageParams{
-		ChatID:           update.Message.Chat.ID,
-		Text:             text,
-		ReplyToMessageID: update.Message.ID,
-		ParseMode:        tgmodels.ParseModeMarkdown,
+		ChatID:    update.Message.Chat.ID,
+		Text:      text,
+		ParseMode: tgmodels.ParseModeMarkdown,
+		ReplyParameters: &tgmodels.ReplyParameters{
+			MessageID: update.Message.ID,
+		},
 	})
 }
 
@@ -252,12 +270,6 @@ func (b *Bot) formatSubMessage(user *remnawave.UserData, client *remnawave.Clien
 		}
 
 		// Sort by usage
-		type nodeEntry struct {
-			UUID    string
-			Name    string
-			Country string
-			Total   int64
-		}
 		var nodes []nodeEntry
 		for uuid, total := range nodeMap {
 			nodes = append(nodes, nodeEntry{uuid, nodeNames[uuid], nodeCodes[uuid], total})
@@ -542,12 +554,14 @@ func generateProgressBar(percent float64, width int) string {
 	return bar.String()
 }
 
-func generateNodeBar(nodes []struct {
+type nodeEntry struct {
 	UUID    string
 	Name    string
 	Country string
 	Total   int64
-}, total int64, width int) string {
+}
+
+func generateNodeBar(nodes []nodeEntry, total int64, width int) string {
 	bars := []string{"▓", "░", "█", "▒", "▇"}
 	var result strings.Builder
 	result.WriteString("[")
