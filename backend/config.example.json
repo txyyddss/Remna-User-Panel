@@ -1,0 +1,62 @@
+{
+    "server": {
+        "host": "0.0.0.0",
+        "port": 8080,
+        "api_secret": "CHANGE_ME_TO_A_RANDOM_STRING"
+    },
+    "telegram": {
+        "bot_token": "",
+        "admin_ids": [],
+        "group_id": 0,
+        "webhook_url": ""
+    },
+    "remnawave": {
+        "url": "",
+        "token": ""
+    },
+    "jellyfin": {
+        "url": "",
+        "token": "",
+        "monthly_price_rmb": 2
+    },
+    "bepusdt": {
+        "url": "",
+        "token": "",
+        "notify_url": "",
+        "redirect_url": ""
+    },
+    "ezpay": {
+        "url": "",
+        "pid": 0,
+        "key": "",
+        "notify_url": "",
+        "return_url": ""
+    },
+    "credit": {
+        "name": "TXB",
+        "signup_min": 0,
+        "signup_max": 10,
+        "rmb_to_txb_rate": 10,
+        "txb_to_rmb_rate": 100,
+        "bet_loss_multiplier": 3,
+        "bet_win_multiplier": 2,
+        "log_retention_days": 30
+    },
+    "ai": {
+        "enabled": false,
+        "base_url": "https://api.deepseek.com",
+        "api_key": "",
+        "model": "deepseek-chat",
+        "message_batch_size": 20,
+        "credit_min": -2.0,
+        "credit_max": 3.0,
+        "leaderboard_interval": 100
+    },
+    "backup": {
+        "max_days": 10,
+        "backup_dir": "./backups"
+    },
+    "ip_change": {
+        "cooldown_hours": 6
+    }
+}

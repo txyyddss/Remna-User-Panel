@@ -1,0 +1,46 @@
+name: Build Backend
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md', 'frontend/**', '.github/ISSUE_TEMPLATE/**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Get dependencies
+        working-directory: backend
+        run: go mod download
+
+      - name: Run tests
+        working-directory: backend
+        run: go test ./...
+
+      - name: Build for Debian (amd64)
+        working-directory: backend
+        run: |
+          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o remna-panel-linux-amd64 ./cmd/server/
+
+      - name: Get version
+        id: version
+        run: echo "version=$(date +'v%Y.%m.%d-%H%M')" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
+          files: backend/remna-panel-linux-amd64
+          generate_release_notes: true

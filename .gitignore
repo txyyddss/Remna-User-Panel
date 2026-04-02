@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+backend/remna-panel-*
+frontend/dist/
+
+# Config (contains secrets)
+backend/config.json
+
+# Database
+backend/data/
+*.db
+
+# Backups
+backend/backups/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temp
+/tmp/
+
+# Agents
+.agents/

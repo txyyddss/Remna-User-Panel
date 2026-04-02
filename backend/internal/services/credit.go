@@ -1,0 +1,280 @@
+package services
+
+import (
+	"database/sql"
+	"fmt"
+	"math"
+	"math/rand"
+	"time"
+
+	"github.com/user/remna-user-panel/internal/config"
+	"github.com/user/remna-user-panel/internal/database"
+	"github.com/user/remna-user-panel/internal/models"
+)
+
+// CreditService handles all TXB credit operations
+type CreditService struct{}
+
+// NewCreditService creates a new CreditService
+func NewCreditService() *CreditService {
+	return &CreditService{}
+}
+
+// GetBalance gets a user's current TXB balance
+func (s *CreditService) GetBalance(userID int64) (float64, error) {
+	var credit float64
+	err := database.DB().QueryRow("SELECT credit FROM users WHERE id = ?", userID).Scan(&credit)
+	return credit, err
+}
+
+// AddCredit adds/deducts credit and logs it
+func (s *CreditService) AddCredit(userID int64, amount float64, reason string) (float64, error) {
+	tx, err := database.DB().Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	// Update balance
+	_, err = tx.Exec("UPDATE users SET credit = credit + ?, updated_at = ? WHERE id = ?",
+		amount, time.Now(), userID)
+	if err != nil {
+		return 0, err
+	}
+
+	// Get new balance
+	var newBalance float64
+	err = tx.QueryRow("SELECT credit FROM users WHERE id = ?", userID).Scan(&newBalance)
+	if err != nil {
+		return 0, err
+	}
+
+	// Round to 2 decimal places
+	newBalance = math.Round(newBalance*100) / 100
+
+	// Log the change
+	_, err = tx.Exec(
+		"INSERT INTO credit_logs (user_id, amount, balance, reason, created_at) VALUES (?, ?, ?, ?, ?)",
+		userID, math.Round(amount*100)/100, newBalance, reason, time.Now(),
+	)
+	if err != nil {
+		return 0, err
+	}
+
+	return newBalance, tx.Commit()
+}
+
+// Signup performs daily signup (check-in) with weighted random reward
+func (s *CreditService) Signup(userID int64) (float64, float64, error) {
+	cfg := config.Get()
+
+	// Check if credit is below zero
+	balance, err := s.GetBalance(userID)
+	if err != nil {
+		return 0, 0, err
+	}
+	if balance < 0 {
+		return 0, 0, fmt.Errorf("余额不足，无法签到")
+	}
+
+	// Check if already signed up today
+	today := time.Now().Format("2006-01-02")
+	var count int
+	err = database.DB().QueryRow(
+		"SELECT COUNT(*) FROM signup_logs WHERE user_id = ? AND date = ?",
+		userID, today,
+	).Scan(&count)
+	if err != nil {
+		return 0, 0, err
+	}
+	if count > 0 {
+		return 0, 0, fmt.Errorf("今日已签到")
+	}
+
+	// Generate weighted random value (exponential decay: low values more likely)
+	// Using inverse exponential distribution
+	minVal := cfg.Credit.SignupMin
+	maxVal := cfg.Credit.SignupMax
+
+	// u is uniform [0,1), we transform it to have exponential decay toward maxVal
+	u := rand.Float64()
+	// Exponential distribution: higher probability for lower values
+	// value = min + (max - min) * (1 - u^2)  -- but we want LOW more likely
+	value := minVal + (maxVal-minVal)*math.Pow(u, 3) // cubic: strongly favors low values
+	value = math.Round(value*100) / 100               // 2 decimal places
+
+	// Record signup
+	_, err = database.DB().Exec(
+		"INSERT INTO signup_logs (user_id, date, value, created_at) VALUES (?, ?, ?, ?)",
+		userID, today, value, time.Now(),
+	)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	// Add credit
+	newBalance, err := s.AddCredit(userID, value, fmt.Sprintf("每日签到 +%.2f", value))
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return value, newBalance, nil
+}
+
+// Bet performs a betting operation with weighted probabilities
+func (s *CreditService) Bet(userID int64, betAmount float64) (float64, float64, error) {
+	if betAmount <= 0 {
+		return 0, 0, fmt.Errorf("下注金额必须大于0")
+	}
+
+	cfg := config.Get()
+	balance, err := s.GetBalance(userID)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	if balance < betAmount {
+		return 0, 0, fmt.Errorf("余额不足")
+	}
+
+	// Calculate result range: [-betAmount*lossMultiplier, betAmount*winMultiplier]
+	lossMax := betAmount * cfg.Credit.BetLossMultiplier // e.g., 3x
+	winMax := betAmount * cfg.Credit.BetWinMultiplier   // e.g., 2x
+
+	// Factors affecting probability:
+	// 1. Higher balance → lower chance of winning
+	// 2. More bets this month → lower chance of positive result
+
+	// Get monthly bet count
+	monthStart := time.Now().Format("2006-01") + "-01"
+	var monthlyBets int
+	database.DB().QueryRow(
+		"SELECT COUNT(*) FROM bet_logs WHERE user_id = ? AND created_at >= ?",
+		userID, monthStart,
+	).Scan(&monthlyBets)
+
+	// Balance factor: higher balance = shift toward loss
+	balanceFactor := math.Min(balance/1000.0, 1.0) // cap at 1000 TXB
+
+	// Frequency factor: more bets = shift toward loss
+	freqFactor := math.Min(float64(monthlyBets)/30.0, 1.0)
+
+	// Combined bias toward loss (0 = no bias, 1 = max bias toward loss)
+	lossBias := (balanceFactor*0.5 + freqFactor*0.5)
+
+	// Generate result using biased random
+	u := rand.Float64()
+	// Shift u based on loss bias: higher lossBias pushes result toward negative
+	adjustedU := u * (1 - lossBias*0.7) // reduce chance of high values
+
+	// Map to range [-lossMax, winMax]
+	totalRange := lossMax + winMax
+	result := -lossMax + adjustedU*totalRange
+	result = math.Round(result*100) / 100
+
+	// Deduct bet amount first
+	_, err = s.AddCredit(userID, -betAmount, fmt.Sprintf("下注 -%.2f", betAmount))
+	if err != nil {
+		return 0, 0, err
+	}
+
+	// Add result (can be negative, further reducing balance)
+	newBalance, err := s.AddCredit(userID, result, fmt.Sprintf("赌博结果 %+.2f", result))
+	if err != nil {
+		return 0, 0, err
+	}
+
+	// Record bet
+	database.DB().Exec(
+		"INSERT INTO bet_logs (user_id, bet_amount, result, created_at) VALUES (?, ?, ?, ?)",
+		userID, betAmount, result, time.Now(),
+	)
+
+	return result, newBalance, nil
+}
+
+// ApplyDiscount calculates TXB discount on a bill
+// Returns: discountRMB, consumedTXB, finalBillRMB
+func (s *CreditService) ApplyDiscount(userID int64, billRMB float64, useTXB bool) (float64, float64, float64, error) {
+	if !useTXB || billRMB <= 0 {
+		return 0, 0, billRMB, nil
+	}
+
+	cfg := config.Get()
+	balance, err := s.GetBalance(userID)
+	if err != nil {
+		return 0, 0, billRMB, err
+	}
+
+	if balance <= 0 {
+		return 0, 0, billRMB, nil
+	}
+
+	// Calculate max discount in RMB (integer only)
+	// txb_to_rmb_rate TXB = 1 RMB (default 100)
+	maxDiscountRMB := math.Floor(balance / cfg.Credit.TXBToRMBRate)
+
+	// Can't discount more than the bill
+	if maxDiscountRMB > billRMB {
+		maxDiscountRMB = math.Floor(billRMB)
+	}
+
+	if maxDiscountRMB <= 0 {
+		return 0, 0, billRMB, nil
+	}
+
+	consumedTXB := maxDiscountRMB * cfg.Credit.TXBToRMBRate
+	finalBill := billRMB - maxDiscountRMB
+
+	return maxDiscountRMB, consumedTXB, finalBill, nil
+}
+
+// ConvertPaymentToCredit adds TXB for a payment
+func (s *CreditService) ConvertPaymentToCredit(userID int64, amountRMB float64) (float64, error) {
+	cfg := config.Get()
+	txb := amountRMB * cfg.Credit.RMBToTXBRate
+	txb = math.Round(txb*100) / 100
+
+	newBalance, err := s.AddCredit(userID, txb, fmt.Sprintf("消费赠送 +%.2f (消费%.2f元)", txb, amountRMB))
+	return newBalance, err
+}
+
+// GetHistory gets credit history for a user
+func (s *CreditService) GetHistory(userID int64, limit, offset int) ([]models.CreditLog, error) {
+	rows, err := database.DB().Query(
+		"SELECT id, user_id, amount, balance, reason, created_at FROM credit_logs WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+		userID, limit, offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var logs []models.CreditLog
+	for rows.Next() {
+		var log models.CreditLog
+		if err := rows.Scan(&log.ID, &log.UserID, &log.Amount, &log.Balance, &log.Reason, &log.CreatedAt); err != nil {
+			return nil, err
+		}
+		logs = append(logs, log)
+	}
+	return logs, nil
+}
+
+// CleanupOldLogs deletes credit logs older than retention period
+func (s *CreditService) CleanupOldLogs() error {
+	cfg := config.Get()
+	cutoff := time.Now().AddDate(0, 0, -cfg.Credit.LogRetentionDays)
+	result, err := database.DB().Exec("DELETE FROM credit_logs WHERE created_at < ?", cutoff)
+	if err != nil {
+		return err
+	}
+	affected, _ := result.RowsAffected()
+	if affected > 0 {
+		fmt.Printf("[credit] cleaned up %d old log entries\n", affected)
+	}
+	return nil
+}
+
+// Ensure sql import is used
+var _ = sql.ErrNoRows

@@ -1,0 +1,58 @@
+name: Bug Report
+description: Create a report to help us improve the code
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue! Please provide as much detail as possible to help us reproduce the problem.
+  - type: input
+    id: version
+    attributes:
+      label: Which version of the panel are you using?
+      description: Include the commit hash or the release tag (e.g. v1.0.0, or latest main).
+      placeholder: "e.g. v1.0.0"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description of the bug
+      description: What happened? What did you try to do, and what was the result?
+      placeholder: Enter your bug description here.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+      placeholder: Enter your expected behavior here.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can we reproduce the problem? List the steps exactly.
+      placeholder: "1. Go to...\n2. Click on...\n3. See error"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs and/or console output
+      description: Please copy and paste any relevant logs, server crashes, or JS console errors.
+      render: shell
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - Linux (Debian/Ubuntu)
+        - Linux (Other)
+        - Windows
+        - macOS
+    validations:
+      required: false
