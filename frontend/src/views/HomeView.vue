@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { api } from '@/api'
 
 const userStore = useUserStore()
-const subInfo = ref<any>(null)
-const loading = ref(true)
 const subUrl = ref('')
 const bindLoading = ref(false)
 const bindMessage = ref('')
+const subInfo = computed(() => userStore.liveSubInfo)
+const loading = computed(() => userStore.loading && !userStore.user)
 
 const usedPercent = computed(() => {
   if (!subInfo.value?.user?.trafficLimitBytes) return 0
@@ -34,25 +34,16 @@ async function bindSub() {
   bindMessage.value = ''
   try {
     const resp = await api.bindSubscription(subUrl.value)
-    bindMessage.value = `✅ 绑定成功！用户: ${resp.rw_user}`
+    bindMessage.value = `✅ Binding successful! User: ${resp.rw_user}`
     subUrl.value = ''
     window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success')
-    // Refresh user data
-    await userStore.fetchMe()
+    await userStore.refreshState()
   } catch (e: any) {
     bindMessage.value = '❌ ' + e.message
   }
   bindLoading.value = false
 }
 
-onMounted(async () => {
-  try {
-    if (userStore.hasSubscription || userStore.user?.remnawave_uuid) {
-      subInfo.value = await api.getSubInfo()
-    }
-  } catch (e) {}
-  loading.value = false
-})
 </script>
 
 <template>
@@ -62,7 +53,7 @@ onMounted(async () => {
         <span class="greeting-emoji">👋</span>
         <div>
           <h1 class="greeting-name">{{ userStore.telegramName }}</h1>
-          <p class="page-subtitle">欢迎回来</p>
+          <p class="page-subtitle">Welcome back</p>
         </div>
       </div>
     </div>
@@ -70,8 +61,8 @@ onMounted(async () => {
     <!-- Credit Card -->
     <div class="credit-card card">
       <div class="credit-header">
-        <span class="stat-label">{{ userStore.appConfig?.credit_name || 'TXB' }} 余额</span>
-        <router-link to="/credits" class="text-sm text-accent">查看详情 →</router-link>
+        <span class="stat-label">{{ userStore.appConfig?.credit_name || 'TXB' }} Balance</span>
+        <router-link to="/credits" class="text-sm text-accent">View Details →</router-link>
       </div>
       <div class="stat-value">{{ userStore.credit.toFixed(2) }}</div>
     </div>
@@ -80,26 +71,26 @@ onMounted(async () => {
     <div class="grid-2 mt-md">
       <router-link to="/combos" class="action-card card">
         <span class="action-icon">🚀</span>
-        <span class="action-label">购买套餐</span>
+        <span class="action-label">Purchase Combo</span>
       </router-link>
       <router-link to="/ip" class="action-card card">
         <span class="action-icon">🔄</span>
-        <span class="action-label">更换IP</span>
+        <span class="action-label">Change IP</span>
       </router-link>
       <router-link to="/squads" class="action-card card">
         <span class="action-icon">🌐</span>
-        <span class="action-label">切换线路</span>
+        <span class="action-label">Switch Squad</span>
       </router-link>
       <router-link to="/jellyfin" class="action-card card">
         <span class="action-icon">🎬</span>
-        <span class="action-label">影视管理</span>
+        <span class="action-label">Video Management</span>
       </router-link>
     </div>
 
     <!-- Subscription Summary -->
     <div class="card mt-md" v-if="subInfo?.has_subscription">
       <div class="row-between mb-sm">
-        <h3>📡 订阅状态</h3>
+        <h3>📡 Subscription Status</h3>
         <span class="badge" :class="{
           'badge-success': subInfo.user.status === 'ACTIVE',
           'badge-warning': subInfo.user.status === 'LIMITED',
@@ -111,7 +102,7 @@ onMounted(async () => {
 
       <div class="row-between text-sm text-muted mb-sm">
         <span>{{ formatBytes(subInfo.user.usedTrafficBytes) }} / {{ subInfo.user.trafficLimitBytes ? formatBytes(subInfo.user.trafficLimitBytes) : '♾️' }}</span>
-        <span>{{ daysRemaining }} 天</span>
+        <span>{{ daysRemaining }} days</span>
       </div>
 
       <div class="progress">
@@ -125,16 +116,16 @@ onMounted(async () => {
 
     <div class="card mt-md empty-state" v-else-if="!loading">
       <span class="empty-state-icon">📡</span>
-      <p class="empty-state-text">还没有订阅</p>
-      <router-link to="/combos" class="btn btn-primary btn-sm mt-md">浏览套餐</router-link>
+      <p class="empty-state-text">No subscription yet</p>
+      <router-link to="/combos" class="btn btn-primary btn-sm mt-md">Browse Combos</router-link>
 
       <!-- Subscription Binding -->
       <div class="bind-section mt-lg">
-        <p class="text-sm text-muted mb-sm">已有订阅链接？直接绑定</p>
+        <p class="text-sm text-muted mb-sm">Already have a sub link? Bind directly</p>
         <div class="row" style="gap:var(--space-sm)">
-          <input class="input" v-model="subUrl" placeholder="粘贴订阅链接" style="flex:1" />
+          <input class="input" v-model="subUrl" placeholder="Paste subscription link" style="flex:1" />
           <button class="btn btn-sm btn-secondary" @click="bindSub" :disabled="bindLoading">
-            {{ bindLoading ? '...' : '绑定' }}
+            {{ bindLoading ? '...' : 'Bind' }}
           </button>
         </div>
         <div v-if="bindMessage" class="text-sm mt-sm">{{ bindMessage }}</div>

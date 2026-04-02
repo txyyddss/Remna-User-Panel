@@ -62,12 +62,32 @@ type Order struct {
 	TXBDiscount   float64   `json:"txb_discount" db:"txb_discount"`
 	FinalAmount   float64   `json:"final_amount" db:"final_amount"`
 	Status        string    `json:"status" db:"status"` // pending, paid, cancelled, expired
+	ServiceStatus string    `json:"service_status" db:"service_status"`
 	PaymentMethod string    `json:"payment_method" db:"payment_method"` // bepusdt, ezpay
 	PaymentType   string    `json:"payment_type" db:"payment_type"` // alipay, wxpay, usdt
 	UpstreamID    string    `json:"upstream_id,omitempty" db:"upstream_id"`
 	Metadata      string    `json:"metadata,omitempty" db:"metadata"` // JSON string with order-specific data
+	AdminNote     string    `json:"admin_note,omitempty" db:"admin_note"`
+	PaidAt        *time.Time `json:"paid_at,omitempty" db:"paid_at"`
 	CreatedAt     time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at" db:"updated_at"`
+}
+
+type OrderEvent struct {
+	ID          int64     `json:"id" db:"id"`
+	OrderUUID   string    `json:"order_uuid" db:"order_uuid"`
+	ActorUserID *int64    `json:"actor_user_id,omitempty" db:"actor_user_id"`
+	EventType   string    `json:"event_type" db:"event_type"`
+	Message     string    `json:"message" db:"message"`
+	Payload     string    `json:"payload,omitempty" db:"payload"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+}
+
+type OrderDetail struct {
+	Order
+	UserTelegramID   int64        `json:"user_telegram_id"`
+	UserTelegramName string       `json:"user_telegram_name"`
+	Events           []OrderEvent `json:"events"`
 }
 
 // CreditLog records credit balance changes

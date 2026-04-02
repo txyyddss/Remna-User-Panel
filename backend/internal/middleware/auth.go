@@ -21,7 +21,8 @@ import (
 type contextKey string
 
 const (
-	UserContextKey contextKey = "user"
+	UserContextKey        contextKey = "user"
+	TokenPermissionsKey  contextKey = "token_permissions"
 )
 
 // GetUser retrieves the authenticated user from context
@@ -87,9 +88,21 @@ func APITokenAuth(next http.Handler) http.Handler {
 		// Update last used
 		database.DB().Exec("UPDATE api_tokens SET last_used_at = ? WHERE id = ?", time.Now(), apiToken.ID)
 
-		// Load the user who created the token
-		user := &models.User{ID: apiToken.CreatedBy, IsAdmin: true}
-		ctx := context.WithValue(r.Context(), UserContextKey, user)
+		var user models.User
+		err = database.DB().QueryRow(
+			"SELECT id, telegram_id, telegram_name, remnawave_uuid, jellyfin_user_id, credit, is_admin, created_at, updated_at FROM users WHERE id = ?",
+			apiToken.CreatedBy,
+		).Scan(&user.ID, &user.TelegramID, &user.TelegramName, &user.RemnawaveUUID, &user.JellyfinUserID, &user.Credit, &user.IsAdmin, &user.CreatedAt, &user.UpdatedAt)
+		if err != nil {
+			WriteError(w, http.StatusUnauthorized, "invalid token owner")
+			return
+		}
+
+		permissions := parsePermissions(apiToken.Permissions)
+		user.IsAdmin = user.IsAdmin && hasAnyPermission(permissions, "*", "admin")
+
+		ctx := context.WithValue(r.Context(), UserContextKey, &user)
+		ctx = context.WithValue(ctx, TokenPermissionsKey, permissions)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -210,6 +223,29 @@ func hmacSHA256(key, data []byte) []byte {
 func hashToken(token string) string {
 	h := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(h[:])
+}
+
+func parsePermissions(raw string) []string {
+	if raw == "" {
+		return nil
+	}
+
+	var permissions []string
+	if err := json.Unmarshal([]byte(raw), &permissions); err != nil {
+		return nil
+	}
+	return permissions
+}
+
+func hasAnyPermission(permissions []string, required ...string) bool {
+	for _, permission := range permissions {
+		for _, candidate := range required {
+			if permission == candidate {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func getOrCreateUser(telegramID int64, name string) (*models.User, error) {

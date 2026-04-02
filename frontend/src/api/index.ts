@@ -21,7 +21,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     })
 
     const json = await resp.json()
-    if (json.code !== 200 || !resp.ok) {
+    if (!resp.ok || (typeof json.code === 'number' && json.code >= 400)) {
         throw new Error(json.message || 'Request failed')
     }
     return json.data as T
@@ -47,6 +47,8 @@ export const api = {
 
     // Payment
     createPayment: (data: any) => request<any>('/payment/create', { method: 'POST', body: JSON.stringify(data) }),
+    getOrders: (limit = 20, offset = 0) => request<any[]>(`/orders?limit=${limit}&offset=${offset}`),
+    getOrder: (uuid: string) => request<any>(`/orders/${uuid}`),
 
     // VPN Info
     getBandwidth: () => request<any[]>('/vpn/bandwidth'),
@@ -84,11 +86,26 @@ export const api = {
         if (params.offset) query.set('offset', String(params.offset))
         return request<any>(`/admin/users?${query}`)
     },
+    adminGetUser: (id: number) => request<any>(`/admin/users/${id}`),
     adminUpdateUser: (id: number, data: any) => request<any>(`/admin/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    adminListOrders: (params: { search?: string; status?: string; service_status?: string; order_type?: string; date_from?: string; date_to?: string; limit?: number; offset?: number } = {}) => {
+        const query = new URLSearchParams()
+        if (params.search) query.set('search', params.search)
+        if (params.status) query.set('status', params.status)
+        if (params.service_status) query.set('service_status', params.service_status)
+        if (params.order_type) query.set('order_type', params.order_type)
+        if (params.date_from) query.set('date_from', params.date_from)
+        if (params.date_to) query.set('date_to', params.date_to)
+        if (params.limit) query.set('limit', String(params.limit))
+        if (params.offset) query.set('offset', String(params.offset))
+        return request<any>(`/admin/orders?${query}`)
+    },
+    adminUpdateOrder: (uuid: string, data: any) => request<any>(`/admin/orders/${uuid}`, { method: 'PUT', body: JSON.stringify(data) }),
+    adminOrderAction: (uuid: string, action: string) => request<any>(`/admin/orders/${uuid}/actions/${action}`, { method: 'POST' }),
 
     // Subscription Binding
     bindSubscription: (subUrl: string) => request<any>('/bind-sub', { method: 'POST', body: JSON.stringify({ sub_url: subUrl }) }),
 
     // Custom Payment
-    customPayment: (amount: number, message: string) => request<any>('/payment/custom', { method: 'POST', body: JSON.stringify({ amount, message }) }),
+    customPayment: (data: any) => request<any>('/payment/custom', { method: 'POST', body: JSON.stringify(data) }),
 }

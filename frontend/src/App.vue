@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 
@@ -10,14 +10,14 @@ const isTelegram = ref(false)
 
 const navItems = computed(() => {
   const items = [
-    { path: '/', icon: '🏠', label: '首页' },
-    { path: '/sub', icon: '📡', label: '订阅' },
+    { path: '/', icon: '🏠', label: 'Home' },
+    { path: '/sub', icon: '📡', label: 'Sub' },
     { path: '/credits', icon: '💎', label: userStore.appConfig?.credit_name || 'TXB' },
-    { path: '/jellyfin', icon: '🎬', label: '影视' },
-    { path: '/info', icon: '📊', label: '信息' },
+    { path: '/jellyfin', icon: '🎬', label: 'Video' },
+    { path: '/info', icon: '📊', label: 'Info' },
   ]
   if (userStore.isAdmin) {
-    items.push({ path: '/admin', icon: '⚙️', label: '管理' })
+    items.push({ path: '/admin', icon: '⚙️', label: 'Admin' })
   }
   return items
 })
@@ -38,10 +38,21 @@ onMounted(async () => {
       }
     })
 
-    await userStore.fetchMe()
+    await userStore.refreshState()
+    userStore.startAutoRefresh()
   } else {
     router.replace('/blocked')
   }
+})
+
+watch(() => route.fullPath, () => {
+  if (isTelegram.value) {
+    userStore.refreshState({ background: true })
+  }
+})
+
+onUnmounted(() => {
+  userStore.stopAutoRefresh()
 })
 </script>
 

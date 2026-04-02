@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -80,6 +79,14 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 			"credit_name":     cfg.Credit.Name,
 			"rmb_to_txb_rate": cfg.Credit.RMBToTXBRate,
 			"txb_to_rmb_rate": cfg.Credit.TXBToRMBRate,
+			"credit": map[string]interface{}{
+				"name":            cfg.Credit.Name,
+				"rmb_to_txb_rate": cfg.Credit.RMBToTXBRate,
+				"txb_to_rmb_rate": cfg.Credit.TXBToRMBRate,
+			},
+			"jellyfin": map[string]interface{}{
+				"monthly_price_rmb": cfg.Jellyfin.MonthlyPriceRMB,
+			},
 		},
 	})
 }
@@ -292,13 +299,13 @@ func (h *Handler) UpdateCombo(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) PurchaseCombo(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUser(r)
-	cfg := config.Get()
 
 	var req struct {
-		ComboUUID     string `json:"combo_uuid"`
-		PaymentMethod string `json:"payment_method"`
-		PaymentType   string `json:"payment_type"`
-		UseTXB        bool   `json:"use_txb"`
+		ComboUUID     string  `json:"combo_uuid"`
+		PaymentMethod string  `json:"payment_method"`
+		PaymentType   string  `json:"payment_type"`
+		UseTXB        bool    `json:"use_txb"`
+		DiscountRMB   float64 `json:"discount_rmb"`
 	}
 	if err := middleware.DecodeJSON(r, &req); err != nil {
 		middleware.WriteError(w, http.StatusBadRequest, "invalid request")
@@ -350,37 +357,13 @@ func (h *Handler) PurchaseCombo(w http.ResponseWriter, r *http.Request) {
 		PaymentMethod: req.PaymentMethod,
 		PaymentType:   req.PaymentType,
 		UseTXB:        req.UseTXB,
+		DiscountRMB:   req.DiscountRMB,
 		Metadata:      string(metadata),
 		ClientIP:      r.RemoteAddr,
 	})
 	if err != nil {
 		middleware.WriteError(w, http.StatusBadRequest, err.Error())
 		return
-	}
-
-	// If payment amount is 0 (fully discounted), create remnawave user immediately
-	if payResp.FinalAmount <= 0 {
-		rwClient := remnawave.NewClient(cfg.Remnawave.URL, cfg.Remnawave.Token)
-		rwUser, err := rwClient.CreateUser(remnawave.CreateUserRequest{
-			Username:             username,
-			Status:               "ACTIVE",
-			TrafficLimitBytes:    combo.TrafficGB * 1024 * 1024 * 1024,
-			TrafficLimitStrategy: combo.Strategy,
-			ExpireAt:             expiry.Format(time.RFC3339),
-			TelegramID:           user.TelegramID,
-			ActiveInternalSquads: []string{combo.SquadUUID},
-		})
-		if err != nil {
-			middleware.WriteError(w, http.StatusInternalServerError, "failed to create VPN account: "+err.Error())
-			return
-		}
-
-		// Save subscription
-		database.DB().Exec(
-			"INSERT INTO subscriptions (user_id, combo_uuid, remnawave_uuid, status, expires_at) VALUES (?, ?, ?, 'active', ?)",
-			user.ID, combo.UUID, rwUser.UUID, expiry,
-		)
-		database.DB().Exec("UPDATE users SET remnawave_uuid = ? WHERE id = ?", rwUser.UUID, user.ID)
 	}
 
 	middleware.WriteSuccess(w, payResp)
@@ -566,19 +549,12 @@ func (h *Handler) PurchaseJellyfin(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUser(r)
 	cfg := config.Get()
 
-	// Check if already has account
-	var existing int
-	database.DB().QueryRow("SELECT COUNT(*) FROM jellyfin_accounts WHERE user_id = ?", user.ID).Scan(&existing)
-	if existing > 0 {
-		middleware.WriteError(w, http.StatusConflict, "already have a Jellyfin account")
-		return
-	}
-
 	var req struct {
-		Months        int    `json:"months"`
-		PaymentMethod string `json:"payment_method"`
-		PaymentType   string `json:"payment_type"`
-		UseTXB        bool   `json:"use_txb"`
+		Months        int     `json:"months"`
+		PaymentMethod string  `json:"payment_method"`
+		PaymentType   string  `json:"payment_type"`
+		UseTXB        bool    `json:"use_txb"`
+		DiscountRMB   float64 `json:"discount_rmb"`
 	}
 	if err := middleware.DecodeJSON(r, &req); err != nil {
 		middleware.WriteError(w, http.StatusBadRequest, "invalid request")
@@ -589,7 +565,15 @@ func (h *Handler) PurchaseJellyfin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	amount := cfg.Jellyfin.MonthlyPriceRMB * float64(req.Months)
-	expiry := time.Now().AddDate(0, req.Months, 0)
+	baseTime := time.Now()
+	var currentExpiry time.Time
+	if err := database.DB().QueryRow(
+		"SELECT expires_at FROM jellyfin_accounts WHERE user_id = ?",
+		user.ID,
+	).Scan(&currentExpiry); err == nil && currentExpiry.After(baseTime) {
+		baseTime = currentExpiry
+	}
+	expiry := baseTime.AddDate(0, req.Months, 0)
 
 	metadata, _ := json.Marshal(map[string]interface{}{
 		"months": req.Months,
@@ -602,17 +586,13 @@ func (h *Handler) PurchaseJellyfin(w http.ResponseWriter, r *http.Request) {
 		PaymentMethod: req.PaymentMethod,
 		PaymentType:   req.PaymentType,
 		UseTXB:        req.UseTXB,
+		DiscountRMB:   req.DiscountRMB,
 		Metadata:      string(metadata),
 		ClientIP:      r.RemoteAddr,
 	})
 	if err != nil {
 		middleware.WriteError(w, http.StatusBadRequest, err.Error())
 		return
-	}
-
-	// If fully discounted, create immediately
-	if payResp.FinalAmount <= 0 {
-		h.createJellyfinAccount(user, expiry)
 	}
 
 	middleware.WriteSuccess(w, payResp)
@@ -654,9 +634,22 @@ func (h *Handler) JellyfinQuickConnect(w http.ResponseWriter, r *http.Request) {
 		middleware.WriteError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
+	if req.Code == "" {
+		middleware.WriteError(w, http.StatusBadRequest, "code is required")
+		return
+	}
 
 	jfClient := jellyfin.NewClient(cfg.Jellyfin.URL, cfg.Jellyfin.Token)
-	if err := jfClient.AuthorizeQuickConnect(req.Code); err != nil {
+	enabled, err := jfClient.IsQuickConnectEnabled()
+	if err != nil {
+		middleware.WriteError(w, http.StatusInternalServerError, "Quick Connect unavailable: "+err.Error())
+		return
+	}
+	if !enabled {
+		middleware.WriteError(w, http.StatusBadRequest, "Quick Connect is disabled on the Jellyfin server")
+		return
+	}
+	if err := jfClient.AuthorizeQuickConnect(user.JellyfinUserID, req.Code); err != nil {
 		middleware.WriteError(w, http.StatusInternalServerError, "Quick Connect failed: "+err.Error())
 		return
 	}
@@ -862,13 +855,80 @@ func (h *Handler) AdminListUsers(w http.ResponseWriter, r *http.Request) {
 		users = []models.User{}
 	}
 
-	// Get total count
+	// Get total count with the same filter that powers the current page.
 	var total int
-	database.DB().QueryRow("SELECT COUNT(*) FROM users").Scan(&total)
+	if search != "" {
+		searchPattern := "%" + search + "%"
+		database.DB().QueryRow(
+			"SELECT COUNT(*) FROM users WHERE telegram_name LIKE ? OR CAST(telegram_id AS TEXT) LIKE ?",
+			searchPattern, searchPattern,
+		).Scan(&total)
+	} else {
+		database.DB().QueryRow("SELECT COUNT(*) FROM users").Scan(&total)
+	}
 
 	middleware.WriteSuccess(w, map[string]interface{}{
 		"users": users,
 		"total": total,
+	})
+}
+
+func (h *Handler) AdminGetUser(w http.ResponseWriter, r *http.Request) {
+	userIDStr := chi.URLParam(r, "id")
+	userID, err := strconv.ParseInt(userIDStr, 10, 64)
+	if err != nil {
+		middleware.WriteError(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+
+	var user models.User
+	err = database.DB().QueryRow(
+		"SELECT id, telegram_id, telegram_name, remnawave_uuid, jellyfin_user_id, credit, is_admin, created_at, updated_at FROM users WHERE id = ?",
+		userID,
+	).Scan(&user.ID, &user.TelegramID, &user.TelegramName, &user.RemnawaveUUID, &user.JellyfinUserID, &user.Credit, &user.IsAdmin, &user.CreatedAt, &user.UpdatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			middleware.WriteError(w, http.StatusNotFound, "user not found")
+			return
+		}
+		middleware.WriteError(w, http.StatusInternalServerError, "failed to load user")
+		return
+	}
+
+	var subscription map[string]interface{}
+	var comboUUID, status string
+	var expiresAt time.Time
+	if err := database.DB().QueryRow(
+		"SELECT combo_uuid, status, expires_at FROM subscriptions WHERE user_id = ? ORDER BY created_at DESC LIMIT 1",
+		userID,
+	).Scan(&comboUUID, &status, &expiresAt); err == nil {
+		subscription = map[string]interface{}{
+			"combo_uuid": comboUUID,
+			"status":     status,
+			"expires_at": expiresAt,
+		}
+	}
+
+	var jellyfinAccount map[string]interface{}
+	var jfUsername string
+	var jfRating int
+	var jfExpires time.Time
+	if err := database.DB().QueryRow(
+		"SELECT jellyfin_user_id, username, parental_rating, expires_at FROM jellyfin_accounts WHERE user_id = ?",
+		userID,
+	).Scan(&user.JellyfinUserID, &jfUsername, &jfRating, &jfExpires); err == nil {
+		jellyfinAccount = map[string]interface{}{
+			"jellyfin_user_id": user.JellyfinUserID,
+			"username":         jfUsername,
+			"parental_rating":  jfRating,
+			"expires_at":       jfExpires,
+		}
+	}
+
+	middleware.WriteSuccess(w, map[string]interface{}{
+		"user":         user,
+		"subscription": subscription,
+		"jellyfin":     jellyfinAccount,
 	})
 }
 
@@ -885,6 +945,18 @@ func (h *Handler) AdminUpdateUser(w http.ResponseWriter, r *http.Request) {
 		RemnawaveUUID  *string  `json:"remnawave_uuid"`
 		JellyfinUserID *string  `json:"jellyfin_user_id"`
 		IsAdmin        *bool    `json:"is_admin"`
+		Subscription   *struct {
+			RemnawaveUUID *string `json:"remnawave_uuid"`
+			ComboUUID     *string `json:"combo_uuid"`
+			Status        *string `json:"status"`
+			ExpiresAt     *string `json:"expires_at"`
+		} `json:"subscription"`
+		Jellyfin *struct {
+			JellyfinUserID *string `json:"jellyfin_user_id"`
+			Username       *string `json:"username"`
+			ParentalRating *int    `json:"parental_rating"`
+			ExpiresAt      *string `json:"expires_at"`
+		} `json:"jellyfin"`
 	}
 	if err := middleware.DecodeJSON(r, &req); err != nil {
 		middleware.WriteError(w, http.StatusBadRequest, "invalid request")
@@ -897,7 +969,7 @@ func (h *Handler) AdminUpdateUser(w http.ResponseWriter, r *http.Request) {
 		database.DB().QueryRow("SELECT credit FROM users WHERE id = ?", userID).Scan(&currentCredit)
 		diff := *req.Credit - currentCredit
 		if diff != 0 {
-			h.Credit.AddCredit(userID, diff, "管理员调整")
+			h.Credit.AddCredit(userID, diff, "admin adjustment")
 		}
 	}
 	if req.RemnawaveUUID != nil {
@@ -914,6 +986,134 @@ func (h *Handler) AdminUpdateUser(w http.ResponseWriter, r *http.Request) {
 		database.DB().Exec("UPDATE users SET is_admin = ?, updated_at = ? WHERE id = ?", adminVal, time.Now(), userID)
 	}
 
+	currentRemnawaveUUID := ""
+	_ = database.DB().QueryRow("SELECT remnawave_uuid FROM users WHERE id = ?", userID).Scan(&currentRemnawaveUUID)
+	if req.Subscription != nil {
+		if req.Subscription.RemnawaveUUID != nil {
+			currentRemnawaveUUID = *req.Subscription.RemnawaveUUID
+			database.DB().Exec("UPDATE users SET remnawave_uuid = ?, updated_at = ? WHERE id = ?", currentRemnawaveUUID, time.Now(), userID)
+		}
+
+		var expiresAt time.Time
+		if req.Subscription.ExpiresAt != nil && *req.Subscription.ExpiresAt != "" {
+			if parsed, err := time.Parse(time.RFC3339, *req.Subscription.ExpiresAt); err == nil {
+				expiresAt = parsed
+			}
+		}
+
+		var existingSubID int64
+		err := database.DB().QueryRow(
+			"SELECT id FROM subscriptions WHERE user_id = ? ORDER BY created_at DESC LIMIT 1",
+			userID,
+		).Scan(&existingSubID)
+		if err == nil {
+			if req.Subscription.ComboUUID != nil {
+				database.DB().Exec("UPDATE subscriptions SET combo_uuid = ?, updated_at = ? WHERE id = ?", *req.Subscription.ComboUUID, time.Now(), existingSubID)
+			}
+			if req.Subscription.Status != nil {
+				database.DB().Exec("UPDATE subscriptions SET status = ?, updated_at = ? WHERE id = ?", *req.Subscription.Status, time.Now(), existingSubID)
+			}
+			if !expiresAt.IsZero() {
+				database.DB().Exec("UPDATE subscriptions SET expires_at = ?, updated_at = ? WHERE id = ?", expiresAt, time.Now(), existingSubID)
+			}
+		} else if req.Subscription.ComboUUID != nil && currentRemnawaveUUID != "" && !expiresAt.IsZero() {
+			status := "active"
+			if req.Subscription.Status != nil && *req.Subscription.Status != "" {
+				status = *req.Subscription.Status
+			}
+			database.DB().Exec(
+				"INSERT INTO subscriptions (user_id, combo_uuid, remnawave_uuid, status, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+				userID, *req.Subscription.ComboUUID, currentRemnawaveUUID, status, expiresAt, time.Now(), time.Now(),
+			)
+		}
+
+		if currentRemnawaveUUID != "" {
+			cfg := config.Get()
+			rwClient := remnawave.NewClient(cfg.Remnawave.URL, cfg.Remnawave.Token)
+			updateReq := remnawave.UpdateUserRequest{UUID: currentRemnawaveUUID}
+			if req.Subscription.Status != nil {
+				switch *req.Subscription.Status {
+				case "active":
+					updateReq.Status = "ACTIVE"
+				case "disabled":
+					updateReq.Status = "DISABLED"
+				case "expired":
+					updateReq.Status = "EXPIRED"
+				}
+			}
+			if !expiresAt.IsZero() {
+				updateReq.ExpireAt = expiresAt.Format(time.RFC3339)
+			}
+			if req.Subscription.ComboUUID != nil && *req.Subscription.ComboUUID != "" {
+				var squadUUID string
+				if err := database.DB().QueryRow("SELECT squad_uuid FROM combos WHERE uuid = ?", *req.Subscription.ComboUUID).Scan(&squadUUID); err == nil && squadUUID != "" {
+					updateReq.ActiveInternalSquads = []string{squadUUID}
+				}
+			}
+			if updateReq.Status != "" || updateReq.ExpireAt != "" || len(updateReq.ActiveInternalSquads) > 0 {
+				if _, err := rwClient.UpdateUser(updateReq); err != nil {
+					log.Printf("[admin] failed to update Remnawave user %d: %v", userID, err)
+				}
+			}
+		}
+	}
+
+	currentJellyfinUserID := ""
+	_ = database.DB().QueryRow("SELECT jellyfin_user_id FROM users WHERE id = ?", userID).Scan(&currentJellyfinUserID)
+	if req.Jellyfin != nil {
+		if req.Jellyfin.JellyfinUserID != nil {
+			currentJellyfinUserID = *req.Jellyfin.JellyfinUserID
+			database.DB().Exec("UPDATE users SET jellyfin_user_id = ?, updated_at = ? WHERE id = ?", currentJellyfinUserID, time.Now(), userID)
+		}
+
+		var expiresAt time.Time
+		if req.Jellyfin.ExpiresAt != nil && *req.Jellyfin.ExpiresAt != "" {
+			if parsed, err := time.Parse(time.RFC3339, *req.Jellyfin.ExpiresAt); err == nil {
+				expiresAt = parsed
+			}
+		}
+
+		var existingAccountID int64
+		err := database.DB().QueryRow("SELECT id FROM jellyfin_accounts WHERE user_id = ?", userID).Scan(&existingAccountID)
+		if err == nil {
+			if req.Jellyfin.JellyfinUserID != nil {
+				database.DB().Exec("UPDATE jellyfin_accounts SET jellyfin_user_id = ? WHERE id = ?", *req.Jellyfin.JellyfinUserID, existingAccountID)
+			}
+			if req.Jellyfin.Username != nil {
+				database.DB().Exec("UPDATE jellyfin_accounts SET username = ? WHERE id = ?", *req.Jellyfin.Username, existingAccountID)
+			}
+			if req.Jellyfin.ParentalRating != nil {
+				database.DB().Exec("UPDATE jellyfin_accounts SET parental_rating = ? WHERE id = ?", *req.Jellyfin.ParentalRating, existingAccountID)
+			}
+			if !expiresAt.IsZero() {
+				database.DB().Exec("UPDATE jellyfin_accounts SET expires_at = ? WHERE id = ?", expiresAt, existingAccountID)
+			}
+		} else if currentJellyfinUserID != "" {
+			username := ""
+			if req.Jellyfin.Username != nil {
+				username = *req.Jellyfin.Username
+			}
+			rating := 0
+			if req.Jellyfin.ParentalRating != nil {
+				rating = *req.Jellyfin.ParentalRating
+			}
+			if !expiresAt.IsZero() {
+				database.DB().Exec(
+					"INSERT INTO jellyfin_accounts (user_id, jellyfin_user_id, username, parental_rating, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+					userID, currentJellyfinUserID, username, rating, expiresAt, time.Now(),
+				)
+			}
+		}
+
+		if currentJellyfinUserID != "" && req.Jellyfin.ParentalRating != nil {
+			cfg := config.Get()
+			jfClient := jellyfin.NewClient(cfg.Jellyfin.URL, cfg.Jellyfin.Token)
+			if err := jfClient.UpdateParentalRating(currentJellyfinUserID, *req.Jellyfin.ParentalRating); err != nil {
+				log.Printf("[admin] failed to update Jellyfin rating for user %d: %v", userID, err)
+			}
+		}
+	}
+
 	middleware.WriteSuccess(w, map[string]string{"status": "updated"})
 }
 
@@ -924,7 +1124,7 @@ func (h *Handler) BindSubscription(w http.ResponseWriter, r *http.Request) {
 	cfg := config.Get()
 
 	if user.RemnawaveUUID != "" {
-		middleware.WriteError(w, http.StatusConflict, "已有绑定的订阅")
+		middleware.WriteError(w, http.StatusConflict, "subscription already bound")
 		return
 	}
 
@@ -937,7 +1137,7 @@ func (h *Handler) BindSubscription(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.SubURL == "" {
-		middleware.WriteError(w, http.StatusBadRequest, "请提供订阅链接")
+		middleware.WriteError(w, http.StatusBadRequest, "please provide subscription URL")
 		return
 	}
 
@@ -962,7 +1162,7 @@ func (h *Handler) BindSubscription(w http.ResponseWriter, r *http.Request) {
 	// Look up the user by short UUID
 	rwUser, err := rwClient.GetUserByShortUUID(shortUUID)
 	if err != nil {
-		middleware.WriteError(w, http.StatusNotFound, "未找到该订阅: "+err.Error())
+		middleware.WriteError(w, http.StatusNotFound, "subscription not found: "+err.Error())
 		return
 	}
 
@@ -970,18 +1170,26 @@ func (h *Handler) BindSubscription(w http.ResponseWriter, r *http.Request) {
 	var existingCount int
 	database.DB().QueryRow("SELECT COUNT(*) FROM users WHERE remnawave_uuid = ? AND id != ?", rwUser.UUID, user.ID).Scan(&existingCount)
 	if existingCount > 0 {
-		middleware.WriteError(w, http.StatusConflict, "该订阅已被其他用户绑定")
+		middleware.WriteError(w, http.StatusConflict, "this subscription is already bound to another user")
 		return
 	}
 
 	// Bind user
 	database.DB().Exec("UPDATE users SET remnawave_uuid = ?, updated_at = ? WHERE id = ?", rwUser.UUID, time.Now(), user.ID)
 
-	// Create subscription record
-	database.DB().Exec(
-		"INSERT INTO subscriptions (user_id, combo_uuid, remnawave_uuid, status, expires_at) VALUES (?, 'bound', ?, 'active', ?)",
-		user.ID, rwUser.UUID, rwUser.ExpireAt,
-	)
+	var comboUUID string
+	if len(rwUser.ActiveInternalSquads) > 0 {
+		_ = database.DB().QueryRow(
+			"SELECT uuid FROM combos WHERE squad_uuid = ? ORDER BY created_at DESC LIMIT 1",
+			rwUser.ActiveInternalSquads[0].UUID,
+		).Scan(&comboUUID)
+	}
+	if comboUUID != "" {
+		database.DB().Exec(
+			"INSERT INTO subscriptions (user_id, combo_uuid, remnawave_uuid, status, expires_at, created_at, updated_at) VALUES (?, ?, ?, 'active', ?, ?, ?)",
+			user.ID, comboUUID, rwUser.UUID, rwUser.ExpireAt, time.Now(), time.Now(),
+		)
+	}
 
 	middleware.WriteSuccess(w, map[string]interface{}{
 		"status":  "bound",
@@ -1011,15 +1219,134 @@ func splitURL(u string) []string {
 	return result
 }
 
+// --- Orders / Billing ---
+
+func (h *Handler) ListOrders(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUser(r)
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+
+	orders, err := h.Payment.GetUserOrders(user.ID, limit, offset)
+	if err != nil {
+		middleware.WriteError(w, http.StatusInternalServerError, "failed to load orders")
+		return
+	}
+	middleware.WriteSuccess(w, orders)
+}
+
+func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUser(r)
+	orderUUID := chi.URLParam(r, "uuid")
+
+	order, err := h.Payment.GetOrderDetail(orderUUID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			middleware.WriteError(w, http.StatusNotFound, "order not found")
+			return
+		}
+		middleware.WriteError(w, http.StatusInternalServerError, "failed to load order")
+		return
+	}
+
+	if !user.IsAdmin && order.UserID != user.ID {
+		middleware.WriteError(w, http.StatusForbidden, "order access denied")
+		return
+	}
+
+	middleware.WriteSuccess(w, order)
+}
+
+func (h *Handler) AdminListOrders(w http.ResponseWriter, r *http.Request) {
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+
+	orders, total, err := h.Payment.GetAdminOrders(services.OrderFilters{
+		Search:        r.URL.Query().Get("search"),
+		Status:        r.URL.Query().Get("status"),
+		ServiceStatus: r.URL.Query().Get("service_status"),
+		OrderType:     r.URL.Query().Get("order_type"),
+		DateFrom:      r.URL.Query().Get("date_from"),
+		DateTo:        r.URL.Query().Get("date_to"),
+		Limit:         limit,
+		Offset:        offset,
+	})
+	if err != nil {
+		middleware.WriteError(w, http.StatusInternalServerError, "failed to load orders")
+		return
+	}
+
+	middleware.WriteSuccess(w, map[string]interface{}{
+		"orders": orders,
+		"total":  total,
+	})
+}
+
+func (h *Handler) AdminUpdateOrder(w http.ResponseWriter, r *http.Request) {
+	admin := middleware.GetUser(r)
+	orderUUID := chi.URLParam(r, "uuid")
+
+	var updates services.AdminOrderUpdate
+	if err := middleware.DecodeJSON(r, &updates); err != nil {
+		middleware.WriteError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+
+	order, err := h.Payment.UpdateOrderByAdmin(orderUUID, admin.ID, updates)
+	if err != nil {
+		middleware.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	middleware.WriteSuccess(w, order)
+}
+
+func (h *Handler) AdminOrderAction(w http.ResponseWriter, r *http.Request) {
+	admin := middleware.GetUser(r)
+	orderUUID := chi.URLParam(r, "uuid")
+	action := chi.URLParam(r, "action")
+
+	var (
+		order *models.OrderDetail
+		err   error
+	)
+
+	switch action {
+	case "apply-credit":
+		order, err = h.Payment.ApplyCustomOrderCredit(orderUUID, admin.ID)
+	case "resend-notice":
+		order, err = h.Payment.ResendCustomOrderNotification(orderUUID, admin.ID)
+	case "refund":
+		order, err = h.Payment.RefundOrder(orderUUID, admin.ID)
+	case "cancel":
+		updateStatus := "cancelled"
+		updateService := "cancelled"
+		order, err = h.Payment.UpdateOrderByAdmin(orderUUID, admin.ID, services.AdminOrderUpdate{
+			Status:        &updateStatus,
+			ServiceStatus: &updateService,
+		})
+	default:
+		middleware.WriteError(w, http.StatusBadRequest, "unknown action")
+		return
+	}
+
+	if err != nil {
+		middleware.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	middleware.WriteSuccess(w, order)
+}
+
 // --- Custom Payment ---
 
 func (h *Handler) CustomPayment(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUser(r)
-	cfg := config.Get()
 
 	var req struct {
-		Amount  float64 `json:"amount"`
-		Message string  `json:"message"`
+		Amount        float64 `json:"amount"`
+		Message       string  `json:"message"`
+		PaymentMethod string  `json:"payment_method"`
+		PaymentType   string  `json:"payment_type"`
+		UseTXB        bool    `json:"use_txb"`
+		DiscountRMB   float64 `json:"discount_rmb"`
 	}
 	if err := middleware.DecodeJSON(r, &req); err != nil {
 		middleware.WriteError(w, http.StatusBadRequest, "invalid request")
@@ -1027,51 +1354,28 @@ func (h *Handler) CustomPayment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Amount <= 0 {
-		middleware.WriteError(w, http.StatusBadRequest, "金额必须大于0")
+		middleware.WriteError(w, http.StatusBadRequest, "amount must be greater than 0")
 		return
 	}
 
-	// Create a pending order of type "custom"
-	orderUUID := uuid.New().String()
 	metadata, _ := json.Marshal(map[string]interface{}{
 		"message": req.Message,
 	})
 
-	_, err := database.DB().Exec(
-		`INSERT INTO orders (uuid, user_id, order_type, amount, txb_discount, final_amount, status, payment_method, payment_type, metadata, created_at, updated_at)
-		 VALUES (?, ?, 'custom', ?, 0, ?, 'pending', 'manual', 'manual', ?, ?, ?)`,
-		orderUUID, user.ID, req.Amount, req.Amount, string(metadata), time.Now(), time.Now(),
-	)
+	payResp, err := h.Payment.CreatePayment(user.ID, services.CreatePaymentRequest{
+		OrderType:     "custom",
+		Amount:        req.Amount,
+		PaymentMethod: req.PaymentMethod,
+		PaymentType:   req.PaymentType,
+		UseTXB:        req.UseTXB,
+		DiscountRMB:   req.DiscountRMB,
+		Metadata:      string(metadata),
+		ClientIP:      r.RemoteAddr,
+	})
 	if err != nil {
-		middleware.WriteError(w, http.StatusInternalServerError, "创建订单失败")
+		middleware.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// Send Telegram notification to all admins
-	notifyText := fmt.Sprintf("💰 新的自定义充值请求\n\n用户: %s (ID: %d)\n金额: ¥%.2f\n订单: %s\n备注: %s\n\n请管理员手动处理",
-		user.TelegramName, user.TelegramID, req.Amount, orderUUID[:8], req.Message)
-
-	for _, adminID := range cfg.Telegram.AdminIDs {
-		go sendTelegramMessage(cfg.Telegram.BotToken, adminID, notifyText)
-	}
-
-	middleware.WriteSuccess(w, map[string]interface{}{
-		"order_uuid": orderUUID,
-		"amount":     req.Amount,
-		"status":     "pending",
-		"message":    "已提交，等待管理员处理",
-	})
-}
-
-// sendTelegramMessage sends a message via Telegram Bot API directly
-func sendTelegramMessage(botToken string, chatID int64, text string) {
-	if botToken == "" {
-		return
-	}
-	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", botToken)
-	body, _ := json.Marshal(map[string]interface{}{
-		"chat_id": chatID,
-		"text":    text,
-	})
-	http.Post(url, "application/json", bytes.NewReader(body))
+	middleware.WriteSuccess(w, payResp)
 }

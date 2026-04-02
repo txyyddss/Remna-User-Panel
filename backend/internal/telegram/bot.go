@@ -80,7 +80,7 @@ func (b *Bot) Start(ctx context.Context) {
 func (b *Bot) handleStart(ctx context.Context, bot *tgbot.Bot, update *tgmodels.Update) {
 	bot.SendMessage(ctx, &tgbot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
-		Text:   "🎉 欢迎使用面板Bot！\n\n可用命令:\n/signup - 每日签到\n/bet <金额> - 赌博\n/sub - 查看订阅状态",
+		Text:   "🎉 Welcome to the panel Bot!\n\nAvailable commands:\n/signup - Daily check-in\n/bet <amount> - Bet\n/sub - View subscription status",
 	})
 }
 
@@ -103,7 +103,7 @@ func (b *Bot) handleSignup(ctx context.Context, bot *tgbot.Bot, update *tgmodels
 		return
 	}
 
-	text := fmt.Sprintf("🎁 签到成功！\n获得: +%.2f TXB\n当前余额: %.2f TXB", value, newBalance)
+	text := fmt.Sprintf("🎁 Check-in successful!\nEarned: +%.2f TXB\nCurrent balance: %.2f TXB", value, newBalance)
 	msg, _ := bot.SendMessage(ctx, &tgbot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   text,
@@ -136,7 +136,7 @@ func (b *Bot) handleBet(ctx context.Context, bot *tgbot.Bot, update *tgmodels.Up
 	if len(parts) < 2 {
 		bot.SendMessage(ctx, &tgbot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "用法: /bet <金额>",
+			Text:   "Usage: /bet <amount>",
 			ReplyParameters: &tgmodels.ReplyParameters{
 				MessageID: update.Message.ID,
 			},
@@ -148,7 +148,7 @@ func (b *Bot) handleBet(ctx context.Context, bot *tgbot.Bot, update *tgmodels.Up
 	if err != nil || amount <= 0 {
 		bot.SendMessage(ctx, &tgbot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "❌ 请输入有效金额",
+			Text:   "❌ Please enter a valid amount",
 			ReplyParameters: &tgmodels.ReplyParameters{
 				MessageID: update.Message.ID,
 			},
@@ -175,7 +175,7 @@ func (b *Bot) handleBet(ctx context.Context, bot *tgbot.Bot, update *tgmodels.Up
 		emoji = "💸"
 	}
 
-	text := fmt.Sprintf("%s 赌博结果: %+.2f TXB\n当前余额: %.2f TXB", emoji, result, newBalance)
+	text := fmt.Sprintf("%s Bet result: %+.2f TXB\nCurrent balance: %.2f TXB", emoji, result, newBalance)
 	bot.SendMessage(ctx, &tgbot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   text,
@@ -201,7 +201,7 @@ func (b *Bot) handleSub(ctx context.Context, bot *tgbot.Bot, update *tgmodels.Up
 	if rwUUID == "" {
 		bot.SendMessage(ctx, &tgbot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "❌ 未找到订阅信息",
+			Text:   "❌ Subscription info not found",
 			ReplyParameters: &tgmodels.ReplyParameters{
 				MessageID: update.Message.ID,
 			},
@@ -214,7 +214,7 @@ func (b *Bot) handleSub(ctx context.Context, bot *tgbot.Bot, update *tgmodels.Up
 	if err != nil {
 		bot.SendMessage(ctx, &tgbot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "❌ 获取订阅信息失败",
+			Text:   "❌ Failed to fetch subscription info",
 			ReplyParameters: &tgmodels.ReplyParameters{
 				MessageID: update.Message.ID,
 			},
@@ -304,7 +304,7 @@ func (b *Bot) formatSubMessage(user *remnawave.UserData, client *remnawave.Clien
 		}
 	}
 
-	text := fmt.Sprintf("📊 我的订阅 %s\n\n%s %d%% | %s/%s\n📅 剩余 %d 天 · 上车 %d 天\n",
+	text := fmt.Sprintf("📊 My Subscription %s\n\n%s %d%% | %s/%s\n📅 Remaining %d days · Joined %d days\n",
 		statusEmoji, progressBar, int(usedPercent), usedStr, limitStr, daysRemaining, daysSinceCreation)
 
 	if nodeUsage != "" {
@@ -374,7 +374,7 @@ func (b *Bot) handleMessage(ctx context.Context, bot *tgbot.Bot, update *tgmodel
 
 	// Check leaderboard interval
 	var totalProcessed int
-	database.DB().QueryRow("SELECT COALESCE(SUM(1), 0) FROM credit_logs WHERE reason LIKE '群聊评分%'").Scan(&totalProcessed)
+	database.DB().QueryRow("SELECT COALESCE(SUM(1), 0) FROM credit_logs WHERE reason LIKE 'group chat score%'").Scan(&totalProcessed)
 	if totalProcessed > 0 && totalProcessed%cfg.AI.LeaderboardInterval == 0 {
 		go b.sendLeaderboard(ctx, bot, msg.Chat.ID)
 	}
@@ -413,21 +413,21 @@ func (b *Bot) evaluateMessages(ctx context.Context, bot *tgbot.Bot, chatID int64
 		msgList.WriteString(fmt.Sprintf("ID:%d [%s]: %s\n", m.ID, m.Name, m.Text))
 	}
 
-	prompt := fmt.Sprintf(`你是一个群聊消息评估系统。请评估以下群聊消息的价值，并为每条消息打分。
+	prompt := fmt.Sprintf(`You are a group chat message evaluation system. Please evaluate the value of the following group chat messages and score each one.
 
-评分规则：
-- 有价值的分享（技术文章、资源推荐等）：+2.0 ~ +3.0
-- 回答问题、帮助他人：+1.0 ~ +2.0
-- 正常交流、提问：+0.0 ~ +1.0
-- 无意义消息、刷屏：-0.5 ~ 0
-- 攻击他人、广告、不当内容：-1.0 ~ -2.0
+Scoring rules:
+- Valuable shares (tech articles, resource recommendations, etc.): +2.0 ~ +3.0
+- Answering questions, helping others: +1.0 ~ +2.0
+- Normal chat, asking questions: +0.0 ~ +1.0
+- Meaningless messages, spam: -0.5 ~ 0
+- Attacking others, ads, inappropriate content: -1.0 ~ -2.0
 
-评分范围: %.1f ~ %.1f
+Score range: %.1f ~ %.1f
 
-请仅返回JSON格式，不要包含其他文字：
-[{"id": <消息ID>, "score": <分数>}]
+Return only JSON format, no other text:
+[{"id": <message ID>, "score": <score>}]
 
-消息列表：
+Message list:
 %s`, cfg.AI.CreditMin, cfg.AI.CreditMax, msgList.String())
 
 	// Call AI
@@ -465,7 +465,7 @@ func (b *Bot) evaluateMessages(ctx context.Context, bot *tgbot.Bot, chatID int64
 		if score > cfg.AI.CreditMax {
 			score = cfg.AI.CreditMax
 		}
-		b.credit.AddCredit(userID, score, fmt.Sprintf("群聊评分 %+.1f", score))
+		b.credit.AddCredit(userID, score, fmt.Sprintf("group chat score %+.1f", score))
 	}
 
 	// Delete processed messages
@@ -479,7 +479,7 @@ func (b *Bot) sendLeaderboard(ctx context.Context, bot *tgbot.Bot, chatID int64)
 		SELECT u.telegram_name, SUM(c.amount) as total
 		FROM credit_logs c
 		JOIN users u ON u.id = c.user_id
-		WHERE c.reason LIKE '群聊评分%'
+		WHERE c.reason LIKE 'group chat score%'
 		AND c.created_at >= datetime('now', '-7 days')
 		GROUP BY c.user_id
 		ORDER BY total DESC
@@ -491,7 +491,7 @@ func (b *Bot) sendLeaderboard(ctx context.Context, bot *tgbot.Bot, chatID int64)
 	defer rows.Close()
 
 	var text strings.Builder
-	text.WriteString("📊 群聊贡献排行榜 (近7天)\n\n")
+	text.WriteString("📊 Group Chat Leaderboard (last 7 days)\n\n")
 
 	medals := []string{"🥇", "🥈", "🥉", "4️⃣", "5️⃣"}
 	i := 0
@@ -601,7 +601,7 @@ func callAI(baseURL, apiKey, model, prompt string) (string, error) {
 	body := map[string]interface{}{
 		"model": model,
 		"messages": []map[string]string{
-			{"role": "system", "content": "你是一个群聊消息价值评估助手。仅返回JSON格式的评分结果。"},
+			{"role": "system", "content": "You are a group chat message value evaluator. Return only JSON format scores."},
 			{"role": "user", "content": prompt},
 		},
 		"stream": false,

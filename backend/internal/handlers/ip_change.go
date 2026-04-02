@@ -17,7 +17,7 @@ func (h *Handler) IPChange(w http.ResponseWriter, r *http.Request) {
 	cfg := config.Get()
 
 	if user.RemnawaveUUID == "" {
-		middleware.WriteError(w, http.StatusNotFound, "没有活跃的订阅")
+		middleware.WriteError(w, http.StatusNotFound, "no active subscription")
 		return
 	}
 
@@ -41,7 +41,7 @@ func (h *Handler) IPChange(w http.ResponseWriter, r *http.Request) {
 			hours := int(remaining.Hours())
 			minutes := int(remaining.Minutes()) % 60
 			middleware.WriteError(w, http.StatusTooManyRequests,
-				fmt.Sprintf("IP更换冷却中，还需等待 %d小时%d分钟", hours, minutes))
+				fmt.Sprintf("IP change on cooldown, please wait %d hour(s) %d minute(s)", hours, minutes))
 			return
 		}
 	}
@@ -52,7 +52,7 @@ func (h *Handler) IPChange(w http.ResponseWriter, r *http.Request) {
 	// Drop current connections to force IP change
 	err = rwClient.DropConnections([]string{user.RemnawaveUUID})
 	if err != nil {
-		middleware.WriteError(w, http.StatusInternalServerError, "断开连接失败: "+err.Error())
+		middleware.WriteError(w, http.StatusInternalServerError, "failed to disconnect: "+err.Error())
 		return
 	}
 
@@ -64,7 +64,7 @@ func (h *Handler) IPChange(w http.ResponseWriter, r *http.Request) {
 
 	middleware.WriteSuccess(w, map[string]interface{}{
 		"status":            "success",
-		"message":           "连接已断开，请重新连接以获取新IP",
+		"message":           "connection dropped, please reconnect to get a new IP",
 		"next_change_after": time.Now().Add(time.Duration(cooldownHours) * time.Hour).Format(time.RFC3339),
 	})
 }

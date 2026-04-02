@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { api } from '@/api'
 
 const userStore = useUserStore()
-const subInfo = ref<any>(null)
-const keys = ref<any>(null)
 const loading = ref(true)
 const showKeys = ref(false)
 const copied = ref(false)
+const subInfo = computed(() => userStore.liveSubInfo)
+const keys = computed(() => userStore.subKeys)
 
 const usedPercent = computed(() => {
   if (!subInfo.value?.user?.trafficLimitBytes) return 0
@@ -30,12 +29,7 @@ async function copySubUrl() {
 }
 
 onMounted(async () => {
-  try {
-    subInfo.value = await api.getSubInfo()
-    if (subInfo.value?.has_subscription) {
-      keys.value = await api.getSubKeys()
-    }
-  } catch (e) {}
+  await userStore.refreshState({ background: true })
   loading.value = false
 })
 </script>
@@ -43,7 +37,7 @@ onMounted(async () => {
 <template>
   <div class="page">
     <div class="page-header">
-      <h1 class="page-title">📡 我的订阅</h1>
+      <h1 class="page-title">📡 My Subscription</h1>
     </div>
 
     <div class="loading-page" v-if="loading">
@@ -54,7 +48,7 @@ onMounted(async () => {
       <!-- Status Card -->
       <div class="card">
         <div class="row-between mb-sm">
-          <h3>订阅概览</h3>
+          <h3>Subscription Overview</h3>
           <span class="badge" :class="{
             'badge-success': subInfo.user.status === 'ACTIVE',
             'badge-warning': subInfo.user.status === 'LIMITED',
@@ -65,11 +59,11 @@ onMounted(async () => {
         <div class="stat-row">
           <div class="stat-item">
             <span class="stat-value text-sm">{{ formatBytes(subInfo.user.usedTrafficBytes) }}</span>
-            <span class="stat-label">已用流量</span>
+            <span class="stat-label">Traffic Used</span>
           </div>
           <div class="stat-item">
             <span class="stat-value text-sm">{{ subInfo.user.trafficLimitBytes ? formatBytes(subInfo.user.trafficLimitBytes) : '♾️' }}</span>
-            <span class="stat-label">总流量</span>
+            <span class="stat-label">Total Traffic</span>
           </div>
         </div>
 
@@ -78,22 +72,22 @@ onMounted(async () => {
         </div>
         <div class="row-between text-xs text-muted mt-sm">
           <span>{{ usedPercent.toFixed(1) }}%</span>
-          <span>到期: {{ new Date(subInfo.user.expireAt).toLocaleDateString('zh-CN') }}</span>
+          <span>Expires: {{ new Date(subInfo.user.expireAt).toLocaleDateString('en-US') }}</span>
         </div>
       </div>
 
       <!-- Connection Keys -->
       <div class="card mt-md" v-if="keys">
         <div class="row-between mb-sm">
-          <h3>🔑 连接信息</h3>
+          <h3>🔑 Connection Info</h3>
           <button class="btn btn-sm btn-secondary" @click="showKeys = !showKeys">
-            {{ showKeys ? '隐藏' : '显示' }}
+            {{ showKeys ? 'Hide' : 'Show' }}
           </button>
         </div>
 
         <div v-if="showKeys" class="key-section">
           <div class="key-item">
-            <span class="text-sm text-muted">订阅链接</span>
+            <span class="text-sm text-muted">Subscription URL</span>
             <div class="key-value" @click="copySubUrl">
               <code class="mono text-xs">{{ keys.subscription_url }}</code>
               <span class="copy-icon">{{ copied ? '✅' : '📋' }}</span>
@@ -110,24 +104,24 @@ onMounted(async () => {
       <!-- Quick Actions -->
       <div class="grid-2 mt-md">
         <router-link to="/info" class="action-card card">
-          <span>📊</span> <span class="text-sm">流量详情</span>
+          <span>📊</span> <span class="text-sm">Traffic Details</span>
         </router-link>
         <router-link to="/ip" class="action-card card">
-          <span>🔄</span> <span class="text-sm">更换IP</span>
+          <span>🔄</span> <span class="text-sm">Change IP</span>
         </router-link>
         <router-link to="/squads" class="action-card card">
-          <span>🌐</span> <span class="text-sm">切换线路</span>
+          <span>🌐</span> <span class="text-sm">Switch Squad</span>
         </router-link>
         <router-link to="/combos" class="action-card card">
-          <span>🔄</span> <span class="text-sm">续费/换套餐</span>
+          <span>🔄</span> <span class="text-sm">Renew/Change</span>
         </router-link>
       </div>
     </template>
 
     <div class="empty-state" v-else>
       <span class="empty-state-icon">📡</span>
-      <p class="empty-state-text">还没有订阅</p>
-      <router-link to="/combos" class="btn btn-primary mt-md">浏览套餐</router-link>
+      <p class="empty-state-text">No subscription</p>
+      <router-link to="/combos" class="btn btn-primary mt-md">Browse Combos</router-link>
     </div>
   </div>
 </template>

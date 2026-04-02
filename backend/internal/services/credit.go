@@ -64,6 +64,53 @@ func (s *CreditService) AddCredit(userID int64, amount float64, reason string) (
 	return newBalance, tx.Commit()
 }
 
+// ConsumeCredit deducts credit atomically and avoids concurrent overspending.
+func (s *CreditService) ConsumeCredit(userID int64, amount float64, reason string) (float64, error) {
+	if amount <= 0 {
+		return 0, fmt.Errorf("amount must be positive")
+	}
+
+	tx, err := database.DB().Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	result, err := tx.Exec(
+		"UPDATE users SET credit = credit - ?, updated_at = ? WHERE id = ? AND credit >= ?",
+		amount, time.Now(), userID, amount,
+	)
+	if err != nil {
+		return 0, err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	if rowsAffected == 0 {
+		return 0, fmt.Errorf("insufficient credit")
+	}
+
+	var newBalance float64
+	err = tx.QueryRow("SELECT credit FROM users WHERE id = ?", userID).Scan(&newBalance)
+	if err != nil {
+		return 0, err
+	}
+
+	newBalance = math.Round(newBalance*100) / 100
+
+	_, err = tx.Exec(
+		"INSERT INTO credit_logs (user_id, amount, balance, reason, created_at) VALUES (?, ?, ?, ?, ?)",
+		userID, -math.Round(amount*100)/100, newBalance, reason, time.Now(),
+	)
+	if err != nil {
+		return 0, err
+	}
+
+	return newBalance, tx.Commit()
+}
+
 // Signup performs daily signup (check-in) with weighted random reward
 func (s *CreditService) Signup(userID int64) (float64, float64, error) {
 	cfg := config.Get()
@@ -74,7 +121,7 @@ func (s *CreditService) Signup(userID int64) (float64, float64, error) {
 		return 0, 0, err
 	}
 	if balance < 0 {
-		return 0, 0, fmt.Errorf("余额不足，无法签到")
+		return 0, 0, fmt.Errorf("insufficient balance, cannot check in")
 	}
 
 	// Check if already signed up today
@@ -88,7 +135,7 @@ func (s *CreditService) Signup(userID int64) (float64, float64, error) {
 		return 0, 0, err
 	}
 	if count > 0 {
-		return 0, 0, fmt.Errorf("今日已签到")
+		return 0, 0, fmt.Errorf("already checked in today")
 	}
 
 	// Generate weighted random value (exponential decay: low values more likely)
@@ -101,7 +148,7 @@ func (s *CreditService) Signup(userID int64) (float64, float64, error) {
 	// Exponential distribution: higher probability for lower values
 	// value = min + (max - min) * (1 - u^2)  -- but we want LOW more likely
 	value := minVal + (maxVal-minVal)*math.Pow(u, 3) // cubic: strongly favors low values
-	value = math.Round(value*100) / 100               // 2 decimal places
+	value = math.Round(value*100) / 100              // 2 decimal places
 
 	// Record signup
 	_, err = database.DB().Exec(
@@ -113,7 +160,7 @@ func (s *CreditService) Signup(userID int64) (float64, float64, error) {
 	}
 
 	// Add credit
-	newBalance, err := s.AddCredit(userID, value, fmt.Sprintf("每日签到 +%.2f", value))
+	newBalance, err := s.AddCredit(userID, value, fmt.Sprintf("daily check-in +%.2f", value))
 	if err != nil {
 		return 0, 0, err
 	}
@@ -124,7 +171,7 @@ func (s *CreditService) Signup(userID int64) (float64, float64, error) {
 // Bet performs a betting operation with weighted probabilities
 func (s *CreditService) Bet(userID int64, betAmount float64) (float64, float64, error) {
 	if betAmount <= 0 {
-		return 0, 0, fmt.Errorf("下注金额必须大于0")
+		return 0, 0, fmt.Errorf("bet amount must be greater than 0")
 	}
 
 	cfg := config.Get()
@@ -134,7 +181,7 @@ func (s *CreditService) Bet(userID int64, betAmount float64) (float64, float64, 
 	}
 
 	if balance < betAmount {
-		return 0, 0, fmt.Errorf("余额不足")
+		return 0, 0, fmt.Errorf("insufficient balance")
 	}
 
 	// Calculate result range: [-betAmount*lossMultiplier, betAmount*winMultiplier]
@@ -173,13 +220,13 @@ func (s *CreditService) Bet(userID int64, betAmount float64) (float64, float64, 
 	result = math.Round(result*100) / 100
 
 	// Deduct bet amount first
-	_, err = s.AddCredit(userID, -betAmount, fmt.Sprintf("下注 -%.2f", betAmount))
+	_, err = s.ConsumeCredit(userID, betAmount, fmt.Sprintf("bet -%.2f", betAmount))
 	if err != nil {
 		return 0, 0, err
 	}
 
 	// Add result (can be negative, further reducing balance)
-	newBalance, err := s.AddCredit(userID, result, fmt.Sprintf("赌博结果 %+.2f", result))
+	newBalance, err := s.AddCredit(userID, result, fmt.Sprintf("bet result %+.2f", result))
 	if err != nil {
 		return 0, 0, err
 	}
@@ -193,9 +240,9 @@ func (s *CreditService) Bet(userID int64, betAmount float64) (float64, float64, 
 	return result, newBalance, nil
 }
 
-// ApplyDiscount calculates TXB discount on a bill
-// Returns: discountRMB, consumedTXB, finalBillRMB
-func (s *CreditService) ApplyDiscount(userID int64, billRMB float64, useTXB bool) (float64, float64, float64, error) {
+// ApplyDiscount calculates a TXB discount on a bill.
+// Returns: discountRMB, consumedTXB, finalBillRMB.
+func (s *CreditService) ApplyDiscount(userID int64, billRMB float64, useTXB bool, requestedDiscountRMB float64) (float64, float64, float64, error) {
 	if !useTXB || billRMB <= 0 {
 		return 0, 0, billRMB, nil
 	}
@@ -210,23 +257,36 @@ func (s *CreditService) ApplyDiscount(userID int64, billRMB float64, useTXB bool
 		return 0, 0, billRMB, nil
 	}
 
-	// Calculate max discount in RMB (integer only)
-	// txb_to_rmb_rate TXB = 1 RMB (default 100)
-	maxDiscountRMB := math.Floor(balance / cfg.Credit.TXBToRMBRate)
+	if cfg.Credit.TXBToRMBRate <= 0 {
+		return 0, 0, billRMB, fmt.Errorf("invalid TXB conversion rate")
+	}
+
+	maxDiscountRMB := balance / cfg.Credit.TXBToRMBRate
 
 	// Can't discount more than the bill
 	if maxDiscountRMB > billRMB {
-		maxDiscountRMB = math.Floor(billRMB)
+		maxDiscountRMB = billRMB
 	}
 
+	maxDiscountRMB = math.Floor(maxDiscountRMB*100) / 100
 	if maxDiscountRMB <= 0 {
 		return 0, 0, billRMB, nil
 	}
 
-	consumedTXB := maxDiscountRMB * cfg.Credit.TXBToRMBRate
-	finalBill := billRMB - maxDiscountRMB
+	discountRMB := maxDiscountRMB
+	if requestedDiscountRMB > 0 {
+		discountRMB = math.Min(requestedDiscountRMB, maxDiscountRMB)
+		discountRMB = math.Floor(discountRMB*100) / 100
+	}
 
-	return maxDiscountRMB, consumedTXB, finalBill, nil
+	if discountRMB <= 0 {
+		return 0, 0, billRMB, nil
+	}
+
+	consumedTXB := math.Round(discountRMB*cfg.Credit.TXBToRMBRate*100) / 100
+	finalBill := math.Round((billRMB-discountRMB)*100) / 100
+
+	return discountRMB, consumedTXB, finalBill, nil
 }
 
 // ConvertPaymentToCredit adds TXB for a payment
@@ -235,7 +295,7 @@ func (s *CreditService) ConvertPaymentToCredit(userID int64, amountRMB float64) 
 	txb := amountRMB * cfg.Credit.RMBToTXBRate
 	txb = math.Round(txb*100) / 100
 
-	newBalance, err := s.AddCredit(userID, txb, fmt.Sprintf("消费赠送 +%.2f (消费%.2f元)", txb, amountRMB))
+	newBalance, err := s.AddCredit(userID, txb, fmt.Sprintf("purchase bonus +%.2f (spent %.2f RMB)", txb, amountRMB))
 	return newBalance, err
 }
 

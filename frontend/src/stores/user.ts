@@ -7,17 +7,25 @@ export const useUserStore = defineStore('user', () => {
     const subscription = ref<any>(null)
     const jellyfin = ref<any>(null)
     const appConfig = ref<any>(null)
+    const liveSubInfo = ref<any>(null)
+    const subKeys = ref<any>(null)
+    const recentOrders = ref<any[]>([])
     const loading = ref(false)
+    const refreshing = ref(false)
     const error = ref<string | null>(null)
+    let refreshTimer: number | null = null
 
     const isAdmin = computed(() => user.value?.is_admin || false)
     const hasSubscription = computed(() => !!subscription.value)
     const hasJellyfin = computed(() => !!jellyfin.value)
     const credit = computed(() => user.value?.credit || 0)
     const telegramName = computed(() => user.value?.telegram_name || 'User')
+    const currentExternalSquadUUID = computed(() => liveSubInfo.value?.user?.externalSquadUuid || liveSubInfo.value?.user?.externalSquadUUID || '')
 
-    async function fetchMe() {
-        loading.value = true
+    async function fetchMe(background = false) {
+        if (!background) {
+            loading.value = true
+        }
         error.value = null
         try {
             const data = await api.getMe()
@@ -28,7 +36,9 @@ export const useUserStore = defineStore('user', () => {
         } catch (e: any) {
             error.value = e.message
         } finally {
-            loading.value = false
+            if (!background) {
+                loading.value = false
+            }
         }
     }
 
@@ -41,9 +51,66 @@ export const useUserStore = defineStore('user', () => {
         } catch (e) { }
     }
 
+    async function refreshSubInfo() {
+        if (!user.value?.remnawave_uuid && !subscription.value) {
+            liveSubInfo.value = null
+            subKeys.value = null
+            return
+        }
+        try {
+            liveSubInfo.value = await api.getSubInfo()
+            if (liveSubInfo.value?.has_subscription) {
+                subKeys.value = await api.getSubKeys()
+            } else {
+                subKeys.value = null
+            }
+        } catch (e) {
+            liveSubInfo.value = null
+            subKeys.value = null
+        }
+    }
+
+    async function refreshOrders(limit = 10) {
+        try {
+            recentOrders.value = (await api.getOrders(limit, 0)) || []
+        } catch (e) {
+            recentOrders.value = []
+        }
+    }
+
+    async function refreshState(options: { background?: boolean; ordersLimit?: number } = {}) {
+        if (refreshing.value) {
+            return
+        }
+        refreshing.value = true
+        try {
+            await fetchMe(!!options.background)
+            await Promise.all([
+                refreshSubInfo(),
+                refreshOrders(options.ordersLimit ?? 10),
+            ])
+        } finally {
+            refreshing.value = false
+        }
+    }
+
+    function startAutoRefresh(intervalMs = 15000) {
+        stopAutoRefresh()
+        refreshTimer = window.setInterval(() => {
+            refreshState({ background: true, ordersLimit: 10 })
+        }, intervalMs)
+    }
+
+    function stopAutoRefresh() {
+        if (refreshTimer !== null) {
+            window.clearInterval(refreshTimer)
+            refreshTimer = null
+        }
+    }
+
     return {
-        user, subscription, jellyfin, appConfig, loading, error,
-        isAdmin, hasSubscription, hasJellyfin, credit, telegramName,
-        fetchMe, refreshCredit,
+        user, subscription, jellyfin, appConfig, liveSubInfo, subKeys, recentOrders, loading, refreshing, error,
+        isAdmin, hasSubscription, hasJellyfin, credit, telegramName, currentExternalSquadUUID,
+        fetchMe, refreshCredit, refreshSubInfo, refreshOrders, refreshState, startAutoRefresh, stopAutoRefresh,
     }
 })

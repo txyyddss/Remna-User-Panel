@@ -106,7 +106,7 @@ func (c *Client) CreateTransaction(orderID string, amount float64, name string) 
 		NotifyURL:   c.notifyURL,
 		RedirectURL: c.redirectURL,
 		Signature:   signature,
-		TradeType:   "usdt.trc20",
+		TradeType:   "usdt.bep20",
 		Fiat:        "CNY",
 		Name:        name,
 		Timeout:     600,
@@ -127,8 +127,8 @@ func (c *Client) CreateTransaction(orderID string, amount float64, name string) 
 	return &resp, nil
 }
 
-// CreateOrder creates an order with multiple payment method options
-func (c *Client) CreateOrder(orderID string, amount float64, name string) (*TransactionResponse, error) {
+// CreateOrder creates an order page with the requested currencies.
+func (c *Client) CreateOrder(orderID string, amount float64, name, currencies string) (*TransactionResponse, error) {
 	amountStr := formatAmount(amount)
 	params := map[string]string{
 		"order_id":     orderID,
@@ -144,6 +144,7 @@ func (c *Client) CreateOrder(orderID string, amount float64, name string) (*Tran
 		NotifyURL:   c.notifyURL,
 		RedirectURL: c.redirectURL,
 		Signature:   signature,
+		Currencies:  currencies,
 		Fiat:        "CNY",
 		Name:        name,
 		Timeout:     600,

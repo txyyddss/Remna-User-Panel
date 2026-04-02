@@ -68,6 +68,12 @@ type APIResponse struct {
 
 // --- User types ---
 
+type UserTrafficData struct {
+	UsedTrafficBytes         int64      `json:"usedTrafficBytes"`
+	LifetimeUsedTrafficBytes int64      `json:"lifetimeUsedTrafficBytes"`
+	OnlineAt                 *time.Time `json:"onlineAt"`
+}
+
 type UserData struct {
 	UUID                     string     `json:"uuid"`
 	ShortUUID                string     `json:"shortUuid"`
@@ -89,8 +95,68 @@ type UserData struct {
 	OnlineAt                 *time.Time `json:"onlineAt"`
 	SubLastUserAgent         string     `json:"subLastUserAgent"`
 	SubRevokedAt             *time.Time `json:"subRevokedAt"`
-	ActiveInternalSquads     []string   `json:"activeInternalSquads"`
+	ActiveInternalSquads     []Squad    `json:"activeInternalSquads"`
 	ExternalSquadUUID        string     `json:"externalSquadUuid"`
+	UserTraffic              UserTrafficData `json:"userTraffic"`
+}
+
+func (u *UserData) UnmarshalJSON(data []byte) error {
+	type alias UserData
+	var raw struct {
+		alias
+		ActiveInternalSquads json.RawMessage `json:"activeInternalSquads"`
+		UserTraffic          *UserTrafficData `json:"userTraffic"`
+	}
+
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	*u = UserData(raw.alias)
+
+	if raw.UserTraffic != nil {
+		u.UserTraffic = *raw.UserTraffic
+		if u.UsedTrafficBytes == 0 {
+			u.UsedTrafficBytes = raw.UserTraffic.UsedTrafficBytes
+		}
+		if u.LifetimeUsedTrafficBytes == 0 {
+			u.LifetimeUsedTrafficBytes = raw.UserTraffic.LifetimeUsedTrafficBytes
+		}
+		if u.OnlineAt == nil {
+			u.OnlineAt = raw.UserTraffic.OnlineAt
+		}
+	}
+
+	if len(raw.ActiveInternalSquads) == 0 || string(raw.ActiveInternalSquads) == "null" {
+		return nil
+	}
+
+	if err := json.Unmarshal(raw.ActiveInternalSquads, &u.ActiveInternalSquads); err == nil {
+		return nil
+	}
+
+	var squadIDs []string
+	if err := json.Unmarshal(raw.ActiveInternalSquads, &squadIDs); err == nil {
+		u.ActiveInternalSquads = make([]Squad, 0, len(squadIDs))
+		for _, squadID := range squadIDs {
+			u.ActiveInternalSquads = append(u.ActiveInternalSquads, Squad{UUID: squadID})
+		}
+		return nil
+	}
+
+	var squadID string
+	if err := json.Unmarshal(raw.ActiveInternalSquads, &squadID); err == nil && squadID != "" {
+		u.ActiveInternalSquads = []Squad{{UUID: squadID}}
+		return nil
+	}
+
+	var singleSquad Squad
+	if err := json.Unmarshal(raw.ActiveInternalSquads, &singleSquad); err == nil && singleSquad.UUID != "" {
+		u.ActiveInternalSquads = []Squad{singleSquad}
+		return nil
+	}
+
+	return nil
 }
 
 type CreateUserRequest struct {
@@ -122,19 +188,84 @@ type UpdateUserRequest struct {
 	ExternalSquadUUID    string   `json:"externalSquadUuid,omitempty"`
 }
 
+func decodeUsersResponse(data []byte) ([]UserData, error) {
+	var direct struct {
+		Response []UserData `json:"response"`
+	}
+	if err := json.Unmarshal(data, &direct); err == nil && direct.Response != nil {
+		return direct.Response, nil
+	}
+
+	var wrapped struct {
+		Response struct {
+			Users []UserData `json:"users"`
+		} `json:"response"`
+	}
+	if err := json.Unmarshal(data, &wrapped); err != nil {
+		return nil, err
+	}
+	return wrapped.Response.Users, nil
+}
+
+func decodeUserResponse(data []byte) (*UserData, error) {
+	var direct struct {
+		Response UserData `json:"response"`
+	}
+	if err := json.Unmarshal(data, &direct); err == nil && direct.Response.UUID != "" {
+		return &direct.Response, nil
+	}
+
+	var wrapped struct {
+		Response struct {
+			User UserData `json:"user"`
+		} `json:"response"`
+	}
+	if err := json.Unmarshal(data, &wrapped); err == nil && wrapped.Response.User.UUID != "" {
+		return &wrapped.Response.User, nil
+	}
+
+	var user UserData
+	if err := json.Unmarshal(data, &user); err == nil && user.UUID != "" {
+		return &user, nil
+	}
+
+	return nil, fmt.Errorf("unexpected Remnawave user response shape")
+}
+
+func decodeSquadsResponse(data []byte, key string) ([]Squad, error) {
+	var direct struct {
+		Response []Squad `json:"response"`
+	}
+	if err := json.Unmarshal(data, &direct); err == nil && direct.Response != nil {
+		return direct.Response, nil
+	}
+
+	var wrapped struct {
+		Response map[string]json.RawMessage `json:"response"`
+	}
+	if err := json.Unmarshal(data, &wrapped); err != nil {
+		return nil, err
+	}
+
+	raw, ok := wrapped.Response[key]
+	if !ok || len(raw) == 0 {
+		return []Squad{}, nil
+	}
+
+	var squads []Squad
+	if err := json.Unmarshal(raw, &squads); err != nil {
+		return nil, err
+	}
+	return squads, nil
+}
+
 // CreateUser creates a new user in Remnawave
 func (c *Client) CreateUser(req CreateUserRequest) (*UserData, error) {
 	data, err := c.do("POST", "/api/users", req)
 	if err != nil {
 		return nil, err
 	}
-	var resp struct {
-		Response UserData `json:"response"`
-	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return nil, err
-	}
-	return &resp.Response, nil
+	return decodeUserResponse(data)
 }
 
 // UpdateUser updates a user
@@ -143,13 +274,7 @@ func (c *Client) UpdateUser(req UpdateUserRequest) (*UserData, error) {
 	if err != nil {
 		return nil, err
 	}
-	var resp struct {
-		Response UserData `json:"response"`
-	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return nil, err
-	}
-	return &resp.Response, nil
+	return decodeUserResponse(data)
 }
 
 // GetUserByUUID gets a user by UUID
@@ -158,13 +283,7 @@ func (c *Client) GetUserByUUID(uuid string) (*UserData, error) {
 	if err != nil {
 		return nil, err
 	}
-	var resp struct {
-		Response UserData `json:"response"`
-	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return nil, err
-	}
-	return &resp.Response, nil
+	return decodeUserResponse(data)
 }
 
 // GetUserByTelegramID gets users by Telegram ID
@@ -173,13 +292,7 @@ func (c *Client) GetUserByTelegramID(telegramID int64) ([]UserData, error) {
 	if err != nil {
 		return nil, err
 	}
-	var resp struct {
-		Response []UserData `json:"response"`
-	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return nil, err
-	}
-	return resp.Response, nil
+	return decodeUsersResponse(data)
 }
 
 // GetUserByShortUUID gets a user by short UUID
@@ -188,13 +301,7 @@ func (c *Client) GetUserByShortUUID(shortUUID string) (*UserData, error) {
 	if err != nil {
 		return nil, err
 	}
-	var resp struct {
-		Response UserData `json:"response"`
-	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return nil, err
-	}
-	return &resp.Response, nil
+	return decodeUserResponse(data)
 }
 
 // DeleteUser deletes a user by UUID
@@ -240,13 +347,7 @@ func (c *Client) GetInternalSquads() ([]Squad, error) {
 	if err != nil {
 		return nil, err
 	}
-	var resp struct {
-		Response []Squad `json:"response"`
-	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return nil, err
-	}
-	return resp.Response, nil
+	return decodeSquadsResponse(data, "internalSquads")
 }
 
 // GetExternalSquads gets all external squads
@@ -255,13 +356,7 @@ func (c *Client) GetExternalSquads() ([]Squad, error) {
 	if err != nil {
 		return nil, err
 	}
-	var resp struct {
-		Response []Squad `json:"response"`
-	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return nil, err
-	}
-	return resp.Response, nil
+	return decodeSquadsResponse(data, "externalSquads")
 }
 
 // --- Bandwidth Stats ---

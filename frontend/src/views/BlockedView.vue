@@ -6,8 +6,8 @@
     <div class="blocked-content">
       <div class="blocked-icon">🔒</div>
       <h1 class="blocked-title">Access Restricted</h1>
-      <p class="blocked-text">本面板仅支持通过 Telegram Mini App 访问</p>
-      <p class="blocked-hint">请在 Telegram 中打开机器人，使用面板功能</p>
+      <p class="blocked-text">This panel is only accessible via the Telegram Mini App</p>
+      <p class="blocked-hint">Please open the bot in Telegram to use panel features</p>
     </div>
   </div>
 </template>

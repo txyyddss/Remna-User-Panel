@@ -122,6 +122,8 @@ func main() {
 			// Payment
 			r.Post("/payment/create", h.CreatePayment)
 			r.Post("/payment/custom", h.CustomPayment)
+			r.Get("/orders", h.ListOrders)
+			r.Get("/orders/{uuid}", h.GetOrder)
 
 			// VPN Info
 			r.Get("/vpn/bandwidth", h.GetBandwidthStats)
@@ -156,7 +158,11 @@ func main() {
 				r.Delete("/admin/combos/{uuid}", h.DeleteCombo)
 				r.Get("/admin/squads/internal", h.GetInternalSquads)
 				r.Get("/admin/users", h.AdminListUsers)
+				r.Get("/admin/users/{id}", h.AdminGetUser)
 				r.Put("/admin/users/{id}", h.AdminUpdateUser)
+				r.Get("/admin/orders", h.AdminListOrders)
+				r.Put("/admin/orders/{uuid}", h.AdminUpdateOrder)
+				r.Post("/admin/orders/{uuid}/actions/{action}", h.AdminOrderAction)
 			})
 		})
 	})

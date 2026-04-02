@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { api } from '@/api'
 import { useUserStore } from '@/stores/user'
 
@@ -12,45 +12,75 @@ const selectedCombo = ref<any>(null)
 const paymentMethod = ref('ezpay')
 const paymentType = ref('alipay')
 const useTXB = ref(false)
+const discountRMB = ref(0)
 
-// Custom payment
 const showCustomPayment = ref(false)
 const customAmount = ref(10)
 const customMessage = ref('')
+const customPaymentMethod = ref('ezpay')
+const customPaymentType = ref('alipay')
+const customUseTXB = ref(false)
+const customDiscountRMB = ref(0)
 const customSubmitting = ref(false)
 
 const cycleName: Record<string, string> = {
-  monthly: '月付',
-  quarterly: '季付',
-  semiannual: '半年付',
-  annual: '年付',
+  monthly: 'Monthly',
+  quarterly: 'Quarterly',
+  semiannual: 'Semi-Annual',
+  annual: 'Annual',
 }
+
+const txbRate = computed(() => userStore.appConfig?.credit?.txb_to_rmb_rate ?? userStore.appConfig?.txb_to_rmb_rate ?? 100)
+const comboPrice = computed(() => selectedCombo.value?.price_rmb || 0)
+const maxComboDiscount = computed(() => {
+  if (!useTXB.value || !selectedCombo.value) return 0
+  return Math.max(0, Math.min(comboPrice.value, Math.floor((userStore.credit / txbRate.value) * 100) / 100))
+})
+const comboFinalPrice = computed(() => Math.max(0, comboPrice.value - discountRMB.value))
+const comboTXBUsed = computed(() => discountRMB.value * txbRate.value)
+
+const maxCustomDiscount = computed(() => {
+  if (!customUseTXB.value || customAmount.value <= 0) return 0
+  return Math.max(0, Math.min(customAmount.value, Math.floor((userStore.credit / txbRate.value) * 100) / 100))
+})
+const customFinalPrice = computed(() => Math.max(0, customAmount.value - customDiscountRMB.value))
+const customTXBUsed = computed(() => customDiscountRMB.value * txbRate.value)
+
+watch(useTXB, (enabled) => {
+  if (!enabled) discountRMB.value = 0
+})
+watch(customUseTXB, (enabled) => {
+  if (!enabled) customDiscountRMB.value = 0
+})
+watch(maxComboDiscount, (value) => {
+  if (discountRMB.value > value) discountRMB.value = value
+})
+watch(maxCustomDiscount, (value) => {
+  if (customDiscountRMB.value > value) customDiscountRMB.value = value
+})
+watch(selectedCombo, (value) => {
+  if (!value) {
+    paymentMethod.value = 'ezpay'
+    paymentType.value = 'alipay'
+    useTXB.value = false
+    discountRMB.value = 0
+  }
+})
 
 function formatTraffic(gb: number): string {
   if (gb >= 1024) return `${(gb / 1024).toFixed(1)} TB`
   return `${gb} GB`
 }
 
-const txbRate = computed(() => {
-  return userStore.appConfig?.credit?.txb_to_rmb_rate || 100
-})
-
-const comboPrice = computed(() => {
-  return selectedCombo.value?.price_rmb || 0
-})
-
-const maxTXBDiscount = computed(() => {
-  if (!useTXB.value || !selectedCombo.value) return 0
-  const userCredit = userStore.credit || 0
-  const maxDiscountRMB = Math.floor(userCredit / txbRate.value)
-  return Math.min(maxDiscountRMB, comboPrice.value)
-})
-
-const txbUsed = computed(() => maxTXBDiscount.value * txbRate.value)
-
-const finalPrice = computed(() => {
-  return Math.max(0, comboPrice.value - maxTXBDiscount.value)
-})
+async function loadCombos() {
+  try {
+    combos.value = (await api.listCombos()) || []
+  } catch (e) {
+    combos.value = []
+  } finally {
+    loading.value = false
+  }
+}
 
 async function purchase() {
   if (!selectedCombo.value) return
@@ -59,9 +89,11 @@ async function purchase() {
     const resp = await api.purchaseCombo({
       combo_uuid: selectedCombo.value.uuid,
       payment_method: paymentMethod.value,
-      payment_type: paymentType.value,
+      payment_type: paymentMethod.value === 'bepusdt' ? 'usdt' : paymentType.value,
       use_txb: useTXB.value,
+      discount_rmb: discountRMB.value,
     })
+    await userStore.refreshState({ background: true })
     if (resp.payment_url) {
       window.Telegram?.WebApp?.openLink(resp.payment_url)
     } else {
@@ -70,37 +102,51 @@ async function purchase() {
     selectedCombo.value = null
   } catch (e: any) {
     alert(e.message)
+  } finally {
+    purchasing.value = false
   }
-  purchasing.value = false
 }
 
 async function submitCustomPayment() {
   if (customAmount.value <= 0) return
   customSubmitting.value = true
   try {
-    await api.customPayment(customAmount.value, customMessage.value)
+    const resp = await api.customPayment({
+      amount: customAmount.value,
+      message: customMessage.value,
+      payment_method: customPaymentMethod.value,
+      payment_type: customPaymentMethod.value === 'bepusdt' ? 'usdt' : customPaymentType.value,
+      use_txb: customUseTXB.value,
+      discount_rmb: customDiscountRMB.value,
+    })
+    await userStore.refreshState({ background: true })
+    if (resp.payment_url) {
+      window.Telegram?.WebApp?.openLink(resp.payment_url)
+      alert('Payment created. After it is paid, admins will be notified and can apply the top-up.')
+    } else {
+      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success')
+      alert('Payment completed. Admins have been notified and can apply the top-up.')
+    }
     showCustomPayment.value = false
     customAmount.value = 10
     customMessage.value = ''
-    window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success')
-    alert('已提交，请等待管理员处理')
+    customUseTXB.value = false
+    customDiscountRMB.value = 0
   } catch (e: any) {
     alert(e.message)
+  } finally {
+    customSubmitting.value = false
   }
-  customSubmitting.value = false
 }
 
-onMounted(async () => {
-  try { combos.value = (await api.listCombos()) || [] } catch (e) {}
-  loading.value = false
-})
+onMounted(loadCombos)
 </script>
 
 <template>
   <div class="page">
     <div class="page-header">
-      <h1 class="page-title">🚀 套餐列表</h1>
-      <p class="page-subtitle">选择适合你的方案</p>
+      <h1 class="page-title">Plans</h1>
+      <p class="page-subtitle">Buy, renew, or switch to another subscription package</p>
     </div>
 
     <div class="loading-page" v-if="loading"><div class="loading-spinner"></div></div>
@@ -110,91 +156,136 @@ onMounted(async () => {
         <div class="row-between">
           <h3>{{ combo.name }}</h3>
           <div class="combo-price">
-            <span class="price-value">¥{{ combo.price_rmb }}</span>
+            <span class="price-value">¥{{ combo.price_rmb.toFixed(2) }}</span>
             <span class="price-cycle">/{{ cycleName[combo.cycle] || combo.cycle }}</span>
           </div>
         </div>
         <p class="text-sm text-muted mt-sm">{{ combo.description }}</p>
         <div class="combo-specs mt-md">
-          <span class="spec-item">📦 {{ formatTraffic(combo.traffic_gb) }}</span>
-          <span class="spec-item">🔄 {{ combo.strategy }}</span>
-          <span class="spec-item">💰 重置 ¥{{ combo.reset_price }}</span>
+          <span class="spec-item">Traffic {{ formatTraffic(combo.traffic_gb) }}</span>
+          <span class="spec-item">Reset {{ combo.strategy }}</span>
+          <span class="spec-item">Reset Fee ¥{{ combo.reset_price.toFixed(2) }}</span>
         </div>
       </div>
     </div>
 
     <div v-if="combos.length === 0 && !loading" class="empty-state">
       <span class="empty-state-icon">📦</span>
-      <p class="empty-state-text">暂无可用套餐</p>
+      <p class="empty-state-text">No plans are available right now</p>
     </div>
 
-    <!-- Custom Payment Button -->
     <div class="card mt-md" v-if="!loading">
       <div class="row-between">
-        <h3>💰 自定义充值</h3>
+        <h3>Custom Top-up</h3>
         <button class="btn btn-sm btn-secondary" @click="showCustomPayment = !showCustomPayment">
-          {{ showCustomPayment ? '取消' : '充值' }}
+          {{ showCustomPayment ? 'Cancel' : 'Top-up' }}
         </button>
       </div>
+
       <div v-if="showCustomPayment" class="stack-sm mt-md">
-        <input class="input" v-model.number="customAmount" type="number" placeholder="充值金额 (¥)" min="1" step="1" />
-        <input class="input" v-model="customMessage" placeholder="备注 (可选)" />
+        <input class="input" v-model.number="customAmount" type="number" min="1" step="0.01" placeholder="Amount (RMB)" />
+        <input class="input" v-model="customMessage" placeholder="Note for the admin (optional)" />
+
+        <label class="text-sm text-muted">Payment Method</label>
+        <div class="payment-grid">
+          <button class="payment-option" :class="{ active: customPaymentMethod === 'ezpay' }" @click="customPaymentMethod = 'ezpay'">
+            EZPay
+          </button>
+          <button class="payment-option" :class="{ active: customPaymentMethod === 'bepusdt' }" @click="customPaymentMethod = 'bepusdt'">
+            USDT
+          </button>
+        </div>
+
+        <div v-if="customPaymentMethod === 'ezpay'" class="payment-grid mt-sm">
+          <button class="payment-option small" :class="{ active: customPaymentType === 'alipay' }" @click="customPaymentType = 'alipay'">Alipay</button>
+          <button class="payment-option small" :class="{ active: customPaymentType === 'wxpay' }" @click="customPaymentType = 'wxpay'">WeChat</button>
+        </div>
+
+        <label class="checkbox mt-sm">
+          <input type="checkbox" v-model="customUseTXB" />
+          <span class="text-sm">Use {{ userStore.appConfig?.credit_name || 'TXB' }} as a discount</span>
+        </label>
+
+        <div v-if="customUseTXB && maxCustomDiscount > 0" class="discount-card">
+          <div class="row-between text-sm">
+            <span class="text-muted">Discount</span>
+            <span>¥{{ customDiscountRMB.toFixed(2) }}</span>
+          </div>
+          <input class="slider" type="range" min="0" :max="maxCustomDiscount" step="0.01" v-model.number="customDiscountRMB" />
+          <div class="row-between text-xs text-muted">
+            <span>0</span>
+            <span>{{ customTXBUsed.toFixed(0) }} {{ userStore.appConfig?.credit_name || 'TXB' }}</span>
+            <span>¥{{ maxCustomDiscount.toFixed(2) }}</span>
+          </div>
+        </div>
+
+        <div class="row-between text-sm">
+          <span class="text-muted">Final payment</span>
+          <span class="mono">¥{{ customFinalPrice.toFixed(2) }}</span>
+        </div>
+
         <button class="btn btn-primary btn-block" @click="submitCustomPayment" :disabled="customSubmitting">
-          {{ customSubmitting ? '提交中...' : `提交 ¥${customAmount} 充值请求` }}
+          {{ customSubmitting ? 'Submitting...' : `Create Payment ¥${customFinalPrice.toFixed(2)}` }}
         </button>
-        <p class="text-xs text-muted">提交后管理员将手动处理</p>
+        <p class="text-xs text-muted">Admins are notified only after the payment succeeds.</p>
       </div>
     </div>
 
-    <!-- Purchase Modal -->
     <teleport to="body">
       <transition name="fade">
         <div class="modal-overlay" v-if="selectedCombo" @click.self="selectedCombo = null">
           <div class="modal card">
-            <h3 class="mb-md">购买 {{ selectedCombo.name }}</h3>
+            <h3 class="mb-md">Purchase {{ selectedCombo.name }}</h3>
 
             <div class="row-between mb-md">
-              <span class="text-muted">价格</span>
-              <span class="mono">¥{{ selectedCombo.price_rmb }}</span>
+              <span class="text-muted">Original price</span>
+              <span class="mono">¥{{ comboPrice.toFixed(2) }}</span>
             </div>
 
             <div class="stack-sm">
-              <label class="text-sm text-muted">支付方式</label>
+              <label class="text-sm text-muted">Payment Method</label>
               <div class="payment-grid">
                 <button class="payment-option" :class="{ active: paymentMethod === 'ezpay' }" @click="paymentMethod = 'ezpay'">
-                  💳 易支付
+                  EZPay
                 </button>
                 <button class="payment-option" :class="{ active: paymentMethod === 'bepusdt' }" @click="paymentMethod = 'bepusdt'">
-                  🪙 USDT
+                  USDT
                 </button>
               </div>
 
               <div v-if="paymentMethod === 'ezpay'" class="payment-grid mt-sm">
-                <button class="payment-option small" :class="{ active: paymentType === 'alipay' }" @click="paymentType = 'alipay'">支付宝</button>
-                <button class="payment-option small" :class="{ active: paymentType === 'wxpay' }" @click="paymentType = 'wxpay'">微信</button>
+                <button class="payment-option small" :class="{ active: paymentType === 'alipay' }" @click="paymentType = 'alipay'">Alipay</button>
+                <button class="payment-option small" :class="{ active: paymentType === 'wxpay' }" @click="paymentType = 'wxpay'">WeChat</button>
               </div>
 
               <label class="checkbox mt-md">
                 <input type="checkbox" v-model="useTXB" />
-                <span class="text-sm">使用 {{ userStore.appConfig?.credit_name || 'TXB' }} 折扣</span>
+                <span class="text-sm">Use {{ userStore.appConfig?.credit_name || 'TXB' }} as a discount</span>
               </label>
 
-              <div v-if="useTXB && maxTXBDiscount > 0" class="discount-info mt-sm">
+              <div v-if="useTXB && maxComboDiscount > 0" class="discount-card">
                 <div class="row-between text-sm">
-                  <span class="text-muted">TXB抵扣</span>
-                  <span class="text-accent">-¥{{ maxTXBDiscount }} ({{ txbUsed.toFixed(0) }} TXB)</span>
+                  <span class="text-muted">Discount</span>
+                  <span>¥{{ discountRMB.toFixed(2) }}</span>
                 </div>
-                <div class="row-between text-sm mt-xs">
-                  <span class="text-muted">实际支付</span>
-                  <span class="mono price-value">¥{{ finalPrice }}</span>
+                <input class="slider" type="range" min="0" :max="maxComboDiscount" step="0.01" v-model.number="discountRMB" />
+                <div class="row-between text-xs text-muted">
+                  <span>0</span>
+                  <span>{{ comboTXBUsed.toFixed(0) }} {{ userStore.appConfig?.credit_name || 'TXB' }}</span>
+                  <span>¥{{ maxComboDiscount.toFixed(2) }}</span>
                 </div>
+              </div>
+
+              <div class="row-between text-sm">
+                <span class="text-muted">Final price</span>
+                <span class="mono price-value">¥{{ comboFinalPrice.toFixed(2) }}</span>
               </div>
             </div>
 
             <div class="row mt-lg" style="gap: var(--space-sm)">
-              <button class="btn btn-secondary" style="flex:1" @click="selectedCombo = null">取消</button>
+              <button class="btn btn-secondary" style="flex:1" @click="selectedCombo = null">Cancel</button>
               <button class="btn btn-primary" style="flex:2" @click="purchase" :disabled="purchasing">
-                {{ purchasing ? '处理中...' : `确认支付 ¥${finalPrice}` }}
+                {{ purchasing ? 'Processing...' : `Confirm Payment ¥${comboFinalPrice.toFixed(2)}` }}
               </button>
             </div>
           </div>
@@ -298,14 +389,14 @@ onMounted(async () => {
   accent-color: var(--accent-primary);
 }
 
-.discount-info {
+.discount-card {
   padding: var(--space-sm);
   background: rgba(0, 206, 201, 0.08);
   border-radius: var(--radius-sm);
   border: 1px solid rgba(0, 206, 201, 0.2);
 }
 
-.text-accent {
-  color: var(--accent-secondary, #00cec9);
+.slider {
+  width: 100%;
 }
 </style>

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -64,11 +65,12 @@ func (c *Client) do(method, path string, body interface{}) ([]byte, error) {
 // --- User Management ---
 
 type JellyfinUser struct {
-	ID                 string `json:"Id"`
-	Name               string `json:"Name"`
-	HasPassword        bool   `json:"HasPassword"`
-	HasConfiguredPassword bool `json:"HasConfiguredPassword"`
-	EnableAutoLogin    bool   `json:"EnableAutoLogin"`
+	ID                    string                 `json:"Id"`
+	Name                  string                 `json:"Name"`
+	HasPassword           bool                   `json:"HasPassword"`
+	HasConfiguredPassword bool                   `json:"HasConfiguredPassword"`
+	EnableAutoLogin       bool                   `json:"EnableAutoLogin"`
+	Policy                map[string]interface{} `json:"Policy"`
 }
 
 type CreateUserRequest struct {
@@ -108,20 +110,7 @@ func (c *Client) CreateUser(name, password string) (*JellyfinUser, error) {
 	}
 
 	// Disable transcoding immediately
-	rating := 0
-	policy := UserPolicy{
-		MaxParentalRating:              &rating,
-		EnableMediaPlayback:            true,
-		EnableAudioPlaybackTranscoding: false,
-		EnableVideoPlaybackTranscoding: false,
-		EnablePlaybackRemuxing:         false,
-		EnableMediaConversion:          false,
-		EnableRemoteAccess:             true,
-		EnableContentDownloading:       false,
-		EnableContentDeletion:          false,
-		AuthenticationProviderId:       "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
-		PasswordResetProviderId:        "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
-	}
+	policy := normalizePolicy(nil, 0)
 	if _, err := c.do("POST", "/Users/"+user.ID+"/Policy", policy); err != nil {
 		return &user, fmt.Errorf("set policy: %w", err)
 	}
@@ -141,7 +130,7 @@ func (c *Client) UpdatePassword(userID, currentPass, newPass string) error {
 		"CurrentPw": currentPass,
 		"NewPw":     newPass,
 	}
-	_, err := c.do("POST", "/Users/"+userID+"/Password", body)
+	_, err := c.do("POST", "/Users/Password?userId="+userID, body)
 	return err
 }
 
@@ -153,19 +142,35 @@ func (c *Client) UpdateParentalRating(userID string, rating int) error {
 	if rating > 22 {
 		rating = 22
 	}
-	policy := map[string]interface{}{
-		"MaxParentalRating": rating,
+	user, err := c.GetUser(userID)
+	if err != nil {
+		return err
 	}
-	_, err := c.do("POST", "/Users/"+userID+"/Policy", policy)
+
+	policy := normalizePolicy(user.Policy, rating)
+
+	_, err = c.do("POST", "/Users/"+userID+"/Policy", policy)
 	return err
 }
 
 // --- Quick Connect ---
 
-// AuthorizeQuickConnect authorizes a Quick Connect code
-func (c *Client) AuthorizeQuickConnect(code string) error {
-	_, err := c.do("POST", fmt.Sprintf("/QuickConnect/Authorize?Code=%s", code), nil)
+// AuthorizeQuickConnect authorizes a Quick Connect code for the given user.
+func (c *Client) AuthorizeQuickConnect(userID, code string) error {
+	_, err := c.do("POST", fmt.Sprintf("/QuickConnect/Authorize?code=%s&userId=%s", url.QueryEscape(code), url.QueryEscape(userID)), map[string]string{})
 	return err
+}
+
+func (c *Client) IsQuickConnectEnabled() (bool, error) {
+	data, err := c.do("GET", "/QuickConnect/Enabled", nil)
+	if err != nil {
+		return false, err
+	}
+	var enabled bool
+	if err := json.Unmarshal(data, &enabled); err != nil {
+		return false, err
+	}
+	return enabled, nil
 }
 
 // --- Devices ---
@@ -187,7 +192,7 @@ type DevicesResult struct {
 
 // GetDevices gets devices for a user
 func (c *Client) GetDevices(userID string) (*DevicesResult, error) {
-	data, err := c.do("GET", "/Devices?UserId="+userID, nil)
+	data, err := c.do("GET", "/Devices?userId="+userID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -195,6 +200,24 @@ func (c *Client) GetDevices(userID string) (*DevicesResult, error) {
 	if err := json.Unmarshal(data, &result); err != nil {
 		return nil, err
 	}
+
+	filtered := make(map[string]DeviceInfo, len(result.Items))
+	for _, item := range result.Items {
+		if item.LastUserID != userID {
+			continue
+		}
+		existing, ok := filtered[item.ID]
+		if !ok || parseActivity(item.DateLastActivity).After(parseActivity(existing.DateLastActivity)) {
+			filtered[item.ID] = item
+		}
+	}
+
+	result.Items = make([]DeviceInfo, 0, len(filtered))
+	for _, item := range filtered {
+		result.Items = append(result.Items, item)
+	}
+	result.TotalCount = len(result.Items)
+
 	return &result, nil
 }
 
@@ -209,4 +232,44 @@ func (c *Client) GetUser(userID string) (*JellyfinUser, error) {
 		return nil, err
 	}
 	return &user, nil
+}
+
+func normalizePolicy(policy map[string]interface{}, rating int) map[string]interface{} {
+	if rating < 0 {
+		rating = 0
+	}
+	if rating > 22 {
+		rating = 22
+	}
+	if policy == nil {
+		policy = map[string]interface{}{}
+	}
+
+	defaults := map[string]interface{}{
+		"EnableMediaPlayback":            true,
+		"EnableAudioPlaybackTranscoding": false,
+		"EnableVideoPlaybackTranscoding": false,
+		"EnablePlaybackRemuxing":         false,
+		"EnableMediaConversion":          false,
+		"EnableRemoteAccess":             true,
+		"EnableContentDownloading":       false,
+		"EnableContentDeletion":          false,
+		"AuthenticationProviderId":       "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+		"PasswordResetProviderId":        "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+	}
+	for key, value := range defaults {
+		if _, ok := policy[key]; !ok {
+			policy[key] = value
+		}
+	}
+	policy["MaxParentalRating"] = rating
+	return policy
+}
+
+func parseActivity(raw string) time.Time {
+	ts, err := time.Parse(time.RFC3339Nano, raw)
+	if err != nil {
+		return time.Time{}
+	}
+	return ts
 }

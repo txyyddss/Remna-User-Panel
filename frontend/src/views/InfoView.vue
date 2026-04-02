@@ -46,14 +46,14 @@ onMounted(async () => {
 <template>
   <div class="page">
     <div class="page-header">
-      <h1 class="page-title">📊 使用信息</h1>
+      <h1 class="page-title">📊 Usage Info</h1>
     </div>
 
     <!-- Tabs -->
     <div class="tabs">
-      <button class="tab" :class="{ active: activeTab === 'bandwidth' }" @click="activeTab = 'bandwidth'">流量</button>
-      <button class="tab" :class="{ active: activeTab === 'devices' }" @click="activeTab = 'devices'">设备</button>
-      <button class="tab" :class="{ active: activeTab === 'history' }" @click="activeTab = 'history'">历史</button>
+      <button class="tab" :class="{ active: activeTab === 'bandwidth' }" @click="activeTab = 'bandwidth'">Traffic</button>
+      <button class="tab" :class="{ active: activeTab === 'devices' }" @click="activeTab = 'devices'">Devices</button>
+      <button class="tab" :class="{ active: activeTab === 'history' }" @click="activeTab = 'history'">History</button>
     </div>
 
     <div class="loading-page" v-if="loading"><div class="loading-spinner"></div></div>
@@ -61,13 +61,13 @@ onMounted(async () => {
     <!-- Bandwidth Tab -->
     <div v-if="!loading && activeTab === 'bandwidth'" class="stack mt-md">
       <div class="card">
-        <h3 class="mb-sm">总流量使用</h3>
+        <h3 class="mb-sm">Total Traffic Usage</h3>
         <div class="stat-value">{{ formatBytes(totalBandwidth) }}</div>
-        <span class="text-xs text-muted">过去30天</span>
+        <span class="text-xs text-muted">Past 30 days</span>
       </div>
 
       <div class="card" v-if="nodeAggregated.length > 0">
-        <h4 class="mb-md">节点使用分布</h4>
+        <h4 class="mb-md">Node Usage Distribution</h4>
         <div v-for="(node, i) in nodeAggregated" :key="i" class="node-item">
           <div class="node-header">
             <span class="text-sm">{{ node.country?.toUpperCase() }} · {{ node.name }}</span>
@@ -85,15 +85,15 @@ onMounted(async () => {
       <div v-for="dev in devices" :key="dev.hwid" class="card">
         <div class="row-between">
           <div>
-            <div class="text-sm">{{ dev.platform || '未知' }} {{ dev.deviceModel || '' }}</div>
+            <div class="text-sm">{{ dev.platform || 'Unknown' }} {{ dev.deviceModel || '' }}</div>
             <div class="text-xs text-muted">{{ dev.osVersion || '' }}</div>
           </div>
-          <span class="badge badge-success">在线</span>
+          <span class="badge badge-success">Online</span>
         </div>
       </div>
       <div v-if="devices.length === 0" class="empty-state">
         <span class="empty-state-icon">📱</span>
-        <p class="empty-state-text">暂无设备记录</p>
+        <p class="empty-state-text">No device records</p>
       </div>
     </div>
 
@@ -105,12 +105,12 @@ onMounted(async () => {
             <div class="text-sm truncate" style="max-width:200px">{{ h.userAgent }}</div>
             <div class="text-xs text-muted">{{ h.ip }}</div>
           </div>
-          <span class="text-xs text-muted">{{ new Date(h.createdAt).toLocaleString('zh-CN') }}</span>
+          <span class="text-xs text-muted">{{ new Date(h.createdAt).toLocaleString('en-US') }}</span>
         </div>
       </div>
       <div v-if="history.length === 0" class="empty-state">
         <span class="empty-state-icon">📜</span>
-        <p class="empty-state-text">暂无订阅请求记录</p>
+        <p class="empty-state-text">No subscription request records</p>
       </div>
     </div>
   </div>

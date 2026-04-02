@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -111,6 +112,7 @@ func migrate() error {
 			txb_discount REAL NOT NULL DEFAULT 0,
 			final_amount REAL NOT NULL,
 			status TEXT NOT NULL DEFAULT 'pending',
+			service_status TEXT NOT NULL DEFAULT 'pending',
 			payment_method TEXT NOT NULL DEFAULT '',
 			payment_type TEXT NOT NULL DEFAULT '',
 			upstream_id TEXT DEFAULT '',
@@ -121,6 +123,21 @@ func migrate() error {
 		`CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)`,
 		`CREATE INDEX IF NOT EXISTS idx_orders_upstream ON orders(upstream_id)`,
+		`ALTER TABLE orders ADD COLUMN admin_note TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE orders ADD COLUMN paid_at DATETIME`,
+		`ALTER TABLE orders ADD COLUMN service_status TEXT NOT NULL DEFAULT 'pending'`,
+
+		`CREATE TABLE IF NOT EXISTS order_events (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			order_uuid TEXT NOT NULL REFERENCES orders(uuid) ON DELETE CASCADE,
+			actor_user_id INTEGER REFERENCES users(id),
+			event_type TEXT NOT NULL,
+			message TEXT NOT NULL DEFAULT '',
+			payload TEXT NOT NULL DEFAULT '{}',
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_order_events_order ON order_events(order_uuid)`,
+		`CREATE INDEX IF NOT EXISTS idx_order_events_time ON order_events(created_at)`,
 
 		`CREATE TABLE IF NOT EXISTS credit_logs (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -182,11 +199,23 @@ func migrate() error {
 
 	for _, m := range migrations {
 		if _, err := db.Exec(m); err != nil {
+			if isIgnorableMigrationError(err) {
+				continue
+			}
 			return fmt.Errorf("exec migration: %w (sql: %s)", err, m[:60])
 		}
 	}
 
 	return nil
+}
+
+func isIgnorableMigrationError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	msg := err.Error()
+	return strings.Contains(msg, "duplicate column name")
 }
 
 // Backup creates a backup of the database
