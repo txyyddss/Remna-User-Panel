@@ -72,6 +72,23 @@ export const api = {
     // Admin
     getConfig: () => request<any>('/admin/config'),
     updateConfig: (data: any) => request<any>('/admin/config', { method: 'PUT', body: JSON.stringify(data) }),
+    adminListCombos: () => request<any[]>('/admin/combos'),
     createCombo: (data: any) => request<any>('/admin/combos', { method: 'POST', body: JSON.stringify(data) }),
+    updateCombo: (uuid: string, data: any) => request<any>(`/admin/combos/${uuid}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteCombo: (uuid: string) => request<any>(`/admin/combos/${uuid}`, { method: 'DELETE' }),
     getInternalSquads: () => request<any[]>('/admin/squads/internal'),
+    adminListUsers: (params: { search?: string; limit?: number; offset?: number } = {}) => {
+        const query = new URLSearchParams()
+        if (params.search) query.set('search', params.search)
+        if (params.limit) query.set('limit', String(params.limit))
+        if (params.offset) query.set('offset', String(params.offset))
+        return request<any>(`/admin/users?${query}`)
+    },
+    adminUpdateUser: (id: number, data: any) => request<any>(`/admin/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+    // Subscription Binding
+    bindSubscription: (subUrl: string) => request<any>('/bind-sub', { method: 'POST', body: JSON.stringify({ sub_url: subUrl }) }),
+
+    // Custom Payment
+    customPayment: (amount: number, message: string) => request<any>('/payment/custom', { method: 'POST', body: JSON.stringify({ amount, message }) }),
 }

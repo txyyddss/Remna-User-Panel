@@ -69,28 +69,28 @@ type APIResponse struct {
 // --- User types ---
 
 type UserData struct {
-	UUID                 string    `json:"uuid"`
-	ShortUUID            string    `json:"shortUuid"`
-	Username             string    `json:"username"`
-	Status               string    `json:"status"`
-	TrafficLimitBytes    int64     `json:"trafficLimitBytes"`
-	TrafficLimitStrategy string    `json:"trafficLimitStrategy"`
-	UsedTrafficBytes     int64     `json:"usedTrafficBytes"`
-	LifetimeUsedTrafficBytes int64 `json:"lifetimeUsedTrafficBytes"`
-	ExpireAt             time.Time `json:"expireAt"`
-	CreatedAt            time.Time `json:"createdAt"`
-	LastTrafficResetAt   *time.Time `json:"lastTrafficResetAt"`
-	TelegramID           *int64    `json:"telegramId"`
-	Email                string    `json:"email"`
-	Description          string    `json:"description"`
-	Tag                  string    `json:"tag"`
-	HwidDeviceLimit      int       `json:"hwidDeviceLimit"`
-	SubscriptionURL      string    `json:"subscriptionUrl"`
-	OnlineAt             *time.Time `json:"onlineAt"`
-	SubLastUserAgent     string    `json:"subLastUserAgent"`
-	SubRevokedAt         *time.Time `json:"subRevokedAt"`
-	ActiveInternalSquads []string  `json:"activeInternalSquads"`
-	ExternalSquadUUID    string    `json:"externalSquadUuid"`
+	UUID                     string     `json:"uuid"`
+	ShortUUID                string     `json:"shortUuid"`
+	Username                 string     `json:"username"`
+	Status                   string     `json:"status"`
+	TrafficLimitBytes        int64      `json:"trafficLimitBytes"`
+	TrafficLimitStrategy     string     `json:"trafficLimitStrategy"`
+	UsedTrafficBytes         int64      `json:"usedTrafficBytes"`
+	LifetimeUsedTrafficBytes int64      `json:"lifetimeUsedTrafficBytes"`
+	ExpireAt                 time.Time  `json:"expireAt"`
+	CreatedAt                time.Time  `json:"createdAt"`
+	LastTrafficResetAt       *time.Time `json:"lastTrafficResetAt"`
+	TelegramID               *int64     `json:"telegramId"`
+	Email                    string     `json:"email"`
+	Description              string     `json:"description"`
+	Tag                      string     `json:"tag"`
+	HwidDeviceLimit          int        `json:"hwidDeviceLimit"`
+	SubscriptionURL          string     `json:"subscriptionUrl"`
+	OnlineAt                 *time.Time `json:"onlineAt"`
+	SubLastUserAgent         string     `json:"subLastUserAgent"`
+	SubRevokedAt             *time.Time `json:"subRevokedAt"`
+	ActiveInternalSquads     []string   `json:"activeInternalSquads"`
+	ExternalSquadUUID        string     `json:"externalSquadUuid"`
 }
 
 type CreateUserRequest struct {
@@ -180,6 +180,21 @@ func (c *Client) GetUserByTelegramID(telegramID int64) ([]UserData, error) {
 		return nil, err
 	}
 	return resp.Response, nil
+}
+
+// GetUserByShortUUID gets a user by short UUID
+func (c *Client) GetUserByShortUUID(shortUUID string) (*UserData, error) {
+	data, err := c.do("GET", "/api/users/by-short-uuid/"+shortUUID, nil)
+	if err != nil {
+		return nil, err
+	}
+	var resp struct {
+		Response UserData `json:"response"`
+	}
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return nil, err
+	}
+	return &resp.Response, nil
 }
 
 // DeleteUser deletes a user by UUID

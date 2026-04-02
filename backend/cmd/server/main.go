@@ -115,11 +115,13 @@ func main() {
 
 			// Subscription
 			r.Post("/subscribe", h.PurchaseCombo)
+			r.Post("/bind-sub", h.BindSubscription)
 			r.Get("/sub-info", h.GetSubInfo)
 			r.Get("/sub-keys", h.GetSubKeys)
 
 			// Payment
 			r.Post("/payment/create", h.CreatePayment)
+			r.Post("/payment/custom", h.CustomPayment)
 
 			// VPN Info
 			r.Get("/vpn/bandwidth", h.GetBandwidthStats)
@@ -148,9 +150,13 @@ func main() {
 
 				r.Get("/admin/config", h.GetConfig)
 				r.Put("/admin/config", h.UpdateConfig)
+				r.Get("/admin/combos", h.AdminListCombos)
 				r.Post("/admin/combos", h.CreateCombo)
 				r.Put("/admin/combos/{uuid}", h.UpdateCombo)
+				r.Delete("/admin/combos/{uuid}", h.DeleteCombo)
 				r.Get("/admin/squads/internal", h.GetInternalSquads)
+				r.Get("/admin/users", h.AdminListUsers)
+				r.Put("/admin/users/{id}", h.AdminUpdateUser)
 			})
 		})
 	})

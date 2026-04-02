@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { api } from '@/api'
 import { useUserStore } from '@/stores/user'
 
@@ -13,6 +13,12 @@ const paymentMethod = ref('ezpay')
 const paymentType = ref('alipay')
 const useTXB = ref(false)
 
+// Custom payment
+const showCustomPayment = ref(false)
+const customAmount = ref(10)
+const customMessage = ref('')
+const customSubmitting = ref(false)
+
 const cycleName: Record<string, string> = {
   monthly: '月付',
   quarterly: '季付',
@@ -24,6 +30,27 @@ function formatTraffic(gb: number): string {
   if (gb >= 1024) return `${(gb / 1024).toFixed(1)} TB`
   return `${gb} GB`
 }
+
+const txbRate = computed(() => {
+  return userStore.appConfig?.credit?.txb_to_rmb_rate || 100
+})
+
+const comboPrice = computed(() => {
+  return selectedCombo.value?.price_rmb || 0
+})
+
+const maxTXBDiscount = computed(() => {
+  if (!useTXB.value || !selectedCombo.value) return 0
+  const userCredit = userStore.credit || 0
+  const maxDiscountRMB = Math.floor(userCredit / txbRate.value)
+  return Math.min(maxDiscountRMB, comboPrice.value)
+})
+
+const txbUsed = computed(() => maxTXBDiscount.value * txbRate.value)
+
+const finalPrice = computed(() => {
+  return Math.max(0, comboPrice.value - maxTXBDiscount.value)
+})
 
 async function purchase() {
   if (!selectedCombo.value) return
@@ -45,6 +72,22 @@ async function purchase() {
     alert(e.message)
   }
   purchasing.value = false
+}
+
+async function submitCustomPayment() {
+  if (customAmount.value <= 0) return
+  customSubmitting.value = true
+  try {
+    await api.customPayment(customAmount.value, customMessage.value)
+    showCustomPayment.value = false
+    customAmount.value = 10
+    customMessage.value = ''
+    window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success')
+    alert('已提交，请等待管理员处理')
+  } catch (e: any) {
+    alert(e.message)
+  }
+  customSubmitting.value = false
 }
 
 onMounted(async () => {
@@ -85,6 +128,24 @@ onMounted(async () => {
       <p class="empty-state-text">暂无可用套餐</p>
     </div>
 
+    <!-- Custom Payment Button -->
+    <div class="card mt-md" v-if="!loading">
+      <div class="row-between">
+        <h3>💰 自定义充值</h3>
+        <button class="btn btn-sm btn-secondary" @click="showCustomPayment = !showCustomPayment">
+          {{ showCustomPayment ? '取消' : '充值' }}
+        </button>
+      </div>
+      <div v-if="showCustomPayment" class="stack-sm mt-md">
+        <input class="input" v-model.number="customAmount" type="number" placeholder="充值金额 (¥)" min="1" step="1" />
+        <input class="input" v-model="customMessage" placeholder="备注 (可选)" />
+        <button class="btn btn-primary btn-block" @click="submitCustomPayment" :disabled="customSubmitting">
+          {{ customSubmitting ? '提交中...' : `提交 ¥${customAmount} 充值请求` }}
+        </button>
+        <p class="text-xs text-muted">提交后管理员将手动处理</p>
+      </div>
+    </div>
+
     <!-- Purchase Modal -->
     <teleport to="body">
       <transition name="fade">
@@ -117,12 +178,23 @@ onMounted(async () => {
                 <input type="checkbox" v-model="useTXB" />
                 <span class="text-sm">使用 {{ userStore.appConfig?.credit_name || 'TXB' }} 折扣</span>
               </label>
+
+              <div v-if="useTXB && maxTXBDiscount > 0" class="discount-info mt-sm">
+                <div class="row-between text-sm">
+                  <span class="text-muted">TXB抵扣</span>
+                  <span class="text-accent">-¥{{ maxTXBDiscount }} ({{ txbUsed.toFixed(0) }} TXB)</span>
+                </div>
+                <div class="row-between text-sm mt-xs">
+                  <span class="text-muted">实际支付</span>
+                  <span class="mono price-value">¥{{ finalPrice }}</span>
+                </div>
+              </div>
             </div>
 
             <div class="row mt-lg" style="gap: var(--space-sm)">
               <button class="btn btn-secondary" style="flex:1" @click="selectedCombo = null">取消</button>
               <button class="btn btn-primary" style="flex:2" @click="purchase" :disabled="purchasing">
-                {{ purchasing ? '处理中...' : '确认购买' }}
+                {{ purchasing ? '处理中...' : `确认支付 ¥${finalPrice}` }}
               </button>
             </div>
           </div>
@@ -224,5 +296,16 @@ onMounted(async () => {
   width: 18px;
   height: 18px;
   accent-color: var(--accent-primary);
+}
+
+.discount-info {
+  padding: var(--space-sm);
+  background: rgba(0, 206, 201, 0.08);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(0, 206, 201, 0.2);
+}
+
+.text-accent {
+  color: var(--accent-secondary, #00cec9);
 }
 </style>

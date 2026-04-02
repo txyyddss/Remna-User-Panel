@@ -6,6 +6,9 @@ import { api } from '@/api'
 const userStore = useUserStore()
 const subInfo = ref<any>(null)
 const loading = ref(true)
+const subUrl = ref('')
+const bindLoading = ref(false)
+const bindMessage = ref('')
 
 const usedPercent = computed(() => {
   if (!subInfo.value?.user?.trafficLimitBytes) return 0
@@ -23,6 +26,23 @@ function formatBytes(b: number): string {
   if (b < 1048576) return `${(b / 1024).toFixed(1)} KB`
   if (b < 1073741824) return `${(b / 1048576).toFixed(2)} MB`
   return `${(b / 1073741824).toFixed(2)} GB`
+}
+
+async function bindSub() {
+  if (!subUrl.value) return
+  bindLoading.value = true
+  bindMessage.value = ''
+  try {
+    const resp = await api.bindSubscription(subUrl.value)
+    bindMessage.value = `✅ 绑定成功！用户: ${resp.rw_user}`
+    subUrl.value = ''
+    window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success')
+    // Refresh user data
+    await userStore.fetchMe()
+  } catch (e: any) {
+    bindMessage.value = '❌ ' + e.message
+  }
+  bindLoading.value = false
 }
 
 onMounted(async () => {
@@ -107,6 +127,18 @@ onMounted(async () => {
       <span class="empty-state-icon">📡</span>
       <p class="empty-state-text">还没有订阅</p>
       <router-link to="/combos" class="btn btn-primary btn-sm mt-md">浏览套餐</router-link>
+
+      <!-- Subscription Binding -->
+      <div class="bind-section mt-lg">
+        <p class="text-sm text-muted mb-sm">已有订阅链接？直接绑定</p>
+        <div class="row" style="gap:var(--space-sm)">
+          <input class="input" v-model="subUrl" placeholder="粘贴订阅链接" style="flex:1" />
+          <button class="btn btn-sm btn-secondary" @click="bindSub" :disabled="bindLoading">
+            {{ bindLoading ? '...' : '绑定' }}
+          </button>
+        </div>
+        <div v-if="bindMessage" class="text-sm mt-sm">{{ bindMessage }}</div>
+      </div>
     </div>
 
     <div class="loading-page" v-if="loading">

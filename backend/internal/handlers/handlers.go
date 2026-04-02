@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -777,8 +779,299 @@ func (h *Handler) GetInternalSquads(w http.ResponseWriter, r *http.Request) {
 	rwClient := remnawave.NewClient(cfg.Remnawave.URL, cfg.Remnawave.Token)
 	squads, err := rwClient.GetInternalSquads()
 	if err != nil {
-		middleware.WriteError(w, http.StatusInternalServerError, "failed to get internal squads")
+		log.Printf("[admin] GetInternalSquads error: %v", err)
+		middleware.WriteError(w, http.StatusInternalServerError, "failed to get internal squads: "+err.Error())
 		return
 	}
+	if squads == nil {
+		squads = []remnawave.Squad{}
+	}
 	middleware.WriteSuccess(w, squads)
+}
+
+// DeleteCombo soft-deletes a combo by setting active=0
+func (h *Handler) DeleteCombo(w http.ResponseWriter, r *http.Request) {
+	comboUUID := chi.URLParam(r, "uuid")
+	_, err := database.DB().Exec("UPDATE combos SET active = 0 WHERE uuid = ?", comboUUID)
+	if err != nil {
+		middleware.WriteError(w, http.StatusInternalServerError, "failed to delete combo")
+		return
+	}
+	middleware.WriteSuccess(w, map[string]string{"status": "deleted"})
+}
+
+// AdminListCombos lists all combos including inactive ones for admin
+func (h *Handler) AdminListCombos(w http.ResponseWriter, r *http.Request) {
+	rows, err := database.DB().Query("SELECT uuid, name, description, squad_uuid, traffic_gb, strategy, cycle, price_rmb, reset_price, active FROM combos ORDER BY created_at DESC")
+	if err != nil {
+		middleware.WriteError(w, http.StatusInternalServerError, "failed to list combos")
+		return
+	}
+	defer rows.Close()
+
+	var combos []models.Combo
+	for rows.Next() {
+		var c models.Combo
+		rows.Scan(&c.UUID, &c.Name, &c.Description, &c.SquadUUID, &c.TrafficGB, &c.Strategy, &c.Cycle, &c.PriceRMB, &c.ResetPrice, &c.Active)
+		combos = append(combos, c)
+	}
+	if combos == nil {
+		combos = []models.Combo{}
+	}
+	middleware.WriteSuccess(w, combos)
+}
+
+// --- Admin User Management ---
+
+func (h *Handler) AdminListUsers(w http.ResponseWriter, r *http.Request) {
+	search := r.URL.Query().Get("search")
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+
+	var rows *sql.Rows
+	var err error
+
+	if search != "" {
+		searchPattern := "%" + search + "%"
+		rows, err = database.DB().Query(
+			"SELECT id, telegram_id, telegram_name, remnawave_uuid, jellyfin_user_id, credit, is_admin, created_at, updated_at FROM users WHERE telegram_name LIKE ? OR CAST(telegram_id AS TEXT) LIKE ? ORDER BY id DESC LIMIT ? OFFSET ?",
+			searchPattern, searchPattern, limit, offset,
+		)
+	} else {
+		rows, err = database.DB().Query(
+			"SELECT id, telegram_id, telegram_name, remnawave_uuid, jellyfin_user_id, credit, is_admin, created_at, updated_at FROM users ORDER BY id DESC LIMIT ? OFFSET ?",
+			limit, offset,
+		)
+	}
+	if err != nil {
+		middleware.WriteError(w, http.StatusInternalServerError, "failed to list users")
+		return
+	}
+	defer rows.Close()
+
+	var users []models.User
+	for rows.Next() {
+		var u models.User
+		rows.Scan(&u.ID, &u.TelegramID, &u.TelegramName, &u.RemnawaveUUID, &u.JellyfinUserID, &u.Credit, &u.IsAdmin, &u.CreatedAt, &u.UpdatedAt)
+		users = append(users, u)
+	}
+	if users == nil {
+		users = []models.User{}
+	}
+
+	// Get total count
+	var total int
+	database.DB().QueryRow("SELECT COUNT(*) FROM users").Scan(&total)
+
+	middleware.WriteSuccess(w, map[string]interface{}{
+		"users": users,
+		"total": total,
+	})
+}
+
+func (h *Handler) AdminUpdateUser(w http.ResponseWriter, r *http.Request) {
+	userIDStr := chi.URLParam(r, "id")
+	userID, err := strconv.ParseInt(userIDStr, 10, 64)
+	if err != nil {
+		middleware.WriteError(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+
+	var req struct {
+		Credit         *float64 `json:"credit"`
+		RemnawaveUUID  *string  `json:"remnawave_uuid"`
+		JellyfinUserID *string  `json:"jellyfin_user_id"`
+		IsAdmin        *bool    `json:"is_admin"`
+	}
+	if err := middleware.DecodeJSON(r, &req); err != nil {
+		middleware.WriteError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+
+	if req.Credit != nil {
+		// Set absolute credit value
+		var currentCredit float64
+		database.DB().QueryRow("SELECT credit FROM users WHERE id = ?", userID).Scan(&currentCredit)
+		diff := *req.Credit - currentCredit
+		if diff != 0 {
+			h.Credit.AddCredit(userID, diff, "管理员调整")
+		}
+	}
+	if req.RemnawaveUUID != nil {
+		database.DB().Exec("UPDATE users SET remnawave_uuid = ?, updated_at = ? WHERE id = ?", *req.RemnawaveUUID, time.Now(), userID)
+	}
+	if req.JellyfinUserID != nil {
+		database.DB().Exec("UPDATE users SET jellyfin_user_id = ?, updated_at = ? WHERE id = ?", *req.JellyfinUserID, time.Now(), userID)
+	}
+	if req.IsAdmin != nil {
+		adminVal := 0
+		if *req.IsAdmin {
+			adminVal = 1
+		}
+		database.DB().Exec("UPDATE users SET is_admin = ?, updated_at = ? WHERE id = ?", adminVal, time.Now(), userID)
+	}
+
+	middleware.WriteSuccess(w, map[string]string{"status": "updated"})
+}
+
+// --- Subscription Binding ---
+
+func (h *Handler) BindSubscription(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUser(r)
+	cfg := config.Get()
+
+	if user.RemnawaveUUID != "" {
+		middleware.WriteError(w, http.StatusConflict, "已有绑定的订阅")
+		return
+	}
+
+	var req struct {
+		SubURL string `json:"sub_url"`
+	}
+	if err := middleware.DecodeJSON(r, &req); err != nil {
+		middleware.WriteError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+
+	if req.SubURL == "" {
+		middleware.WriteError(w, http.StatusBadRequest, "请提供订阅链接")
+		return
+	}
+
+	// Extract short UUID from subscription URL
+	// Typical format: https://panel.example.com/api/sub/SHORTUUID or just the short UUID
+	shortUUID := req.SubURL
+	// Try to extract from URL path
+	if idx := len(shortUUID) - 1; idx >= 0 {
+		parts := make([]string, 0)
+		for _, p := range splitURL(shortUUID) {
+			if p != "" {
+				parts = append(parts, p)
+			}
+		}
+		if len(parts) > 0 {
+			shortUUID = parts[len(parts)-1]
+		}
+	}
+
+	rwClient := remnawave.NewClient(cfg.Remnawave.URL, cfg.Remnawave.Token)
+
+	// Look up the user by short UUID
+	rwUser, err := rwClient.GetUserByShortUUID(shortUUID)
+	if err != nil {
+		middleware.WriteError(w, http.StatusNotFound, "未找到该订阅: "+err.Error())
+		return
+	}
+
+	// Verify the Remnawave user isn't already bound to another panel user
+	var existingCount int
+	database.DB().QueryRow("SELECT COUNT(*) FROM users WHERE remnawave_uuid = ? AND id != ?", rwUser.UUID, user.ID).Scan(&existingCount)
+	if existingCount > 0 {
+		middleware.WriteError(w, http.StatusConflict, "该订阅已被其他用户绑定")
+		return
+	}
+
+	// Bind user
+	database.DB().Exec("UPDATE users SET remnawave_uuid = ?, updated_at = ? WHERE id = ?", rwUser.UUID, time.Now(), user.ID)
+
+	// Create subscription record
+	database.DB().Exec(
+		"INSERT INTO subscriptions (user_id, combo_uuid, remnawave_uuid, status, expires_at) VALUES (?, 'bound', ?, 'active', ?)",
+		user.ID, rwUser.UUID, rwUser.ExpireAt,
+	)
+
+	middleware.WriteSuccess(w, map[string]interface{}{
+		"status":  "bound",
+		"rw_user": rwUser.Username,
+		"rw_uuid": rwUser.UUID,
+		"expires": rwUser.ExpireAt,
+	})
+}
+
+func splitURL(u string) []string {
+	// Simple URL path splitter
+	result := make([]string, 0)
+	current := ""
+	for _, c := range u {
+		if c == '/' || c == '?' {
+			if current != "" {
+				result = append(result, current)
+			}
+			current = ""
+		} else {
+			current += string(c)
+		}
+	}
+	if current != "" {
+		result = append(result, current)
+	}
+	return result
+}
+
+// --- Custom Payment ---
+
+func (h *Handler) CustomPayment(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUser(r)
+	cfg := config.Get()
+
+	var req struct {
+		Amount  float64 `json:"amount"`
+		Message string  `json:"message"`
+	}
+	if err := middleware.DecodeJSON(r, &req); err != nil {
+		middleware.WriteError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+
+	if req.Amount <= 0 {
+		middleware.WriteError(w, http.StatusBadRequest, "金额必须大于0")
+		return
+	}
+
+	// Create a pending order of type "custom"
+	orderUUID := uuid.New().String()
+	metadata, _ := json.Marshal(map[string]interface{}{
+		"message": req.Message,
+	})
+
+	_, err := database.DB().Exec(
+		`INSERT INTO orders (uuid, user_id, order_type, amount, txb_discount, final_amount, status, payment_method, payment_type, metadata, created_at, updated_at)
+		 VALUES (?, ?, 'custom', ?, 0, ?, 'pending', 'manual', 'manual', ?, ?, ?)`,
+		orderUUID, user.ID, req.Amount, req.Amount, string(metadata), time.Now(), time.Now(),
+	)
+	if err != nil {
+		middleware.WriteError(w, http.StatusInternalServerError, "创建订单失败")
+		return
+	}
+
+	// Send Telegram notification to all admins
+	notifyText := fmt.Sprintf("💰 新的自定义充值请求\n\n用户: %s (ID: %d)\n金额: ¥%.2f\n订单: %s\n备注: %s\n\n请管理员手动处理",
+		user.TelegramName, user.TelegramID, req.Amount, orderUUID[:8], req.Message)
+
+	for _, adminID := range cfg.Telegram.AdminIDs {
+		go sendTelegramMessage(cfg.Telegram.BotToken, adminID, notifyText)
+	}
+
+	middleware.WriteSuccess(w, map[string]interface{}{
+		"order_uuid": orderUUID,
+		"amount":     req.Amount,
+		"status":     "pending",
+		"message":    "已提交，等待管理员处理",
+	})
+}
+
+// sendTelegramMessage sends a message via Telegram Bot API directly
+func sendTelegramMessage(botToken string, chatID int64, text string) {
+	if botToken == "" {
+		return
+	}
+	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", botToken)
+	body, _ := json.Marshal(map[string]interface{}{
+		"chat_id": chatID,
+		"text":    text,
+	})
+	http.Post(url, "application/json", bytes.NewReader(body))
 }

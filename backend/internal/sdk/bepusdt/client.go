@@ -14,19 +14,19 @@ import (
 
 // Client is the BEPusdt API client
 type Client struct {
-	baseURL    string
-	token      string
-	notifyURL  string
+	baseURL     string
+	token       string
+	notifyURL   string
 	redirectURL string
-	httpClient *http.Client
+	httpClient  *http.Client
 }
 
 // NewClient creates a new BEPusdt client
 func NewClient(baseURL, token, notifyURL, redirectURL string) *Client {
 	return &Client{
-		baseURL:    strings.TrimRight(baseURL, "/"),
-		token:      token,
-		notifyURL:  notifyURL,
+		baseURL:     strings.TrimRight(baseURL, "/"),
+		token:       token,
+		notifyURL:   notifyURL,
 		redirectURL: redirectURL,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
@@ -37,21 +37,21 @@ func NewClient(baseURL, token, notifyURL, redirectURL string) *Client {
 // --- Types ---
 
 type CreateTransactionRequest struct {
-	OrderID     string  `json:"order_id"`
-	Amount      float64 `json:"amount"`
-	NotifyURL   string  `json:"notify_url"`
-	RedirectURL string  `json:"redirect_url"`
-	Signature   string  `json:"signature"`
-	TradeType   string  `json:"trade_type,omitempty"`
-	Fiat        string  `json:"fiat,omitempty"`
-	Name        string  `json:"name,omitempty"`
-	Timeout     int     `json:"timeout,omitempty"`
+	OrderID     string      `json:"order_id"`
+	Amount      json.Number `json:"amount"`
+	NotifyURL   string      `json:"notify_url"`
+	RedirectURL string      `json:"redirect_url"`
+	Signature   string      `json:"signature"`
+	TradeType   string      `json:"trade_type,omitempty"`
+	Fiat        string      `json:"fiat,omitempty"`
+	Name        string      `json:"name,omitempty"`
+	Timeout     int         `json:"timeout,omitempty"`
 }
 
 type TransactionResponse struct {
-	StatusCode int              `json:"status_code"`
-	Message    string           `json:"message"`
-	Data       TransactionData  `json:"data"`
+	StatusCode int             `json:"status_code"`
+	Message    string          `json:"message"`
+	Data       TransactionData `json:"data"`
 }
 
 type TransactionData struct {
@@ -67,15 +67,15 @@ type TransactionData struct {
 }
 
 type CreateOrderRequest struct {
-	OrderID     string  `json:"order_id"`
-	Amount      float64 `json:"amount"`
-	NotifyURL   string  `json:"notify_url"`
-	RedirectURL string  `json:"redirect_url"`
-	Signature   string  `json:"signature"`
-	Currencies  string  `json:"currencies,omitempty"`
-	Fiat        string  `json:"fiat,omitempty"`
-	Name        string  `json:"name,omitempty"`
-	Timeout     int     `json:"timeout,omitempty"`
+	OrderID     string      `json:"order_id"`
+	Amount      json.Number `json:"amount"`
+	NotifyURL   string      `json:"notify_url"`
+	RedirectURL string      `json:"redirect_url"`
+	Signature   string      `json:"signature"`
+	Currencies  string      `json:"currencies,omitempty"`
+	Fiat        string      `json:"fiat,omitempty"`
+	Name        string      `json:"name,omitempty"`
+	Timeout     int         `json:"timeout,omitempty"`
 }
 
 type CallbackData struct {
@@ -91,9 +91,10 @@ type CallbackData struct {
 
 // CreateTransaction creates a USDT payment transaction
 func (c *Client) CreateTransaction(orderID string, amount float64, name string) (*TransactionResponse, error) {
+	amountStr := formatAmount(amount)
 	params := map[string]string{
 		"order_id":     orderID,
-		"amount":       fmt.Sprintf("%.2f", amount),
+		"amount":       amountStr,
 		"notify_url":   c.notifyURL,
 		"redirect_url": c.redirectURL,
 	}
@@ -101,7 +102,7 @@ func (c *Client) CreateTransaction(orderID string, amount float64, name string) 
 
 	req := CreateTransactionRequest{
 		OrderID:     orderID,
-		Amount:      amount,
+		Amount:      json.Number(amountStr),
 		NotifyURL:   c.notifyURL,
 		RedirectURL: c.redirectURL,
 		Signature:   signature,
@@ -128,9 +129,10 @@ func (c *Client) CreateTransaction(orderID string, amount float64, name string) 
 
 // CreateOrder creates an order with multiple payment method options
 func (c *Client) CreateOrder(orderID string, amount float64, name string) (*TransactionResponse, error) {
+	amountStr := formatAmount(amount)
 	params := map[string]string{
 		"order_id":     orderID,
-		"amount":       fmt.Sprintf("%.2f", amount),
+		"amount":       amountStr,
 		"notify_url":   c.notifyURL,
 		"redirect_url": c.redirectURL,
 	}
@@ -138,7 +140,7 @@ func (c *Client) CreateOrder(orderID string, amount float64, name string) (*Tran
 
 	req := CreateOrderRequest{
 		OrderID:     orderID,
-		Amount:      amount,
+		Amount:      json.Number(amountStr),
 		NotifyURL:   c.notifyURL,
 		RedirectURL: c.redirectURL,
 		Signature:   signature,
@@ -227,6 +229,19 @@ func (c *Client) generateSignature(params map[string]string) string {
 	str := strings.Join(parts, "&") + c.token
 	hash := md5.Sum([]byte(str))
 	return fmt.Sprintf("%x", hash)
+}
+
+// formatAmount converts a float64 to a clean number string, stripping trailing zeros.
+// e.g. 42.00 → "42", 28.80 → "28.8", 28.88 → "28.88"
+// This ensures signature consistency with BEPusdt server.
+func formatAmount(amount float64) string {
+	s := fmt.Sprintf("%.2f", amount)
+	// Strip trailing zeros after decimal point
+	if strings.Contains(s, ".") {
+		s = strings.TrimRight(s, "0")
+		s = strings.TrimRight(s, ".")
+	}
+	return s
 }
 
 func (c *Client) doPost(path string, body interface{}) ([]byte, error) {

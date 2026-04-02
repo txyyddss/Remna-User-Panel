@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { api } from '@/api'
 
@@ -13,6 +13,39 @@ const devices = ref<any[]>([])
 const showPwdForm = ref(false)
 const currentPwd = ref('')
 const newPwd = ref('')
+
+// Purchase modal state
+const showPurchase = ref(false)
+const purchaseMonths = ref(1)
+const paymentMethod = ref('ezpay')
+const paymentType = ref('alipay')
+const useTXB = ref(false)
+const purchasing = ref(false)
+
+const jellyfinPrice = computed(() => {
+  return userStore.appConfig?.jellyfin?.monthly_price_rmb || 2
+})
+
+const totalPrice = computed(() => {
+  return jellyfinPrice.value * purchaseMonths.value
+})
+
+const txbRate = computed(() => {
+  return userStore.appConfig?.credit?.txb_to_rmb_rate || 100
+})
+
+const maxTXBDiscount = computed(() => {
+  if (!useTXB.value) return 0
+  const userCredit = userStore.credit || 0
+  const maxDiscountRMB = Math.floor(userCredit / txbRate.value)
+  return Math.min(maxDiscountRMB, totalPrice.value)
+})
+
+const txbUsed = computed(() => maxTXBDiscount.value * txbRate.value)
+
+const finalPrice = computed(() => {
+  return Math.max(0, totalPrice.value - maxTXBDiscount.value)
+})
 
 onMounted(async () => {
   try {
@@ -57,6 +90,27 @@ async function changePassword() {
   } catch (e: any) {
     alert(e.message)
   }
+}
+
+async function purchaseJellyfin() {
+  purchasing.value = true
+  try {
+    const resp = await api.purchaseJellyfin({
+      months: purchaseMonths.value,
+      payment_method: paymentMethod.value,
+      payment_type: paymentType.value,
+      use_txb: useTXB.value,
+    })
+    if (resp.payment_url) {
+      window.Telegram?.WebApp?.openLink(resp.payment_url)
+    } else {
+      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success')
+    }
+    showPurchase.value = false
+  } catch (e: any) {
+    alert(e.message)
+  }
+  purchasing.value = false
 }
 </script>
 
@@ -131,9 +185,73 @@ async function changePassword() {
     <div class="empty-state" v-else>
       <span class="empty-state-icon">🎬</span>
       <p class="empty-state-text">还没有 Jellyfin 账户</p>
-      <p class="text-xs text-muted mt-sm">¥2/月 · 支持多设备</p>
-      <button class="btn btn-primary mt-md">开通影视服务</button>
+      <p class="text-xs text-muted mt-sm">¥{{ jellyfinPrice }}/月 · 支持多设备</p>
+      <button class="btn btn-primary mt-md" @click="showPurchase = true">开通影视服务</button>
     </div>
+
+    <!-- Purchase Modal -->
+    <teleport to="body">
+      <transition name="fade">
+        <div class="modal-overlay" v-if="showPurchase" @click.self="showPurchase = false">
+          <div class="modal card">
+            <h3 class="mb-md">开通 Jellyfin 影视服务</h3>
+
+            <div class="stack-sm">
+              <label class="text-sm text-muted">购买时长</label>
+              <div class="payment-grid">
+                <button class="payment-option small" :class="{ active: purchaseMonths === 1 }" @click="purchaseMonths = 1">1个月</button>
+                <button class="payment-option small" :class="{ active: purchaseMonths === 3 }" @click="purchaseMonths = 3">3个月</button>
+                <button class="payment-option small" :class="{ active: purchaseMonths === 6 }" @click="purchaseMonths = 6">6个月</button>
+                <button class="payment-option small" :class="{ active: purchaseMonths === 12 }" @click="purchaseMonths = 12">12个月</button>
+              </div>
+
+              <div class="row-between mt-sm">
+                <span class="text-muted">价格</span>
+                <span class="mono">¥{{ totalPrice }}</span>
+              </div>
+
+              <label class="text-sm text-muted mt-sm">支付方式</label>
+              <div class="payment-grid">
+                <button class="payment-option" :class="{ active: paymentMethod === 'ezpay' }" @click="paymentMethod = 'ezpay'">
+                  💳 易支付
+                </button>
+                <button class="payment-option" :class="{ active: paymentMethod === 'bepusdt' }" @click="paymentMethod = 'bepusdt'">
+                  🪙 USDT
+                </button>
+              </div>
+
+              <div v-if="paymentMethod === 'ezpay'" class="payment-grid mt-sm">
+                <button class="payment-option small" :class="{ active: paymentType === 'alipay' }" @click="paymentType = 'alipay'">支付宝</button>
+                <button class="payment-option small" :class="{ active: paymentType === 'wxpay' }" @click="paymentType = 'wxpay'">微信</button>
+              </div>
+
+              <label class="checkbox mt-md">
+                <input type="checkbox" v-model="useTXB" />
+                <span class="text-sm">使用 {{ userStore.appConfig?.credit_name || 'TXB' }} 折扣</span>
+              </label>
+
+              <div v-if="useTXB && maxTXBDiscount > 0" class="discount-info mt-sm">
+                <div class="row-between text-sm">
+                  <span class="text-muted">TXB抵扣</span>
+                  <span class="text-accent">-¥{{ maxTXBDiscount }} ({{ txbUsed.toFixed(0) }} TXB)</span>
+                </div>
+                <div class="row-between text-sm mt-xs">
+                  <span class="text-muted">实际支付</span>
+                  <span class="mono price-value">¥{{ finalPrice }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="row mt-lg" style="gap: var(--space-sm)">
+              <button class="btn btn-secondary" style="flex:1" @click="showPurchase = false">取消</button>
+              <button class="btn btn-primary" style="flex:2" @click="purchaseJellyfin" :disabled="purchasing">
+                {{ purchasing ? '处理中...' : `确认支付 ¥${finalPrice}` }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </teleport>
   </div>
 </template>
 
@@ -148,5 +266,75 @@ async function changePassword() {
 
 .device-item:last-child {
   border-bottom: none;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-end;
+  z-index: 200;
+}
+
+.modal {
+  width: 100%;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.payment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-sm);
+}
+
+.payment-option {
+  padding: var(--space-md);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.payment-option.small {
+  padding: var(--space-sm);
+  font-size: 0.8125rem;
+}
+
+.payment-option.active {
+  border-color: var(--accent-primary);
+  background: rgba(108, 92, 231, 0.1);
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+}
+
+.checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent-primary);
+}
+
+.discount-info {
+  padding: var(--space-sm);
+  background: rgba(0, 206, 201, 0.08);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(0, 206, 201, 0.2);
+}
+
+.text-accent {
+  color: var(--accent-secondary, #00cec9);
 }
 </style>
