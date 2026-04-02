@@ -15,6 +15,7 @@ interface Window {
             ready: () => void
             expand: () => void
             close: () => void
+            openLink: (url: string) => void
             isExpanded: boolean
             viewportHeight: number
             viewportStableHeight: number
