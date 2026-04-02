@@ -2,11 +2,13 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { api } from '@/api'
+import { usePaymentSheet } from '@/composables/usePaymentSheet'
 import { useToast } from '@/composables/useToast'
 import type { JellyfinDevice } from '@/types'
 
 const userStore = useUserStore()
 const toast = useToast()
+const { openPaymentSheet } = usePaymentSheet()
 const loading = ref(true)
 const qcCode = ref('')
 const qcLoading = ref(false)
@@ -35,6 +37,7 @@ const maxTXBDiscount = computed(() => {
 })
 const txbUsed = computed(() => discountRMB.value * txbRate.value)
 const finalPrice = computed(() => Math.max(0, totalPrice.value - discountRMB.value))
+const requiresPayment = computed(() => finalPrice.value > 0)
 
 watch(maxTXBDiscount, (value) => {
   if (discountRMB.value > value) discountRMB.value = value
@@ -113,17 +116,17 @@ async function purchaseJellyfin() {
   try {
     const resp = await api.purchaseJellyfin({
       months: purchaseMonths.value,
-      payment_method: paymentMethod.value,
-      payment_type: paymentMethod.value === 'bepusdt' ? 'usdt' : paymentType.value,
+      payment_method: requiresPayment.value ? paymentMethod.value : '',
+      payment_type: requiresPayment.value ? (paymentMethod.value === 'bepusdt' ? 'usdt' : paymentType.value) : '',
       use_txb: useTXB.value,
       discount_rmb: discountRMB.value,
     })
     await userStore.refreshState({ background: true })
-    if (resp.payment_url) {
-      window.Telegram?.WebApp?.openLink(resp.payment_url)
-    } else {
+    if (resp.is_zero_amount) {
       await loadViewState()
       window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success')
+    } else {
+      openPaymentSheet(resp)
     }
     showPurchase.value = false
     toast.success('Order created successfully.')
@@ -243,15 +246,21 @@ watch(() => userStore.jellyfin, async (nextValue) => {
                 <span class="mono">¥{{ totalPrice.toFixed(2) }}</span>
               </div>
 
-              <label class="text-sm text-muted mt-sm">Payment Method</label>
-              <div class="payment-grid">
-                <button class="payment-option" :class="{ active: paymentMethod === 'ezpay' }" @click="paymentMethod = 'ezpay'">EZPay</button>
-                <button class="payment-option" :class="{ active: paymentMethod === 'bepusdt' }" @click="paymentMethod = 'bepusdt'">USDT</button>
-              </div>
+              <template v-if="requiresPayment">
+                <label class="text-sm text-muted mt-sm">Payment Method</label>
+                <div class="payment-grid">
+                  <button class="payment-option" :class="{ active: paymentMethod === 'ezpay' }" @click="paymentMethod = 'ezpay'">EZPay</button>
+                  <button class="payment-option" :class="{ active: paymentMethod === 'bepusdt' }" @click="paymentMethod = 'bepusdt'">USDT</button>
+                </div>
 
-              <div v-if="paymentMethod === 'ezpay'" class="payment-grid mt-sm">
-                <button class="payment-option small" :class="{ active: paymentType === 'alipay' }" @click="paymentType = 'alipay'">Alipay</button>
-                <button class="payment-option small" :class="{ active: paymentType === 'wxpay' }" @click="paymentType = 'wxpay'">WeChat</button>
+                <div v-if="paymentMethod === 'ezpay'" class="payment-grid mt-sm">
+                  <button class="payment-option small" :class="{ active: paymentType === 'alipay' }" @click="paymentType = 'alipay'">Alipay</button>
+                  <button class="payment-option small" :class="{ active: paymentType === 'wxpay' }" @click="paymentType = 'wxpay'">WeChat</button>
+                </div>
+              </template>
+
+              <div v-else class="zero-payment-note">
+                Fully covered by {{ userStore.appConfig?.credit_name || 'TXB' }}. No payment gateway is required.
               </div>
 
               <label class="checkbox mt-md">
@@ -281,7 +290,7 @@ watch(() => userStore.jellyfin, async (nextValue) => {
             <div class="row mt-lg" style="gap: var(--space-sm)">
               <button class="btn btn-secondary" style="flex:1" @click="showPurchase = false">Cancel</button>
               <button class="btn btn-primary" style="flex:2" @click="purchaseJellyfin" :disabled="purchasing">
-                {{ purchasing ? 'Processing...' : `Confirm Payment ¥${finalPrice.toFixed(2)}` }}
+                {{ purchasing ? 'Processing...' : (requiresPayment ? `Confirm Payment ¥${finalPrice.toFixed(2)}` : 'Activate with TXB discount') }}
               </button>
             </div>
           </div>
@@ -363,6 +372,14 @@ watch(() => userStore.jellyfin, async (nextValue) => {
   background: rgba(0, 206, 201, 0.08);
   border-radius: var(--radius-sm);
   border: 1px solid rgba(0, 206, 201, 0.2);
+}
+
+.zero-payment-note {
+  padding: var(--space-sm);
+  background: rgba(0, 206, 201, 0.08);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(0, 206, 201, 0.2);
+  color: var(--text-secondary);
 }
 
 .slider {

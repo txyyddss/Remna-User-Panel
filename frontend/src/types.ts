@@ -215,6 +215,23 @@ export interface IPChangeResponse {
     success: boolean
 }
 
+export interface AdminIPChangeRequest {
+    id: number
+    request_key: string
+    user_id?: number
+    username: string
+    short_uuid: string
+    reason: string
+    status: 'PENDING' | 'CHANGING' | 'COMPLETED' | 'REJECTED'
+    agree_count: number
+    decline_count: number
+    message_id: number
+    message_link?: string
+    requested_at: string
+    completed_at?: string
+    updated_at: string
+}
+
 export interface MiniAppAccessStatus {
     user?: {
         id: number
@@ -252,9 +269,21 @@ export interface IPListResponse {
 // ─── Payment Response ───────────────────────────────────────────────
 export interface PaymentResponse {
     order_uuid: string
+    final_amount: number
+    txb_discount: number
+    txb_used: number
+    is_zero_amount: boolean
+    payment_method: string
+    payment_type: string
+    trade_id?: string
     payment_url?: string
-    qrcode_url?: string
-    amount?: number
+    qr_content?: string
+    display_amount?: string
+    display_currency?: string
+    payment_address?: string
+    network?: string
+    url_scheme?: string
+    expires_in_seconds?: number
 }
 
 // ─── API Responses ──────────────────────────────────────────────────

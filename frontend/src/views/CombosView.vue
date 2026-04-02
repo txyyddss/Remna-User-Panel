@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { api } from '@/api'
+import { usePaymentSheet } from '@/composables/usePaymentSheet'
+import { useToast } from '@/composables/useToast'
 import { useUserStore } from '@/stores/user'
 import { parseSanitizedDecimal, sanitizeDecimalInput } from '@/utils/number'
 import type { Combo } from '@/types'
 
 const userStore = useUserStore()
+const toast = useToast()
+const { openPaymentSheet } = usePaymentSheet()
 
 const combos = ref<Combo[]>([])
 const loading = ref(true)
@@ -55,6 +59,7 @@ const maxComboDiscount = computed(() => {
 
 const comboFinalPrice = computed(() => Math.max(0, comboPrice.value - discountRMB.value))
 const comboTXBUsed = computed(() => discountRMB.value * txbRate.value)
+const comboRequiresPayment = computed(() => comboFinalPrice.value > 0)
 
 const maxCustomDiscount = computed(() => {
   if (!customUseTXB.value || customAmountValue.value <= 0) {
@@ -65,6 +70,7 @@ const maxCustomDiscount = computed(() => {
 
 const customFinalPrice = computed(() => Math.max(0, customAmountValue.value - customDiscountRMB.value))
 const customTXBUsed = computed(() => customDiscountRMB.value * txbRate.value)
+const customRequiresPayment = computed(() => customFinalPrice.value > 0)
 
 watch(useTXB, (enabled) => {
   if (!enabled) {
@@ -136,15 +142,18 @@ async function purchase() {
   try {
     const resp = await api.purchaseCombo({
       combo_uuid: selectedCombo.value.uuid,
-      payment_method: paymentMethod.value,
-      payment_type: getSelectedPaymentType(paymentMethod.value, paymentType.value, usdtNetwork.value),
+      payment_method: comboRequiresPayment.value ? paymentMethod.value : '',
+      payment_type: comboRequiresPayment.value ? getSelectedPaymentType(paymentMethod.value, paymentType.value, usdtNetwork.value) : '',
       use_txb: useTXB.value,
       discount_rmb: discountRMB.value,
     })
 
     await userStore.refreshState({ background: true })
-    if (resp.payment_url) {
-      window.Telegram?.WebApp?.openLink(resp.payment_url)
+    if (resp.is_zero_amount) {
+      toast.success('Plan activated successfully.')
+    } else {
+      openPaymentSheet(resp)
+      toast.success('Order created successfully.')
     }
     selectedCombo.value = null
   } catch (e: any) {
@@ -166,15 +175,18 @@ async function submitCustomPayment() {
     const resp = await api.customPayment({
       amount: customAmountValue.value,
       message: customMessage.value.trim(),
-      payment_method: customPaymentMethod.value,
-      payment_type: getSelectedPaymentType(customPaymentMethod.value, customPaymentType.value, customUsdtNetwork.value),
+      payment_method: customRequiresPayment.value ? customPaymentMethod.value : '',
+      payment_type: customRequiresPayment.value ? getSelectedPaymentType(customPaymentMethod.value, customPaymentType.value, customUsdtNetwork.value) : '',
       use_txb: customUseTXB.value,
       discount_rmb: customDiscountRMB.value,
     })
 
     await userStore.refreshState({ background: true })
-    if (resp.payment_url) {
-      window.Telegram?.WebApp?.openLink(resp.payment_url)
+    if (resp.is_zero_amount) {
+      toast.success('Zero-amount order submitted.')
+    } else {
+      openPaymentSheet(resp)
+      toast.success('Order created successfully.')
     }
 
     showCustomPayment.value = false
@@ -248,7 +260,7 @@ onMounted(() => {
           />
           <input class="input" v-model="customMessage" placeholder="Order note for admins (optional)" />
 
-          <div class="payment-panel">
+          <div v-if="customRequiresPayment" class="payment-panel">
             <label class="field-label">Payment method</label>
             <div class="payment-grid">
               <button class="payment-option" :class="{ active: customPaymentMethod === 'ezpay' }" @click="customPaymentMethod = 'ezpay'">EZPay</button>
@@ -271,6 +283,10 @@ onMounted(() => {
                 {{ network.label }}
               </button>
             </div>
+          </div>
+
+          <div v-else class="zero-payment-note">
+            Fully covered by {{ userStore.appConfig?.credit_name || 'TXB' }}. No payment gateway is required.
           </div>
 
           <label class="checkbox-row">
@@ -297,7 +313,7 @@ onMounted(() => {
           </div>
 
           <button class="btn btn-primary btn-block" @click="submitCustomPayment" :disabled="customSubmitting">
-            {{ customSubmitting ? 'Creating order...' : `Create payment for ${customFinalPrice.toFixed(2)} RMB` }}
+            {{ customSubmitting ? 'Creating order...' : (customRequiresPayment ? `Create payment for ${customFinalPrice.toFixed(2)} RMB` : 'Submit zero-amount order') }}
           </button>
         </div>
       </div>
@@ -312,7 +328,7 @@ onMounted(() => {
               <span class="mono">{{ comboPrice.toFixed(2) }} RMB</span>
             </div>
 
-            <div class="payment-panel">
+            <div v-if="comboRequiresPayment" class="payment-panel">
               <label class="field-label">Payment method</label>
               <div class="payment-grid">
                 <button class="payment-option" :class="{ active: paymentMethod === 'ezpay' }" @click="paymentMethod = 'ezpay'">EZPay</button>
@@ -335,6 +351,10 @@ onMounted(() => {
                   {{ network.label }}
                 </button>
               </div>
+            </div>
+
+            <div v-else class="zero-payment-note">
+              Fully covered by {{ userStore.appConfig?.credit_name || 'TXB' }}. No payment gateway is required.
             </div>
 
             <label class="checkbox-row mt-md">
@@ -363,7 +383,7 @@ onMounted(() => {
             <div class="row mt-lg action-row">
               <button class="btn btn-secondary" style="flex: 1" @click="selectedCombo = null">Cancel</button>
               <button class="btn btn-primary" style="flex: 2" @click="purchase" :disabled="purchasing">
-                {{ purchasing ? 'Creating order...' : `Continue with ${comboFinalPrice.toFixed(2)} RMB` }}
+                {{ purchasing ? 'Creating order...' : (comboRequiresPayment ? `Continue with ${comboFinalPrice.toFixed(2)} RMB` : 'Activate with TXB discount') }}
               </button>
             </div>
           </div>
@@ -464,6 +484,15 @@ onMounted(() => {
   border-radius: var(--radius-md);
   background: rgba(34, 197, 94, 0.08);
   border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.zero-payment-note {
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(34, 197, 94, 0.18);
+  background: rgba(34, 197, 94, 0.08);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
 }
 
 .summary-row {

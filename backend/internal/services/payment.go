@@ -47,12 +47,34 @@ type CreatePaymentRequest struct {
 
 // CreatePaymentResponse is the response after creating payment
 type CreatePaymentResponse struct {
-	OrderUUID   string  `json:"order_uuid"`
-	FinalAmount float64 `json:"final_amount"`
-	TXBDiscount float64 `json:"txb_discount"`
-	TXBUsed     float64 `json:"txb_used"`
-	PaymentURL  string  `json:"payment_url"`
-	TradeID     string  `json:"trade_id,omitempty"`
+	OrderUUID        string  `json:"order_uuid"`
+	FinalAmount      float64 `json:"final_amount"`
+	TXBDiscount      float64 `json:"txb_discount"`
+	TXBUsed          float64 `json:"txb_used"`
+	IsZeroAmount     bool    `json:"is_zero_amount"`
+	PaymentMethod    string  `json:"payment_method"`
+	PaymentType      string  `json:"payment_type"`
+	TradeID          string  `json:"trade_id,omitempty"`
+	PaymentURL       string  `json:"payment_url,omitempty"`
+	QRContent        string  `json:"qr_content,omitempty"`
+	DisplayAmount    string  `json:"display_amount,omitempty"`
+	DisplayCurrency  string  `json:"display_currency,omitempty"`
+	PaymentAddress   string  `json:"payment_address,omitempty"`
+	Network          string  `json:"network,omitempty"`
+	URLScheme        string  `json:"url_scheme,omitempty"`
+	ExpiresInSeconds int     `json:"expires_in_seconds,omitempty"`
+}
+
+type upstreamPaymentDetails struct {
+	TradeID          string
+	PaymentURL       string
+	QRContent        string
+	DisplayAmount    string
+	DisplayCurrency  string
+	PaymentAddress   string
+	Network          string
+	URLScheme        string
+	ExpiresInSeconds int
 }
 
 type OrderFilters struct {
@@ -171,33 +193,43 @@ func (s *PaymentService) CreatePayment(ctx context.Context, userID int64, req Cr
 			return nil, s.handleCreationFailure(ctx, orderUUID, userID, consumedTXB, err)
 		}
 		return &CreatePaymentResponse{
-			OrderUUID:   orderUUID,
-			FinalAmount: 0,
-			TXBDiscount: discountRMB,
-			TXBUsed:     consumedTXB,
-			PaymentURL:  "",
+			OrderUUID:    orderUUID,
+			FinalAmount:  0,
+			TXBDiscount:  discountRMB,
+			TXBUsed:      consumedTXB,
+			IsZeroAmount: true,
 		}, nil
 	}
 
-	paymentURL, tradeID, err := s.createUpstreamPayment(ctx, orderUUID, finalAmount, paymentMethod, paymentType, req.ClientIP)
+	details, err := s.createUpstreamPayment(ctx, orderUUID, finalAmount, paymentMethod, paymentType, req.ClientIP)
 	if err != nil {
 		return nil, s.handleCreationFailure(ctx, orderUUID, userID, consumedTXB, err)
 	}
 
 	if _, err := database.DB().ExecContext(ctx,
 		"UPDATE orders SET upstream_id = ?, updated_at = ? WHERE uuid = ?",
-		tradeID, time.Now(), orderUUID,
+		details.TradeID, time.Now(), orderUUID,
 	); err != nil {
 		return nil, s.handleCreationFailure(ctx, orderUUID, userID, consumedTXB, fmt.Errorf("save upstream trade id: %w", err))
 	}
 
 	return &CreatePaymentResponse{
-		OrderUUID:   orderUUID,
-		FinalAmount: finalAmount,
-		TXBDiscount: discountRMB,
-		TXBUsed:     consumedTXB,
-		PaymentURL:  paymentURL,
-		TradeID:     tradeID,
+		OrderUUID:        orderUUID,
+		FinalAmount:      finalAmount,
+		TXBDiscount:      discountRMB,
+		TXBUsed:          consumedTXB,
+		IsZeroAmount:     false,
+		PaymentMethod:    paymentMethod,
+		PaymentType:      paymentType,
+		TradeID:          details.TradeID,
+		PaymentURL:       details.PaymentURL,
+		QRContent:        details.QRContent,
+		DisplayAmount:    details.DisplayAmount,
+		DisplayCurrency:  details.DisplayCurrency,
+		PaymentAddress:   details.PaymentAddress,
+		Network:          details.Network,
+		URLScheme:        details.URLScheme,
+		ExpiresInSeconds: details.ExpiresInSeconds,
 	}, nil
 }
 
@@ -274,7 +306,7 @@ func normalizePaymentRequest(finalAmount float64, paymentMethod, paymentType str
 
 	switch paymentMethod {
 	case "bepusdt":
-		if paymentType == "" {
+		if paymentType == "" || paymentType == "usdt" {
 			paymentType = "usdt.polygon"
 		}
 		switch paymentType {
@@ -293,7 +325,7 @@ func normalizePaymentRequest(finalAmount float64, paymentMethod, paymentType str
 	}
 }
 
-func (s *PaymentService) createUpstreamPayment(ctx context.Context, orderUUID string, finalAmount float64, paymentMethod, paymentType, clientIP string) (string, string, error) {
+func (s *PaymentService) createUpstreamPayment(ctx context.Context, orderUUID string, finalAmount float64, paymentMethod, paymentType, clientIP string) (*upstreamPaymentDetails, error) {
 	cfg := config.Get()
 
 	switch paymentMethod {
@@ -301,27 +333,63 @@ func (s *PaymentService) createUpstreamPayment(ctx context.Context, orderUUID st
 		client := bepusdt.NewClient(cfg.BEPusdt.URL, cfg.BEPusdt.Token, cfg.BEPusdt.NotifyURL, cfg.BEPusdt.RedirectURL)
 		resp, err := client.CreateTransaction(orderUUID, finalAmount, "order payment", paymentType)
 		if err != nil {
-			return "", "", fmt.Errorf("create USDT payment: %w", err)
+			return nil, fmt.Errorf("create USDT payment: %w", err)
 		}
-		return resp.Data.PaymentURL, resp.Data.TradeID, nil
+		return &upstreamPaymentDetails{
+			TradeID:          resp.Data.TradeID,
+			PaymentURL:       resp.Data.PaymentURL,
+			QRContent:        resp.Data.PaymentURL,
+			DisplayAmount:    resp.Data.ActualAmount,
+			DisplayCurrency:  parseBEPusdtCurrency(paymentType),
+			PaymentAddress:   resp.Data.Token,
+			Network:          parseBEPusdtNetwork(paymentType),
+			ExpiresInSeconds: resp.Data.ExpirationTime,
+		}, nil
 
 	case "ezpay":
 		client := ezpay.NewClient(cfg.EZPay.URL, cfg.EZPay.PID, cfg.EZPay.Key, cfg.EZPay.NotifyURL, cfg.EZPay.ReturnURL)
 		resp, err := client.CreatePayment(orderUUID, paymentType, "order payment", fmt.Sprintf("%.2f", finalAmount), clientIP)
 		if err != nil {
 			// Fallback to page redirect when the API endpoint is unavailable.
-			return client.GetPaymentURL(orderUUID, paymentType, "order payment", fmt.Sprintf("%.2f", finalAmount)), "", nil
+			return &upstreamPaymentDetails{
+				PaymentURL:      client.GetPaymentURL(orderUUID, paymentType, "order payment", fmt.Sprintf("%.2f", finalAmount)),
+				DisplayAmount:   fmt.Sprintf("%.2f", finalAmount),
+				DisplayCurrency: "CNY",
+			}, nil
 		}
 
 		paymentURL := resp.PayURL
 		if paymentURL == "" {
 			paymentURL = resp.QRCode
 		}
-		return paymentURL, resp.TradeNo, nil
+		return &upstreamPaymentDetails{
+			TradeID:         resp.TradeNo,
+			PaymentURL:      paymentURL,
+			QRContent:       resp.QRCode,
+			DisplayAmount:   fmt.Sprintf("%.2f", finalAmount),
+			DisplayCurrency: "CNY",
+			URLScheme:       resp.URLScheme,
+		}, nil
 
 	default:
-		return "", "", fmt.Errorf("unsupported payment method: %s", paymentMethod)
+		return nil, fmt.Errorf("unsupported payment method: %s", paymentMethod)
 	}
+}
+
+func parseBEPusdtCurrency(paymentType string) string {
+	parts := strings.SplitN(paymentType, ".", 2)
+	if len(parts) == 0 || parts[0] == "" {
+		return "USDT"
+	}
+	return strings.ToUpper(parts[0])
+}
+
+func parseBEPusdtNetwork(paymentType string) string {
+	parts := strings.SplitN(paymentType, ".", 2)
+	if len(parts) < 2 || parts[1] == "" {
+		return ""
+	}
+	return strings.ToUpper(parts[1])
 }
 
 func (s *PaymentService) handleCreationFailure(ctx context.Context, orderUUID string, userID int64, consumedTXB float64, cause error) error {

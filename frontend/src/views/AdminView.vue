@@ -4,6 +4,7 @@ import { api } from '@/api'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import AppSelect from '@/components/AppSelect.vue'
+import AdminIPChangePanel from '@/components/admin/AdminIPChangePanel.vue'
 import type { AppConfig, Combo, User, Squad, OrderDetail, OrderEvent } from '@/types'
 
 interface UserFormData {
@@ -463,6 +464,7 @@ onMounted(initialize)
         <button class="tab" :class="{ active: activeTab === 'combos' }" @click="activeTab = 'combos'">Plans</button>
         <button class="tab" :class="{ active: activeTab === 'users' }" @click="activeTab = 'users'; if (!users.length) loadUsers()">Users</button>
         <button class="tab" :class="{ active: activeTab === 'billing' }" @click="activeTab = 'billing'; if (!orders.length) loadOrders()">Billing</button>
+        <button class="tab" :class="{ active: activeTab === 'ip-change' }" @click="activeTab = 'ip-change'">IP Change</button>
         <button class="tab" :class="{ active: activeTab === 'config' }" @click="activeTab = 'config'">Config</button>
       </div>
 
@@ -581,6 +583,11 @@ onMounted(initialize)
             <button class="btn btn-sm btn-secondary" :disabled="(orderFilters.page + 1) * 20 >= orderTotal" @click="orderFilters.page++; loadOrders()">Next</button>
           </div>
         </div>
+      </div>
+
+      <!-- CONFIG TAB -->
+      <div v-if="activeTab === 'ip-change'">
+        <AdminIPChangePanel />
       </div>
 
       <!-- CONFIG TAB -->

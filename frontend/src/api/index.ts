@@ -20,6 +20,7 @@ import type {
     SubKeys,
     IPChangeStatus,
     IPChangeResponse,
+    AdminIPChangeRequest,
     MiniAppAccessStatus,
     SubInfo,
     JellyfinDevicesResponse,
@@ -304,4 +305,13 @@ export const api = {
 
     adminOrderAction: (uuid: string, action: string) =>
         request<OrderDetail & { events?: OrderEvent[] }>(`/admin/orders/${uuid}/actions/${action}`, { method: 'POST' }),
+
+    adminListIPChangeRequests: (limit = 20, offset = 0) =>
+        request<{ requests: AdminIPChangeRequest[]; total: number }>(`/admin/ip-change/requests?limit=${limit}&offset=${offset}`),
+
+    adminIPChangeAction: (id: number, action: 'approve' | 'decline' | 'complete') =>
+        request<AdminIPChangeRequest>(`/admin/ip-change/requests/${id}/actions/${action}`, { method: 'POST' }),
+
+    adminDeleteIPChangeRequest: (id: number) =>
+        request<{ status: string }>(`/admin/ip-change/requests/${id}`, { method: 'DELETE' }),
 }

@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import AppToast from '@/components/AppToast.vue'
 import AppConfirm from '@/components/AppConfirm.vue'
+import PaymentInstructionModal from '@/components/payments/PaymentInstructionModal.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -164,6 +165,7 @@ onUnmounted(() => {
 
     <AppToast />
     <AppConfirm />
+    <PaymentInstructionModal />
   </div>
 
   <div v-else class="loading-page">

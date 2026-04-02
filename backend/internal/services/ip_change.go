@@ -66,6 +66,23 @@ type IPChangeSubmitResponse struct {
 	Success bool `json:"success"`
 }
 
+type AdminIPChangeRequest struct {
+	ID           int64      `json:"id"`
+	RequestKey   string     `json:"request_key"`
+	UserID       *int64     `json:"user_id,omitempty"`
+	Username     string     `json:"username"`
+	ShortUUID    string     `json:"short_uuid"`
+	Reason       string     `json:"reason"`
+	Status       string     `json:"status"`
+	AgreeCount   int        `json:"agree_count"`
+	DeclineCount int        `json:"decline_count"`
+	MessageID    int        `json:"message_id"`
+	MessageLink  string     `json:"message_link,omitempty"`
+	RequestedAt  time.Time  `json:"requested_at"`
+	CompletedAt  *time.Time `json:"completed_at,omitempty"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+}
+
 type IPChangeAPIError struct {
 	Status  int
 	Message string
@@ -166,6 +183,48 @@ func (s *IPChangeService) Lookup(ctx context.Context) (*IPChangeLookupResponse, 
 	}, nil
 }
 
+func (s *IPChangeService) ListAdminRequests(ctx context.Context, limit, offset int) ([]AdminIPChangeRequest, int, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	var total int
+	if err := database.DB().QueryRowContext(ctx, "SELECT COUNT(*) FROM ip_change_requests").Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count ip change requests: %w", err)
+	}
+
+	rows, err := database.DB().QueryContext(ctx,
+		`SELECT id, request_key, user_id, username, short_uuid, reason, status, agree_count, decline_count, message_id, requested_at, completed_at, updated_at
+		 FROM ip_change_requests
+		 ORDER BY CASE status WHEN ? THEN 0 WHEN ? THEN 1 ELSE 2 END, updated_at DESC, id DESC
+		 LIMIT ? OFFSET ?`,
+		ipChangeStatusChanging, ipChangeStatusPending, limit, offset,
+	)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list ip change requests: %w", err)
+	}
+	defer rows.Close()
+
+	var requests []AdminIPChangeRequest
+	for rows.Next() {
+		req, err := scanIPChangeRequest(rows)
+		if err != nil {
+			return nil, 0, fmt.Errorf("scan ip change request: %w", err)
+		}
+		requests = append(requests, toAdminIPChangeRequest(req, s.messageLink(req.MessageID)))
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("iterate ip change requests: %w", err)
+	}
+	if requests == nil {
+		requests = []AdminIPChangeRequest{}
+	}
+	return requests, total, nil
+}
+
 func (s *IPChangeService) AddAPIRequest(ctx context.Context, reason string) (string, error) {
 	reason = strings.TrimSpace(reason)
 	if reason == "" {
@@ -224,28 +283,7 @@ func (s *IPChangeService) MarkSwapCompleted(ctx context.Context) error {
 		return &IPChangeAPIError{Status: http.StatusNotFound, Message: "no pending tasks"}
 	}
 
-	now := time.Now()
-	if _, err := database.DB().ExecContext(ctx,
-		`UPDATE ip_change_requests
-		 SET status = ?, agree_count = 0, completed_at = ?, updated_at = ?
-		 WHERE id = ?`,
-		ipChangeStatusCompleted, now, now, req.ID,
-	); err != nil {
-		return fmt.Errorf("mark swap completed: %w", err)
-	}
-
-	req.Status = ipChangeStatusCompleted
-	req.AgreeCount = 0
-	req.CompletedAt = &now
-	req.UpdatedAt = now
-
-	if req.MessageID > 0 {
-		if err := s.editTelegramMessage(ctx, req.MessageID, s.buildMessageText(req), nil); err != nil {
-			slog.Warn("ip-change: failed to edit swap completion message", "request_id", req.ID, "error", err)
-		}
-	}
-
-	return nil
+	return s.markSwapCompletedRecord(ctx, req)
 }
 
 func (s *IPChangeService) ProcessVote(ctx context.Context, action, username string, voterTelegramID int64) (*IPChangeRequestRecord, error) {
@@ -305,16 +343,24 @@ func (s *IPChangeService) ProcessVote(ctx context.Context, action, username stri
 }
 
 func (s *IPChangeService) buildMessageText(req *IPChangeRequestRecord) string {
+	return s.buildMessageTextWithOverride(req, "")
+}
+
+func (s *IPChangeService) buildMessageTextWithOverride(req *IPChangeRequestRecord, statusOverride string) string {
 	requestedAt := req.RequestedAt.In(time.FixedZone("CST", 8*3600)).Format("2006-01-02 15:04:05")
 	statusLine := fmt.Sprintf("Status: Pending (%d/%d)", req.AgreeCount, ipChangeVotesNeeded)
 
-	switch req.Status {
-	case ipChangeStatusChanging:
-		statusLine = fmt.Sprintf("Status: Changing (%d/%d)", ipChangeVotesNeeded, ipChangeVotesNeeded)
-	case ipChangeStatusCompleted:
-		statusLine = "Status: IP swapped successfully"
-	case ipChangeStatusRejected:
-		statusLine = "Status: Rejected"
+	if statusOverride != "" {
+		statusLine = statusOverride
+	} else {
+		switch req.Status {
+		case ipChangeStatusChanging:
+			statusLine = fmt.Sprintf("Status: Changing (%d/%d)", ipChangeVotesNeeded, ipChangeVotesNeeded)
+		case ipChangeStatusCompleted:
+			statusLine = "Status: IP swapped successfully"
+		case ipChangeStatusRejected:
+			statusLine = "Status: Rejected"
+		}
 	}
 
 	return fmt.Sprintf(
@@ -349,6 +395,102 @@ func (s *IPChangeService) buildInlineKeyboard(req *IPChangeRequestRecord) map[st
 			},
 		},
 	}
+}
+
+func (s *IPChangeService) AdminApproveRequest(ctx context.Context, requestID int64) (*AdminIPChangeRequest, error) {
+	req, err := s.getRequestByID(ctx, requestID)
+	if err != nil {
+		return nil, err
+	}
+	if req == nil {
+		return nil, &IPChangeAPIError{Status: http.StatusNotFound, Message: "request not found"}
+	}
+	if req.Status != ipChangeStatusPending {
+		return nil, &IPChangeAPIError{Status: http.StatusBadRequest, Message: "only pending requests can be approved"}
+	}
+
+	req.Status = ipChangeStatusChanging
+	req.AgreeCount = ipChangeVotesNeeded
+	req.UpdatedAt = time.Now()
+
+	if err := s.persistRequestState(ctx, req); err != nil {
+		return nil, err
+	}
+	s.syncTelegramRequestState(ctx, req, "")
+
+	result := toAdminIPChangeRequest(req, s.messageLink(req.MessageID))
+	return &result, nil
+}
+
+func (s *IPChangeService) AdminDeclineRequest(ctx context.Context, requestID int64) (*AdminIPChangeRequest, error) {
+	req, err := s.getRequestByID(ctx, requestID)
+	if err != nil {
+		return nil, err
+	}
+	if req == nil {
+		return nil, &IPChangeAPIError{Status: http.StatusNotFound, Message: "request not found"}
+	}
+	if req.Status != ipChangeStatusPending {
+		return nil, &IPChangeAPIError{Status: http.StatusBadRequest, Message: "only pending requests can be declined"}
+	}
+
+	req.Status = ipChangeStatusRejected
+	req.DeclineCount = ipChangeDeclinesLimit
+	req.UpdatedAt = time.Now()
+
+	if err := s.persistRequestState(ctx, req); err != nil {
+		return nil, err
+	}
+	s.syncTelegramRequestState(ctx, req, "")
+
+	result := toAdminIPChangeRequest(req, s.messageLink(req.MessageID))
+	return &result, nil
+}
+
+func (s *IPChangeService) AdminCompleteRequest(ctx context.Context, requestID int64) (*AdminIPChangeRequest, error) {
+	req, err := s.getRequestByID(ctx, requestID)
+	if err != nil {
+		return nil, err
+	}
+	if req == nil {
+		return nil, &IPChangeAPIError{Status: http.StatusNotFound, Message: "request not found"}
+	}
+	if req.Status != ipChangeStatusChanging {
+		return nil, &IPChangeAPIError{Status: http.StatusBadRequest, Message: "only changing requests can be completed"}
+	}
+
+	if err := s.markSwapCompletedRecord(ctx, req); err != nil {
+		return nil, err
+	}
+	refreshed, err := s.getRequestByID(ctx, requestID)
+	if err != nil {
+		return nil, err
+	}
+	if refreshed == nil {
+		return nil, &IPChangeAPIError{Status: http.StatusNotFound, Message: "request not found"}
+	}
+	result := toAdminIPChangeRequest(refreshed, s.messageLink(refreshed.MessageID))
+	return &result, nil
+}
+
+func (s *IPChangeService) AdminDeleteRequest(ctx context.Context, requestID int64) error {
+	req, err := s.getRequestByID(ctx, requestID)
+	if err != nil {
+		return err
+	}
+	if req == nil {
+		return &IPChangeAPIError{Status: http.StatusNotFound, Message: "request not found"}
+	}
+	if req.Status == ipChangeStatusCompleted {
+		return &IPChangeAPIError{Status: http.StatusBadRequest, Message: "completed requests cannot be deleted"}
+	}
+
+	s.syncTelegramRequestState(ctx, req, "Status: Deleted by admin")
+
+	if _, err := database.DB().ExecContext(ctx, "DELETE FROM ip_change_requests WHERE id = ?", requestID); err != nil {
+		return fmt.Errorf("delete ip change request: %w", err)
+	}
+	return nil
 }
 
 func (s *IPChangeService) resolveSubscriptionUser(subscription string) (*remnawave.UserData, string, error) {
@@ -494,6 +636,20 @@ func (s *IPChangeService) editTelegramMessage(ctx context.Context, messageID int
 	return nil
 }
 
+func (s *IPChangeService) markSwapCompletedRecord(ctx context.Context, req *IPChangeRequestRecord) error {
+	now := time.Now()
+	req.Status = ipChangeStatusCompleted
+	req.AgreeCount = 0
+	req.CompletedAt = &now
+	req.UpdatedAt = now
+
+	if err := s.persistRequestState(ctx, req); err != nil {
+		return err
+	}
+	s.syncTelegramRequestState(ctx, req, "")
+	return nil
+}
+
 func (s *IPChangeService) doTelegramJSON(ctx context.Context, method string, body interface{}, out interface{}) error {
 	rawBody, err := json.Marshal(body)
 	if err != nil {
@@ -537,6 +693,23 @@ func (s *IPChangeService) getActiveRequest(ctx context.Context) (*IPChangeReques
 	}
 	if err != nil {
 		return nil, fmt.Errorf("query active request: %w", err)
+	}
+	return req, nil
+}
+
+func (s *IPChangeService) getRequestByID(ctx context.Context, requestID int64) (*IPChangeRequestRecord, error) {
+	row := database.DB().QueryRowContext(ctx,
+		`SELECT id, request_key, user_id, username, short_uuid, reason, status, agree_count, decline_count, message_id, requested_at, completed_at, updated_at
+		 FROM ip_change_requests
+		 WHERE id = ?`,
+		requestID,
+	)
+	req, err := scanIPChangeRequest(row)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("query request by id: %w", err)
 	}
 	return req, nil
 }
@@ -647,7 +820,7 @@ func (s *IPChangeService) upsertRequest(ctx context.Context, req IPChangeRequest
 		   requested_at = excluded.requested_at,
 		   completed_at = excluded.completed_at,
 		   updated_at = excluded.updated_at`,
-		req.RequestKey, nullableValue(req.UserID), req.Username, req.ShortUUID, req.Reason, req.Status, req.AgreeCount, req.DeclineCount, req.MessageID, req.RequestedAt, req.CompletedAt, req.UpdatedAt,
+		req.RequestKey, nullableValue(req.UserID), req.Username, req.ShortUUID, req.Reason, req.Status, req.AgreeCount, req.DeclineCount, req.MessageID, req.RequestedAt, nullableTimeValue(req.CompletedAt), req.UpdatedAt,
 	); err != nil {
 		return 0, fmt.Errorf("upsert ip change request: %w", err)
 	}
@@ -663,6 +836,33 @@ func (s *IPChangeService) upsertRequest(ctx context.Context, req IPChangeRequest
 func (s *IPChangeService) clearVotes(ctx context.Context, requestID int64) error {
 	_, err := database.DB().ExecContext(ctx, "DELETE FROM ip_change_votes WHERE request_id = ?", requestID)
 	return err
+}
+
+func (s *IPChangeService) persistRequestState(ctx context.Context, req *IPChangeRequestRecord) error {
+	if _, err := database.DB().ExecContext(ctx,
+		`UPDATE ip_change_requests
+		 SET status = ?, agree_count = ?, decline_count = ?, completed_at = ?, updated_at = ?
+		 WHERE id = ?`,
+		req.Status, req.AgreeCount, req.DeclineCount, nullableTimeValue(req.CompletedAt), req.UpdatedAt, req.ID,
+	); err != nil {
+		return fmt.Errorf("update ip change request: %w", err)
+	}
+	return nil
+}
+
+func (s *IPChangeService) syncTelegramRequestState(ctx context.Context, req *IPChangeRequestRecord, statusOverride string) {
+	if req.MessageID <= 0 {
+		return
+	}
+
+	replyMarkup := emptyTelegramInlineKeyboard()
+	if req.Status == ipChangeStatusPending && statusOverride == "" {
+		replyMarkup = s.buildInlineKeyboard(req)
+	}
+
+	if err := s.editTelegramMessage(ctx, req.MessageID, s.buildMessageTextWithOverride(req, statusOverride), replyMarkup); err != nil {
+		slog.Warn("ip-change: failed to sync Telegram request state", "request_id", req.ID, "error", err)
+	}
 }
 
 func (s *IPChangeService) messageLink(messageID int) string {
@@ -683,6 +883,36 @@ func (s *IPChangeService) messageLink(messageID int) string {
 		return ""
 	}
 	return fmt.Sprintf("https://t.me/c/%s/%d", chatID, messageID)
+}
+
+func toAdminIPChangeRequest(req *IPChangeRequestRecord, messageLink string) AdminIPChangeRequest {
+	var userID *int64
+	if req.UserID.Valid {
+		userID = &req.UserID.Int64
+	}
+
+	return AdminIPChangeRequest{
+		ID:           req.ID,
+		RequestKey:   req.RequestKey,
+		UserID:       userID,
+		Username:     req.Username,
+		ShortUUID:    req.ShortUUID,
+		Reason:       req.Reason,
+		Status:       req.Status,
+		AgreeCount:   req.AgreeCount,
+		DeclineCount: req.DeclineCount,
+		MessageID:    req.MessageID,
+		MessageLink:  messageLink,
+		RequestedAt:  req.RequestedAt,
+		CompletedAt:  req.CompletedAt,
+		UpdatedAt:    req.UpdatedAt,
+	}
+}
+
+func emptyTelegramInlineKeyboard() map[string]interface{} {
+	return map[string]interface{}{
+		"inline_keyboard": [][]map[string]string{},
+	}
 }
 
 func scanIPChangeRequest(scanner interface {
@@ -757,6 +987,13 @@ func nullableInt64(value int64) sql.NullInt64 {
 func nullableValue(value sql.NullInt64) interface{} {
 	if value.Valid {
 		return value.Int64
+	}
+	return nil
+}
+
+func nullableTimeValue(value *time.Time) interface{} {
+	if value != nil {
+		return *value
 	}
 	return nil
 }
