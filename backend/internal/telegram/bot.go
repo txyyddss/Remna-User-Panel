@@ -65,7 +65,7 @@ func (b *Bot) Start(ctx context.Context) {
 
 	// Delete any existing webhook to prevent conflict with getUpdates
 	_, err := b.bot.DeleteWebhook(ctx, &tgbot.DeleteWebhookParams{
-		DropPendingUpdates: false,
+		DropPendingUpdates: true,
 	})
 	if err != nil {
 		log.Printf("[telegram] warning: failed to delete webhook (can be ignored if none exists): %v", err)
