@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -24,22 +25,25 @@ import (
 
 // Bot is the Telegram bot handler
 type Bot struct {
-	bot    *tgbot.Bot
-	credit *services.CreditService
+	bot      *tgbot.Bot
+	credit   *services.CreditService
+	ipChange *services.IPChangeService
 }
 
 // NewBot creates and configures the Telegram bot
-func NewBot(credit *services.CreditService) (*Bot, error) {
+func NewBot(credit *services.CreditService, ipChange *services.IPChangeService) (*Bot, error) {
 	cfg := config.Get()
 	if cfg.Telegram.BotToken == "" {
 		slog.Info("telegram: bot token not configured, skipping bot initialization")
 		return nil, nil
 	}
 
-	b := &Bot{credit: credit}
+	b := &Bot{credit: credit, ipChange: ipChange}
 
 	opts := []tgbot.Option{
 		tgbot.WithDefaultHandler(b.handleMessage),
+		tgbot.WithCallbackQueryDataHandler("agree:", tgbot.MatchTypePrefix, b.handleIPChangeVote),
+		tgbot.WithCallbackQueryDataHandler("decline:", tgbot.MatchTypePrefix, b.handleIPChangeVote),
 	}
 
 	bot, err := tgbot.New(cfg.Telegram.BotToken, opts...)
@@ -91,7 +95,7 @@ func (b *Bot) handleSignup(ctx context.Context, bot *tgbot.Bot, update *tgmodels
 		return
 	}
 
-	value, newBalance, err := b.credit.Signup(userID)
+	value, newBalance, err := b.credit.Signup(ctx, userID)
 	if err != nil {
 		bot.SendMessage(ctx, &tgbot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
@@ -156,7 +160,7 @@ func (b *Bot) handleBet(ctx context.Context, bot *tgbot.Bot, update *tgmodels.Up
 		return
 	}
 
-	result, newBalance, err := b.credit.Bet(userID, amount)
+	result, newBalance, err := b.credit.Bet(ctx, userID, amount)
 	if err != nil {
 		bot.SendMessage(ctx, &tgbot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
@@ -312,6 +316,83 @@ func (b *Bot) formatSubMessage(user *remnawave.UserData, client *remnawave.Clien
 	}
 
 	return text
+}
+
+func (b *Bot) handleIPChangeVote(ctx context.Context, bot *tgbot.Bot, update *tgmodels.Update) {
+	if update.CallbackQuery == nil || b.ipChange == nil {
+		return
+	}
+
+	parts := strings.SplitN(update.CallbackQuery.Data, ":", 2)
+	if len(parts) != 2 {
+		return
+	}
+	action, username := parts[0], parts[1]
+
+	req, err := b.ipChange.ProcessVote(ctx, action, username, update.CallbackQuery.From.ID)
+	answerText := "Vote accepted"
+	if action == "agree" {
+		answerText = "Voted Agree"
+	} else if action == "decline" {
+		answerText = "Voted Decline"
+	}
+
+	if err != nil {
+		var apiErr *services.IPChangeAPIError
+		if errors.As(err, &apiErr) {
+			answerText = apiErr.Message
+		} else {
+			answerText = "Failed to process vote"
+			slog.Error("telegram: ip change vote failed", "error", err)
+		}
+
+		_, _ = bot.AnswerCallbackQuery(ctx, &tgbot.AnswerCallbackQueryParams{
+			CallbackQueryID: update.CallbackQuery.ID,
+			Text:            answerText,
+			ShowAlert:       false,
+		})
+		return
+	}
+
+	_, _ = bot.AnswerCallbackQuery(ctx, &tgbot.AnswerCallbackQueryParams{
+		CallbackQueryID: update.CallbackQuery.ID,
+		Text:            answerText,
+		ShowAlert:       false,
+	})
+
+	if req == nil || update.CallbackQuery.Message.Message == nil {
+		return
+	}
+
+	params := &tgbot.EditMessageTextParams{
+		ChatID:    update.CallbackQuery.Message.Message.Chat.ID,
+		MessageID: update.CallbackQuery.Message.Message.ID,
+		Text:      b.ipChange.BuildTelegramMessageText(req),
+		ParseMode: tgmodels.ParseModeHTML,
+	}
+	if req.Status == "PENDING" {
+		params.ReplyMarkup = buildIPChangeKeyboard(req)
+	}
+	if _, err := bot.EditMessageText(ctx, params); err != nil {
+		slog.Warn("telegram: failed to edit ip change vote message", "request_id", req.ID, "error", err)
+	}
+}
+
+func buildIPChangeKeyboard(req *services.IPChangeRequestRecord) *tgmodels.InlineKeyboardMarkup {
+	return &tgmodels.InlineKeyboardMarkup{
+		InlineKeyboard: [][]tgmodels.InlineKeyboardButton{
+			{
+				{
+					Text:         fmt.Sprintf("Agree (%d)", req.AgreeCount),
+					CallbackData: "agree:" + req.Username,
+				},
+				{
+					Text:         fmt.Sprintf("Decline (%d)", req.DeclineCount),
+					CallbackData: "decline:" + req.Username,
+				},
+			},
+		},
+	}
 }
 
 // --- Group Message Handler ---
@@ -471,7 +552,7 @@ Message list:
 		if score > cfg.AI.CreditMax {
 			score = cfg.AI.CreditMax
 		}
-		b.credit.AddCredit(userID, score, fmt.Sprintf("group chat score %+.1f", score))
+		b.credit.AddCredit(ctx, userID, score, fmt.Sprintf("group chat score %+.1f", score))
 	}
 
 	// Delete processed messages

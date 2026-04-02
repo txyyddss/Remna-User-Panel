@@ -1,254 +1,420 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { api } from '@/api'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { ApiError, api } from '@/api'
 import { useUserStore } from '@/stores/user'
 import { useToast } from '@/composables/useToast'
 import type { IPChangeStatus } from '@/types'
 
 const userStore = useUserStore()
 const toast = useToast()
+
 const loading = ref(true)
-const changing = ref(false)
+const submitting = ref(false)
+const subscription = ref('')
+const reason = ref('')
 const error = ref('')
+const activeMessageLink = ref('')
+const lookup = ref<IPChangeStatus | null>(null)
+let refreshTimer: number | null = null
 
-const status = ref<IPChangeStatus | null>(null)
-
-const timeLeft = computed(() => {
-  if (!status.value?.next_available) return ''
-  const diff = new Date(status.value.next_available).getTime() - Date.now()
-  if (diff <= 0) return ''
-  const h = Math.floor(diff / 3600000)
-  const m = Math.floor((diff % 3600000) / 60000)
-  return `${h}h ${m}m`
+const statusLabel = computed(() => {
+  switch (lookup.value?.status) {
+    case 'PENDING':
+      return 'Pending Votes'
+    case 'CHANGING':
+      return 'Changing'
+    default:
+      return 'Waiting'
+  }
 })
 
-const progressPercent = computed(() => {
-  if (!status.value || status.value.can_change) return 100
-  const cd = status.value.cooldown_hours * 3600000
-  const elapsed = Date.now() - new Date(status.value.last_change).getTime()
-  return Math.min(100, (elapsed / cd) * 100)
+const statusDescription = computed(() => {
+  switch (lookup.value?.status) {
+    case 'PENDING':
+      return `${lookup.value?.count || 0}/5 approvals recorded. The request is waiting in the Telegram group.`
+    case 'CHANGING':
+      return 'Voting passed. The upstream swap process is now in progress.'
+    default:
+      return 'No active IP replacement request is being processed right now.'
+  }
 })
 
-async function loadStatus() {
+const statusClass = computed(() => {
+  switch (lookup.value?.status) {
+    case 'PENDING':
+      return 'pending'
+    case 'CHANGING':
+      return 'changing'
+    default:
+      return 'waiting'
+  }
+})
+
+async function loadLookup() {
   try {
-    status.value = await api.getIPStatus()
+    lookup.value = await api.getIPLookup()
   } catch {
-    status.value = { can_change: true, last_change: '', next_available: '', cooldown_hours: 6 }
+    lookup.value = { count: 0, status: 'WAITING' }
   } finally {
     loading.value = false
   }
 }
 
-async function doIPChange() {
-  changing.value = true
+async function submitRequest() {
+  if (!subscription.value.trim() || !reason.value.trim()) {
+    error.value = 'Subscription link and reason are required.'
+    toast.error(error.value)
+    return
+  }
+
+  submitting.value = true
   error.value = ''
+  activeMessageLink.value = ''
+
   try {
-    await api.changeIP()
+    await api.changeIP({
+      subscription: subscription.value.trim(),
+      reason: reason.value.trim(),
+    })
+    subscription.value = ''
+    reason.value = ''
     window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success')
-    toast.success('Connection dropped. Reconnect to get a new IP.')
-    await loadStatus()
+    toast.success('Request submitted. Wait for the Telegram group vote.')
+    await loadLookup()
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to change IP'
-    error.value = msg
-    toast.error(msg)
+    if (e instanceof ApiError) {
+      error.value = e.message
+      const data = e.data as { message_link?: string } | undefined
+      activeMessageLink.value = data?.message_link || ''
+    } else if (e instanceof Error) {
+      error.value = e.message
+    } else {
+      error.value = 'Failed to submit IP change request.'
+    }
+    toast.error(error.value)
   } finally {
-    changing.value = false
+    submitting.value = false
   }
 }
 
-onMounted(loadStatus)
+onMounted(async () => {
+  if (userStore.subKeys?.subscription_url) {
+    subscription.value = userStore.subKeys.subscription_url
+  }
+
+  await loadLookup()
+  refreshTimer = window.setInterval(() => {
+    void loadLookup()
+  }, 5000)
+})
+
+onUnmounted(() => {
+  if (refreshTimer !== null) {
+    window.clearInterval(refreshTimer)
+    refreshTimer = null
+  }
+})
 </script>
 
 <template>
   <div class="page">
     <div class="page-header stagger-enter stagger-1">
-      <h1 class="page-title">Change IP</h1>
-      <p class="page-subtitle">Drop your active connection to rotate the exit IP address.</p>
+      <div class="status-pill" :class="statusClass">{{ statusLabel }}</div>
+      <h1 class="page-title">IP Change Queue</h1>
+      <p class="page-subtitle">
+        This follows the reference flow exactly: submit a subscription link and reason, wait for the Telegram vote, then wait for the swap callback.
+      </p>
     </div>
 
-    <div class="loading-page" v-if="loading">
+    <div v-if="loading" class="loading-page">
       <div class="loading-spinner"></div>
     </div>
 
     <template v-else>
-      <!-- Status Ring -->
-      <div class="ip-hero stagger-enter stagger-2">
-        <div
-          class="ip-ring"
-          :class="{ ready: status?.can_change, cooldown: !status?.can_change }"
-        >
-          <div class="ip-ring-inner">
-            <span v-if="status?.can_change" class="ip-ring-label gradient-text">READY</span>
-            <template v-else>
-              <span class="ip-ring-time">{{ timeLeft }}</span>
-              <span class="ip-ring-sublabel">cooldown</span>
-            </template>
+      <div class="ip-grid">
+        <section class="card input-card stagger-enter stagger-2">
+          <div class="section-label">Submit Request</div>
+          <label class="field-label" for="subscription">Subscription Link</label>
+          <input
+            id="subscription"
+            v-model="subscription"
+            class="field-input"
+            type="text"
+            placeholder="https://sub.1391399.xyz/..."
+            autocomplete="off"
+          >
+
+          <label class="field-label" for="reason">Reason</label>
+          <textarea
+            id="reason"
+            v-model="reason"
+            class="field-input field-textarea"
+            rows="4"
+            placeholder="Why do you want to replace the IP?"
+          />
+
+          <button
+            class="btn btn-primary btn-block btn-lg submit-btn"
+            :disabled="submitting"
+            @click="submitRequest"
+          >
+            {{ submitting ? 'Submitting...' : 'Submit IP Change Request' }}
+          </button>
+
+          <p v-if="error" class="error-text">{{ error }}</p>
+          <a
+            v-if="activeMessageLink"
+            class="thread-link"
+            :href="activeMessageLink"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open Current Telegram Thread
+          </a>
+        </section>
+
+        <section class="card status-card stagger-enter stagger-3">
+          <div class="section-label">Live Queue State</div>
+          <div class="status-orb" :class="statusClass">
+            <span class="status-count">{{ lookup?.status === 'WAITING' ? '0' : lookup?.count || 0 }}</span>
+            <span class="status-caption">{{ lookup?.status === 'CHANGING' ? 'in progress' : 'votes' }}</span>
           </div>
-        </div>
+
+          <h2 class="status-title">{{ statusLabel }}</h2>
+          <p class="status-text">{{ statusDescription }}</p>
+
+          <div class="status-metrics">
+            <div class="metric-box">
+              <span class="metric-label">Votes</span>
+              <strong class="metric-value">{{ lookup?.count || 0 }}/5</strong>
+            </div>
+            <div class="metric-box">
+              <span class="metric-label">State</span>
+              <strong class="metric-value">{{ lookup?.status || 'WAITING' }}</strong>
+            </div>
+          </div>
+        </section>
       </div>
 
-      <!-- Action -->
-      <div class="ip-action stagger-enter stagger-3">
-        <button
-          class="btn btn-primary btn-lg btn-block"
-          :disabled="!status?.can_change || changing"
-          @click="doIPChange"
-        >
-          {{ changing ? 'Dropping connection...' : status?.can_change ? 'Drop Connection' : 'On Cooldown' }}
-        </button>
-      </div>
-
-      <!-- Cooldown Progress -->
-      <div v-if="!status?.can_change" class="card stagger-enter stagger-4">
-        <div class="row-between mb-sm">
-          <span class="text-sm text-muted">Cooldown Progress</span>
-          <span class="text-sm mono">{{ progressPercent.toFixed(0) }}%</span>
-        </div>
-        <div class="progress">
-          <div class="progress-bar" :style="{ width: `${progressPercent}%` }"></div>
-        </div>
-        <p class="text-xs text-muted mt-sm">
-          Next available: {{ status?.next_available ? new Date(status.next_available).toLocaleString('en-US') : '—' }}
-        </p>
-      </div>
-
-      <!-- Error -->
-      <div v-if="error" class="card stagger-enter stagger-5 error-card">
-        <span class="text-sm text-danger">{{ error }}</span>
-      </div>
-
-      <!-- Info Card -->
-      <div class="card stagger-enter stagger-5">
-        <h3 class="mb-sm">How It Works</h3>
-        <ul class="info-list">
-          <li>Clicking "Drop Connection" disconnects all active VPN sessions.</li>
-          <li>Reconnect through your proxy client to get a new exit IP.</li>
-          <li>Cooldown period is <strong>{{ status?.cooldown_hours || 6 }} hours</strong> between changes.</li>
-          <li>Frequently used by users who need to bypass regional IP blocks.</li>
+      <section class="card info-card stagger-enter stagger-4">
+        <div class="section-label">Rules</div>
+        <ul class="rule-list">
+          <li>Only one active request can exist globally while status is `PENDING` or `CHANGING`.</li>
+          <li>The request must pass the Telegram group vote before the swap phase starts.</li>
+          <li>After a completed swap, the same subscription enters a 6-hour cooldown.</li>
+          <li>The reference-only service squads are enforced before a request is accepted.</li>
         </ul>
-      </div>
+      </section>
     </template>
   </div>
 </template>
 
 <style scoped>
-.ip-hero {
-  display: flex;
-  justify-content: center;
-  padding: var(--space-xl) 0;
+.ip-grid {
+  display: grid;
+  gap: 20px;
 }
 
-.ip-ring {
-  width: 160px;
-  height: 160px;
-  border-radius: 50%;
-  display: flex;
+.section-label {
+  margin-bottom: 14px;
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent-secondary);
+}
+
+.status-pill {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  position: relative;
+  min-height: 30px;
+  padding: 0 14px;
+  border-radius: 999px;
+  margin-bottom: 14px;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.06);
 }
 
-.ip-ring::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  padding: 3px;
-  background: conic-gradient(
-    from 0deg,
-    var(--accent-primary),
-    var(--accent-secondary),
-    var(--accent-primary)
-  );
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask-composite: exclude;
+.status-pill.waiting {
+  color: var(--text-secondary);
 }
 
-.ip-ring.ready::before {
-  animation: ringRotate 3s linear infinite;
+.status-pill.pending {
+  color: #f0b45c;
 }
 
-.ip-ring.cooldown::before {
-  background: conic-gradient(
-    from 0deg,
-    var(--text-muted) 0%,
-    var(--accent-warning) 50%,
-    var(--text-muted) 100%
-  );
-  opacity: 0.5;
+.status-pill.changing {
+  color: #32d2ae;
 }
 
-@keyframes ringRotate {
-  to {
-    transform: rotate(360deg);
-  }
+.input-card,
+.status-card,
+.info-card {
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
-.ip-ring-inner {
-  width: calc(100% - 8px);
-  height: calc(100% - 8px);
-  border-radius: 50%;
-  background: var(--bg-secondary);
+.field-label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.field-input {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 16px;
+  padding: 14px 16px;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+}
+
+.field-input:focus {
+  outline: none;
+  border-color: rgba(var(--accent-primary-rgb), 0.45);
+  box-shadow: 0 0 0 4px rgba(var(--accent-primary-rgb), 0.12);
+}
+
+.field-textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.submit-btn {
+  margin-top: 4px;
+}
+
+.error-text {
+  margin-top: 14px;
+  color: #ff8d98;
+  font-size: 0.86rem;
+}
+
+.thread-link {
+  display: inline-flex;
+  margin-top: 10px;
+  color: var(--accent-secondary);
+  text-decoration: none;
+  font-size: 0.88rem;
+}
+
+.status-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
+  text-align: center;
 }
 
-.ip-ring-label {
+.status-orb {
+  width: 156px;
+  height: 156px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  margin: 10px 0 18px;
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.status-orb::before {
+  content: '';
+  position: absolute;
+  inset: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.status-orb.waiting {
+  background: radial-gradient(circle at top, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+}
+
+.status-orb.pending {
+  background: radial-gradient(circle at top, rgba(240, 180, 92, 0.24), rgba(240, 180, 92, 0.06));
+}
+
+.status-orb.changing {
+  background: radial-gradient(circle at top, rgba(50, 210, 174, 0.26), rgba(50, 210, 174, 0.08));
+}
+
+.status-count {
   font-family: var(--font-display);
-  font-size: 1.25rem;
+  font-size: 2rem;
   font-weight: 700;
 }
 
-.ip-ring-time {
-  font-family: var(--font-display);
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--accent-warning);
-}
-
-.ip-ring-sublabel {
-  font-size: 0.6875rem;
-  color: var(--text-muted);
+.status-caption {
+  display: block;
+  font-size: 0.76rem;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  color: var(--text-secondary);
 }
 
-.ip-action {
-  margin-bottom: var(--space-lg);
+.status-title {
+  font-size: 1.2rem;
+  margin-bottom: 10px;
 }
 
-.error-card {
-  border-color: rgba(255, 107, 122, 0.3);
-  background: rgba(255, 107, 122, 0.06);
+.status-text {
+  color: var(--text-secondary);
+  max-width: 34ch;
 }
 
-.info-list {
+.status-metrics {
+  width: 100%;
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.metric-box {
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.metric-label {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.metric-value {
+  font-size: 1rem;
+}
+
+.rule-list {
   list-style: none;
   padding: 0;
 }
 
-.info-list li {
+.rule-list li {
   position: relative;
-  padding-left: var(--space-lg);
-  font-size: 0.8125rem;
+  padding-left: 20px;
   color: var(--text-secondary);
-  line-height: 1.6;
+  line-height: 1.7;
 }
 
-.info-list li + li {
-  margin-top: var(--space-sm);
+.rule-list li + li {
+  margin-top: 10px;
 }
 
-.info-list li::before {
-  content: '→';
+.rule-list li::before {
+  content: '•';
   position: absolute;
   left: 0;
   color: var(--accent-primary);
-  font-weight: 600;
+}
+
+@media (min-width: 900px) {
+  .ip-grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+    align-items: start;
+  }
 }
 </style>

@@ -106,6 +106,14 @@ func main() {
 		r.Post("/payment/callback/bepusdt", h.BEPusdtCallback)
 		r.Post("/payment/callback/ezpay", h.EZPayCallback)
 
+		// Mini-app join flow routes: Telegram-authenticated but not group-gated.
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.TelegramSoftAuth)
+			r.Get("/miniapp/access", h.GetMiniAppAccessStatus)
+			r.Post("/miniapp/access/verify-channel", h.VerifyMiniAppChannel)
+			r.Post("/miniapp/access/verify-group", h.VerifyMiniAppGroup)
+		})
+
 		// Authenticated routes
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.CombinedAuth)
@@ -147,6 +155,9 @@ func main() {
 			// IP Change
 			r.Post("/ip/change", h.IPChange)
 			r.Get("/ip/status", h.GetIPChangeStatus)
+			r.Get("/ip/lookup", h.GetIPChangeLookup)
+			r.Post("/ip/swap", h.MarkIPSwapCompleted)
+			r.Post("/ip/api/add-request", h.AddIPChangeRequestAPI)
 
 			// Jellyfin
 			r.Post("/jellyfin/purchase", h.PurchaseJellyfin)
@@ -180,7 +191,7 @@ func main() {
 	cron.Start(creditSvc, h.Payment)
 
 	// Start Telegram bot
-	bot, err := telegram.NewBot(creditSvc)
+	bot, err := telegram.NewBot(creditSvc, h.IPChanges)
 	if err != nil {
 		slog.Error("main: telegram bot init failed", "error", err)
 	}

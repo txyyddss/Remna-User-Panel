@@ -20,10 +20,24 @@ import type {
     SubKeys,
     IPChangeStatus,
     IPChangeResponse,
+    MiniAppAccessStatus,
+    SubInfo,
     JellyfinDevicesResponse,
     IPListResponse,
     PaymentResponse,
 } from '@/types'
+
+export class ApiError extends Error {
+    status: number
+    data?: unknown
+
+    constructor(message: string, status: number, data?: unknown) {
+        super(message)
+        this.name = 'ApiError'
+        this.status = status
+        this.data = data
+    }
+}
 
 function getInitData(): string {
     return window.Telegram?.WebApp?.initData || ''
@@ -54,7 +68,7 @@ async function request<T>(
 
     const json = await resp.json()
     if (!resp.ok || (typeof json.code === 'number' && json.code >= 400)) {
-        throw new Error(json.message || `Request failed (${resp.status})`)
+        throw new ApiError(json.message || `Request failed (${resp.status})`, resp.status, json.data)
     }
     return json.data as T
 }
@@ -101,10 +115,25 @@ export const api = {
 
     // ── Subscription ──
     getSubInfo: () =>
-        request<{ has_subscription: boolean; user?: Record<string, unknown> }>('/sub-info'),
+        request<{ has_subscription: boolean; user?: SubInfo }>('/sub-info'),
 
     getSubKeys: () =>
         request<SubKeys>('/sub-keys'),
+
+    getMiniAppAccess: () =>
+        request<MiniAppAccessStatus>('/miniapp/access'),
+
+    verifyMiniAppChannel: () =>
+        request<MiniAppAccessStatus>('/miniapp/access/verify-channel', {
+            method: 'POST',
+            body: JSON.stringify({}),
+        }),
+
+    verifyMiniAppGroup: () =>
+        request<MiniAppAccessStatus>('/miniapp/access/verify-group', {
+            method: 'POST',
+            body: JSON.stringify({}),
+        }),
 
     bindSubscription: (subUrl: string) =>
         request<{ status: string; rw_user: string; rw_uuid: string; expires: string }>('/bind-sub', {
@@ -163,14 +192,17 @@ export const api = {
         }),
 
     // ── IP Change ──
-    changeIP: (data: { subscription?: string } = {}) =>
+    changeIP: (data: { subscription: string; reason: string }) =>
         request<IPChangeResponse>('/ip/change', {
             method: 'POST',
             body: JSON.stringify(data),
         }),
 
     getIPStatus: () =>
-        request<IPChangeStatus>('/ip/status'),
+        request<IPChangeStatus>('/ip/lookup'),
+
+    getIPLookup: () =>
+        request<IPChangeStatus>('/ip/lookup'),
 
     // ── Jellyfin ──
     purchaseJellyfin: (data: {

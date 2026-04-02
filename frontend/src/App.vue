@@ -79,13 +79,23 @@ async function bootstrapTelegramApp() {
     }
   })
 
-  await userStore.refreshState()
-  if (userStore.error?.includes('group membership required')) {
-    router.replace({ path: '/blocked', query: { reason: 'group' } })
-    return
-  }
+  try {
+    const access = await userStore.bootstrapMiniAppAccess()
+    if (!access.group_joined) {
+      router.replace({ path: '/blocked', query: { reason: 'group' } })
+      return
+    }
 
-  userStore.startAutoRefresh()
+    await userStore.refreshState()
+    if (userStore.error?.includes('group membership required')) {
+      router.replace({ path: '/blocked', query: { reason: 'group' } })
+      return
+    }
+
+    userStore.startAutoRefresh()
+  } catch {
+    router.replace('/blocked')
+  }
 }
 
 onMounted(() => {

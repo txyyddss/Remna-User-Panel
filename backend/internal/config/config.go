@@ -35,6 +35,8 @@ type TelegramConfig struct {
 	BotToken   string  `json:"bot_token"`
 	AdminIDs   []int64 `json:"admin_ids"`
 	GroupID    int64   `json:"group_id"`
+	ChannelID  int64   `json:"channel_id"`
+	ChannelURL string  `json:"channel_url"`
 	WebhookURL string  `json:"webhook_url"`
 }
 
@@ -92,7 +94,9 @@ type BackupConfig struct {
 }
 
 type IPChangeConfig struct {
-	CooldownHours int `json:"cooldown_hours"`
+	CooldownHours     int      `json:"cooldown_hours"`
+	SwapToken         string   `json:"swap_token"`
+	AllowedSquadUUIDs []string `json:"allowed_squad_uuids"`
 }
 
 var (

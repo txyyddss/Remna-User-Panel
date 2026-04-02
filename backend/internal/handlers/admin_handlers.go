@@ -24,13 +24,13 @@ const (
 	adminQuery1 = "SELECT uuid, name, description, squad_uuid, traffic_gb, strategy, cycle, price_rmb, reset_price, active FROM combos WHERE active = 1"
 	adminQuery2 = `INSERT INTO combos (uuid, name, description, squad_uuid, traffic_gb, strategy, cycle, price_rmb, reset_price, active, created_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	adminQuery3 = "SELECT COUNT(*) FROM subscriptions WHERE combo_uuid = ?"
-	adminQuery4 = "SELECT COUNT(*) FROM orders WHERE metadata LIKE ?"
-	adminQuery5 = "DELETE FROM combos WHERE uuid = ?"
-	adminQuery6 = "UPDATE combos SET active = 0 WHERE uuid = ?"
-	adminQuery7 = "SELECT uuid, name, description, squad_uuid, traffic_gb, strategy, cycle, price_rmb, reset_price, active FROM combos ORDER BY created_at DESC"
-	adminQuery8 = "SELECT id, telegram_id, telegram_name, remnawave_uuid, jellyfin_user_id, credit, is_admin, created_at, updated_at FROM users WHERE telegram_name LIKE ? OR CAST(telegram_id AS TEXT) LIKE ? ORDER BY id DESC LIMIT ? OFFSET ?"
-	adminQuery9 = "SELECT id, telegram_id, telegram_name, remnawave_uuid, jellyfin_user_id, credit, is_admin, created_at, updated_at FROM users ORDER BY id DESC LIMIT ? OFFSET ?"
+	adminQuery3  = "SELECT COUNT(*) FROM subscriptions WHERE combo_uuid = ?"
+	adminQuery4  = "SELECT COUNT(*) FROM orders WHERE metadata LIKE ?"
+	adminQuery5  = "DELETE FROM combos WHERE uuid = ?"
+	adminQuery6  = "UPDATE combos SET active = 0 WHERE uuid = ?"
+	adminQuery7  = "SELECT uuid, name, description, squad_uuid, traffic_gb, strategy, cycle, price_rmb, reset_price, active FROM combos ORDER BY created_at DESC"
+	adminQuery8  = "SELECT id, telegram_id, telegram_name, remnawave_uuid, jellyfin_user_id, credit, is_admin, created_at, updated_at FROM users WHERE telegram_name LIKE ? OR CAST(telegram_id AS TEXT) LIKE ? ORDER BY id DESC LIMIT ? OFFSET ?"
+	adminQuery9  = "SELECT id, telegram_id, telegram_name, remnawave_uuid, jellyfin_user_id, credit, is_admin, created_at, updated_at FROM users ORDER BY id DESC LIMIT ? OFFSET ?"
 	adminQuery10 = "SELECT COUNT(*) FROM users WHERE telegram_name LIKE ? OR CAST(telegram_id AS TEXT) LIKE ?"
 	adminQuery11 = "SELECT COUNT(*) FROM users"
 	adminQuery12 = "SELECT id, telegram_id, telegram_name, remnawave_uuid, jellyfin_user_id, credit, is_admin, created_at, updated_at FROM users WHERE id = ?"
@@ -89,7 +89,7 @@ func (h *Handler) CreateCombo(w http.ResponseWriter, r *http.Request) {
 	combo.Active = true
 	combo.CreatedAt = time.Now()
 
-	_, err := database.DB().ExecContext(r.Context(), 
+	_, err := database.DB().ExecContext(r.Context(),
 		adminQuery2,
 		combo.UUID, combo.Name, combo.Description, combo.SquadUUID, combo.TrafficGB,
 		combo.Strategy, combo.Cycle, combo.PriceRMB, combo.ResetPrice, combo.Active, combo.CreatedAt,
@@ -244,12 +244,12 @@ func (h *Handler) AdminListUsers(w http.ResponseWriter, r *http.Request) {
 
 	if search != "" {
 		searchPattern := "%" + search + "%"
-		rows, err = database.DB().QueryContext(r.Context(), 
+		rows, err = database.DB().QueryContext(r.Context(),
 			adminQuery8,
 			searchPattern, searchPattern, limit, offset,
 		)
 	} else {
-		rows, err = database.DB().QueryContext(r.Context(), 
+		rows, err = database.DB().QueryContext(r.Context(),
 			adminQuery9,
 			limit, offset,
 		)
@@ -277,7 +277,7 @@ func (h *Handler) AdminListUsers(w http.ResponseWriter, r *http.Request) {
 	var total int
 	if search != "" {
 		searchPattern := "%" + search + "%"
-		database.DB().QueryRowContext(r.Context(), 
+		database.DB().QueryRowContext(r.Context(),
 			adminQuery10,
 			searchPattern, searchPattern,
 		).Scan(&total)
@@ -300,7 +300,7 @@ func (h *Handler) AdminGetUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var user models.User
-	err = database.DB().QueryRowContext(r.Context(), 
+	err = database.DB().QueryRowContext(r.Context(),
 		adminQuery12,
 		userID,
 	).Scan(&user.ID, &user.TelegramID, &user.TelegramName, &user.RemnawaveUUID, &user.JellyfinUserID, &user.Credit, &user.IsAdmin, &user.CreatedAt, &user.UpdatedAt)
@@ -316,7 +316,7 @@ func (h *Handler) AdminGetUser(w http.ResponseWriter, r *http.Request) {
 	var subscription map[string]interface{}
 	var comboUUID, status string
 	var expiresAt time.Time
-	if err := database.DB().QueryRowContext(r.Context(), 
+	if err := database.DB().QueryRowContext(r.Context(),
 		adminQuery13,
 		userID,
 	).Scan(&comboUUID, &status, &expiresAt); err == nil {
@@ -331,7 +331,7 @@ func (h *Handler) AdminGetUser(w http.ResponseWriter, r *http.Request) {
 	var jfUsername string
 	var jfRating int
 	var jfExpires time.Time
-	if err := database.DB().QueryRowContext(r.Context(), 
+	if err := database.DB().QueryRowContext(r.Context(),
 		adminQuery14,
 		userID,
 	).Scan(&user.JellyfinUserID, &jfUsername, &jfRating, &jfExpires); err == nil {
@@ -387,7 +387,7 @@ func (h *Handler) AdminUpdateUser(w http.ResponseWriter, r *http.Request) {
 		database.DB().QueryRowContext(r.Context(), adminQuery15, userID).Scan(&currentCredit)
 		diff := *req.Credit - currentCredit
 		if diff != 0 {
-			h.Credit.AddCredit(userID, diff, "admin adjustment")
+			h.Credit.AddCredit(r.Context(), userID, diff, "admin adjustment")
 		}
 	}
 	if req.RemnawaveUUID != nil {
@@ -420,7 +420,7 @@ func (h *Handler) AdminUpdateUser(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var existingSubID int64
-		err := database.DB().QueryRowContext(r.Context(), 
+		err := database.DB().QueryRowContext(r.Context(),
 			adminQuery21,
 			userID,
 		).Scan(&existingSubID)
@@ -439,7 +439,7 @@ func (h *Handler) AdminUpdateUser(w http.ResponseWriter, r *http.Request) {
 			if req.Subscription.Status != nil && *req.Subscription.Status != "" {
 				status = *req.Subscription.Status
 			}
-			database.DB().ExecContext(r.Context(), 
+			database.DB().ExecContext(r.Context(),
 				adminQuery25,
 				userID, *req.Subscription.ComboUUID, currentRemnawaveUUID, status, expiresAt, time.Now(), time.Now(),
 			)
@@ -516,7 +516,7 @@ func (h *Handler) AdminUpdateUser(w http.ResponseWriter, r *http.Request) {
 				rating = *req.Jellyfin.ParentalRating
 			}
 			if !expiresAt.IsZero() {
-				database.DB().ExecContext(r.Context(), 
+				database.DB().ExecContext(r.Context(),
 					adminQuery34,
 					userID, currentJellyfinUserID, username, rating, expiresAt, time.Now(),
 				)
@@ -539,7 +539,7 @@ func (h *Handler) AdminListOrders(w http.ResponseWriter, r *http.Request) {
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 
-	orders, total, err := h.Payment.GetAdminOrders(services.OrderFilters{
+	orders, total, err := h.Payment.GetAdminOrders(r.Context(), services.OrderFilters{
 		Search:        r.URL.Query().Get("search"),
 		Status:        r.URL.Query().Get("status"),
 		ServiceStatus: r.URL.Query().Get("service_status"),
@@ -570,7 +570,7 @@ func (h *Handler) AdminUpdateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	order, err := h.Payment.UpdateOrderByAdmin(orderUUID, admin.ID, updates)
+	order, err := h.Payment.UpdateOrderByAdmin(r.Context(), orderUUID, admin.ID, updates)
 	if err != nil {
 		middleware.WriteError(w, http.StatusBadRequest, err.Error())
 		return
@@ -590,15 +590,15 @@ func (h *Handler) AdminOrderAction(w http.ResponseWriter, r *http.Request) {
 
 	switch action {
 	case "apply-credit":
-		order, err = h.Payment.ApplyCustomOrderCredit(orderUUID, admin.ID)
+		order, err = h.Payment.ApplyCustomOrderCredit(r.Context(), orderUUID, admin.ID)
 	case "resend-notice":
-		order, err = h.Payment.ResendCustomOrderNotification(orderUUID, admin.ID)
+		order, err = h.Payment.ResendCustomOrderNotification(r.Context(), orderUUID, admin.ID)
 	case "refund":
-		order, err = h.Payment.RefundOrder(orderUUID, admin.ID)
+		order, err = h.Payment.RefundOrder(r.Context(), orderUUID, admin.ID)
 	case "cancel":
 		updateStatus := "cancelled"
 		updateService := "cancelled"
-		order, err = h.Payment.UpdateOrderByAdmin(orderUUID, admin.ID, services.AdminOrderUpdate{
+		order, err = h.Payment.UpdateOrderByAdmin(r.Context(), orderUUID, admin.ID, services.AdminOrderUpdate{
 			Status:        &updateStatus,
 			ServiceStatus: &updateService,
 		})

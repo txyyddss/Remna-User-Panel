@@ -183,6 +183,43 @@ func migrate() error {
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_ip_change_user ON ip_change_logs(user_id)`,
 
+		`CREATE TABLE IF NOT EXISTS ip_change_requests (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			request_key TEXT NOT NULL UNIQUE,
+			user_id INTEGER REFERENCES users(id),
+			username TEXT NOT NULL,
+			short_uuid TEXT NOT NULL DEFAULT '',
+			reason TEXT NOT NULL DEFAULT '',
+			status TEXT NOT NULL DEFAULT 'PENDING',
+			agree_count INTEGER NOT NULL DEFAULT 0,
+			decline_count INTEGER NOT NULL DEFAULT 0,
+			message_id INTEGER NOT NULL DEFAULT 0,
+			requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			completed_at DATETIME,
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_ip_change_requests_status ON ip_change_requests(status)`,
+		`CREATE INDEX IF NOT EXISTS idx_ip_change_requests_username ON ip_change_requests(username)`,
+
+		`CREATE TABLE IF NOT EXISTS ip_change_votes (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			request_id INTEGER NOT NULL REFERENCES ip_change_requests(id) ON DELETE CASCADE,
+			voter_telegram_id INTEGER NOT NULL,
+			action TEXT NOT NULL,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(request_id, voter_telegram_id)
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_ip_change_votes_request ON ip_change_votes(request_id)`,
+
+		`CREATE TABLE IF NOT EXISTS miniapp_join_sessions (
+			user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+			channel_verified_at DATETIME,
+			group_invite_link TEXT NOT NULL DEFAULT '',
+			invite_created_at DATETIME,
+			group_verified_at DATETIME,
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+
 		`CREATE TABLE IF NOT EXISTS bet_logs (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			user_id INTEGER NOT NULL REFERENCES users(id),

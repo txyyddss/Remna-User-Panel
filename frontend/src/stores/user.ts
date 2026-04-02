@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '@/api'
-import type { User, Subscription, JellyfinAccount, AppConfig, SubInfo, SubKeys, Order } from '@/types'
+import type { User, Subscription, JellyfinAccount, AppConfig, SubInfo, SubKeys, Order, MiniAppAccessStatus } from '@/types'
 
 export const useUserStore = defineStore('user', () => {
     const user = ref<User | null>(null)
@@ -11,6 +11,7 @@ export const useUserStore = defineStore('user', () => {
     const liveSubInfo = ref<{ has_subscription?: boolean; user?: SubInfo } | null>(null)
     const subKeys = ref<SubKeys | null>(null)
     const recentOrders = ref<Order[]>([])
+    const miniAppAccess = ref<MiniAppAccessStatus | null>(null)
     const loading = ref(false)
     const refreshing = ref(false)
     const error = ref<string | null>(null)
@@ -79,6 +80,31 @@ export const useUserStore = defineStore('user', () => {
         }
     }
 
+    async function bootstrapMiniAppAccess() {
+        error.value = null
+        try {
+            miniAppAccess.value = await api.getMiniAppAccess()
+            return miniAppAccess.value
+        } catch (e: any) {
+            error.value = e.message
+            throw e
+        }
+    }
+
+    async function verifyMiniAppChannel() {
+        error.value = null
+        const data = await api.verifyMiniAppChannel()
+        miniAppAccess.value = data
+        return data
+    }
+
+    async function verifyMiniAppGroup() {
+        error.value = null
+        const data = await api.verifyMiniAppGroup()
+        miniAppAccess.value = data
+        return data
+    }
+
     async function refreshState(options: { background?: boolean; ordersLimit?: number } = {}) {
         if (refreshing.value) {
             return
@@ -110,8 +136,8 @@ export const useUserStore = defineStore('user', () => {
     }
 
     return {
-        user, subscription, jellyfin, appConfig, liveSubInfo, subKeys, recentOrders, loading, refreshing, error,
+        user, subscription, jellyfin, appConfig, liveSubInfo, subKeys, recentOrders, miniAppAccess, loading, refreshing, error,
         isAdmin, hasSubscription, hasJellyfin, credit, telegramName, currentExternalSquadUUID,
-        fetchMe, refreshCredit, refreshSubInfo, refreshOrders, refreshState, startAutoRefresh, stopAutoRefresh,
+        fetchMe, refreshCredit, refreshSubInfo, refreshOrders, refreshState, bootstrapMiniAppAccess, verifyMiniAppChannel, verifyMiniAppGroup, startAutoRefresh, stopAutoRefresh,
     }
 })

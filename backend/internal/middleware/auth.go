@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"sort"
@@ -17,6 +16,7 @@ import (
 	"github.com/user/remna-user-panel/internal/config"
 	"github.com/user/remna-user-panel/internal/database"
 	"github.com/user/remna-user-panel/internal/models"
+	telegramapi "github.com/user/remna-user-panel/internal/telegram"
 )
 
 type contextKey string
@@ -36,6 +36,17 @@ func GetUser(r *http.Request) *models.User {
 
 // TelegramAuth validates Telegram Mini App initData and sets user in context
 func TelegramAuth(next http.Handler) http.Handler {
+	return telegramAuth(next, true)
+}
+
+// TelegramSoftAuth validates Telegram Mini App initData and sets user in
+// context without enforcing group membership. This is used by the blocked
+// mini-app join flow.
+func TelegramSoftAuth(next http.Handler) http.Handler {
+	return telegramAuth(next, false)
+}
+
+func telegramAuth(next http.Handler, requireGroupMembership bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		initData := r.Header.Get("X-Telegram-Init-Data")
 		if initData == "" {
@@ -60,9 +71,11 @@ func TelegramAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		if err := ensureGroupMembership(r.Context(), user); err != nil {
-			WriteError(w, http.StatusForbidden, err.Error())
-			return
+		if requireGroupMembership {
+			if err := ensureGroupMembership(r.Context(), user); err != nil {
+				WriteError(w, http.StatusForbidden, err.Error())
+				return
+			}
 		}
 
 		ctx := context.WithValue(r.Context(), UserContextKey, user)
@@ -323,63 +336,12 @@ func ensureGroupMembership(ctx context.Context, user *models.User) error {
 		return nil
 	}
 
-	status, err := fetchChatMemberStatus(ctx, cfg.Telegram.BotToken, cfg.Telegram.GroupID, user.TelegramID)
+	status, err := telegramapi.GetChatMemberStatus(ctx, cfg.Telegram.BotToken, cfg.Telegram.GroupID, user.TelegramID)
 	if err != nil {
 		return fmt.Errorf("failed to verify group membership")
 	}
-	if !isJoinedChatStatus(status) {
+	if !telegramapi.IsJoinedChatStatus(status) {
 		return fmt.Errorf("group membership required to use this mini app")
 	}
 	return nil
-}
-
-func fetchChatMemberStatus(ctx context.Context, botToken string, chatID, userID int64) (string, error) {
-	body, err := json.Marshal(map[string]int64{
-		"chat_id": chatID,
-		"user_id": userID,
-	})
-	if err != nil {
-		return "", err
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.telegram.org/bot"+botToken+"/getChatMember", strings.NewReader(string(body)))
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	raw, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	var payload struct {
-		OK          bool   `json:"ok"`
-		Description string `json:"description"`
-		Result      struct {
-			Status string `json:"status"`
-		} `json:"result"`
-	}
-	if err := json.Unmarshal(raw, &payload); err != nil {
-		return "", err
-	}
-	if !payload.OK {
-		return "", fmt.Errorf(payload.Description)
-	}
-	return payload.Result.Status, nil
-}
-
-func isJoinedChatStatus(status string) bool {
-	switch status {
-	case "member", "administrator", "creator", "restricted":
-		return true
-	default:
-		return false
-	}
 }

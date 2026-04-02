@@ -1,6 +1,7 @@
 package cron
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -25,7 +26,7 @@ func Start(credit *services.CreditService, payment *services.PaymentService) {
 
 	// Daily credit log cleanup at 4:00 AM
 	c.AddFunc("0 4 * * *", func() {
-		if err := credit.CleanupOldLogs(); err != nil {
+		if err := credit.CleanupOldLogs(context.Background()); err != nil {
 			slog.Error("cron: credit cleanup failed", "error", err)
 		}
 	})
@@ -45,7 +46,7 @@ func Start(credit *services.CreditService, payment *services.PaymentService) {
 		if payment == nil {
 			return
 		}
-		if err := payment.CancelExpiredPendingOrders(); err != nil {
+		if err := payment.CancelExpiredPendingOrders(context.Background()); err != nil {
 			slog.Error("cron: pending payment cleanup failed", "error", err)
 		}
 	})

@@ -157,7 +157,7 @@ func (s *PaymentService) CreatePayment(ctx context.Context, userID int64, req Cr
 	if consumedTXB > 0 {
 		_, err = s.credit.ConsumeCredit(ctx, userID, consumedTXB, fmt.Sprintf("order discount -%.2f (order %s)", consumedTXB, orderUUID[:8]))
 		if err != nil {
-			s.cancelOrder(orderUUID)
+			s.cancelOrder(ctx, orderUUID)
 			return nil, fmt.Errorf("deduct TXB: %w", err)
 		}
 		s.recordOrderEvent(ctx, order.UUID, &userID, "discount_applied", "Credit discount reserved", map[string]interface{}{
@@ -167,8 +167,8 @@ func (s *PaymentService) CreatePayment(ctx context.Context, userID int64, req Cr
 	}
 
 	if finalAmount <= 0 {
-		if err := s.CompleteOrder(orderUUID); err != nil {
-			return nil, s.handleCreationFailure(orderUUID, userID, consumedTXB, err)
+		if err := s.CompleteOrder(ctx, orderUUID); err != nil {
+			return nil, s.handleCreationFailure(ctx, orderUUID, userID, consumedTXB, err)
 		}
 		return &CreatePaymentResponse{
 			OrderUUID:   orderUUID,
@@ -179,16 +179,16 @@ func (s *PaymentService) CreatePayment(ctx context.Context, userID int64, req Cr
 		}, nil
 	}
 
-	paymentURL, tradeID, err := s.createUpstreamPayment(orderUUID, finalAmount, paymentMethod, paymentType, req.ClientIP)
+	paymentURL, tradeID, err := s.createUpstreamPayment(ctx, orderUUID, finalAmount, paymentMethod, paymentType, req.ClientIP)
 	if err != nil {
-		return nil, s.handleCreationFailure(orderUUID, userID, consumedTXB, err)
+		return nil, s.handleCreationFailure(ctx, orderUUID, userID, consumedTXB, err)
 	}
 
 	if _, err := database.DB().ExecContext(ctx,
 		"UPDATE orders SET upstream_id = ?, updated_at = ? WHERE uuid = ?",
 		tradeID, time.Now(), orderUUID,
 	); err != nil {
-		return nil, s.handleCreationFailure(orderUUID, userID, consumedTXB, fmt.Errorf("save upstream trade id: %w", err))
+		return nil, s.handleCreationFailure(ctx, orderUUID, userID, consumedTXB, fmt.Errorf("save upstream trade id: %w", err))
 	}
 
 	return &CreatePaymentResponse{
@@ -203,7 +203,7 @@ func (s *PaymentService) CreatePayment(ctx context.Context, userID int64, req Cr
 
 // CompleteOrder marks an order as paid and triggers fulfillment
 func (s *PaymentService) CompleteOrder(ctx context.Context, orderUUID string) error {
-	order, err := s.GetOrder(orderUUID)
+	order, err := s.GetOrder(ctx, orderUUID)
 	if err != nil {
 		return fmt.Errorf("find order: %w", err)
 	}
@@ -225,7 +225,7 @@ func (s *PaymentService) CompleteOrder(ctx context.Context, orderUUID string) er
 		return err
 	}
 	if rowsAffected == 0 {
-		refreshed, refreshErr := s.GetOrder(orderUUID)
+		refreshed, refreshErr := s.GetOrder(ctx, orderUUID)
 		if refreshErr != nil {
 			return refreshErr
 		}
@@ -326,14 +326,14 @@ func (s *PaymentService) createUpstreamPayment(ctx context.Context, orderUUID st
 
 func (s *PaymentService) handleCreationFailure(ctx context.Context, orderUUID string, userID int64, consumedTXB float64, cause error) error {
 	if consumedTXB > 0 {
-		if _, refundErr := s.credit.AddCredit(userID, consumedTXB, fmt.Sprintf("order failed refund +%.2f (order %s)", consumedTXB, orderUUID[:8])); refundErr != nil {
+		if _, refundErr := s.credit.AddCredit(ctx, userID, consumedTXB, fmt.Sprintf("order failed refund +%.2f (order %s)", consumedTXB, orderUUID[:8])); refundErr != nil {
 			slog.Error("payment: failed to refund TXB", "order", orderUUID, "error", refundErr)
-			s.cancelOrder(orderUUID)
+			s.cancelOrder(ctx, orderUUID)
 			return fmt.Errorf("%w; refund failed: %v", cause, refundErr)
 		}
 	}
 
-	s.cancelOrder(orderUUID)
+	s.cancelOrder(ctx, orderUUID)
 	return cause
 }
 
@@ -352,11 +352,11 @@ func (s *PaymentService) cancelOrder(ctx context.Context, orderUUID string) {
 func (s *PaymentService) fulfillOrder(ctx context.Context, order *models.Order) (string, error) {
 	switch order.OrderType {
 	case "combo":
-		return s.fulfillComboOrder(order)
+		return s.fulfillComboOrder(ctx, order)
 	case "jellyfin":
-		return s.fulfillJellyfinOrder(order)
+		return s.fulfillJellyfinOrder(ctx, order)
 	case "custom":
-		return s.fulfillCustomOrder(order)
+		return s.fulfillCustomOrder(ctx, order)
 	case "renewal", "traffic_reset":
 		return "fulfilled", nil
 	default:
@@ -378,7 +378,7 @@ func (s *PaymentService) fulfillComboOrder(ctx context.Context, order *models.Or
 		return "", fmt.Errorf("parse combo expiry: %w", err)
 	}
 
-	user, err := s.loadUser(order.UserID)
+	user, err := s.loadUser(ctx, order.UserID)
 	if err != nil {
 		return "", err
 	}
@@ -465,7 +465,7 @@ func (s *PaymentService) fulfillJellyfinOrder(ctx context.Context, order *models
 		return "", fmt.Errorf("parse jellyfin expiry: %w", err)
 	}
 
-	user, err := s.loadUser(order.UserID)
+	user, err := s.loadUser(ctx, order.UserID)
 	if err != nil {
 		return "", err
 	}
@@ -537,7 +537,7 @@ func (s *PaymentService) fulfillCustomOrder(ctx context.Context, order *models.O
 		return "", fmt.Errorf("parse custom metadata: %w", err)
 	}
 
-	user, err := s.loadUser(order.UserID)
+	user, err := s.loadUser(ctx, order.UserID)
 	if err != nil {
 		return "", err
 	}
@@ -645,7 +645,7 @@ func (s *PaymentService) GetOrderDetail(ctx context.Context, orderUUID string) (
 	if err != nil {
 		return nil, err
 	}
-	events, err := s.GetOrderEvents(orderUUID)
+	events, err := s.GetOrderEvents(ctx, orderUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -806,7 +806,7 @@ func (s *PaymentService) UpdateOrderByAdmin(ctx context.Context, orderUUID strin
 	}
 
 	if len(assignments) == 0 {
-		return s.GetOrderDetail(orderUUID)
+		return s.GetOrderDetail(ctx, orderUUID)
 	}
 
 	assignments = append(assignments, "updated_at = ?")
@@ -816,11 +816,11 @@ func (s *PaymentService) UpdateOrderByAdmin(ctx context.Context, orderUUID strin
 	}
 
 	s.recordOrderEvent(ctx, orderUUID, &actorUserID, "admin_updated", "Admin updated order fields", eventPayload)
-	return s.GetOrderDetail(orderUUID)
+	return s.GetOrderDetail(ctx, orderUUID)
 }
 
 func (s *PaymentService) ApplyCustomOrderCredit(ctx context.Context, orderUUID string, actorUserID int64) (*models.OrderDetail, error) {
-	order, err := s.GetOrder(orderUUID)
+	order, err := s.GetOrder(ctx, orderUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -834,7 +834,7 @@ func (s *PaymentService) ApplyCustomOrderCredit(ctx context.Context, orderUUID s
 		return nil, fmt.Errorf("credit has already been applied")
 	}
 
-	if _, err := s.credit.AddCredit(order.UserID, order.FinalAmount, fmt.Sprintf("custom top-up +%.2f (order %s)", order.FinalAmount, order.UUID[:8])); err != nil {
+	if _, err := s.credit.AddCredit(ctx, order.UserID, order.FinalAmount, fmt.Sprintf("custom top-up +%.2f (order %s)", order.FinalAmount, order.UUID[:8])); err != nil {
 		return nil, err
 	}
 
@@ -848,11 +848,11 @@ func (s *PaymentService) ApplyCustomOrderCredit(ctx context.Context, orderUUID s
 	s.recordOrderEvent(ctx, orderUUID, &actorUserID, "credit_applied", "Admin applied custom top-up credit", map[string]interface{}{
 		"credit_amount": order.FinalAmount,
 	})
-	return s.GetOrderDetail(orderUUID)
+	return s.GetOrderDetail(ctx, orderUUID)
 }
 
 func (s *PaymentService) ResendCustomOrderNotification(ctx context.Context, orderUUID string, actorUserID int64) (*models.OrderDetail, error) {
-	order, err := s.GetOrder(orderUUID)
+	order, err := s.GetOrder(ctx, orderUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -860,15 +860,15 @@ func (s *PaymentService) ResendCustomOrderNotification(ctx context.Context, orde
 		return nil, fmt.Errorf("notification resend is only available for custom orders")
 	}
 
-	if _, err := s.fulfillCustomOrder(order); err != nil {
+	if _, err := s.fulfillCustomOrder(ctx, order); err != nil {
 		return nil, err
 	}
 	s.recordOrderEvent(ctx, orderUUID, &actorUserID, "admin_notified", "Admin notification resent", nil)
-	return s.GetOrderDetail(orderUUID)
+	return s.GetOrderDetail(ctx, orderUUID)
 }
 
 func (s *PaymentService) RefundOrder(ctx context.Context, orderUUID string, actorUserID int64) (*models.OrderDetail, error) {
-	order, err := s.GetOrder(orderUUID)
+	order, err := s.GetOrder(ctx, orderUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -892,7 +892,7 @@ func (s *PaymentService) RefundOrder(ctx context.Context, orderUUID string, acto
 	}
 
 	s.recordOrderEvent(ctx, orderUUID, &actorUserID, "refunded", "Order refunded by admin", nil)
-	return s.GetOrderDetail(orderUUID)
+	return s.GetOrderDetail(ctx, orderUUID)
 }
 
 func sendTelegramPaymentMessage(botToken string, chatID int64, text string) {
@@ -954,7 +954,7 @@ func (s *PaymentService) CancelExpiredPendingOrders(ctx context.Context) error {
 		}
 
 		if order.TXBDiscount > 0 {
-			if _, err := s.credit.AddCredit(order.UserID, order.TXBDiscount, fmt.Sprintf("expired order refund +%.2f (order %s)", order.TXBDiscount, order.UUID[:8])); err != nil {
+			if _, err := s.credit.AddCredit(ctx, order.UserID, order.TXBDiscount, fmt.Sprintf("expired order refund +%.2f (order %s)", order.TXBDiscount, order.UUID[:8])); err != nil {
 				slog.Error("payment: failed to refund credit for expired order", "order", order.UUID, "error", err)
 				continue
 			}

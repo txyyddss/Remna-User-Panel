@@ -40,6 +40,19 @@ func WriteError(w http.ResponseWriter, status int, message string) {
 	json.NewEncoder(w).Encode(resp)
 }
 
+// WriteErrorData writes an error response with a structured data payload.
+func WriteErrorData(w http.ResponseWriter, status int, message string, data interface{}) {
+	resp := APIResponse{
+		Code:      status,
+		Message:   message,
+		Data:      data,
+		RequestID: uuid.New().String(),
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(resp)
+}
+
 // WriteSuccess writes a success JSON response with 200 status
 func WriteSuccess(w http.ResponseWriter, data interface{}) {
 	WriteJSON(w, http.StatusOK, data)

@@ -28,7 +28,7 @@ const (
 // GetCreditBalance returns the authenticated user's current credit balance.
 func (h *Handler) GetCreditBalance(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUser(r)
-	balance, _ := h.Credit.GetBalance(user.ID)
+	balance, _ := h.Credit.GetBalance(r.Context(), user.ID)
 	middleware.WriteSuccess(w, map[string]interface{}{
 		"balance": balance,
 		"name":    config.Get().Credit.Name,
@@ -38,7 +38,7 @@ func (h *Handler) GetCreditBalance(w http.ResponseWriter, r *http.Request) {
 // CreditSignup awards a random daily credit to the user.
 func (h *Handler) CreditSignup(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUser(r)
-	value, newBalance, err := h.Credit.Signup(user.ID)
+	value, newBalance, err := h.Credit.Signup(r.Context(), user.ID)
 	if err != nil {
 		middleware.WriteError(w, http.StatusBadRequest, err.Error())
 		return
@@ -67,7 +67,7 @@ func (h *Handler) CreditBet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, newBalance, err := h.Credit.Bet(user.ID, req.Amount)
+	result, newBalance, err := h.Credit.Bet(r.Context(), user.ID, req.Amount)
 	if err != nil {
 		middleware.WriteError(w, http.StatusBadRequest, err.Error())
 		return
@@ -92,7 +92,7 @@ func (h *Handler) GetCreditHistory(w http.ResponseWriter, r *http.Request) {
 		offset = 0
 	}
 
-	logs, err := h.Credit.GetHistory(user.ID, limit, offset)
+	logs, err := h.Credit.GetHistory(r.Context(), user.ID, limit, offset)
 	if err != nil {
 		slog.Error("credit-history: query failed", "user_id", user.ID, "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "failed to get history")
@@ -140,7 +140,7 @@ func (h *Handler) BEPusdtCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if data.Status == 2 { // Status 2 = Payment success
-		if err := h.Payment.CompleteOrder(data.OrderID); err != nil {
+		if err := h.Payment.CompleteOrder(r.Context(), data.OrderID); err != nil {
 			slog.Error("bepusdt-callback: complete order failed", "order_id", data.OrderID, "error", err)
 		}
 	}
@@ -172,7 +172,7 @@ func (h *Handler) EZPayCallback(w http.ResponseWriter, r *http.Request) {
 
 	if params["trade_status"] == "TRADE_SUCCESS" {
 		orderID := params["out_trade_no"]
-		if err := h.Payment.CompleteOrder(orderID); err != nil {
+		if err := h.Payment.CompleteOrder(r.Context(), orderID); err != nil {
 			slog.Error("ezpay-callback: complete order failed", "order_id", orderID, "error", err)
 		}
 	}
@@ -275,7 +275,7 @@ func (h *Handler) ListOrders(w http.ResponseWriter, r *http.Request) {
 		offset = 0
 	}
 
-	orders, err := h.Payment.GetUserOrders(user.ID, limit, offset)
+	orders, err := h.Payment.GetUserOrders(r.Context(), user.ID, limit, offset)
 	if err != nil {
 		slog.Error("list-orders: query failed", "user_id", user.ID, "error", err)
 		middleware.WriteError(w, http.StatusInternalServerError, "failed to load orders")
@@ -290,7 +290,7 @@ func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUser(r)
 	orderUUID := chi.URLParam(r, "uuid")
 
-	order, err := h.Payment.GetOrderDetail(orderUUID)
+	order, err := h.Payment.GetOrderDetail(r.Context(), orderUUID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			middleware.WriteError(w, http.StatusNotFound, "order not found")

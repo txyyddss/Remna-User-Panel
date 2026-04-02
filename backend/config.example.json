@@ -8,6 +8,8 @@
         "bot_token": "",
         "admin_ids": [],
         "group_id": 0,
+        "channel_id": 0,
+        "channel_url": "",
         "webhook_url": ""
     },
     "remnawave": {
@@ -57,6 +59,15 @@
         "backup_dir": "./backups"
     },
     "ip_change": {
-        "cooldown_hours": 6
+        "cooldown_hours": 6,
+        "swap_token": "",
+        "allowed_squad_uuids": [
+            "04d22a2e-1979-47b9-946b-8dbea5398811",
+            "5899ea60-974e-4794-9f71-ed73c2f8b24c",
+            "88a969cd-e313-440c-8ebd-4a53d8a79c3b",
+            "225a9b69-8b7d-4c70-ab57-13f547d96f54",
+            "ba55bf05-1fc8-4b8b-b4b2-b6f20715ef03",
+            "e68a5b66-f684-434b-9298-65e3c3867237"
+        ]
     }
 }

@@ -207,17 +207,25 @@ export interface Squad {
 
 // ─── IP Change ──────────────────────────────────────────────────────
 export interface IPChangeStatus {
-    can_change: boolean
-    last_change: string
-    next_available: string
-    cooldown_hours: number
+    count: number
+    status: 'WAITING' | 'PENDING' | 'CHANGING'
 }
 
 export interface IPChangeResponse {
-    status: string
-    message: string
-    subscription?: string
-    next_change_after?: string
+    success: boolean
+}
+
+export interface MiniAppAccessStatus {
+    user?: {
+        id: number
+        telegram_id: number
+        telegram_name: string
+        is_admin: boolean
+    }
+    channel_joined: boolean
+    group_joined: boolean
+    invite_link: string
+    channel_url: string
 }
 
 // ─── Jellyfin Devices ───────────────────────────────────────────────
