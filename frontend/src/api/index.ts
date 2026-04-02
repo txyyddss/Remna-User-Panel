@@ -1,4 +1,7 @@
-const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
+let BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
+if (BASE_URL !== '/api/v1' && !BASE_URL.endsWith('/api/v1')) {
+    BASE_URL = BASE_URL.replace(/\/$/, '') + '/api/v1'
+}
 
 function getInitData(): string {
     return window.Telegram?.WebApp?.initData || ''
@@ -18,7 +21,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     })
 
     const json = await resp.json()
-    if (json.code !== 200 && resp.ok === false) {
+    if (json.code !== 200 || !resp.ok) {
         throw new Error(json.message || 'Request failed')
     }
     return json.data as T
