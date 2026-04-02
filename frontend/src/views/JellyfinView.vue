@@ -2,8 +2,10 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { api } from '@/api'
+import { useToast } from '@/composables/useToast'
 
 const userStore = useUserStore()
+const toast = useToast()
 const loading = ref(true)
 const qcCode = ref('')
 const qcLoading = ref(false)
@@ -70,8 +72,10 @@ async function authorizeQC() {
     qcMessage.value = 'Quick Connect authorized successfully.'
     qcCode.value = ''
     window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success')
+    toast.success('Quick Connect authorized!')
   } catch (e: any) {
     qcMessage.value = e.message
+    toast.error(e.message)
   } finally {
     qcLoading.value = false
   }
@@ -83,9 +87,10 @@ async function updateRating() {
     lastSavedRating.value = parentalRating.value
     await userStore.refreshState({ background: true })
     window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success')
+    toast.success('Content rating updated.')
   } catch (e: any) {
     parentalRating.value = lastSavedRating.value
-    alert(e.message)
+    toast.error(e.message)
   }
 }
 
@@ -96,8 +101,9 @@ async function changePassword() {
     currentPwd.value = ''
     newPwd.value = ''
     window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success')
+    toast.success('Password updated successfully.')
   } catch (e: any) {
-    alert(e.message)
+    toast.error(e.message)
   }
 }
 
@@ -119,8 +125,9 @@ async function purchaseJellyfin() {
       window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success')
     }
     showPurchase.value = false
+    toast.success('Order created successfully.')
   } catch (e: any) {
-    alert(e.message)
+    toast.error(e.message)
   } finally {
     purchasing.value = false
   }
@@ -216,7 +223,7 @@ watch(() => userStore.jellyfin, async (nextValue) => {
     </div>
 
     <teleport to="body">
-      <transition name="fade">
+      <transition name="modal-slide">
         <div class="modal-overlay" v-if="showPurchase" @click.self="showPurchase = false">
           <div class="modal card">
             <h3 class="mb-md">{{ userStore.hasJellyfin ? 'Renew Jellyfin' : 'Activate Jellyfin' }}</h3>
@@ -299,8 +306,9 @@ watch(() => userStore.jellyfin, async (nextValue) => {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(3, 10, 21, 0.72);
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: flex-end;
   z-index: 200;
@@ -349,12 +357,6 @@ watch(() => userStore.jellyfin, async (nextValue) => {
   cursor: pointer;
 }
 
-.checkbox input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--accent-primary);
-}
-
 .discount-card {
   padding: var(--space-sm);
   background: rgba(0, 206, 201, 0.08);
@@ -364,5 +366,30 @@ watch(() => userStore.jellyfin, async (nextValue) => {
 
 .slider {
   width: 100%;
+}
+
+.modal-slide-enter-active {
+  transition: opacity 0.3s ease;
+}
+.modal-slide-enter-active .modal {
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.modal-slide-leave-active {
+  transition: opacity 0.25s ease;
+}
+.modal-slide-leave-active .modal {
+  transition: transform 0.25s ease-in;
+}
+.modal-slide-enter-from {
+  opacity: 0;
+}
+.modal-slide-enter-from .modal {
+  transform: translateY(100%);
+}
+.modal-slide-leave-to {
+  opacity: 0;
+}
+.modal-slide-leave-to .modal {
+  transform: translateY(30%);
 }
 </style>

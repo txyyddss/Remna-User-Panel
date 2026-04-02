@@ -2,8 +2,10 @@
 import { computed, onMounted, ref } from 'vue'
 import { api } from '@/api'
 import { useUserStore } from '@/stores/user'
+import { useToast } from '@/composables/useToast'
 
 const userStore = useUserStore()
+const toast = useToast()
 const squads = ref<any[]>([])
 const loading = ref(true)
 const updating = ref(false)
@@ -29,8 +31,9 @@ async function selectSquad(uuid: string) {
     await api.updateExternalSquad(uuid)
     await userStore.refreshState({ background: true })
     window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success')
+    toast.success('Route group updated successfully.')
   } catch (e: any) {
-    alert(e.message)
+    toast.error(e.message)
   } finally {
     updating.value = false
   }
@@ -80,7 +83,7 @@ onMounted(loadSquads)
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
-  border: none;
+  border: 1px solid var(--border-subtle);
   background: var(--bg-card);
   text-align: left;
   font-family: var(--font-body);

@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { api } from '@/api'
+import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+import AppSelect from '@/components/AppSelect.vue'
+
+const toast = useToast()
+const { confirm } = useConfirm()
 
 const activeTab = ref('combos')
 const loading = ref(true)
@@ -75,6 +81,49 @@ const orderEdit = ref<any>({
   admin_note: '',
 })
 
+/* ── Option lists for AppSelect ── */
+const squadOptions = ref<{ value: string; label: string }[]>([])
+const strategyOptions = [
+  { value: 'NO_RESET', label: 'No Reset' },
+  { value: 'DAY', label: 'Daily' },
+  { value: 'WEEK', label: 'Weekly' },
+  { value: 'MONTH', label: 'Monthly' },
+]
+const cycleOptions = [
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+  { value: 'semiannual', label: 'Semi-Annual' },
+  { value: 'annual', label: 'Annual' },
+]
+const paymentStatusOptions = [
+  { value: '', label: 'All payment statuses' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'processing', label: 'Processing' },
+  { value: 'paid', label: 'Paid' },
+  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'refunded', label: 'Refunded' },
+]
+const serviceStatusOptions = [
+  { value: '', label: 'All service statuses' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'fulfilled', label: 'Fulfilled' },
+  { value: 'waiting_admin', label: 'Waiting Admin' },
+  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'refunded', label: 'Refunded' },
+  { value: 'failed', label: 'Failed' },
+]
+const orderTypeOptions = [
+  { value: '', label: 'All bill types' },
+  { value: 'combo', label: 'Combo' },
+  { value: 'jellyfin', label: 'Jellyfin' },
+  { value: 'custom', label: 'Custom' },
+]
+const subStatusOptions = [
+  { value: 'active', label: 'Active' },
+  { value: 'disabled', label: 'Disabled' },
+  { value: 'expired', label: 'Expired' },
+]
+
 function toDateTimeLocal(value?: string | null) {
   if (!value) return ''
   const date = new Date(value)
@@ -96,8 +145,13 @@ async function loadConfig() {
 async function loadInternalSquads() {
   try {
     internalSquads.value = (await api.getInternalSquads()) || []
+    squadOptions.value = [
+      { value: '', label: 'Select internal squad' },
+      ...internalSquads.value.map((s: any) => ({ value: s.uuid, label: s.name })),
+    ]
   } catch (e) {
     internalSquads.value = []
+    squadOptions.value = [{ value: '', label: 'No squads available' }]
   }
 }
 
@@ -150,20 +204,23 @@ async function saveCombo() {
     showComboForm.value = false
     resetComboForm()
     window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success')
+    toast.success(editingCombo.value ? 'Plan updated.' : 'Plan created.')
   } catch (e: any) {
-    alert(e.message)
+    toast.error(e.message)
   } finally {
     saving.value = false
   }
 }
 
 async function deleteCombo(uuid: string) {
-  if (!confirm('Delete this plan?')) return
+  const ok = await confirm({ title: 'Delete Plan', message: 'Are you sure you want to delete this plan? This action cannot be undone.' })
+  if (!ok) return
   try {
     await api.deleteCombo(uuid)
     await loadCombos()
+    toast.success('Plan deleted.')
   } catch (e: any) {
-    alert(e.message)
+    toast.error(e.message)
   }
 }
 
@@ -205,7 +262,7 @@ async function openUser(user: any) {
       },
     }
   } catch (e: any) {
-    alert(e.message)
+    toast.error(e.message)
   } finally {
     userDetailLoading.value = false
   }
@@ -236,8 +293,9 @@ async function saveUser() {
     editingUser.value = null
     await loadUsers()
     window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success')
+    toast.success('User updated.')
   } catch (e: any) {
-    alert(e.message)
+    toast.error(e.message)
   } finally {
     saving.value = false
   }
@@ -280,7 +338,7 @@ async function openOrder(order: any) {
       admin_note: selectedOrder.value.admin_note || '',
     }
   } catch (e: any) {
-    alert(e.message)
+    toast.error(e.message)
   } finally {
     orderDetailLoading.value = false
   }
@@ -292,8 +350,9 @@ async function saveOrder() {
   try {
     selectedOrder.value = await api.adminUpdateOrder(selectedOrder.value.uuid, orderEdit.value)
     await loadOrders()
+    toast.success('Order updated.')
   } catch (e: any) {
-    alert(e.message)
+    toast.error(e.message)
   } finally {
     saving.value = false
   }
@@ -305,8 +364,9 @@ async function runOrderAction(action: string) {
   try {
     selectedOrder.value = await api.adminOrderAction(selectedOrder.value.uuid, action)
     await loadOrders()
+    toast.success(`Action "${action}" completed.`)
   } catch (e: any) {
-    alert(e.message)
+    toast.error(e.message)
   } finally {
     saving.value = false
   }
@@ -323,11 +383,21 @@ async function saveConfig() {
     await api.updateConfig(editableConfig.value)
     await loadConfig()
     configEditing.value = false
+    toast.success('Config saved.')
   } catch (e: any) {
-    alert(e.message)
+    toast.error(e.message)
   } finally {
     configSaving.value = false
   }
+}
+
+const comboOptions = ref<{ value: string; label: string }[]>([])
+
+function buildComboOptions() {
+  comboOptions.value = [
+    { value: '', label: 'Select combo' },
+    ...combos.value.map((c: any) => ({ value: c.uuid, label: c.name })),
+  ]
 }
 
 async function initialize() {
@@ -337,6 +407,7 @@ async function initialize() {
     loadInternalSquads(),
     loadCombos(),
   ])
+  buildComboOptions()
   loading.value = false
 }
 
@@ -361,6 +432,7 @@ onMounted(initialize)
         <button class="tab" :class="{ active: activeTab === 'config' }" @click="activeTab = 'config'">Config</button>
       </div>
 
+      <!-- PLANS TAB -->
       <div v-if="activeTab === 'combos'">
         <div class="card">
           <div class="row-between">
@@ -373,29 +445,16 @@ onMounted(initialize)
           <div v-if="showComboForm" class="stack-sm mt-md">
             <input class="input" v-model="comboForm.name" placeholder="Plan name" />
             <input class="input" v-model="comboForm.description" placeholder="Description" />
-            <select class="input" v-model="comboForm.squad_uuid">
-              <option value="">Select internal squad</option>
-              <option v-for="squad in internalSquads" :key="squad.uuid" :value="squad.uuid">{{ squad.name }}</option>
-            </select>
+            <AppSelect v-model="comboForm.squad_uuid" :options="squadOptions" placeholder="Select internal squad" />
             <div class="grid-2">
               <input class="input" v-model.number="comboForm.traffic_gb" type="number" placeholder="Traffic (GB)" />
-              <select class="input" v-model="comboForm.strategy">
-                <option value="NO_RESET">No Reset</option>
-                <option value="DAY">Daily</option>
-                <option value="WEEK">Weekly</option>
-                <option value="MONTH">Monthly</option>
-              </select>
+              <AppSelect v-model="comboForm.strategy" :options="strategyOptions" />
             </div>
             <div class="grid-2">
               <input class="input" v-model.number="comboForm.price_rmb" type="number" step="0.01" placeholder="Price (RMB)" />
               <input class="input" v-model.number="comboForm.reset_price" type="number" step="0.01" placeholder="Reset price (RMB)" />
             </div>
-            <select class="input" v-model="comboForm.cycle">
-              <option value="monthly">Monthly</option>
-              <option value="quarterly">Quarterly</option>
-              <option value="semiannual">Semi-Annual</option>
-              <option value="annual">Annual</option>
-            </select>
+            <AppSelect v-model="comboForm.cycle" :options="cycleOptions" />
             <button class="btn btn-primary btn-block" @click="saveCombo" :disabled="saving">{{ saving ? 'Saving...' : (editingCombo ? 'Update Plan' : 'Create Plan') }}</button>
           </div>
         </div>
@@ -417,6 +476,7 @@ onMounted(initialize)
         </div>
       </div>
 
+      <!-- USERS TAB -->
       <div v-if="activeTab === 'users'">
         <div class="card">
           <div class="row" style="gap:var(--space-sm)">
@@ -450,36 +510,17 @@ onMounted(initialize)
         </div>
       </div>
 
+      <!-- BILLING TAB -->
       <div v-if="activeTab === 'billing'">
         <div class="card">
           <div class="stack-sm">
             <input class="input" v-model="orderFilters.search" placeholder="Search order, upstream ID, or user" @keyup.enter="orderFilters.page = 0; loadOrders()" />
             <div class="grid-2">
-              <select class="input" v-model="orderFilters.status">
-                <option value="">All payment statuses</option>
-                <option value="pending">pending</option>
-                <option value="processing">processing</option>
-                <option value="paid">paid</option>
-                <option value="cancelled">cancelled</option>
-                <option value="refunded">refunded</option>
-              </select>
-              <select class="input" v-model="orderFilters.service_status">
-                <option value="">All service statuses</option>
-                <option value="pending">pending</option>
-                <option value="fulfilled">fulfilled</option>
-                <option value="waiting_admin">waiting_admin</option>
-                <option value="cancelled">cancelled</option>
-                <option value="refunded">refunded</option>
-                <option value="failed">failed</option>
-              </select>
+              <AppSelect v-model="orderFilters.status" :options="paymentStatusOptions" />
+              <AppSelect v-model="orderFilters.service_status" :options="serviceStatusOptions" />
             </div>
             <div class="grid-2">
-              <select class="input" v-model="orderFilters.order_type">
-                <option value="">All bill types</option>
-                <option value="combo">combo</option>
-                <option value="jellyfin">jellyfin</option>
-                <option value="custom">custom</option>
-              </select>
+              <AppSelect v-model="orderFilters.order_type" :options="orderTypeOptions" />
               <button class="btn btn-primary" @click="orderFilters.page = 0; loadOrders()">Apply Filters</button>
             </div>
           </div>
@@ -508,6 +549,7 @@ onMounted(initialize)
         </div>
       </div>
 
+      <!-- CONFIG TAB -->
       <div v-if="activeTab === 'config'">
         <div class="card">
           <div class="row-between mb-md">
@@ -545,8 +587,9 @@ onMounted(initialize)
       </div>
     </template>
 
+    <!-- USER EDIT MODAL -->
     <teleport to="body">
-      <transition name="fade">
+      <transition name="modal-slide">
         <div v-if="editingUser" class="modal-overlay" @click.self="editingUser = null">
           <div class="modal card">
             <h3 class="mb-md">Edit User: {{ editingUser.telegram_name }}</h3>
@@ -570,15 +613,8 @@ onMounted(initialize)
                 <h4 class="mb-sm">Subscription</h4>
                 <div class="stack-sm">
                   <input class="input" v-model="userForm.subscription.remnawave_uuid" placeholder="Remnawave UUID override" />
-                  <select class="input" v-model="userForm.subscription.combo_uuid">
-                    <option value="">Select combo</option>
-                    <option v-for="combo in combos" :key="combo.uuid" :value="combo.uuid">{{ combo.name }}</option>
-                  </select>
-                  <select class="input" v-model="userForm.subscription.status">
-                    <option value="active">active</option>
-                    <option value="disabled">disabled</option>
-                    <option value="expired">expired</option>
-                  </select>
+                  <AppSelect v-model="userForm.subscription.combo_uuid" :options="comboOptions" placeholder="Select combo" />
+                  <AppSelect v-model="userForm.subscription.status" :options="subStatusOptions" />
                   <input class="input" type="datetime-local" v-model="userForm.subscription.expires_at" />
                 </div>
               </div>
@@ -603,8 +639,9 @@ onMounted(initialize)
       </transition>
     </teleport>
 
+    <!-- ORDER EDIT MODAL -->
     <teleport to="body">
-      <transition name="fade">
+      <transition name="modal-slide">
         <div v-if="selectedOrder || orderDetailLoading" class="modal-overlay" @click.self="selectedOrder = null">
           <div class="modal card">
             <h3 class="mb-md">Bill Detail</h3>
@@ -614,21 +651,8 @@ onMounted(initialize)
               <div class="text-sm">User: {{ selectedOrder.user_telegram_name }} ({{ selectedOrder.user_telegram_id }})</div>
               <input class="input" v-model.number="orderEdit.amount" type="number" step="0.01" placeholder="Amount" />
               <input class="input" v-model.number="orderEdit.final_amount" type="number" step="0.01" placeholder="Final amount" />
-              <select class="input" v-model="orderEdit.status">
-                <option value="pending">pending</option>
-                <option value="processing">processing</option>
-                <option value="paid">paid</option>
-                <option value="cancelled">cancelled</option>
-                <option value="refunded">refunded</option>
-              </select>
-              <select class="input" v-model="orderEdit.service_status">
-                <option value="pending">pending</option>
-                <option value="fulfilled">fulfilled</option>
-                <option value="waiting_admin">waiting_admin</option>
-                <option value="cancelled">cancelled</option>
-                <option value="refunded">refunded</option>
-                <option value="failed">failed</option>
-              </select>
+              <AppSelect v-model="orderEdit.status" :options="paymentStatusOptions.filter(o => o.value !== '')" />
+              <AppSelect v-model="orderEdit.service_status" :options="serviceStatusOptions.filter(o => o.value !== '')" />
               <div class="grid-2">
                 <input class="input" v-model="orderEdit.payment_method" placeholder="Payment method" />
                 <input class="input" v-model="orderEdit.payment_type" placeholder="Payment type" />
@@ -784,8 +808,9 @@ onMounted(initialize)
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(3, 10, 21, 0.72);
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: flex-end;
   z-index: 200;
@@ -819,5 +844,37 @@ onMounted(initialize)
 
 .text-right {
   text-align: right;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+}
+
+.modal-slide-enter-active {
+  transition: opacity 0.3s ease;
+}
+.modal-slide-enter-active .modal {
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.modal-slide-leave-active {
+  transition: opacity 0.25s ease;
+}
+.modal-slide-leave-active .modal {
+  transition: transform 0.25s ease-in;
+}
+.modal-slide-enter-from {
+  opacity: 0;
+}
+.modal-slide-enter-from .modal {
+  transform: translateY(100%);
+}
+.modal-slide-leave-to {
+  opacity: 0;
+}
+.modal-slide-leave-to .modal {
+  transform: translateY(30%);
 }
 </style>

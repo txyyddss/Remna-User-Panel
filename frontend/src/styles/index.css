@@ -396,19 +396,36 @@ input[type="number"]::-webkit-inner-spin-button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   padding: var(--space-xs) var(--space-sm);
   color: var(--text-muted);
-  font-size: 0.72rem;
+  font-size: 0.65rem;
   font-weight: 500;
   text-decoration: none;
   transition: color 0.2s;
   border-radius: var(--radius-sm);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .nav-item:hover,
 .nav-item.active {
   color: var(--accent-primary);
+}
+
+.nav-item.active {
+  position: relative;
+}
+
+.nav-item.active::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 2px;
+  background: var(--accent-primary);
+  border-radius: 2px;
 }
 
 .nav-icon {
@@ -570,21 +587,40 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .slide-up-enter-active {
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .slide-up-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .slide-up-enter-from {
   opacity: 0;
-  transform: translateY(20px);
+  transform: translateY(16px);
 }
 
 .slide-up-leave-to {
   opacity: 0;
-  transform: translateY(-10px);
+  transform: translateY(-8px);
+}
+
+/* ── Modal Slide-Up ── */
+.modal-slide-enter-active {
+  transition: opacity 0.3s ease;
+}
+.modal-slide-leave-active {
+  transition: opacity 0.25s ease;
+}
+.modal-slide-enter-from,
+.modal-slide-leave-to {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* ── Utility ── */
@@ -650,8 +686,17 @@ input[type="range"]::-webkit-slider-thumb {
     padding: var(--space-md);
   }
 
+  .card:hover {
+    transform: none;
+  }
+
   .bottom-nav {
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
+  }
+
+  .nav-item {
+    font-size: 0.6rem;
+    padding: var(--space-xs) 4px;
   }
 }
