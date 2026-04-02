@@ -1,5 +1,8 @@
 name: Build Backend
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   push:
     branches: [main]
@@ -22,7 +25,7 @@ jobs:
 
       - name: Get dependencies
         working-directory: backend
-        run: go mod download
+        run: go mod tidy
 
       - name: Run tests
         working-directory: backend
