@@ -6,6 +6,7 @@ export const useUserStore = defineStore('user', () => {
     const user = ref<any>(null)
     const subscription = ref<any>(null)
     const jellyfin = ref<any>(null)
+    const appConfig = ref<any>(null)
     const loading = ref(false)
     const error = ref<string | null>(null)
 
@@ -23,6 +24,7 @@ export const useUserStore = defineStore('user', () => {
             user.value = data.user
             subscription.value = data.subscription
             jellyfin.value = data.jellyfin
+            appConfig.value = data.config
         } catch (e: any) {
             error.value = e.message
         } finally {
@@ -40,7 +42,7 @@ export const useUserStore = defineStore('user', () => {
     }
 
     return {
-        user, subscription, jellyfin, loading, error,
+        user, subscription, jellyfin, appConfig, loading, error,
         isAdmin, hasSubscription, hasJellyfin, credit, telegramName,
         fetchMe, refreshCredit,
     }

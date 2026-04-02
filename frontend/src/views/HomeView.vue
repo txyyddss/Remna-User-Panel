@@ -50,7 +50,7 @@ onMounted(async () => {
     <!-- Credit Card -->
     <div class="credit-card card">
       <div class="credit-header">
-        <span class="stat-label">TXB 余额</span>
+        <span class="stat-label">{{ userStore.appConfig?.credit_name || 'TXB' }} 余额</span>
         <router-link to="/credits" class="text-sm text-accent">查看详情 →</router-link>
       </div>
       <div class="stat-value">{{ userStore.credit.toFixed(2) }}</div>

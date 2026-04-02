@@ -68,10 +68,17 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 		jfAccount = &jf
 	}
 
+	cfg := config.Get()
+
 	middleware.WriteSuccess(w, map[string]interface{}{
 		"user":         user,
 		"subscription": sub,
 		"jellyfin":     jfAccount,
+		"config": map[string]interface{}{
+			"credit_name":     cfg.Credit.Name,
+			"rmb_to_txb_rate": cfg.Credit.RMBToTXBRate,
+			"txb_to_rmb_rate": cfg.Credit.TXBToRMBRate,
+		},
 	})
 }
 
@@ -325,13 +332,13 @@ func (h *Handler) PurchaseCombo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	metadata, _ := json.Marshal(map[string]interface{}{
-		"combo_uuid":  combo.UUID,
-		"combo_name":  combo.Name,
-		"squad_uuid":  combo.SquadUUID,
-		"traffic_gb":  combo.TrafficGB,
-		"strategy":    combo.Strategy,
-		"username":    username,
-		"expiry":      expiry.Format(time.RFC3339),
+		"combo_uuid": combo.UUID,
+		"combo_name": combo.Name,
+		"squad_uuid": combo.SquadUUID,
+		"traffic_gb": combo.TrafficGB,
+		"strategy":   combo.Strategy,
+		"username":   username,
+		"expiry":     expiry.Format(time.RFC3339),
 	})
 
 	// Create payment

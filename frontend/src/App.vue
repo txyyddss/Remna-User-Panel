@@ -12,7 +12,7 @@ const navItems = computed(() => {
   const items = [
     { path: '/', icon: '🏠', label: '首页' },
     { path: '/sub', icon: '📡', label: '订阅' },
-    { path: '/credits', icon: '💎', label: 'TXB' },
+    { path: '/credits', icon: '💎', label: userStore.appConfig?.credit_name || 'TXB' },
     { path: '/jellyfin', icon: '🎬', label: '影视' },
     { path: '/info', icon: '📊', label: '信息' },
   ]

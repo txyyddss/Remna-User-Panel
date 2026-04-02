@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { api } from '@/api'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
 
 const combos = ref<any[]>([])
 const loading = ref(true)
@@ -112,7 +115,7 @@ onMounted(async () => {
 
               <label class="checkbox mt-md">
                 <input type="checkbox" v-model="useTXB" />
-                <span class="text-sm">使用 TXB 折扣</span>
+                <span class="text-sm">使用 {{ userStore.appConfig?.credit_name || 'TXB' }} 折扣</span>
               </label>
             </div>
 

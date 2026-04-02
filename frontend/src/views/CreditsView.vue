@@ -54,14 +54,14 @@ onMounted(loadHistory)
 <template>
   <div class="page">
     <div class="page-header">
-      <h1 class="page-title">💎 TXB 积分</h1>
+      <h1 class="page-title">💎 {{ userStore.appConfig?.credit_name || 'TXB' }} 积分</h1>
     </div>
 
     <!-- Balance -->
     <div class="card credit-hero">
       <span class="stat-label">当前余额</span>
       <div class="stat-value">{{ userStore.credit.toFixed(2) }}</div>
-      <span class="text-xs text-muted">100 TXB = 1 RMB 折扣</span>
+      <span class="text-xs text-muted">{{ userStore.appConfig?.rmb_to_txb_rate || 100 }} {{ userStore.appConfig?.credit_name || 'TXB' }} = 1 RMB 折扣</span>
     </div>
 
     <!-- Actions -->
@@ -72,7 +72,7 @@ onMounted(loadHistory)
           签到
         </button>
         <div v-if="signupResult" class="result-text text-success mt-sm text-sm">
-          +{{ signupResult.value.toFixed(2) }} TXB
+          +{{ signupResult.value.toFixed(2) }} {{ userStore.appConfig?.credit_name || 'TXB' }}
         </div>
       </div>
 
@@ -83,7 +83,7 @@ onMounted(loadHistory)
           下注
         </button>
         <div v-if="betResult" class="result-text mt-sm text-sm" :class="{ 'text-success': betResult.result > 0, 'text-danger': betResult.result < 0 }">
-          {{ betResult.result > 0 ? '+' : '' }}{{ betResult.result.toFixed(2) }} TXB
+          {{ betResult.result > 0 ? '+' : '' }}{{ betResult.result.toFixed(2) }} {{ userStore.appConfig?.credit_name || 'TXB' }}
         </div>
       </div>
     </div>
