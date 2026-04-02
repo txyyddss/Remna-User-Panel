@@ -1,44 +1,52 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
+
+const isGroupBlock = computed(() => route.query.reason === 'group')
+const title = computed(() => (isGroupBlock.value ? 'Group Membership Required' : 'Telegram Mini App Only'))
+const message = computed(() =>
+  isGroupBlock.value
+    ? 'Join the required Telegram group first, then reopen the mini app.'
+    : 'Open this panel from the Telegram mini app to continue.',
+)
 </script>
 
 <template>
   <div class="blocked-page">
-    <div class="blocked-content">
-      <div class="blocked-icon">🔒</div>
-      <h1 class="blocked-title">Access Restricted</h1>
-      <p class="blocked-text">This panel is only accessible via the Telegram Mini App</p>
-      <p class="blocked-hint">Please open the bot in Telegram to use panel features</p>
+    <div class="blocked-card card">
+      <div class="blocked-kicker">{{ isGroupBlock ? 'Access Policy' : 'Launch Required' }}</div>
+      <h1 class="blocked-title">{{ title }}</h1>
+      <p class="blocked-text">{{ message }}</p>
+      <p class="blocked-hint">If you already joined the group, close the mini app and open it again from Telegram.</p>
     </div>
   </div>
 </template>
 
 <style scoped>
 .blocked-page {
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100dvh;
   padding: var(--space-lg);
 }
 
-.blocked-content {
+.blocked-card {
+  max-width: 420px;
   text-align: center;
 }
 
-.blocked-icon {
-  font-size: 4rem;
-  margin-bottom: var(--space-lg);
-  animation: pulse 2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
+.blocked-kicker {
+  margin-bottom: var(--space-sm);
+  color: var(--accent-secondary);
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
 }
 
 .blocked-title {
-  font-family: var(--font-display);
-  font-size: 1.5rem;
   margin-bottom: var(--space-md);
 }
 
@@ -49,6 +57,6 @@
 
 .blocked-hint {
   color: var(--text-muted);
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
 }
 </style>

@@ -75,28 +75,33 @@ type UserTrafficData struct {
 }
 
 type UserData struct {
-	UUID                     string     `json:"uuid"`
-	ShortUUID                string     `json:"shortUuid"`
-	Username                 string     `json:"username"`
-	Status                   string     `json:"status"`
-	TrafficLimitBytes        int64      `json:"trafficLimitBytes"`
-	TrafficLimitStrategy     string     `json:"trafficLimitStrategy"`
-	UsedTrafficBytes         int64      `json:"usedTrafficBytes"`
-	LifetimeUsedTrafficBytes int64      `json:"lifetimeUsedTrafficBytes"`
-	ExpireAt                 time.Time  `json:"expireAt"`
-	CreatedAt                time.Time  `json:"createdAt"`
-	LastTrafficResetAt       *time.Time `json:"lastTrafficResetAt"`
-	TelegramID               *int64     `json:"telegramId"`
-	Email                    string     `json:"email"`
-	Description              string     `json:"description"`
-	Tag                      string     `json:"tag"`
-	HwidDeviceLimit          int        `json:"hwidDeviceLimit"`
-	SubscriptionURL          string     `json:"subscriptionUrl"`
-	OnlineAt                 *time.Time `json:"onlineAt"`
-	SubLastUserAgent         string     `json:"subLastUserAgent"`
-	SubRevokedAt             *time.Time `json:"subRevokedAt"`
-	ActiveInternalSquads     []Squad    `json:"activeInternalSquads"`
-	ExternalSquadUUID        string     `json:"externalSquadUuid"`
+	UUID                     string          `json:"uuid"`
+	ID                       int64           `json:"id"`
+	ShortUUID                string          `json:"shortUuid"`
+	Username                 string          `json:"username"`
+	Status                   string          `json:"status"`
+	TrafficLimitBytes        int64           `json:"trafficLimitBytes"`
+	TrafficLimitStrategy     string          `json:"trafficLimitStrategy"`
+	UsedTrafficBytes         int64           `json:"usedTrafficBytes"`
+	LifetimeUsedTrafficBytes int64           `json:"lifetimeUsedTrafficBytes"`
+	ExpireAt                 time.Time       `json:"expireAt"`
+	CreatedAt                time.Time       `json:"createdAt"`
+	LastTrafficResetAt       *time.Time      `json:"lastTrafficResetAt"`
+	TelegramID               *int64          `json:"telegramId"`
+	Email                    string          `json:"email"`
+	Description              string          `json:"description"`
+	Tag                      string          `json:"tag"`
+	HwidDeviceLimit          int             `json:"hwidDeviceLimit"`
+	SubscriptionURL          string          `json:"subscriptionUrl"`
+	TrojanPassword           string          `json:"trojanPassword"`
+	VlessUUID                string          `json:"vlessUuid"`
+	SSPassword               string          `json:"ssPassword"`
+	OnlineAt                 *time.Time      `json:"onlineAt"`
+	SubLastUserAgent         string          `json:"subLastUserAgent"`
+	SubLastOpenedAt          *time.Time      `json:"subLastOpenedAt"`
+	SubRevokedAt             *time.Time      `json:"subRevokedAt"`
+	ActiveInternalSquads     []Squad         `json:"activeInternalSquads"`
+	ExternalSquadUUID        string          `json:"externalSquadUuid"`
 	UserTraffic              UserTrafficData `json:"userTraffic"`
 }
 
@@ -104,7 +109,7 @@ func (u *UserData) UnmarshalJSON(data []byte) error {
 	type alias UserData
 	var raw struct {
 		alias
-		ActiveInternalSquads json.RawMessage `json:"activeInternalSquads"`
+		ActiveInternalSquads json.RawMessage  `json:"activeInternalSquads"`
 		UserTraffic          *UserTrafficData `json:"userTraffic"`
 	}
 

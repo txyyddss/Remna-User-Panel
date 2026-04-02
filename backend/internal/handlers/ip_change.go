@@ -3,11 +3,13 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/user/remna-user-panel/internal/config"
 	"github.com/user/remna-user-panel/internal/database"
 	"github.com/user/remna-user-panel/internal/middleware"
+	"github.com/user/remna-user-panel/internal/models"
 	"github.com/user/remna-user-panel/internal/sdk/remnawave"
 )
 
@@ -16,9 +18,14 @@ func (h *Handler) IPChange(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUser(r)
 	cfg := config.Get()
 
-	if user.RemnawaveUUID == "" {
-		middleware.WriteError(w, http.StatusNotFound, "no active subscription")
-		return
+	var req struct {
+		Subscription string `json:"subscription"`
+	}
+	if r.ContentLength > 0 {
+		if err := middleware.DecodeJSON(r, &req); err != nil {
+			middleware.WriteError(w, http.StatusBadRequest, "invalid request")
+			return
+		}
 	}
 
 	// Check cooldown
@@ -46,11 +53,20 @@ func (h *Handler) IPChange(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Get current IPs
+	targetUUID := user.RemnawaveUUID
+	if targetUUID == "" || req.Subscription != "" {
+		resolvedUUID, err := h.resolveRemnawaveUUID(req.Subscription, user)
+		if err != nil {
+			middleware.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		targetUUID = resolvedUUID
+	}
+
 	rwClient := remnawave.NewClient(cfg.Remnawave.URL, cfg.Remnawave.Token)
 
 	// Drop current connections to force IP change
-	err = rwClient.DropConnections([]string{user.RemnawaveUUID})
+	err = rwClient.DropConnections([]string{targetUUID})
 	if err != nil {
 		middleware.WriteError(w, http.StatusInternalServerError, "failed to disconnect: "+err.Error())
 		return
@@ -65,6 +81,7 @@ func (h *Handler) IPChange(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteSuccess(w, map[string]interface{}{
 		"status":            "success",
 		"message":           "connection dropped, please reconnect to get a new IP",
+		"subscription":      req.Subscription,
 		"next_change_after": time.Now().Add(time.Duration(cooldownHours) * time.Hour).Format(time.RFC3339),
 	})
 }
@@ -101,4 +118,37 @@ func (h *Handler) GetIPChangeStatus(w http.ResponseWriter, r *http.Request) {
 		"next_available": nextAvailable,
 		"cooldown_hours": cooldownHours,
 	})
+}
+
+func (h *Handler) resolveRemnawaveUUID(subscription string, user *models.User) (string, error) {
+	if user != nil && user.RemnawaveUUID != "" && subscription == "" {
+		return user.RemnawaveUUID, nil
+	}
+
+	raw := strings.TrimSpace(subscription)
+	if raw == "" {
+		return "", fmt.Errorf("subscription link or short UUID is required")
+	}
+
+	shortUUID := raw
+	if strings.Contains(raw, "/") {
+		parts := strings.FieldsFunc(raw, func(r rune) bool {
+			return r == '/' || r == '?' || r == '#'
+		})
+		if len(parts) == 0 {
+			return "", fmt.Errorf("invalid subscription link")
+		}
+		shortUUID = parts[len(parts)-1]
+	}
+
+	cfg := config.Get()
+	rwClient := remnawave.NewClient(cfg.Remnawave.URL, cfg.Remnawave.Token)
+	rwUser, err := rwClient.GetUserByShortUUID(shortUUID)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve subscription")
+	}
+	if rwUser.Status != "ACTIVE" && rwUser.Status != "LIMITED" {
+		return "", fmt.Errorf("subscription is not active")
+	}
+	return rwUser.UUID, nil
 }

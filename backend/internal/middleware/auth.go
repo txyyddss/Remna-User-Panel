@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"sort"
@@ -21,8 +22,8 @@ import (
 type contextKey string
 
 const (
-	UserContextKey        contextKey = "user"
-	TokenPermissionsKey  contextKey = "token_permissions"
+	UserContextKey      contextKey = "user"
+	TokenPermissionsKey contextKey = "token_permissions"
 )
 
 // GetUser retrieves the authenticated user from context
@@ -56,6 +57,11 @@ func TelegramAuth(next http.Handler) http.Handler {
 		user, err := getOrCreateUser(telegramID, name)
 		if err != nil {
 			WriteError(w, http.StatusInternalServerError, "failed to load user")
+			return
+		}
+
+		if err := ensureGroupMembership(user); err != nil {
+			WriteError(w, http.StatusForbidden, err.Error())
 			return
 		}
 
@@ -280,13 +286,13 @@ func getOrCreateUser(telegramID int64, name string) (*models.User, error) {
 		}
 		id, _ := result.LastInsertId()
 		user = models.User{
-			ID:         id,
-			TelegramID: telegramID,
+			ID:           id,
+			TelegramID:   telegramID,
 			TelegramName: name,
-			Credit:     0,
-			IsAdmin:    isAdmin,
-			CreatedAt:  time.Now(),
-			UpdatedAt:  time.Now(),
+			Credit:       0,
+			IsAdmin:      isAdmin,
+			CreatedAt:    time.Now(),
+			UpdatedAt:    time.Now(),
 		}
 	} else {
 		// Update name if changed
@@ -305,4 +311,75 @@ func getOrCreateUser(telegramID int64, name string) (*models.User, error) {
 	}
 
 	return &user, nil
+}
+
+func ensureGroupMembership(user *models.User) error {
+	if user == nil || user.IsAdmin {
+		return nil
+	}
+
+	cfg := config.Get()
+	if cfg == nil || cfg.Telegram.BotToken == "" || cfg.Telegram.GroupID == 0 {
+		return nil
+	}
+
+	status, err := fetchChatMemberStatus(cfg.Telegram.BotToken, cfg.Telegram.GroupID, user.TelegramID)
+	if err != nil {
+		return fmt.Errorf("failed to verify group membership")
+	}
+	if !isJoinedChatStatus(status) {
+		return fmt.Errorf("group membership required to use this mini app")
+	}
+	return nil
+}
+
+func fetchChatMemberStatus(botToken string, chatID, userID int64) (string, error) {
+	body, err := json.Marshal(map[string]int64{
+		"chat_id": chatID,
+		"user_id": userID,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, "https://api.telegram.org/bot"+botToken+"/getChatMember", strings.NewReader(string(body)))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var payload struct {
+		OK          bool   `json:"ok"`
+		Description string `json:"description"`
+		Result      struct {
+			Status string `json:"status"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return "", err
+	}
+	if !payload.OK {
+		return "", fmt.Errorf(payload.Description)
+	}
+	return payload.Result.Status, nil
+}
+
+func isJoinedChatStatus(status string) bool {
+	switch status {
+	case "member", "administrator", "creator", "restricted":
+		return true
+	default:
+		return false
+	}
 }

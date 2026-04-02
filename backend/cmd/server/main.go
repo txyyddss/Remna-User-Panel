@@ -168,7 +168,7 @@ func main() {
 	})
 
 	// Start cron jobs
-	cron.Start(creditSvc)
+	cron.Start(creditSvc, h.Payment)
 
 	// Start Telegram bot
 	ctx, cancel := context.WithCancel(context.Background())

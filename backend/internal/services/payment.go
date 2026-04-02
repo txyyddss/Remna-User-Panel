@@ -20,6 +20,8 @@ import (
 	"github.com/user/remna-user-panel/internal/sdk/remnawave"
 )
 
+const pendingOrderTimeout = 30 * time.Minute
+
 // PaymentService handles payment creation and processing
 type PaymentService struct {
 	credit *CreditService
@@ -271,7 +273,15 @@ func normalizePaymentRequest(finalAmount float64, paymentMethod, paymentType str
 
 	switch paymentMethod {
 	case "bepusdt":
-		return paymentMethod, paymentType, nil
+		if paymentType == "" {
+			paymentType = "usdt.polygon"
+		}
+		switch paymentType {
+		case "usdt.aptos", "usdt.arbitrum", "usdt.polygon":
+			return paymentMethod, paymentType, nil
+		default:
+			return "", "", fmt.Errorf("unsupported USDT network: %s", paymentType)
+		}
 	case "ezpay":
 		if paymentType == "" {
 			paymentType = "alipay"
@@ -288,17 +298,9 @@ func (s *PaymentService) createUpstreamPayment(orderUUID string, finalAmount flo
 	switch paymentMethod {
 	case "bepusdt":
 		client := bepusdt.NewClient(cfg.BEPusdt.URL, cfg.BEPusdt.Token, cfg.BEPusdt.NotifyURL, cfg.BEPusdt.RedirectURL)
-		resp, err := client.CreateOrder(orderUUID, finalAmount, "order payment", "USDT")
-		if err == nil && resp.Data.PaymentURL != "" {
-			return resp.Data.PaymentURL, resp.Data.TradeID, nil
-		}
-
-		resp, fallbackErr := client.CreateTransaction(orderUUID, finalAmount, "order payment")
-		if fallbackErr != nil {
-			if err != nil {
-				return "", "", fmt.Errorf("create USDT payment: %w", err)
-			}
-			return "", "", fmt.Errorf("create USDT payment: %w", fallbackErr)
+		resp, err := client.CreateTransaction(orderUUID, finalAmount, "order payment", paymentType)
+		if err != nil {
+			return "", "", fmt.Errorf("create USDT payment: %w", err)
 		}
 		return resp.Data.PaymentURL, resp.Data.TradeID, nil
 
@@ -898,4 +900,64 @@ func sendTelegramPaymentMessage(botToken string, chatID int64, text string) {
 		"application/json",
 		bytes.NewReader(body),
 	)
+}
+
+func (s *PaymentService) CancelExpiredPendingOrders() error {
+	rows, err := database.DB().Query(
+		`SELECT uuid, user_id, payment_method, upstream_id, txb_discount
+		 FROM orders
+		 WHERE status = 'pending' AND created_at <= ?`,
+		time.Now().Add(-pendingOrderTimeout),
+	)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	type expiredOrder struct {
+		UUID          string
+		UserID        int64
+		PaymentMethod string
+		UpstreamID    string
+		TXBDiscount   float64
+	}
+
+	var expired []expiredOrder
+	for rows.Next() {
+		var order expiredOrder
+		if err := rows.Scan(&order.UUID, &order.UserID, &order.PaymentMethod, &order.UpstreamID, &order.TXBDiscount); err != nil {
+			return err
+		}
+		expired = append(expired, order)
+	}
+
+	cfg := config.Get()
+	for _, order := range expired {
+		if order.PaymentMethod == "bepusdt" && order.UpstreamID != "" {
+			client := bepusdt.NewClient(cfg.BEPusdt.URL, cfg.BEPusdt.Token, cfg.BEPusdt.NotifyURL, cfg.BEPusdt.RedirectURL)
+			if err := client.CancelTransaction(order.UpstreamID); err != nil {
+				log.Printf("[payment] failed to cancel BEPusdt trade %s for order %s: %v", order.UpstreamID, order.UUID, err)
+			}
+		}
+
+		if order.TXBDiscount > 0 {
+			if _, err := s.credit.AddCredit(order.UserID, order.TXBDiscount, fmt.Sprintf("expired order refund +%.2f (order %s)", order.TXBDiscount, order.UUID[:8])); err != nil {
+				log.Printf("[payment] failed to refund credit for expired order %s: %v", order.UUID, err)
+				continue
+			}
+		}
+
+		if _, err := database.DB().Exec(
+			"UPDATE orders SET status = 'cancelled', service_status = 'cancelled', updated_at = ? WHERE uuid = ? AND status = 'pending'",
+			time.Now(), order.UUID,
+		); err != nil {
+			log.Printf("[payment] failed to mark expired order %s as cancelled: %v", order.UUID, err)
+			continue
+		}
+		s.recordOrderEvent(order.UUID, nil, "expired", "Pending payment expired and was cancelled automatically", map[string]interface{}{
+			"timeout_minutes": int(pendingOrderTimeout / time.Minute),
+		})
+	}
+
+	return nil
 }

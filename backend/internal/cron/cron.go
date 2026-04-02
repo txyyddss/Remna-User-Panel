@@ -15,7 +15,7 @@ import (
 )
 
 // Start initializes and starts all cron jobs
-func Start(credit *services.CreditService) {
+func Start(credit *services.CreditService, payment *services.PaymentService) {
 	c := cron.New()
 
 	// Daily backup at 3:00 AM
@@ -38,6 +38,16 @@ func Start(credit *services.CreditService) {
 	// Check subscription expiry every hour
 	c.AddFunc("30 * * * *", func() {
 		checkExpiredSubscriptions()
+	})
+
+	// Cancel stale pending payments every 5 minutes.
+	c.AddFunc("@every 5m", func() {
+		if payment == nil {
+			return
+		}
+		if err := payment.CancelExpiredPendingOrders(); err != nil {
+			log.Printf("[cron] pending payment cleanup error: %v", err)
+		}
 	})
 
 	c.Start()

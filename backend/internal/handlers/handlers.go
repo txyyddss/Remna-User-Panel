@@ -87,6 +87,13 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 			"jellyfin": map[string]interface{}{
 				"monthly_price_rmb": cfg.Jellyfin.MonthlyPriceRMB,
 			},
+			"payments": map[string]interface{}{
+				"usdt_networks": []map[string]string{
+					{"value": "usdt.aptos", "label": "USDT Aptos"},
+					{"value": "usdt.arbitrum", "label": "USDT Arbitrum"},
+					{"value": "usdt.polygon", "label": "USDT Polygon"},
+				},
+			},
 		},
 	})
 }
@@ -198,7 +205,7 @@ func (h *Handler) BEPusdtCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, "ok")
+	fmt.Fprint(w, "success")
 }
 
 func (h *Handler) EZPayCallback(w http.ResponseWriter, r *http.Request) {
@@ -410,6 +417,16 @@ func (h *Handler) GetSubKeys(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteSuccess(w, map[string]interface{}{
 		"subscription_url": rwUser.SubscriptionURL,
 		"short_uuid":       rwUser.ShortUUID,
+		"vless_uuid":       rwUser.VlessUUID,
+		"trojan_password":  rwUser.TrojanPassword,
+		"ss_password":      rwUser.SSPassword,
+		"username":         rwUser.Username,
+		"instructions": []string{
+			"Import the subscription URL into Clash, v2rayN, v2rayNG, Stash, Shadowrocket, or sing-box.",
+			"If your client supports manual setup, use the VLESS UUID or Trojan password shown here.",
+			"After changing route groups or resetting traffic, refresh the subscription in your client.",
+			"Keep the subscription URL private. Anyone with the URL can import your profile.",
+		},
 	})
 }
 
@@ -782,15 +799,35 @@ func (h *Handler) GetInternalSquads(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteSuccess(w, squads)
 }
 
-// DeleteCombo soft-deletes a combo by setting active=0
+// DeleteCombo deletes an unused combo, otherwise archives it.
 func (h *Handler) DeleteCombo(w http.ResponseWriter, r *http.Request) {
 	comboUUID := chi.URLParam(r, "uuid")
-	_, err := database.DB().Exec("UPDATE combos SET active = 0 WHERE uuid = ?", comboUUID)
-	if err != nil {
+
+	var subscriptionRefs int
+	_ = database.DB().QueryRow("SELECT COUNT(*) FROM subscriptions WHERE combo_uuid = ?", comboUUID).Scan(&subscriptionRefs)
+	var orderRefs int
+	_ = database.DB().QueryRow("SELECT COUNT(*) FROM orders WHERE metadata LIKE ?", "%"+comboUUID+"%").Scan(&orderRefs)
+
+	if subscriptionRefs == 0 && orderRefs == 0 {
+		result, err := database.DB().Exec("DELETE FROM combos WHERE uuid = ?", comboUUID)
+		if err != nil {
+			middleware.WriteError(w, http.StatusInternalServerError, "failed to delete combo")
+			return
+		}
+		affected, _ := result.RowsAffected()
+		if affected == 0 {
+			middleware.WriteError(w, http.StatusNotFound, "combo not found")
+			return
+		}
+		middleware.WriteSuccess(w, map[string]string{"status": "deleted", "mode": "hard"})
+		return
+	}
+
+	if _, err := database.DB().Exec("UPDATE combos SET active = 0 WHERE uuid = ?", comboUUID); err != nil {
 		middleware.WriteError(w, http.StatusInternalServerError, "failed to delete combo")
 		return
 	}
-	middleware.WriteSuccess(w, map[string]string{"status": "deleted"})
+	middleware.WriteSuccess(w, map[string]string{"status": "deleted", "mode": "archived"})
 }
 
 // AdminListCombos lists all combos including inactive ones for admin

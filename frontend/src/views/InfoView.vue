@@ -1,32 +1,42 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { useUserStore } from '@/stores/user'
+import { computed, onMounted, ref } from 'vue'
 import { api } from '@/api'
 
-const userStore = useUserStore()
 const bandwidth = ref<any[]>([])
 const devices = ref<any[]>([])
 const history = ref<any[]>([])
 const loading = ref(true)
-const activeTab = ref('bandwidth')
+const activeTab = ref<'bandwidth' | 'devices' | 'history'>('bandwidth')
 
-function formatBytes(b: number): string {
-  if (b < 1073741824) return `${(b / 1048576).toFixed(2)} MB`
-  return `${(b / 1073741824).toFixed(2)} GB`
+function formatBytes(bytes: number): string {
+  if (!bytes) {
+    return '0 B'
+  }
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
+  return `${(bytes / 1024 ** index).toFixed(index === 0 ? 0 : 2)} ${units[index]}`
 }
 
 const nodeAggregated = computed(() => {
   const map: Record<string, { name: string; country: string; total: number }> = {}
   for (const item of bandwidth.value) {
-    if (!map[item.nodeUuid]) {
-      map[item.nodeUuid] = { name: item.nodeName, country: item.countryCode, total: 0 }
+    const key = item.nodeUuid || item.nodeUUID || item.nodeName
+    if (!key) {
+      continue
     }
-    map[item.nodeUuid].total += item.total
+    if (!map[key]) {
+      map[key] = {
+        name: item.nodeName || 'Unknown node',
+        country: item.countryCode || '--',
+        total: 0,
+      }
+    }
+    map[key].total += Number(item.total || 0)
   }
   return Object.values(map).sort((a, b) => b.total - a.total)
 })
 
-const totalBandwidth = computed(() => nodeAggregated.value.reduce((sum, n) => sum + n.total, 0))
+const totalBandwidth = computed(() => nodeAggregated.value.reduce((sum, node) => sum + node.total, 0))
 
 onMounted(async () => {
   try {
@@ -35,21 +45,29 @@ onMounted(async () => {
       api.getDevices(),
       api.getSubHistory(),
     ])
-    if (bw.status === 'fulfilled') bandwidth.value = bw.value || []
-    if (dev.status === 'fulfilled') devices.value = dev.value || []
-    if (hist.status === 'fulfilled') history.value = hist.value || []
-  } catch (e) {}
-  loading.value = false
+
+    if (bw.status === 'fulfilled') {
+      bandwidth.value = bw.value || []
+    }
+    if (dev.status === 'fulfilled') {
+      devices.value = dev.value || []
+    }
+    if (hist.status === 'fulfilled') {
+      history.value = hist.value || []
+    }
+  } finally {
+    loading.value = false
+  }
 })
 </script>
 
 <template>
   <div class="page">
     <div class="page-header">
-      <h1 class="page-title">📊 Usage Info</h1>
+      <h1 class="page-title">Usage</h1>
+      <p class="page-subtitle">Traffic by node, active devices, and subscription fetch history.</p>
     </div>
 
-    <!-- Tabs -->
     <div class="tabs">
       <button class="tab" :class="{ active: activeTab === 'bandwidth' }" @click="activeTab = 'bandwidth'">Traffic</button>
       <button class="tab" :class="{ active: activeTab === 'devices' }" @click="activeTab = 'devices'">Devices</button>
@@ -58,106 +76,83 @@ onMounted(async () => {
 
     <div class="loading-page" v-if="loading"><div class="loading-spinner"></div></div>
 
-    <!-- Bandwidth Tab -->
-    <div v-if="!loading && activeTab === 'bandwidth'" class="stack mt-md">
+    <div v-else-if="activeTab === 'bandwidth'" class="stack mt-md">
       <div class="card">
-        <h3 class="mb-sm">Total Traffic Usage</h3>
+        <h3 class="mb-sm">30-Day Traffic</h3>
         <div class="stat-value">{{ formatBytes(totalBandwidth) }}</div>
-        <span class="text-xs text-muted">Past 30 days</span>
+        <p class="text-sm text-muted mt-sm">Aggregated from Remnawave bandwidth stats.</p>
       </div>
 
-      <div class="card" v-if="nodeAggregated.length > 0">
-        <h4 class="mb-md">Node Usage Distribution</h4>
-        <div v-for="(node, i) in nodeAggregated" :key="i" class="node-item">
-          <div class="node-header">
-            <span class="text-sm">{{ node.country?.toUpperCase() }} · {{ node.name }}</span>
-            <span class="mono text-sm">{{ formatBytes(node.total) }}</span>
+      <div class="card" v-if="nodeAggregated.length">
+        <h3 class="mb-md">Node Distribution</h3>
+        <div v-for="node in nodeAggregated" :key="`${node.country}-${node.name}`" class="node-item">
+          <div class="row-between text-sm">
+            <span>{{ node.country.toUpperCase() }} · {{ node.name }}</span>
+            <span class="mono">{{ formatBytes(node.total) }}</span>
           </div>
-          <div class="progress" style="height:4px">
-            <div class="progress-bar" :style="{ width: (node.total / totalBandwidth * 100) + '%' }"></div>
+          <div class="progress mt-sm">
+            <div class="progress-bar" :style="{ width: `${totalBandwidth ? (node.total / totalBandwidth) * 100 : 0}%` }"></div>
           </div>
         </div>
       </div>
+
+      <div v-else class="card text-sm text-muted">No traffic usage has been recorded recently.</div>
     </div>
 
-    <!-- Devices Tab -->
-    <div v-if="!loading && activeTab === 'devices'" class="stack mt-md">
-      <div v-for="dev in devices" :key="dev.hwid" class="card">
+    <div v-else-if="activeTab === 'devices'" class="stack mt-md">
+      <div v-for="device in devices" :key="device.hwid" class="card">
         <div class="row-between">
           <div>
-            <div class="text-sm">{{ dev.platform || 'Unknown' }} {{ dev.deviceModel || '' }}</div>
-            <div class="text-xs text-muted">{{ dev.osVersion || '' }}</div>
+            <div class="text-sm">{{ device.platform || 'Unknown platform' }} {{ device.deviceModel || '' }}</div>
+            <div class="text-xs text-muted">{{ device.osVersion || device.userAgent || 'No extra details' }}</div>
           </div>
-          <span class="badge badge-success">Online</span>
+          <span class="badge badge-success">{{ device.hwid ? 'Bound' : 'Active' }}</span>
         </div>
       </div>
-      <div v-if="devices.length === 0" class="empty-state">
-        <span class="empty-state-icon">📱</span>
-        <p class="empty-state-text">No device records</p>
-      </div>
+
+      <div v-if="devices.length === 0" class="card text-sm text-muted">No hardware device records found.</div>
     </div>
 
-    <!-- History Tab -->
-    <div v-if="!loading && activeTab === 'history'" class="stack mt-md">
-      <div v-for="h in history" :key="h.id" class="card">
+    <div v-else class="stack mt-md">
+      <div v-for="item in history" :key="item.id" class="card">
         <div class="row-between">
           <div>
-            <div class="text-sm truncate" style="max-width:200px">{{ h.userAgent }}</div>
-            <div class="text-xs text-muted">{{ h.ip }}</div>
+            <div class="text-sm">{{ item.userAgent || 'Unknown user agent' }}</div>
+            <div class="text-xs text-muted">{{ item.ip || 'Unknown IP' }}</div>
           </div>
-          <span class="text-xs text-muted">{{ new Date(h.createdAt).toLocaleString('en-US') }}</span>
+          <span class="text-xs text-muted">{{ new Date(item.createdAt).toLocaleString('en-US') }}</span>
         </div>
       </div>
-      <div v-if="history.length === 0" class="empty-state">
-        <span class="empty-state-icon">📜</span>
-        <p class="empty-state-text">No subscription request records</p>
-      </div>
+
+      <div v-if="history.length === 0" class="card text-sm text-muted">No subscription request history yet.</div>
     </div>
   </div>
 </template>
 
 <style scoped>
 .tabs {
-  display: flex;
-  background: var(--bg-glass);
-  border-radius: var(--radius-md);
-  padding: 4px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .tab {
-  flex: 1;
-  padding: var(--space-sm);
+  min-height: 42px;
   border: none;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-muted);
-  font-family: var(--font-body);
-  font-size: 0.875rem;
-  font-weight: 500;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all 0.2s;
 }
 
 .tab.active {
-  background: var(--bg-card);
+  background: rgba(91, 141, 239, 0.16);
   color: var(--text-primary);
 }
 
-.node-item {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  padding: var(--space-sm) 0;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.node-item:last-child {
-  border-bottom: none;
-}
-
-.node-header {
-  display: flex;
-  justify-content: space-between;
+.node-item + .node-item {
+  margin-top: var(--space-md);
 }
 </style>

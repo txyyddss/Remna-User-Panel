@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -46,6 +47,13 @@ type CreateTransactionRequest struct {
 	Fiat        string      `json:"fiat,omitempty"`
 	Name        string      `json:"name,omitempty"`
 	Timeout     int         `json:"timeout,omitempty"`
+}
+
+type UpdateOrderRequest struct {
+	TradeID   string `json:"trade_id"`
+	Currency  string `json:"currency"`
+	Network   string `json:"network"`
+	Signature string `json:"signature"`
 }
 
 type TransactionResponse struct {
@@ -90,27 +98,28 @@ type CallbackData struct {
 }
 
 // CreateTransaction creates a USDT payment transaction
-func (c *Client) CreateTransaction(orderID string, amount float64, name string) (*TransactionResponse, error) {
+func (c *Client) CreateTransaction(orderID string, amount float64, name, tradeType string) (*TransactionResponse, error) {
 	amountStr := formatAmount(amount)
-	params := map[string]string{
-		"order_id":     orderID,
-		"amount":       amountStr,
-		"notify_url":   c.notifyURL,
-		"redirect_url": c.redirectURL,
-	}
-	signature := c.generateSignature(params)
-
 	req := CreateTransactionRequest{
 		OrderID:     orderID,
 		Amount:      json.Number(amountStr),
 		NotifyURL:   c.notifyURL,
 		RedirectURL: c.redirectURL,
-		Signature:   signature,
-		TradeType:   "usdt.bep20",
+		TradeType:   defaultTradeType(tradeType),
 		Fiat:        "CNY",
 		Name:        name,
 		Timeout:     600,
 	}
+	req.Signature = c.generateSignature(stringMap(
+		"order_id", req.OrderID,
+		"amount", req.Amount.String(),
+		"notify_url", req.NotifyURL,
+		"redirect_url", req.RedirectURL,
+		"trade_type", req.TradeType,
+		"fiat", req.Fiat,
+		"name", req.Name,
+		"timeout", strconv.Itoa(req.Timeout),
+	))
 
 	data, err := c.doPost("/api/v1/order/create-transaction", req)
 	if err != nil {
@@ -130,25 +139,26 @@ func (c *Client) CreateTransaction(orderID string, amount float64, name string) 
 // CreateOrder creates an order page with the requested currencies.
 func (c *Client) CreateOrder(orderID string, amount float64, name, currencies string) (*TransactionResponse, error) {
 	amountStr := formatAmount(amount)
-	params := map[string]string{
-		"order_id":     orderID,
-		"amount":       amountStr,
-		"notify_url":   c.notifyURL,
-		"redirect_url": c.redirectURL,
-	}
-	signature := c.generateSignature(params)
-
 	req := CreateOrderRequest{
 		OrderID:     orderID,
 		Amount:      json.Number(amountStr),
 		NotifyURL:   c.notifyURL,
 		RedirectURL: c.redirectURL,
-		Signature:   signature,
 		Currencies:  currencies,
 		Fiat:        "CNY",
 		Name:        name,
 		Timeout:     600,
 	}
+	req.Signature = c.generateSignature(stringMap(
+		"order_id", req.OrderID,
+		"amount", req.Amount.String(),
+		"notify_url", req.NotifyURL,
+		"redirect_url", req.RedirectURL,
+		"currencies", req.Currencies,
+		"fiat", req.Fiat,
+		"name", req.Name,
+		"timeout", strconv.Itoa(req.Timeout),
+	))
 
 	data, err := c.doPost("/api/v1/order/create-order", req)
 	if err != nil {
@@ -167,14 +177,9 @@ func (c *Client) CreateOrder(orderID string, amount float64, name, currencies st
 
 // CancelTransaction cancels a transaction by trade ID
 func (c *Client) CancelTransaction(tradeID string) error {
-	params := map[string]string{
-		"trade_id": tradeID,
-	}
-	signature := c.generateSignature(params)
-
 	body := map[string]string{
 		"trade_id":  tradeID,
-		"signature": signature,
+		"signature": c.generateSignature(stringMap("trade_id", tradeID)),
 	}
 
 	data, err := c.doPost("/api/v1/order/cancel-transaction", body)
@@ -193,13 +198,40 @@ func (c *Client) CancelTransaction(tradeID string) error {
 	return nil
 }
 
+func (c *Client) UpdateOrderPayment(tradeID, currency, network string) (*TransactionResponse, error) {
+	req := UpdateOrderRequest{
+		TradeID:  tradeID,
+		Currency: strings.ToUpper(currency),
+		Network:  strings.ToLower(network),
+	}
+	req.Signature = c.generateSignature(stringMap(
+		"trade_id", req.TradeID,
+		"currency", req.Currency,
+		"network", req.Network,
+	))
+
+	data, err := c.doPost("/api/v1/pay/update-order", req)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp TransactionResponse
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != 200 {
+		return &resp, fmt.Errorf("BEPusdt error: %s", resp.Message)
+	}
+	return &resp, nil
+}
+
 // VerifyCallback verifies a payment callback signature
 func (c *Client) VerifyCallback(data *CallbackData) bool {
 	params := map[string]string{
 		"trade_id":             data.TradeID,
 		"order_id":             data.OrderID,
-		"amount":               fmt.Sprintf("%v", data.Amount),
-		"actual_amount":        fmt.Sprintf("%v", data.ActualAmount),
+		"amount":               formatCallbackNumber(data.Amount),
+		"actual_amount":        formatCallbackNumber(data.ActualAmount),
 		"token":                data.Token,
 		"block_transaction_id": data.BlockTransactionID,
 		"status":               fmt.Sprintf("%d", data.Status),
@@ -243,6 +275,25 @@ func formatAmount(amount float64) string {
 		s = strings.TrimRight(s, ".")
 	}
 	return s
+}
+
+func formatCallbackNumber(amount float64) string {
+	return strconv.FormatFloat(amount, 'f', -1, 64)
+}
+
+func defaultTradeType(tradeType string) string {
+	if tradeType == "" {
+		return "usdt.polygon"
+	}
+	return tradeType
+}
+
+func stringMap(entries ...string) map[string]string {
+	result := make(map[string]string, len(entries)/2)
+	for i := 0; i+1 < len(entries); i += 2 {
+		result[entries[i]] = entries[i+1]
+	}
+	return result
 }
 
 func (c *Client) doPost(path string, body interface{}) ([]byte, error) {

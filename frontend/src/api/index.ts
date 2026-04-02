@@ -61,7 +61,7 @@ export const api = {
     updateExternalSquad: (squadUUID: string) => request<any>('/squads/external', { method: 'PUT', body: JSON.stringify({ squad_uuid: squadUUID }) }),
 
     // IP Change
-    changeIP: () => request<any>('/ip/change', { method: 'POST' }),
+    changeIP: (data: any = {}) => request<any>('/ip/change', { method: 'POST', body: JSON.stringify(data) }),
     getIPStatus: () => request<any>('/ip/status'),
 
     // Jellyfin
