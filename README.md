@@ -84,6 +84,10 @@ frontend/
 - **后端**: Push to `main` → Go编译 → GitHub Release
 - **前端**: Push to `main` (frontend/) → Vue构建 → `web` 分支
 
+## 🚀 部署到生产环境
+
+详细的生产部署步骤（前端 Cloudflare Pages + 后端 Debian 13 服务器）请参见 **[docs/deployment.md](docs/deployment.md)**。
+
 ## 📄 License
 
 MIT
