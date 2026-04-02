@@ -1,0 +1,1 @@
+function e(e){let t=e.replace(/\s+/g,``).replace(/[^\d.]/g,``),n=t.indexOf(`.`);return n===-1?t:`${t.slice(0,n+1)}${t.slice(n+1).replace(/\./g,``)}`}function t(t){let n=Number.parseFloat(e(t));return Number.isFinite(n)?n:0}export{e as n,t};
