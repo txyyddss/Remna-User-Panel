@@ -126,12 +126,11 @@ func Save() error {
 	return writeToFile(path, current)
 }
 
-// Update applies changes and saves
 func Update(fn func(cfg *Config)) error {
 	mu.Lock()
+	defer mu.Unlock()
 	fn(current)
-	mu.Unlock()
-	return Save()
+	return writeToFile(path, current)
 }
 
 // WatchConfig watches the config file for changes and hot-reloads

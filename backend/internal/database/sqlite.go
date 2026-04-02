@@ -202,7 +202,11 @@ func migrate() error {
 			if isIgnorableMigrationError(err) {
 				continue
 			}
-			return fmt.Errorf("exec migration: %w (sql: %s)", err, m[:60])
+			excerpt := m
+			if len(excerpt) > 60 {
+				excerpt = excerpt[:60] + "..."
+			}
+			return fmt.Errorf("exec migration: %w (sql: %s)", err, excerpt)
 		}
 	}
 
