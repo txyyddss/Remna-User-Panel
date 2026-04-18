@@ -1,0 +1,1 @@
+import{J as e}from"./_plugin-vue_export-helper-DAk4D6So.js";var t=e([]),n=0;function r(e,r,i=3e3){let a=n++;t.value.push({id:a,message:e,type:r}),window.setTimeout(()=>{t.value=t.value.filter(e=>e.id!==a)},i)}function i(){return{toasts:t,success:e=>r(e,`success`),error:e=>r(e,`error`),info:e=>r(e,`info`),dismiss:e=>{t.value=t.value.filter(t=>t.id!==e)}}}export{i as t};

@@ -1,0 +1,1 @@
+import{J as e,l as t,q as n}from"./_plugin-vue_export-helper-DAk4D6So.js";var r=e(null),i=e(!1);function a(){function e(e){r.value=e,i.value=!0}function a(){i.value=!1,r.value=null}return{payment:n(r),visible:n(i),hasPayment:t(()=>i.value&&r.value!==null),openPaymentSheet:e,closePaymentSheet:a}}export{a as t};

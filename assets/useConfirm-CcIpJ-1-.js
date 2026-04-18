@@ -1,0 +1,1 @@
+import{J as e}from"./_plugin-vue_export-helper-DAk4D6So.js";var t=e(!1),n=e(``),r=e(``),i=null;function a(){function e(e){return n.value=e.title||`Confirm`,r.value=e.message,t.value=!0,new Promise(e=>{i=e})}function a(e){t.value=!1,i&&=(i(e),null)}return{visible:t,title:n,message:r,confirm:e,accept:()=>a(!0),dismiss:()=>a(!1)}}export{a as t};
