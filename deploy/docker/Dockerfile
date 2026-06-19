@@ -1,7 +1,7 @@
 # Resolve the application version from .git at build time and emit a tiny
 # .build-version file. The .git tree is consumed in this throwaway stage and
 # never copied into the runtime image.
-FROM alpine:3.20 AS version-builder
+FROM alpine:3.24 AS version-builder
 RUN apk add --no-cache git
 WORKDIR /repo
 ARG REMNAWAVE_MINISHOP_BRANCH=""
