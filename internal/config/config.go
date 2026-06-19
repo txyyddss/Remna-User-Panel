@@ -19,6 +19,8 @@ const (
 type Settings struct {
 	BotToken                      string
 	AdminIDs                      []int64
+	AdminEmail                    string
+	AdminPassword                 string
 	DefaultLanguage               string
 	DefaultCurrency               string
 	WebhookBaseURL                string
@@ -96,6 +98,8 @@ func Load() (Settings, error) {
 
 	settings := Settings{
 		BotToken:                    env("BOT_TOKEN", ""),
+		AdminEmail:                  strings.ToLower(env("ADMIN_EMAIL", "")),
+		AdminPassword:               env("ADMIN_PASSWORD", ""),
 		DefaultLanguage:             normalizeLanguage(env("DEFAULT_LANGUAGE", defaultLanguage)),
 		DefaultCurrency:             env("DEFAULT_CURRENCY_SYMBOL", "USD"),
 		WebhookBaseURL:              webhookBaseURL,

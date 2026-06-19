@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/subtle"
 	"database/sql"
 	"encoding/csv"
 	"encoding/hex"
@@ -23,6 +24,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"remna-user-panel/internal/auth"
 	"remna-user-panel/internal/config"
 	"remna-user-panel/internal/fx"
 	"remna-user-panel/internal/i18n"
@@ -55,7 +57,7 @@ func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *p
 	router.Post("/api/account/language", accountLanguageHandler(settings, pool))
 	router.Post("/api/auth/email/request", unavailablePublicMutation("email_delivery_not_configured"))
 	router.Post("/api/auth/email/verify", unavailablePublicMutation("email_delivery_not_configured"))
-	router.Post("/api/auth/email/password", unavailablePublicMutation("email_password_login_not_configured"))
+	router.Post("/api/auth/email/password", adminPasswordLoginHandler(settings, pool))
 	router.Post("/api/auth/email/magic", unavailablePublicMutation("email_magic_login_not_configured"))
 	router.Get("/api/subscription-guides", subscriptionGuidesHandler(settings, pool))
 	router.Get("/api/subscription-guides/public/{share_token}", subscriptionGuidesHandler(settings, pool))
@@ -478,6 +480,79 @@ func adminMeHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFu
 			"admin":   true,
 		})
 	}
+}
+
+func adminPasswordLoginHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if pool == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"ok": false, "error": "database_not_configured"})
+			return
+		}
+		if len(settings.AdminIDs) == 0 || strings.TrimSpace(settings.AdminEmail) == "" || settings.AdminPassword == "" {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"ok": false, "error": "email_password_login_not_configured"})
+			return
+		}
+		var payload struct {
+			Email    string `json:"email"`
+			Password string `json:"password"`
+		}
+		if err := decodeJSONBody(r, &payload); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
+			return
+		}
+		email := strings.ToLower(strings.TrimSpace(payload.Email))
+		if email == "" || subtle.ConstantTimeCompare([]byte(email), []byte(settings.AdminEmail)) != 1 || !constantTimeStringEqual(payload.Password, settings.AdminPassword) {
+			writeJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "invalid_credentials"})
+			return
+		}
+		adminID := settings.AdminIDs[0]
+		language := effectiveDefaultLanguage(r.Context(), pool, settings)
+		if err := ensureAdminUser(r.Context(), pool, adminID, settings.AdminEmail, language); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "admin_user_upsert_failed"})
+			return
+		}
+		manager := auth.NewManager(settings.WebAppSessionSecret, "")
+		token, csrf, err := manager.Sign(adminID)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "session_sign_failed"})
+			return
+		}
+		setSessionCookies(w, r, token, csrf)
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok":         true,
+			"csrf_token": csrf,
+			"user": webappUser{
+				UserID:       adminID,
+				TelegramID:   adminID,
+				Email:        settings.AdminEmail,
+				FirstName:    "Admin",
+				LanguageCode: language,
+				IsAdmin:      true,
+			},
+		})
+	}
+}
+
+func ensureAdminUser(ctx context.Context, pool *pgxpool.Pool, adminID int64, email string, language string) error {
+	_, err := pool.Exec(ctx, `
+INSERT INTO users (user_id, telegram_id, email, email_verified_at, first_name, language_code, registration_date)
+VALUES ($1,$1,$2,NOW(),'Admin',$3,NOW())
+ON CONFLICT (user_id) DO UPDATE SET
+	telegram_id=EXCLUDED.telegram_id,
+	email=EXCLUDED.email,
+	email_verified_at=COALESCE(users.email_verified_at, EXCLUDED.email_verified_at),
+	first_name=COALESCE(NULLIF(users.first_name,''), EXCLUDED.first_name),
+	language_code=COALESCE(NULLIF(users.language_code,''), EXCLUDED.language_code)`,
+		adminID, strings.ToLower(strings.TrimSpace(email)), language)
+	return err
+}
+
+func constantTimeStringEqual(got string, want string) bool {
+	gotBytes := []byte(got)
+	wantBytes := []byte(want)
+	gotHash := sha256.Sum256(gotBytes)
+	wantHash := sha256.Sum256(wantBytes)
+	return subtle.ConstantTimeCompare(gotHash[:], wantHash[:]) == 1
 }
 
 func adminSquadsHandler(settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) http.HandlerFunc {

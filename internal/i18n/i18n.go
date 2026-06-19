@@ -63,6 +63,18 @@ func (c *Catalog) Languages() []string {
 	return result
 }
 
+// Messages returns a copy of all loaded locale messages.
+func (c *Catalog) Messages() map[string]map[string]string {
+	result := make(map[string]map[string]string, len(c.messages))
+	for lang, messages := range c.messages {
+		result[lang] = make(map[string]string, len(messages))
+		for key, value := range messages {
+			result[lang][key] = value
+		}
+	}
+	return result
+}
+
 func normalizeLanguage(raw string) string {
 	value := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(raw), "_", "-"))
 	if value == "" {

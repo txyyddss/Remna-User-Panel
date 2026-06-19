@@ -161,6 +161,57 @@ func ValidateTelegramInitData(initData string, botToken string, maxAge time.Dura
 	return user, nil
 }
 
+// ValidateTelegramAuthData verifies Telegram Login Widget auth data.
+func ValidateTelegramAuthData(authData map[string]any, botToken string, maxAge time.Duration) (TelegramUser, error) {
+	if strings.TrimSpace(botToken) == "" {
+		return TelegramUser{}, errors.New("telegram_bot_token_not_configured")
+	}
+	values := map[string]string{}
+	for key, value := range authData {
+		if key == "" || value == nil {
+			continue
+		}
+		values[key] = strings.TrimSpace(fmt.Sprint(value))
+	}
+	gotHash := values["hash"]
+	if gotHash == "" {
+		return TelegramUser{}, errors.New("missing_hash")
+	}
+	pairs := make([]string, 0, len(values))
+	for key, value := range values {
+		if key == "hash" || value == "" {
+			continue
+		}
+		pairs = append(pairs, key+"="+value)
+	}
+	sort.Strings(pairs)
+	secret := sha256.Sum256([]byte(botToken))
+	dataMAC := hmac.New(sha256.New, secret[:])
+	dataMAC.Write([]byte(strings.Join(pairs, "\n")))
+	expectedHash := hex.EncodeToString(dataMAC.Sum(nil))
+	if subtle.ConstantTimeCompare([]byte(expectedHash), []byte(gotHash)) != 1 {
+		return TelegramUser{}, errors.New("invalid_hash")
+	}
+	authDate, err := strconv.ParseInt(values["auth_date"], 10, 64)
+	if err != nil || authDate <= 0 {
+		return TelegramUser{}, errors.New("invalid_auth_date")
+	}
+	if maxAge > 0 && time.Since(time.Unix(authDate, 0)) > maxAge {
+		return TelegramUser{}, errors.New("expired_auth_data")
+	}
+	id, err := strconv.ParseInt(values["id"], 10, 64)
+	if err != nil || id == 0 {
+		return TelegramUser{}, errors.New("missing_user")
+	}
+	return TelegramUser{
+		ID:        id,
+		FirstName: values["first_name"],
+		LastName:  values["last_name"],
+		Username:  values["username"],
+		PhotoURL:  values["photo_url"],
+	}, nil
+}
+
 func randomToken(size int) (string, error) {
 	buf := make([]byte, size)
 	if _, err := rand.Read(buf); err != nil {

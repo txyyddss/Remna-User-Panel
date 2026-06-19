@@ -45,6 +45,8 @@ cp .env.example .env
 | `PUBLIC_URL` | 公开 HTTPS 地址，如 `https://shop.yourdomain.com` | User Panel |
 | `BOT_TOKEN` | Telegram Bot Token（店铺机器人） | User Panel |
 | `ADMIN_IDS` | 管理员 Telegram 用户 ID | User Panel |
+| `ADMIN_EMAIL` | 可选：管理员密码登录邮箱 | User Panel |
+| `ADMIN_PASSWORD` | 可选：管理员密码登录密码 | User Panel |
 | `WEBAPP_SESSION_SECRET` | 会话密钥（`openssl rand -hex 32`） | User Panel |
 | `WEBHOOK_SECRET_TOKEN` | Webhook 密钥（`openssl rand -hex 32`） | User Panel |
 | `PANEL_API_URL` | Remnawave 面板 API 地址，同一网络内可用 `http://remnawave-panel:3000` | User Panel |

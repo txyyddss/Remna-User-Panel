@@ -39,6 +39,28 @@ func TestDatabaseURLPrecedence(t *testing.T) {
 	}
 }
 
+func TestLoadAdminPasswordLoginSettings(t *testing.T) {
+	t.Setenv("POSTGRES_USER", "shop")
+	t.Setenv("POSTGRES_PASSWORD", "secret")
+	t.Setenv("ADMIN_IDS", "42")
+	t.Setenv("ADMIN_EMAIL", "Admin@Example.COM")
+	t.Setenv("ADMIN_PASSWORD", "admin-secret")
+
+	settings, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if len(settings.AdminIDs) != 1 || settings.AdminIDs[0] != 42 {
+		t.Fatalf("AdminIDs = %#v, want [42]", settings.AdminIDs)
+	}
+	if settings.AdminEmail != "admin@example.com" {
+		t.Fatalf("AdminEmail = %q, want normalized email", settings.AdminEmail)
+	}
+	if settings.AdminPassword != "admin-secret" {
+		t.Fatalf("AdminPassword not loaded")
+	}
+}
+
 func TestDatabaseURLFallback(t *testing.T) {
 	// DATABASE_URL 作为回退
 	t.Setenv("DATABASE_URL", "postgres://fb_user:fb_pass@fb_host:5432/fb_db")

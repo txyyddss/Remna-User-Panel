@@ -39,6 +39,36 @@ func TestValidateTelegramInitDataRejectsInvalidHash(t *testing.T) {
 	}
 }
 
+func TestValidateTelegramAuthData(t *testing.T) {
+	botToken := "123456:ABCDEF"
+	values := map[string]any{
+		"id":         "42",
+		"first_name": "Ada",
+		"username":   "ada",
+		"auth_date":  "1893456000",
+	}
+	values["hash"] = telegramAuthDataHash(values, botToken)
+
+	user, err := ValidateTelegramAuthData(values, botToken, 0)
+	if err != nil {
+		t.Fatalf("ValidateTelegramAuthData returned error: %v", err)
+	}
+	if user.ID != 42 || user.Username != "ada" {
+		t.Fatalf("unexpected user: %#v", user)
+	}
+}
+
+func TestValidateTelegramAuthDataRejectsInvalidHash(t *testing.T) {
+	values := map[string]any{
+		"id":        "42",
+		"auth_date": "1893456000",
+		"hash":      "bad",
+	}
+	if _, err := ValidateTelegramAuthData(values, "123456:ABCDEF", time.Hour); err == nil {
+		t.Fatal("expected invalid hash error")
+	}
+}
+
 func telegramInitDataHash(values url.Values, botToken string) string {
 	pairs := make([]string, 0, len(values))
 	for key, bucket := range values {
@@ -51,6 +81,21 @@ func telegramInitDataHash(values url.Values, botToken string) string {
 	secretMAC := hmac.New(sha256.New, []byte("WebAppData"))
 	secretMAC.Write([]byte(botToken))
 	dataMAC := hmac.New(sha256.New, secretMAC.Sum(nil))
+	dataMAC.Write([]byte(strings.Join(pairs, "\n")))
+	return hex.EncodeToString(dataMAC.Sum(nil))
+}
+
+func telegramAuthDataHash(values map[string]any, botToken string) string {
+	pairs := make([]string, 0, len(values))
+	for key, value := range values {
+		if key == "hash" {
+			continue
+		}
+		pairs = append(pairs, key+"="+strings.TrimSpace(value.(string)))
+	}
+	sort.Strings(pairs)
+	secret := sha256.Sum256([]byte(botToken))
+	dataMAC := hmac.New(sha256.New, secret[:])
 	dataMAC.Write([]byte(strings.Join(pairs, "\n")))
 	return hex.EncodeToString(dataMAC.Sum(nil))
 }

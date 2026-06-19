@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"html"
 	"log/slog"
@@ -18,6 +19,7 @@ import (
 	"remna-user-panel/internal/i18n"
 	"remna-user-panel/internal/payments"
 	"remna-user-panel/internal/remnawave"
+	appsettings "remna-user-panel/internal/settings"
 	"remna-user-panel/internal/webassets"
 )
 
@@ -39,8 +41,8 @@ func RegisterWebAppRoutes(router chi.Router, settings config.Settings, pool *pgx
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		_, _ = w.Write([]byte("User-agent: *\nDisallow: /\n"))
 	})
-	router.Get("/api/bootstrap", bootstrapHandler(settings, catalog))
-	router.Get("/api/i18n", i18nHandler(settings, catalog))
+	router.Get("/api/bootstrap", bootstrapHandler(settings, pool, catalog))
+	router.Get("/api/i18n", i18nHandler(settings, pool, catalog))
 	router.Get("/api/me", meHandler(settings, pool, registry, panel))
 	router.Post("/api/auth/token", authTokenHandler(settings, pool))
 	router.Post("/api/auth/logout", logoutHandler())
@@ -59,7 +61,7 @@ func RegisterWebAppRoutes(router chi.Router, settings config.Settings, pool *pgx
 	router.Patch("/api/*", notImplementedAPI("unknown_api"))
 	router.Delete("/api/*", notImplementedAPI("unknown_api"))
 	registerAssetRoutes(router, assets)
-	registerIndexRoutes(router, settings, catalog, assets)
+	registerIndexRoutes(router, settings, pool, catalog, assets)
 }
 
 // CombinedRouter builds a single router that serves both backend webhooks and
@@ -84,29 +86,36 @@ func CombinedRouter(settings config.Settings, pool *pgxpool.Pool, redisClient *r
 	return router
 }
 
-func bootstrapHandler(settings config.Settings, catalog *i18n.Catalog) http.HandlerFunc {
+func bootstrapHandler(settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		scope := r.URL.Query().Get("i18n_scope")
 		_ = scope
+		i18nPayload := localePayload(r.Context(), pool, catalog)
 		writeJSON(w, http.StatusOK, map[string]any{
+			"ok": true,
 			"config": map[string]any{
 				"title":        "Subscription",
 				"primaryColor": "#00fe7a",
 				"apiBase":      "/api",
 				"language":     settings.DefaultLanguage,
 				"languages":    languageOptions(catalog),
+				"emailAuthEnabled": settings.AdminEmail != "" && settings.AdminPassword != "",
 			},
-			"i18n": localePayload(catalog),
+			"i18n":     i18nPayload,
+			"messages": i18nPayload,
 		})
 	}
 }
 
-func i18nHandler(settings config.Settings, catalog *i18n.Catalog) http.HandlerFunc {
+func i18nHandler(settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		i18nPayload := localePayload(r.Context(), pool, catalog)
 		writeJSON(w, http.StatusOK, map[string]any{
+			"ok":               true,
 			"default_language": settings.DefaultLanguage,
 			"languages":        languageOptions(catalog),
-			"messages":         localePayload(catalog),
+			"i18n":             i18nPayload,
+			"messages":         i18nPayload,
 		})
 	}
 }
@@ -225,8 +234,8 @@ func serveWebAppLogo(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
 }
 
-func registerIndexRoutes(router chi.Router, settings config.Settings, catalog *i18n.Catalog, assets webassets.Paths) {
-	index := indexHandler(settings, catalog, assets)
+func registerIndexRoutes(router chi.Router, settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog, assets webassets.Paths) {
+	index := indexHandler(settings, pool, catalog, assets)
 	for _, route := range []string{
 		"/", "/login/password", "/home", "/install", "/trial", "/invite", "/devices",
 		"/settings", "/support", "/admin", "/open-app",
@@ -238,7 +247,7 @@ func registerIndexRoutes(router chi.Router, settings config.Settings, catalog *i
 	router.Get("/admin/*", index)
 }
 
-func indexHandler(settings config.Settings, catalog *i18n.Catalog, assets webassets.Paths) http.HandlerFunc {
+func indexHandler(settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog, assets webassets.Paths) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := os.ReadFile(filepath.Join(assets.TemplatesDir, "subscription_webapp.html"))
 		if err != nil {
@@ -252,8 +261,9 @@ func indexHandler(settings config.Settings, catalog *i18n.Catalog, assets webass
 			"apiBase":      "/api",
 			"language":     settings.DefaultLanguage,
 			"languages":    languageOptions(catalog),
+			"emailAuthEnabled": settings.AdminEmail != "" && settings.AdminPassword != "",
 		})
-		i18nScript := scriptJSON("i18n", localePayload(catalog))
+		i18nScript := scriptJSON("i18n", localePayload(r.Context(), pool, catalog))
 		htmlBody := string(body)
 		htmlBody = strings.ReplaceAll(htmlBody, "<!-- WEBAPP_CONFIG_SCRIPT -->", configScript)
 		htmlBody = strings.ReplaceAll(htmlBody, "<!-- WEBAPP_I18N_SCRIPT -->", i18nScript)
@@ -270,15 +280,32 @@ func scriptJSON(id string, payload any) string {
 	return `<script id="` + html.EscapeString(id) + `" type="application/json">` + string(body) + `</script>`
 }
 
-func localePayload(catalog *i18n.Catalog) map[string]map[string]string {
-	payload := map[string]map[string]string{}
-	for _, lang := range catalog.Languages() {
-		payload[lang] = map[string]string{}
-		for _, key := range []string{
-			"wa_language_default", "wa_auth_telegram_cancelled", "wa_auth_telegram_not_confirmed",
-			"wa_back", "wa_close", "wa_apply", "wa_copied",
-		} {
-			payload[lang][key] = catalog.Translate(lang, key)
+func localePayload(ctx context.Context, pool *pgxpool.Pool, catalog *i18n.Catalog) map[string]map[string]string {
+	payload := catalog.Messages()
+	if pool == nil {
+		return payload
+	}
+	raw, ok, _ := appsettings.NewStore(pool).Get(ctx, "TRANSLATION_OVERRIDES")
+	if !ok || len(raw) == 0 {
+		return payload
+	}
+	var overrides map[string]map[string]string
+	if err := json.Unmarshal(raw, &overrides); err != nil {
+		return payload
+	}
+	for lang, messages := range overrides {
+		lang = strings.ToLower(strings.ReplaceAll(strings.TrimSpace(lang), "_", "-"))
+		if lang == "" {
+			continue
+		}
+		if payload[lang] == nil {
+			payload[lang] = map[string]string{}
+		}
+		for key, value := range messages {
+			if strings.TrimSpace(key) == "" {
+				continue
+			}
+			payload[lang][key] = value
 		}
 	}
 	return payload

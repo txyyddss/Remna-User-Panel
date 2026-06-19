@@ -21,6 +21,8 @@ cp .env.example .env
 | `PUBLIC_URL` | 公开 HTTPS 地址，如 `https://shop.yourdomain.com` |
 | `BOT_TOKEN` | Telegram Bot Token |
 | `ADMIN_IDS` | 管理员 Telegram 用户 ID |
+| `ADMIN_EMAIL` | 可选：管理员密码登录邮箱 |
+| `ADMIN_PASSWORD` | 可选：管理员密码登录密码 |
 | `WEBAPP_SESSION_SECRET` | 会话密钥（`openssl rand -hex 32`） |
 | `POSTGRES_PASSWORD` | 数据库密码 |
 

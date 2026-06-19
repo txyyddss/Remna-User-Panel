@@ -56,13 +56,22 @@ func authTokenHandler(settings config.Settings, pool *pgxpool.Pool) http.Handler
 		}
 		var payload struct {
 			InitData     string `json:"init_data"`
+			AuthData     map[string]any `json:"auth_data"`
 			ReferralCode string `json:"referral_code"`
 		}
 		if err := decodeJSONBody(r, &payload); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
 			return
 		}
-		tgUser, err := auth.ValidateTelegramInitData(payload.InitData, settings.BotToken, 24*time.Hour)
+		var tgUser auth.TelegramUser
+		var err error
+		if strings.TrimSpace(payload.InitData) != "" {
+			tgUser, err = auth.ValidateTelegramInitData(payload.InitData, settings.BotToken, 24*time.Hour)
+		} else if len(payload.AuthData) > 0 {
+			tgUser, err = auth.ValidateTelegramAuthData(payload.AuthData, settings.BotToken, 24*time.Hour)
+		} else {
+			err = errors.New("missing_telegram_auth")
+		}
 		if err != nil {
 			writeJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "invalid_telegram_init_data"})
 			return

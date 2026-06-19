@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -32,5 +33,12 @@ func TestBootstrapDefaultsToChinese(t *testing.T) {
 	}
 	if !strings.Contains(response.Body.String(), `"language":"zh"`) {
 		t.Fatalf("bootstrap response does not include zh language: %s", response.Body.String())
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode bootstrap response: %v", err)
+	}
+	if payload["ok"] != true || payload["i18n"] == nil || payload["messages"] == nil {
+		t.Fatalf("bootstrap response missing i18n compatibility fields: %#v", payload)
 	}
 }

@@ -4,6 +4,8 @@
 
 生产环境必须设置 `WEBAPP_SESSION_SECRET`。系统不会再使用固定开发密钥回退。
 
+如需在浏览器中使用邮箱密码登录管理员账号，请同时设置 `ADMIN_EMAIL` 和 `ADMIN_PASSWORD`。密码登录会绑定到 `ADMIN_IDS` 中的第一个 Telegram ID；不设置这两个变量时，只允许 Telegram 登录。
+
 ## 请求安全
 
 后端启用：
