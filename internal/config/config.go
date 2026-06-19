@@ -149,7 +149,13 @@ func Load() (Settings, error) {
 	}
 	settings.AdminIDs = parseInt64List(env("ADMIN_IDS", ""))
 	settings.TrustedProxies = splitCSV(env("TRUSTED_PROXIES", "127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7"))
-	settings.DatabaseURL = env("DATABASE_URL", "")
+
+	// Database URL: SHOP_DATABASE_URL (User Panel 专属) 优先于 DATABASE_URL（可能与 Remnawave 面板冲突）。
+	// 如果都未设置，则从 POSTGRES_* 组件变量构建。
+	settings.DatabaseURL = env("SHOP_DATABASE_URL", "")
+	if settings.DatabaseURL == "" {
+		settings.DatabaseURL = env("DATABASE_URL", "")
+	}
 	if settings.DatabaseURL == "" {
 		if settings.PostgresUser == "" || settings.PostgresPassword == "" {
 			return Settings{}, fmt.Errorf("POSTGRES_USER and POSTGRES_PASSWORD are required when DATABASE_URL is empty")
@@ -163,6 +169,16 @@ func Load() (Settings, error) {
 			settings.PostgresDB,
 		)
 	}
+
+	// Redis URL: 支持 REDIS_URL 完整 URL，或从 REDIS_HOST / REDIS_PORT 构建。
+	if settings.RedisURL == "" {
+		redisHost := env("REDIS_HOST", "")
+		if redisHost != "" {
+			redisPort := envInt("REDIS_PORT", 6379)
+			settings.RedisURL = fmt.Sprintf("redis://%s:%d/0", redisHost, redisPort)
+		}
+	}
+
 	return settings, nil
 }
 

@@ -67,7 +67,7 @@ func authTokenHandler(settings config.Settings, pool *pgxpool.Pool) http.Handler
 			writeJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "invalid_telegram_init_data"})
 			return
 		}
-		language := normalizeWebLanguage(tgUser.LanguageCode, settings.DefaultLanguage)
+		language := normalizeWebLanguage(tgUser.LanguageCode, effectiveDefaultLanguage(r.Context(), pool, settings))
 		if err := upsertTelegramUser(r.Context(), pool, tgUser, language); err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "user_upsert_failed"})
 			return
@@ -452,7 +452,7 @@ FROM users WHERE user_id=$1`, userID).Scan(
 	user.Email = email
 	user.FirstName = firstName
 	user.LastName = lastName
-	user.LanguageCode = normalizeWebLanguage(language, settings.DefaultLanguage)
+	user.LanguageCode = normalizeWebLanguage(language, effectiveDefaultLanguage(ctx, pool, settings))
 	user.PhotoURL = photo
 	user.PanelUserUUID = panelUUID
 	user.IsAdmin = isAdminID(settings.AdminIDs, user.UserID) || isAdminID(settings.AdminIDs, user.TelegramID)
@@ -618,6 +618,12 @@ func remnawaveSettingsFields(ctx context.Context, settings config.Settings, stor
 		{Key: "SUPPORT_TICKETS_ENABLED", Type: "bool", Label: "Support tickets enabled", Description: "Show the built-in support ticket UI.", Subsection: "Features", Fallback: false},
 		{Key: "SUBSCRIPTION_GUIDES_ENABLED", Type: "bool", Label: "Subscription guides enabled", Description: "Show subscription setup guides in the Web App.", Subsection: "Features", Fallback: false},
 		{Key: "SUBSCRIPTION_AUTO_RENEW_ENABLED", Type: "bool", Label: "Auto-renew enabled", Description: "Allow users to toggle subscription auto-renewal.", Subsection: "Features", Fallback: false},
+		// Web UI 管理的通用设置（原 .env 可选变量迁移至此）
+		{Key: "DEFAULT_LANGUAGE", Type: "string", Label: "Default language", Description: "Fallback language when user has no preference.", Subsection: "General", Fallback: settings.DefaultLanguage, Choices: []settingChoice{{Value: "zh", Label: "中文"}, {Value: "en", Label: "English"}}},
+		{Key: "SUBSCRIPTION_NOTIFY_DAYS_BEFORE", Type: "int", Label: "Notify days before expiry", Description: "Days before subscription expiry to send notifications.", Subsection: "General", Fallback: settings.SubscriptionNotifyDaysBefore},
+		{Key: "SUBSCRIPTION_NOTIFY_HOURS_BEFORE", Type: "int", Label: "Notify hours before expiry", Description: "Additional hours-before notifications. 0 disables.", Subsection: "General", Fallback: settings.SubscriptionNotifyHoursBefore},
+		{Key: "WORKER_PANEL_SYNC_INTERVAL_SECONDS", Type: "int", Label: "Panel sync interval (seconds)", Description: "How often to sync Remnawave panel data. Requires restart to apply.", Subsection: "General", Fallback: int(settings.WorkerPanelSyncEvery.Seconds())},
+		{Key: "WORKER_PAYMENT_PROVISION_INTERVAL_SECONDS", Type: "int", Label: "Payment provision interval (seconds)", Description: "How often to provision paid orders. Requires restart to apply.", Subsection: "General", Fallback: int(settings.WorkerPaymentProvisionEvery.Seconds())},
 	}
 	result := make([]map[string]any, 0, len(fields))
 	for _, field := range fields {
@@ -729,6 +735,9 @@ func allowedPaymentSettingKeys() map[string]bool {
 		"PAYMENT_BEPUSDT_POLYGON_LABEL_ZH", "PAYMENT_BEPUSDT_POLYGON_LABEL_EN",
 		"PAYMENT_BEPUSDT_ARBITRUM_LABEL_ZH", "PAYMENT_BEPUSDT_ARBITRUM_LABEL_EN",
 		"PAYMENT_BEPUSDT_APTOS_LABEL_ZH", "PAYMENT_BEPUSDT_APTOS_LABEL_EN",
+		// Web UI 可管理的通用设置
+		"DEFAULT_LANGUAGE", "SUBSCRIPTION_NOTIFY_DAYS_BEFORE", "SUBSCRIPTION_NOTIFY_HOURS_BEFORE",
+		"WORKER_PANEL_SYNC_INTERVAL_SECONDS", "WORKER_PAYMENT_PROVISION_INTERVAL_SECONDS",
 	} {
 		result[key] = true
 	}
@@ -749,7 +758,9 @@ func normalizeSettingValue(key string, value any) (any, error) {
 		default:
 			return nil, fmt.Errorf("invalid_bool")
 		}
-	case "EZPAY_PID", "FX_CACHE_TTL_SECONDS", "USER_HWID_DEVICE_LIMIT", "TRIAL_DURATION_DAYS", "REFERRAL_WELCOME_BONUS_DAYS":
+	case "EZPAY_PID", "FX_CACHE_TTL_SECONDS", "USER_HWID_DEVICE_LIMIT", "TRIAL_DURATION_DAYS", "REFERRAL_WELCOME_BONUS_DAYS",
+		"SUBSCRIPTION_NOTIFY_DAYS_BEFORE", "SUBSCRIPTION_NOTIFY_HOURS_BEFORE",
+		"WORKER_PANEL_SYNC_INTERVAL_SECONDS", "WORKER_PAYMENT_PROVISION_INTERVAL_SECONDS":
 		if key == "USER_HWID_DEVICE_LIMIT" && strings.TrimSpace(fmt.Sprint(value)) == "" {
 			return "", nil
 		}
@@ -772,6 +783,14 @@ func normalizeSettingValue(key string, value any) (any, error) {
 			return value, nil
 		default:
 			return nil, fmt.Errorf("unsupported_currency")
+		}
+	case "DEFAULT_LANGUAGE":
+		value := strings.ToLower(strings.TrimSpace(fmt.Sprint(value)))
+		switch value {
+		case "zh", "en":
+			return value, nil
+		default:
+			return nil, fmt.Errorf("unsupported_language")
 		}
 	case "FX_PROVIDER":
 		value := strings.ToLower(strings.TrimSpace(fmt.Sprint(value)))
@@ -904,6 +923,12 @@ func effectiveDefaultCurrency(ctx context.Context, settings config.Settings, poo
 		return "USD"
 	}
 	return value
+}
+
+// effectiveDefaultLanguage 从 app_settings 读取默认语言，回退到 env。
+func effectiveDefaultLanguage(ctx context.Context, pool *pgxpool.Pool, settings config.Settings) string {
+	value := appsettings.NewStore(pool).String(ctx, "DEFAULT_LANGUAGE", settings.DefaultLanguage)
+	return normalizeWebLanguage(value, settings.DefaultLanguage)
 }
 
 func providerCheckoutAmount(methodID string, plan tariffs.Plan, rate fx.Rate) (float64, string, error) {

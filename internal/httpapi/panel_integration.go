@@ -443,7 +443,7 @@ LIMIT $1`, limit)
 		if err := rows.Scan(&user.UserID, &user.TelegramID, &user.Username, &user.Email, &user.FirstName, &user.LastName, &user.LanguageCode, &user.PhotoURL, &user.PanelUserUUID); err != nil {
 			return nil, err
 		}
-		user.LanguageCode = normalizeWebLanguage(user.LanguageCode, settings.DefaultLanguage)
+		user.LanguageCode = normalizeWebLanguage(user.LanguageCode, effectiveDefaultLanguage(ctx, pool, settings))
 		user.IsAdmin = isAdminID(settings.AdminIDs, user.UserID) || isAdminID(settings.AdminIDs, user.TelegramID)
 		users = append(users, user)
 	}
@@ -1483,8 +1483,11 @@ func RunSubscriptionNotifications(ctx context.Context, settings config.Settings,
 		now := time.Now().UTC()
 		secondsLeft := expireAt.Sub(now).Seconds()
 
-		// Check each notification stage
-		stages := subscriptionNotificationStages(settings, secondsLeft, status, expireAt, now)
+		// Check each notification stage (app_settings 可覆盖 env 默认值)
+		store := appsettings.NewStore(pool)
+		notifyHoursBefore := store.Int(ctx, "SUBSCRIPTION_NOTIFY_HOURS_BEFORE", settings.SubscriptionNotifyHoursBefore)
+		notifyDaysBefore := store.Int(ctx, "SUBSCRIPTION_NOTIFY_DAYS_BEFORE", settings.SubscriptionNotifyDaysBefore)
+		stages := subscriptionNotificationStagesWithOverrides(settings, secondsLeft, status, expireAt, now, notifyHoursBefore, notifyDaysBefore)
 		for _, stage := range stages {
 			notificationKey := fmt.Sprintf("%d:%s", user.UserID, stage.key)
 			if subscriptionNotificationAlreadySent(ctx, pool, notificationKey, 24*time.Hour) {
@@ -1528,11 +1531,26 @@ type notifyStage struct {
 }
 
 func subscriptionNotificationStages(settings config.Settings, secondsLeft float64, status string, expireAt, now time.Time) []notifyStage {
+	return subscriptionNotificationStagesWithOverrides(settings, secondsLeft, status, expireAt, now, 0, 0)
+}
+
+// subscriptionNotificationStagesWithOverrides allows overriding notification
+// thresholds from app_settings values. When hoursBefore/daysBefore are 0,
+// the env config defaults are used.
+func subscriptionNotificationStagesWithOverrides(settings config.Settings, secondsLeft float64, status string, expireAt, now time.Time, hoursBeforeOverride, daysBeforeOverride int) []notifyStage {
+	hoursBefore := settings.SubscriptionNotifyHoursBefore
+	daysBefore := settings.SubscriptionNotifyDaysBefore
+	if hoursBeforeOverride > 0 {
+		hoursBefore = hoursBeforeOverride
+	}
+	if daysBeforeOverride > 0 {
+		daysBefore = daysBeforeOverride
+	}
+
 	var stages []notifyStage
 
 	if secondsLeft > 0 {
 		// Before expiry notifications
-		hoursBefore := settings.SubscriptionNotifyHoursBefore
 		if hoursBefore > 0 && hoursBefore <= 23 && secondsLeft <= float64(hoursBefore)*3600 {
 			stages = append(stages, notifyStage{
 				key:       fmt.Sprintf("before_%dh", hoursBefore),
@@ -1540,7 +1558,6 @@ func subscriptionNotificationStages(settings config.Settings, secondsLeft float6
 			})
 		}
 
-		daysBefore := settings.SubscriptionNotifyDaysBefore
 		dayStages := []struct {
 			days int
 			key  string
@@ -1621,7 +1638,7 @@ LIMIT $1`, limit)
 		if err := rows.Scan(&user.UserID, &user.TelegramID, &user.Username, &user.Email, &user.FirstName, &user.LastName, &user.LanguageCode, &user.PhotoURL, &user.PanelUserUUID); err != nil {
 			return nil, err
 		}
-		user.LanguageCode = normalizeWebLanguage(user.LanguageCode, settings.DefaultLanguage)
+		user.LanguageCode = normalizeWebLanguage(user.LanguageCode, effectiveDefaultLanguage(ctx, pool, settings))
 		user.IsAdmin = isAdminID(settings.AdminIDs, user.UserID) || isAdminID(settings.AdminIDs, user.TelegramID)
 		users = append(users, user)
 	}

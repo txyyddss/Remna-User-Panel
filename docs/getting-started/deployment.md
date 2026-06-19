@@ -26,6 +26,10 @@ cp .env.example .env
 
 > 高级部署如需分离 webhook 与 Mini App 域名，可单独设置 `WEBHOOK_BASE_URL` 与 `SUBSCRIPTION_MINI_APP_URL`（均默认使用 `PUBLIC_URL`）。
 
+> 数据库连接：支持 `SHOP_DATABASE_URL`（User Panel 专属，优先）、`DATABASE_URL`，或从 `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_HOST` / `POSTGRES_PORT` / `POSTGRES_DB` 组件变量自动构建。Redis 支持 `REDIS_URL` 完整连接串，也兼容 `REDIS_HOST` + `REDIS_PORT`。
+
+> 与 Remnawave 面板共用部署时，`db-init` 服务会自动创建两个数据库，无需手动执行 `CREATE DATABASE`。
+
 支付、套餐、Remnawave、外观、语言、汇率建议首次登录后台后配置。`.env` 中的 Remnawave 与支付字段只作为首次启动或后台未覆盖时的兜底值。
 
 ## 3. 启动

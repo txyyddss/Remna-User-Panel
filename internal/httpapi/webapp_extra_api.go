@@ -288,7 +288,7 @@ func accountLanguageHandler(settings config.Settings, pool *pgxpool.Pool) http.H
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
 			return
 		}
-		language := normalizeWebLanguage(payload.Language, settings.DefaultLanguage)
+		language := normalizeWebLanguage(payload.Language, effectiveDefaultLanguage(r.Context(), pool, settings))
 		if _, err := pool.Exec(r.Context(), "UPDATE users SET language_code=$2 WHERE user_id=$1", session.User.UserID, language); err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "language_update_failed"})
 			return

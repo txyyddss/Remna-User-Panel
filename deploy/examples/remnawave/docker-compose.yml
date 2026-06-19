@@ -9,8 +9,10 @@
 x-user-panel-env: &user_panel_env
   IMAGE_TAG: ${IMAGE_TAG:-latest}
   POSTGRES_HOST: postgres
+  POSTGRES_PORT: "5432"
   REDIS_URL: redis://redis:6379/0
   WEBAPP_ENABLED: "true"
+  # DATABASE_URL 由各服务单独指定，防止与 Remnawave 面板的 DATABASE_URL 冲突
 
 services:
   # =======================================================================
@@ -26,6 +28,7 @@ services:
     environment:
       <<: *user_panel_env
       POSTGRES_DB: ${USER_PANEL_DB:-remna_user_panel}
+      DATABASE_URL: "postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?required}@postgres:5432/${USER_PANEL_DB:-remna_user_panel}?sslmode=disable"
     volumes:
       - shop-data:/app/data
     networks:
@@ -35,6 +38,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
 
   user-panel-backend:
     image: ghcr.io/${IMAGE_NAMESPACE:-local}/remna-user-panel-backend:${IMAGE_TAG:-latest}
@@ -46,6 +51,7 @@ services:
     environment:
       <<: *user_panel_env
       POSTGRES_DB: ${USER_PANEL_DB:-remna_user_panel}
+      DATABASE_URL: "postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?required}@postgres:5432/${USER_PANEL_DB:-remna_user_panel}?sslmode=disable"
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7}
     volumes:
       - shop-data:/app/data
@@ -76,6 +82,7 @@ services:
     environment:
       <<: *user_panel_env
       POSTGRES_DB: ${USER_PANEL_DB:-remna_user_panel}
+      DATABASE_URL: "postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?required}@postgres:5432/${USER_PANEL_DB:-remna_user_panel}?sslmode=disable"
     volumes:
       - shop-data:/app/data
       - ${COMPOSE_BACKUP_SOURCE:-.}:/app/compose-source:ro
@@ -105,6 +112,8 @@ services:
       DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?required}@postgres:5432/${REMAWAVE_DB:-remnawave}"
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      # 与 Remna User Panel 共享同一个 webhook 密钥
+      WEBHOOK_SECRET_HEADER: ${PANEL_WEBHOOK_SECRET}
     volumes:
       - remnawave-panel-data:/app/data
     networks:
@@ -114,6 +123,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
 
   remnawave-subscription:
     image: remnawave/subscription-page:latest
@@ -130,6 +141,36 @@ services:
   # =======================================================================
   # 共享基础设施
   # =======================================================================
+
+  # 首次启动时自动创建两个项目的数据库
+  db-init:
+    image: postgres:17
+    restart: "no"
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        echo 'Checking databases...'
+        for db in $${REMAWAVE_DB:-remnawave} $${USER_PANEL_DB:-remna_user_panel}; do
+          echo "  Checking: $$db"
+          if PGPASSWORD="$${POSTGRES_PASSWORD}" psql -h postgres -U "$${POSTGRES_USER:-postgres}" -d postgres -tc "SELECT 1 FROM pg_database WHERE datname='$$db'" 2>/dev/null | grep -q 1; then
+            echo "  Database $$db already exists."
+          else
+            echo "  Creating database: $$db"
+            PGPASSWORD="$${POSTGRES_PASSWORD}" psql -h postgres -U "$${POSTGRES_USER:-postgres}" -d postgres -c "CREATE DATABASE \"$$db\""
+          fi
+        done
+        echo 'All databases ready.'
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+      REMAWAVE_DB: ${REMAWAVE_DB:-remnawave}
+      USER_PANEL_DB: ${USER_PANEL_DB:-remna_user_panel}
+    networks:
+      - remnawave-net
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   postgres:
     image: postgres:17

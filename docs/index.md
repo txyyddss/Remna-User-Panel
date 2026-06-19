@@ -15,8 +15,8 @@ Remna User Panel 是面向 Telegram Mini App 的 Remnawave 用户面板。当前
 
 ## 核心约定
 
-- `.env` 只用于最小启动：数据库、Redis、监听端口、Bot Token、管理员 ID、Session Secret、Webhook Secret、可信代理和日志级别。
-- 套餐、Remnawave、支付、外观、语言、汇率等配置在管理后台维护。
+- `.env` 只用于最小启动：数据库连接（`SHOP_DATABASE_URL` 或 `DATABASE_URL` 或 `POSTGRES_*` 组件）、Redis（`REDIS_URL` 或 `REDIS_HOST`+`REDIS_PORT`）、监听端口、Bot Token、管理员 ID、Session Secret、Webhook Secret、可信代理和日志级别。
+- 套餐、Remnawave、支付、外观、语言、汇率、通知等配置在管理后台维护。
 - 前端下单只提交 `plan_hash` 与支付方式，金额由服务端按套餐快照、汇率和支付 provider 重新计算。
 - 默认主币种是 USD，用户界面显示 USD 主价和 CNY/RMB 参考价。
 - 后端单端口（8080）同时服务 webhook、Mini App 页面、API 和静态资源。

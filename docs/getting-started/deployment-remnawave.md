@@ -39,26 +39,49 @@ cp .env.example .env
 
 编辑 `.env`，至少填写：
 
-| 变量 | 说明 |
-|------|------|
-| `POSTGRES_PASSWORD` | PostgreSQL 超级用户密码 |
-| `PUBLIC_URL` | 公开 HTTPS 地址，如 `https://shop.yourdomain.com` |
-| `BOT_TOKEN` | Telegram Bot Token |
-| `ADMIN_IDS` | 管理员 Telegram 用户 ID |
-| `WEBAPP_SESSION_SECRET` | 会话密钥（`openssl rand -hex 32`） |
-| `WEBHOOK_SECRET_TOKEN` | Webhook 密钥（`openssl rand -hex 32`） |
-| `PANEL_API_URL` | Remnawave 面板 API 地址，同一网络内可用 `http://remnawave-panel:3000` |
-| `PANEL_API_KEY` | Remnawave 面板 API 密钥 |
-| `PANEL_WEBHOOK_SECRET` | Remnawave 面板 Webhook 密钥 |
+| 变量 | 说明 | 所属 |
+|------|------|------|
+| `POSTGRES_PASSWORD` | PostgreSQL 超级用户密码 | 共享 |
+| `PUBLIC_URL` | 公开 HTTPS 地址，如 `https://shop.yourdomain.com` | User Panel |
+| `BOT_TOKEN` | Telegram Bot Token（店铺机器人） | User Panel |
+| `ADMIN_IDS` | 管理员 Telegram 用户 ID | User Panel |
+| `WEBAPP_SESSION_SECRET` | 会话密钥（`openssl rand -hex 32`） | User Panel |
+| `WEBHOOK_SECRET_TOKEN` | Webhook 密钥（`openssl rand -hex 32`） | User Panel |
+| `PANEL_API_URL` | Remnawave 面板 API 地址，同一网络内可用 `http://remnawave-panel:3000` | User Panel |
+| `PANEL_API_KEY` | Remnawave 面板 API 密钥 | User Panel |
+| `PANEL_WEBHOOK_SECRET` | Remnawave 面板 Webhook 密钥 | User Panel |
+| `JWT_AUTH_SECRET` | JWT 认证密钥（`openssl rand -hex 64`） | Remnawave 面板 |
+| `JWT_API_TOKENS_SECRET` | JWT API 令牌密钥（`openssl rand -hex 64`） | Remnawave 面板 |
+| `SUB_PUBLIC_DOMAIN` | 订阅公开域名，如 `sub.yourdomain.com` | Remnawave 面板 |
+
+> `.env.example` 中已列出所有可选变量（Telegram 通知、支付、HWID 限制等），按需取消注释即可。
+
+### 变量命名空间
+
+两个项目的变量在 `.env` 中自然共存，互不冲突：
+
+- **共享基础设施**：`POSTGRES_USER`、`POSTGRES_PASSWORD`（PostgreSQL 容器使用）
+- **数据库隔离**：`REMAWAVE_DB`、`USER_PANEL_DB` 分别指定两个项目的数据库名，`db-init` 服务自动创建
+- **数据库连接**：`docker-compose.yml` 为每个服务单独注入 `DATABASE_URL`，User Panel 还支持 `SHOP_DATABASE_URL` 作为专属变量（优先于 `DATABASE_URL`）
+- **Redis**：User Panel 使用 `REDIS_URL`（完整连接串），也兼容 Remnawave 风格的 `REDIS_HOST` + `REDIS_PORT`
+- **Webhook 密钥**：`PANEL_WEBHOOK_SECRET` 同时用于 User Panel 和 Remnawave 面板（自动注入为 `WEBHOOK_SECRET_HEADER`）
+- **Web UI 管理**：默认语言、货币、Squad、HWID 限制、通知天数、支付等配置请在后台 Settings 页面修改
 
 ## 3. 创建数据库
 
-PostgreSQL 容器不会自动创建多个数据库。首次启动时手动创建：
+首次启动时 `db-init` 服务会自动创建 `remnawave` 和 `remna_user_panel` 两个数据库，无需手动操作。
+
+```bash
+docker compose up -d
+```
+
+如需要手动创建：
 
 ```bash
 docker compose up -d postgres redis
 docker compose exec postgres psql -U postgres -c "CREATE DATABASE remnawave;"
 docker compose exec postgres psql -U postgres -c "CREATE DATABASE remna_user_panel;"
+docker compose up -d
 ```
 
 ## 4. 启动
