@@ -1,6 +1,6 @@
 services:
   frontend:
-    container_name: remnawave-minishop-frontend
+    container_name: remna-user-panel-frontend
     build:
       context: .
       dockerfile: deploy/docker/Dockerfile
@@ -19,7 +19,7 @@ services:
       backend:
         condition: service_healthy
     networks:
-      - remnawave-shop
+      - remna-user-panel
     ports:
       - "127.0.0.1:${FRONTEND_PORT:-8082}:80"
     healthcheck:
@@ -29,7 +29,7 @@ services:
       retries: 5
 
   backend:
-    container_name: remnawave-minishop-backend
+    container_name: remna-user-panel-backend
     build:
       context: .
       dockerfile: deploy/docker/Dockerfile
@@ -56,7 +56,7 @@ services:
       - shop-data:/app/data
       - ${COMPOSE_BACKUP_SOURCE:-.}:/app/compose-source:${COMPOSE_RESTORE_MODE:-rw}
     networks:
-      - remnawave-shop
+      - remna-user-panel
     ports:
       - "127.0.0.1:${WEB_SERVER_PORT:-8080}:8080"
     healthcheck:
@@ -67,7 +67,7 @@ services:
       start_period: 30s
 
   worker:
-    container_name: remnawave-minishop-worker
+    container_name: remna-user-panel-worker
     build:
       context: .
       dockerfile: deploy/docker/Dockerfile
@@ -93,16 +93,16 @@ services:
       - shop-data:/app/data
       - ${COMPOSE_BACKUP_SOURCE:-.}:/app/compose-source:ro
     networks:
-      - remnawave-shop
+      - remna-user-panel
 
   migrate:
-    container_name: remnawave-minishop-migrate
+    container_name: remna-user-panel-migrate
     image: ghcr.io/${IMAGE_NAMESPACE:-local}/remna-user-panel-backend:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: deploy/docker/Dockerfile
       target: backend
-    command: ["remnawave-minishop-migrate"]
+    command: ["remna-user-panel-migrate"]
     env_file:
       - ${APP_ENV_FILE:-.env}
     environment:
@@ -117,11 +117,11 @@ services:
     volumes:
       - shop-data:/app/data
     networks:
-      - remnawave-shop
+      - remna-user-panel
 
   postgres:
     image: postgres:17
-    container_name: remnawave-minishop-postgres
+    container_name: remna-user-panel-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -130,7 +130,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
-      - remnawave-shop
+      - remna-user-panel
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -139,13 +139,13 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: remnawave-minishop-redis
+    container_name: remna-user-panel-redis
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis-data:/data
     networks:
-      - remnawave-shop
+      - remna-user-panel
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -153,12 +153,12 @@ services:
       retries: 20
 
 networks:
-  remnawave-shop:
+  remna-user-panel:
 
 volumes:
   postgres-data:
-    name: remnawave-minishop-db-data
+    name: remna-user-panel-db-data
   redis-data:
-    name: remnawave-minishop-redis-data
+    name: remna-user-panel-redis-data
   shop-data:
-    name: remnawave-minishop-shop-data
+    name: remna-user-panel-shop-data

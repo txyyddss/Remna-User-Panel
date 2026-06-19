@@ -1,4 +1,4 @@
-const DEMO_ADMIN_EMAIL = "3252a8@proton.me";
+const DEMO_ADMIN_EMAIL = "admin@example.com";
 const DEMO_ADMIN_GRAVATAR_HASH = "e06e9ae24816fb1d6ed86b58e6fd00d3abe7860b8d51128b8a3e848f208d5e92";
 const DEMO_ADMIN_GRAVATAR_URL = `https://www.gravatar.com/avatar/${DEMO_ADMIN_GRAVATAR_HASH}?d=mp&s=160`;
 
@@ -25,7 +25,7 @@ export function demoAvatarUrl(user, size = 96) {
   if (!user) return "";
   if (normalizedEmail(user.email) === DEMO_ADMIN_EMAIL) return DEMO_ADMIN_GRAVATAR_URL;
   if (!hasLinkedTelegram(user)) return "";
-  return `https://i.pravatar.cc/${size}?u=remnawave-minishop-demo-${avatarSeed(user)}`;
+  return `https://i.pravatar.cc/${size}?u=remna-user-panel-demo-${avatarSeed(user)}`;
 }
 
 export function withDemoAvatar(user, size = 96) {

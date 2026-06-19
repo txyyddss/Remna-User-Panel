@@ -88,9 +88,9 @@ COPY locales ./locales
 COPY data ./data
 COPY internal/webassets ./internal/webassets
 COPY --from=frontend-builder /app/internal/webassets/templates/ ./internal/webassets/templates/
-COPY --from=go-builder /out/backend /usr/local/bin/remnawave-minishop-backend
-COPY --from=go-builder /out/worker /usr/local/bin/remnawave-minishop-worker
-COPY --from=go-builder /out/migrate /usr/local/bin/remnawave-minishop-migrate
+COPY --from=go-builder /out/backend /usr/local/bin/remna-user-panel-backend
+COPY --from=go-builder /out/worker /usr/local/bin/remna-user-panel-worker
+COPY --from=go-builder /out/migrate /usr/local/bin/remna-user-panel-migrate
 COPY --from=version-builder /build-version /app/.build-version
 COPY --from=version-builder /build-tag /app/.build-tag
 COPY --from=version-builder /build-commit /app/.build-commit
@@ -110,7 +110,7 @@ LABEL org.opencontainers.image.source="https://github.com/remna-user-panel/remna
       org.opencontainers.image.licenses="MIT"
 
 EXPOSE 8080 8081
-CMD ["remnawave-minishop-backend"]
+CMD ["remna-user-panel-backend"]
 
 
 FROM app-base AS worker
@@ -120,7 +120,7 @@ LABEL org.opencontainers.image.source="https://github.com/remna-user-panel/remna
       org.opencontainers.image.description="Remna User Panel background worker (scheduled jobs, async tasks)." \
       org.opencontainers.image.licenses="MIT"
 
-CMD ["remnawave-minishop-worker"]
+CMD ["remna-user-panel-worker"]
 
 
 FROM nginx:1.27-alpine AS frontend

@@ -44,18 +44,26 @@ type Config struct {
 
 // CreateOrderRequest describes a server-trusted payment to create.
 type CreateOrderRequest struct {
-	UserID      int64
-	MethodID    string
-	Amount      float64
-	Currency    string
-	Description string
-	TariffKey   string
-	SaleMode    string
-	Months      int
-	TrafficGB   float64
-	DeviceCount int
-	ClientIP    string
-	Language    string
+	UserID           int64
+	MethodID         string
+	Amount           float64
+	Currency         string
+	BaseAmount       float64
+	BaseCurrency     string
+	DisplayCNYAmount float64
+	FXRate           float64
+	FXSource         string
+	FXUpdatedAt      time.Time
+	PlanHash         string
+	PlanSnapshot     json.RawMessage
+	Description      string
+	TariffKey        string
+	SaleMode         string
+	Months           int
+	TrafficGB        float64
+	DeviceCount      int
+	ClientIP         string
+	Language         string
 }
 
 // CreateOrderResponse is returned to the Web App.
@@ -69,6 +77,12 @@ type CreateOrderResponse struct {
 	PaymentType       string  `json:"payment_type"`
 	Amount            float64 `json:"amount"`
 	Currency          string  `json:"currency"`
+	BaseAmount        float64 `json:"base_amount"`
+	BaseCurrency      string  `json:"base_currency"`
+	DisplayCNYAmount  float64 `json:"display_cny_amount,omitempty"`
+	FXRate            float64 `json:"fx_rate,omitempty"`
+	FXSource          string  `json:"fx_source,omitempty"`
+	PlanHash          string  `json:"plan_hash,omitempty"`
 	ProviderPaymentID string  `json:"provider_payment_id,omitempty"`
 	PaymentURL        string  `json:"payment_url,omitempty"`
 	QRContent         string  `json:"qr_content,omitempty"`
@@ -93,6 +107,14 @@ type Order struct {
 	PaymentType       string          `json:"payment_type"`
 	Amount            float64         `json:"amount"`
 	Currency          string          `json:"currency"`
+	BaseAmount        float64         `json:"base_amount"`
+	BaseCurrency      string          `json:"base_currency"`
+	DisplayCNYAmount  float64         `json:"display_cny_amount,omitempty"`
+	FXRate            float64         `json:"fx_rate,omitempty"`
+	FXSource          string          `json:"fx_source,omitempty"`
+	FXUpdatedAt       *time.Time      `json:"fx_updated_at,omitempty"`
+	PlanHash          string          `json:"plan_hash,omitempty"`
+	PlanSnapshot      json.RawMessage `json:"plan_snapshot,omitempty"`
 	Status            string          `json:"status"`
 	Description       string          `json:"description,omitempty"`
 	TariffKey         string          `json:"tariff_key,omitempty"`
@@ -152,7 +174,7 @@ func (r *Registry) EffectiveConfig(ctx context.Context) Config {
 		EZPay:               ezpay,
 		BEPUSDT:             bepusdt,
 		PaymentMethodsOrder: splitList(orderRaw),
-		WebhookBaseURL:      strings.TrimRight(r.settings.WebhookBaseURL, "/"),
+		WebhookBaseURL:      strings.TrimRight(r.store.String(ctx, "WEBHOOK_BASE_URL", r.settings.WebhookBaseURL), "/"),
 	}
 }
 
@@ -202,16 +224,36 @@ func (r *Registry) Create(ctx context.Context, req CreateOrderRequest) (CreateOr
 	if amount <= 0 {
 		return CreateOrderResponse{}, fmt.Errorf("amount must be greater than zero")
 	}
+	baseAmount := math.Round(req.BaseAmount*100) / 100
+	if baseAmount <= 0 {
+		baseAmount = amount
+	}
+	baseCurrency := strings.ToUpper(strings.TrimSpace(req.BaseCurrency))
+	if baseCurrency == "" {
+		baseCurrency = strings.ToUpper(req.Currency)
+	}
+	currency := strings.ToUpper(strings.TrimSpace(req.Currency))
+	if currency == "" {
+		currency = baseCurrency
+	}
+	planSnapshot := req.PlanSnapshot
+	if len(planSnapshot) == 0 || !json.Valid(planSnapshot) {
+		planSnapshot = json.RawMessage(`{}`)
+	}
 	if r.pool == nil {
 		return CreateOrderResponse{}, fmt.Errorf("database is not configured")
 	}
 	var paymentID int64
 	err = r.pool.QueryRow(ctx, `
 INSERT INTO payment_orders
-	(order_id, user_id, provider, method, payment_type, amount, currency, status, description, tariff_key, sale_mode, months, traffic_gb, device_count, created_at, updated_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,'pending',$8,$9,$10,$11,$12,$13,NOW(),NOW())
+	(order_id, user_id, provider, method, payment_type, amount, currency, base_amount, base_currency,
+	 display_cny_amount, fx_rate, fx_source, fx_updated_at, plan_hash, plan_snapshot,
+	 status, description, tariff_key, sale_mode, months, traffic_gb, device_count, created_at, updated_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'pending',$16,$17,$18,$19,$20,$21,NOW(),NOW())
 RETURNING payment_id`,
-		orderID, req.UserID, method.Provider, req.MethodID, method.PaymentType, amount, strings.ToUpper(req.Currency),
+		orderID, req.UserID, method.Provider, req.MethodID, method.PaymentType, amount, currency, baseAmount, baseCurrency,
+		zeroFloatToNil(req.DisplayCNYAmount), zeroFloatToNil(req.FXRate), emptyToNil(req.FXSource), zeroTimeToNil(req.FXUpdatedAt),
+		emptyToNil(req.PlanHash), planSnapshot,
 		req.Description, emptyToNil(req.TariffKey), emptyToNil(req.SaleMode), zeroIntToNil(req.Months),
 		zeroFloatToNil(req.TrafficGB), zeroIntToNil(req.DeviceCount),
 	).Scan(&paymentID)
@@ -222,7 +264,7 @@ RETURNING payment_id`,
 	providerResp, err := r.createProviderPayment(ctx, cfg, method, providerPaymentRequest{
 		OrderID:     orderID,
 		Amount:      amount,
-		Currency:    strings.ToUpper(req.Currency),
+		Currency:    currency,
 		Description: req.Description,
 		ClientIP:    req.ClientIP,
 	})
@@ -243,7 +285,13 @@ RETURNING payment_id`,
 		Method:            req.MethodID,
 		PaymentType:       method.PaymentType,
 		Amount:            amount,
-		Currency:          strings.ToUpper(req.Currency),
+		Currency:          currency,
+		BaseAmount:        baseAmount,
+		BaseCurrency:      baseCurrency,
+		DisplayCNYAmount:  req.DisplayCNYAmount,
+		FXRate:            req.FXRate,
+		FXSource:          req.FXSource,
+		PlanHash:          req.PlanHash,
 		ProviderPaymentID: providerResp.ProviderPaymentID,
 		PaymentURL:        providerResp.PaymentURL,
 		QRContent:         providerResp.QRContent,
@@ -261,7 +309,9 @@ RETURNING payment_id`,
 func (r *Registry) GetForUser(ctx context.Context, userID int64, paymentID int64) (Order, error) {
 	return r.scanOrder(ctx, `
 SELECT payment_id, order_id, user_id, COALESCE(provider,''), COALESCE(method,''), COALESCE(payment_type,''),
-	amount::float8, COALESCE(currency,''), COALESCE(status,''), COALESCE(description,''),
+	amount::float8, COALESCE(currency,''), COALESCE(base_amount, amount)::float8, COALESCE(base_currency, currency),
+	COALESCE(display_cny_amount,0)::float8, COALESCE(fx_rate,0)::float8, COALESCE(fx_source,''), fx_updated_at,
+	COALESCE(plan_hash,''), COALESCE(plan_snapshot,'{}'::jsonb), COALESCE(status,''), COALESCE(description,''),
 	COALESCE(tariff_key,''), COALESCE(sale_mode,''), COALESCE(months,0), COALESCE(traffic_gb,0)::float8,
 	COALESCE(device_count,0), COALESCE(provider_payment_id,''), COALESCE(payment_url,''), COALESCE(qr_content,''),
 	COALESCE(display_amount,''), COALESCE(display_currency,''), COALESCE(payment_address,''), COALESCE(network,''),
@@ -273,7 +323,9 @@ FROM payment_orders WHERE payment_id=$1 AND user_id=$2`, paymentID, userID)
 func (r *Registry) Get(ctx context.Context, paymentID int64) (Order, error) {
 	return r.scanOrder(ctx, `
 SELECT p.payment_id, p.order_id, p.user_id, COALESCE(p.provider,''), COALESCE(p.method,''), COALESCE(p.payment_type,''),
-	p.amount::float8, COALESCE(p.currency,''), COALESCE(p.status,''), COALESCE(p.description,''),
+	p.amount::float8, COALESCE(p.currency,''), COALESCE(p.base_amount, p.amount)::float8, COALESCE(p.base_currency, p.currency),
+	COALESCE(p.display_cny_amount,0)::float8, COALESCE(p.fx_rate,0)::float8, COALESCE(p.fx_source,''), p.fx_updated_at,
+	COALESCE(p.plan_hash,''), COALESCE(p.plan_snapshot,'{}'::jsonb), COALESCE(p.status,''), COALESCE(p.description,''),
 	COALESCE(p.tariff_key,''), COALESCE(p.sale_mode,''), COALESCE(p.months,0), COALESCE(p.traffic_gb,0)::float8,
 	COALESCE(p.device_count,0), COALESCE(p.provider_payment_id,''), COALESCE(p.payment_url,''), COALESCE(p.qr_content,''),
 	COALESCE(p.display_amount,''), COALESCE(p.display_currency,''), COALESCE(p.payment_address,''), COALESCE(p.network,''),
@@ -296,7 +348,9 @@ func (r *Registry) List(ctx context.Context, page int, pageSize int) ([]Order, i
 	rows, err := r.pool.Query(ctx, `
 SELECT p.payment_id, p.order_id, p.user_id, COALESCE(u.username,''), COALESCE(u.telegram_id,0),
 	COALESCE(p.provider,''), COALESCE(p.method,''), COALESCE(p.payment_type,''), p.amount::float8,
-	COALESCE(p.currency,''), COALESCE(p.status,''), COALESCE(p.description,''), COALESCE(p.tariff_key,''),
+	COALESCE(p.currency,''), COALESCE(p.base_amount, p.amount)::float8, COALESCE(p.base_currency, p.currency),
+	COALESCE(p.display_cny_amount,0)::float8, COALESCE(p.fx_rate,0)::float8, COALESCE(p.fx_source,''), p.fx_updated_at,
+	COALESCE(p.plan_hash,''), COALESCE(p.plan_snapshot,'{}'::jsonb), COALESCE(p.status,''), COALESCE(p.description,''), COALESCE(p.tariff_key,''),
 	COALESCE(p.sale_mode,''), COALESCE(p.months,0), COALESCE(p.traffic_gb,0)::float8, COALESCE(p.device_count,0),
 	COALESCE(p.provider_payment_id,''), COALESCE(p.payment_url,''), COALESCE(p.qr_content,''), COALESCE(p.display_amount,''),
 	COALESCE(p.display_currency,''), COALESCE(p.payment_address,''), COALESCE(p.network,''), COALESCE(p.url_scheme,''),
@@ -314,7 +368,9 @@ LIMIT $1 OFFSET $2`, pageSize, page*pageSize)
 		var order Order
 		if err := rows.Scan(
 			&order.PaymentID, &order.OrderID, &order.UserID, &order.UserLabel, &order.TelegramID,
-			&order.Provider, &order.Method, &order.PaymentType, &order.Amount, &order.Currency, &order.Status,
+			&order.Provider, &order.Method, &order.PaymentType, &order.Amount, &order.Currency,
+			&order.BaseAmount, &order.BaseCurrency, &order.DisplayCNYAmount, &order.FXRate, &order.FXSource,
+			&order.FXUpdatedAt, &order.PlanHash, &order.PlanSnapshot, &order.Status,
 			&order.Description, &order.TariffKey, &order.SaleMode, &order.Months, &order.TrafficGB, &order.DeviceCount,
 			&order.ProviderPaymentID, &order.PaymentURL, &order.QRContent, &order.DisplayAmount, &order.DisplayCurrency,
 			&order.PaymentAddress, &order.Network, &order.URLScheme, &order.RawWebhook, &order.CreatedAt, &order.UpdatedAt, &order.PaidAt,
@@ -399,7 +455,9 @@ func (r *Registry) scanOrder(ctx context.Context, query string, args ...any) (Or
 	var order Order
 	err := r.pool.QueryRow(ctx, query, args...).Scan(
 		&order.PaymentID, &order.OrderID, &order.UserID, &order.Provider, &order.Method, &order.PaymentType,
-		&order.Amount, &order.Currency, &order.Status, &order.Description, &order.TariffKey, &order.SaleMode,
+		&order.Amount, &order.Currency, &order.BaseAmount, &order.BaseCurrency, &order.DisplayCNYAmount,
+		&order.FXRate, &order.FXSource, &order.FXUpdatedAt, &order.PlanHash, &order.PlanSnapshot,
+		&order.Status, &order.Description, &order.TariffKey, &order.SaleMode,
 		&order.Months, &order.TrafficGB, &order.DeviceCount, &order.ProviderPaymentID, &order.PaymentURL, &order.QRContent,
 		&order.DisplayAmount, &order.DisplayCurrency, &order.PaymentAddress, &order.Network, &order.URLScheme,
 		&order.RawWebhook, &order.CreatedAt, &order.UpdatedAt, &order.PaidAt,
@@ -525,6 +583,13 @@ func zeroIntToNil(value int) any {
 
 func zeroFloatToNil(value float64) any {
 	if value == 0 {
+		return nil
+	}
+	return value
+}
+
+func zeroTimeToNil(value time.Time) any {
+	if value.IsZero() {
 		return nil
 	}
 	return value

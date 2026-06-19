@@ -1191,7 +1191,7 @@
 
   function prepareDemoAuthState() {
     const authDemo = MOCK_SOURCE.data?.auth_demo || {};
-    const email = String(authDemo.email || "3252a8@proton.me").trim();
+    const email = String(authDemo.email || "admin@example.com").trim();
     authStore.update((s) => ({
       ...s,
       authStatus: "",
@@ -1216,8 +1216,8 @@
       await authStore.finalizeTelegramAuth(
         {
           id: Number(authDemo.telegram_id || 7410865527),
-          username: authDemo.telegram_username || "u3252a8",
-          first_name: authDemo.telegram_first_name || "3252a8",
+          username: authDemo.telegram_username || "remna_admin",
+          first_name: authDemo.telegram_first_name || "Admin",
           last_name: authDemo.telegram_last_name || "",
         },
         "auth_data"
@@ -1231,8 +1231,8 @@
     const authDemo = MOCK_SOURCE.data?.auth_demo || {};
     return {
       id: Number(authDemo.telegram_id || 7410865527),
-      username: authDemo.telegram_username || "u3252a8",
-      first_name: authDemo.telegram_first_name || "3252a8",
+      username: authDemo.telegram_username || "remna_admin",
+      first_name: authDemo.telegram_first_name || "Admin",
       last_name: authDemo.telegram_last_name || "",
     };
   }
@@ -1240,7 +1240,7 @@
   function openSettingsLinkEmailDialog() {
     if (!emailAuthEnabled) return;
     const authDemo = MOCK_SOURCE.data?.auth_demo || {};
-    accountStore.openLinkEmailDialog(demoAuthLogin ? authDemo.email || "3252a8@proton.me" : "");
+    accountStore.openLinkEmailDialog(demoAuthLogin ? authDemo.email || "admin@example.com" : "");
   }
 
   function openSettingsSetPasswordDialog() {

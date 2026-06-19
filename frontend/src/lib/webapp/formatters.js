@@ -3,11 +3,13 @@ export function formatTemplate(template, params = {}) {
   return text.replace(/\{(\w+)\}/g, (_, key) => String(params[key] ?? `{${key}}`));
 }
 
-export function formatMoney(value, currency = "RUB") {
+export function formatMoney(value, currency = "USD") {
   const numeric = Number(value || 0);
   const formatted = Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(2);
-  const symbol = currency === "RUB" ? "₽" : currency;
-  return `${formatted} ${symbol}`;
+  const code = String(currency || "USD").toUpperCase();
+  if (code === "USD") return `$${formatted}`;
+  if (code === "CNY" || code === "RMB") return `¥${formatted}`;
+  return `${formatted} ${code}`;
 }
 
 export function formatTrafficGb(value) {
