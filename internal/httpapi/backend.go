@@ -107,4 +107,3 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 		slog.Warn("failed to write json response", "error", err)
 	}
 }
-
