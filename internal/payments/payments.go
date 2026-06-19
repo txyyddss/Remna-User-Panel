@@ -537,7 +537,7 @@ func validateProviderConfig(cfg Config, provider string) error {
 		}
 	case ProviderTelegramStars:
 		if !cfg.StarsEnabled {
-			return fmt.Errorf("Telegram Stars is disabled")
+			return fmt.Errorf("telegram Stars is disabled")
 		}
 	default:
 		return fmt.Errorf("unsupported provider")

@@ -55,7 +55,7 @@ func inspectBackupArchive(path string) backupArchiveInfo {
 			info.Warnings = append(info.Warnings, "invalid_zip")
 			return info
 		}
-		defer reader.Close()
+		defer func() { _ = reader.Close() }()
 		for _, file := range reader.File {
 			if file.Name == "database/database.dump" {
 				info.HasDatabase = true
@@ -76,7 +76,7 @@ func createBackupArchive(ctx context.Context, settings config.Settings, target s
 	if err != nil {
 		return backupArchiveInfo{}, err
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 	dumpPath := filepath.Join(tmpDir, "database.dump")
 	if strings.TrimSpace(settings.DatabaseURL) == "" {
 		return backupArchiveInfo{}, fmt.Errorf("database_url_not_configured")
@@ -152,7 +152,7 @@ func createBackupArchive(ctx context.Context, settings config.Settings, target s
 func writeZipFile(writer *zip.Writer, name string, body []byte, mode os.FileMode) error {
 	header := &zip.FileHeader{Name: name, Method: zip.Deflate}
 	header.SetMode(mode)
-	header.SetModTime(time.Now())
+	header.Modified = time.Now()
 	destination, err := writer.CreateHeader(header)
 	if err != nil {
 		return err
@@ -174,7 +174,7 @@ func extractBackupArchive(path, tempDir string, restoreCompose bool) (string, bo
 	if err != nil {
 		return "", false, err
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 	if len(reader.File) > backupMaxFiles {
 		return "", false, fmt.Errorf("archive_too_many_files")
 	}
@@ -213,12 +213,12 @@ func extractBackupArchive(path, tempDir string, restoreCompose bool) (string, bo
 		}
 		destination, err := os.OpenFile(target, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
 		if err != nil {
-			source.Close()
+			_ = source.Close()
 			return "", false, err
 		}
 		_, copyErr := io.Copy(destination, io.LimitReader(source, backupMaxExpandedBytes+1))
-		source.Close()
-		destination.Close()
+		_ = source.Close()
+		_ = destination.Close()
 		if copyErr != nil {
 			return "", false, copyErr
 		}

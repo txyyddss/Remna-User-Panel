@@ -209,7 +209,7 @@ func callTelegramBotAPI(ctx context.Context, settings config.Settings, method st
 	if err != nil {
 		return err
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode/100 != 2 {
 		return fmt.Errorf("telegram_status_%d", response.StatusCode)
 	}

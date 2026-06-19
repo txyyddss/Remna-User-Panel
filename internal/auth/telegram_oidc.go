@@ -127,7 +127,7 @@ func telegramPublicKey(ctx context.Context, kid string) (*rsa.PublicKey, error) 
 	if err != nil {
 		return nil, err
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode/100 != 2 {
 		return nil, fmt.Errorf("telegram_jwks_status_%d", response.StatusCode)
 	}

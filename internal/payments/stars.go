@@ -41,7 +41,7 @@ func createTelegramStarsInvoice(ctx context.Context, client *http.Client, botTok
 	if err != nil {
 		return providerPaymentResponse{}, fmt.Errorf("telegram_create_invoice: %w", err)
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	responseBody, _ := io.ReadAll(io.LimitReader(response.Body, 1<<20))
 	var result struct {
 		OK          bool   `json:"ok"`

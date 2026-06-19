@@ -81,19 +81,19 @@
   function priceLabel(plan) {
     return priceLabelFn(plan, selectedMethod);
   }
-  function methodUsesStars() {
+  function _methodUsesStars() {
     return String(selectedMethod || "")
       .toLowerCase()
       .includes("stars");
   }
-  function isSubscriptionPlan(plan) {
+  function _isSubscriptionPlan(plan) {
     const saleMode = String(plan?.sale_mode || "subscription").toLowerCase();
     return saleMode === "subscription";
   }
   function paymentPriceLabel(plan) {
     return priceLabelFn(plan, selectedMethod);
   }
-  $: selectedPlanForPayment = selectedPlan;
+  $: _selectedPlanForPayment = selectedPlan;
   $: paymentMethods = methodsForPlan(methods, selectedPlan);
   $: paymentMethodSelected = methodSelectable(paymentMethods, selectedMethod);
   $: if (paymentModalOpen && paymentStep === "checkout" && selectedPlan) {

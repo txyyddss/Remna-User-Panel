@@ -2444,7 +2444,7 @@
     }
   }
 
-  async function refreshI18nScope(scope) {
+  async function _refreshI18nScope(scope) {
     if (MOCK) return;
     const apiBase = String(CFG.apiBase || "/api").replace(/\/+$/, "");
     try {

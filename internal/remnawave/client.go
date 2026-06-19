@@ -408,27 +408,7 @@ func secondsSetting(value float64, fallback time.Duration) time.Duration {
 	return time.Duration(value * float64(time.Second))
 }
 
-func optionalIntFromJSON(raw json.RawMessage) *int {
-	if len(raw) == 0 || string(raw) == "null" {
-		return nil
-	}
-	var number float64
-	if json.Unmarshal(raw, &number) == nil {
-		value := int(number)
-		return &value
-	}
-	var text string
-	if json.Unmarshal(raw, &text) == nil {
-		text = strings.TrimSpace(text)
-		if text == "" {
-			return nil
-		}
-		if value, err := strconv.Atoi(text); err == nil {
-			return &value
-		}
-	}
-	return nil
-}
+
 
 func splitList(raw string) []string {
 	fields := strings.FieldsFunc(raw, func(r rune) bool {

@@ -254,17 +254,7 @@ func envFloat(key string, fallback float64) float64 {
 	return value
 }
 
-func envOptionalInt(key string) *int {
-	raw, ok := os.LookupEnv(key)
-	if !ok || strings.TrimSpace(raw) == "" {
-		return nil
-	}
-	value, err := strconv.Atoi(strings.TrimSpace(raw))
-	if err != nil {
-		return nil
-	}
-	return &value
-}
+
 
 func parseInt64List(raw string) []int64 {
 	parts := splitCSV(raw)

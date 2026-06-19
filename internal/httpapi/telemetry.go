@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -358,7 +357,4 @@ func userCountRange(count int64) string {
 	}
 }
 
-func telemetryPayloadJSON(fp storedFingerprint) json.RawMessage {
-	body, _ := json.Marshal(fp)
-	return body
-}
+

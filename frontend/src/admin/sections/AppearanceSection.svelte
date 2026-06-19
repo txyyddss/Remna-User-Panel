@@ -629,12 +629,12 @@
     const file = event.currentTarget.files?.[0];
     if (!file) return;
     if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
-      showToast?.(at?.("appearance_logo_invalid_type", {}, "Invalid file type. Allowed: PNG, JPEG, WebP, SVG, GIF") || "Invalid file type");
+      console.warn(at?.("appearance_logo_invalid_type", {}, "Invalid file type. Allowed: PNG, JPEG, WebP, SVG, GIF") || "Invalid file type");
       if (logoFileInput) logoFileInput.value = "";
       return;
     }
     if (file.size > MAX_LOGO_SIZE_BYTES) {
-      showToast?.(at?.("appearance_logo_too_large", {}, "File too large. Maximum size is 5 MB.") || "File too large");
+      console.warn(at?.("appearance_logo_too_large", {}, "File too large. Maximum size is 5 MB.") || "File too large");
       if (logoFileInput) logoFileInput.value = "";
       return;
     }

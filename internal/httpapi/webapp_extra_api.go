@@ -2547,7 +2547,7 @@ func adminBackupRestoreHandler(settings config.Settings, pool *pgxpool.Pool) htt
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "restore_prepare_failed"})
 			return
 		}
-		defer os.RemoveAll(tempDir)
+		defer func() { _ = os.RemoveAll(tempDir) }()
 		databasePath := archivePath
 		if strings.HasSuffix(strings.ToLower(archivePath), ".zip") {
 			var composeRestored bool

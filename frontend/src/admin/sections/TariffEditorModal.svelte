@@ -256,7 +256,6 @@
             />
           </Label.Root>
         {/if}
-      </div>
     </Tabs.Content>
 
     <Tabs.Content value="premium" class="admin-tabs-content">
