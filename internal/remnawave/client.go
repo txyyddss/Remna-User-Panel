@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -62,10 +64,25 @@ type Client struct {
 }
 
 func NewClient(settings config.Settings, store appsettings.Store) *Client {
+	dialer := &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+	transport := &http.Transport{
+		DialContext:           dialer.DialContext,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ResponseHeaderTimeout: 10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		MaxIdleConns:          10,
+		IdleConnTimeout:       60 * time.Second,
+	}
 	return &Client{
 		settings: settings,
 		store:    store,
-		http:     &http.Client{},
+		http: &http.Client{
+			Transport: transport,
+			Timeout:   30 * time.Second,
+		},
 	}
 }
 
@@ -294,8 +311,10 @@ func (c *Client) request(ctx context.Context, method string, endpoint string, qu
 	}
 	req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 
+	slog.Debug("remnawave api request", "method", method, "url", requestURL)
 	resp, err := c.http.Do(req)
 	if err != nil {
+		slog.Error("remnawave api request failed", "method", method, "url", requestURL, "error", err)
 		return err
 	}
 	defer func() { _ = resp.Body.Close() }()
@@ -306,6 +325,7 @@ func (c *Client) request(ctx context.Context, method string, endpoint string, qu
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		apiErr := parseAPIError(resp.StatusCode, responseBody)
+		slog.Error("remnawave api error response", "method", method, "url", requestURL, "status", resp.StatusCode, "error_code", apiErr.ErrorCode, "message", apiErr.Message)
 		if resp.StatusCode == http.StatusNotFound || apiErr.ErrorCode == "A040" || apiErr.ErrorCode == "A062" {
 			return ErrNotFound
 		}

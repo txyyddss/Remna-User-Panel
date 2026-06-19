@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"net"
 	"net/http"
@@ -140,10 +141,8 @@ func meHandler(settings config.Settings, pool *pgxpool.Pool, registry *payments.
 		if panel != nil && panel.Configured(r.Context()) {
 			panelUser, found, err := panelUserForWebUser(r.Context(), pool, panel, session.User)
 			if err != nil {
-				writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
-				return
-			}
-			if found {
+				slog.Warn("failed to fetch panel user for /api/me, continuing without subscription data", "error", err, "user_id", session.User.UserID)
+			} else if found {
 				subscription = subscriptionFromPanelUser(r.Context(), pool, session.User, panelUser)
 			}
 		}
