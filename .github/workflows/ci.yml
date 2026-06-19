@@ -20,8 +20,8 @@ env:
   IMAGE_PREFIX: remna-user-panel
 
 jobs:
-  quality:
-    name: Frontend and backend quality gate
+  quality-go:
+    name: Go quality gate
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -42,12 +42,21 @@ jobs:
         run: go vet ./...
 
       - name: Go test with race detector
-        run: go test -race ./...
+        run: go test -race -count=1 ./...
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
           version: latest
+
+  quality-frontend:
+    name: Frontend quality gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
 
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -75,7 +84,7 @@ jobs:
   docker:
     name: Build, push and archive Docker image
     runs-on: ubuntu-latest
-    needs: quality
+    needs: [quality-go, quality-frontend]
     if: github.event_name != 'pull_request'
     permissions:
       contents: read
@@ -134,17 +143,9 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          tar_path="${RUNNER_TEMP}/remna-user-panel-${{ matrix.target }}.tar"
-          docker buildx build \
-            --file deploy/docker/Dockerfile \
-            --target "${{ matrix.target }}" \
-            --platform linux/amd64 \
-            --build-arg GITHUB_REF_NAME=main \
-            --build-arg REMNAWAVE_MINISHOP_BUILD_PROVENANCE=custom \
-            --tag "${{ steps.meta.outputs.image }}:sha-${{ steps.meta.outputs.short_sha }}" \
-            --output "type=docker,dest=${tar_path}" \
-            .
-          gzip -9c "${tar_path}" > "dist/${{ steps.meta.outputs.archive }}"
+          docker pull "${{ steps.meta.outputs.image }}:sha-${{ steps.meta.outputs.short_sha }}"
+          docker save "${{ steps.meta.outputs.image }}:sha-${{ steps.meta.outputs.short_sha }}" \
+            | gzip -9 > "dist/${{ steps.meta.outputs.archive }}"
 
       - name: Upload image archive
         uses: actions/upload-artifact@v7
