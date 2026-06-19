@@ -141,11 +141,6 @@
       copy: payment?.provider_payment_id,
     },
     {
-      label: "YooKassa ID",
-      value: payment?.yookassa_payment_id,
-      copy: payment?.yookassa_payment_id,
-    },
-    {
       label: at("payment_detail_idempotence_key", {}, "Ключ идемпотентности"),
       value: payment?.idempotence_key,
       copy: payment?.idempotence_key,

@@ -2,6 +2,7 @@ import { formatMoney, formatTrafficGb } from "./formatters.js";
 
 export function planKey(plan) {
   return (
+    plan?.plan_hash ||
     plan?.id ||
     `${plan?.tariff_key || "legacy"}:${plan?.sale_mode || "subscription"}:${plan?.months || plan?.traffic_gb || ""}`
   );
@@ -56,7 +57,12 @@ export function priceLabel(plan, methodId = "") {
   ) {
     return `${Number(plan.stars_price)} ⭐`;
   }
-  return formatMoney(plan?.price || 0, plan?.currency);
+  const primary = formatMoney(
+    plan?.base_amount ?? plan?.price ?? 0,
+    plan?.base_currency || plan?.currency
+  );
+  const cny = Number(plan?.display_cny_amount || 0);
+  return cny > 0 ? `${primary} · ≈ ${formatMoney(cny, "CNY")}` : primary;
 }
 
 export function methodAmountForPlan(method, plan) {
@@ -69,7 +75,7 @@ export function methodAmountForPlan(method, plan) {
   ) {
     return Number(plan.stars_price || 0);
   }
-  return Number(plan?.price || 0);
+  return Number(plan?.base_amount ?? plan?.price ?? 0);
 }
 
 export function methodAvailableForPlan(method, plan) {
@@ -168,7 +174,7 @@ export function planUnitHint(plan, { trafficMode, selectedMethod, t }) {
     ) {
       return `${Number(plan.stars_price / gb).toFixed(0)} ⭐${t("wa_per_gb_short")}`;
     }
-    return `${formatMoney(Number(plan?.price || 0) / gb, plan?.currency)}${t("wa_per_gb_short")}`;
+    return `${formatMoney(Number(plan?.base_amount ?? plan?.price ?? 0) / gb, plan?.base_currency || plan?.currency)}${t("wa_per_gb_short")}`;
   }
   const months = Number(plan?.months || 0);
   if (!months || months <= 1) return "";
@@ -180,5 +186,5 @@ export function planUnitHint(plan, { trafficMode, selectedMethod, t }) {
   ) {
     return `${Number(plan.stars_price / months).toFixed(0)} ⭐${t("wa_per_month_short")}`;
   }
-  return `${formatMoney(Number(plan?.price || 0) / months, plan?.currency)}${t("wa_per_month_short")}`;
+  return `${formatMoney(Number(plan?.base_amount ?? plan?.price ?? 0) / months, plan?.base_currency || plan?.currency)}${t("wa_per_month_short")}`;
 }

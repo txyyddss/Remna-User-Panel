@@ -51,7 +51,7 @@ func createEZPayPayment(ctx context.Context, client *http.Client, cfg config.EZP
 	if err != nil {
 		return providerPaymentResponse{}, fmt.Errorf("ezpay create payment: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
 		return providerPaymentResponse{}, fmt.Errorf("read ezpay response: %w", err)
