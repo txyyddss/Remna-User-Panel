@@ -46,12 +46,14 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool, settings config.Sett
 		return fmt.Errorf("acquire migration advisory lock: %w", err)
 	}
 	for _, migration := range coreMigrations(settings) {
-		var exists bool
-		if err := tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE id=$1)", migration.ID).Scan(&exists); err != nil && migration.ID != "core.0000_schema_migrations" {
-			return fmt.Errorf("check migration %s: %w", migration.ID, err)
-		}
-		if exists {
-			continue
+		if migration.ID != "core.0000_schema_migrations" {
+			var exists bool
+			if err := tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE id=$1)", migration.ID).Scan(&exists); err != nil {
+				return fmt.Errorf("check migration %s: %w", migration.ID, err)
+			}
+			if exists {
+				continue
+			}
 		}
 		if err := migration.Up(ctx, tx); err != nil {
 			return fmt.Errorf("apply migration %s: %w", migration.ID, err)
