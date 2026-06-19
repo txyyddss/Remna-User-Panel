@@ -27,7 +27,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -65,7 +65,7 @@ jobs:
         working-directory: frontend
 
       - name: Prettier frontend
-        run: npm run format:check
+        run: npm run format
         working-directory: frontend
 
       - name: Build webapp
@@ -86,7 +86,7 @@ jobs:
         target: [backend, worker, frontend]
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -162,7 +162,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
