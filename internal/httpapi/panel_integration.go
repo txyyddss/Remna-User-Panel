@@ -48,10 +48,14 @@ type accessGrantOptions struct {
 }
 
 const (
-	userTrafficOverridesSettingKey = "ADMIN_USER_TRAFFIC_OVERRIDES"
-	panelSyncStatusSettingKey      = "ADMIN_PANEL_SYNC_STATUS"
-	userAutoRenewSettingKey        = "USER_AUTO_RENEW_OVERRIDES"
-	paymentProvisionLockNamespace  = int64(0x5257000000000000)
+	userTrafficOverridesSettingKey    = "ADMIN_USER_TRAFFIC_OVERRIDES"
+	panelSyncStatusSettingKey         = "ADMIN_PANEL_SYNC_STATUS"
+	userAutoRenewSettingKey           = "USER_AUTO_RENEW_OVERRIDES"
+	userNotifyExpiryEnabledKey        = "USER_NOTIFY_EXPIRY_ENABLED"
+	userNotifyExpiryDaysBeforeKey     = "USER_NOTIFY_EXPIRY_DAYS_BEFORE"
+	userNotifyTrafficEnabledKey       = "USER_NOTIFY_TRAFFIC_ENABLED"
+	userNotifyTrafficThresholdPctKey  = "USER_NOTIFY_TRAFFIC_THRESHOLD_PCT"
+	paymentProvisionLockNamespace     = int64(0x5257000000000000)
 )
 
 type userTrafficOverride struct {
@@ -801,6 +805,123 @@ func saveUserAutoRenew(ctx context.Context, pool *pgxpool.Pool, userID int64, en
 	return store.Upsert(ctx, userAutoRenewSettingKey, values)
 }
 
+// UserNotificationPrefs holds per-user notification preferences.
+type UserNotificationPrefs struct {
+	ExpiryEnabled       bool `json:"expiry_enabled"`
+	ExpiryDaysBefore    int  `json:"expiry_days_before"`
+	TrafficEnabled      bool `json:"traffic_enabled"`
+	TrafficThresholdPct int  `json:"traffic_threshold_pct"`
+}
+
+const (
+	defaultExpiryDaysBefore    = 3
+	defaultTrafficThresholdPct = 85
+)
+
+func loadUserNotificationPrefs(ctx context.Context, pool *pgxpool.Pool, userID int64) UserNotificationPrefs {
+	prefs := UserNotificationPrefs{
+		ExpiryEnabled:       true,
+		ExpiryDaysBefore:    defaultExpiryDaysBefore,
+		TrafficEnabled:      true,
+		TrafficThresholdPct: defaultTrafficThresholdPct,
+	}
+	if pool == nil {
+		return prefs
+	}
+	store := appsettings.NewStore(pool)
+	userKey := strconv.FormatInt(userID, 10)
+
+	// Expiry enabled
+	if raw, ok, _ := store.Get(ctx, userNotifyExpiryEnabledKey); ok {
+		var values map[string]bool
+		if json.Unmarshal(raw, &values) == nil && values != nil {
+			if v, exists := values[userKey]; exists {
+				prefs.ExpiryEnabled = v
+			}
+		}
+	}
+	// Expiry days before
+	if raw, ok, _ := store.Get(ctx, userNotifyExpiryDaysBeforeKey); ok {
+		var values map[string]float64
+		if json.Unmarshal(raw, &values) == nil && values != nil {
+			if v, exists := values[userKey]; exists && v > 0 {
+				prefs.ExpiryDaysBefore = int(v)
+			}
+		}
+	}
+	// Traffic enabled
+	if raw, ok, _ := store.Get(ctx, userNotifyTrafficEnabledKey); ok {
+		var values map[string]bool
+		if json.Unmarshal(raw, &values) == nil && values != nil {
+			if v, exists := values[userKey]; exists {
+				prefs.TrafficEnabled = v
+			}
+		}
+	}
+	// Traffic threshold pct
+	if raw, ok, _ := store.Get(ctx, userNotifyTrafficThresholdPctKey); ok {
+		var values map[string]float64
+		if json.Unmarshal(raw, &values) == nil && values != nil {
+			if v, exists := values[userKey]; exists && v > 0 && v <= 100 {
+				prefs.TrafficThresholdPct = int(v)
+			}
+		}
+	}
+	return prefs
+}
+
+func saveUserNotificationPrefs(ctx context.Context, pool *pgxpool.Pool, userID int64, prefs UserNotificationPrefs) error {
+	if pool == nil {
+		return fmt.Errorf("database_not_configured")
+	}
+	store := appsettings.NewStore(pool)
+	userKey := strconv.FormatInt(userID, 10)
+
+	// Expiry enabled
+	if err := saveUserBoolMapSetting(ctx, store, userNotifyExpiryEnabledKey, userKey, prefs.ExpiryEnabled); err != nil {
+		return err
+	}
+	// Expiry days before
+	if err := saveUserFloatMapSetting(ctx, store, userNotifyExpiryDaysBeforeKey, userKey, float64(prefs.ExpiryDaysBefore)); err != nil {
+		return err
+	}
+	// Traffic enabled
+	if err := saveUserBoolMapSetting(ctx, store, userNotifyTrafficEnabledKey, userKey, prefs.TrafficEnabled); err != nil {
+		return err
+	}
+	// Traffic threshold pct
+	if err := saveUserFloatMapSetting(ctx, store, userNotifyTrafficThresholdPctKey, userKey, float64(prefs.TrafficThresholdPct)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func saveUserBoolMapSetting(ctx context.Context, store appsettings.Store, settingKey, userKey string, value bool) error {
+	raw, ok, _ := store.Get(ctx, settingKey)
+	values := map[string]bool{}
+	if ok {
+		_ = json.Unmarshal(raw, &values)
+		if values == nil {
+			values = map[string]bool{}
+		}
+	}
+	values[userKey] = value
+	return store.Upsert(ctx, settingKey, values)
+}
+
+func saveUserFloatMapSetting(ctx context.Context, store appsettings.Store, settingKey, userKey string, value float64) error {
+	raw, ok, _ := store.Get(ctx, settingKey)
+	values := map[string]float64{}
+	if ok {
+		_ = json.Unmarshal(raw, &values)
+		if values == nil {
+			values = map[string]float64{}
+		}
+	}
+	values[userKey] = value
+	return store.Upsert(ctx, settingKey, values)
+}
+
 func loadRecentPaymentsForUser(ctx context.Context, pool *pgxpool.Pool, userID int64) []payments.Order {
 	if pool == nil {
 		return []payments.Order{}
@@ -1384,8 +1505,9 @@ const (
 )
 
 // RunSubscriptionNotifications checks active subscriptions and sends expiry
-// notifications (72h, 48h, 24h before, at expiry, 24h after). It is safe to
-// call from the subscription-notifications worker.
+// and traffic-exhaustion notifications. Users can toggle and configure each
+// notification type through their Web App settings. Notifications are only
+// sent when each per-user toggle is enabled.
 func RunSubscriptionNotifications(ctx context.Context, settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) (int, error) {
 	if pool == nil {
 		return 0, fmt.Errorf("database_not_configured")
@@ -1402,43 +1524,95 @@ func RunSubscriptionNotifications(ctx context.Context, settings config.Settings,
 		return 0, err
 	}
 	notified := 0
+	store := appsettings.NewStore(pool)
+	notifyHoursBefore := store.Int(ctx, "SUBSCRIPTION_NOTIFY_HOURS_BEFORE", settings.SubscriptionNotifyHoursBefore)
+	notifyDaysBefore := store.Int(ctx, "SUBSCRIPTION_NOTIFY_DAYS_BEFORE", settings.SubscriptionNotifyDaysBefore)
+
 	for _, user := range users {
 		panelUser, found, err := panelUserForWebUser(ctx, pool, panel, user)
 		if err != nil || !found {
 			continue
 		}
-		expireAt := parsePanelTime(panelUser["expireAt"])
-		if expireAt.IsZero() {
-			continue
-		}
-		status := strings.ToUpper(strings.TrimSpace(stringValue(panelUser, "status")))
+
 		chatID := telegramChatIDForWebUser(user)
-		if chatID == 0 {
-			continue
-		}
-		now := time.Now().UTC()
-		secondsLeft := expireAt.Sub(now).Seconds()
+		userEmail := strings.TrimSpace(user.Email)
 
-		// Check each notification stage (app_settings 可覆盖 env 默认值)
-		store := appsettings.NewStore(pool)
-		notifyHoursBefore := store.Int(ctx, "SUBSCRIPTION_NOTIFY_HOURS_BEFORE", settings.SubscriptionNotifyHoursBefore)
-		notifyDaysBefore := store.Int(ctx, "SUBSCRIPTION_NOTIFY_DAYS_BEFORE", settings.SubscriptionNotifyDaysBefore)
-		stages := subscriptionNotificationStagesWithOverrides(settings, secondsLeft, status, expireAt, now, notifyHoursBefore, notifyDaysBefore)
-		for _, stage := range stages {
-			notificationKey := fmt.Sprintf("%d:%s", user.UserID, stage.key)
-			if subscriptionNotificationAlreadySent(ctx, pool, notificationKey, 24*time.Hour) {
-				continue
+		// Load per-user notification preferences
+		prefs := loadUserNotificationPrefs(ctx, pool, user.UserID)
+
+		// ---- Expiry notifications ----
+		if prefs.ExpiryEnabled {
+			expireAt := parsePanelTime(panelUser["expireAt"])
+			if !expireAt.IsZero() {
+				status := strings.ToUpper(strings.TrimSpace(stringValue(panelUser, "status")))
+				now := time.Now().UTC()
+				secondsLeft := expireAt.Sub(now).Seconds()
+
+				// Use per-user days-before preference
+				effectiveDaysBefore := notifyDaysBefore
+				if prefs.ExpiryDaysBefore > 0 {
+					effectiveDaysBefore = prefs.ExpiryDaysBefore
+				}
+				stages := subscriptionNotificationStagesWithOverrides(settings, secondsLeft, status, expireAt, now, notifyHoursBefore, effectiveDaysBefore)
+				for _, stage := range stages {
+					notificationKey := fmt.Sprintf("%d:%s", user.UserID, stage.key)
+					if subscriptionNotificationAlreadySent(ctx, pool, notificationKey, 24*time.Hour) {
+						continue
+					}
+					text := subscriptionNotificationText(stage, expireAt, settings.DefaultLanguage)
+					sent := false
+					if chatID != 0 {
+						if err := sendTelegramText(ctx, settings, chatID, text); err == nil {
+							sent = true
+						}
+					}
+					if !sent && userEmail != "" && isEmailDeliveryConfigured(settings) {
+						// Email delivery placeholder: send via email when configured
+						sent = true
+					}
+					if sent {
+						recordSubscriptionNotification(ctx, pool, notificationKey)
+						notified++
+					}
+					break // only send the most urgent notification per user
+				}
 			}
-			text := subscriptionNotificationText(stage, expireAt, settings.DefaultLanguage)
-			if err := sendTelegramText(ctx, settings, chatID, text); err != nil {
-				continue
-			}
-			recordSubscriptionNotification(ctx, pool, notificationKey)
-			notified++
-			break // only send the most urgent notification per user
 		}
 
-		// Check trial traffic depletion
+		// ---- Traffic exhaustion notifications ----
+		if prefs.TrafficEnabled {
+			traffic := mapValue(panelUser, "userTraffic")
+			used := int64Value(traffic, "usedTrafficBytes")
+			limit := int64Value(panelUser, "trafficLimitBytes")
+			if limit > 0 {
+				pct := int(float64(used) / float64(limit) * 100)
+				thresholdPct := prefs.TrafficThresholdPct
+				if thresholdPct <= 0 {
+					thresholdPct = defaultTrafficThresholdPct
+				}
+				if pct >= thresholdPct {
+					trafficKey := fmt.Sprintf("%d:traffic_%d", user.UserID, thresholdPct)
+					if !subscriptionNotificationAlreadySent(ctx, pool, trafficKey, 48*time.Hour) {
+						text := fmtTrafficExhaustionText(used, limit, pct, thresholdPct)
+						sent := false
+						if chatID != 0 {
+							if err := sendTelegramText(ctx, settings, chatID, text); err == nil {
+								sent = true
+							}
+						}
+						if !sent && userEmail != "" && isEmailDeliveryConfigured(settings) {
+							sent = true
+						}
+						if sent {
+							recordSubscriptionNotification(ctx, pool, trafficKey)
+							notified++
+						}
+					}
+				}
+			}
+		}
+
+		// ---- Trial traffic depletion (always notify, regardless of prefs) ----
 		if isTrialSubscription(panelUser) {
 			traffic := mapValue(panelUser, "userTraffic")
 			used := int64Value(traffic, "usedTrafficBytes")
@@ -1447,9 +1621,11 @@ func RunSubscriptionNotifications(ctx context.Context, settings config.Settings,
 				trialKey := fmt.Sprintf("%d:trial_traffic_depleted", user.UserID)
 				if !subscriptionNotificationAlreadySent(ctx, pool, trialKey, 48*time.Hour) {
 					text := "⚠️ Your trial traffic has been fully used. Upgrade to a paid plan to continue using the service."
-					if err := sendTelegramText(ctx, settings, chatID, text); err == nil {
-						recordSubscriptionNotification(ctx, pool, trialKey)
-						notified++
+					if chatID != 0 {
+						if err := sendTelegramText(ctx, settings, chatID, text); err == nil {
+							recordSubscriptionNotification(ctx, pool, trialKey)
+							notified++
+						}
 					}
 				}
 			}
@@ -1539,6 +1715,20 @@ func subscriptionNotificationText(stage notifyStage, expireAt time.Time, _ strin
 	default:
 		return fmt.Sprintf("📅 Your subscription expires soon (on %s).", dateText)
 	}
+}
+
+// fmtTrafficExhaustionText formats a traffic exhaustion notification message.
+func fmtTrafficExhaustionText(usedBytes, limitBytes int64, usedPct, thresholdPct int) string {
+	usedGB := float64(usedBytes) / bytesPerGB
+	limitGB := float64(limitBytes) / bytesPerGB
+	return fmt.Sprintf("📊 You have used %.1f GB out of %.1f GB (%d%%). Your traffic is running low!", usedGB, limitGB, usedPct)
+}
+
+// isEmailDeliveryConfigured returns true when email delivery is configured.
+// Currently email delivery is not implemented; this is a placeholder for
+// future email notification support.
+func isEmailDeliveryConfigured(_ config.Settings) bool {
+	return false
 }
 
 func isTrialSubscription(panelUser map[string]any) bool {

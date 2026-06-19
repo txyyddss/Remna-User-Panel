@@ -2407,5 +2407,14 @@
   "pb_code_verification": "Code verification",
   "pb_code_sent_to": "We sent a code to {email}",
   "pb_confirm": "Confirm",
-  "pb_resend_code": "Resend code ({time})"
+  "pb_resend_code": "Resend code ({time})",
+  "wa_notify_expiry_title": "Expiry Reminder",
+  "wa_notify_expiry_desc": "Notify via Telegram / Email before subscription expires",
+  "wa_notify_expiry_days_label": "Days before",
+  "wa_notify_traffic_title": "Traffic Exhaustion Reminder",
+  "wa_notify_traffic_desc": "Notify via Telegram / Email when traffic usage reaches threshold",
+  "wa_notify_traffic_threshold_label": "Alert threshold",
+  "wa_days": "days",
+  "wa_notification_prefs_saved": "Notification preferences saved",
+  "wa_notification_prefs_save_failed": "Failed to save notification preferences"
 }

@@ -3490,3 +3490,122 @@ a {
 .stagger-list > *:nth-child(6) { animation-delay: 0.24s; }
 .stagger-list > *:nth-child(7) { animation-delay: 0.28s; }
 .stagger-list > *:nth-child(8) { animation-delay: 0.32s; }
+
+/* ── Notification Preferences Toggle & Select ── */
+.settings-row-toggle {
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  cursor: default;
+}
+
+.settings-row-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  opacity: 0.65;
+}
+
+.settings-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-row-body strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.settings-row-body small {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Toggle switch */
+.settings-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.settings-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.settings-toggle-track {
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--border);
+  transition: background 0.2s ease;
+  position: relative;
+}
+
+.settings-toggle-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--bg);
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.settings-toggle input:checked + .settings-toggle-track {
+  background: var(--accent);
+}
+
+.settings-toggle input:checked + .settings-toggle-track::after {
+  transform: translateX(18px);
+}
+
+.settings-toggle input:disabled + .settings-toggle-track {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Sub-row for config */
+.settings-row-sub {
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  padding-top: 2px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+
+.settings-row-sub span small {
+  font-size: 11px;
+  color: var(--muted);
+  padding-left: 0;
+}
+
+.settings-select {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 24px 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  cursor: pointer;
+}
+
+.settings-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

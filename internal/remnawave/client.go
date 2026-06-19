@@ -284,7 +284,7 @@ func (c *Client) FetchUserIPs(ctx context.Context, uuid string) (map[string]any,
 // GetFetchUserIPsResult polls the result of an IP fetch job.
 func (c *Client) GetFetchUserIPsResult(ctx context.Context, jobID string) (map[string]any, error) {
 	var out map[string]any
-	err := c.request(ctx, http.MethodGet, "/ip-control/fetch-users-ips/result/"+url.PathEscape(strings.TrimSpace(jobID)), nil, nil, &out)
+	err := c.request(ctx, http.MethodGet, "/ip-control/fetch-ips/result/"+url.PathEscape(strings.TrimSpace(jobID)), nil, nil, &out)
 	return out, err
 }
 

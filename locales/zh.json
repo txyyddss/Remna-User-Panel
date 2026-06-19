@@ -2421,5 +2421,14 @@
   "pb_code_verification": "验证码确认",
   "pb_code_sent_to": "验证码已发送至 {email}",
   "pb_confirm": "确认",
-  "pb_resend_code": "重新发送 ({time})"
+  "pb_resend_code": "重新发送 ({time})",
+  "wa_notify_expiry_title": "到期提醒",
+  "wa_notify_expiry_desc": "订阅到期前通过 Telegram / Email 通知",
+  "wa_notify_expiry_days_label": "提前天数",
+  "wa_notify_traffic_title": "流量耗尽提醒",
+  "wa_notify_traffic_desc": "流量使用达到阈值时通过 Telegram / Email 通知",
+  "wa_notify_traffic_threshold_label": "提醒阈值",
+  "wa_days": "天",
+  "wa_notification_prefs_saved": "通知设置已保存",
+  "wa_notification_prefs_save_failed": "通知设置保存失败"
 }

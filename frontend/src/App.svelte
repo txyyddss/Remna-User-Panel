@@ -516,6 +516,12 @@
     user?.telegram_linked && user?.telegram_notifications_need_prompt
   );
   $: telegramNotificationsStartLink = String(user?.telegram_notifications_start_link || "");
+  $: notificationPrefs = data?.notification_prefs || {
+    expiry_enabled: true,
+    expiry_days_before: 3,
+    traffic_enabled: true,
+    traffic_threshold_pct: 85,
+  };
   $: hasUnlinkedIdentity =
     !user?.telegram_linked || (emailAuthEnabled && !user?.email) || telegramNotificationsNeedPrompt;
   $: referralBonusDetails = Array.isArray(referral?.bonus_details) ? referral.bonus_details : [];
@@ -1253,6 +1259,23 @@
   function openSettingsSetPasswordDialog() {
     if (!emailAuthEnabled) return;
     accountStore.openSetPasswordDialog();
+  }
+
+  async function saveNotificationPrefs(prefs) {
+    try {
+      const response = await api("/account/notifications", {
+        method: "POST",
+        body: JSON.stringify(prefs),
+      });
+      if (!response?.ok) throw response;
+      // Update local data with returned preferences
+      if (response.notification_prefs) {
+        data = { ...data, notification_prefs: response.notification_prefs };
+      }
+      showToast(t("wa_notification_prefs_saved"));
+    } catch (error) {
+      showToast(error?.message || t("wa_notification_prefs_save_failed"));
+    }
   }
 
   async function linkTelegramFromSettings() {
@@ -2728,6 +2751,8 @@
                 {user}
                 {userAgreementUrl}
                 {userLanguage}
+                {notificationPrefs}
+                onSaveNotificationPrefs={saveNotificationPrefs}
                 showLogout={!telegramMiniAppContext}
                 linkTelegramAccount={linkTelegramFromSettings}
                 {openTelegramNotificationsBot}

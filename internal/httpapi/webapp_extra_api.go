@@ -59,6 +59,8 @@ func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *p
 	router.Post("/api/account/password/confirm", unavailableSessionMutation(settings, pool, "email_delivery_not_configured"))
 	router.Post("/api/account/telegram/link", unavailableSessionMutation(settings, pool, "telegram_link_requires_mini_app_login"))
 	router.Post("/api/account/language", accountLanguageHandler(settings, pool))
+	router.Get("/api/account/notifications", userNotificationPrefsHandler(settings, pool))
+	router.Post("/api/account/notifications", userNotificationPrefsHandler(settings, pool))
 	router.Post("/api/auth/email/request", unavailablePublicMutation("email_delivery_not_configured"))
 	router.Post("/api/auth/email/verify", unavailablePublicMutation("email_delivery_not_configured"))
 	router.Post("/api/auth/email/password", adminPasswordLoginHandler(settings, pool))
@@ -424,6 +426,56 @@ func accountLanguageHandler(settings config.Settings, pool *pgxpool.Pool) http.H
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "language": language})
+	}
+}
+
+func userNotificationPrefsHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, ok := requireSession(w, r, settings, pool, r.Method != http.MethodGet)
+		if !ok {
+			return
+		}
+		if r.Method == http.MethodGet {
+			prefs := loadUserNotificationPrefs(r.Context(), pool, session.User.UserID)
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true, "notification_prefs": prefs})
+			return
+		}
+		var payload struct {
+			ExpiryEnabled       *bool `json:"expiry_enabled"`
+			ExpiryDaysBefore    *int  `json:"expiry_days_before"`
+			TrafficEnabled      *bool `json:"traffic_enabled"`
+			TrafficThresholdPct *int  `json:"traffic_threshold_pct"`
+		}
+		if err := decodeJSONBody(r, &payload); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
+			return
+		}
+		prefs := loadUserNotificationPrefs(r.Context(), pool, session.User.UserID)
+		if payload.ExpiryEnabled != nil {
+			prefs.ExpiryEnabled = *payload.ExpiryEnabled
+		}
+		if payload.ExpiryDaysBefore != nil {
+			if *payload.ExpiryDaysBefore < 1 || *payload.ExpiryDaysBefore > 30 {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "expiry_days_before_must_be_1_to_30"})
+				return
+			}
+			prefs.ExpiryDaysBefore = *payload.ExpiryDaysBefore
+		}
+		if payload.TrafficEnabled != nil {
+			prefs.TrafficEnabled = *payload.TrafficEnabled
+		}
+		if payload.TrafficThresholdPct != nil {
+			if *payload.TrafficThresholdPct < 50 || *payload.TrafficThresholdPct > 100 {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "traffic_threshold_pct_must_be_50_to_100"})
+				return
+			}
+			prefs.TrafficThresholdPct = *payload.TrafficThresholdPct
+		}
+		if err := saveUserNotificationPrefs(r.Context(), pool, session.User.UserID, prefs); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "notification_prefs_save_failed"})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "notification_prefs": prefs})
 	}
 }
 

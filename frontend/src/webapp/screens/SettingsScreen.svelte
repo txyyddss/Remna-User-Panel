@@ -1,6 +1,8 @@
 <script>
   import {
     ArrowRight,
+    Bell,
+    BellOff,
     CheckCircle2,
     FileText,
     Mail,
@@ -28,6 +30,12 @@
   export let languageOptions = [];
   export let linkEmailBusy = false;
   export let linkTelegramBusy = false;
+  export let notificationPrefs = {
+    expiry_enabled: true,
+    expiry_days_before: 3,
+    traffic_enabled: true,
+    traffic_threshold_pct: 85,
+  };
   export let privacyPolicyUrl = "";
   export let profileAvatarUrl = "";
   export let profileEmail = "";
@@ -44,6 +52,7 @@
   export let showLogout = true;
 
   export let linkTelegramAccount = () => {};
+  export let onSaveNotificationPrefs = () => {};
   export let openTelegramNotificationsBot = () => {};
   export let logout = () => {};
   export let openAdminPanel = () => {};
@@ -55,6 +64,58 @@
   export let updateAccountLanguage = () => {};
 
   $: showEmailAccount = emailAuthEnabled || Boolean(user?.email);
+
+  let notifySaving = false;
+  let localExpiryEnabled = notificationPrefs.expiry_enabled;
+  let localExpiryDays = notificationPrefs.expiry_days_before;
+  let localTrafficEnabled = notificationPrefs.traffic_enabled;
+  let localTrafficPct = notificationPrefs.traffic_threshold_pct;
+
+  $: if (notificationPrefs) {
+    localExpiryEnabled = notificationPrefs.expiry_enabled;
+    localExpiryDays = notificationPrefs.expiry_days_before;
+    localTrafficEnabled = notificationPrefs.traffic_enabled;
+    localTrafficPct = notificationPrefs.traffic_threshold_pct;
+  }
+
+  async function savePrefs() {
+    if (notifySaving) return;
+    notifySaving = true;
+    try {
+      await onSaveNotificationPrefs({
+        expiry_enabled: localExpiryEnabled,
+        expiry_days_before: localExpiryDays,
+        traffic_enabled: localTrafficEnabled,
+        traffic_threshold_pct: localTrafficPct,
+      });
+    } finally {
+      notifySaving = false;
+    }
+  }
+
+  function toggleExpiry() {
+    localExpiryEnabled = !localExpiryEnabled;
+    savePrefs();
+  }
+
+  function toggleTraffic() {
+    localTrafficEnabled = !localTrafficEnabled;
+    savePrefs();
+  }
+
+  function onExpiryDaysChange(e) {
+    const value = parseInt(e?.target?.value, 10);
+    if (!value || value < 1 || value > 30) return;
+    localExpiryDays = value;
+    savePrefs();
+  }
+
+  function onTrafficPctChange(e) {
+    const value = parseInt(e?.target?.value, 10);
+    if (!value || value < 50 || value > 100) return;
+    localTrafficPct = value;
+    savePrefs();
+  }
 </script>
 
 <main class="content with-nav">
@@ -160,6 +221,100 @@
     {/if}
     <div class="settings-divider" aria-hidden="true"></div>
   </div>
+
+  <!-- Notification Preferences -->
+  <div class="settings-links-block">
+    <div class="settings-divider" aria-hidden="true"></div>
+
+    <!-- Expiry Reminder -->
+    <div class="settings-row settings-row-toggle">
+      <span class="settings-row-icon">
+        {#if localExpiryEnabled}
+          <Bell size={21} />
+        {:else}
+          <BellOff size={21} />
+        {/if}
+      </span>
+      <span class="settings-row-body">
+        <strong>{t("wa_notify_expiry_title")}</strong>
+        <small>{t("wa_notify_expiry_desc")}</small>
+      </span>
+      <label class="settings-toggle">
+        <input
+          type="checkbox"
+          checked={localExpiryEnabled}
+          onchange={toggleExpiry}
+          disabled={notifySaving}
+        />
+        <span class="settings-toggle-track"></span>
+      </label>
+    </div>
+
+    {#if localExpiryEnabled}
+      <div class="settings-row settings-row-sub">
+        <span>
+          <small>{t("wa_notify_expiry_days_label")}</small>
+        </span>
+        <select
+          class="settings-select"
+          value={localExpiryDays}
+          onchange={onExpiryDaysChange}
+          disabled={notifySaving}
+        >
+          {#each [1, 2, 3, 5, 7, 10, 14, 30] as day}
+            <option value={day}>
+              {day} {t("wa_days")}
+            </option>
+          {/each}
+        </select>
+      </div>
+    {/if}
+
+    <!-- Traffic Exhaustion Reminder -->
+    <div class="settings-row settings-row-toggle">
+      <span class="settings-row-icon">
+        {#if localTrafficEnabled}
+          <Bell size={21} />
+        {:else}
+          <BellOff size={21} />
+        {/if}
+      </span>
+      <span class="settings-row-body">
+        <strong>{t("wa_notify_traffic_title")}</strong>
+        <small>{t("wa_notify_traffic_desc")}</small>
+      </span>
+      <label class="settings-toggle">
+        <input
+          type="checkbox"
+          checked={localTrafficEnabled}
+          onchange={toggleTraffic}
+          disabled={notifySaving}
+        />
+        <span class="settings-toggle-track"></span>
+      </label>
+    </div>
+
+    {#if localTrafficEnabled}
+      <div class="settings-row settings-row-sub">
+        <span>
+          <small>{t("wa_notify_traffic_threshold_label")}</small>
+        </span>
+        <select
+          class="settings-select"
+          value={localTrafficPct}
+          onchange={onTrafficPctChange}
+          disabled={notifySaving}
+        >
+          {#each [50, 60, 70, 75, 80, 85, 90, 95] as pct}
+            <option value={pct}>{pct}%</option>
+          {/each}
+        </select>
+      </div>
+    {/if}
+
+    <div class="settings-divider" aria-hidden="true"></div>
+  </div>
+
   <div class="settings-list" class:settings-list--language-open={languageMenuOpen}>
     <LanguageSelect
       bind:open={languageMenuOpen}

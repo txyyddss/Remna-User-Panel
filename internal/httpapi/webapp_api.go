@@ -177,13 +177,14 @@ func meHandler(settings config.Settings, pool *pgxpool.Pool, registry *payments.
 			}
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
-			"ok":              true,
-			"user":            session.User,
-			"subscription":    subscription,
-			"settings":        webappFeatureSettings(r.Context(), settings, pool, panel, session.User),
-			"referral":        referralPayload(r.Context(), settings, pool, session.User),
-			"plans":           plans,
-			"payment_methods": methods,
+			"ok":                      true,
+			"user":                    session.User,
+			"subscription":            subscription,
+			"settings":                webappFeatureSettings(r.Context(), settings, pool, panel, session.User),
+			"referral":                referralPayload(r.Context(), settings, pool, session.User),
+			"plans":                   plans,
+			"payment_methods":         methods,
+			"notification_prefs":      loadUserNotificationPrefs(r.Context(), pool, session.User.UserID),
 		})
 	}
 }
