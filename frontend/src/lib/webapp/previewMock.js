@@ -448,12 +448,12 @@ export const DEV_MOCK = {
     },
     auth_demo: {
       enabled: false,
-      email: "3252a8@proton.me",
+      email: "admin@example.com",
       code: "123456",
       password: "demo-password",
       telegram_id: 7410865527,
-      telegram_username: "u3252a8",
-      telegram_first_name: "3252a8",
+      telegram_username: "remna_admin",
+      telegram_first_name: "Admin",
       telegram_last_name: "",
     },
     subscription: {
@@ -755,12 +755,12 @@ export function applyPreviewMock(kind) {
     DEV_MOCK.data.auth_demo = {
       ...(DEV_MOCK.data.auth_demo || {}),
       enabled: true,
-      email: "3252a8@proton.me",
+      email: "admin@example.com",
       code: "123456",
       password: "demo-password",
       telegram_id: 7410865527,
-      telegram_username: "u3252a8",
-      telegram_first_name: "3252a8",
+      telegram_username: "remna_admin",
+      telegram_first_name: "Admin",
       telegram_last_name: "",
     };
     DEV_MOCK.data.settings.email_auth_enabled = true;

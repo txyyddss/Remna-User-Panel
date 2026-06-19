@@ -101,7 +101,7 @@ function extraFrontmatter(sourceRelativePath) {
     'hero:',
     '  tagline: "Telegram-бот и Mini App для продажи подписок Remnawave: платежи, тарифы, админка, поддержка и инструкции подключения."',
     '  image:',
-    '    html: \'<img class="minishop-hero-screenshot" src="/remnawave-minishop.webp" alt="Интерфейс Remnawave Minishop" width="1920" height="1080" loading="eager" decoding="async" />\'',
+    '    html: \'<img class="minishop-hero-screenshot" src="/remna-user-panel.webp" alt="Remna User Panel 界面" width="1920" height="1080" loading="eager" decoding="async" />\'',
     '  actions:',
     '    - text: "Демо"',
     '      link: /demo/home',

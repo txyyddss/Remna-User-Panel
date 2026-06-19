@@ -42,8 +42,9 @@ type SessionClaims struct {
 
 // Manager signs and verifies stateless web sessions.
 type Manager struct {
-	secret []byte
-	now    func() time.Time
+	secret     []byte
+	configured bool
+	now        func() time.Time
 }
 
 // NewManager creates a session manager. The fallback is only used when secret is empty.
@@ -52,14 +53,14 @@ func NewManager(secret string, fallback string) *Manager {
 	if value == "" {
 		value = strings.TrimSpace(fallback)
 	}
-	if value == "" {
-		value = "development-insecure-session-secret"
-	}
-	return &Manager{secret: []byte(value), now: time.Now}
+	return &Manager{secret: []byte(value), configured: value != "", now: time.Now}
 }
 
 // Sign creates a signed session token and returns it with the CSRF value.
 func (m *Manager) Sign(userID int64) (string, string, error) {
+	if !m.configured {
+		return "", "", errors.New("session_secret_not_configured")
+	}
 	csrf, err := randomToken(csrfBytes)
 	if err != nil {
 		return "", "", err
@@ -80,6 +81,9 @@ func (m *Manager) Sign(userID int64) (string, string, error) {
 
 // Verify validates a session token and returns its claims.
 func (m *Manager) Verify(token string) (SessionClaims, error) {
+	if !m.configured {
+		return SessionClaims{}, errors.New("session_secret_not_configured")
+	}
 	parts := strings.Split(token, ".")
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 		return SessionClaims{}, errors.New("invalid_session")
