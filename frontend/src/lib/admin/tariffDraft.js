@@ -2,7 +2,7 @@ import { structuredCloneSafe } from "./format.js";
 
 export function emptyTariffDraft() {
   return {
-    defaultCurrency: "rub",
+    defaultCurrency: "usd",
     key: "",
     nameZh: "",
     nameEn: "",
@@ -19,16 +19,16 @@ export function emptyTariffDraft() {
     hwid_device_limit: "",
     conversion_rate_rub_per_gb: "",
     periodRows: [
-      { months: 1, rub: 200, stars: "", referral_inviter: 3, referral_referee: 1 },
-      { months: 3, rub: 600, stars: "", referral_inviter: 7, referral_referee: 3 },
-      { months: 6, rub: 1200, stars: "", referral_inviter: 15, referral_referee: 7 },
-      { months: 12, rub: 2400, stars: "", referral_inviter: 30, referral_referee: 15 },
+      { months: 1, rub: 3, stars: "", referral_inviter: 3, referral_referee: 1 },
+      { months: 3, rub: 9, stars: "", referral_inviter: 7, referral_referee: 3 },
+      { months: 6, rub: 18, stars: "", referral_inviter: 15, referral_referee: 7 },
+      { months: 12, rub: 36, stars: "", referral_inviter: 30, referral_referee: 15 },
     ],
     topupRows: [],
     premiumTopupRows: [],
     trafficRows: [
-      { gb: 10, price: 199, stars: "" },
-      { gb: 50, price: 799, stars: "" },
+      { gb: 10, price: 3, stars: "" },
+      { gb: 50, price: 10, stars: "" },
     ],
     hwidRows: [],
   };
@@ -37,13 +37,13 @@ export function emptyTariffDraft() {
 export function cloneCatalog(catalog) {
   return structuredCloneSafe({
     default_tariff: catalog?.default_tariff || "",
-    default_currency: normalizeCurrencyKey(catalog?.default_currency || "rub"),
-    topup_packages_default: catalog?.topup_packages_default || { rub: [], stars: [] },
+    default_currency: normalizeCurrencyKey(catalog?.default_currency || "usd"),
+    topup_packages_default: catalog?.topup_packages_default || { usd: [], stars: [] },
     tariffs: catalog?.tariffs || [],
   });
 }
 
-export function normalizeCurrencyKey(value, fallback = "rub") {
+export function normalizeCurrencyKey(value, fallback = "usd") {
   const text = String(value || "")
     .trim()
     .toLowerCase();
@@ -106,7 +106,7 @@ export function packageRowsFromPackageSet(packageSet, currency, valueKey) {
   return rows;
 }
 
-export function draftFromTariff(tariff, defaultCurrency = "rub") {
+export function draftFromTariff(tariff, defaultCurrency = "usd") {
   const currency = normalizeCurrencyKey(defaultCurrency);
   const defaultPrices = tariff.prices?.[currency] || {};
   // enabled_periods comes first so its order (the configured purchase order)
@@ -213,7 +213,7 @@ export function packagesFromPackageRows(rows, valueKey, priceKey, options = {}) 
     .filter((row) => row[valueKey] > 0 && row.price !== null && row.price >= 0);
 }
 
-export function packageSetFromRows(rows, valueKey, defaultCurrency = "rub") {
+export function packageSetFromRows(rows, valueKey, defaultCurrency = "usd") {
   const currency = normalizeCurrencyKey(defaultCurrency);
   const defaultCurrencyPackages = packagesFromPackageRows(rows, valueKey, "price");
   const stars = packagesFromPackageRows(rows, valueKey, "stars", {
@@ -235,7 +235,7 @@ export function normalizeUuidList(value) {
     .filter(Boolean);
 }
 
-export function tariffFromDraft(draft, fallbackCurrency = "rub") {
+export function tariffFromDraft(draft, fallbackCurrency = "usd") {
   const defaultCurrency = normalizeCurrencyKey(draft.defaultCurrency || fallbackCurrency);
   const key = draft.key.trim();
   const names = compactMap({ zh: draft.nameZh.trim(), en: draft.nameEn.trim() });

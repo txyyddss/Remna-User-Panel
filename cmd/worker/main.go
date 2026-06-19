@@ -28,7 +28,7 @@ func main() {
 		slog.Error("failed to initialize worker runtime", "error", err)
 		os.Exit(1)
 	}
-	defer runtime.Close(context.Background())
+	defer func() { _ = runtime.Close(context.Background()) }()
 
 	if err := runtime.StartWorker(ctx); err != nil {
 		slog.Error("worker stopped with error", "error", err)

@@ -166,7 +166,7 @@ async function appHtml() {
     />
     <meta name="robots" content="noindex, nofollow" />
     <meta name="theme-color" content="#03070b" />
-    <title>remnawave-minishop demo</title>
+    <title>remna-user-panel demo</title>
     <link
       id="app-favicon"
       rel="icon"

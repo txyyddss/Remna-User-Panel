@@ -102,34 +102,12 @@
     { value: "MONTH", label: "MONTH" },
   ];
   const PROVIDER_FALLBACK_LABELS = {
-    cryptopay: "CryptoPay",
-    freekassa: "FreeKassa",
-    heleket: "Heleket",
-    lava: "LAVA",
-    paykilla: "PayKilla",
-    platega: "Platega",
-    platega_crypto: "Platega Crypto",
-    platega_sbp: "Platega SBP/card",
-    severpay: "SeverPay",
-    stars: "Telegram Stars",
-    telegram_stars: "Telegram Stars",
-    wata: "Wata",
-    yookassa: "YooKassa",
+    ezpay: "EZPay",
+    bepusdt: "BEPUSDT",
   };
   const PROVIDER_SETTINGS_PATHS = {
-    cryptopay: ["payments", "cryptopay"],
-    freekassa: ["payments", "freekassa"],
-    heleket: ["payments", "heleket"],
-    lava: ["payments", "lava"],
-    paykilla: ["payments", "paykilla"],
-    platega: ["payments", "platega"],
-    platega_crypto: ["payments", "platega", "crypto"],
-    platega_sbp: ["payments", "platega", "sbp"],
-    severpay: ["payments", "severpay"],
-    stars: ["payments", "telegram-stars"],
-    telegram_stars: ["payments", "telegram-stars"],
-    wata: ["payments", "wata"],
-    yookassa: ["payments", "yookassa"],
+    ezpay: ["payments", "ezpay"],
+    bepusdt: ["payments", "bepusdt"],
   };
 
   $: ({
@@ -163,14 +141,14 @@
   let selectedTrialSquad = "";
   let trialSquadSelectKey = 0;
   let tariffSettingsOpen = [];
-  let defaultCurrencyDraft = "RUB";
+  let defaultCurrencyDraft = "USD";
 
   function tariffName(tariff) {
     return tariff?.names?.zh || tariff?.names?.en || tariff?.key || "—";
   }
 
   function tariffPriceSummary(tariff) {
-    const currency = normalizeCurrencyKey(tariffsCatalog.default_currency || "rub");
+    const currency = normalizeCurrencyKey(tariffsCatalog.default_currency || "usd");
     const currencyCode = currency.toUpperCase();
     if (tariff.billing_model === "traffic") {
       const packages = tariff.traffic_packages?.[currency] || [];
@@ -260,10 +238,10 @@
     trialSquadSelectKey += 1;
   }
 
-  $: catalogCurrencyKey = normalizeCurrencyKey(tariffsCatalog.default_currency || "rub");
+  $: catalogCurrencyKey = normalizeCurrencyKey(tariffsCatalog.default_currency || "usd");
   $: catalogCurrencyCode = catalogCurrencyKey.toUpperCase();
   $: defaultCurrencyDraft = catalogCurrencyCode;
-  $: defaultCurrencyDraftKey = normalizeCurrencyKey(defaultCurrencyDraft || "rub");
+  $: defaultCurrencyDraftKey = normalizeCurrencyKey(defaultCurrencyDraft || "usd");
   $: defaultCurrencyDirty = defaultCurrencyDraftKey !== catalogCurrencyKey;
   $: providerSupportSummary = (providerCurrencySupport || []).reduce(
     (summary, provider) => {
