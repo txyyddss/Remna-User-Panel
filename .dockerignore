@@ -13,11 +13,6 @@ scratch_*
 # Dependencies and build outputs
 node_modules/
 frontend/node_modules/
-docs-site/node_modules/
-docs-site/.astro/
-docs-site/dist/
-docs-site/public/demo/runtime/
-docs-site/src/content/docs/
 frontend-nginx-dist/
 bin/
 dist/
