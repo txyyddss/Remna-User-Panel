@@ -35,9 +35,9 @@ func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *p
 	router.Get("/api/tariffs/topup-options", webappPlansOptionsHandler(settings, pool, "topup"))
 	router.Get("/api/devices/topup-options", webappPlansOptionsHandler(settings, pool, "devices"))
 	router.Get("/api/tariffs/change-options", webappPlansOptionsHandler(settings, pool, "change"))
-	router.Post("/api/tariffs/change", okSessionMutation(settings, pool))
+	router.Post("/api/tariffs/change", userTariffChangeHandler(settings, pool, panel))
 	router.Post("/api/tariffs/change-payment", createPaymentHandler(settings, pool, registry))
-	router.Post("/api/subscription/auto-renew", okSessionMutation(settings, pool))
+	router.Post("/api/subscription/auto-renew", autoRenewHandler(settings, pool))
 	router.Post("/api/promo/apply", promoApplyHandler(settings, pool, panel))
 	router.Post("/api/referral/welcome-bonus/claim", referralWelcomeBonusHandler(settings, pool, panel))
 	router.Post("/api/trial/activate", trialActivateHandler(settings, pool, panel))
@@ -69,16 +69,17 @@ func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *p
 	router.Get("/api/admin/payments/export.csv", adminPaymentsExportHandler(settings, pool, registry))
 	router.Get("/api/admin/health", adminHealthHandler(settings, pool, panel))
 	router.Get("/api/admin/stats", adminStatsHandler(settings, pool, panel))
-	router.Post("/api/admin/sync", okAdminMutation(settings, pool))
+	router.Post("/api/admin/sync", adminSyncHandler(settings, pool, panel))
 	router.Get("/api/admin/logs", adminLogsHandler(settings, pool))
 	router.Get("/api/admin/users", adminUsersListHandler(settings, pool, panel))
 	router.Get("/api/admin/users/{user_id}", adminUserDetailHandler(settings, pool, panel))
 	router.Delete("/api/admin/users/{user_id}", adminUserDeleteHandler(settings, pool, panel))
 	router.Get("/api/admin/users/{user_id}/referrals", adminUserReferralsHandler(settings, pool))
 	router.Post("/api/admin/users/{user_id}/ban", adminUserActionHandler(settings, pool, panel))
-	router.Post("/api/admin/users/{user_id}/message", okAdminMutation(settings, pool))
+	router.Post("/api/admin/users/{user_id}/message", adminUserMessageHandler(settings, pool))
 	router.Post("/api/admin/users/{user_id}/message/preview", adminMessagePreviewHandler(settings, pool))
 	router.Get("/api/admin/users/{user_id}/telegram-profile-link", adminTelegramProfileLinkHandler(settings, pool))
+	router.Post("/api/admin/users/{user_id}/telegram-profile-link", adminTelegramProfileLinkHandler(settings, pool))
 	router.Post("/api/admin/users/{user_id}/extend", adminUserActionHandler(settings, pool, panel))
 	router.Post("/api/admin/users/{user_id}/tariff", adminUserActionHandler(settings, pool, panel))
 	router.Post("/api/admin/users/{user_id}/reset-trial", adminUserActionHandler(settings, pool, panel))
@@ -96,7 +97,7 @@ func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *p
 	router.Post("/api/admin/ads/{id}/toggle", adminPatchSettingItemHandler(settings, pool, "ADMIN_ADS", "campaign"))
 	router.Delete("/api/admin/ads/{id}", adminDeleteSettingItemHandler(settings, pool, "ADMIN_ADS"))
 	router.Get("/api/admin/broadcast/audience-counts", adminBroadcastAudienceHandler(settings, pool))
-	router.Post("/api/admin/broadcast", okAdminMutation(settings, pool))
+	router.Post("/api/admin/broadcast", adminBroadcastHandler(settings, pool))
 	router.Get("/api/admin/backups", adminBackupsHandler(settings, pool))
 	router.Post("/api/admin/backups/create", adminBackupCreateHandler(settings, pool))
 	router.Post("/api/admin/backups/upload", adminUploadPlaceholderHandler(settings, pool, "archive"))
@@ -143,6 +144,61 @@ func webappPlansOptionsHandler(settings config.Settings, pool *pgxpool.Pool, kin
 			response["tariff_name"] = ""
 		}
 		writeJSON(w, http.StatusOK, response)
+	}
+}
+
+func userTariffChangeHandler(settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, ok := requireSession(w, r, settings, pool, true)
+		if !ok {
+			return
+		}
+		if err := adminChangePanelTariff(r.Context(), settings, pool, panel, session.User.UserID, r); err != nil {
+			writeAdminActionError(w, err)
+			return
+		}
+		webUser, _ := loadWebappUser(r.Context(), pool, session.User.UserID, settings)
+		var subscription any
+		if panel != nil && panel.Configured(r.Context()) {
+			if panelUser, found, _ := panelUserForWebUser(r.Context(), pool, panel, webUser); found {
+				subscription = subscriptionFromPanelUser(r.Context(), pool, webUser, panelUser)
+			}
+		}
+		recordMessageLog(r.Context(), pool, messageLogEntry{
+			UserID:       session.User.UserID,
+			TargetUserID: session.User.UserID,
+			EventType:    "user_tariff_change",
+			Content:      "tariff changed",
+		})
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "subscription": subscription, "active_subscription": subscription})
+	}
+}
+
+func autoRenewHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, ok := requireSession(w, r, settings, pool, true)
+		if !ok {
+			return
+		}
+		var payload struct {
+			Enabled bool `json:"enabled"`
+		}
+		if err := decodeJSONBody(r, &payload); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
+			return
+		}
+		if err := saveUserAutoRenew(r.Context(), pool, session.User.UserID, payload.Enabled); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "save_failed"})
+			return
+		}
+		recordMessageLog(r.Context(), pool, messageLogEntry{
+			UserID:       session.User.UserID,
+			TargetUserID: session.User.UserID,
+			EventType:    "user_auto_renew",
+			Content:      strconv.FormatBool(payload.Enabled),
+			Payload:      map[string]any{"enabled": payload.Enabled},
+		})
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "enabled": payload.Enabled, "auto_renew_enabled": payload.Enabled})
 	}
 }
 
@@ -488,11 +544,12 @@ func adminStatsHandler(settings config.Settings, pool *pgxpool.Pool, panel *remn
 		_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM payment_orders").Scan(&payments)
 		_ = pool.QueryRow(r.Context(), "SELECT COALESCE(SUM(base_amount),0)::float8 FROM payment_orders WHERE status IN ('paid','succeeded')").Scan(&revenue)
 		payload := map[string]any{
-			"ok":       true,
-			"users":    users,
-			"payments": payments,
-			"revenue":  revenue,
-			"series":   []any{},
+			"ok":         true,
+			"users":      users,
+			"payments":   payments,
+			"revenue":    revenue,
+			"series":     []any{},
+			"panel_sync": LastPanelSyncStatus(r.Context(), pool),
 		}
 		if panel != nil && panel.Configured(r.Context()) {
 			panelStats := map[string]any{}
@@ -511,12 +568,50 @@ func adminStatsHandler(settings config.Settings, pool *pgxpool.Pool, panel *remn
 	}
 }
 
+func adminSyncHandler(settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, ok := requireAdmin(w, r, settings, pool, true)
+		if !ok {
+			return
+		}
+		result, err := RunPanelSync(r.Context(), settings, pool, panel, 500)
+		recordMessageLog(r.Context(), pool, messageLogEntry{
+			UserID:       session.User.UserID,
+			EventType:    "admin_panel_sync",
+			Content:      result.Status,
+			IsAdminEvent: true,
+			Payload:      result,
+		})
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": err.Error(), "panel_sync": result})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "panel_sync": result, "sync": result})
+	}
+}
+
 func adminLogsHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := requireAdmin(w, r, settings, pool, false); !ok {
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "logs": []any{}, "total": 0})
+		page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+		pageSize, _ := strconv.Atoi(r.URL.Query().Get("page_size"))
+		var userID int64
+		if raw := strings.TrimSpace(r.URL.Query().Get("user_id")); raw != "" {
+			parsed, err := parsePositiveInt64(raw)
+			if err != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_user_id"})
+				return
+			}
+			userID = parsed
+		}
+		logs, total, err := adminMessageLogs(r.Context(), pool, page, pageSize, userID)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "logs_load_failed"})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "logs": logs, "total": total, "page": page, "page_size": pageSize})
 	}
 }
 
@@ -526,14 +621,31 @@ func adminUsersListHandler(settings config.Settings, pool *pgxpool.Pool, panel *
 			return
 		}
 		page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+		if page < 0 {
+			page = 0
+		}
 		pageSize, _ := strconv.Atoi(r.URL.Query().Get("page_size"))
 		if pageSize <= 0 || pageSize > 100 {
 			pageSize = 25
 		}
-		rows, err := pool.Query(r.Context(), `
-SELECT user_id, COALESCE(telegram_id,0), COALESCE(username,''), COALESCE(email,''), COALESCE(first_name,''), COALESCE(last_name,''),
-	COALESCE(language_code,''), is_banned, registration_date
-FROM users ORDER BY registration_date DESC LIMIT $1 OFFSET $2`, pageSize, page*pageSize)
+		where, args := adminUsersWhereClause(r)
+		orderBy := adminUsersOrderBy(r.URL.Query().Get("sort"))
+		needsMemoryFilter := needsAdminUsersMemoryFilter(r)
+		limit := pageSize
+		offset := page * pageSize
+		if needsMemoryFilter {
+			limit = 1000
+			offset = 0
+		}
+		query := `
+SELECT u.user_id, COALESCE(u.telegram_id,0), COALESCE(u.username,''), COALESCE(u.email,''), COALESCE(u.first_name,''), COALESCE(u.last_name,''),
+	COALESCE(u.language_code,''), u.is_banned, u.registration_date,
+	COALESCE((SELECT SUM(p.base_amount)::float8 FROM payment_orders p WHERE p.user_id=u.user_id AND p.status IN ('paid','succeeded')),0),
+	COALESCE((SELECT COUNT(*) FROM payment_orders p WHERE p.user_id=u.user_id),0),
+	COALESCE((SELECT COUNT(*) FROM users invitee WHERE invitee.referred_by_id=u.user_id),0)
+FROM users u ` + where + ` ORDER BY ` + orderBy + ` LIMIT $` + strconv.Itoa(len(args)+1) + ` OFFSET $` + strconv.Itoa(len(args)+2)
+		args = append(args, limit, offset)
+		rows, err := pool.Query(r.Context(), query, args...)
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "users_load_failed"})
 			return
@@ -545,14 +657,188 @@ FROM users ORDER BY registration_date DESC LIMIT $1 OFFSET $2`, pageSize, page*p
 			var username, email, firstName, lastName, language string
 			var banned bool
 			var created time.Time
-			if err := rows.Scan(&id, &telegramID, &username, &email, &firstName, &lastName, &language, &banned, &created); err != nil {
+			var paymentsTotal float64
+			var paymentsCount, invitedCount int64
+			if err := rows.Scan(&id, &telegramID, &username, &email, &firstName, &lastName, &language, &banned, &created, &paymentsTotal, &paymentsCount, &invitedCount); err != nil {
 				continue
 			}
-			users = append(users, panelAwareAdminUser(r.Context(), pool, panel, userAdminPayload(id, telegramID, username, email, firstName, lastName, language, banned, created)))
+			user := userAdminPayload(id, telegramID, username, email, firstName, lastName, language, banned, created)
+			user["payments_total_amount"] = paymentsTotal
+			user["payments_count"] = paymentsCount
+			user["payments_currency"] = settings.DefaultCurrency
+			user["invited_users_count"] = invitedCount
+			users = append(users, panelAwareAdminUser(r.Context(), pool, panel, user))
+		}
+		if needsMemoryFilter {
+			users = filterAdminUsersInMemory(users, r)
+			sortAdminUsersInMemory(users, r.URL.Query().Get("sort"))
 		}
 		var total int64
-		_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM users").Scan(&total)
+		countArgs := args[:len(args)-2]
+		countQuery := "SELECT COUNT(*) FROM users u " + where
+		_ = pool.QueryRow(r.Context(), countQuery, countArgs...).Scan(&total)
+		if needsMemoryFilter {
+			total = int64(len(users))
+			start := page * pageSize
+			end := start + pageSize
+			if start > len(users) {
+				start = len(users)
+			}
+			if end > len(users) {
+				end = len(users)
+			}
+			users = users[start:end]
+		}
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "users": users, "total": total})
+	}
+}
+
+func adminUsersWhereClause(r *http.Request) (string, []any) {
+	query := strings.TrimSpace(strings.ToLower(r.URL.Query().Get("q")))
+	filter := strings.TrimSpace(strings.ToLower(r.URL.Query().Get("filter")))
+	clauses := []string{}
+	args := []any{}
+	if query != "" {
+		args = append(args, "%"+query+"%")
+		idx := len(args)
+		clauses = append(clauses, fmt.Sprintf(`(
+			LOWER(COALESCE(u.username,'')) LIKE $%[1]d OR
+			LOWER(COALESCE(u.email,'')) LIKE $%[1]d OR
+			LOWER(COALESCE(u.first_name,'')) LIKE $%[1]d OR
+			LOWER(COALESCE(u.last_name,'')) LIKE $%[1]d OR
+			u.user_id::text LIKE $%[1]d OR
+			COALESCE(u.telegram_id,0)::text LIKE $%[1]d
+		)`, idx))
+	}
+	switch filter {
+	case "active":
+		clauses = append(clauses, "u.is_banned = FALSE")
+	case "banned":
+		clauses = append(clauses, "u.is_banned = TRUE")
+	case "tg_linked":
+		clauses = append(clauses, "COALESCE(u.telegram_id,0) <> 0")
+	case "no_tg":
+		clauses = append(clauses, "COALESCE(u.telegram_id,0) = 0")
+	case "email_linked":
+		clauses = append(clauses, "COALESCE(u.email,'') <> ''")
+	case "no_email":
+		clauses = append(clauses, "COALESCE(u.email,'') = ''")
+	case "panel_linked":
+		clauses = append(clauses, "COALESCE(u.panel_user_uuid,'') <> ''")
+	}
+	if len(clauses) == 0 {
+		return "", args
+	}
+	return "WHERE " + strings.Join(clauses, " AND "), args
+}
+
+func adminUsersOrderBy(raw string) string {
+	switch strings.TrimSpace(strings.ToLower(raw)) {
+	case "registered_asc":
+		return "u.registration_date ASC, u.user_id ASC"
+	case "name_asc":
+		return "LOWER(COALESCE(NULLIF(u.username,''), NULLIF(u.first_name,''), NULLIF(u.email,''), u.user_id::text)) ASC, u.user_id ASC"
+	case "name_desc":
+		return "LOWER(COALESCE(NULLIF(u.username,''), NULLIF(u.first_name,''), NULLIF(u.email,''), u.user_id::text)) DESC, u.user_id DESC"
+	case "payments_total_asc":
+		return "COALESCE((SELECT SUM(p.base_amount)::float8 FROM payment_orders p WHERE p.user_id=u.user_id AND p.status IN ('paid','succeeded')),0) ASC, u.registration_date DESC"
+	case "payments_total_desc":
+		return "COALESCE((SELECT SUM(p.base_amount)::float8 FROM payment_orders p WHERE p.user_id=u.user_id AND p.status IN ('paid','succeeded')),0) DESC, u.registration_date DESC"
+	case "payments_count_asc":
+		return "COALESCE((SELECT COUNT(*) FROM payment_orders p WHERE p.user_id=u.user_id),0) ASC, u.registration_date DESC"
+	case "payments_count_desc":
+		return "COALESCE((SELECT COUNT(*) FROM payment_orders p WHERE p.user_id=u.user_id),0) DESC, u.registration_date DESC"
+	case "invited_users_count_asc":
+		return "COALESCE((SELECT COUNT(*) FROM users invitee WHERE invitee.referred_by_id=u.user_id),0) ASC, u.registration_date DESC"
+	case "invited_users_count_desc":
+		return "COALESCE((SELECT COUNT(*) FROM users invitee WHERE invitee.referred_by_id=u.user_id),0) DESC, u.registration_date DESC"
+	default:
+		return "u.registration_date DESC, u.user_id DESC"
+	}
+}
+
+func needsAdminUsersMemoryFilter(r *http.Request) bool {
+	panelStatus := strings.TrimSpace(strings.ToLower(r.URL.Query().Get("panel_status")))
+	premiumTraffic := strings.TrimSpace(strings.ToLower(r.URL.Query().Get("premium_traffic")))
+	sortKey := strings.TrimSpace(strings.ToLower(r.URL.Query().Get("sort")))
+	if panelStatus != "" && panelStatus != "all" {
+		return true
+	}
+	if premiumTraffic != "" && premiumTraffic != "all" {
+		return true
+	}
+	return strings.HasPrefix(sortKey, "premium_ratio_") || strings.HasPrefix(sortKey, "subscription_expires_at_")
+}
+
+func filterAdminUsersInMemory(users []map[string]any, r *http.Request) []map[string]any {
+	panelStatus := strings.TrimSpace(strings.ToLower(r.URL.Query().Get("panel_status")))
+	premiumTraffic := strings.TrimSpace(strings.ToLower(r.URL.Query().Get("premium_traffic")))
+	filtered := make([]map[string]any, 0, len(users))
+	for _, user := range users {
+		if panelStatus != "" && panelStatus != "all" && strings.ToLower(stringValue(user, "panel_status")) != panelStatus {
+			continue
+		}
+		if premiumTraffic != "" && premiumTraffic != "all" {
+			premium := mapValue(user, "premium_traffic")
+			if strings.ToLower(stringValue(premium, "state")) != premiumTraffic {
+				continue
+			}
+		}
+		filtered = append(filtered, user)
+	}
+	return filtered
+}
+
+func sortAdminUsersInMemory(users []map[string]any, raw string) {
+	sortKey := strings.TrimSpace(strings.ToLower(raw))
+	switch sortKey {
+	case "subscription_expires_at_asc", "subscription_expires_at_desc":
+		desc := strings.HasSuffix(sortKey, "_desc")
+		sort.SliceStable(users, func(i, j int) bool {
+			left := parsePanelTime(firstNonEmpty(stringValue(users[i], "subscription_expires_at"), stringValue(users[i], "panel_status_expired_at")))
+			right := parsePanelTime(firstNonEmpty(stringValue(users[j], "subscription_expires_at"), stringValue(users[j], "panel_status_expired_at")))
+			if left.Equal(right) {
+				return int64Value(users[i], "user_id") < int64Value(users[j], "user_id")
+			}
+			if left.IsZero() {
+				return false
+			}
+			if right.IsZero() {
+				return true
+			}
+			if desc {
+				return left.After(right)
+			}
+			return left.Before(right)
+		})
+	case "premium_ratio_asc", "premium_ratio_desc":
+		desc := strings.HasSuffix(sortKey, "_desc")
+		sort.SliceStable(users, func(i, j int) bool {
+			left := premiumTrafficRank(mapValue(users[i], "premium_traffic"))
+			right := premiumTrafficRank(mapValue(users[j], "premium_traffic"))
+			if left == right {
+				return int64Value(users[i], "user_id") < int64Value(users[j], "user_id")
+			}
+			if desc {
+				return left > right
+			}
+			return left < right
+		})
+	}
+}
+
+func premiumTrafficRank(premium map[string]any) int {
+	switch strings.ToLower(stringValue(premium, "state")) {
+	case "critical":
+		return 4
+	case "warn":
+		return 3
+	case "good":
+		return 2
+	case "unlimited":
+		return 1
+	default:
+		return 0
 	}
 }
 
@@ -567,6 +853,7 @@ func adminUserDetailHandler(settings config.Settings, pool *pgxpool.Pool, panel 
 			writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "user_not_found"})
 			return
 		}
+		user["payments_currency"] = settings.DefaultCurrency
 		user = panelAwareAdminUser(r.Context(), pool, panel, user)
 		userID, _ := parsePositiveInt64(rawUserID)
 		webUser, _ := loadWebappUser(r.Context(), pool, userID, settings)
@@ -595,6 +882,7 @@ func adminUserDetailHandler(settings config.Settings, pool *pgxpool.Pool, panel 
 			}
 		}
 		recentPayments := loadRecentPaymentsForUser(r.Context(), pool, userID)
+		userLogs, logCount, _ := adminMessageLogs(r.Context(), pool, 0, 20, userID)
 		writeJSON(w, http.StatusOK, map[string]any{
 			"ok":                    true,
 			"user":                  user,
@@ -602,8 +890,8 @@ func adminUserDetailHandler(settings config.Settings, pool *pgxpool.Pool, panel 
 			"subscriptions":         []any{},
 			"payments":              recentPayments,
 			"recent_payments":       recentPayments,
-			"logs":                  []any{},
-			"log_count":             0,
+			"logs":                  userLogs,
+			"log_count":             logCount,
 			"total_paid":            userTotalPaid(r.Context(), pool, userID),
 			"subscription_url":      subscriptionURL,
 			"last_vpn_connected_at": lastConnectedAt,
@@ -645,9 +933,72 @@ func adminUserReferralsHandler(settings config.Settings, pool *pgxpool.Pool) htt
 	}
 }
 
+func telegramChatIDForAdminUser(user map[string]any) int64 {
+	if telegramID := int64Value(user, "telegram_id"); telegramID != 0 {
+		return telegramID
+	}
+	return int64Value(user, "user_id")
+}
+
+func telegramChatIDForWebUser(user webappUser) int64 {
+	if user.TelegramID != 0 {
+		return user.TelegramID
+	}
+	return user.UserID
+}
+
+func stringFromAny(value any) string {
+	if value == nil {
+		return ""
+	}
+	return fmt.Sprint(value)
+}
+
+func adminUserMessageHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, ok := requireAdmin(w, r, settings, pool, true)
+		if !ok {
+			return
+		}
+		userID, err := parsePositiveInt64(chi.URLParam(r, "user_id"))
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_user_id"})
+			return
+		}
+		var payload struct {
+			Text string `json:"text"`
+		}
+		if err := decodeJSONBody(r, &payload); err != nil || strings.TrimSpace(payload.Text) == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_message"})
+			return
+		}
+		user, err := loadAdminUser(r.Context(), pool, strconv.FormatInt(userID, 10))
+		if err != nil {
+			writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "user_not_found"})
+			return
+		}
+		chatID := telegramChatIDForAdminUser(user)
+		err = sendTelegramText(r.Context(), settings, chatID, payload.Text)
+		recordMessageLog(r.Context(), pool, messageLogEntry{
+			UserID:       session.User.UserID,
+			TargetUserID: userID,
+			EventType:    "admin_user_message",
+			Content:      payload.Text,
+			IsAdminEvent: true,
+			Payload:      map[string]any{"error": errorString(err)},
+		})
+		if err != nil {
+			writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	}
+}
+
 func adminUserActionHandler(settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := requireAdmin(w, r, settings, pool, true); !ok {
+		session, ok := requireAdmin(w, r, settings, pool, true)
+		if !ok {
 			return
 		}
 		userID, err := parsePositiveInt64(chi.URLParam(r, "user_id"))
@@ -677,28 +1028,52 @@ func adminUserActionHandler(settings config.Settings, pool *pgxpool.Pool, panel 
 			}
 		} else if strings.HasSuffix(path, "/extend") {
 			if err := adminExtendPanelUser(r.Context(), settings, pool, panel, userID, r); err != nil {
-				writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
+				writeAdminActionError(w, err)
 				return
 			}
 		} else if strings.HasSuffix(path, "/tariff") {
 			if err := adminChangePanelTariff(r.Context(), settings, pool, panel, userID, r); err != nil {
-				writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
+				writeAdminActionError(w, err)
+				return
+			}
+		} else if strings.HasSuffix(path, "/premium-override") {
+			if err := adminSetPremiumTrafficOverride(r.Context(), pool, userID, r); err != nil {
+				writeAdminActionError(w, err)
+				return
+			}
+		} else if strings.HasSuffix(path, "/regular-traffic-override") {
+			if err := adminSetRegularTrafficOverride(r.Context(), settings, pool, panel, userID, r); err != nil {
+				writeAdminActionError(w, err)
 				return
 			}
 		} else if strings.HasSuffix(path, "/hwid-device-limit") {
 			if err := adminSetPanelHWIDLimit(r.Context(), settings, pool, panel, userID, r); err != nil {
-				writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
+				writeAdminActionError(w, err)
 				return
 			}
 		} else if strings.HasSuffix(path, "/traffic-grant") {
 			if err := adminGrantPanelTraffic(r.Context(), settings, pool, panel, userID, r); err != nil {
-				writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
+				writeAdminActionError(w, err)
 				return
 			}
 		} else if strings.HasSuffix(path, "/reset-trial") {
 			_, _ = pool.Exec(r.Context(), "UPDATE users SET trial_eligibility_reset_at=NOW() WHERE user_id=$1", userID)
 		}
+		recordMessageLog(r.Context(), pool, messageLogEntry{
+			UserID:       session.User.UserID,
+			TargetUserID: userID,
+			EventType:    "admin_user_action",
+			Content:      strings.TrimPrefix(path, "/api/admin/users/"+strconv.FormatInt(userID, 10)+"/"),
+			IsAdminEvent: true,
+			Payload: map[string]any{
+				"path": path,
+			},
+		})
 		user, _ := loadAdminUser(r.Context(), pool, strconv.FormatInt(userID, 10))
+		if user == nil {
+			user = map[string]any{"user_id": userID}
+		}
+		user["payments_currency"] = settings.DefaultCurrency
 		user = panelAwareAdminUser(r.Context(), pool, panel, user)
 		webUser, _ := loadWebappUser(r.Context(), pool, userID, settings)
 		var subscription any
@@ -713,18 +1088,38 @@ func adminUserActionHandler(settings config.Settings, pool *pgxpool.Pool, panel 
 
 func adminMessagePreviewHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := requireAdmin(w, r, settings, pool, true); !ok {
+		session, ok := requireAdmin(w, r, settings, pool, true)
+		if !ok {
 			return
 		}
 		var payload map[string]any
 		_ = decodeJSONBody(r, &payload)
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "preview": payload["message"], "html": payload["message"]})
+		text := strings.TrimSpace(firstNonEmpty(stringFromAny(payload["text"]), stringFromAny(payload["message"])))
+		if text == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_message"})
+			return
+		}
+		err := sendTelegramText(r.Context(), settings, telegramChatIDForWebUser(session.User), text)
+		recordMessageLog(r.Context(), pool, messageLogEntry{
+			UserID:       session.User.UserID,
+			TargetUserID: session.User.UserID,
+			EventType:    "admin_user_message_preview",
+			Content:      text,
+			IsAdminEvent: true,
+			Payload:      map[string]any{"error": errorString(err)},
+		})
+		if err != nil {
+			writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "preview": text, "html": text})
 	}
 }
 
 func adminTelegramProfileLinkHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := requireAdmin(w, r, settings, pool, false); !ok {
+		session, ok := requireAdmin(w, r, settings, pool, r.Method != http.MethodGet)
+		if !ok {
 			return
 		}
 		user, err := loadAdminUser(r.Context(), pool, chi.URLParam(r, "user_id"))
@@ -736,6 +1131,28 @@ func adminTelegramProfileLinkHandler(settings config.Settings, pool *pgxpool.Poo
 		url := ""
 		if username != "" {
 			url = "https://t.me/" + strings.TrimPrefix(username, "@")
+		}
+		if url == "" && int64Value(user, "telegram_id") != 0 {
+			url = "tg://user?id=" + strconv.FormatInt(int64Value(user, "telegram_id"), 10)
+		}
+		if r.Method == http.MethodPost {
+			if url == "" {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "telegram_profile_not_available"})
+				return
+			}
+			err := sendTelegramText(r.Context(), settings, telegramChatIDForWebUser(session.User), url)
+			recordMessageLog(r.Context(), pool, messageLogEntry{
+				UserID:       session.User.UserID,
+				TargetUserID: int64Value(user, "user_id"),
+				EventType:    "admin_telegram_profile_link",
+				Content:      url,
+				IsAdminEvent: true,
+				Payload:      map[string]any{"error": errorString(err)},
+			})
+			if err != nil {
+				writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": err.Error(), "url": url})
+				return
+			}
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "url": url})
 	}
@@ -835,10 +1252,113 @@ func adminBroadcastAudienceHandler(settings config.Settings, pool *pgxpool.Pool)
 		if _, ok := requireAdmin(w, r, settings, pool, false); !ok {
 			return
 		}
-		var total int64
-		_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM users").Scan(&total)
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "total": total, "audiences": map[string]any{"all": total}})
+		counts := map[string]int64{"all": 0, "active": 0, "inactive": 0, "expired": 0, "never": 0}
+		var allCount, activeCount, inactiveCount int64
+		_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM users WHERE is_banned=FALSE").Scan(&allCount)
+		_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM users WHERE is_banned=FALSE AND COALESCE(panel_user_uuid,'')<>''").Scan(&activeCount)
+		_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM users WHERE is_banned=FALSE AND COALESCE(panel_user_uuid,'')=''").Scan(&inactiveCount)
+		counts["all"] = allCount
+		counts["active"] = activeCount
+		counts["inactive"] = inactiveCount
+		counts["never"] = counts["inactive"]
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "total": counts["all"], "counts": counts, "audiences": counts})
 	}
+}
+
+func adminBroadcastHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, ok := requireAdmin(w, r, settings, pool, true)
+		if !ok {
+			return
+		}
+		var payload struct {
+			Target string `json:"target"`
+			Text   string `json:"text"`
+		}
+		if err := decodeJSONBody(r, &payload); err != nil || strings.TrimSpace(payload.Text) == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_message"})
+			return
+		}
+		recipients, err := broadcastRecipients(r.Context(), pool, payload.Target, 5000)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "broadcast_recipients_failed"})
+			return
+		}
+		queued := 0
+		failed := 0
+		for _, recipient := range recipients {
+			if err := sendTelegramText(r.Context(), settings, recipient.ChatID, payload.Text); err != nil {
+				failed++
+				recordMessageLog(r.Context(), pool, messageLogEntry{
+					UserID:       session.User.UserID,
+					TargetUserID: recipient.UserID,
+					EventType:    "admin_broadcast_failed",
+					Content:      payload.Text,
+					IsAdminEvent: true,
+					Payload:      map[string]any{"target": payload.Target, "error": err.Error()},
+				})
+				continue
+			}
+			queued++
+		}
+		recordMessageLog(r.Context(), pool, messageLogEntry{
+			UserID:       session.User.UserID,
+			EventType:    "admin_broadcast",
+			Content:      payload.Text,
+			IsAdminEvent: true,
+			Payload:      map[string]any{"target": payload.Target, "queued": queued, "failed": failed},
+		})
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "queued": queued, "failed": failed})
+	}
+}
+
+type broadcastRecipient struct {
+	UserID int64
+	ChatID int64
+}
+
+func broadcastRecipients(ctx context.Context, pool *pgxpool.Pool, target string, limit int) ([]broadcastRecipient, error) {
+	target = strings.ToLower(strings.TrimSpace(target))
+	if target == "" {
+		target = "all"
+	}
+	where := "is_banned=FALSE"
+	switch target {
+	case "active":
+		where += " AND COALESCE(panel_user_uuid,'')<>''"
+	case "inactive", "never":
+		where += " AND COALESCE(panel_user_uuid,'')=''"
+	case "expired":
+		return []broadcastRecipient{}, nil
+	}
+	if limit <= 0 || limit > 10000 {
+		limit = 5000
+	}
+	rows, err := pool.Query(ctx, `
+SELECT user_id, COALESCE(telegram_id,0)
+FROM users
+WHERE `+where+`
+ORDER BY registration_date DESC
+LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	recipients := []broadcastRecipient{}
+	for rows.Next() {
+		var userID, telegramID int64
+		if err := rows.Scan(&userID, &telegramID); err != nil {
+			return nil, err
+		}
+		chatID := telegramID
+		if chatID == 0 {
+			chatID = userID
+		}
+		if chatID != 0 {
+			recipients = append(recipients, broadcastRecipient{UserID: userID, ChatID: chatID})
+		}
+	}
+	return recipients, rows.Err()
 }
 
 func adminBackupsHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
@@ -1598,6 +2118,25 @@ func writePanelActionError(w http.ResponseWriter, err error) {
 	writeJSON(w, status, map[string]any{"ok": false, "error": panelErrorCode(err), "message": err.Error()})
 }
 
+func writeAdminActionError(w http.ResponseWriter, err error) {
+	status := http.StatusBadRequest
+	code := strings.TrimSpace(err.Error())
+	if errors.Is(err, remnawave.ErrNotConfigured) {
+		status = http.StatusServiceUnavailable
+		code = panelErrorCode(err)
+	} else {
+		var apiErr remnawave.APIError
+		if errors.As(err, &apiErr) {
+			status = http.StatusBadGateway
+			code = panelErrorCode(err)
+		}
+	}
+	if code == "" {
+		code = "action_failed"
+	}
+	writeJSON(w, status, map[string]any{"ok": false, "error": code, "message": err.Error()})
+}
+
 func anyList(value any) []any {
 	switch typed := value.(type) {
 	case []any:
@@ -1957,17 +2496,26 @@ func loadAdminUser(ctx context.Context, pool *pgxpool.Pool, rawID string) (map[s
 	var username, email, firstName, lastName, language string
 	var banned bool
 	var created time.Time
+	var paymentsTotal float64
+	var paymentsCount, invitedCount int64
 	err = pool.QueryRow(ctx, `
 SELECT user_id, COALESCE(telegram_id,0), COALESCE(username,''), COALESCE(email,''), COALESCE(first_name,''), COALESCE(last_name,''),
-	COALESCE(language_code,''), is_banned, registration_date
-FROM users WHERE user_id=$1`, userID).Scan(&id, &telegramID, &username, &email, &firstName, &lastName, &language, &banned, &created)
+	COALESCE(language_code,''), is_banned, registration_date,
+	COALESCE((SELECT SUM(p.base_amount)::float8 FROM payment_orders p WHERE p.user_id=users.user_id AND p.status IN ('paid','succeeded')),0),
+	COALESCE((SELECT COUNT(*) FROM payment_orders p WHERE p.user_id=users.user_id),0),
+	COALESCE((SELECT COUNT(*) FROM users invitee WHERE invitee.referred_by_id=users.user_id),0)
+FROM users WHERE user_id=$1`, userID).Scan(&id, &telegramID, &username, &email, &firstName, &lastName, &language, &banned, &created, &paymentsTotal, &paymentsCount, &invitedCount)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, err
 		}
 		return nil, err
 	}
-	return userAdminPayload(id, telegramID, username, email, firstName, lastName, language, banned, created), nil
+	user := userAdminPayload(id, telegramID, username, email, firstName, lastName, language, banned, created)
+	user["payments_total_amount"] = paymentsTotal
+	user["payments_count"] = paymentsCount
+	user["invited_users_count"] = invitedCount
+	return user, nil
 }
 
 func userAdminPayload(id int64, telegramID int64, username string, email string, firstName string, lastName string, language string, banned bool, created time.Time) map[string]any {

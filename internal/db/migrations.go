@@ -158,5 +158,29 @@ CREATE INDEX IF NOT EXISTS ix_payment_orders_paid_unprovisioned ON payment_order
 				return err
 			},
 		},
+		{
+			ID: "core.go.0005_message_logs",
+			Up: func(ctx context.Context, tx pgx.Tx) error {
+				_, err := tx.Exec(ctx, `
+CREATE TABLE IF NOT EXISTS message_logs (
+	log_id BIGSERIAL PRIMARY KEY,
+	user_id BIGINT NULL REFERENCES users(user_id) ON DELETE SET NULL,
+	telegram_username VARCHAR NULL,
+	telegram_first_name VARCHAR NULL,
+	event_type VARCHAR(128) NOT NULL,
+	content TEXT NULL,
+	raw_update_preview TEXT NULL,
+	is_admin_event BOOLEAN NOT NULL DEFAULT FALSE,
+	target_user_id BIGINT NULL REFERENCES users(user_id) ON DELETE SET NULL,
+	payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+	timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS ix_message_logs_timestamp ON message_logs(timestamp DESC);
+CREATE INDEX IF NOT EXISTS ix_message_logs_user_id ON message_logs(user_id);
+CREATE INDEX IF NOT EXISTS ix_message_logs_target_user_id ON message_logs(target_user_id);
+CREATE INDEX IF NOT EXISTS ix_message_logs_event_type ON message_logs(event_type)`)
+				return err
+			},
+		},
 	}
 }

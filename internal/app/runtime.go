@@ -78,7 +78,7 @@ func NewRuntime(ctx context.Context, settings config.Settings) (*Runtime, error)
 func (r *Runtime) StartBackend(ctx context.Context) error {
 	backend := &http.Server{
 		Addr:              r.settings.WebListenAddr(),
-		Handler:           httpapi.BackendRouter(r.settings, r.db, r.redis, r.payments),
+		Handler:           httpapi.BackendRouter(r.settings, r.db, r.redis, r.payments, r.panel),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	r.servers = append(r.servers, backend)
@@ -116,12 +116,35 @@ func (r *Runtime) StartBackend(ctx context.Context) error {
 // StartWorker runs background workers until the context is cancelled.
 func (r *Runtime) StartWorker(ctx context.Context) error {
 	group := workers.NewGroup()
+	group.Add("payment-provisioning", workers.Interval(r.settings.WorkerPaymentProvisionEvery, func(ctx context.Context) error {
+		result, err := httpapi.ProvisionPendingPaidOrders(ctx, r.settings, r.db, r.panel, 50)
+		if err != nil {
+			slog.Warn("payment provisioning worker finished with pending errors", "error", err, "scanned", result.Scanned, "provisioned", result.Provisioned, "failed", result.Failed)
+			return nil
+		}
+		if result.Scanned > 0 {
+			slog.Info("payment provisioning worker finished", "scanned", result.Scanned, "provisioned", result.Provisioned, "failed", result.Failed)
+		}
+		return nil
+	}))
 	group.Add("panel-sync", workers.Interval(r.settings.WorkerPanelSyncEvery, func(ctx context.Context) error {
-		slog.Info("panel sync worker tick", "status", "not_implemented")
+		result, err := httpapi.RunPanelSync(ctx, r.settings, r.db, r.panel, 500)
+		if err != nil {
+			slog.Warn("panel sync worker failed", "error", err, "status", result.Status, "users_processed", result.UsersProcessed, "subscriptions_synced", result.SubscriptionsSynced)
+			return nil
+		}
+		slog.Info("panel sync worker finished", "status", result.Status, "users_processed", result.UsersProcessed, "subscriptions_synced", result.SubscriptionsSynced, "payments_provisioned", result.PaymentsProvisioned, "payments_failed", result.PaymentsFailed)
 		return nil
 	}))
 	group.Add("webhook-queue", workers.Interval(5*time.Second, func(ctx context.Context) error {
-		slog.Debug("webhook queue worker tick", "status", "not_implemented")
+		processed, err := httpapi.ProcessQueuedWebhookEvents(ctx, r.db, 100)
+		if err != nil {
+			slog.Warn("webhook queue worker failed", "error", err)
+			return nil
+		}
+		if processed > 0 {
+			slog.Debug("webhook queue worker processed events", "processed", processed)
+		}
 		return nil
 	}))
 	group.Add("subscription-notifications", workers.Interval(5*time.Minute, func(ctx context.Context) error {

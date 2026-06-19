@@ -13,20 +13,21 @@ import (
 
 	"remna-user-panel/internal/config"
 	"remna-user-panel/internal/payments"
+	"remna-user-panel/internal/remnawave"
 )
 
 // BackendRouter builds the webhook/health HTTP router.
-func BackendRouter(settings config.Settings, pool *pgxpool.Pool, redisClient *redis.Client, registry *payments.Registry) http.Handler {
+func BackendRouter(settings config.Settings, pool *pgxpool.Pool, redisClient *redis.Client, registry *payments.Registry, panel *remnawave.Client) http.Handler {
 	router := chi.NewRouter()
 	router.Use(securityHeaders)
 	router.Use(requestBodyLimit(2 << 20))
 	router.Get("/healthz", healthHandler(pool, redisClient))
 	router.Get("/health", healthHandler(pool, redisClient))
-	router.Post(settings.WebhookPath(), telegramWebhookHandler(settings))
-	router.Post(settings.PanelWebhookPath, panelWebhookHandler(settings))
+	router.Post(settings.WebhookPath(), telegramWebhookHandler(settings, pool))
+	router.Post(settings.PanelWebhookPath, panelWebhookHandler(settings, pool))
 	for _, providerID := range registry.IDs() {
 		providerID := providerID
-		router.Post("/webhook/"+providerID, paymentWebhookHandler(registry, providerID))
+		router.Post("/webhook/"+providerID, paymentWebhookHandler(settings, pool, registry, panel, providerID))
 	}
 	return router
 }
@@ -51,7 +52,7 @@ func healthHandler(pool *pgxpool.Pool, redisClient *redis.Client) http.HandlerFu
 	}
 }
 
-func telegramWebhookHandler(settings config.Settings) http.HandlerFunc {
+func telegramWebhookHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if settings.WebhookSecretToken != "" {
 			got := r.Header.Get("X-Telegram-Bot-Api-Secret-Token")
@@ -60,13 +61,29 @@ func telegramWebhookHandler(settings config.Settings) http.HandlerFunc {
 				return
 			}
 		}
-		_, _ = io.Copy(io.Discard, r.Body)
-		slog.Warn("telegram webhook accepted but bot update processing is not fully ported")
-		writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "status": "accepted"})
+		body, err := io.ReadAll(io.LimitReader(r.Body, 2<<20))
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_body"})
+			return
+		}
+		if pool != nil {
+			payload := json.RawMessage(body)
+			if !json.Valid(payload) {
+				payload, _ = json.Marshal(map[string]any{"raw": string(body)})
+			}
+			if _, err := pool.Exec(r.Context(), "INSERT INTO webhook_events (provider, payload, status) VALUES ($1,$2,'queued')", "telegram", payload); err != nil {
+				slog.Warn("telegram webhook accepted but queue insert failed", "error", err)
+				recordMessageLog(r.Context(), pool, messageLogEntry{EventType: "telegram_webhook_queue_failed", Content: err.Error(), RawUpdatePreview: string(body)})
+				writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "status": "accepted_not_queued"})
+				return
+			}
+			recordMessageLog(r.Context(), pool, messageLogEntry{EventType: "telegram_webhook_queued", Content: "queued", RawUpdatePreview: string(body)})
+		}
+		writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "status": "queued"})
 	}
 }
 
-func panelWebhookHandler(settings config.Settings) http.HandlerFunc {
+func panelWebhookHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if settings.PanelWebhookSecret != "" {
 			got := r.Header.Get("X-Remnawave-Webhook-Secret")
@@ -78,13 +95,29 @@ func panelWebhookHandler(settings config.Settings) http.HandlerFunc {
 				return
 			}
 		}
-		_, _ = io.Copy(io.Discard, r.Body)
-		slog.Warn("panel webhook accepted but panel event processing is not fully ported")
-		writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "status": "accepted"})
+		body, err := io.ReadAll(io.LimitReader(r.Body, 2<<20))
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_body"})
+			return
+		}
+		if pool != nil {
+			payload := json.RawMessage(body)
+			if !json.Valid(payload) {
+				payload, _ = json.Marshal(map[string]any{"raw": string(body)})
+			}
+			if _, err := pool.Exec(r.Context(), "INSERT INTO webhook_events (provider, payload, status) VALUES ($1,$2,'queued')", "remnawave", payload); err != nil {
+				slog.Warn("panel webhook accepted but queue insert failed", "error", err)
+				recordMessageLog(r.Context(), pool, messageLogEntry{EventType: "remnawave_webhook_queue_failed", Content: err.Error(), Payload: map[string]any{"provider": "remnawave"}})
+				writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "status": "accepted_not_queued"})
+				return
+			}
+			recordMessageLog(r.Context(), pool, messageLogEntry{EventType: "remnawave_webhook_queued", Content: "queued", Payload: map[string]any{"provider": "remnawave"}})
+		}
+		writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "status": "queued"})
 	}
 }
 
-func paymentWebhookHandler(registry *payments.Registry, providerID string) http.HandlerFunc {
+func paymentWebhookHandler(settings config.Settings, pool *pgxpool.Pool, registry *payments.Registry, panel *remnawave.Client, providerID string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(io.LimitReader(r.Body, 2<<20))
 		if err != nil {
@@ -96,7 +129,23 @@ func paymentWebhookHandler(registry *payments.Registry, providerID string) http.
 			writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "status": "accepted_not_processed"})
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+		provision, err := ProvisionPendingPaidOrders(r.Context(), settings, pool, panel, 10)
+		if err != nil {
+			slog.Warn("payment webhook accepted but provisioning is pending", "provider", providerID, "error", err, "scanned", provision.Scanned, "provisioned", provision.Provisioned, "failed", provision.Failed)
+		}
+		recordMessageLog(r.Context(), pool, messageLogEntry{
+			EventType: "payment_webhook",
+			Content:   providerID,
+			Payload: map[string]any{
+				"provider":     providerID,
+				"provisioning": provision,
+				"error":        errorString(err),
+			},
+		})
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok":           true,
+			"provisioning": provision,
+		})
 	}
 }
 

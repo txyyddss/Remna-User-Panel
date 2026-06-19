@@ -46,6 +46,7 @@ func (e APIError) Error() string {
 type EffectiveConfig struct {
 	BaseURL               string
 	APIKey                string
+	TotalTimeout          time.Duration
 	UserTrafficLimitGB    float64
 	UserTrafficStrategy   string
 	UserSquadUUIDs        []string
@@ -64,7 +65,7 @@ func NewClient(settings config.Settings, store appsettings.Store) *Client {
 	return &Client{
 		settings: settings,
 		store:    store,
-		http:     &http.Client{Timeout: 25 * time.Second},
+		http:     &http.Client{},
 	}
 }
 
@@ -72,6 +73,7 @@ func (c *Client) EffectiveConfig(ctx context.Context) EffectiveConfig {
 	cfg := EffectiveConfig{
 		BaseURL:               strings.TrimRight(c.store.String(ctx, "PANEL_API_URL", c.settings.PanelAPIURL), "/"),
 		APIKey:                c.store.String(ctx, "PANEL_API_KEY", c.settings.PanelAPIKey),
+		TotalTimeout:          secondsSetting(c.store.Float(ctx, "PANEL_API_TOTAL_TIMEOUT_SECONDS", c.settings.PanelAPITotalTimeout.Seconds()), 25*time.Second),
 		UserTrafficLimitGB:    c.store.Float(ctx, "USER_TRAFFIC_LIMIT_GB", c.settings.UserTrafficLimitGB),
 		UserTrafficStrategy:   normalizeTrafficStrategy(c.store.String(ctx, "USER_TRAFFIC_STRATEGY", c.settings.UserTrafficStrategy)),
 		UserSquadUUIDs:        splitList(c.store.String(ctx, "USER_SQUAD_UUIDS", strings.Join(c.settings.UserSquadUUIDs, ","))),
@@ -143,6 +145,14 @@ func (c *Client) SetUserEnabled(ctx context.Context, uuid string, enabled bool) 
 	return c.request(ctx, http.MethodPost, "/users/"+url.PathEscape(uuid)+"/actions/"+action, nil, nil, nil)
 }
 
+func (c *Client) ResetUserTraffic(ctx context.Context, uuid string) error {
+	return c.request(ctx, http.MethodPost, "/users/"+url.PathEscape(strings.TrimSpace(uuid))+"/actions/reset-traffic", nil, nil, nil)
+}
+
+func (c *Client) RevokeUserSubscription(ctx context.Context, uuid string) error {
+	return c.request(ctx, http.MethodPost, "/users/"+url.PathEscape(strings.TrimSpace(uuid))+"/actions/revoke", nil, nil, nil)
+}
+
 func (c *Client) DeleteUser(ctx context.Context, uuid string) error {
 	err := c.request(ctx, http.MethodDelete, "/users/"+url.PathEscape(strings.TrimSpace(uuid)), nil, nil, nil)
 	if errors.Is(err, ErrNotFound) {
@@ -175,6 +185,32 @@ func (c *Client) GetInternalSquads(ctx context.Context) ([]map[string]any, error
 	return mapsFromAny(out), nil
 }
 
+func (c *Client) GetInternalSquadAccessibleNodes(ctx context.Context, squadUUID string) ([]map[string]any, error) {
+	var out any
+	err := c.request(ctx, http.MethodGet, "/internal-squads/"+url.PathEscape(strings.TrimSpace(squadUUID))+"/accessible-nodes", nil, nil, &out)
+	if errors.Is(err, ErrNotFound) {
+		return []map[string]any{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return mapsFromAny(out), nil
+}
+
+func (c *Client) AddUsersToInternalSquad(ctx context.Context, squadUUID string, userUUIDs []string) error {
+	return c.request(ctx, http.MethodPost, "/internal-squads/"+url.PathEscape(strings.TrimSpace(squadUUID))+"/bulk-actions/add-users", nil, map[string]any{
+		"users":     cleanStrings(userUUIDs),
+		"userUuids": cleanStrings(userUUIDs),
+	}, nil)
+}
+
+func (c *Client) RemoveUsersFromInternalSquad(ctx context.Context, squadUUID string, userUUIDs []string) error {
+	return c.request(ctx, http.MethodDelete, "/internal-squads/"+url.PathEscape(strings.TrimSpace(squadUUID))+"/bulk-actions/remove-users", nil, map[string]any{
+		"users":     cleanStrings(userUUIDs),
+		"userUuids": cleanStrings(userUUIDs),
+	}, nil)
+}
+
 func (c *Client) GetSystemStats(ctx context.Context) (map[string]any, error) {
 	var out map[string]any
 	err := c.request(ctx, http.MethodGet, "/system/stats", nil, nil, &out)
@@ -193,10 +229,47 @@ func (c *Client) GetNodesStats(ctx context.Context) (map[string]any, error) {
 	return out, err
 }
 
+func (c *Client) GetNodesBandwidthStats(ctx context.Context, query url.Values) (map[string]any, error) {
+	var out map[string]any
+	err := c.request(ctx, http.MethodGet, "/bandwidth-stats/nodes", query, nil, &out)
+	return out, err
+}
+
+func (c *Client) GetUserBandwidthStats(ctx context.Context, userUUID string, query url.Values) (map[string]any, error) {
+	var out map[string]any
+	err := c.request(ctx, http.MethodGet, "/bandwidth-stats/users/"+url.PathEscape(strings.TrimSpace(userUUID)), query, nil, &out)
+	return out, err
+}
+
+func (c *Client) GetSubscriptionPageConfigs(ctx context.Context) ([]map[string]any, error) {
+	var out any
+	if err := c.request(ctx, http.MethodGet, "/subscription-page-configs", nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return mapsFromAny(out), nil
+}
+
+func (c *Client) GetSubscriptionPageConfigByUUID(ctx context.Context, uuid string) (map[string]any, bool, error) {
+	var out map[string]any
+	err := c.request(ctx, http.MethodGet, "/subscription-page-configs/"+url.PathEscape(strings.TrimSpace(uuid)), nil, nil, &out)
+	if errors.Is(err, ErrNotFound) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	return out, true, nil
+}
+
 func (c *Client) request(ctx context.Context, method string, endpoint string, query url.Values, payload any, out any) error {
 	cfg := c.EffectiveConfig(ctx)
 	if cfg.BaseURL == "" || cfg.APIKey == "" {
 		return ErrNotConfigured
+	}
+	if cfg.TotalTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, cfg.TotalTimeout)
+		defer cancel()
 	}
 	requestURL := apiBaseURL(cfg.BaseURL) + "/" + strings.TrimLeft(endpoint, "/")
 	if len(query) > 0 {
@@ -291,6 +364,13 @@ func normalizeTrafficStrategy(raw string) string {
 	}
 }
 
+func secondsSetting(value float64, fallback time.Duration) time.Duration {
+	if value <= 0 {
+		return fallback
+	}
+	return time.Duration(value * float64(time.Second))
+}
+
 func optionalIntFromJSON(raw json.RawMessage) *int {
 	if len(raw) == 0 || string(raw) == "null" {
 		return nil
@@ -320,6 +400,16 @@ func splitList(raw string) []string {
 	result := make([]string, 0, len(fields))
 	for _, field := range fields {
 		if value := strings.TrimSpace(field); value != "" {
+			result = append(result, value)
+		}
+	}
+	return result
+}
+
+func cleanStrings(values []string) []string {
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		if value = strings.TrimSpace(value); value != "" {
 			result = append(result, value)
 		}
 	}

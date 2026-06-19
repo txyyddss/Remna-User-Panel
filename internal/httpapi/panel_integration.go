@@ -17,6 +17,7 @@ import (
 	"remna-user-panel/internal/config"
 	"remna-user-panel/internal/payments"
 	"remna-user-panel/internal/remnawave"
+	appsettings "remna-user-panel/internal/settings"
 	"remna-user-panel/internal/tariffs"
 )
 
@@ -44,6 +45,40 @@ type accessGrantOptions struct {
 	TrafficStrategy string
 	SquadUUIDs      []string
 	SetTrafficLimit bool
+}
+
+const (
+	userTrafficOverridesSettingKey = "ADMIN_USER_TRAFFIC_OVERRIDES"
+	panelSyncStatusSettingKey      = "ADMIN_PANEL_SYNC_STATUS"
+	userAutoRenewSettingKey        = "USER_AUTO_RENEW_OVERRIDES"
+	paymentProvisionLockNamespace  = int64(0x5257000000000000)
+)
+
+type userTrafficOverride struct {
+	PremiumUnlimited  bool   `json:"premium_unlimited_override"`
+	PremiumBonusBytes int64  `json:"premium_bonus_bytes"`
+	RegularUnlimited  bool   `json:"regular_unlimited_override"`
+	RegularBonusBytes int64  `json:"regular_bonus_bytes"`
+	UpdatedAt         string `json:"updated_at,omitempty"`
+}
+
+// ProvisionResult summarizes one paid-order provisioning pass.
+type ProvisionResult struct {
+	Scanned     int `json:"scanned"`
+	Provisioned int `json:"provisioned"`
+	Failed      int `json:"failed"`
+}
+
+// PanelSyncResult is persisted for the admin stats page and returned by manual sync.
+type PanelSyncResult struct {
+	Status              string   `json:"status"`
+	LastSyncTime        string   `json:"last_sync_time"`
+	UsersProcessed      int      `json:"users_processed"`
+	SubscriptionsSynced int      `json:"subscriptions_synced"`
+	PaymentsScanned     int      `json:"payments_scanned"`
+	PaymentsProvisioned int      `json:"payments_provisioned"`
+	PaymentsFailed      int      `json:"payments_failed"`
+	Errors              []string `json:"errors,omitempty"`
 }
 
 func panelUserForWebUser(ctx context.Context, pool *pgxpool.Pool, panel *remnawave.Client, user webappUser) (map[string]any, bool, error) {
@@ -120,34 +155,42 @@ func subscriptionFromPanelUser(ctx context.Context, pool *pgxpool.Pool, user web
 	if tariffName == "" {
 		tariffName = plan.Title
 	}
+	override := loadUserTrafficOverride(ctx, pool, user.UserID)
 	payload := map[string]any{
-		"active":                    active,
-		"status":                    status,
-		"end_date":                  timeString(expireAt),
-		"end_date_text":             dateText(expireAt),
-		"days_left":                 days,
-		"remaining_text":            remainingText(days),
-		"config_link":               stringValue(panelUser, "subscriptionUrl"),
-		"connect_url":               stringValue(panelUser, "subscriptionUrl"),
-		"panel_short_uuid":          stringValue(panelUser, "shortUuid"),
-		"traffic_used":              bytesText(usedBytes),
-		"traffic_limit":             bytesText(limitBytes),
-		"traffic_used_bytes":        usedBytes,
-		"traffic_limit_bytes":       limitBytes,
-		"traffic_limit_strategy":    stringValue(panelUser, "trafficLimitStrategy"),
-		"can_topup_traffic":         active && limitBytes > 0,
-		"can_topup_regular_traffic": active && limitBytes > 0,
-		"can_topup_premium_traffic": false,
-		"can_topup_devices":         active && hasHWIDLimit && hwidLimit != 0,
-		"max_devices":               maxDevices,
-		"extra_hwid_devices":        0,
-		"auto_renew_enabled":        false,
-		"auto_renew_available":      false,
-		"tariff_key":                plan.TariffKey,
-		"tariff_name":               tariffName,
-		"billing_model":             plan.BillingModel,
-		"tariff_description":        plan.Description,
-		"provider":                  plan.Provider,
+		"active":                     active,
+		"status":                     status,
+		"end_date":                   timeString(expireAt),
+		"end_date_text":              dateText(expireAt),
+		"days_left":                  days,
+		"remaining_text":             remainingText(days),
+		"config_link":                stringValue(panelUser, "subscriptionUrl"),
+		"connect_url":                stringValue(panelUser, "subscriptionUrl"),
+		"panel_short_uuid":           stringValue(panelUser, "shortUuid"),
+		"traffic_used":               bytesText(usedBytes),
+		"traffic_limit":              bytesText(limitBytes),
+		"traffic_used_bytes":         usedBytes,
+		"traffic_limit_bytes":        limitBytes,
+		"traffic_limit_strategy":     stringValue(panelUser, "trafficLimitStrategy"),
+		"can_topup_traffic":          active && limitBytes > 0,
+		"can_topup_regular_traffic":  active && limitBytes > 0,
+		"can_topup_premium_traffic":  false,
+		"can_topup_devices":          active && hasHWIDLimit && hwidLimit != 0,
+		"max_devices":                maxDevices,
+		"extra_hwid_devices":         0,
+		"premium_unlimited_override": override.PremiumUnlimited,
+		"premium_bonus_bytes":        override.PremiumBonusBytes,
+		"premium_used_bytes":         int64(0),
+		"premium_limit_bytes":        premiumLimitBytes(override),
+		"premium_is_limited":         false,
+		"regular_unlimited_override": override.RegularUnlimited,
+		"regular_bonus_bytes":        override.RegularBonusBytes,
+		"auto_renew_enabled":         userAutoRenewEnabled(ctx, pool, user.UserID),
+		"auto_renew_available":       true,
+		"tariff_key":                 plan.TariffKey,
+		"tariff_name":                tariffName,
+		"billing_model":              plan.BillingModel,
+		"tariff_description":         plan.Description,
+		"provider":                   plan.Provider,
 	}
 	if onlineAt := parsePanelTime(traffic["onlineAt"]); !onlineAt.IsZero() {
 		payload["online_at"] = onlineAt
@@ -229,6 +272,234 @@ func provisionPaidOrder(ctx context.Context, settings config.Settings, pool *pgx
 	}
 	_, err = pool.Exec(ctx, "UPDATE payment_orders SET provisioned_at=NOW(), provision_error=NULL, updated_at=NOW() WHERE payment_id=$1 AND provisioned_at IS NULL", order.PaymentID)
 	return err
+}
+
+// ProvisionPendingPaidOrders provisions paid orders that have not yet been
+// applied to Remnawave. It is safe to call from webhooks and workers; failures
+// are recorded on each order and returned as a joined error for logging.
+func ProvisionPendingPaidOrders(ctx context.Context, settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client, limit int) (ProvisionResult, error) {
+	result := ProvisionResult{}
+	if pool == nil {
+		return result, fmt.Errorf("database_not_configured")
+	}
+	if limit <= 0 || limit > 100 {
+		limit = 25
+	}
+	orders, err := loadPendingProvisionOrders(ctx, pool, limit)
+	if err != nil {
+		return result, err
+	}
+	result.Scanned = len(orders)
+	var joined error
+	for _, order := range orders {
+		lock, locked, err := tryPaymentProvisionLock(ctx, pool, order.PaymentID)
+		if err != nil {
+			result.Failed++
+			joined = errors.Join(joined, fmt.Errorf("payment_id=%d: %w", order.PaymentID, err))
+			continue
+		}
+		if !locked {
+			continue
+		}
+		if err := provisionPaidOrder(ctx, settings, pool, panel, order); err != nil {
+			unlockPaymentProvisionLock(ctx, lock, order.PaymentID)
+			result.Failed++
+			joined = errors.Join(joined, fmt.Errorf("payment_id=%d: %w", order.PaymentID, err))
+			continue
+		}
+		unlockPaymentProvisionLock(ctx, lock, order.PaymentID)
+		result.Provisioned++
+	}
+	return result, joined
+}
+
+func tryPaymentProvisionLock(ctx context.Context, pool *pgxpool.Pool, paymentID int64) (*pgxpool.Conn, bool, error) {
+	conn, err := pool.Acquire(ctx)
+	if err != nil {
+		return nil, false, err
+	}
+	var locked bool
+	if err := conn.QueryRow(ctx, "SELECT pg_try_advisory_lock($1)", paymentProvisionLockKey(paymentID)).Scan(&locked); err != nil {
+		conn.Release()
+		return nil, false, err
+	}
+	if !locked {
+		conn.Release()
+		return nil, false, nil
+	}
+	return conn, true, nil
+}
+
+func unlockPaymentProvisionLock(_ context.Context, conn *pgxpool.Conn, paymentID int64) {
+	if conn == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	var unlocked bool
+	if err := conn.QueryRow(ctx, "SELECT pg_advisory_unlock($1)", paymentProvisionLockKey(paymentID)).Scan(&unlocked); err != nil || !unlocked {
+		closeCtx, closeCancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer closeCancel()
+		_ = conn.Hijack().Close(closeCtx)
+		return
+	}
+	conn.Release()
+}
+
+func paymentProvisionLockKey(paymentID int64) int64 {
+	return paymentProvisionLockNamespace ^ paymentID
+}
+
+// RunPanelSync reconciles local users with Remnawave and provisions paid orders.
+func RunPanelSync(ctx context.Context, settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client, limit int) (PanelSyncResult, error) {
+	result := PanelSyncResult{
+		Status:       "ok",
+		LastSyncTime: time.Now().UTC().Format(time.RFC3339),
+	}
+	if pool == nil {
+		result.Status = "failed"
+		result.Errors = append(result.Errors, "database_not_configured")
+		return result, fmt.Errorf("database_not_configured")
+	}
+	if limit <= 0 || limit > 2000 {
+		limit = 500
+	}
+
+	provision, err := ProvisionPendingPaidOrders(ctx, settings, pool, panel, 100)
+	result.PaymentsScanned = provision.Scanned
+	result.PaymentsProvisioned = provision.Provisioned
+	result.PaymentsFailed = provision.Failed
+	if err != nil {
+		result.Status = "partial"
+		result.Errors = appendSyncError(result.Errors, err)
+	}
+
+	if panel == nil || !panel.Configured(ctx) {
+		if result.Status == "ok" {
+			result.Status = "partial"
+		}
+		result.Errors = append(result.Errors, "panel_not_configured")
+		_ = savePanelSyncStatus(ctx, pool, result)
+		return result, nil
+	}
+
+	users, err := loadPanelSyncUsers(ctx, pool, settings, limit)
+	if err != nil {
+		result.Status = "failed"
+		result.Errors = appendSyncError(result.Errors, err)
+		_ = savePanelSyncStatus(ctx, pool, result)
+		return result, err
+	}
+	for _, user := range users {
+		result.UsersProcessed++
+		panelUser, found, err := panelUserForWebUser(ctx, pool, panel, user)
+		if err != nil {
+			result.Status = "partial"
+			result.Errors = appendSyncError(result.Errors, err)
+			continue
+		}
+		if found && stringValue(panelUser, "uuid") != "" {
+			result.SubscriptionsSynced++
+		}
+	}
+	if err := savePanelSyncStatus(ctx, pool, result); err != nil {
+		result.Status = "partial"
+		result.Errors = appendSyncError(result.Errors, err)
+	}
+	return result, nil
+}
+
+// LastPanelSyncStatus returns the most recent sync status payload for admin stats.
+func LastPanelSyncStatus(ctx context.Context, pool *pgxpool.Pool) PanelSyncResult {
+	result := PanelSyncResult{Status: "idle"}
+	if pool == nil {
+		return result
+	}
+	raw, ok, err := appsettings.NewStore(pool).Get(ctx, panelSyncStatusSettingKey)
+	if err != nil || !ok {
+		return result
+	}
+	if json.Unmarshal(raw, &result) != nil || result.Status == "" {
+		return PanelSyncResult{Status: "idle"}
+	}
+	return result
+}
+
+func loadPanelSyncUsers(ctx context.Context, pool *pgxpool.Pool, settings config.Settings, limit int) ([]webappUser, error) {
+	rows, err := pool.Query(ctx, `
+SELECT user_id, COALESCE(telegram_id,0), COALESCE(username,''), COALESCE(email,''), COALESCE(first_name,''), COALESCE(last_name,''),
+	COALESCE(language_code,''), COALESCE(telegram_photo_url,''), COALESCE(panel_user_uuid,'')
+FROM users
+WHERE COALESCE(panel_user_uuid,'') = '' OR COALESCE(telegram_id,0) <> 0 OR COALESCE(email,'') <> ''
+ORDER BY CASE WHEN COALESCE(panel_user_uuid,'') = '' THEN 0 ELSE 1 END, registration_date DESC
+LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	users := []webappUser{}
+	for rows.Next() {
+		var user webappUser
+		if err := rows.Scan(&user.UserID, &user.TelegramID, &user.Username, &user.Email, &user.FirstName, &user.LastName, &user.LanguageCode, &user.PhotoURL, &user.PanelUserUUID); err != nil {
+			return nil, err
+		}
+		user.LanguageCode = normalizeWebLanguage(user.LanguageCode, settings.DefaultLanguage)
+		user.IsAdmin = isAdminID(settings.AdminIDs, user.UserID) || isAdminID(settings.AdminIDs, user.TelegramID)
+		users = append(users, user)
+	}
+	return users, rows.Err()
+}
+
+func savePanelSyncStatus(ctx context.Context, pool *pgxpool.Pool, result PanelSyncResult) error {
+	return appsettings.NewStore(pool).Upsert(ctx, panelSyncStatusSettingKey, result)
+}
+
+func appendSyncError(errorsList []string, err error) []string {
+	if err == nil || len(errorsList) >= 10 {
+		return errorsList
+	}
+	message := err.Error()
+	if len(message) > 300 {
+		message = message[:300]
+	}
+	return append(errorsList, message)
+}
+
+func loadPendingProvisionOrders(ctx context.Context, pool *pgxpool.Pool, limit int) ([]payments.Order, error) {
+	rows, err := pool.Query(ctx, `
+SELECT payment_id, order_id, user_id, COALESCE(provider,''), COALESCE(method,''), COALESCE(payment_type,''),
+	amount::float8, COALESCE(currency,''), COALESCE(base_amount, amount)::float8, COALESCE(base_currency, currency),
+	COALESCE(display_cny_amount,0)::float8, COALESCE(fx_rate,0)::float8, COALESCE(fx_source,''), fx_updated_at,
+	COALESCE(plan_hash,''), COALESCE(plan_snapshot,'{}'::jsonb), COALESCE(status,''), COALESCE(description,''),
+	COALESCE(tariff_key,''), COALESCE(sale_mode,''), COALESCE(months,0), COALESCE(traffic_gb,0)::float8,
+	COALESCE(device_count,0), COALESCE(provider_payment_id,''), COALESCE(payment_url,''), COALESCE(qr_content,''),
+	COALESCE(display_amount,''), COALESCE(display_currency,''), COALESCE(payment_address,''), COALESCE(network,''),
+	COALESCE(url_scheme,''), COALESCE(raw_webhook,'{}'::jsonb), provisioned_at, COALESCE(provision_error,''), created_at, updated_at, paid_at
+FROM payment_orders
+WHERE status IN ('paid','succeeded') AND provisioned_at IS NULL
+ORDER BY paid_at ASC NULLS LAST, updated_at ASC
+LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	orders := []payments.Order{}
+	for rows.Next() {
+		var order payments.Order
+		if err := rows.Scan(
+			&order.PaymentID, &order.OrderID, &order.UserID, &order.Provider, &order.Method, &order.PaymentType,
+			&order.Amount, &order.Currency, &order.BaseAmount, &order.BaseCurrency, &order.DisplayCNYAmount,
+			&order.FXRate, &order.FXSource, &order.FXUpdatedAt, &order.PlanHash, &order.PlanSnapshot,
+			&order.Status, &order.Description, &order.TariffKey, &order.SaleMode, &order.Months, &order.TrafficGB,
+			&order.DeviceCount, &order.ProviderPaymentID, &order.PaymentURL, &order.QRContent, &order.DisplayAmount,
+			&order.DisplayCurrency, &order.PaymentAddress, &order.Network, &order.URLScheme, &order.RawWebhook,
+			&order.ProvisionedAt, &order.ProvisionError, &order.CreatedAt, &order.UpdatedAt, &order.PaidAt,
+		); err != nil {
+			return nil, err
+		}
+		orders = append(orders, order)
+	}
+	return orders, rows.Err()
 }
 
 func ensurePanelUserForPlan(ctx context.Context, pool *pgxpool.Pool, panel *remnawave.Client, user webappUser, plan paidPlan) (map[string]any, error) {
@@ -475,6 +746,80 @@ func loadPanelUUIDForUser(ctx context.Context, pool *pgxpool.Pool, userID int64)
 	return uuid
 }
 
+func loadUserTrafficOverride(ctx context.Context, pool *pgxpool.Pool, userID int64) userTrafficOverride {
+	overrides := readUserTrafficOverrides(ctx, pool)
+	return overrides[strconv.FormatInt(userID, 10)]
+}
+
+func saveUserTrafficOverride(ctx context.Context, pool *pgxpool.Pool, userID int64, override userTrafficOverride) error {
+	if pool == nil {
+		return fmt.Errorf("database_not_configured")
+	}
+	overrides := readUserTrafficOverrides(ctx, pool)
+	override.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+	overrides[strconv.FormatInt(userID, 10)] = override
+	return appsettings.NewStore(pool).Upsert(ctx, userTrafficOverridesSettingKey, overrides)
+}
+
+func readUserTrafficOverrides(ctx context.Context, pool *pgxpool.Pool) map[string]userTrafficOverride {
+	raw, ok, err := appsettings.NewStore(pool).Get(ctx, userTrafficOverridesSettingKey)
+	if err != nil || !ok {
+		return map[string]userTrafficOverride{}
+	}
+	var overrides map[string]userTrafficOverride
+	if json.Unmarshal(raw, &overrides) == nil && overrides != nil {
+		return overrides
+	}
+	return map[string]userTrafficOverride{}
+}
+
+func premiumLimitBytes(override userTrafficOverride) int64 {
+	if override.PremiumUnlimited {
+		return 0
+	}
+	if override.PremiumBonusBytes > 0 {
+		return override.PremiumBonusBytes
+	}
+	return 0
+}
+
+func userAutoRenewEnabled(ctx context.Context, pool *pgxpool.Pool, userID int64) bool {
+	raw, ok, err := appsettings.NewStore(pool).Get(ctx, userAutoRenewSettingKey)
+	if err != nil || !ok {
+		return false
+	}
+	var values map[string]bool
+	if json.Unmarshal(raw, &values) != nil || values == nil {
+		return false
+	}
+	return values[strconv.FormatInt(userID, 10)]
+}
+
+func saveUserAutoRenew(ctx context.Context, pool *pgxpool.Pool, userID int64, enabled bool) error {
+	if pool == nil {
+		return fmt.Errorf("database_not_configured")
+	}
+	store := appsettings.NewStore(pool)
+	raw, ok, err := store.Get(ctx, userAutoRenewSettingKey)
+	if err != nil {
+		return err
+	}
+	values := map[string]bool{}
+	if ok {
+		_ = json.Unmarshal(raw, &values)
+		if values == nil {
+			values = map[string]bool{}
+		}
+	}
+	key := strconv.FormatInt(userID, 10)
+	if enabled {
+		values[key] = true
+	} else {
+		delete(values, key)
+	}
+	return store.Upsert(ctx, userAutoRenewSettingKey, values)
+}
+
 func loadRecentPaymentsForUser(ctx context.Context, pool *pgxpool.Pool, userID int64) []payments.Order {
 	if pool == nil {
 		return []payments.Order{}
@@ -522,6 +867,8 @@ func userTotalPaid(ctx context.Context, pool *pgxpool.Pool, userID int64) float6
 
 func panelAwareAdminUser(ctx context.Context, pool *pgxpool.Pool, panel *remnawave.Client, user map[string]any) map[string]any {
 	userID, _ := strconv.ParseInt(fmt.Sprint(user["user_id"]), 10, 64)
+	override := loadUserTrafficOverride(ctx, pool, userID)
+	user["premium_traffic"] = premiumTrafficPayload(override)
 	panelUUID := loadPanelUUIDForUser(ctx, pool, userID)
 	if panelUUID != "" {
 		user["panel_user_uuid"] = panelUUID
@@ -534,11 +881,11 @@ func panelAwareAdminUser(ctx context.Context, pool *pgxpool.Pool, panel *remnawa
 		user["panel_status"] = "unknown"
 		return user
 	}
-	enrichAdminUserFromPanel(user, panelUser)
+	enrichAdminUserFromPanel(user, panelUser, override)
 	return user
 }
 
-func enrichAdminUserFromPanel(user map[string]any, panelUser map[string]any) {
+func enrichAdminUserFromPanel(user map[string]any, panelUser map[string]any, override userTrafficOverride) {
 	status := strings.ToLower(stringValue(panelUser, "status"))
 	if status == "" {
 		status = "unknown"
@@ -551,7 +898,25 @@ func enrichAdminUserFromPanel(user map[string]any, panelUser map[string]any) {
 	limit := int64Value(panelUser, "trafficLimitBytes")
 	user["traffic_used_bytes"] = used
 	user["traffic_limit_bytes"] = limit
-	user["premium_traffic"] = map[string]any{"state": "none"}
+	user["premium_traffic"] = premiumTrafficPayload(override)
+}
+
+func premiumTrafficPayload(override userTrafficOverride) map[string]any {
+	if override.PremiumUnlimited {
+		return map[string]any{
+			"state":       "unlimited",
+			"used_bytes":  int64(0),
+			"limit_bytes": int64(0),
+		}
+	}
+	if override.PremiumBonusBytes > 0 {
+		return map[string]any{
+			"state":       "good",
+			"used_bytes":  int64(0),
+			"limit_bytes": override.PremiumBonusBytes,
+		}
+	}
+	return map[string]any{"state": "none"}
 }
 
 func mapDevicePayload(panelPayload map[string]any, panelUser map[string]any) map[string]any {
@@ -854,6 +1219,74 @@ func adminChangePanelTariff(ctx context.Context, settings config.Settings, pool 
 	return err
 }
 
+func adminSetPremiumTrafficOverride(ctx context.Context, pool *pgxpool.Pool, userID int64, r *http.Request) error {
+	var payload struct {
+		Unlimited  bool    `json:"unlimited"`
+		BonusGB    float64 `json:"bonus_gb"`
+		BonusBytes *int64  `json:"bonus_bytes"`
+	}
+	if err := decodeJSONBody(r, &payload); err != nil {
+		return err
+	}
+	bonusBytes := gbToBytes(payload.BonusGB)
+	if payload.BonusBytes != nil {
+		bonusBytes = *payload.BonusBytes
+	}
+	if bonusBytes < 0 {
+		return fmt.Errorf("invalid_bonus")
+	}
+	override := loadUserTrafficOverride(ctx, pool, userID)
+	override.PremiumUnlimited = payload.Unlimited
+	override.PremiumBonusBytes = bonusBytes
+	if override.PremiumUnlimited {
+		override.PremiumBonusBytes = 0
+	}
+	return saveUserTrafficOverride(ctx, pool, userID, override)
+}
+
+func adminSetRegularTrafficOverride(ctx context.Context, settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client, userID int64, r *http.Request) error {
+	if panel == nil || !panel.Configured(ctx) {
+		return remnawave.ErrNotConfigured
+	}
+	var payload struct {
+		Unlimited         bool    `json:"unlimited"`
+		RegularBonusGB    float64 `json:"regular_bonus_gb"`
+		RegularBonusBytes *int64  `json:"regular_bonus_bytes"`
+	}
+	if err := decodeJSONBody(r, &payload); err != nil {
+		return err
+	}
+	bonusBytes := gbToBytes(payload.RegularBonusGB)
+	if payload.RegularBonusBytes != nil {
+		bonusBytes = *payload.RegularBonusBytes
+	}
+	if bonusBytes < 0 {
+		return fmt.Errorf("invalid_regular_bonus")
+	}
+	user, panelUser, err := adminPanelUser(ctx, settings, pool, panel, userID)
+	if err != nil {
+		return err
+	}
+	override := loadUserTrafficOverride(ctx, pool, userID)
+	baseLimit := regularBaseTrafficLimit(ctx, pool, panel, user, panelUser, override)
+	nextLimit := baseLimit + bonusBytes
+	if payload.Unlimited {
+		nextLimit = 0
+		bonusBytes = 0
+	}
+	update := map[string]any{
+		"uuid":                 stringValue(panelUser, "uuid"),
+		"trafficLimitBytes":    nextLimit,
+		"trafficLimitStrategy": panel.EffectiveConfig(ctx).UserTrafficStrategy,
+	}
+	if _, err := panel.UpdateUser(ctx, update); err != nil {
+		return err
+	}
+	override.RegularUnlimited = payload.Unlimited
+	override.RegularBonusBytes = bonusBytes
+	return saveUserTrafficOverride(ctx, pool, userID, override)
+}
+
 func adminSetPanelHWIDLimit(ctx context.Context, settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client, userID int64, r *http.Request) error {
 	if panel == nil || !panel.Configured(ctx) {
 		return remnawave.ErrNotConfigured
@@ -895,33 +1328,64 @@ func adminSetPanelHWIDLimit(ctx context.Context, settings config.Settings, pool 
 }
 
 func adminGrantPanelTraffic(ctx context.Context, settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client, userID int64, r *http.Request) error {
-	if panel == nil || !panel.Configured(ctx) {
-		return remnawave.ErrNotConfigured
-	}
 	var payload struct {
-		Kind string  `json:"kind"`
-		GB   float64 `json:"gb"`
+		Kind  string  `json:"kind"`
+		GB    float64 `json:"gb"`
+		Bytes *int64  `json:"bytes"`
 	}
 	if err := decodeJSONBody(r, &payload); err != nil {
 		return err
 	}
-	if payload.GB <= 0 {
+	grantBytes := gbToBytes(payload.GB)
+	if payload.Bytes != nil {
+		grantBytes = *payload.Bytes
+	}
+	if grantBytes <= 0 {
 		return fmt.Errorf("invalid_gb")
 	}
+	override := loadUserTrafficOverride(ctx, pool, userID)
 	if strings.EqualFold(payload.Kind, "premium") {
-		return nil
+		override.PremiumBonusBytes += grantBytes
+		if override.PremiumUnlimited {
+			override.PremiumBonusBytes = 0
+		}
+		return saveUserTrafficOverride(ctx, pool, userID, override)
+	}
+	if panel == nil || !panel.Configured(ctx) {
+		return remnawave.ErrNotConfigured
 	}
 	_, panelUser, err := adminPanelUser(ctx, settings, pool, panel, userID)
 	if err != nil {
 		return err
 	}
 	current := int64Value(panelUser, "trafficLimitBytes")
+	nextLimit := current + grantBytes
+	if override.RegularUnlimited {
+		nextLimit = 0
+	} else {
+		override.RegularBonusBytes += grantBytes
+	}
 	update := map[string]any{
 		"uuid":              stringValue(panelUser, "uuid"),
-		"trafficLimitBytes": current + gbToBytes(payload.GB),
+		"trafficLimitBytes": nextLimit,
 	}
-	_, err = panel.UpdateUser(ctx, update)
-	return err
+	if _, err = panel.UpdateUser(ctx, update); err != nil {
+		return err
+	}
+	return saveUserTrafficOverride(ctx, pool, userID, override)
+}
+
+func regularBaseTrafficLimit(ctx context.Context, pool *pgxpool.Pool, panel *remnawave.Client, user webappUser, panelUser map[string]any, override userTrafficOverride) int64 {
+	plan := latestPaidPlanForUser(ctx, pool, user.UserID)
+	if plan.TariffKey != "" || plan.Title != "" || plan.MonthlyGB > 0 || plan.TrafficGB > 0 {
+		return trafficLimitBytesForPlan(plan, panel.EffectiveConfig(ctx), 0)
+	}
+	current := int64Value(panelUser, "trafficLimitBytes")
+	base := current - override.RegularBonusBytes
+	if base < 0 {
+		return 0
+	}
+	return base
 }
 
 func adminPanelUser(ctx context.Context, settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client, userID int64) (webappUser, map[string]any, error) {

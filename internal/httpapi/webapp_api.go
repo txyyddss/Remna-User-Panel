@@ -595,6 +595,10 @@ func remnawaveSettingsFields(ctx context.Context, settings config.Settings, stor
 		{Key: "PANEL_API_URL", Type: "string", Label: "Remnawave API URL", Description: "Panel base URL. Both https://panel.example and https://panel.example/api are accepted.", Subsection: "Remnawave", Fallback: settings.PanelAPIURL},
 		{Key: "PANEL_API_KEY", Type: "string", Label: "Remnawave API key", Description: "Bearer token used to call Remnawave API.", Subsection: "Remnawave", Fallback: settings.PanelAPIKey, Secret: true},
 		{Key: "PANEL_WEBHOOK_SECRET", Type: "string", Label: "Panel webhook secret", Description: "Shared secret checked on incoming Remnawave webhook requests.", Subsection: "Remnawave", Fallback: settings.PanelWebhookSecret, Secret: true, WebhookPath: settings.PanelWebhookPath, ProviderID: "remnawave", WebhookConfigured: webhookConfigured},
+		{Key: "PANEL_API_TOTAL_TIMEOUT_SECONDS", Type: "float", Label: "Remnawave API total timeout", Description: "Maximum total time for one Remnawave API request, in seconds.", Subsection: "Remnawave", Fallback: settings.PanelAPITotalTimeout.Seconds()},
+		{Key: "PANEL_API_CONNECT_TIMEOUT_SECONDS", Type: "float", Label: "Remnawave API connect timeout", Description: "Reserved for compatibility with the reference project; total timeout is enforced by the Go client.", Subsection: "Remnawave", Fallback: settings.PanelAPIConnectTimeout.Seconds()},
+		{Key: "PANEL_API_SOCK_CONNECT_TIMEOUT_SECONDS", Type: "float", Label: "Remnawave API TCP/TLS timeout", Description: "Reserved for compatibility with the reference project; total timeout is enforced by the Go client.", Subsection: "Remnawave", Fallback: settings.PanelAPISockConnectTimeout.Seconds()},
+		{Key: "PANEL_API_SOCK_READ_TIMEOUT_SECONDS", Type: "float", Label: "Remnawave API read timeout", Description: "Reserved for compatibility with the reference project; total timeout is enforced by the Go client.", Subsection: "Remnawave", Fallback: settings.PanelAPISockReadTimeout.Seconds()},
 		{Key: "USER_TRAFFIC_LIMIT_GB", Type: "float", Label: "Default traffic limit GB", Description: "Fallback traffic limit when a tariff does not define monthly_gb.", Subsection: "Defaults", Fallback: settings.UserTrafficLimitGB},
 		{Key: "USER_TRAFFIC_STRATEGY", Type: "string", Label: "Traffic reset strategy", Description: "Remnawave trafficLimitStrategy for provisioned users.", Subsection: "Defaults", Fallback: settings.UserTrafficStrategy, Choices: []settingChoice{{Value: "NO_RESET", Label: "No reset"}, {Value: "DAY", Label: "Day"}, {Value: "WEEK", Label: "Week"}, {Value: "MONTH", Label: "Month"}, {Value: "MONTH_ROLLING", Label: "Month rolling"}}},
 		{Key: "USER_SQUAD_UUIDS", Type: "text", Label: "Default internal squads", Description: "Comma-separated Internal Squad UUIDs used when a tariff has no squad_uuids.", Subsection: "Defaults", Fallback: strings.Join(settings.UserSquadUUIDs, ",")},
@@ -705,7 +709,8 @@ func allowedPaymentSettingKeys() map[string]bool {
 	for _, key := range []string{
 		"WEBHOOK_BASE_URL", "DEFAULT_CURRENCY_SYMBOL", "FX_PROVIDER", "FX_CUSTOM_USD_CNY", "FX_CACHE_TTL_SECONDS",
 		"PAYMENT_METHODS_ORDER",
-		"PANEL_API_URL", "PANEL_API_KEY", "PANEL_WEBHOOK_SECRET", "USER_TRAFFIC_LIMIT_GB", "USER_TRAFFIC_STRATEGY",
+		"PANEL_API_URL", "PANEL_API_KEY", "PANEL_WEBHOOK_SECRET", "PANEL_API_TOTAL_TIMEOUT_SECONDS", "PANEL_API_CONNECT_TIMEOUT_SECONDS",
+		"PANEL_API_SOCK_CONNECT_TIMEOUT_SECONDS", "PANEL_API_SOCK_READ_TIMEOUT_SECONDS", "USER_TRAFFIC_LIMIT_GB", "USER_TRAFFIC_STRATEGY",
 		"USER_SQUAD_UUIDS", "USER_EXTERNAL_SQUAD_UUID", "USER_HWID_DEVICE_LIMIT", "MY_DEVICES_ENABLED", "SUPPORT_TICKETS_ENABLED",
 		"TRIAL_ENABLED", "TRIAL_DURATION_DAYS", "TRIAL_TRAFFIC_LIMIT_GB", "TRIAL_TRAFFIC_STRATEGY", "TRIAL_SQUAD_UUIDS",
 		"REFERRAL_WELCOME_BONUS_DAYS",
@@ -786,12 +791,15 @@ func normalizeSettingValue(key string, value any) (any, error) {
 			return nil, fmt.Errorf("invalid_float")
 		}
 		return strconv.FormatFloat(parsed, 'f', -1, 64), nil
-	case "USER_TRAFFIC_LIMIT_GB", "TRIAL_TRAFFIC_LIMIT_GB":
+	case "USER_TRAFFIC_LIMIT_GB", "TRIAL_TRAFFIC_LIMIT_GB", "PANEL_API_TOTAL_TIMEOUT_SECONDS", "PANEL_API_CONNECT_TIMEOUT_SECONDS", "PANEL_API_SOCK_CONNECT_TIMEOUT_SECONDS", "PANEL_API_SOCK_READ_TIMEOUT_SECONDS":
 		if strings.TrimSpace(fmt.Sprint(value)) == "" {
+			if strings.HasPrefix(key, "PANEL_API_") {
+				return nil, fmt.Errorf("invalid_float")
+			}
 			return 0, nil
 		}
 		parsed, err := strconv.ParseFloat(strings.TrimSpace(fmt.Sprint(value)), 64)
-		if err != nil || parsed < 0 {
+		if err != nil || parsed < 0 || (strings.HasPrefix(key, "PANEL_API_") && parsed <= 0) {
 			return nil, fmt.Errorf("invalid_float")
 		}
 		return parsed, nil
