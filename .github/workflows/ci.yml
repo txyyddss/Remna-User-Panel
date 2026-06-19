@@ -147,7 +147,7 @@ jobs:
           gzip -9c "${tar_path}" > "dist/${{ steps.meta.outputs.archive }}"
 
       - name: Upload image archive
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: docker-${{ matrix.target }}
           path: dist/*.tar.gz
