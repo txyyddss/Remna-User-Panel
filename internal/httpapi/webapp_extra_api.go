@@ -1767,15 +1767,6 @@ func adminUploadPlaceholderHandler(settings config.Settings, pool *pgxpool.Pool,
 	}
 }
 
-func okSessionMutation(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := requireSession(w, r, settings, pool, true); !ok {
-			return
-		}
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
-	}
-}
-
 func okAdminMutation(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := requireAdmin(w, r, settings, pool, true); !ok {
