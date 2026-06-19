@@ -95,7 +95,7 @@ func createBEPUSDTPayment(ctx context.Context, client *http.Client, cfg config.B
 	if err != nil {
 		return providerPaymentResponse{}, fmt.Errorf("bepusdt create payment: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
 		return providerPaymentResponse{}, fmt.Errorf("read bepusdt response: %w", err)

@@ -733,7 +733,7 @@ func adminUploadPlaceholderHandler(settings config.Settings, pool *pgxpool.Pool,
 			}
 			file, header, err := r.FormFile("file")
 			if err == nil {
-				defer file.Close()
+				defer func() { _ = file.Close() }()
 				if header.Size > 8<<20 {
 					writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "file_too_large"})
 					return

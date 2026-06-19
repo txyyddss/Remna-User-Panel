@@ -149,7 +149,7 @@ func (s *Service) fetchJSON(ctx context.Context, url string, target any) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return fmt.Errorf("fx provider returned HTTP %d", resp.StatusCode)
 	}
