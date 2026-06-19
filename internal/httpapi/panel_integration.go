@@ -35,7 +35,7 @@ type paidPlan struct {
 	MonthlyGB         float64  `json:"monthly_gb"`
 	SquadUUIDs        []string `json:"squad_uuids"`
 	ExternalSquadUUID string   `json:"external_squad_uuid"`
-	HWIDDeviceLimit   *int     `json:"hwid_device_limit"`
+
 	Provider          string   `json:"provider"`
 }
 
@@ -138,15 +138,6 @@ func subscriptionFromPanelUser(ctx context.Context, pool *pgxpool.Pool, user web
 		usedBytes = int64Value(panelUser, "usedTrafficBytes")
 	}
 	limitBytes := int64Value(panelUser, "trafficLimitBytes")
-	hwidLimit, hasHWIDLimit := optionalIntValue(panelUser, "hwidDeviceLimit")
-	if !hasHWIDLimit && plan.HWIDDeviceLimit != nil {
-		hwidLimit = *plan.HWIDDeviceLimit
-		hasHWIDLimit = true
-	}
-	maxDevices := any(nil)
-	if hasHWIDLimit {
-		maxDevices = hwidLimit
-	}
 	days := 0
 	if !expireAt.IsZero() && expireAt.After(now) {
 		days = int(math.Ceil(expireAt.Sub(now).Hours() / 24))
@@ -174,9 +165,6 @@ func subscriptionFromPanelUser(ctx context.Context, pool *pgxpool.Pool, user web
 		"can_topup_traffic":          active && limitBytes > 0,
 		"can_topup_regular_traffic":  active && limitBytes > 0,
 		"can_topup_premium_traffic":  false,
-		"can_topup_devices":          active && hasHWIDLimit && hwidLimit != 0,
-		"max_devices":                maxDevices,
-		"extra_hwid_devices":         0,
 		"premium_unlimited_override": override.PremiumUnlimited,
 		"premium_bonus_bytes":        override.PremiumBonusBytes,
 		"premium_used_bytes":         int64(0),
@@ -536,11 +524,7 @@ func ensurePanelUserForPlan(ctx context.Context, pool *pgxpool.Pool, panel *remn
 	if external := firstNonEmpty(plan.ExternalSquadUUID, cfg.UserExternalSquadUUID); external != "" {
 		payload["externalSquadUuid"] = external
 	}
-	if plan.HWIDDeviceLimit != nil {
-		payload["hwidDeviceLimit"] = *plan.HWIDDeviceLimit
-	} else if cfg.UserHWIDDeviceLimit != nil {
-		payload["hwidDeviceLimit"] = *cfg.UserHWIDDeviceLimit
-	}
+
 	if found {
 		uuid := stringValue(existing, "uuid")
 		payload["uuid"] = uuid
@@ -603,9 +587,6 @@ func grantPanelAccessDays(ctx context.Context, pool *pgxpool.Pool, panel *remnaw
 	}
 	if cfg.UserExternalSquadUUID != "" {
 		payload["externalSquadUuid"] = cfg.UserExternalSquadUUID
-	}
-	if cfg.UserHWIDDeviceLimit != nil {
-		payload["hwidDeviceLimit"] = *cfg.UserHWIDDeviceLimit
 	}
 	if source := strings.TrimSpace(options.Source); source != "" {
 		payload["description"] = strings.TrimSpace(panelDescription(user) + " [" + source + "]")
@@ -1287,46 +1268,6 @@ func adminSetRegularTrafficOverride(ctx context.Context, settings config.Setting
 	return saveUserTrafficOverride(ctx, pool, userID, override)
 }
 
-func adminSetPanelHWIDLimit(ctx context.Context, settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client, userID int64, r *http.Request) error {
-	if panel == nil || !panel.Configured(ctx) {
-		return remnawave.ErrNotConfigured
-	}
-	var payload struct {
-		Unlimited       bool `json:"unlimited"`
-		UseDefault      bool `json:"use_default"`
-		HWIDDeviceLimit *int `json:"hwid_device_limit"`
-		Limit           *int `json:"limit"`
-	}
-	if err := decodeJSONBody(r, &payload); err != nil {
-		return err
-	}
-	_, panelUser, err := adminPanelUser(ctx, settings, pool, panel, userID)
-	if err != nil {
-		return err
-	}
-	var limit any
-	switch {
-	case payload.Unlimited:
-		limit = 0
-	case payload.UseDefault:
-		cfg := panel.EffectiveConfig(ctx)
-		if cfg.UserHWIDDeviceLimit == nil {
-			limit = nil
-		} else {
-			limit = *cfg.UserHWIDDeviceLimit
-		}
-	case payload.HWIDDeviceLimit != nil:
-		limit = *payload.HWIDDeviceLimit
-	case payload.Limit != nil:
-		limit = *payload.Limit
-	default:
-		limit = nil
-	}
-	update := map[string]any{"uuid": stringValue(panelUser, "uuid"), "hwidDeviceLimit": limit}
-	_, err = panel.UpdateUser(ctx, update)
-	return err
-}
-
 func adminGrantPanelTraffic(ctx context.Context, settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client, userID int64, r *http.Request) error {
 	var payload struct {
 		Kind  string  `json:"kind"`
@@ -1434,11 +1375,6 @@ func mergePlanUpdate(update map[string]any, plan tariffs.Plan, cfg remnawave.Eff
 	}
 	if external := firstNonEmpty(plan.ExternalSquadUUID, cfg.UserExternalSquadUUID); external != "" {
 		update["externalSquadUuid"] = external
-	}
-	if plan.HWIDDeviceLimit != nil {
-		update["hwidDeviceLimit"] = *plan.HWIDDeviceLimit
-	} else if cfg.UserHWIDDeviceLimit != nil {
-		update["hwidDeviceLimit"] = *cfg.UserHWIDDeviceLimit
 	}
 }
 

@@ -414,6 +414,15 @@ func trialActivateHandler(settings config.Settings, pool *pgxpool.Pool, panel *r
 			writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "trial_already_used"})
 			return
 		}
+		// Apply risk control to trial activation (same as referral welcome bonus)
+		if telemetryEnabled(r.Context(), pool) {
+			_, riskScore, riskRule := evaluateWelcomeRisk(r.Context(), settings, pool, r, session.User.UserID, 0)
+			if riskRule != "" {
+				recordMessageLog(r.Context(), pool, messageLogEntry{UserID: session.User.UserID, EventType: "trial_risk_rejected", Content: "automatic trial risk rejection", Payload: map[string]any{"risk_score": riskScore, "rule_code": riskRule}})
+				writeJSON(w, http.StatusForbidden, map[string]any{"ok": false, "error": "trial_risk_rejected"})
+				return
+			}
+		}
 		panelUser, err := grantPanelAccessDays(r.Context(), pool, panel, session.User, days, accessGrantOptions{
 			Source:          "trial",
 			TrafficLimitGB:  store.Float(r.Context(), "TRIAL_TRAFFIC_LIMIT_GB", 0),
@@ -1242,11 +1251,6 @@ func adminUserActionHandler(settings config.Settings, pool *pgxpool.Pool, panel 
 			}
 		} else if strings.HasSuffix(path, "/regular-traffic-override") {
 			if err := adminSetRegularTrafficOverride(r.Context(), settings, pool, panel, userID, r); err != nil {
-				writeAdminActionError(w, err)
-				return
-			}
-		} else if strings.HasSuffix(path, "/hwid-device-limit") {
-			if err := adminSetPanelHWIDLimit(r.Context(), settings, pool, panel, userID, r); err != nil {
 				writeAdminActionError(w, err)
 				return
 			}

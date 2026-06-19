@@ -99,7 +99,7 @@ func Load() (Settings, error) {
 		AdminEmail:                  strings.ToLower(env("ADMIN_EMAIL", "")),
 		AdminPassword:               env("ADMIN_PASSWORD", ""),
 		DefaultLanguage:             normalizeLanguage(env("DEFAULT_LANGUAGE", defaultLanguage)),
-		DefaultCurrency:             env("DEFAULT_CURRENCY_SYMBOL", "USD"),
+		DefaultCurrency:             env("DEFAULT_CURRENCY_SYMBOL", "$"),
 		WebhookBaseURL:              webhookBaseURL,
 		WebhookSecretToken:          env("WEBHOOK_SECRET_TOKEN", ""),
 		WebAppSessionSecret:         env("WEBAPP_SESSION_SECRET", ""),
@@ -129,7 +129,7 @@ func Load() (Settings, error) {
 		UserTrafficStrategy:         normalizeTrafficStrategy(env("USER_TRAFFIC_STRATEGY", "NO_RESET")),
 		UserSquadUUIDs:              splitCSV(env("USER_SQUAD_UUIDS", "")),
 		UserExternalSquadUUID:       strings.TrimSpace(env("USER_EXTERNAL_SQUAD_UUID", "")),
-		UserHWIDDeviceLimit:         envOptionalInt("USER_HWID_DEVICE_LIMIT"),
+	
 		EZPay: EZPaySettings{
 			Enabled:   envBool("EZPAY_ENABLED", false),
 			BaseURL:   strings.TrimRight(env("EZPAY_BASE_URL", ""), "/"),

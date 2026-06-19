@@ -1,83 +1,99 @@
 import { writable, get } from "svelte/store";
 
-export function createDevicesStore({ api, t, showToast }) {
+export function createDevicesStore({ api, t, showToast, panelUuid }) {
   const state = writable({
-    devicesData: null,
-    devicesLoaded: false,
-    devicesBusy: false,
-    devicesStatus: "",
-    devicesIsError: false,
-    devicesErrorCode: "",
-    deviceConfirmOpen: false,
-    deviceToDisconnect: null,
-    deviceDisconnectBusy: false,
+    ipsData: null,
+    ipsLoaded: false,
+    ipsBusy: false,
+    ipsStatus: "",
+    ipsIsError: false,
+    ipsErrorCode: "",
+    ipConfirmOpen: false,
+    ipToDisconnect: null,
+    ipDisconnectBusy: false,
   });
 
   async function loadDevices(devicesEnabled, force = false) {
     const s = get(state);
-    if (!devicesEnabled || s.devicesBusy || (s.devicesLoaded && !force)) return;
+    if (!devicesEnabled || s.ipsBusy || (s.ipsLoaded && !force)) return;
     state.update((s) => ({
       ...s,
-      devicesBusy: true,
-      devicesStatus: "",
-      devicesIsError: false,
-      devicesErrorCode: "",
+      ipsBusy: true,
+      ipsStatus: "",
+      ipsIsError: false,
+      ipsErrorCode: "",
     }));
     try {
-      const response = await api("/devices");
-      if (!response?.ok) throw response;
+      const uuid = typeof panelUuid === "function" ? panelUuid() : panelUuid;
+      // Use Remnawave IP control API to fetch active IPs
+      const fetchRes = await api("/ip-control/fetch-ips/" + encodeURIComponent(uuid), { method: "POST" });
+      if (!fetchRes?.ok) throw fetchRes;
+      const jobId = fetchRes?.job_id;
+      if (!jobId) throw { message: t("wa_ips_load_failed") };
+      // Poll for results
+      let result = null;
+      for (let i = 0; i < 30; i++) {
+        await new Promise((r) => setTimeout(r, 1000));
+        const pollRes = await api("/ip-control/fetch-users-ips/result/" + encodeURIComponent(jobId));
+        if (pollRes?.ok && pollRes?.ips) {
+          result = pollRes;
+          break;
+        }
+      }
+      const ips = Array.isArray(result?.ips) ? result.ips : [];
       state.update((s) => ({
         ...s,
-        devicesData: response,
-        devicesLoaded: true,
-        devicesErrorCode: "",
+        ipsData: { ips, current_ips: ips.length },
+        ipsLoaded: true,
+        ipsErrorCode: "",
       }));
     } catch (error) {
       state.update((s) => ({
         ...s,
-        devicesStatus: error?.message || t("wa_devices_load_failed"),
-        devicesIsError: true,
-        devicesErrorCode: String(error?.error || ""),
-        devicesLoaded: true,
+        ipsStatus: error?.message || t("wa_ips_load_failed"),
+        ipsIsError: true,
+        ipsErrorCode: String(error?.error || ""),
+        ipsLoaded: true,
       }));
     } finally {
-      state.update((s) => ({ ...s, devicesBusy: false }));
+      state.update((s) => ({ ...s, ipsBusy: false }));
     }
   }
 
-  function openDeviceDisconnectDialog(device) {
-    state.update((s) => ({ ...s, deviceToDisconnect: device, deviceConfirmOpen: true }));
+  function openDeviceDisconnectDialog(ipEntry) {
+    state.update((s) => ({ ...s, ipToDisconnect: ipEntry, ipConfirmOpen: true }));
   }
 
   function closeDeviceDisconnectDialog() {
     const s = get(state);
-    if (s.deviceDisconnectBusy) return;
-    state.update((s) => ({ ...s, deviceConfirmOpen: false, deviceToDisconnect: null }));
+    if (s.ipDisconnectBusy) return;
+    state.update((s) => ({ ...s, ipConfirmOpen: false, ipToDisconnect: null }));
   }
 
   async function disconnectDevice(devicesEnabled) {
     const s = get(state);
-    const token = String(s.deviceToDisconnect?.token || "").trim();
-    if (!token || s.deviceDisconnectBusy) return;
-    state.update((s) => ({ ...s, deviceDisconnectBusy: true }));
+    const ip = String(s.ipToDisconnect?.ip || "").trim();
+    if (!ip || s.ipDisconnectBusy) return;
+    state.update((s) => ({ ...s, ipDisconnectBusy: true }));
     try {
-      const response = await api("/devices/disconnect", {
+      const uuid = typeof panelUuid === "function" ? panelUuid() : panelUuid;
+      const response = await api("/ip-control/drop-connections", {
         method: "POST",
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ uuid, ips: [ip] }),
       });
       if (!response?.ok) throw response;
-      showToast(t("wa_device_disconnected"));
+      showToast(t("wa_ip_disconnected"));
       state.update((s) => ({
         ...s,
-        deviceConfirmOpen: false,
-        deviceToDisconnect: null,
-        devicesLoaded: false,
+        ipConfirmOpen: false,
+        ipToDisconnect: null,
+        ipsLoaded: false,
       }));
       await loadDevices(devicesEnabled, true);
     } catch (error) {
-      showToast(error?.message || t("wa_device_disconnect_failed"));
+      showToast(error?.message || t("wa_ip_disconnect_failed"));
     } finally {
-      state.update((s) => ({ ...s, deviceDisconnectBusy: false }));
+      state.update((s) => ({ ...s, ipDisconnectBusy: false }));
     }
   }
 

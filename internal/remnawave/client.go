@@ -53,7 +53,6 @@ type EffectiveConfig struct {
 	UserTrafficStrategy   string
 	UserSquadUUIDs        []string
 	UserExternalSquadUUID string
-	UserHWIDDeviceLimit   *int
 }
 
 // Client talks to the Remnawave Panel REST API.
@@ -95,10 +94,6 @@ func (c *Client) EffectiveConfig(ctx context.Context) EffectiveConfig {
 		UserTrafficStrategy:   normalizeTrafficStrategy(c.store.String(ctx, "USER_TRAFFIC_STRATEGY", c.settings.UserTrafficStrategy)),
 		UserSquadUUIDs:        splitList(c.store.String(ctx, "USER_SQUAD_UUIDS", strings.Join(c.settings.UserSquadUUIDs, ","))),
 		UserExternalSquadUUID: strings.TrimSpace(c.store.String(ctx, "USER_EXTERNAL_SQUAD_UUID", c.settings.UserExternalSquadUUID)),
-		UserHWIDDeviceLimit:   c.settings.UserHWIDDeviceLimit,
-	}
-	if raw, ok, _ := c.store.Get(ctx, "USER_HWID_DEVICE_LIMIT"); ok {
-		cfg.UserHWIDDeviceLimit = optionalIntFromJSON(raw)
 	}
 	return cfg
 }

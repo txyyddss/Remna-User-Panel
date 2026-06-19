@@ -643,10 +643,6 @@ func paymentSettingsFields(ctx context.Context, settings config.Settings, store 
 }
 
 func remnawaveSettingsFields(ctx context.Context, settings config.Settings, store appsettings.Store) []map[string]any {
-	hwidFallback := ""
-	if settings.UserHWIDDeviceLimit != nil {
-		hwidFallback = strconv.Itoa(*settings.UserHWIDDeviceLimit)
-	}
 	fields := []paymentSettingField{
 		{Key: "PANEL_API_URL", Type: "string", Label: "Remnawave API URL", Description: "Panel base URL. Both https://panel.example and https://panel.example/api are accepted.", Subsection: "Remnawave", Fallback: settings.PanelAPIURL},
 		{Key: "PANEL_API_KEY", Type: "string", Label: "Remnawave API key", Description: "Bearer token used to call Remnawave API.", Subsection: "Remnawave", Fallback: settings.PanelAPIKey, Secret: true},
@@ -658,7 +654,6 @@ func remnawaveSettingsFields(ctx context.Context, settings config.Settings, stor
 		{Key: "USER_TRAFFIC_STRATEGY", Type: "string", Label: "Traffic reset strategy", Description: "Remnawave trafficLimitStrategy for provisioned users.", Subsection: "Defaults", Fallback: settings.UserTrafficStrategy, Choices: []settingChoice{{Value: "NO_RESET", Label: "No reset"}, {Value: "DAY", Label: "Day"}, {Value: "WEEK", Label: "Week"}, {Value: "MONTH", Label: "Month"}, {Value: "MONTH_ROLLING", Label: "Month rolling"}}},
 		{Key: "USER_SQUAD_UUIDS", Type: "text", Label: "Default internal squads", Description: "Comma-separated Internal Squad UUIDs used when a tariff has no squad_uuids.", Subsection: "Defaults", Fallback: strings.Join(settings.UserSquadUUIDs, ",")},
 		{Key: "USER_EXTERNAL_SQUAD_UUID", Type: "string", Label: "Default external squad", Description: "Optional external squad UUID.", Subsection: "Defaults", Fallback: settings.UserExternalSquadUUID},
-		{Key: "USER_HWID_DEVICE_LIMIT", Type: "int", Label: "Default HWID device limit", Description: "Empty uses Remnawave default; 0 means unlimited.", Subsection: "Defaults", Fallback: hwidFallback},
 		{Key: "TRIAL_ENABLED", Type: "bool", Label: "Trial enabled", Description: "Allow users to activate a one-time trial via Remnawave.", Subsection: "Trial", Fallback: false},
 		{Key: "TRIAL_DURATION_DAYS", Type: "int", Label: "Trial duration days", Description: "Number of days granted by trial activation.", Subsection: "Trial", Fallback: 0},
 		{Key: "TRIAL_TRAFFIC_LIMIT_GB", Type: "float", Label: "Trial traffic limit GB", Description: "Traffic limit applied to trial users. Empty or 0 falls back to default traffic limit.", Subsection: "Trial", Fallback: 0},
@@ -840,7 +835,7 @@ func allowedPaymentSettingKeys() map[string]bool {
 		"PAYMENT_METHODS_ORDER",
 		"STARS_ENABLED",
 		"PANEL_API_SOCK_CONNECT_TIMEOUT_SECONDS", "PANEL_API_SOCK_READ_TIMEOUT_SECONDS", "USER_TRAFFIC_LIMIT_GB", "USER_TRAFFIC_STRATEGY",
-		"USER_SQUAD_UUIDS", "USER_EXTERNAL_SQUAD_UUID", "USER_HWID_DEVICE_LIMIT", "MY_DEVICES_ENABLED", "SUPPORT_TICKETS_ENABLED",
+		"USER_SQUAD_UUIDS", "USER_EXTERNAL_SQUAD_UUID", "MY_DEVICES_ENABLED", "SUPPORT_TICKETS_ENABLED",
 		"SUBSCRIPTION_GUIDES_ENABLED", "SUBSCRIPTION_AUTO_RENEW_ENABLED",
 		"TRIAL_ENABLED", "TRIAL_DURATION_DAYS", "TRIAL_TRAFFIC_LIMIT_GB", "TRIAL_TRAFFIC_STRATEGY", "TRIAL_SQUAD_UUIDS",
 		"REFERRAL_WELCOME_BONUS_DAYS",
@@ -871,12 +866,9 @@ func normalizeSettingValue(key string, value any) (any, error) {
 		default:
 			return nil, fmt.Errorf("invalid_bool")
 		}
-	case "EZPAY_PID", "FX_CACHE_TTL_SECONDS", "USER_HWID_DEVICE_LIMIT", "TRIAL_DURATION_DAYS", "REFERRAL_WELCOME_BONUS_DAYS", "TELEMETRY_RETENTION_HOURS", "TELEMETRY_FINGERPRINT_REJECT_SCORE",
+	case "EZPAY_PID", "FX_CACHE_TTL_SECONDS", "TRIAL_DURATION_DAYS", "REFERRAL_WELCOME_BONUS_DAYS", "TELEMETRY_RETENTION_HOURS", "TELEMETRY_FINGERPRINT_REJECT_SCORE",
 		"SUBSCRIPTION_NOTIFY_DAYS_BEFORE", "SUBSCRIPTION_NOTIFY_HOURS_BEFORE",
 		"WORKER_PANEL_SYNC_INTERVAL_SECONDS", "WORKER_PAYMENT_PROVISION_INTERVAL_SECONDS":
-		if key == "USER_HWID_DEVICE_LIMIT" && strings.TrimSpace(fmt.Sprint(value)) == "" {
-			return "", nil
-		}
 		var parsed int
 		switch typed := value.(type) {
 		case float64:

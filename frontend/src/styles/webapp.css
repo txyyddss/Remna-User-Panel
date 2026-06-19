@@ -3400,3 +3400,93 @@ a {
     min-width: 0;
   }
 }
+
+/* ─── Enhanced animations / micro-interactions ─── */
+
+@keyframes loader-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes loader-dot-bounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-8px); }
+}
+
+@keyframes page-slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes card-pop-in {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes shimmer-wave {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.card-enter {
+  animation: card-pop-in 0.3s cubic-bezier(0.22, 0.72, 0.2, 1) both;
+}
+
+.page-enter {
+  animation: page-slide-up 0.28s cubic-bezier(0.22, 0.72, 0.2, 1) both;
+}
+
+/* Loading spinner with dot animation */
+.loader-dots {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+
+.loader-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent, #00fe7a);
+  animation: loader-dot-bounce 1.2s ease-in-out infinite;
+}
+
+.loader-dots span:nth-child(2) { animation-delay: 0.15s; }
+.loader-dots span:nth-child(3) { animation-delay: 0.3s; }
+
+/* Skeleton shimmer */
+.skeleton-shimmer {
+  background: linear-gradient(90deg, var(--border) 25%, var(--bg-card) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: shimmer-wave 1.6s ease-in-out infinite;
+}
+
+/* Hover transition helpers */
+.btn-hover-lift {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-hover-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* Page transition wrapper */
+.page-transition-wrapper {
+  animation: page-slide-up 0.26s cubic-bezier(0.22, 0.72, 0.2, 1) both;
+}
+
+/* Stagger list items */
+.stagger-list > * {
+  animation: card-pop-in 0.3s cubic-bezier(0.22, 0.72, 0.2, 1) both;
+}
+
+.stagger-list > *:nth-child(1) { animation-delay: 0.04s; }
+.stagger-list > *:nth-child(2) { animation-delay: 0.08s; }
+.stagger-list > *:nth-child(3) { animation-delay: 0.12s; }
+.stagger-list > *:nth-child(4) { animation-delay: 0.16s; }
+.stagger-list > *:nth-child(5) { animation-delay: 0.20s; }
+.stagger-list > *:nth-child(6) { animation-delay: 0.24s; }
+.stagger-list > *:nth-child(7) { animation-delay: 0.28s; }
+.stagger-list > *:nth-child(8) { animation-delay: 0.32s; }

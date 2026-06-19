@@ -1,14 +1,9 @@
 <script>
-  import { CircleX, Plus, RefreshCw, Smartphone } from "$components/ui/icons.js";
+  import { CircleX, Globe, RefreshCw } from "$components/ui/icons.js";
 
   import Button from "$components/ui/button.svelte";
   import Card from "$components/ui/card.svelte";
-  import { EmptyCard, LinearProgress, StatusMessage } from "$components/patterns/webapp/index.js";
-  import {
-    devicesCountLabel,
-    devicesLimitLabel,
-    devicesPercent,
-  } from "../../lib/webapp/devicesLabels.js";
+  import { EmptyCard, StatusMessage } from "$components/patterns/webapp/index.js";
 
   export let devicesBusy = false;
   export let devicesData = {};
@@ -20,66 +15,42 @@
 
   export let loadDevices = () => {};
   export let openDeviceDisconnectDialog = () => {};
-  export let openDeviceTopupModal = () => {};
   export let t = (key) => key;
 
-  $: deviceList = Array.isArray(devicesData?.devices) ? devicesData.devices : [];
-  $: hasDevices = deviceList.length > 0;
+  $: ipList = Array.isArray(devicesData?.ips) ? devicesData.ips : [];
+  $: hasIPs = ipList.length > 0;
   $: subscriptionNotActiveError =
     devicesErrorCode === "subscription_not_active" ||
     devicesStatus === "Subscription is not active";
-  $: hideDevicesSummary = !subscription?.active && !hasDevices;
-  $: showInactiveDevicesNotice =
-    hideDevicesSummary &&
+  $: showInactiveNotice =
+    !hasIPs &&
     !(devicesBusy && !devicesLoaded) &&
     (!devicesStatus || subscriptionNotActiveError);
-  $: effectiveMaxDevices = devicesData?.max_devices ?? subscription?.max_devices;
 </script>
 
 <main class="content with-nav">
-  {#if !hideDevicesSummary}
-    <Card class="devices-summary-card">
-      <div class="devices-summary-head">
-        <Smartphone size={28} />
-        <span>
-          <strong>{t("wa_devices_title")}</strong>
-          <small>{devicesCountLabel(devicesData, t, effectiveMaxDevices)}</small>
-        </span>
-        <Button
-          variant="icon"
-          size="icon"
-          onclick={() => loadDevices(true)}
-          disabled={devicesBusy}
-          aria-label={t("wa_devices_refresh")}
-        >
-          <RefreshCw size={18} />
-        </Button>
-      </div>
-      <LinearProgress
-        class="devices-progress"
-        value={devicesPercent(devicesData, effectiveMaxDevices)}
-        label={t("wa_devices_title")}
-      />
-      {#if Number(subscription?.extra_hwid_devices || 0) > 0 && subscription?.extra_hwid_devices_valid_until_text}
-        <p class="devices-topup-validity">
-          {t("wa_hwid_devices_valid_until", {
-            count: Number(subscription.extra_hwid_devices || 0),
-            date: subscription.extra_hwid_devices_valid_until_text,
-          })}
-        </p>
-      {/if}
-      {#if subscription?.active && subscription?.max_devices !== 0 && subscription?.can_topup_devices}
-        <Button variant="secondary" class="wide" onclick={openDeviceTopupModal}>
-          <Plus size={17} />
-          {t("wa_buy_hwid_devices")}
-        </Button>
-      {/if}
-    </Card>
-  {/if}
+  <Card class="devices-summary-card">
+    <div class="devices-summary-head">
+      <Globe size={28} />
+      <span>
+        <strong>{t("wa_ips_title")}</strong>
+        <small>{t("wa_ips_count", { current: ipList.length })}</small>
+      </span>
+      <Button
+        variant="icon"
+        size="icon"
+        onclick={() => loadDevices(true)}
+        disabled={devicesBusy}
+        aria-label={t("wa_devices_refresh")}
+      >
+        <RefreshCw size={18} />
+      </Button>
+    </div>
+  </Card>
 
   {#if devicesBusy && !devicesLoaded}
-    <EmptyCard>{t("wa_devices_loading")}</EmptyCard>
-  {:else if showInactiveDevicesNotice}
+    <EmptyCard>{t("wa_ips_loading")}</EmptyCard>
+  {:else if showInactiveNotice}
     <EmptyCard class="devices-empty-card devices-inactive-card">
       <CircleX size={28} />
       <span>{t("wa_home_subscription_inactive")}</span>
@@ -88,60 +59,47 @@
     <EmptyCard>
       <StatusMessage error={devicesIsError}>{devicesStatus}</StatusMessage>
     </EmptyCard>
-  {:else if !hasDevices}
+  {:else if !hasIPs}
     <EmptyCard class="devices-empty-card">
-      <Smartphone size={28} />
-      <span>{t("wa_devices_empty")}</span>
-      <small>
-        {t("wa_devices_empty_hint", {
-          max: devicesLimitLabel(devicesData, t, effectiveMaxDevices),
-        })}
-      </small>
+      <Globe size={28} />
+      <span>{t("wa_ips_empty")}</span>
+      <small>{t("wa_ips_empty_hint")}</small>
     </EmptyCard>
   {:else}
     <div class="devices-list">
-      {#each deviceList as device (device.token || device.index)}
+      {#each ipList as ipEntry (ipEntry.ip)}
         <Card class="device-card">
           <div class="device-card-head">
-            <div class="device-icon"><Smartphone size={20} /></div>
+            <div class="device-icon"><Globe size={20} /></div>
             <span>
-              <strong
-                >{device.display_name ||
-                  t("wa_device_fallback_name", { index: device.index })}</strong
-              >
-              <small>{device.platform_label || t("wa_devices_platform_unknown")}</small>
+              <strong>{ipEntry.ip}</strong>
+              {#if ipEntry.location}
+                <small>{ipEntry.location}</small>
+              {/if}
             </span>
           </div>
           <div class="device-meta">
-            {#if device.created_at_text}
+            {#if ipEntry.last_seen_text}
               <div>
-                <span>{t("wa_devices_connected_at")}</span>
-                <strong>{device.created_at_text}</strong>
+                <span>{t("wa_ips_last_seen")}</span>
+                <strong>{ipEntry.last_seen_text}</strong>
               </div>
             {/if}
-            {#if device.hwid_short}
-              <div>
-                <span>HWID</span>
-                <code>{device.hwid_short}</code>
-              </div>
-            {/if}
-            {#if device.user_agent}
+            {#if ipEntry.user_agent}
               <div class="device-user-agent">
-                <span>User Agent</span>
-                <small>{device.user_agent}</small>
+                <span>{t("wa_ips_user_agent")}</span>
+                <small>{ipEntry.user_agent}</small>
               </div>
             {/if}
           </div>
-          {#if device.can_disconnect}
-            <Button
-              variant="outline"
-              class="wide device-disconnect-button"
-              onclick={() => openDeviceDisconnectDialog(device)}
-            >
-              <CircleX size={17} />
-              {t("wa_devices_disconnect")}
-            </Button>
-          {/if}
+          <Button
+            variant="outline"
+            class="wide device-disconnect-button"
+            onclick={() => openDeviceDisconnectDialog(ipEntry)}
+          >
+            <CircleX size={17} />
+            {t("wa_ips_disconnect")}
+          </Button>
         </Card>
       {/each}
     </div>

@@ -31,7 +31,6 @@ type Tariff struct {
 	MonthlyGB         float64           `json:"monthly_gb"`
 	SquadUUIDs        []string          `json:"squad_uuids,omitempty"`
 	ExternalSquadUUID string            `json:"external_squad_uuid,omitempty"`
-	HWIDDeviceLimit   *int              `json:"hwid_device_limit,omitempty"`
 	Enabled           bool              `json:"enabled"`
 	raw               map[string]json.RawMessage
 }
@@ -60,7 +59,6 @@ type Plan struct {
 	MonthlyGB         float64    `json:"monthly_gb,omitempty"`
 	SquadUUIDs        []string   `json:"squad_uuids,omitempty"`
 	ExternalSquadUUID string     `json:"external_squad_uuid,omitempty"`
-	HWIDDeviceLimit   *int       `json:"hwid_device_limit,omitempty"`
 	IsDefault         bool       `json:"is_default_tariff,omitempty"`
 }
 
@@ -145,7 +143,6 @@ func (c Catalog) Plans(language string, fallbackCurrency string) []Plan {
 					MonthlyGB:         tariff.MonthlyGB,
 					SquadUUIDs:        cleanStrings(tariff.SquadUUIDs),
 					ExternalSquadUUID: strings.TrimSpace(tariff.ExternalSquadUUID),
-					HWIDDeviceLimit:   tariff.HWIDDeviceLimit,
 					IsDefault:         tariff.Key == c.DefaultTariff,
 				}))
 			}
@@ -170,7 +167,6 @@ func (c Catalog) Plans(language string, fallbackCurrency string) []Plan {
 				MonthlyGB:         tariff.MonthlyGB,
 				SquadUUIDs:        cleanStrings(tariff.SquadUUIDs),
 				ExternalSquadUUID: strings.TrimSpace(tariff.ExternalSquadUUID),
-				HWIDDeviceLimit:   tariff.HWIDDeviceLimit,
 				IsDefault:         tariff.Key == c.DefaultTariff,
 			}))
 		}
