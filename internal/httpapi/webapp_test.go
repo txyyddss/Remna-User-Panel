@@ -42,3 +42,31 @@ func TestBootstrapDefaultsToChinese(t *testing.T) {
 		t.Fatalf("bootstrap response missing i18n compatibility fields: %#v", payload)
 	}
 }
+
+func TestWebappSessionManagerFallsBackToPrivateRuntimeSecret(t *testing.T) {
+	settings := config.Settings{BotToken: "123456:abcdef", AdminPassword: "admin-password"}
+	manager := webappSessionManager(settings)
+
+	token, csrf, err := manager.Sign(42)
+	if err != nil {
+		t.Fatalf("Sign() with fallback secret error = %v", err)
+	}
+	if token == "" || csrf == "" {
+		t.Fatalf("Sign() returned empty token=%q csrf=%q", token, csrf)
+	}
+	claims, err := manager.Verify(token)
+	if err != nil {
+		t.Fatalf("Verify() with fallback secret error = %v", err)
+	}
+	if claims.UserID != 42 {
+		t.Fatalf("claims.UserID = %d, want 42", claims.UserID)
+	}
+}
+
+func TestWebappSessionManagerRejectsMissingSecretAndFallback(t *testing.T) {
+	manager := webappSessionManager(config.Settings{})
+
+	if _, _, err := manager.Sign(42); err == nil {
+		t.Fatal("Sign() succeeded without WEBAPP_SESSION_SECRET or fallback")
+	}
+}

@@ -82,7 +82,7 @@ func authTokenHandler(settings config.Settings, pool *pgxpool.Pool) http.Handler
 			return
 		}
 		bindReferralCode(r.Context(), pool, tgUser.ID, payload.ReferralCode)
-		manager := auth.NewManager(settings.WebAppSessionSecret, "")
+		manager := webappSessionManager(settings)
 		token, csrf, err := manager.Sign(tgUser.ID)
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "session_sign_failed"})
@@ -401,7 +401,7 @@ func requireSession(w http.ResponseWriter, r *http.Request, settings config.Sett
 		writeJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "auth_required"})
 		return sessionContext{}, false
 	}
-	manager := auth.NewManager(settings.WebAppSessionSecret, "")
+	manager := webappSessionManager(settings)
 	claims, err := manager.Verify(cookie.Value)
 	if err != nil {
 		writeJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "auth_required"})
@@ -427,6 +427,20 @@ func requireSession(w http.ResponseWriter, r *http.Request, settings config.Sett
 		return sessionContext{}, false
 	}
 	return sessionContext{Claims: claims, User: user}, true
+}
+
+func webappSessionManager(settings config.Settings) *auth.Manager {
+	return auth.NewManager(settings.WebAppSessionSecret, webappSessionSecretFallback(settings))
+}
+
+func webappSessionSecretFallback(settings config.Settings) string {
+	if strings.TrimSpace(settings.BotToken) != "" {
+		return "telegram-bot:" + settings.BotToken
+	}
+	if strings.TrimSpace(settings.AdminPassword) != "" {
+		return "admin-password:" + settings.AdminPassword
+	}
+	return ""
 }
 
 func upsertTelegramUser(ctx context.Context, pool *pgxpool.Pool, user auth.TelegramUser, language string) error {

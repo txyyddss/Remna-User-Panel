@@ -24,7 +24,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"remna-user-panel/internal/auth"
 	"remna-user-panel/internal/config"
 	"remna-user-panel/internal/fx"
 	"remna-user-panel/internal/i18n"
@@ -511,7 +510,7 @@ func adminPasswordLoginHandler(settings config.Settings, pool *pgxpool.Pool) htt
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "admin_user_upsert_failed"})
 			return
 		}
-		manager := auth.NewManager(settings.WebAppSessionSecret, "")
+		manager := webappSessionManager(settings)
 		token, csrf, err := manager.Sign(adminID)
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "session_sign_failed"})
@@ -534,7 +533,29 @@ func adminPasswordLoginHandler(settings config.Settings, pool *pgxpool.Pool) htt
 }
 
 func ensureAdminUser(ctx context.Context, pool *pgxpool.Pool, adminID int64, email string, language string) error {
-	_, err := pool.Exec(ctx, `
+	normalizedEmail := strings.ToLower(strings.TrimSpace(email))
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if normalizedEmail != "" {
+		if _, err := tx.Exec(ctx, `
+UPDATE users
+SET email=NULL, email_verified_at=NULL
+WHERE LOWER(COALESCE(email,''))=$1 AND user_id<>$2`, normalizedEmail, adminID); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.Exec(ctx, `
+UPDATE users
+SET telegram_id=NULL
+WHERE telegram_id=$1 AND user_id<>$1`, adminID); err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(ctx, `
 INSERT INTO users (user_id, telegram_id, email, email_verified_at, first_name, language_code, registration_date)
 VALUES ($1,$1,$2,NOW(),'Admin',$3,NOW())
 ON CONFLICT (user_id) DO UPDATE SET
@@ -543,8 +564,11 @@ ON CONFLICT (user_id) DO UPDATE SET
 	email_verified_at=COALESCE(users.email_verified_at, EXCLUDED.email_verified_at),
 	first_name=COALESCE(NULLIF(users.first_name,''), EXCLUDED.first_name),
 	language_code=COALESCE(NULLIF(users.language_code,''), EXCLUDED.language_code)`,
-		adminID, strings.ToLower(strings.TrimSpace(email)), language)
-	return err
+		adminID, normalizedEmail, language)
+	if err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func constantTimeStringEqual(got string, want string) bool {
