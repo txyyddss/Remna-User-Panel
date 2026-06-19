@@ -95,6 +95,14 @@ CREATE TABLE IF NOT EXISTS payment_orders (
 	payment_type VARCHAR(64) NOT NULL DEFAULT '',
 	amount NUMERIC(12,2) NOT NULL,
 	currency VARCHAR(12) NOT NULL,
+	base_amount NUMERIC(12,2) NULL,
+	base_currency VARCHAR(12) NULL,
+	display_cny_amount NUMERIC(12,2) NULL,
+	fx_rate NUMERIC(18,8) NULL,
+	fx_source VARCHAR(64) NULL,
+	fx_updated_at TIMESTAMPTZ NULL,
+	plan_hash VARCHAR(128) NULL,
+	plan_snapshot JSONB NULL,
 	status VARCHAR(32) NOT NULL DEFAULT 'pending',
 	description TEXT NULL,
 	tariff_key VARCHAR(128) NULL,
@@ -119,6 +127,22 @@ CREATE TABLE IF NOT EXISTS payment_orders (
 CREATE INDEX IF NOT EXISTS ix_payment_orders_user_created ON payment_orders(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS ix_payment_orders_provider_status ON payment_orders(provider, status);
 CREATE INDEX IF NOT EXISTS ix_payment_orders_provider_payment_id ON payment_orders(provider_payment_id)`)
+				return err
+			},
+		},
+		{
+			ID: "core.go.0003_payment_order_plan_snapshot",
+			Up: func(ctx context.Context, tx pgx.Tx) error {
+				_, err := tx.Exec(ctx, `
+ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS base_amount NUMERIC(12,2) NULL;
+ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS base_currency VARCHAR(12) NULL;
+ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS display_cny_amount NUMERIC(12,2) NULL;
+ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS fx_rate NUMERIC(18,8) NULL;
+ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS fx_source VARCHAR(64) NULL;
+ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS fx_updated_at TIMESTAMPTZ NULL;
+ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS plan_hash VARCHAR(128) NULL;
+ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS plan_snapshot JSONB NULL;
+CREATE INDEX IF NOT EXISTS ix_payment_orders_plan_hash ON payment_orders(plan_hash)`)
 				return err
 			},
 		},

@@ -19,7 +19,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
-      - remnawave-shop
+      - remna-user-panel
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -33,7 +33,7 @@ services:
     volumes:
       - redis-data:/data
     networks:
-      - remnawave-shop
+      - remna-user-panel
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -43,14 +43,14 @@ services:
   migrate:
     image: ghcr.io/${IMAGE_NAMESPACE:-local}/remna-user-panel-backend:${IMAGE_TAG:-latest}
     restart: "no"
-    command: ["remnawave-minishop-migrate"]
+    command: ["remna-user-panel-migrate"]
     env_file: *app_env_file
     environment:
       <<: *app_environment
     volumes:
       - ./data:/app/data
     networks:
-      - remnawave-shop
+      - remna-user-panel
     depends_on:
       postgres:
         condition: service_healthy
@@ -71,7 +71,7 @@ services:
       - ./data:/app/data
       - ${COMPOSE_BACKUP_SOURCE:-.}:/app/compose-source:${COMPOSE_RESTORE_MODE:-rw}
     networks:
-      - remnawave-shop
+      - remna-user-panel
     depends_on:
       postgres:
         condition: service_healthy
@@ -97,7 +97,7 @@ services:
       - ./data:/app/data
       - ${COMPOSE_BACKUP_SOURCE:-.}:/app/compose-source:ro
     networks:
-      - remnawave-shop
+      - remna-user-panel
     depends_on:
       postgres:
         condition: service_healthy
@@ -116,7 +116,7 @@ services:
       IMAGE_TAG: ${IMAGE_TAG:-latest}
       FRONTEND_PUBLIC: https://${MINIAPP_HOST:?set MINIAPP_HOST in .env}/
     networks:
-      - remnawave-shop
+      - remna-user-panel
     depends_on:
       backend:
         condition: service_healthy
@@ -135,7 +135,7 @@ services:
       NEWT_SECRET: ${NEWT_SECRET:?set NEWT_SECRET in .env}
       HEALTH_FILE: /tmp/healthy
     networks:
-      - remnawave-shop
+      - remna-user-panel
     healthcheck:
       test: ["CMD-SHELL", "test -f /tmp/healthy"]
       interval: 30s
@@ -143,10 +143,10 @@ services:
       retries: 5
 
 networks:
-  remnawave-shop:
+  remna-user-panel:
 
 volumes:
   postgres-data:
-    name: remnawave-minishop-db-data
+    name: remna-user-panel-db-data
   redis-data:
-    name: remnawave-minishop-redis-data
+    name: remna-user-panel-redis-data

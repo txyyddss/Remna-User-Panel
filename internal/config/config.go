@@ -70,7 +70,7 @@ func Load() (Settings, error) {
 	settings := Settings{
 		BotToken:             env("BOT_TOKEN", ""),
 		DefaultLanguage:      normalizeLanguage(env("DEFAULT_LANGUAGE", defaultLanguage)),
-		DefaultCurrency:      env("DEFAULT_CURRENCY_SYMBOL", "RUB"),
+		DefaultCurrency:      env("DEFAULT_CURRENCY_SYMBOL", "USD"),
 		WebhookBaseURL:       strings.TrimRight(env("WEBHOOK_BASE_URL", ""), "/"),
 		WebhookSecretToken:   env("WEBHOOK_SECRET_TOKEN", ""),
 		WebAppSessionSecret:  env("WEBAPP_SESSION_SECRET", ""),
@@ -86,7 +86,7 @@ func Load() (Settings, error) {
 		PostgresPort:         envInt("POSTGRES_PORT", 5432),
 		PostgresDB:           env("POSTGRES_DB", defaultDBName),
 		RedisURL:             env("REDIS_URL", ""),
-		RedisKeyPrefix:       env("REDIS_KEY_PREFIX", "remnawave-tg-shop"),
+		RedisKeyPrefix:       env("REDIS_KEY_PREFIX", "remna-user-panel"),
 		PanelWebhookSecret:   env("PANEL_WEBHOOK_SECRET", ""),
 		PanelWebhookPath:     env("PANEL_WEBHOOK_PATH", "/webhook/panel"),
 		LogLevel:             env("LOG_LEVEL", "INFO"),
