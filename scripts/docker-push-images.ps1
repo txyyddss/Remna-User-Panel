@@ -18,4 +18,3 @@ function Push-Image {
 
 Push-Image backend
 Push-Image worker
-Push-Image frontend

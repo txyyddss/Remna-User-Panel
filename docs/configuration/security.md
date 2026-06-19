@@ -19,6 +19,8 @@
 
 只把可信代理写入 `TRUSTED_PROXIES`。不要直接信任公网来源的 `X-Forwarded-For`。
 
+使用 Cloudflare Tunnel 时，cloudflared 容器在 Docker 网络内运行，默认的 `TRUSTED_PROXIES`（包含 `10.0.0.0/8`、`172.16.0.0/12`、`192.168.0.0/16`）已经覆盖。无需额外添加 Cloudflare 的公网 IP 段。
+
 ## 支付
 
 支付金额只由后端计算。任何来自前端的金额、月份、流量、设备数都不作为下单依据。

@@ -504,10 +504,14 @@ func webappFeatureSettings(ctx context.Context, settings config.Settings, pool *
 	trialDurationDays := store.Int(ctx, "TRIAL_DURATION_DAYS", 0)
 	trialTrafficGB := store.Float(ctx, "TRIAL_TRAFFIC_LIMIT_GB", 0)
 	referralWelcomeDays := store.Int(ctx, "REFERRAL_WELCOME_BONUS_DAYS", 0)
+	myDevicesEnabled := store.Bool(ctx, "MY_DEVICES_ENABLED", panelConfigured)
+	supportEnabled := store.Bool(ctx, "SUPPORT_TICKETS_ENABLED", false)
+	guidesEnabled := store.Bool(ctx, "SUBSCRIPTION_GUIDES_ENABLED", false)
+	autoRenewEnabled := store.Bool(ctx, "SUBSCRIPTION_AUTO_RENEW_ENABLED", false)
 	return map[string]any{
-		"my_devices_enabled":              store.Bool(ctx, "MY_DEVICES_ENABLED", panelConfigured),
-		"support_tickets_enabled":         store.Bool(ctx, "SUPPORT_TICKETS_ENABLED", false),
-		"subscription_guides_enabled":     false,
+		"my_devices_enabled":              myDevicesEnabled,
+		"support_tickets_enabled":         supportEnabled,
+		"subscription_guides_enabled":     guidesEnabled,
 		"trial_enabled":                   trialEnabled,
 		"trial_available":                 trialEnabled && trialDurationDays > 0 && panelConfigured && trialAvailableForUser(ctx, pool, user.UserID),
 		"trial_duration_days":             trialDurationDays,
@@ -517,7 +521,7 @@ func webappFeatureSettings(ctx context.Context, settings config.Settings, pool *
 		"trial_block_reason":              "",
 		"referral_welcome_bonus_days":     referralWelcomeDays,
 		"tariff_change_enabled":           panelConfigured,
-		"subscription_auto_renew_enabled": false,
+		"subscription_auto_renew_enabled": autoRenewEnabled,
 	}
 }
 
@@ -612,6 +616,8 @@ func remnawaveSettingsFields(ctx context.Context, settings config.Settings, stor
 		{Key: "REFERRAL_WELCOME_BONUS_DAYS", Type: "int", Label: "Referral welcome bonus days", Description: "Days granted once to invited users. 0 disables welcome bonus claiming.", Subsection: "Referral", Fallback: 0},
 		{Key: "MY_DEVICES_ENABLED", Type: "bool", Label: "My devices enabled", Description: "Show HWID device management in the Web App.", Subsection: "Features", Fallback: settings.PanelAPIURL != "" && settings.PanelAPIKey != ""},
 		{Key: "SUPPORT_TICKETS_ENABLED", Type: "bool", Label: "Support tickets enabled", Description: "Show the built-in support ticket UI.", Subsection: "Features", Fallback: false},
+		{Key: "SUBSCRIPTION_GUIDES_ENABLED", Type: "bool", Label: "Subscription guides enabled", Description: "Show subscription setup guides in the Web App.", Subsection: "Features", Fallback: false},
+		{Key: "SUBSCRIPTION_AUTO_RENEW_ENABLED", Type: "bool", Label: "Auto-renew enabled", Description: "Allow users to toggle subscription auto-renewal.", Subsection: "Features", Fallback: false},
 	}
 	result := make([]map[string]any, 0, len(fields))
 	for _, field := range fields {
@@ -712,6 +718,7 @@ func allowedPaymentSettingKeys() map[string]bool {
 		"PANEL_API_URL", "PANEL_API_KEY", "PANEL_WEBHOOK_SECRET", "PANEL_API_TOTAL_TIMEOUT_SECONDS", "PANEL_API_CONNECT_TIMEOUT_SECONDS",
 		"PANEL_API_SOCK_CONNECT_TIMEOUT_SECONDS", "PANEL_API_SOCK_READ_TIMEOUT_SECONDS", "USER_TRAFFIC_LIMIT_GB", "USER_TRAFFIC_STRATEGY",
 		"USER_SQUAD_UUIDS", "USER_EXTERNAL_SQUAD_UUID", "USER_HWID_DEVICE_LIMIT", "MY_DEVICES_ENABLED", "SUPPORT_TICKETS_ENABLED",
+		"SUBSCRIPTION_GUIDES_ENABLED", "SUBSCRIPTION_AUTO_RENEW_ENABLED",
 		"TRIAL_ENABLED", "TRIAL_DURATION_DAYS", "TRIAL_TRAFFIC_LIMIT_GB", "TRIAL_TRAFFIC_STRATEGY", "TRIAL_SQUAD_UUIDS",
 		"REFERRAL_WELCOME_BONUS_DAYS",
 		"EZPAY_ENABLED", "EZPAY_BASE_URL", "EZPAY_PID", "EZPAY_KEY", "EZPAY_RETURN_URL",
@@ -730,7 +737,7 @@ func allowedPaymentSettingKeys() map[string]bool {
 
 func normalizeSettingValue(key string, value any) (any, error) {
 	switch key {
-	case "EZPAY_ENABLED", "BEPUSDT_ENABLED", "MY_DEVICES_ENABLED", "SUPPORT_TICKETS_ENABLED", "TRIAL_ENABLED":
+	case "EZPAY_ENABLED", "BEPUSDT_ENABLED", "MY_DEVICES_ENABLED", "SUPPORT_TICKETS_ENABLED", "TRIAL_ENABLED", "SUBSCRIPTION_GUIDES_ENABLED", "SUBSCRIPTION_AUTO_RENEW_ENABLED":
 		if typed, ok := value.(bool); ok {
 			return typed, nil
 		}

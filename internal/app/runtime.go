@@ -74,33 +74,27 @@ func NewRuntime(ctx context.Context, settings config.Settings) (*Runtime, error)
 	}, nil
 }
 
-// StartBackend runs the webhook/health server and the Mini App server.
+// StartBackend runs the combined HTTP server (webhooks + Mini App when enabled).
 func (r *Runtime) StartBackend(ctx context.Context) error {
-	backend := &http.Server{
+	var handler http.Handler
+	if r.settings.WebAppEnabled {
+		handler = httpapi.CombinedRouter(r.settings, r.db, r.redis, r.i18n, r.assets, r.payments, r.panel)
+	} else {
+		handler = httpapi.BackendRouter(r.settings, r.db, r.redis, r.payments, r.panel)
+	}
+
+	server := &http.Server{
 		Addr:              r.settings.WebListenAddr(),
-		Handler:           httpapi.BackendRouter(r.settings, r.db, r.redis, r.payments, r.panel),
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
-	r.servers = append(r.servers, backend)
+	r.servers = append(r.servers, server)
 
-	errCh := make(chan error, 2)
+	errCh := make(chan error, 1)
 	go func() {
-		slog.Info("backend HTTP server listening", "addr", backend.Addr)
-		errCh <- backend.ListenAndServe()
+		slog.Info("HTTP server listening", "addr", server.Addr, "webapp_enabled", r.settings.WebAppEnabled)
+		errCh <- server.ListenAndServe()
 	}()
-
-	if r.settings.WebAppEnabled {
-		webapp := &http.Server{
-			Addr:              r.settings.WebAppListenAddr(),
-			Handler:           httpapi.WebAppRouter(r.settings, r.db, r.i18n, r.assets, r.payments, r.panel),
-			ReadHeaderTimeout: 10 * time.Second,
-		}
-		r.servers = append(r.servers, webapp)
-		go func() {
-			slog.Info("webapp HTTP server listening", "addr", webapp.Addr)
-			errCh <- webapp.ListenAndServe()
-		}()
-	}
 
 	select {
 	case <-ctx.Done():
@@ -148,7 +142,14 @@ func (r *Runtime) StartWorker(ctx context.Context) error {
 		return nil
 	}))
 	group.Add("subscription-notifications", workers.Interval(5*time.Minute, func(ctx context.Context) error {
-		slog.Info("subscription notification worker tick", "status", "not_implemented")
+		notified, err := httpapi.RunSubscriptionNotifications(ctx, r.settings, r.db, r.panel)
+		if err != nil {
+			slog.Warn("subscription notification worker failed", "error", err)
+			return nil
+		}
+		if notified > 0 {
+			slog.Info("subscription notification worker finished", "notified", notified)
+		}
 		return nil
 	}))
 	return group.Run(ctx)

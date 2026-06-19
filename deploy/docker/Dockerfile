@@ -109,7 +109,7 @@ LABEL org.opencontainers.image.source="https://github.com/remna-user-panel/remna
       org.opencontainers.image.description="Remna User Panel backend (Telegram bot API, web app, webhooks)." \
       org.opencontainers.image.licenses="MIT"
 
-EXPOSE 8080 8081
+EXPOSE 8080
 CMD ["remna-user-panel-backend"]
 
 
@@ -123,7 +123,7 @@ LABEL org.opencontainers.image.source="https://github.com/remna-user-panel/remna
 CMD ["remna-user-panel-worker"]
 
 
-FROM nginx:1.31.2-alpine AS frontend
+FROM nginx:1.27-alpine AS frontend
 
 LABEL org.opencontainers.image.source="https://github.com/remna-user-panel/remna-user-panel" \
       org.opencontainers.image.title="remna-user-panel-frontend" \

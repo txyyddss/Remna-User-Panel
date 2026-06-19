@@ -1,15 +1,12 @@
-# Replace the example domains with your real webhook and Mini App hostnames.
+# Replace the example domain with your real hostname.
+# The backend serves webhooks, the Mini App, and static assets on a single port.
+# Set PUBLIC_URL in .env to https://app.example.com
+
 app.example.com {
 	encode zstd gzip
 
 	# Caddy sets X-Forwarded-For/Host/Proto for reverse_proxy by default.
 	# The backend uses X-Forwarded-For for payment provider IP allowlists.
+	# Webhooks, API, Mini App, and static assets all go through this route.
 	reverse_proxy backend:8080
-}
-
-web.example.com {
-	encode zstd gzip
-
-	# Keep forwarded headers for Web App URL generation and request logging.
-	reverse_proxy frontend:80
 }

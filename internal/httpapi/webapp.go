@@ -8,9 +8,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 
 	"remna-user-panel/internal/config"
 	"remna-user-panel/internal/i18n"
@@ -24,9 +26,15 @@ func WebAppRouter(settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Ca
 	router := chi.NewRouter()
 	router.Use(securityHeaders)
 	router.Use(requestBodyLimit(8 << 20))
-	router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
-	})
+	RegisterWebAppRoutes(router, settings, pool, catalog, assets, registry, panel)
+	return router
+}
+
+// RegisterWebAppRoutes adds Mini App, admin, and asset routes (without middleware) to an existing router.
+// Note: /health is registered by RegisterBackendRoutes; this function does not
+// register a duplicate /health endpoint to avoid route conflicts when both
+// route sets are combined in CombinedRouter.
+func RegisterWebAppRoutes(router chi.Router, settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog, assets webassets.Paths, registry *payments.Registry, panel *remnawave.Client) {
 	router.Get("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		_, _ = w.Write([]byte("User-agent: *\nDisallow: /\n"))
@@ -43,6 +51,8 @@ func WebAppRouter(settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Ca
 	router.Get("/api/admin/payments", adminPaymentsListHandler(settings, pool, registry))
 	registerExtraAPIRoutes(router, settings, pool, catalog, assets, registry, panel)
 	router.Get("/api/admin/payments/{payment_id}", adminPaymentDetailHandler(settings, pool, registry))
+	router.Get("/webapp-uploaded-logo/{filename}", serveUploadedLogo)
+	router.Get("/webapp-logo", serveWebAppLogo)
 	router.Get("/api/*", notImplementedAPI("unknown_api"))
 	router.Post("/api/*", notImplementedAPI("unknown_api"))
 	router.Put("/api/*", notImplementedAPI("unknown_api"))
@@ -50,6 +60,27 @@ func WebAppRouter(settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Ca
 	router.Delete("/api/*", notImplementedAPI("unknown_api"))
 	registerAssetRoutes(router, assets)
 	registerIndexRoutes(router, settings, catalog, assets)
+}
+
+// CombinedRouter builds a single router that serves both backend webhooks and
+// the Mini App on one port. Webhook routes use a 2 MiB body limit while Mini
+// App routes allow up to 8 MiB.
+func CombinedRouter(settings config.Settings, pool *pgxpool.Pool, redisClient *redis.Client, catalog *i18n.Catalog, assets webassets.Paths, registry *payments.Registry, panel *remnawave.Client) http.Handler {
+	router := chi.NewRouter()
+	router.Use(securityHeaders)
+
+	// Webhook routes with smaller body limit.
+	router.Group(func(r chi.Router) {
+		r.Use(requestBodyLimit(2 << 20))
+		RegisterBackendRoutes(r, settings, pool, redisClient, registry, panel)
+	})
+
+	// Mini App and admin routes with larger body limit.
+	router.Group(func(r chi.Router) {
+		r.Use(requestBodyLimit(8 << 20))
+		RegisterWebAppRoutes(r, settings, pool, catalog, assets, registry, panel)
+	})
+
 	return router
 }
 
@@ -146,6 +177,52 @@ func serveThemeFile(w http.ResponseWriter, r *http.Request, root string, prefix 
 		return
 	}
 	http.ServeFile(w, r, fullAbs)
+}
+
+func serveUploadedLogo(w http.ResponseWriter, r *http.Request) {
+	filename := chi.URLParam(r, "filename")
+	filename = filepath.Base(filename)
+	if filename == "." || filename == "" || strings.Contains(filename, "..") {
+		http.NotFound(w, r)
+		return
+	}
+	// Check both logos and favicons directories
+	for _, subdir := range []string{"logos", "favicons"} {
+		dir := filepath.Join("data", "uploads", subdir)
+		filePath := filepath.Join(dir, filename)
+		if _, err := os.Stat(filePath); err == nil {
+			http.ServeFile(w, r, filePath)
+			return
+		}
+	}
+	http.NotFound(w, r)
+}
+
+func serveWebAppLogo(w http.ResponseWriter, r *http.Request) {
+	// Serve the most recent uploaded logo
+	defaultPath := filepath.Join("data", "uploads", "logos")
+	if entries, err := os.ReadDir(defaultPath); err == nil && len(entries) > 0 {
+		var latest string
+		var latestTime time.Time
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			info, err := entry.Info()
+			if err != nil {
+				continue
+			}
+			if info.ModTime().After(latestTime) {
+				latestTime = info.ModTime()
+				latest = entry.Name()
+			}
+		}
+		if latest != "" {
+			http.ServeFile(w, r, filepath.Join(defaultPath, latest))
+			return
+		}
+	}
+	http.NotFound(w, r)
 }
 
 func registerIndexRoutes(router chi.Router, settings config.Settings, catalog *i18n.Catalog, assets webassets.Paths) {

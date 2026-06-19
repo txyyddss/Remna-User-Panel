@@ -15,4 +15,3 @@ push_image() {
 
 push_image backend
 push_image worker
-push_image frontend

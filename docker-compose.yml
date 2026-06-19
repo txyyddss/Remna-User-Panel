@@ -7,9 +7,6 @@ services:
       target: frontend
     image: ghcr.io/${IMAGE_NAMESPACE:-local}/remna-user-panel-frontend:${IMAGE_TAG:-latest}
     restart: unless-stopped
-    # Run with a real init (tini) as PID 1 so healthcheck child processes are
-    # reaped. nginx's master only waits on its own workers, not adopted
-    # orphans, so wget healthchecks would otherwise pile up as zombies.
     init: true
     environment:
       IMAGE_TAG: ${IMAGE_TAG:-latest}

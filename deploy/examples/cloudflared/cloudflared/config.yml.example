@@ -1,0 +1,22 @@
+# cloudflared 配置文件（可选方式，替代 Token 方式）
+# 如果你更喜欢用配置文件而非 Tunnel Token，请：
+#   1. 将此文件重命名为 config.yml
+#   2. 修改 docker-compose.yml 中 cloudflared 的 command 为：
+#      tunnel --no-autoupdate run
+#   3. 添加 volumes：
+#      - ./cloudflared:/etc/cloudflared
+# 
+# 注意：credentials-file 需要先在 Cloudflare Zero Trust 中创建 Tunnel，
+# 然后将生成的 credentials.json 放入 cloudflared/ 目录。
+
+tunnel: YOUR_TUNNEL_UUID
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  # Single domain for webhooks, Mini App, API, and static assets.
+  # The backend serves everything on one port.
+  - hostname: shop.yourdomain.com
+    service: http://backend:8080
+
+  # 必须保留此条，否则 cloudflared 启动失败
+  - service: http_status:404

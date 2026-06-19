@@ -55,10 +55,10 @@ WEBHOOK_HOST_VALUE=""
 MINIAPP_HOST_VALUE=""
 WEBHOOK_PUBLIC_URL_VALUE=""
 MINIAPP_PUBLIC_URL_VALUE=""
+PUBLIC_URL_VALUE=""
 HTTP_BIND_VALUE=""
 HTTPS_BIND_VALUE=""
 WEB_SERVER_BIND_VALUE=""
-FRONTEND_BIND_VALUE=""
 PANGOLIN_ENDPOINT_VALUE=""
 NEWT_ID_VALUE=""
 NEWT_SECRET_VALUE=""
@@ -75,7 +75,7 @@ PANEL_API_URL_VALUE=""
 PANEL_API_KEY_VALUE=""
 PANEL_WEBHOOK_SECRET_VALUE=""
 
-KNOWN_ENV_KEYS="COMPOSE_PROJECT_NAME IMAGE_TAG WEBHOOK_HOST MINIAPP_HOST WEBHOOK_PUBLIC_URL MINIAPP_PUBLIC_URL HTTP_BIND HTTPS_BIND WEB_SERVER_BIND FRONTEND_BIND PANGOLIN_ENDPOINT NEWT_ID NEWT_SECRET BOT_TOKEN ADMIN_IDS POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB WEBAPP_ENABLED WEBAPP_SESSION_SECRET WEBHOOK_SECRET_TOKEN TRUSTED_PROXIES PANEL_API_URL PANEL_API_KEY PANEL_WEBHOOK_SECRET"
+KNOWN_ENV_KEYS="COMPOSE_PROJECT_NAME IMAGE_TAG PUBLIC_HOST PUBLIC_URL WEBHOOK_HOST MINIAPP_HOST WEBHOOK_PUBLIC_URL MINIAPP_PUBLIC_URL HTTP_BIND HTTPS_BIND WEB_SERVER_BIND PANGOLIN_ENDPOINT NEWT_ID NEWT_SECRET BOT_TOKEN ADMIN_IDS POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB WEBAPP_ENABLED WEBAPP_SESSION_SECRET WEBHOOK_SECRET_TOKEN TRUSTED_PROXIES PANEL_API_URL PANEL_API_KEY PANEL_WEBHOOK_SECRET"
 
 color() {
     printf '%s%s%s' "$2" "$1" "$RESET"
@@ -505,12 +505,8 @@ prompt_common_env() {
         no-proxy)
             prompt_value "Backend bind" "$(env_get WEB_SERVER_BIND '0.0.0.0:8080')" 0 0 ""
             WEB_SERVER_BIND_VALUE="$PROMPT_VALUE"
-            prompt_value "Frontend bind" "$(env_get FRONTEND_BIND '0.0.0.0:8082')" 0 0 ""
-            FRONTEND_BIND_VALUE="$PROMPT_VALUE"
-            prompt_value "Webhook public URL" "$(env_get WEBHOOK_PUBLIC_URL 'http://127.0.0.1:8080')" 1 0 "url"
-            WEBHOOK_PUBLIC_URL_VALUE="$PROMPT_VALUE"
-            prompt_value "Mini App public URL" "$(env_get MINIAPP_PUBLIC_URL 'http://127.0.0.1:8082/')" 1 0 "url"
-            MINIAPP_PUBLIC_URL_VALUE="$PROMPT_VALUE"
+            prompt_value "Public URL" "$(env_get PUBLIC_URL 'http://127.0.0.1:8080')" 1 0 "url"
+            PUBLIC_URL_VALUE="$PROMPT_VALUE"
             TRUSTED_PROXIES_VALUE="$(env_get TRUSTED_PROXIES '127.0.0.1,::1')"
             ;;
     esac
@@ -586,14 +582,13 @@ render_env_file() {
     printf '# Deployment\n' >> "$output"
     env_line COMPOSE_PROJECT_NAME "$COMPOSE_PROJECT_NAME_VALUE" "$output"
     env_line IMAGE_TAG "$IMAGE_TAG_VALUE" "$output"
+    env_line PUBLIC_HOST "$PUBLIC_HOST_VALUE" "$output"
+    env_line PUBLIC_URL "$PUBLIC_URL_VALUE" "$output"
     env_line WEBHOOK_HOST "$WEBHOOK_HOST_VALUE" "$output"
     env_line MINIAPP_HOST "$MINIAPP_HOST_VALUE" "$output"
-    env_line WEBHOOK_PUBLIC_URL "$WEBHOOK_PUBLIC_URL_VALUE" "$output"
-    env_line MINIAPP_PUBLIC_URL "$MINIAPP_PUBLIC_URL_VALUE" "$output"
     env_line HTTP_BIND "$HTTP_BIND_VALUE" "$output"
     env_line HTTPS_BIND "$HTTPS_BIND_VALUE" "$output"
     env_line WEB_SERVER_BIND "$WEB_SERVER_BIND_VALUE" "$output"
-    env_line FRONTEND_BIND "$FRONTEND_BIND_VALUE" "$output"
     env_line PANGOLIN_ENDPOINT "$PANGOLIN_ENDPOINT_VALUE" "$output"
     env_line NEWT_ID "$NEWT_ID_VALUE" "$output"
     env_line NEWT_SECRET "$NEWT_SECRET_VALUE" "$output"
@@ -1016,7 +1011,7 @@ run_tgshop_dsn_migration() {
     TARGET_DSN="$(local_target_dsn)"
 
     section "Start target PostgreSQL"
-    (cd "$TARGET_DIR" && run_compose stop backend worker frontend migrate) || true
+    (cd "$TARGET_DIR" && run_compose stop backend worker migrate) || true
     (cd "$TARGET_DIR" && run_compose up -d postgres redis) || return 1
     wait_target_postgres || return 1
 

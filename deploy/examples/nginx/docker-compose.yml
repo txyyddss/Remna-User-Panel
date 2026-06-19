@@ -5,8 +5,7 @@ x-app-environment: &app_environment
   IMAGE_TAG: ${IMAGE_TAG:-latest}
   POSTGRES_HOST: postgres
   REDIS_URL: redis://redis:6379/0
-  WEBHOOK_BASE_URL: https://${WEBHOOK_HOST:?set WEBHOOK_HOST in .env}
-  SUBSCRIPTION_MINI_APP_URL: https://${MINIAPP_HOST:?set MINIAPP_HOST in .env}/
+  PUBLIC_URL: https://${PUBLIC_HOST:?set PUBLIC_HOST in .env}
 
 services:
   postgres:
@@ -106,32 +105,11 @@ services:
       migrate:
         condition: service_completed_successfully
 
-  frontend:
-    image: ghcr.io/${IMAGE_NAMESPACE:-local}/remna-user-panel-frontend:${IMAGE_TAG:-latest}
-    restart: unless-stopped
-    # Real init (tini) reaps wget healthcheck children (nginx master only waits
-    # on its own workers, not adopted orphans).
-    init: true
-    environment:
-      IMAGE_TAG: ${IMAGE_TAG:-latest}
-      FRONTEND_PUBLIC: https://${MINIAPP_HOST:?set MINIAPP_HOST in .env}/
-    networks:
-      - remna-user-panel
-    depends_on:
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/health | grep -q ok"]
-      interval: 30s
-      timeout: 5s
-      retries: 5
-
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
     environment:
-      WEBHOOK_HOST: ${WEBHOOK_HOST:?set WEBHOOK_HOST in .env}
-      MINIAPP_HOST: ${MINIAPP_HOST:?set MINIAPP_HOST in .env}
+      PUBLIC_HOST: ${PUBLIC_HOST:?set PUBLIC_HOST in .env}
     ports:
       - "${HTTP_BIND:-0.0.0.0:80}:80"
       - "${HTTPS_BIND:-0.0.0.0:443}:443"
@@ -141,8 +119,6 @@ services:
     networks:
       - remna-user-panel
     depends_on:
-      frontend:
-        condition: service_healthy
       backend:
         condition: service_healthy
 

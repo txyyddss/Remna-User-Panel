@@ -58,6 +58,8 @@ type Settings struct {
 	EZPay                       EZPaySettings
 	BEPUSDT                     BEPUSDTSettings
 	PaymentMethodsOrder         []string
+	SubscriptionNotifyHoursBefore int
+	SubscriptionNotifyDaysBefore  int
 }
 
 // EZPaySettings contains EZPay merchant configuration.
@@ -79,11 +81,24 @@ type BEPUSDTSettings struct {
 
 // Load reads settings from the current process environment.
 func Load() (Settings, error) {
+	publicURL := strings.TrimRight(env("PUBLIC_URL", ""), "/")
+	webhookBaseURL := strings.TrimRight(env("WEBHOOK_BASE_URL", ""), "/")
+	subscriptionMiniApp := env("SUBSCRIPTION_MINI_APP_URL", "")
+	// PUBLIC_URL is a convenience variable for single-domain deployments.
+	// When set, it provides defaults for both WEBHOOK_BASE_URL and
+	// SUBSCRIPTION_MINI_APP_URL. Explicit values always take precedence.
+	if webhookBaseURL == "" && publicURL != "" {
+		webhookBaseURL = publicURL
+	}
+	if subscriptionMiniApp == "" && publicURL != "" {
+		subscriptionMiniApp = publicURL + "/"
+	}
+
 	settings := Settings{
 		BotToken:                    env("BOT_TOKEN", ""),
 		DefaultLanguage:             normalizeLanguage(env("DEFAULT_LANGUAGE", defaultLanguage)),
 		DefaultCurrency:             env("DEFAULT_CURRENCY_SYMBOL", "USD"),
-		WebhookBaseURL:              strings.TrimRight(env("WEBHOOK_BASE_URL", ""), "/"),
+		WebhookBaseURL:              webhookBaseURL,
 		WebhookSecretToken:          env("WEBHOOK_SECRET_TOKEN", ""),
 		WebAppSessionSecret:         env("WEBAPP_SESSION_SECRET", ""),
 		WebServerHost:               env("WEB_SERVER_HOST", "0.0.0.0"),
@@ -91,7 +106,7 @@ func Load() (Settings, error) {
 		WebAppEnabled:               envBool("WEBAPP_ENABLED", true),
 		WebAppServerHost:            env("WEBAPP_SERVER_HOST", "0.0.0.0"),
 		WebAppServerPort:            envInt("WEBAPP_SERVER_PORT", 8081),
-		SubscriptionMiniApp:         env("SUBSCRIPTION_MINI_APP_URL", ""),
+		SubscriptionMiniApp:         subscriptionMiniApp,
 		PostgresUser:                env("POSTGRES_USER", ""),
 		PostgresPassword:            env("POSTGRES_PASSWORD", ""),
 		PostgresHost:                env("POSTGRES_HOST", "localhost"),
@@ -129,6 +144,8 @@ func Load() (Settings, error) {
 			ReturnURL: env("BEPUSDT_RETURN_URL", ""),
 		},
 		PaymentMethodsOrder: splitCSV(env("PAYMENT_METHODS_ORDER", "")),
+		SubscriptionNotifyHoursBefore: envInt("SUBSCRIPTION_NOTIFY_HOURS_BEFORE", 0),
+		SubscriptionNotifyDaysBefore:  envInt("SUBSCRIPTION_NOTIFY_DAYS_BEFORE", 3),
 	}
 	settings.AdminIDs = parseInt64List(env("ADMIN_IDS", ""))
 	settings.TrustedProxies = splitCSV(env("TRUSTED_PROXIES", "127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7"))

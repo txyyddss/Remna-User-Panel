@@ -5,6 +5,8 @@ Remna User Panel 是面向 Telegram Mini App 的 Remnawave 用户面板。当前
 ## 文档目录
 
 - [Docker 部署](getting-started/deployment.md)
+- [与 Remnawave 面板共用部署](getting-started/deployment-remnawave.md)
+- [Cloudflare Tunnel 部署](getting-started/deployment-cloudflared.md)
 - [后台配置](configuration/settings.md)
 - [支付配置](features/payments.md)
 - [套餐与 plan_hash](features/tariffs.md)
@@ -17,3 +19,4 @@ Remna User Panel 是面向 Telegram Mini App 的 Remnawave 用户面板。当前
 - 套餐、Remnawave、支付、外观、语言、汇率等配置在管理后台维护。
 - 前端下单只提交 `plan_hash` 与支付方式，金额由服务端按套餐快照、汇率和支付 provider 重新计算。
 - 默认主币种是 USD，用户界面显示 USD 主价和 CNY/RMB 参考价。
+- 后端单端口（8080）同时服务 webhook、Mini App 页面、API 和静态资源。

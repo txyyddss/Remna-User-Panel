@@ -2,14 +2,17 @@ package httpapi
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/csv"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -32,6 +35,7 @@ import (
 
 func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog, assets webassets.Paths, registry *payments.Registry, panel *remnawave.Client) {
 	_ = catalog
+	router.Get("/api/admin/me", adminMeHandler(settings, pool))
 	router.Get("/api/tariffs/topup-options", webappPlansOptionsHandler(settings, pool, "topup"))
 	router.Get("/api/devices/topup-options", webappPlansOptionsHandler(settings, pool, "devices"))
 	router.Get("/api/tariffs/change-options", webappPlansOptionsHandler(settings, pool, "change"))
@@ -100,16 +104,17 @@ func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *p
 	router.Post("/api/admin/broadcast", adminBroadcastHandler(settings, pool))
 	router.Get("/api/admin/backups", adminBackupsHandler(settings, pool))
 	router.Post("/api/admin/backups/create", adminBackupCreateHandler(settings, pool))
-	router.Post("/api/admin/backups/upload", adminUploadPlaceholderHandler(settings, pool, "archive"))
-	router.Post("/api/admin/backups/restore", okAdminMutation(settings, pool))
+	router.Post("/api/admin/backups/upload", adminBackupUploadHandler(settings, pool))
+	router.Post("/api/admin/backups/restore", adminBackupRestoreHandler(settings, pool))
 	router.Get("/api/admin/themes", adminThemesHandler(settings, pool, assets))
 	router.Put("/api/admin/themes", adminThemesHandler(settings, pool, assets))
-	router.Post("/api/admin/appearance/logo", adminUploadPlaceholderHandler(settings, pool, "logo"))
-	router.Delete("/api/admin/appearance/logo", okAdminMutation(settings, pool))
-	router.Post("/api/admin/appearance/favicon", adminUploadPlaceholderHandler(settings, pool, "favicon"))
-	router.Delete("/api/admin/appearance/favicon", okAdminMutation(settings, pool))
+	router.Post("/api/admin/appearance/logo", adminAppearanceLogoHandler(settings, pool))
+	router.Delete("/api/admin/appearance/logo", adminAppearanceLogoHandler(settings, pool))
+	router.Post("/api/admin/appearance/favicon", adminAppearanceFaviconHandler(settings, pool))
+	router.Delete("/api/admin/appearance/favicon", adminAppearanceFaviconHandler(settings, pool))
 	router.Get("/api/admin/translations", adminTranslationsHandler(settings, pool))
 	router.Put("/api/admin/translations", adminTranslationsHandler(settings, pool))
+	router.Patch("/api/admin/translations", adminTranslationsHandler(settings, pool))
 	router.Get("/api/admin/support/stats", adminSupportStatsHandler(settings, pool))
 	router.Get("/api/admin/support/tickets", supportListHandler(settings, pool, true))
 	router.Get("/api/admin/support/tickets/{ticket_id}", supportDetailHandler(settings, pool, true))
@@ -458,6 +463,20 @@ func adminTariffsHandler(settings config.Settings, pool *pgxpool.Pool) http.Hand
 		var saved any
 		_ = json.Unmarshal(payload.Catalog, &saved)
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "catalog": saved, "path": path, "provider_currency_support": providerCurrencySupport()})
+	}
+}
+
+func adminMeHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, ok := requireAdmin(w, r, settings, pool, false)
+		if !ok {
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok":      true,
+			"user_id": session.User.UserID,
+			"admin":   true,
+		})
 	}
 }
 
@@ -1366,7 +1385,31 @@ func adminBackupsHandler(settings config.Settings, pool *pgxpool.Pool) http.Hand
 		if _, ok := requireAdmin(w, r, settings, pool, false); !ok {
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "archives": []any{}, "backup_dir": "data/backups"})
+		backupDir := filepath.Join("data", "backups")
+		_ = os.MkdirAll(backupDir, 0o755)
+		entries, err := os.ReadDir(backupDir)
+		archives := []map[string]any{}
+		if err == nil {
+			for _, entry := range entries {
+				if entry.IsDir() {
+					continue
+				}
+				info, err := entry.Info()
+				if err != nil {
+					continue
+				}
+				archives = append(archives, map[string]any{
+					"name":       entry.Name(),
+					"size":       info.Size(),
+					"created_at": info.ModTime().Format(time.RFC3339),
+				})
+			}
+			// Sort by creation time descending
+			sort.Slice(archives, func(i, j int) bool {
+				return archives[i]["created_at"].(string) > archives[j]["created_at"].(string)
+			})
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "archives": archives, "backup_dir": backupDir})
 	}
 }
 
@@ -1375,8 +1418,39 @@ func adminBackupCreateHandler(settings config.Settings, pool *pgxpool.Pool) http
 		if _, ok := requireAdmin(w, r, settings, pool, true); !ok {
 			return
 		}
-		result := map[string]any{"created_at": time.Now().Format(time.RFC3339), "note": "database backup requires deployment storage configuration"}
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "result": result, "archive": nil})
+		backupDir := filepath.Join("data", "backups")
+		_ = os.MkdirAll(backupDir, 0o755)
+		filename := "backup-" + time.Now().Format("20060102-150405") + ".dump"
+		savePath := filepath.Join(backupDir, filename)
+
+		var note string
+		// Try pg_dump if database URL is configured
+		if settings.DatabaseURL != "" {
+			cmd := exec.CommandContext(r.Context(), "pg_dump",
+				"-d", settings.DatabaseURL,
+				"--format=custom",
+				"--no-owner",
+				"--no-privileges",
+				"-f", savePath,
+			)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				note = "pg_dump_failed: " + string(output)
+				writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "backup_create_failed", "note": note})
+				return
+			}
+		} else {
+			note = "database_backup_requires_database_url_configuration"
+		}
+
+		result := map[string]any{
+			"name":       filename,
+			"path":       savePath,
+			"created_at": time.Now().Format(time.RFC3339),
+			"note":       note,
+		}
+
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "result": result, "archive": result})
 	}
 }
 
@@ -1418,27 +1492,131 @@ func adminTranslationsHandler(settings config.Settings, pool *pgxpool.Pool) http
 			if ok {
 				_ = json.Unmarshal(raw, &overrides)
 			}
-			writeJSON(w, http.StatusOK, map[string]any{"ok": true, "translations": overrides, "overrides": overrides})
+			// Build groups from overrides for frontend compatibility
+			groups := buildTranslationGroups(overrides)
+			langs := buildTranslationLanguages(overrides)
+			writeJSON(w, http.StatusOK, map[string]any{
+				"ok":             true,
+				"translations":   overrides,
+				"overrides":      overrides,
+				"groups":         groups,
+				"languages":      langs,
+				"path":           "locales",
+				"override_count": len(overrides),
+			})
 			return
 		}
-		var payload map[string]any
-		if err := decodeJSONBody(r, &payload); err != nil {
+		var payload struct {
+			Updates map[string]map[string]string `json:"updates"`
+			Deletes []struct {
+				Lang string `json:"lang"`
+				Key  string `json:"key"`
+			} `json:"deletes"`
+		}
+		// Read body once and try both formats
+		bodyBytes, readErr := io.ReadAll(io.LimitReader(r.Body, maxJSONBodyBytes))
+		if readErr != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
 			return
 		}
-		value := payload["translations"]
-		if value == nil {
-			value = payload["overrides"]
+		if err := json.Unmarshal(bodyBytes, &payload); err != nil || (len(payload.Updates) == 0 && len(payload.Deletes) == 0) {
+			// Fallback: try flat overrides format
+			var flat map[string]any
+			if json.Unmarshal(bodyBytes, &flat) != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
+				return
+			}
+			value := flat["translations"]
+			if value == nil {
+				value = flat["overrides"]
+			}
+			if value == nil {
+				value = map[string]any{}
+			}
+			if err := store.Upsert(r.Context(), "TRANSLATION_OVERRIDES", value); err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "translations_save_failed"})
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true, "translations": value, "overrides": value})
+			return
 		}
-		if value == nil {
-			value = map[string]any{}
+
+		// Load existing overrides
+		raw, ok, _ := store.Get(r.Context(), "TRANSLATION_OVERRIDES")
+		overrides := map[string]map[string]string{}
+		if ok {
+			_ = json.Unmarshal(raw, &overrides)
 		}
-		if err := store.Upsert(r.Context(), "TRANSLATION_OVERRIDES", value); err != nil {
+		if overrides == nil {
+			overrides = map[string]map[string]string{}
+		}
+
+		// Apply updates
+		for lang, keys := range payload.Updates {
+			if overrides[lang] == nil {
+				overrides[lang] = map[string]string{}
+			}
+			for key, value := range keys {
+				overrides[lang][key] = value
+			}
+		}
+
+		// Apply deletes
+		for _, del := range payload.Deletes {
+			if langMap, ok := overrides[del.Lang]; ok {
+				delete(langMap, del.Key)
+				if len(langMap) == 0 {
+					delete(overrides, del.Lang)
+				}
+			}
+		}
+
+		// Also write to locale override file
+		fileWritten := true
+		overridePath := filepath.Join("data", "locales-overrides.json")
+		overrideData, _ := json.MarshalIndent(overrides, "", "  ")
+		if err := os.MkdirAll(filepath.Dir(overridePath), 0o755); err != nil {
+			fileWritten = false
+		}
+		if fileWritten {
+			if err := os.WriteFile(overridePath, append(overrideData, '\n'), 0o644); err != nil {
+				fileWritten = false
+			}
+		}
+
+		if err := store.Upsert(r.Context(), "TRANSLATION_OVERRIDES", overrides); err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "translations_save_failed"})
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "translations": value, "overrides": value})
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok":           true,
+			"translations": overrides,
+			"overrides":    overrides,
+			"file_written": fileWritten,
+		})
 	}
+}
+
+func buildTranslationGroups(overrides map[string]any) []map[string]any {
+	// Return empty groups - frontend will build from translations data
+	return []map[string]any{}
+}
+
+func buildTranslationLanguages(overrides map[string]any) []map[string]any {
+	langs := []map[string]any{
+		{"code": "zh", "label": "中文", "base": true},
+		{"code": "en", "label": "English", "base": true},
+	}
+	if overrides != nil {
+		seen := map[string]bool{"zh": true, "en": true}
+		for lang := range overrides {
+			if !seen[lang] && strings.TrimSpace(lang) != "" {
+				langs = append(langs, map[string]any{"code": lang, "label": lang, "base": false})
+				seen[lang] = true
+			}
+		}
+	}
+	return langs
 }
 
 func supportListHandler(settings config.Settings, pool *pgxpool.Pool, admin bool) http.HandlerFunc {
@@ -1723,6 +1901,293 @@ func adminSupportStatsHandler(settings config.Settings, pool *pgxpool.Pool) http
 	}
 }
 
+func adminAppearanceLogoHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		store := appsettings.NewStore(pool)
+
+		if r.Method == http.MethodDelete {
+			if _, ok := requireAdmin(w, r, settings, pool, true); !ok {
+				return
+			}
+			_ = store.Delete(r.Context(), "APPEARANCE_LOGO_URL")
+			_ = store.Delete(r.Context(), "APPEARANCE_FAVICON_URL")
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+			return
+		}
+
+		if _, ok := requireAdmin(w, r, settings, pool, true); !ok {
+			return
+		}
+
+		contentType := r.Header.Get("Content-Type")
+
+		// Handle JSON URL upload
+		if strings.Contains(contentType, "application/json") {
+			var payload struct {
+				URL string `json:"url"`
+			}
+			body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+			if json.Unmarshal(body, &payload) == nil && strings.TrimSpace(payload.URL) != "" {
+				_ = store.Upsert(r.Context(), "APPEARANCE_LOGO_URL", strings.TrimSpace(payload.URL))
+				logoURL := "/webapp-uploaded-logo/custom-" + time.Now().Format("20060102150405") + ".webp"
+				writeJSON(w, http.StatusOK, map[string]any{
+					"ok":         true,
+					"logo_url":   logoURL,
+					"favicon_url": "/favicon.ico",
+				})
+				return
+			}
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
+			return
+		}
+
+		// Handle multipart file upload
+		if err := r.ParseMultipartForm(8 << 20); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_upload"})
+			return
+		}
+		file, header, err := r.FormFile("file")
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "file_required"})
+			return
+		}
+		defer func() { _ = file.Close() }()
+		if header.Size > 8<<20 {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "file_too_large"})
+			return
+		}
+		buf := make([]byte, 512)
+		n, _ := file.Read(buf)
+		mime := http.DetectContentType(buf[:n])
+		if !strings.HasPrefix(mime, "image/") {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "unsupported_mime"})
+			return
+		}
+		// Read full file
+		_, _ = file.Seek(0, io.SeekStart)
+		full, err := io.ReadAll(io.LimitReader(file, 8<<20))
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "read_failed"})
+			return
+		}
+
+		// Save to uploads directory
+		uploadDir := filepath.Join("data", "uploads", "logos")
+		_ = os.MkdirAll(uploadDir, 0o755)
+		hash := sha256.Sum256(full)
+		hashStr := hex.EncodeToString(hash[:])[:16]
+		filename := "logo-" + hashStr + "-" + time.Now().Format("20060102150405") + ".webp"
+		savePath := filepath.Join(uploadDir, filename)
+		if err := os.WriteFile(savePath, full, 0o644); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "save_failed"})
+			return
+		}
+
+		logoURL := "/webapp-uploaded-logo/" + filename
+		_ = store.Upsert(r.Context(), "APPEARANCE_LOGO_URL", logoURL)
+
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok":         true,
+			"logo_url":   logoURL,
+			"favicon_url": "/favicon.ico",
+		})
+	}
+}
+
+func adminAppearanceFaviconHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		store := appsettings.NewStore(pool)
+
+		if r.Method == http.MethodDelete {
+			if _, ok := requireAdmin(w, r, settings, pool, true); !ok {
+				return
+			}
+			_ = store.Delete(r.Context(), "APPEARANCE_FAVICON_URL")
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+			return
+		}
+
+		if _, ok := requireAdmin(w, r, settings, pool, true); !ok {
+			return
+		}
+
+		contentType := r.Header.Get("Content-Type")
+
+		// Handle JSON URL upload
+		if strings.Contains(contentType, "application/json") {
+			var payload struct {
+				URL string `json:"url"`
+			}
+			body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+			if json.Unmarshal(body, &payload) == nil && strings.TrimSpace(payload.URL) != "" {
+				_ = store.Upsert(r.Context(), "APPEARANCE_FAVICON_URL", strings.TrimSpace(payload.URL))
+				faviconURL := "/favicon.ico"
+				writeJSON(w, http.StatusOK, map[string]any{
+					"ok":          true,
+					"favicon_url": faviconURL,
+					"variants":    map[string]string{},
+				})
+				return
+			}
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
+			return
+		}
+
+		// Handle multipart file upload
+		if err := r.ParseMultipartForm(8 << 20); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_upload"})
+			return
+		}
+		file, header, err := r.FormFile("file")
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "file_required"})
+			return
+		}
+		defer func() { _ = file.Close() }()
+		if header.Size > 8<<20 {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "file_too_large"})
+			return
+		}
+		buf := make([]byte, 512)
+		n, _ := file.Read(buf)
+		mime := http.DetectContentType(buf[:n])
+		if !strings.HasPrefix(mime, "image/") {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "unsupported_mime"})
+			return
+		}
+		_, _ = file.Seek(0, io.SeekStart)
+		full, err := io.ReadAll(io.LimitReader(file, 8<<20))
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "read_failed"})
+			return
+		}
+
+		uploadDir := filepath.Join("data", "uploads", "favicons")
+		_ = os.MkdirAll(uploadDir, 0o755)
+		hash := sha256.Sum256(full)
+		hashStr := hex.EncodeToString(hash[:])[:16]
+		filename := "favicon-" + hashStr + "-" + time.Now().Format("20060102150405") + ".ico"
+		savePath := filepath.Join(uploadDir, filename)
+		if err := os.WriteFile(savePath, full, 0o644); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "save_failed"})
+			return
+		}
+
+		_ = store.Upsert(r.Context(), "APPEARANCE_FAVICON_URL", "/webapp-uploaded-logo/"+filename)
+
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok":          true,
+			"favicon_url": "/webapp-uploaded-logo/" + filename,
+			"variants":    map[string]string{},
+		})
+	}
+}
+
+func adminBackupUploadHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := requireAdmin(w, r, settings, pool, true); !ok {
+			return
+		}
+		if err := r.ParseMultipartForm(256 << 20); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_upload"})
+			return
+		}
+		file, header, err := r.FormFile("file")
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "file_required"})
+			return
+		}
+		defer func() { _ = file.Close() }()
+		if header.Size > 256<<20 {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "file_too_large"})
+			return
+		}
+		backupDir := filepath.Join("data", "backups")
+		_ = os.MkdirAll(backupDir, 0o755)
+		filename := "uploaded-" + time.Now().Format("20060102-150405") + ".tar.gz"
+		savePath := filepath.Join(backupDir, filename)
+		f, err := os.Create(savePath)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "save_failed"})
+			return
+		}
+		defer func() { _ = f.Close() }()
+		if _, err := io.Copy(f, file); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "save_failed"})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok":      true,
+			"archive": map[string]any{"name": filename, "path": savePath, "size": header.Size, "created_at": time.Now().Format(time.RFC3339)},
+		})
+	}
+}
+
+func adminBackupRestoreHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := requireAdmin(w, r, settings, pool, true); !ok {
+			return
+		}
+		var payload struct {
+			ArchiveName     string `json:"archive_name"`
+			RestoreDatabase bool   `json:"restore_database"`
+			RestoreCompose  bool   `json:"restore_compose"`
+			Confirm         string `json:"confirm"`
+		}
+		if err := decodeJSONBody(r, &payload); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
+			return
+		}
+		if strings.TrimSpace(payload.ArchiveName) == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "archive_name_required"})
+			return
+		}
+		if strings.ToLower(strings.TrimSpace(payload.Confirm)) != "restore" {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "confirm_restore_required"})
+			return
+		}
+
+		backupDir := filepath.Join("data", "backups")
+		archivePath := filepath.Join(backupDir, filepath.Base(payload.ArchiveName))
+		if _, err := os.Stat(archivePath); os.IsNotExist(err) {
+			writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "archive_not_found"})
+			return
+		}
+
+		result := map[string]any{"restored_database": false, "restored_compose": false, "errors": []string{}}
+
+		if payload.RestoreDatabase {
+			// Try to restore database using pg_restore if postgres tools are available
+			if settings.DatabaseURL != "" {
+				cmd := exec.CommandContext(r.Context(), "pg_restore",
+					"-d", settings.DatabaseURL,
+					"--clean",
+					"--if-exists",
+					"--no-owner",
+					"--no-privileges",
+					archivePath,
+				)
+				output, err := cmd.CombinedOutput()
+				if err != nil {
+					result["errors"] = append(result["errors"].([]string), "database_restore_failed: "+string(output))
+				} else {
+					result["restored_database"] = true
+				}
+			}
+		}
+
+		if payload.RestoreCompose {
+			// Compose restore is a note - actual implementation depends on deployment
+			result["errors"] = append(result["errors"].([]string), "compose_restore_not_supported_in_this_deployment")
+		}
+
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok":     true,
+			"result": result,
+		})
+	}
+}
+
 func adminUploadPlaceholderHandler(settings config.Settings, pool *pgxpool.Pool, kind string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := requireAdmin(w, r, settings, pool, true); !ok {
@@ -1794,12 +2259,34 @@ func unavailablePublicMutation(code string) http.HandlerFunc {
 
 func subscriptionGuidesHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !strings.Contains(r.URL.Path, "/public/") {
-			if _, ok := requireSession(w, r, settings, pool, false); !ok {
+		isPublic := strings.Contains(r.URL.Path, "/public/")
+		if !isPublic {
+			session, ok := requireSession(w, r, settings, pool, false)
+			if !ok {
 				return
 			}
+			_ = session
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "enabled": false, "config": nil, "source": nil, "subscription": nil})
+		// Load subscription guides from config
+		store := appsettings.NewStore(pool)
+		enabled := store.Bool(r.Context(), "SUBSCRIPTION_GUIDES_ENABLED", false)
+		if !enabled && !isPublic {
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true, "enabled": false, "config": nil, "source": nil, "subscription": nil})
+			return
+		}
+		// Try to read guides config
+		configPath := filepath.Join("data", "subscription-guides.json")
+		var config any
+		if body, err := os.ReadFile(configPath); err == nil {
+			_ = json.Unmarshal(body, &config)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok":           true,
+			"enabled":      enabled,
+			"config":       config,
+			"source":       "local",
+			"subscription": nil,
+		})
 	}
 }
 

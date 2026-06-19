@@ -2,10 +2,9 @@
 
 ## 1. 准备环境
 
-需要 Docker Engine 与 Docker Compose v2。生产环境建议使用 HTTPS 反向代理，分别暴露：
+需要 Docker Engine 与 Docker Compose v2。生产环境建议配置一个 HTTPS 域名，后端容器在单端口（默认 8080）上同时服务 Webhook、Mini App 页面、API 与静态资源。
 
-- 前端 Mini App：转发到 `127.0.0.1:8082`
-- 后端 webhook/API：转发到 `127.0.0.1:8080`
+只需配置**一个域名**（如 `shop.yourdomain.com`），将 HTTPS 流量转发到 `127.0.0.1:8080` 即可。
 
 ## 2. 配置最小 `.env`
 
@@ -17,10 +16,15 @@ cp .env.example .env
 
 至少填写：
 
-- `BOT_TOKEN`
-- `ADMIN_IDS`
-- `WEBAPP_SESSION_SECRET`
-- `POSTGRES_PASSWORD`
+| 变量 | 说明 |
+|------|------|
+| `PUBLIC_URL` | 公开 HTTPS 地址，如 `https://shop.yourdomain.com` |
+| `BOT_TOKEN` | Telegram Bot Token |
+| `ADMIN_IDS` | 管理员 Telegram 用户 ID |
+| `WEBAPP_SESSION_SECRET` | 会话密钥（`openssl rand -hex 32`） |
+| `POSTGRES_PASSWORD` | 数据库密码 |
+
+> 高级部署如需分离 webhook 与 Mini App 域名，可单独设置 `WEBHOOK_BASE_URL` 与 `SUBSCRIPTION_MINI_APP_URL`（均默认使用 `PUBLIC_URL`）。
 
 支付、套餐、Remnawave、外观、语言、汇率建议首次登录后台后配置。`.env` 中的 Remnawave 与支付字段只作为首次启动或后台未覆盖时的兜底值。
 
@@ -35,7 +39,7 @@ docker compose ps
 
 ## 4. 首次后台配置
 
-打开前端域名并使用 Telegram 管理员账号进入后台，然后依次配置：
+打开 `https://shop.yourdomain.com` 并使用 Telegram 管理员账号进入后台，然后依次配置：
 
 1. Settings：Webhook Base URL、默认货币、汇率源。
 2. Tariffs：套餐目录，默认 USD。
@@ -43,14 +47,13 @@ docker compose ps
 4. Appearance：Logo、Favicon、主题。
 5. Remnawave：面板 API、默认 traffic strategy、squads、HWID 设备限制。
 
-## 5. 反向代理
+## 5. 设置 Telegram Webhook
 
-后端 webhook 域名必须能访问：
+```bash
+curl -X POST "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook?url=https://shop.yourdomain.com/webhook/telegram"
+```
 
-- `/webhook/telegram` 或 Bot Token 形式的 Telegram webhook 路径
-- `/webhook/panel`
-- `/webhook/ezpay`
-- `/webhook/bepusdt`
-- `/healthz`
+## 6. 其他部署方式
 
-前端域名转发到 nginx 容器即可。
+- [与 Remnawave 面板共用部署](deployment-remnawave.md) — 将 User Panel 与 Remnawave 面板部署在同一 docker-compose 中，共用 PostgreSQL 和 Redis
+- [Cloudflare Tunnel 部署](deployment-cloudflared.md) — 使用 Cloudflare Tunnel 提供 HTTPS，无需暴露主机端口

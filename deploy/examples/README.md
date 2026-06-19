@@ -8,8 +8,10 @@
 
 | 文件夹   | 文档                                                                                                                                           |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `caddy`    | [使用 Caddy 部署](../../docs/getting-started/deployment.md#caddy-рекомендуемый-вариант)                                       |
-| `nginx`    | [使用 Nginx 部署](../../docs/getting-started/deployment.md#nginx)                                                                                 |
-| `newt`     | [通过 Pangolin / Newt 部署](../../docs/getting-started/deployment.md#pangolin--newt)                                                      |
-| `no-proxy` | [无反向代理启动](../../docs/getting-started/deployment.md#без-обратного-прокси)                                |
-| `mail`     | [部署本地 SMTP 服务器](../../docs/features/email-login.md#настройка-локального-smtp-сервера) |
+| `caddy`    | [使用 Caddy 部署](../../docs/getting-started/deployment.md)                                       |
+| `nginx`    | [使用 Nginx 部署](../../docs/getting-started/deployment.md)                                                                                 |
+| `cloudflared` | [使用 Cloudflare Tunnel 部署](../../docs/getting-started/deployment-cloudflared.md)                                                      |
+| `remnawave` | [与 Remnawave 面板共用部署](../../docs/getting-started/deployment-remnawave.md)                                                      |
+| `newt`     | [通过 Pangolin / Newt 部署](../../docs/getting-started/deployment.md)                                                      |
+| `no-proxy` | [无反向代理启动](../../docs/getting-started/deployment.md)                                |
+| `mail`     | [部署本地 SMTP 服务器](../../docs/features/email-login.md) |

@@ -1441,3 +1441,236 @@ func mergePlanUpdate(update map[string]any, plan tariffs.Plan, cfg remnawave.Eff
 		update["hwidDeviceLimit"] = *cfg.UserHWIDDeviceLimit
 	}
 }
+
+const (
+	subscriptionNotificationsSentKey = "SUBSCRIPTION_NOTIFICATIONS_SENT"
+	subscriptionNotificationsLockKey = "subscription-notification-worker"
+)
+
+type subscriptionNotification struct {
+	UserID   int64
+	ChatID   int64
+	ExpireAt time.Time
+	Status   string
+}
+
+// RunSubscriptionNotifications checks active subscriptions and sends expiry
+// notifications (72h, 48h, 24h before, at expiry, 24h after). It is safe to
+// call from the subscription-notifications worker.
+func RunSubscriptionNotifications(ctx context.Context, settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) (int, error) {
+	if pool == nil {
+		return 0, fmt.Errorf("database_not_configured")
+	}
+	if panel == nil || !panel.Configured(ctx) {
+		return 0, nil
+	}
+	if !appsettings.NewStore(pool).Bool(ctx, "SUBSCRIPTION_NOTIFICATIONS_ENABLED", true) {
+		return 0, nil
+	}
+
+	users, err := loadSubscribableUsers(ctx, pool, settings, 500)
+	if err != nil {
+		return 0, err
+	}
+	notified := 0
+	for _, user := range users {
+		panelUser, found, err := panelUserForWebUser(ctx, pool, panel, user)
+		if err != nil || !found {
+			continue
+		}
+		expireAt := parsePanelTime(panelUser["expireAt"])
+		if expireAt.IsZero() {
+			continue
+		}
+		status := strings.ToUpper(strings.TrimSpace(stringValue(panelUser, "status")))
+		chatID := telegramChatIDForWebUser(user)
+		if chatID == 0 {
+			continue
+		}
+		now := time.Now().UTC()
+		secondsLeft := expireAt.Sub(now).Seconds()
+
+		// Check each notification stage
+		stages := subscriptionNotificationStages(settings, secondsLeft, status, expireAt, now)
+		for _, stage := range stages {
+			notificationKey := fmt.Sprintf("%d:%s", user.UserID, stage.key)
+			if subscriptionNotificationAlreadySent(ctx, pool, notificationKey, 24*time.Hour) {
+				continue
+			}
+			text := subscriptionNotificationText(stage, expireAt, settings.DefaultLanguage)
+			if err := sendTelegramText(ctx, settings, chatID, text); err != nil {
+				continue
+			}
+			recordSubscriptionNotification(ctx, pool, notificationKey)
+			notified++
+			break // only send the most urgent notification per user
+		}
+
+		// Check trial traffic depletion
+		if isTrialSubscription(panelUser) {
+			traffic := mapValue(panelUser, "userTraffic")
+			used := int64Value(traffic, "usedTrafficBytes")
+			limit := int64Value(panelUser, "trafficLimitBytes")
+			if limit > 0 && used >= limit {
+				trialKey := fmt.Sprintf("%d:trial_traffic_depleted", user.UserID)
+				if !subscriptionNotificationAlreadySent(ctx, pool, trialKey, 48*time.Hour) {
+					text := "⚠️ Your trial traffic has been fully used. Upgrade to a paid plan to continue using the service."
+					if err := sendTelegramText(ctx, settings, chatID, text); err == nil {
+						recordSubscriptionNotification(ctx, pool, trialKey)
+						notified++
+					}
+				}
+			}
+		}
+	}
+	return notified, nil
+}
+
+type notifyStage struct {
+	key        string
+	daysLeft   int
+	hoursLeft  int
+	isExpired  bool
+	isPostExp  bool
+}
+
+func subscriptionNotificationStages(settings config.Settings, secondsLeft float64, status string, expireAt, now time.Time) []notifyStage {
+	var stages []notifyStage
+
+	if secondsLeft > 0 {
+		// Before expiry notifications
+		hoursBefore := settings.SubscriptionNotifyHoursBefore
+		if hoursBefore > 0 && hoursBefore <= 23 && secondsLeft <= float64(hoursBefore)*3600 {
+			stages = append(stages, notifyStage{
+				key:       fmt.Sprintf("before_%dh", hoursBefore),
+				hoursLeft: hoursBefore,
+			})
+		}
+
+		daysBefore := settings.SubscriptionNotifyDaysBefore
+		dayStages := []struct {
+			days int
+			key  string
+		}{
+			{1, "before_1d"},
+			{2, "before_2d"},
+			{3, "before_3d"},
+		}
+		for _, ds := range dayStages {
+			if ds.days <= daysBefore && secondsLeft <= float64(ds.days)*86400 {
+				stages = append(stages, notifyStage{
+					key:      ds.key,
+					daysLeft: ds.days,
+				})
+				break
+			}
+		}
+	} else {
+		// Expired notifications
+		expiredFor := now.Sub(expireAt)
+		if expiredFor <= 24*time.Hour && (status == "EXPIRED" || status == "DISABLED" || status == "") {
+			stages = append(stages, notifyStage{
+				key:       "expired",
+				isExpired: true,
+			})
+		} else if expiredFor > 24*time.Hour && expiredFor <= 48*time.Hour {
+			stages = append(stages, notifyStage{
+				key:        "expired_24h_after",
+				isPostExp:  true,
+			})
+		}
+	}
+	return stages
+}
+
+func subscriptionNotificationText(stage notifyStage, expireAt time.Time, _ string) string {
+	dateText := expireAt.Format("2006-01-02")
+	switch {
+	case stage.isExpired:
+		return fmt.Sprintf("⏰ Your subscription has expired on %s. Renew now to restore access.", dateText)
+	case stage.isPostExp:
+		return fmt.Sprintf("🔔 Your subscription expired on %s. Don't lose your configuration — renew now!", dateText)
+	case stage.hoursLeft > 0:
+		return fmt.Sprintf("⏳ Your subscription expires in %d hours (on %s). Renew now to avoid interruption.", stage.hoursLeft, dateText)
+	case stage.daysLeft > 0:
+		return fmt.Sprintf("📅 Your subscription expires in %d day(s) (on %s). Renew now to stay connected.", stage.daysLeft, dateText)
+	default:
+		return fmt.Sprintf("📅 Your subscription expires soon (on %s).", dateText)
+	}
+}
+
+func isTrialSubscription(panelUser map[string]any) bool {
+	status := strings.ToUpper(strings.TrimSpace(stringValue(panelUser, "status")))
+	return status == "TRIAL" || strings.Contains(strings.ToLower(stringValue(panelUser, "description")), "trial")
+}
+
+func loadSubscribableUsers(ctx context.Context, pool *pgxpool.Pool, settings config.Settings, limit int) ([]webappUser, error) {
+	if pool == nil {
+		return nil, nil
+	}
+	if limit <= 0 || limit > 1000 {
+		limit = 500
+	}
+	rows, err := pool.Query(ctx, `
+SELECT user_id, COALESCE(telegram_id,0), COALESCE(username,''), COALESCE(email,''), COALESCE(first_name,''), COALESCE(last_name,''),
+	COALESCE(language_code,''), COALESCE(telegram_photo_url,''), COALESCE(panel_user_uuid,'')
+FROM users
+WHERE COALESCE(panel_user_uuid,'') <> '' AND is_banned=FALSE
+ORDER BY registration_date DESC
+LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	users := []webappUser{}
+	for rows.Next() {
+		var user webappUser
+		if err := rows.Scan(&user.UserID, &user.TelegramID, &user.Username, &user.Email, &user.FirstName, &user.LastName, &user.LanguageCode, &user.PhotoURL, &user.PanelUserUUID); err != nil {
+			return nil, err
+		}
+		user.LanguageCode = normalizeWebLanguage(user.LanguageCode, settings.DefaultLanguage)
+		user.IsAdmin = isAdminID(settings.AdminIDs, user.UserID) || isAdminID(settings.AdminIDs, user.TelegramID)
+		users = append(users, user)
+	}
+	return users, rows.Err()
+}
+
+func subscriptionNotificationAlreadySent(ctx context.Context, pool *pgxpool.Pool, notificationKey string, within time.Duration) bool {
+	sent := readSubscriptionNotifications(ctx, pool)
+	if timestamp, ok := sent[notificationKey]; ok {
+		if parsed, err := time.Parse(time.RFC3339, timestamp); err == nil {
+			if time.Since(parsed) < within {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func recordSubscriptionNotification(ctx context.Context, pool *pgxpool.Pool, notificationKey string) {
+	sent := readSubscriptionNotifications(ctx, pool)
+	if sent == nil {
+		sent = map[string]string{}
+	}
+	// Clean old entries (older than 7 days)
+	cutoff := time.Now().UTC().Add(-7 * 24 * time.Hour)
+	for key, timestamp := range sent {
+		if parsed, err := time.Parse(time.RFC3339, timestamp); err == nil && parsed.Before(cutoff) {
+			delete(sent, key)
+		}
+	}
+	sent[notificationKey] = time.Now().UTC().Format(time.RFC3339)
+	_ = appsettings.NewStore(pool).Upsert(ctx, subscriptionNotificationsSentKey, sent)
+}
+
+func readSubscriptionNotifications(ctx context.Context, pool *pgxpool.Pool) map[string]string {
+	raw, ok, err := appsettings.NewStore(pool).Get(ctx, subscriptionNotificationsSentKey)
+	if err != nil || !ok {
+		return map[string]string{}
+	}
+	var sent map[string]string
+	if json.Unmarshal(raw, &sent) == nil && sent != nil {
+		return sent
+	}
+	return map[string]string{}
+}

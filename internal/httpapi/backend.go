@@ -21,6 +21,12 @@ func BackendRouter(settings config.Settings, pool *pgxpool.Pool, redisClient *re
 	router := chi.NewRouter()
 	router.Use(securityHeaders)
 	router.Use(requestBodyLimit(2 << 20))
+	RegisterBackendRoutes(router, settings, pool, redisClient, registry, panel)
+	return router
+}
+
+// RegisterBackendRoutes adds webhook and health routes (without middleware) to an existing router.
+func RegisterBackendRoutes(router chi.Router, settings config.Settings, pool *pgxpool.Pool, redisClient *redis.Client, registry *payments.Registry, panel *remnawave.Client) {
 	router.Get("/healthz", healthHandler(pool, redisClient))
 	router.Get("/health", healthHandler(pool, redisClient))
 	router.Post(settings.WebhookPath(), telegramWebhookHandler(settings, pool))
@@ -29,7 +35,6 @@ func BackendRouter(settings config.Settings, pool *pgxpool.Pool, redisClient *re
 		providerID := providerID
 		router.Post("/webhook/"+providerID, paymentWebhookHandler(settings, pool, registry, panel, providerID))
 	}
-	return router
 }
 
 func healthHandler(pool *pgxpool.Pool, redisClient *redis.Client) http.HandlerFunc {
