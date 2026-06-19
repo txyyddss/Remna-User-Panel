@@ -273,6 +273,28 @@ func (c *Client) GetSubscriptionPageConfigByUUID(ctx context.Context, uuid strin
 	return out, true, nil
 }
 
+// FetchUserIPs triggers an async job to fetch active IPs for a user.
+// Returns job_id that can be polled with GetFetchUserIPsResult.
+func (c *Client) FetchUserIPs(ctx context.Context, uuid string) (map[string]any, error) {
+	var out map[string]any
+	err := c.request(ctx, http.MethodPost, "/ip-control/fetch-ips/"+url.PathEscape(strings.TrimSpace(uuid)), nil, nil, &out)
+	return out, err
+}
+
+// GetFetchUserIPsResult polls the result of an IP fetch job.
+func (c *Client) GetFetchUserIPsResult(ctx context.Context, jobID string) (map[string]any, error) {
+	var out map[string]any
+	err := c.request(ctx, http.MethodGet, "/ip-control/fetch-users-ips/result/"+url.PathEscape(strings.TrimSpace(jobID)), nil, nil, &out)
+	return out, err
+}
+
+// DropIPConnections drops active connections for the given IPs on the Remnawave panel.
+func (c *Client) DropIPConnections(ctx context.Context, ips []string) error {
+	return c.request(ctx, http.MethodPost, "/ip-control/drop-connections", nil, map[string]any{
+		"ips": cleanStrings(ips),
+	}, nil)
+}
+
 func (c *Client) request(ctx context.Context, method string, endpoint string, query url.Values, payload any, out any) error {
 	cfg := c.EffectiveConfig(ctx)
 	if cfg.BaseURL == "" || cfg.APIKey == "" {

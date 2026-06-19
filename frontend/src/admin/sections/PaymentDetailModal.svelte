@@ -168,10 +168,6 @@
       label: at("payment_detail_purchased_gb", {}, "Куплено GB"),
       value: present(payment?.purchased_gb) ? formatGb(payment.purchased_gb) : "",
     },
-    {
-      label: at("payment_detail_hwid_devices", {}, "HWID-устройства"),
-      value: payment?.purchased_hwid_devices,
-    },
     { label: at("payment_detail_promo_code", {}, "Промокод"), value: payment?.promo_code },
   ];
 

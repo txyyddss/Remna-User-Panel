@@ -334,10 +334,8 @@
     selectedPlan,
     topupModalOpen,
     topupKind,
-    deviceTopupModalOpen,
     changeModalOpen,
     topupOptions,
-    deviceTopupOptions,
     changeOptions,
     changeConfirmOpen,
     tariffActionBusy,
@@ -410,6 +408,17 @@
   $: installGuidesEnabled = Boolean(appSettings?.subscription_guides_enabled);
   $: supportStore.setActive(Boolean(mode === "app" && screen === "support" && supportEnabled));
   $: subscription = data?.subscription || MOCK_SOURCE.data.subscription;
+  $: bandwidthData = formatBandwidthData(subscription);
+
+  function formatBandwidthData(sub) {
+    const raw = sub?.bandwidth?.bandwidthLastSevenDays || sub?.bandwidth?.bandwidthLast30Days;
+    if (!Array.isArray(raw) || !raw.length) return [];
+    return raw.map((entry) => ({
+      bytes: Number(entry?.bytes || entry?.total || 0),
+      label: entry?.label || entry?.date || entry?.day || "",
+      value: entry?.value || entry?.display || entry?.formatted || "",
+    }));
+  }
   $: hasActiveTariffSubscription = Boolean(
     tariffMode && subscription?.active && subscription?.tariff_key
   );
@@ -552,7 +561,6 @@
       changeModalOpen ||
       changeConfirmOpen ||
       topupModalOpen ||
-      deviceTopupModalOpen ||
       (emailAuthEnabled && linkEmailOpen) ||
       (emailAuthEnabled && setPasswordOpen)
   );
@@ -760,7 +768,6 @@
       !activationSuccessDialogOpen &&
       !paymentModalOpen &&
       !topupModalOpen &&
-      !deviceTopupModalOpen &&
       !changeModalOpen &&
       !changeConfirmOpen &&
       hasPendingActivationHandoff()
@@ -1765,7 +1772,6 @@
       selectedPlan: null,
       selectedTariffKey: "",
       paymentStep: "tariff",
-      renewHwidDevices: true,
       selectedMethod: payload.payment_methods?.[0]?.id || "",
     }));
     const currentQuery = currentSearchParams();
@@ -1854,7 +1860,6 @@
       supportStore.startPolling({ includeList: true });
     }
     if (topupModalOpen) await billingStore.loadTopupOptions(topupKind);
-    if (deviceTopupModalOpen) await billingStore.loadDeviceTopupOptions();
     if (changeModalOpen) await billingStore.loadTariffChangeOptions();
 
     const topupDeep = new URLSearchParams(window.location.search).get("topup");
@@ -2332,14 +2337,6 @@
     billingStore.openTariffChangeModal(defaultPaymentMethod());
   }
 
-  function openDeviceTopupModal() {
-    billingStore.openDeviceTopupModal(defaultPaymentMethod());
-  }
-
-  function closeDeviceTopupModal() {
-    billingStore.closeDeviceTopupModal();
-  }
-
   function loadDevices(force = false) {
     return devicesStore.loadDevices(devicesEnabled, force);
   }
@@ -2474,7 +2471,7 @@
 <Tooltip.Provider>
   {#key currentLang}
     {#if isPreviewBoard}
-      <svelte:component this={previewBoardComponent} config={CFG} mockData={MOCK_SOURCE.data} />
+      <svelte:component this={previewBoardComponent} config={CFG} mockData={MOCK_SOURCE.data} {t} />
     {:else}
       <div class="app-shell {shellToneClass} {shellThemeClass}" style={shellStyle}>
         {#if mode === "loading"}
@@ -2612,6 +2609,7 @@
                 {termUnitLabel}
                 {trafficMode}
                 {trialBusy}
+                {bandwidthData}
                 {activateTrial}
                 {toggleAutoRenew}
                 {linkTelegramAndActivateTrial}
@@ -2681,7 +2679,6 @@
                 {subscription}
                 {loadDevices}
                 openDeviceDisconnectDialog={devicesStore.openDeviceDisconnectDialog}
-                {openDeviceTopupModal}
                 {t}
               />
             {:else if screen === "support"}
@@ -2755,7 +2752,6 @@
             bind:paymentStep={$billingStore.paymentStep}
             bind:selectedMethod={$billingStore.selectedMethod}
             bind:selectedPlan={$billingStore.selectedPlan}
-            bind:renewHwidDevices={$billingStore.renewHwidDevices}
             bind:selectedTariffKey={$billingStore.selectedTariffKey}
             bind:setPasswordCode={$accountStore.setPasswordCode}
             bind:setPasswordConfirm={$accountStore.setPasswordConfirm}
@@ -2811,22 +2807,17 @@
           <TariffDialogs
             bind:changeConfirmOpen={$billingStore.changeConfirmOpen}
             bind:changeModalOpen={$billingStore.changeModalOpen}
-            bind:deviceTopupModalOpen={$billingStore.deviceTopupModalOpen}
             bind:selectedChangeAction={$billingStore.selectedChangeAction}
             bind:selectedChangeTarget={$billingStore.selectedChangeTarget}
-            bind:selectedDeviceTopupPlan={$billingStore.selectedDeviceTopupPlan}
             bind:selectedMethod={$billingStore.selectedMethod}
             bind:selectedTopupPlan={$billingStore.selectedTopupPlan}
             bind:topupModalOpen={$billingStore.topupModalOpen}
             applyTariffChange={billingStore.applyTariffChange}
             {changeOptions}
-            {closeDeviceTopupModal}
             closeTariffChangeConfirm={billingStore.closeTariffChangeConfirm}
             closeTariffChangeModal={billingStore.closeTariffChangeModal}
             closeTopupModal={billingStore.closeTopupModal}
-            createDeviceTopupPayment={billingStore.createDeviceTopupPayment}
             createTopupPayment={billingStore.createTopupPayment}
-            {deviceTopupOptions}
             {methods}
             openTariffChangeConfirm={billingStore.openTariffChangeConfirm}
             {payBusy}

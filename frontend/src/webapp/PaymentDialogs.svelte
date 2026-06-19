@@ -14,7 +14,6 @@
   import { Tooltip } from "$components/ui/primitives.js";
 
   import Button from "$components/ui/button.svelte";
-  import Checkbox from "$components/ui/checkbox.svelte";
   import Dialog from "$components/ui/dialog.svelte";
   import EmailCodeScreen from "./auth/EmailCodeScreen.svelte";
   import Input from "$components/ui/input.svelte";
@@ -62,7 +61,6 @@
   export let selectedTariff = null;
   export let selectedTariffKey = "";
   export let selectedTariffPlans = [];
-  export let renewHwidDevices = true;
   export let setPasswordBusy = false;
   export let setPasswordCode = "";
   export let setPasswordConfirm = "";
@@ -88,84 +86,21 @@
       .toLowerCase()
       .includes("stars");
   }
-  function hwidRenewalFor(plan) {
-    return plan?.hwid_renewal?.available ? plan.hwid_renewal : null;
-  }
   function isSubscriptionPlan(plan) {
     const saleMode = String(plan?.sale_mode || "subscription").toLowerCase();
     return saleMode === "subscription";
   }
-  function hwidRenewalAvailableForMethod(plan) {
-    const renewal = hwidRenewalFor(plan);
-    if (!subscription?.active || !isSubscriptionPlan(plan) || !renewal) return false;
-    if (methodUsesStars()) return Number(renewal.stars_price || 0) > 0;
-    return Number(renewal.price || 0) > 0;
-  }
-  function planWithSelectedHwidRenewal(plan) {
-    if (!plan || !renewHwidDevices || !hwidRenewalAvailableForMethod(plan)) return plan;
-    const renewal = hwidRenewalFor(plan);
-    const withRenewal = {
-      ...plan,
-      price: Number(plan.price || 0) + Number(renewal.price || 0),
-    };
-    if (Number(plan.stars_price || 0) > 0 && Number(renewal.stars_price || 0) > 0) {
-      withRenewal.stars_price = Number(plan.stars_price || 0) + Number(renewal.stars_price || 0);
-    }
-    return withRenewal;
-  }
   function paymentPriceLabel(plan) {
-    return priceLabelFn(planWithSelectedHwidRenewal(plan), selectedMethod);
+    return priceLabelFn(plan, selectedMethod);
   }
-  $: selectedPlanForPayment = planWithSelectedHwidRenewal(selectedPlan);
-  $: paymentMethods = methodsForPlan(methods, selectedPlanForPayment);
+  $: selectedPlanForPayment = selectedPlan;
+  $: paymentMethods = methodsForPlan(methods, selectedPlan);
   $: paymentMethodSelected = methodSelectable(paymentMethods, selectedMethod);
   $: if (paymentModalOpen && paymentStep === "checkout" && selectedPlan) {
     const firstMethod = firstAvailableMethod(paymentMethods);
     if (firstMethod && !methodSelectable(paymentMethods, selectedMethod)) {
       selectedMethod = firstMethod;
     }
-  }
-  function hwidRenewalPriceLabel(plan = selectedPlan) {
-    const renewal = hwidRenewalFor(plan);
-    if (!renewal) return "";
-    return priceLabelFn(
-      {
-        price: renewal.price || 0,
-        stars_price: renewal.stars_price,
-        currency: renewal.currency || plan?.currency,
-      },
-      selectedMethod
-    );
-  }
-  function showHwidRenewalBlock() {
-    return hwidRenewalAvailableForMethod(selectedPlan);
-  }
-  function showHwidRenewalUnavailableNote() {
-    return Boolean(
-      subscription?.active &&
-      Number(subscription?.extra_hwid_devices || 0) > 0 &&
-      isSubscriptionPlan(selectedPlan) &&
-      !showHwidRenewalBlock()
-    );
-  }
-  function hwidRenewalCount(plan = selectedPlan) {
-    return Number(hwidRenewalFor(plan)?.device_count || subscription?.extra_hwid_devices || 0);
-  }
-  function hwidRenewalHint(plan = selectedPlan) {
-    const renewal = hwidRenewalFor(plan);
-    if (renewal?.valid_from_text && renewal?.valid_until_text) {
-      return t("wa_hwid_devices_renewal_checkbox_hint", {
-        from: renewal.valid_from_text,
-        to: renewal.valid_until_text,
-      });
-    }
-    return t("wa_hwid_devices_renewal_checkbox_hint_short");
-  }
-  function showHwidDesyncNotice() {
-    return Boolean(
-      subscription?.device_topup_renewal_available &&
-      subscription?.extra_hwid_devices_valid_until_text
-    );
   }
   function planKey(plan) {
     return planKeyFn(plan);
@@ -351,40 +286,6 @@
             <p>{subscriptionPurchaseDescription}</p>
           </div>
         {/if}
-        {#if showHwidRenewalBlock()}
-          <label class="hwid-renewal-option">
-            <Checkbox
-              checked={renewHwidDevices}
-              ariaLabel={t("wa_hwid_devices_renewal_checkbox_aria")}
-              onCheckedChange={(checked) => (renewHwidDevices = checked)}
-            />
-            <span>
-              <strong>
-                {t("wa_hwid_devices_renewal_checkbox", {
-                  count: hwidRenewalCount(),
-                  price: hwidRenewalPriceLabel(),
-                })}
-              </strong>
-              <small>{hwidRenewalHint()}</small>
-              {#if showHwidDesyncNotice()}
-                <small class="hwid-renewal-warning">
-                  {t("wa_hwid_devices_desync_notice", {
-                    date: subscription.extra_hwid_devices_valid_until_text,
-                  })}
-                </small>
-              {/if}
-            </span>
-          </label>
-        {:else if showHwidRenewalUnavailableNote()}
-          <div class="subscription-purchase-description">
-            <p>
-              {t("wa_hwid_devices_renewal_unavailable", {
-                count: Number(subscription.extra_hwid_devices || 0),
-                date: subscription.extra_hwid_devices_valid_until_text || "",
-              })}
-            </p>
-          </div>
-        {/if}
         <div class="period-grid period-grid-two-columns">
           {#each selectedTariffPlans as plan}
             <button
@@ -437,40 +338,6 @@
       {#if showSubscriptionPurchaseDescription()}
         <div class="subscription-purchase-description">
           <p>{subscriptionPurchaseDescription}</p>
-        </div>
-      {/if}
-      {#if showHwidRenewalBlock()}
-        <label class="hwid-renewal-option">
-          <Checkbox
-            checked={renewHwidDevices}
-            ariaLabel={t("wa_hwid_devices_renewal_checkbox_aria")}
-            onCheckedChange={(checked) => (renewHwidDevices = checked)}
-          />
-          <span>
-            <strong>
-              {t("wa_hwid_devices_renewal_checkbox", {
-                count: hwidRenewalCount(),
-                price: hwidRenewalPriceLabel(),
-              })}
-            </strong>
-            <small>{hwidRenewalHint()}</small>
-            {#if showHwidDesyncNotice()}
-              <small class="hwid-renewal-warning">
-                {t("wa_hwid_devices_desync_notice", {
-                  date: subscription.extra_hwid_devices_valid_until_text,
-                })}
-              </small>
-            {/if}
-          </span>
-        </label>
-      {:else if showHwidRenewalUnavailableNote()}
-        <div class="subscription-purchase-description">
-          <p>
-            {t("wa_hwid_devices_renewal_unavailable", {
-              count: Number(subscription.extra_hwid_devices || 0),
-              date: subscription.extra_hwid_devices_valid_until_text || "",
-            })}
-          </p>
         </div>
       {/if}
       <div class="period-grid period-grid-two-columns">

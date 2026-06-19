@@ -17,6 +17,7 @@
   import Button from "$components/ui/button.svelte";
   import Card from "$components/ui/card.svelte";
   import TelegramNotificationsBanner from "../TelegramNotificationsBanner.svelte";
+  import BandwidthChart from "./BandwidthChart.svelte";
   import { LinearProgress } from "$components/patterns/webapp/index.js";
   import { formatTrafficGb } from "../../lib/webapp/formatters.js";
   import {
@@ -55,7 +56,8 @@
   export let telegramNotificationsStatus = "unknown";
   export let trafficMode = false;
   export let trialBusy = false;
-  export let termUnitLabel = () => ""; // We need this passed from App or context. Actually, App.svelte doesn't pass it yet. We'll pass it.
+  export let bandwidthData = [];
+  export let termUnitLabel = () => "";
 
   let nowMs = Date.now();
 
@@ -502,6 +504,10 @@
           </Button>
         </Card>
       {/if}
+    {/if}
+
+    {#if subscription.active && bandwidthData.length}
+      <BandwidthChart {bandwidthData} {t} />
     {/if}
 
     <div class="action-stack">

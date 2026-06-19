@@ -3,10 +3,6 @@ export function createBillingActions({ api }) {
     return api(`/tariffs/topup-options?kind=${encodeURIComponent(kind)}`);
   }
 
-  async function fetchDeviceTopupOptions() {
-    return api("/devices/topup-options");
-  }
-
   async function fetchTariffChangeOptions() {
     return api("/tariffs/change-options");
   }
@@ -35,22 +31,14 @@ export function createBillingActions({ api }) {
   }
 
   function planPaymentBody(plan, method, options = {}) {
+    void options;
     return {
       plan_hash: plan.plan_hash,
-      renew_hwid_devices: Boolean(options.renewHwidDevices),
       method,
     };
   }
 
   function topupPaymentBody(plan, method, fallbackTariffKey) {
-    void fallbackTariffKey;
-    return {
-      plan_hash: plan.plan_hash,
-      method,
-    };
-  }
-
-  function deviceTopupPaymentBody(plan, method, fallbackTariffKey) {
     void fallbackTariffKey;
     return {
       plan_hash: plan.plan_hash,
@@ -65,7 +53,6 @@ export function createBillingActions({ api }) {
 
   return {
     fetchTopupOptions,
-    fetchDeviceTopupOptions,
     fetchTariffChangeOptions,
     postPayment,
     fetchPaymentStatus,
@@ -74,7 +61,6 @@ export function createBillingActions({ api }) {
     postAutoRenew,
     planPaymentBody,
     topupPaymentBody,
-    deviceTopupPaymentBody,
     changePaymentBody,
   };
 }

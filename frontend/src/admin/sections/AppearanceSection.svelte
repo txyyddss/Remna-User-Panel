@@ -39,6 +39,7 @@
     "WEBAPP_FAVICON_USE_CUSTOM",
     "WEBAPP_LOGO_FAVICON_URL",
     "WEBAPP_ENABLED",
+    "WEBAPP_TITLE",
   ]);
   const DEFAULT_THEME_KEY = "dark";
   const DEFAULT_THEME_VARIANTS = ["dark", "light"];
@@ -988,6 +989,24 @@
             </div>
           </section>
         </div>
+      </div>
+    </article>
+
+    <article class="admin-card">
+      <header class="admin-card-head">
+        <div>
+          <h3>{at("wa_appearance_panel_name", {}, "Panel Name")}</h3>
+          <small>{at("wa_panel_name_description", {}, "Custom name displayed in the header and browser tab.")}</small>
+        </div>
+      </header>
+      <div class="admin-card-body">
+        <Input
+          class="input"
+          type="text"
+          placeholder={at("wa_panel_name_placeholder", {}, "Enter panel name")}
+          value={valueForKey("WEBAPP_TITLE")}
+          on:input={(e) => settingsStore.setFieldValue("WEBAPP_TITLE", e.target.value)}
+        />
       </div>
     </article>
 

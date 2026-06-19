@@ -3,7 +3,6 @@ export function invalidateWebappTariffOptionCaches(billingStore) {
   billingStore.update((s) => ({
     ...s,
     topupOptions: null,
-    deviceTopupOptions: null,
     changeOptions: null,
   }));
 }

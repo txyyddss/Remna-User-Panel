@@ -1339,10 +1339,6 @@
                       ? `${tariff.premium_monthly_gb || 0} GB`
                       : "—"}</span
                   >
-                  <span
-                    >{at("tariff_devices", {}, "Устройства")}: {tariff.hwid_device_limit ??
-                      "env"}</span
-                  >
                 </div>
                 <div class="admin-tariff-actions">
                   <AdminButton size="sm" onclick={() => tariffsStore.openEditTariff(tariff)}>

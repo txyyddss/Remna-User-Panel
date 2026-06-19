@@ -16,7 +16,6 @@ export function emptyTariffDraft() {
     enabled: true,
     monthly_gb: 500,
     premium_monthly_gb: "",
-    hwid_device_limit: "",
     conversion_rate_rub_per_gb: "",
     periodRows: [
       { months: 1, rub: 3, stars: "", referral_inviter: 3, referral_referee: 1 },
@@ -30,7 +29,6 @@ export function emptyTariffDraft() {
       { gb: 10, price: 3, stars: "" },
       { gb: 50, price: 10, stars: "" },
     ],
-    hwidRows: [],
   };
 }
 
@@ -146,13 +144,11 @@ export function draftFromTariff(tariff, defaultCurrency = "usd") {
     enabled: tariff.enabled !== false,
     monthly_gb: tariff.monthly_gb ?? "",
     premium_monthly_gb: tariff.premium_monthly_gb ?? "",
-    hwid_device_limit: tariff.hwid_device_limit ?? "",
     conversion_rate_rub_per_gb: tariff.conversion_rate_rub_per_gb ?? "",
     periodRows: periodRows.length ? periodRows : emptyTariffDraft().periodRows,
     topupRows: packageRowsFromPackageSet(tariff.topup_packages, currency, "gb"),
     premiumTopupRows: packageRowsFromPackageSet(tariff.premium_topup_packages, currency, "gb"),
     trafficRows: packageRowsFromPackageSet(tariff.traffic_packages, currency, "gb"),
-    hwidRows: packageRowsFromPackageSet(tariff.hwid_device_packages, currency, "count"),
   };
 }
 
@@ -258,6 +254,10 @@ export function tariffFromDraft(draft, fallbackCurrency = "usd") {
     enabled: Boolean(draft.enabled),
   };
 
+  const hwidLimit = parseIntNumber(draft.hwid_device_limit);
+  if (hwidLimit !== null) tariff.hwid_device_limit = hwidLimit;
+  const hwidPackages = packageSetFromRows(draft.hwidRows, "count", defaultCurrency);
+  if (hwidPackages) tariff.hwid_device_packages = hwidPackages;
   const hwidLimit = parseIntNumber(draft.hwid_device_limit);
   if (hwidLimit !== null) tariff.hwid_device_limit = hwidLimit;
   const hwidPackages = packageSetFromRows(draft.hwidRows, "count", defaultCurrency);

@@ -1,6 +1,6 @@
 import { writable, get } from "svelte/store";
 
-export function createDevicesStore({ api, t, showToast, panelUuid }) {
+export function createDevicesStore({ api, t, showToast }) {
   const state = writable({
     ipsData: null,
     ipsLoaded: false,
@@ -24,23 +24,10 @@ export function createDevicesStore({ api, t, showToast, panelUuid }) {
       ipsErrorCode: "",
     }));
     try {
-      const uuid = typeof panelUuid === "function" ? panelUuid() : panelUuid;
-      // Use Remnawave IP control API to fetch active IPs
-      const fetchRes = await api("/ip-control/fetch-ips/" + encodeURIComponent(uuid), { method: "POST" });
+      // Use Go backend API to fetch active IPs from Remnawave
+      const fetchRes = await api("/devices/ips", { method: "POST" });
       if (!fetchRes?.ok) throw fetchRes;
-      const jobId = fetchRes?.job_id;
-      if (!jobId) throw { message: t("wa_ips_load_failed") };
-      // Poll for results
-      let result = null;
-      for (let i = 0; i < 30; i++) {
-        await new Promise((r) => setTimeout(r, 1000));
-        const pollRes = await api("/ip-control/fetch-users-ips/result/" + encodeURIComponent(jobId));
-        if (pollRes?.ok && pollRes?.ips) {
-          result = pollRes;
-          break;
-        }
-      }
-      const ips = Array.isArray(result?.ips) ? result.ips : [];
+      const ips = Array.isArray(fetchRes?.ips) ? fetchRes.ips : [];
       state.update((s) => ({
         ...s,
         ipsData: { ips, current_ips: ips.length },
@@ -76,10 +63,9 @@ export function createDevicesStore({ api, t, showToast, panelUuid }) {
     if (!ip || s.ipDisconnectBusy) return;
     state.update((s) => ({ ...s, ipDisconnectBusy: true }));
     try {
-      const uuid = typeof panelUuid === "function" ? panelUuid() : panelUuid;
-      const response = await api("/ip-control/drop-connections", {
+      const response = await api("/devices/ips/disconnect", {
         method: "POST",
-        body: JSON.stringify({ uuid, ips: [ip] }),
+        body: JSON.stringify({ ip }),
       });
       if (!response?.ok) throw response;
       showToast(t("wa_ip_disconnected"));

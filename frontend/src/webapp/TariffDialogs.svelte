@@ -26,20 +26,15 @@
   export let changeConfirmOpen = false;
   export let changeModalOpen = false;
   export let changeOptions = null;
-  export let closeDeviceTopupModal = () => {};
   export let closeTariffChangeConfirm = () => {};
   export let closeTariffChangeModal = () => {};
   export let closeTopupModal = () => {};
-  export let createDeviceTopupPayment = () => {};
   export let createTopupPayment = () => {};
-  export let deviceTopupModalOpen = false;
-  export let deviceTopupOptions = null;
   export let methods = [];
   export let openTariffChangeConfirm = () => {};
   export let payBusy = false;
   export let selectedChangeAction = null;
   export let selectedChangeTarget = null;
-  export let selectedDeviceTopupPlan = null;
   export let selectedMethod = "";
   export let selectedTopupPlan = null;
   export let singleTariffMode = false;
@@ -65,10 +60,8 @@
 
   $: changePaymentMethods = methodsForPlan(methods, selectedChangeAction);
   $: topupPaymentMethods = methodsForPlan(methods, selectedTopupPlan);
-  $: devicePaymentMethods = methodsForPlan(methods, selectedDeviceTopupPlan);
   $: changePaymentMethodSelected = methodSelectable(changePaymentMethods, selectedMethod);
   $: topupPaymentMethodSelected = methodSelectable(topupPaymentMethods, selectedMethod);
-  $: devicePaymentMethodSelected = methodSelectable(devicePaymentMethods, selectedMethod);
   $: if (changeModalOpen && selectedChangeAction?.kind === "payment") {
     const firstMethod = firstAvailableMethod(changePaymentMethods);
     if (firstMethod && !methodSelectable(changePaymentMethods, selectedMethod)) {
@@ -78,12 +71,6 @@
   $: if (topupModalOpen && selectedTopupPlan) {
     const firstMethod = firstAvailableMethod(topupPaymentMethods);
     if (firstMethod && !methodSelectable(topupPaymentMethods, selectedMethod)) {
-      selectedMethod = firstMethod;
-    }
-  }
-  $: if (deviceTopupModalOpen && selectedDeviceTopupPlan) {
-    const firstMethod = firstAvailableMethod(devicePaymentMethods);
-    if (firstMethod && !methodSelectable(devicePaymentMethods, selectedMethod)) {
       selectedMethod = firstMethod;
     }
   }
@@ -146,26 +133,6 @@
         "Purchased traffic does not expire: monthly limit is used first, then purchased balance."
       ),
     ];
-  }
-
-  function deviceTopupModalDescription() {
-    if (!deviceTopupOptions) return "";
-    return deviceTopupOptions?.tariff_name
-      ? t("wa_device_topup_for_tariff", { tariff: deviceTopupOptions.tariff_name })
-      : "";
-  }
-
-  function deviceTopupPlanTitle(plan) {
-    return t("wa_hwid_devices_package", {
-      count: Number(plan?.device_count || plan?.months || 0),
-    });
-  }
-
-  function deviceTopupPlanHint(plan) {
-    if (plan?.valid_until_text) {
-      return t("wa_hwid_devices_active_until", { date: plan.valid_until_text });
-    }
-    return plan?.subtitle || deviceTopupOptions?.tariff_name || "";
   }
 
   function tariffChangeModalDescription() {
@@ -403,70 +370,6 @@
       </Button>
     {:else}
       <EmptyCard>{t("wa_no_topup_options")}</EmptyCard>
-    {/if}
-  </div>
-</Dialog>
-
-<Dialog
-  open={deviceTopupModalOpen}
-  title={t("wa_buy_hwid_devices")}
-  description={deviceTopupModalDescription()}
-  closeLabel={t("wa_close")}
-  onclose={closeDeviceTopupModal}
-  class="payment-dialog-card"
->
-  <div class="payment-dialog-body">
-    {#if !deviceTopupOptions}
-      <DialogOptionsSkeleton label={t("wa_tariff_options_loading")} rows={3} />
-    {:else if deviceTopupOptions?.plans?.length}
-      {#if Number(deviceTopupOptions?.extra_hwid_devices || 0) > 0 && deviceTopupOptions?.extra_hwid_devices_valid_until_text}
-        <div class="topup-carryover-note">
-          <p>
-            {t("wa_hwid_devices_valid_until", {
-              count: Number(deviceTopupOptions.extra_hwid_devices || 0),
-              date: deviceTopupOptions.extra_hwid_devices_valid_until_text,
-            })}
-          </p>
-        </div>
-      {/if}
-      <div class="option-list">
-        {#each deviceTopupOptions.plans as plan}
-          <button
-            class:active={planKey(selectedDeviceTopupPlan) === planKey(plan)}
-            class="option-row plan-row"
-            type="button"
-            onclick={() => (selectedDeviceTopupPlan = plan)}
-          >
-            <span class="option-row-main">
-              <strong>{deviceTopupPlanTitle(plan)}</strong>
-              <small>{deviceTopupPlanHint(plan)}</small>
-            </span>
-            <span class="option-row-meta">
-              <em>{priceLabel(plan)}</em>
-              {#if planKey(selectedDeviceTopupPlan) === planKey(plan)}
-                <CheckCircle2 size={18} />
-              {/if}
-            </span>
-          </button>
-        {/each}
-      </div>
-      <PaymentMethodGrid
-        methods={devicePaymentMethods}
-        {selectedMethod}
-        {t}
-        onSelect={(id) => (selectedMethod = id)}
-      />
-      <Button
-        class="wide bottom-action payment-submit-button"
-        onclick={createDeviceTopupPayment}
-        disabled={!selectedDeviceTopupPlan || !devicePaymentMethodSelected || payBusy}
-      >
-        {t("wa_pay")}
-        {selectedDeviceTopupPlan ? priceLabel(selectedDeviceTopupPlan) : ""}
-        <LockKeyhole size={17} />
-      </Button>
-    {:else}
-      <EmptyCard>{t("wa_no_hwid_device_options")}</EmptyCard>
     {/if}
   </div>
 </Dialog>

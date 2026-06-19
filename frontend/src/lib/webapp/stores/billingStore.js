@@ -18,17 +18,13 @@ export function createBillingStore({
     selectedTariffKey: "",
     selectedPlan: null,
     selectedMethod: "",
-    renewHwidDevices: true,
     paymentStartedWithActiveSubscription: false,
     topupModalOpen: false,
     topupKind: "regular",
-    deviceTopupModalOpen: false,
     changeModalOpen: false,
     topupOptions: null,
-    deviceTopupOptions: null,
     changeOptions: null,
     selectedTopupPlan: null,
-    selectedDeviceTopupPlan: null,
     selectedChangeTarget: null,
     selectedChangeAction: null,
     changeConfirmOpen: false,
@@ -53,8 +49,6 @@ export function createBillingStore({
       "traffic_package",
       "topup",
       "premium_topup",
-      "hwid_devices",
-      "hwid_devices_renewal",
     ].includes(saleMode);
   }
 
@@ -158,7 +152,6 @@ export function createBillingStore({
         selectedTariffKey: tariffKey,
         selectedPlan: plan,
         selectedMethod: s.selectedMethod || defaultMethod,
-        renewHwidDevices: true,
         paymentStartedWithActiveSubscription: Boolean(subscription?.active),
       };
     });
@@ -175,7 +168,6 @@ export function createBillingStore({
       ...s,
       selectedTariffKey: key,
       selectedPlan: plans.find((plan) => plan?.tariff_key === key) || null,
-      renewHwidDevices: true,
     }));
   }
 
@@ -186,7 +178,6 @@ export function createBillingStore({
         ...s,
         selectedPlan: s.selectedPlan || selectedTariffPlans[0] || null,
         paymentStep: "checkout",
-        renewHwidDevices: true,
       };
     });
   }
@@ -217,21 +208,6 @@ export function createBillingStore({
 
   function closeTopupModal() {
     state.update((s) => ({ ...s, topupModalOpen: false }));
-  }
-
-  function openDeviceTopupModal(defaultMethod = "") {
-    state.update((s) => ({
-      ...s,
-      deviceTopupModalOpen: true,
-      deviceTopupOptions: null,
-      selectedDeviceTopupPlan: null,
-      selectedMethod: s.selectedMethod || defaultMethod,
-    }));
-    loadDeviceTopupOptions();
-  }
-
-  function closeDeviceTopupModal() {
-    state.update((s) => ({ ...s, deviceTopupModalOpen: false }));
   }
 
   function openTariffChangeModal(defaultMethod = "") {
@@ -387,9 +363,7 @@ export function createBillingStore({
     state.update((s) => ({ ...s, payBusy: true }));
     try {
       const response = await billing.postPayment(
-        billing.planPaymentBody(s.selectedPlan, s.selectedMethod, {
-          renewHwidDevices: s.renewHwidDevices && Boolean(s.selectedPlan?.hwid_renewal?.available),
-        })
+        billing.planPaymentBody(s.selectedPlan, s.selectedMethod)
       );
       const successContext = paymentSuccessContext(s, response);
       rememberSubscriptionActivationPending(successContext);
@@ -527,48 +501,6 @@ export function createBillingStore({
     }
   }
 
-  async function loadDeviceTopupOptions() {
-    const s = get(state);
-    if (s.deviceTopupOptions || s.tariffActionBusy) return;
-    state.update((s) => ({ ...s, tariffActionBusy: true }));
-    try {
-      const response = await billing.fetchDeviceTopupOptions();
-      if (!response?.ok) throw response;
-      state.update((s) => ({
-        ...s,
-        deviceTopupOptions: response,
-        selectedDeviceTopupPlan: response.plans?.[0] || null,
-      }));
-    } catch (error) {
-      showToast(error?.message || t("wa_device_topup_options_failed"));
-      state.update((s) => ({ ...s, deviceTopupModalOpen: false }));
-    } finally {
-      state.update((s) => ({ ...s, tariffActionBusy: false }));
-    }
-  }
-
-  async function createDeviceTopupPayment() {
-    const s = get(state);
-    if (!s.selectedDeviceTopupPlan || !s.selectedMethod || s.payBusy) return;
-    state.update((s) => ({ ...s, payBusy: true }));
-    try {
-      const response = await billing.postPayment(
-        billing.deviceTopupPaymentBody(
-          s.selectedDeviceTopupPlan,
-          s.selectedMethod,
-          s.deviceTopupOptions?.tariff_key
-        )
-      );
-      await handlePaymentResponse(response, {}, () => {
-        state.update((s) => ({ ...s, deviceTopupModalOpen: false }));
-      });
-    } catch (error) {
-      showToast(error?.message || t("wa_payment_create_failed"));
-    } finally {
-      state.update((s) => ({ ...s, payBusy: false }));
-    }
-  }
-
   return {
     subscribe: state.subscribe,
     set: state.set,
@@ -590,10 +522,6 @@ export function createBillingStore({
     loadTariffChangeOptions,
     applyTariffChange,
     createTariffChangePayment,
-    openDeviceTopupModal,
-    closeDeviceTopupModal,
-    loadDeviceTopupOptions,
-    createDeviceTopupPayment,
     closePaymentResult,
     openPaymentResultLink,
     copyPaymentText,

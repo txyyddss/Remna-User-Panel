@@ -158,6 +158,12 @@ func (r *Runtime) StartWorker(ctx context.Context) error {
 		}
 		return nil
 	}))
+	group.Add("data-cleanup", workers.Interval(30*time.Minute, func(ctx context.Context) error {
+		if err := httpapi.RunDataCleanup(ctx, r.db); err != nil {
+			slog.Warn("data cleanup failed", "error", err)
+		}
+		return nil
+	}))
 	return group.Run(ctx)
 }
 

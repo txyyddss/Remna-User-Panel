@@ -51,6 +51,8 @@ func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *p
 	router.Post("/api/trial/activate", trialActivateHandler(settings, pool, panel))
 	router.Get("/api/devices", devicesHandler(settings, pool, panel))
 	router.Post("/api/devices/disconnect", disconnectDeviceHandler(settings, pool, panel))
+	router.Post("/api/devices/ips", devicesIPsHandler(settings, pool, panel))
+	router.Post("/api/devices/ips/disconnect", devicesIPsDisconnectHandler(settings, pool, panel))
 	router.Post("/api/account/email/request", unavailableSessionMutation(settings, pool, "email_delivery_not_configured"))
 	router.Post("/api/account/email/verify", unavailableSessionMutation(settings, pool, "email_delivery_not_configured"))
 	router.Post("/api/account/password/request", unavailableSessionMutation(settings, pool, "email_delivery_not_configured"))
@@ -278,6 +280,129 @@ func disconnectDeviceHandler(settings config.Settings, pool *pgxpool.Pool, panel
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 	}
+}
+
+func devicesIPsHandler(settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, ok := requireSession(w, r, settings, pool, false)
+		if !ok {
+			return
+		}
+		if panel == nil || !panel.Configured(r.Context()) {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"ok": false, "error": "panel_not_configured"})
+			return
+		}
+		panelUser, found, err := panelUserForWebUser(r.Context(), pool, panel, session.User)
+		if err != nil {
+			writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
+			return
+		}
+		if !found {
+			writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "subscription_not_active"})
+			return
+		}
+		uuid := stringValue(panelUser, "uuid")
+		if uuid == "" {
+			writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "subscription_not_active"})
+			return
+		}
+
+		// Trigger IP fetch job
+		fetchRes, err := panel.FetchUserIPs(r.Context(), uuid)
+		if err != nil {
+			writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
+			return
+		}
+		jobID := stringValue(fetchRes, "job_id")
+		if jobID == "" {
+			// Try alternative field names
+			jobID = stringValue(fetchRes, "jobId")
+		}
+		if jobID == "" {
+			writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": "ips_fetch_failed"})
+			return
+		}
+
+		// Poll for results (up to 30 attempts, 1 second apart)
+		for i := 0; i < 30; i++ {
+			select {
+			case <-r.Context().Done():
+				writeJSON(w, http.StatusGatewayTimeout, map[string]any{"ok": false, "error": "ips_poll_timeout"})
+				return
+			case <-time.After(time.Second):
+			}
+			result, err := panel.GetFetchUserIPsResult(r.Context(), jobID)
+			if err != nil {
+				continue
+			}
+			// Check if results are ready
+			if ips, ok := result["ips"]; ok && ips != nil {
+				ipsList := anySlice(ips)
+				writeJSON(w, http.StatusOK, map[string]any{
+					"ok":          true,
+					"ips":         ipsList,
+					"current_ips": len(ipsList),
+				})
+				return
+			}
+			// Some panels may return the result directly
+			if _, hasData := result["ips"]; hasData {
+				ipsList := anySlice(result["ips"])
+				writeJSON(w, http.StatusOK, map[string]any{
+					"ok":          true,
+					"ips":         ipsList,
+					"current_ips": len(ipsList),
+				})
+				return
+			}
+		}
+		writeJSON(w, http.StatusGatewayTimeout, map[string]any{"ok": false, "error": "ips_poll_timeout"})
+	}
+}
+
+func devicesIPsDisconnectHandler(settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, ok := requireSession(w, r, settings, pool, true)
+		if !ok {
+			return
+		}
+		if panel == nil || !panel.Configured(r.Context()) {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"ok": false, "error": "panel_not_configured"})
+			return
+		}
+		var payload struct {
+			IP string `json:"ip"`
+		}
+		if err := decodeJSONBody(r, &payload); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
+			return
+		}
+		ip := strings.TrimSpace(payload.IP)
+		if ip == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "ip_required"})
+			return
+		}
+		// Use the Remnawave IP drop endpoint
+		if err := panel.DropIPConnections(r.Context(), []string{ip}); err != nil {
+			writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	}
+}
+
+func anySlice(value any) []any {
+	switch v := value.(type) {
+	case []any:
+		return v
+	case []map[string]any:
+		result := make([]any, len(v))
+		for i, item := range v {
+			result[i] = item
+		}
+		return result
+	}
+	return nil
 }
 
 func accountLanguageHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
