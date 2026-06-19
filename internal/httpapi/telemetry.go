@@ -153,22 +153,28 @@ func telemetryHeartbeatHandler(settings config.Settings, pool *pgxpool.Pool) htt
 		}
 		fp := hashTelemetryFingerprint(settings, visitor, networkBucket(clientIP(r)), payload.Fingerprint)
 		userID := optionalSessionUserID(r, settings)
-		_, err := pool.Exec(r.Context(), `
+
+		// Try INSERT; on conflict only bump last_seen_at to avoid redundant writes
+		// when the fingerprint data hasn't changed.
+		insertTag, err := pool.Exec(r.Context(), `
 INSERT INTO visitor_telemetry (visitor_hash, full_fingerprint_hash, canvas_hash, webgl_hash, fonts_hash, audio_hash,
  network_hash, browser_hash, platform_hash, timezone_hash, screen_hash, hardware_hash, language_hash, user_id)
 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NULLIF($14,0))
-ON CONFLICT (visitor_hash) DO UPDATE SET full_fingerprint_hash=EXCLUDED.full_fingerprint_hash,
- canvas_hash=EXCLUDED.canvas_hash, webgl_hash=EXCLUDED.webgl_hash, fonts_hash=EXCLUDED.fonts_hash,
- audio_hash=EXCLUDED.audio_hash, network_hash=EXCLUDED.network_hash, browser_hash=EXCLUDED.browser_hash,
- platform_hash=EXCLUDED.platform_hash, timezone_hash=EXCLUDED.timezone_hash, screen_hash=EXCLUDED.screen_hash,
- hardware_hash=EXCLUDED.hardware_hash, language_hash=EXCLUDED.language_hash,
- user_id=COALESCE(EXCLUDED.user_id, visitor_telemetry.user_id), last_seen_at=NOW()`,
+ON CONFLICT (visitor_hash) DO UPDATE SET last_seen_at=NOW()`,
 			fp.Visitor, fp.Full, fp.Canvas, fp.WebGL, fp.Fonts, fp.Audio, fp.Network, fp.Browser, fp.Platform,
 			fp.Timezone, fp.Screen, fp.Hardware, fp.Language, userID)
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "telemetry_save_failed"})
 			return
 		}
+
+		// If this was an INSERT (new visitor), no further action needed.
+		// If conflict (RowsAffected==0), check whether fingerprint fields changed
+		// and only then perform a full update.
+		if insertTag.RowsAffected() == 0 {
+			updateFingerprintIfChanged(r.Context(), pool, fp, userID)
+		}
+
 		if userID != 0 {
 			_, _ = pool.Exec(r.Context(), `INSERT INTO visitor_user_links(visitor_hash,user_id) VALUES($1,$2)
 ON CONFLICT(visitor_hash,user_id) DO UPDATE SET last_seen_at=NOW()`, fp.Visitor, userID)
@@ -178,6 +184,34 @@ ON CONFLICT(visitor_hash,user_id) DO UPDATE SET last_seen_at=NOW()`, fp.Visitor,
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "enabled": true, "expires_in_hours": int(telemetryRetention(r.Context(), pool).Hours())})
 	}
+}
+
+// updateFingerprintIfChanged loads the current stored fingerprint and only performs
+// a full UPDATE when at least one field differs, avoiding redundant WAL writes.
+func updateFingerprintIfChanged(ctx context.Context, pool *pgxpool.Pool, fp storedFingerprint, userID int64) {
+	var current storedFingerprint
+	err := pool.QueryRow(ctx, `SELECT COALESCE(full_fingerprint_hash,''), COALESCE(canvas_hash,''),
+ COALESCE(webgl_hash,''), COALESCE(fonts_hash,''), COALESCE(audio_hash,''), COALESCE(network_hash,''),
+ COALESCE(browser_hash,''), COALESCE(platform_hash,''), COALESCE(timezone_hash,''), COALESCE(screen_hash,''),
+ COALESCE(hardware_hash,''), COALESCE(language_hash,'') FROM visitor_telemetry WHERE visitor_hash=$1`, fp.Visitor).
+		Scan(&current.Full, &current.Canvas, &current.WebGL, &current.Fonts, &current.Audio,
+			&current.Network, &current.Browser, &current.Platform, &current.Timezone,
+			&current.Screen, &current.Hardware, &current.Language)
+	if err != nil {
+		return
+	}
+	// Skip update if nothing changed (apart from last_seen_at which was already bumped).
+	if current.Full == fp.Full && current.Canvas == fp.Canvas && current.WebGL == fp.WebGL &&
+		current.Fonts == fp.Fonts && current.Audio == fp.Audio && current.Network == fp.Network &&
+		current.Browser == fp.Browser && current.Platform == fp.Platform && current.Timezone == fp.Timezone &&
+		current.Screen == fp.Screen && current.Hardware == fp.Hardware && current.Language == fp.Language {
+		return
+	}
+	_, _ = pool.Exec(ctx, `UPDATE visitor_telemetry SET full_fingerprint_hash=$2, canvas_hash=$3, webgl_hash=$4,
+ fonts_hash=$5, audio_hash=$6, network_hash=$7, browser_hash=$8, platform_hash=$9, timezone_hash=$10,
+ screen_hash=$11, hardware_hash=$12, language_hash=$13, user_id=COALESCE(NULLIF($14,0), visitor_telemetry.user_id)
+ WHERE visitor_hash=$1`, fp.Visitor, fp.Full, fp.Canvas, fp.WebGL, fp.Fonts, fp.Audio, fp.Network,
+		fp.Browser, fp.Platform, fp.Timezone, fp.Screen, fp.Hardware, fp.Language, userID)
 }
 
 func hashTelemetryFingerprint(settings config.Settings, visitor, network string, in telemetryFingerprint) storedFingerprint {
@@ -309,18 +343,35 @@ func RunTelemetryMaintenance(ctx context.Context, settings config.Settings, pool
 		version := readSmallBuildFile(".build-version", "dev")
 		provenance := readSmallBuildFile(".build-provenance", "custom")
 		locale := appsettings.NewStore(pool).String(ctx, "DEFAULT_LANGUAGE", settings.DefaultLanguage)
-		_, _ = pool.Exec(ctx, `INSERT INTO installation_heartbeats(heartbeat_date,version,provenance,os,locale,user_count_range)
+		userRange := userCountRange(count)
+
+		// Only write heartbeat when data has changed to avoid redundant WAL.
+		if heartbeatChanged(ctx, pool, version, provenance, locale, userRange) {
+			_, _ = pool.Exec(ctx, `INSERT INTO installation_heartbeats(heartbeat_date,version,provenance,os,locale,user_count_range)
 VALUES(CURRENT_DATE,$1,$2,$3,$4,$5) ON CONFLICT(heartbeat_date) DO UPDATE SET version=EXCLUDED.version,
  provenance=EXCLUDED.provenance, os=EXCLUDED.os, locale=EXCLUDED.locale, user_count_range=EXCLUDED.user_count_range, last_seen_at=NOW()`,
-			version, provenance, runtime.GOOS, locale, userCountRange(count))
+				version, provenance, runtime.GOOS, locale, userRange)
+		}
 	}
 	cutoff := time.Now().Add(-retention)
-	_, _ = pool.Exec(ctx, "UPDATE referral_welcome_claims SET visitor_hash=NULL, fingerprint_hash=NULL WHERE updated_at < $1", cutoff)
+	// Only NULL out values that are not already NULL to avoid redundant writes.
+	_, _ = pool.Exec(ctx, `UPDATE referral_welcome_claims SET visitor_hash=NULL, fingerprint_hash=NULL WHERE updated_at < $1 AND (visitor_hash IS NOT NULL OR fingerprint_hash IS NOT NULL)`, cutoff)
 	_, _ = pool.Exec(ctx, "DELETE FROM invite_visits WHERE last_seen_at < $1", cutoff)
 	_, _ = pool.Exec(ctx, "DELETE FROM visitor_user_links WHERE last_seen_at < $1", cutoff)
 	_, _ = pool.Exec(ctx, "DELETE FROM visitor_telemetry WHERE last_seen_at < $1", cutoff)
 	_, _ = pool.Exec(ctx, "DELETE FROM installation_heartbeats WHERE last_seen_at < $1", cutoff)
 	return nil
+}
+
+// heartbeatChanged returns true when the heartbeat data differs from the last stored entry.
+func heartbeatChanged(ctx context.Context, pool *pgxpool.Pool, version, provenance, locale, userRange string) bool {
+	var prevVersion, prevProvenance, prevLocale, prevRange string
+	err := pool.QueryRow(ctx, `SELECT COALESCE(version,''), COALESCE(provenance,''), COALESCE(locale,''), COALESCE(user_count_range,'')
+ FROM installation_heartbeats WHERE heartbeat_date=CURRENT_DATE`).Scan(&prevVersion, &prevProvenance, &prevLocale, &prevRange)
+	if err != nil {
+		return true // no existing row, insert needed
+	}
+	return prevVersion != version || prevProvenance != provenance || prevLocale != locale || prevRange != userRange
 }
 
 func readSmallBuildFile(path, fallback string) string {

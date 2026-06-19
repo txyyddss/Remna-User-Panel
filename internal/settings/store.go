@@ -138,7 +138,7 @@ func (s Store) Float(ctx context.Context, key string, fallback float64) float64 
 	return fallback
 }
 
-// Upsert writes a JSON setting.
+// Upsert writes a JSON setting only when the value has changed.
 func (s Store) Upsert(ctx context.Context, key string, value any) error {
 	if s.pool == nil {
 		return fmt.Errorf("settings store is not configured")
@@ -147,12 +147,40 @@ func (s Store) Upsert(ctx context.Context, key string, value any) error {
 	if err != nil {
 		return err
 	}
+
+	// Skip write when the stored value is identical to avoid redundant WAL.
+	existing, ok, getErr := s.Get(ctx, key)
+	if getErr == nil && ok {
+		if jsonEqual(existing, body) {
+			return nil
+		}
+	}
+
 	_, err = s.pool.Exec(ctx, `
 INSERT INTO app_settings (key, value, updated_at)
 VALUES ($1, $2, $3)
 ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=EXCLUDED.updated_at`,
 		key, body, time.Now())
 	return err
+}
+
+// jsonEqual compares two JSON values for semantic equality.
+func jsonEqual(a, b json.RawMessage) bool {
+	if len(a) == 0 && len(b) == 0 {
+		return true
+	}
+	// Fast path: byte equality covers most cases.
+	if string(a) == string(b) {
+		return true
+	}
+	// Normalize via json.RawMessage comparison after re-marshal.
+	var va, vb any
+	if json.Unmarshal(a, &va) != nil || json.Unmarshal(b, &vb) != nil {
+		return false
+	}
+	na, _ := json.Marshal(va)
+	nb, _ := json.Marshal(vb)
+	return string(na) == string(nb)
 }
 
 // Delete removes a setting override.

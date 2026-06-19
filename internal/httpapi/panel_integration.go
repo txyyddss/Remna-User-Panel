@@ -443,6 +443,19 @@ LIMIT $1`, limit)
 }
 
 func savePanelSyncStatus(ctx context.Context, pool *pgxpool.Pool, result PanelSyncResult) error {
+	// Skip write when status hasn't changed to avoid redundant app_settings rows.
+	prev := LastPanelSyncStatus(ctx, pool)
+	if prev.Status == result.Status &&
+		prev.UsersProcessed == result.UsersProcessed &&
+		prev.SubscriptionsSynced == result.SubscriptionsSynced &&
+		prev.PaymentsScanned == result.PaymentsScanned &&
+		prev.PaymentsProvisioned == result.PaymentsProvisioned &&
+		prev.PaymentsFailed == result.PaymentsFailed &&
+		prev.LastSyncTime != "" && result.LastSyncTime != "" {
+		// Only update the timestamp without touching the rest.
+		result = prev
+		result.LastSyncTime = time.Now().UTC().Format(time.RFC3339)
+	}
 	return appsettings.NewStore(pool).Upsert(ctx, panelSyncStatusSettingKey, result)
 }
 
@@ -1784,11 +1797,28 @@ func recordSubscriptionNotification(ctx context.Context, pool *pgxpool.Pool, not
 	if sent == nil {
 		sent = map[string]string{}
 	}
+	// Skip if the same key was already recorded recently (no-op).
+	if ts, exists := sent[notificationKey]; exists {
+		if parsed, err := time.Parse(time.RFC3339, ts); err == nil {
+			if time.Since(parsed) < time.Hour {
+				return
+			}
+		}
+	}
 	// Clean old entries (older than 7 days)
 	cutoff := time.Now().UTC().Add(-7 * 24 * time.Hour)
+	dirty := false
 	for key, timestamp := range sent {
 		if parsed, err := time.Parse(time.RFC3339, timestamp); err == nil && parsed.Before(cutoff) {
 			delete(sent, key)
+			dirty = true
+		}
+	}
+	// Only write if entries actually changed.
+	if !dirty {
+		if _, ok := sent[notificationKey]; ok {
+			// Already have the key and no cleanup needed — skip write entirely.
+			return
 		}
 	}
 	sent[notificationKey] = time.Now().UTC().Format(time.RFC3339)

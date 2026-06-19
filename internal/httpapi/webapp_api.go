@@ -489,7 +489,19 @@ func webappSessionSecretFallback(settings config.Settings) string {
 }
 
 func upsertTelegramUser(ctx context.Context, pool *pgxpool.Pool, user auth.TelegramUser, language string) error {
-	_, err := pool.Exec(ctx, `
+	// Check whether any user data has changed before writing to avoid redundant WAL.
+	var existingUsername, existingFirstName, existingLastName, existingLang, existingPhoto string
+	err := pool.QueryRow(ctx, `SELECT COALESCE(username,''), COALESCE(first_name,''), COALESCE(last_name,''),
+ COALESCE(language_code,''), COALESCE(telegram_photo_url,'') FROM users WHERE user_id=$1`, user.ID).
+		Scan(&existingUsername, &existingFirstName, &existingLastName, &existingLang, &existingPhoto)
+	if err == nil {
+		if existingUsername == user.Username && existingFirstName == user.FirstName &&
+			existingLastName == user.LastName && existingLang == language && existingPhoto == user.PhotoURL {
+			return nil
+		}
+	}
+
+	_, err = pool.Exec(ctx, `
 INSERT INTO users (user_id, telegram_id, username, first_name, last_name, language_code, telegram_photo_url, registration_date)
 VALUES ($1,$1,$2,$3,$4,$5,$6,NOW())
 ON CONFLICT (user_id) DO UPDATE SET
