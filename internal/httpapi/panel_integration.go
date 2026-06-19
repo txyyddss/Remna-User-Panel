@@ -1530,10 +1530,6 @@ type notifyStage struct {
 	isPostExp bool
 }
 
-func subscriptionNotificationStages(settings config.Settings, secondsLeft float64, status string, expireAt, now time.Time) []notifyStage {
-	return subscriptionNotificationStagesWithOverrides(settings, secondsLeft, status, expireAt, now, 0, 0)
-}
-
 // subscriptionNotificationStagesWithOverrides allows overriding notification
 // thresholds from app_settings values. When hoursBefore/daysBefore are 0,
 // the env config defaults are used.
