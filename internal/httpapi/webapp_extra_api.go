@@ -1931,8 +1931,8 @@ func adminAppearanceLogoHandler(settings config.Settings, pool *pgxpool.Pool) ht
 				_ = store.Upsert(r.Context(), "APPEARANCE_LOGO_URL", strings.TrimSpace(payload.URL))
 				logoURL := "/webapp-uploaded-logo/custom-" + time.Now().Format("20060102150405") + ".webp"
 				writeJSON(w, http.StatusOK, map[string]any{
-					"ok":         true,
-					"logo_url":   logoURL,
+					"ok":          true,
+					"logo_url":    logoURL,
 					"favicon_url": "/favicon.ico",
 				})
 				return
@@ -1987,8 +1987,8 @@ func adminAppearanceLogoHandler(settings config.Settings, pool *pgxpool.Pool) ht
 		_ = store.Upsert(r.Context(), "APPEARANCE_LOGO_URL", logoURL)
 
 		writeJSON(w, http.StatusOK, map[string]any{
-			"ok":         true,
-			"logo_url":   logoURL,
+			"ok":          true,
+			"logo_url":    logoURL,
 			"favicon_url": "/favicon.ico",
 		})
 	}

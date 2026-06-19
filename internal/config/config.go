@@ -17,47 +17,47 @@ const (
 
 // Settings contains process-wide runtime configuration.
 type Settings struct {
-	BotToken                    string
-	AdminIDs                    []int64
-	DefaultLanguage             string
-	DefaultCurrency             string
-	WebhookBaseURL              string
-	WebhookSecretToken          string
-	WebAppSessionSecret         string
-	WebServerHost               string
-	WebServerPort               int
-	WebAppEnabled               bool
-	WebAppServerHost            string
-	WebAppServerPort            int
-	SubscriptionMiniApp         string
-	PostgresUser                string
-	PostgresPassword            string
-	PostgresHost                string
-	PostgresPort                int
-	PostgresDB                  string
-	DatabaseURL                 string
-	RedisURL                    string
-	RedisKeyPrefix              string
-	TrustedProxies              []string
-	PanelAPIURL                 string
-	PanelAPIKey                 string
-	PanelAPITotalTimeout        time.Duration
-	PanelAPIConnectTimeout      time.Duration
-	PanelAPISockConnectTimeout  time.Duration
-	PanelAPISockReadTimeout     time.Duration
-	PanelWebhookSecret          string
-	PanelWebhookPath            string
-	LogLevel                    string
-	WorkerPanelSyncEvery        time.Duration
-	WorkerPaymentProvisionEvery time.Duration
-	UserTrafficLimitGB          float64
-	UserTrafficStrategy         string
-	UserSquadUUIDs              []string
-	UserExternalSquadUUID       string
-	UserHWIDDeviceLimit         *int
-	EZPay                       EZPaySettings
-	BEPUSDT                     BEPUSDTSettings
-	PaymentMethodsOrder         []string
+	BotToken                      string
+	AdminIDs                      []int64
+	DefaultLanguage               string
+	DefaultCurrency               string
+	WebhookBaseURL                string
+	WebhookSecretToken            string
+	WebAppSessionSecret           string
+	WebServerHost                 string
+	WebServerPort                 int
+	WebAppEnabled                 bool
+	WebAppServerHost              string
+	WebAppServerPort              int
+	SubscriptionMiniApp           string
+	PostgresUser                  string
+	PostgresPassword              string
+	PostgresHost                  string
+	PostgresPort                  int
+	PostgresDB                    string
+	DatabaseURL                   string
+	RedisURL                      string
+	RedisKeyPrefix                string
+	TrustedProxies                []string
+	PanelAPIURL                   string
+	PanelAPIKey                   string
+	PanelAPITotalTimeout          time.Duration
+	PanelAPIConnectTimeout        time.Duration
+	PanelAPISockConnectTimeout    time.Duration
+	PanelAPISockReadTimeout       time.Duration
+	PanelWebhookSecret            string
+	PanelWebhookPath              string
+	LogLevel                      string
+	WorkerPanelSyncEvery          time.Duration
+	WorkerPaymentProvisionEvery   time.Duration
+	UserTrafficLimitGB            float64
+	UserTrafficStrategy           string
+	UserSquadUUIDs                []string
+	UserExternalSquadUUID         string
+	UserHWIDDeviceLimit           *int
+	EZPay                         EZPaySettings
+	BEPUSDT                       BEPUSDTSettings
+	PaymentMethodsOrder           []string
 	SubscriptionNotifyHoursBefore int
 	SubscriptionNotifyDaysBefore  int
 }
@@ -143,7 +143,7 @@ func Load() (Settings, error) {
 			Token:     env("BEPUSDT_TOKEN", ""),
 			ReturnURL: env("BEPUSDT_RETURN_URL", ""),
 		},
-		PaymentMethodsOrder: splitCSV(env("PAYMENT_METHODS_ORDER", "")),
+		PaymentMethodsOrder:           splitCSV(env("PAYMENT_METHODS_ORDER", "")),
 		SubscriptionNotifyHoursBefore: envInt("SUBSCRIPTION_NOTIFY_HOURS_BEFORE", 0),
 		SubscriptionNotifyDaysBefore:  envInt("SUBSCRIPTION_NOTIFY_DAYS_BEFORE", 3),
 	}

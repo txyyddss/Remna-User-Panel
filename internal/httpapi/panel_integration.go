@@ -1527,11 +1527,11 @@ func RunSubscriptionNotifications(ctx context.Context, settings config.Settings,
 }
 
 type notifyStage struct {
-	key        string
-	daysLeft   int
-	hoursLeft  int
-	isExpired  bool
-	isPostExp  bool
+	key       string
+	daysLeft  int
+	hoursLeft int
+	isExpired bool
+	isPostExp bool
 }
 
 func subscriptionNotificationStages(settings config.Settings, secondsLeft float64, status string, expireAt, now time.Time) []notifyStage {
@@ -1575,8 +1575,8 @@ func subscriptionNotificationStages(settings config.Settings, secondsLeft float6
 			})
 		} else if expiredFor > 24*time.Hour && expiredFor <= 48*time.Hour {
 			stages = append(stages, notifyStage{
-				key:        "expired_24h_after",
-				isPostExp:  true,
+				key:       "expired_24h_after",
+				isPostExp: true,
 			})
 		}
 	}
