@@ -368,6 +368,7 @@ func devicesIPsDisconnectHandler(settings config.Settings, pool *pgxpool.Pool, p
 		if !ok {
 			return
 		}
+		_ = session
 		if panel == nil || !panel.Configured(r.Context()) {
 			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"ok": false, "error": "panel_not_configured"})
 			return
