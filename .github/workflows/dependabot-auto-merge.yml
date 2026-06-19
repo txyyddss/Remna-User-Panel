@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: read
 
 jobs:
   auto-merge:
@@ -24,16 +25,25 @@ jobs:
           SHA: ${{ github.event.workflow_run.head_sha }}
         shell: bash
         run: |
-          prs_json="$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --search "$SHA" --json number,author,headRefOid)"
-          number="$(jq -r '.[] | select(.headRefOid == env.SHA and .author.login == "dependabot[bot]") | .number' <<< "$prs_json" | head -n 1)"
+          # Use the GitHub API to find PRs that contain this commit SHA
+          # This is far more reliable than gh pr list --search
+          number="$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/pulls" \
+            --jq '.[] | select(.user.login == "dependabot[bot]") | .number' | head -n 1)"
           if [ -z "$number" ] || [ "$number" = "null" ]; then
+            echo "No Dependabot PR found for commit $SHA"
             echo "number=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          echo "Found Dependabot PR #$number for commit $SHA"
           echo "number=$number" >> "$GITHUB_OUTPUT"
 
-      - name: Merge PR
+      - name: Enable auto-merge
         if: steps.pr.outputs.number != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh pr merge "${{ steps.pr.outputs.number }}" --repo "$GITHUB_REPOSITORY" --squash --delete-branch
+        run: |
+          gh pr merge "${{ steps.pr.outputs.number }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --squash \
+            --admin \
+            --delete-branch
