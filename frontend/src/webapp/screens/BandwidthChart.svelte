@@ -36,7 +36,7 @@
 </Card>
 
 <style>
-  .bandwidth-chart-card {
+  :global(.bandwidth-chart-card) {
     margin-top: 1rem;
     padding: 1rem;
     text-align: center;

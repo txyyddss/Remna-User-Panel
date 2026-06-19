@@ -11,7 +11,7 @@
   export let devicesIsError = false;
   export let devicesLoaded = false;
   export let devicesStatus = "";
-  export let subscription = {};
+  export const subscription = {};
 
   export let loadDevices = () => {};
   export let openDeviceDisconnectDialog = () => {};
