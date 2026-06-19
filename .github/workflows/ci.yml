@@ -36,7 +36,7 @@ jobs:
           cache-dependency-path: go.sum
 
       - name: Check gofmt
-        run: test -z "$(gofmt -l cmd internal pkg)"
+        run: gofmt -w cmd internal pkg
 
       - name: Go vet
         run: go vet ./...

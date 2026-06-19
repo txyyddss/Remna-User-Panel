@@ -55,9 +55,9 @@ func authTokenHandler(settings config.Settings, pool *pgxpool.Pool) http.Handler
 			return
 		}
 		var payload struct {
-			InitData     string `json:"init_data"`
+			InitData     string         `json:"init_data"`
 			AuthData     map[string]any `json:"auth_data"`
-			ReferralCode string `json:"referral_code"`
+			ReferralCode string         `json:"referral_code"`
 		}
 		if err := decodeJSONBody(r, &payload); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})

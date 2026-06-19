@@ -94,11 +94,11 @@ func bootstrapHandler(settings config.Settings, pool *pgxpool.Pool, catalog *i18
 		writeJSON(w, http.StatusOK, map[string]any{
 			"ok": true,
 			"config": map[string]any{
-				"title":        "Subscription",
-				"primaryColor": "#00fe7a",
-				"apiBase":      "/api",
-				"language":     settings.DefaultLanguage,
-				"languages":    languageOptions(catalog),
+				"title":            "Subscription",
+				"primaryColor":     "#00fe7a",
+				"apiBase":          "/api",
+				"language":         settings.DefaultLanguage,
+				"languages":        languageOptions(catalog),
 				"emailAuthEnabled": settings.AdminEmail != "" && settings.AdminPassword != "",
 			},
 			"i18n":     i18nPayload,
@@ -256,11 +256,11 @@ func indexHandler(settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Ca
 			return
 		}
 		configScript := scriptJSON("webapp-config", map[string]any{
-			"title":        "Subscription",
-			"primaryColor": "#00fe7a",
-			"apiBase":      "/api",
-			"language":     settings.DefaultLanguage,
-			"languages":    languageOptions(catalog),
+			"title":            "Subscription",
+			"primaryColor":     "#00fe7a",
+			"apiBase":          "/api",
+			"language":         settings.DefaultLanguage,
+			"languages":        languageOptions(catalog),
 			"emailAuthEnabled": settings.AdminEmail != "" && settings.AdminPassword != "",
 		})
 		i18nScript := scriptJSON("i18n", localePayload(r.Context(), pool, catalog))
