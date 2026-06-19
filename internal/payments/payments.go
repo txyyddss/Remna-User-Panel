@@ -131,6 +131,8 @@ type Order struct {
 	Network           string          `json:"network,omitempty"`
 	URLScheme         string          `json:"url_scheme,omitempty"`
 	RawWebhook        json.RawMessage `json:"raw_webhook,omitempty"`
+	ProvisionedAt     *time.Time      `json:"provisioned_at,omitempty"`
+	ProvisionError    string          `json:"provision_error,omitempty"`
 	CreatedAt         time.Time       `json:"created_at"`
 	UpdatedAt         time.Time       `json:"updated_at"`
 	PaidAt            *time.Time      `json:"paid_at,omitempty"`
@@ -315,7 +317,7 @@ SELECT payment_id, order_id, user_id, COALESCE(provider,''), COALESCE(method,'')
 	COALESCE(tariff_key,''), COALESCE(sale_mode,''), COALESCE(months,0), COALESCE(traffic_gb,0)::float8,
 	COALESCE(device_count,0), COALESCE(provider_payment_id,''), COALESCE(payment_url,''), COALESCE(qr_content,''),
 	COALESCE(display_amount,''), COALESCE(display_currency,''), COALESCE(payment_address,''), COALESCE(network,''),
-	COALESCE(url_scheme,''), COALESCE(raw_webhook,'{}'::jsonb), created_at, updated_at, paid_at
+	COALESCE(url_scheme,''), COALESCE(raw_webhook,'{}'::jsonb), provisioned_at, COALESCE(provision_error,''), created_at, updated_at, paid_at
 FROM payment_orders WHERE payment_id=$1 AND user_id=$2`, paymentID, userID)
 }
 
@@ -329,7 +331,7 @@ SELECT p.payment_id, p.order_id, p.user_id, COALESCE(p.provider,''), COALESCE(p.
 	COALESCE(p.tariff_key,''), COALESCE(p.sale_mode,''), COALESCE(p.months,0), COALESCE(p.traffic_gb,0)::float8,
 	COALESCE(p.device_count,0), COALESCE(p.provider_payment_id,''), COALESCE(p.payment_url,''), COALESCE(p.qr_content,''),
 	COALESCE(p.display_amount,''), COALESCE(p.display_currency,''), COALESCE(p.payment_address,''), COALESCE(p.network,''),
-	COALESCE(p.url_scheme,''), COALESCE(p.raw_webhook,'{}'::jsonb), p.created_at, p.updated_at, p.paid_at
+	COALESCE(p.url_scheme,''), COALESCE(p.raw_webhook,'{}'::jsonb), p.provisioned_at, COALESCE(p.provision_error,''), p.created_at, p.updated_at, p.paid_at
 FROM payment_orders p WHERE p.payment_id=$1`, paymentID)
 }
 
@@ -354,7 +356,7 @@ SELECT p.payment_id, p.order_id, p.user_id, COALESCE(u.username,''), COALESCE(u.
 	COALESCE(p.sale_mode,''), COALESCE(p.months,0), COALESCE(p.traffic_gb,0)::float8, COALESCE(p.device_count,0),
 	COALESCE(p.provider_payment_id,''), COALESCE(p.payment_url,''), COALESCE(p.qr_content,''), COALESCE(p.display_amount,''),
 	COALESCE(p.display_currency,''), COALESCE(p.payment_address,''), COALESCE(p.network,''), COALESCE(p.url_scheme,''),
-	COALESCE(p.raw_webhook,'{}'::jsonb), p.created_at, p.updated_at, p.paid_at
+	COALESCE(p.raw_webhook,'{}'::jsonb), p.provisioned_at, COALESCE(p.provision_error,''), p.created_at, p.updated_at, p.paid_at
 FROM payment_orders p
 LEFT JOIN users u ON u.user_id = p.user_id
 ORDER BY p.created_at DESC
@@ -373,7 +375,8 @@ LIMIT $1 OFFSET $2`, pageSize, page*pageSize)
 			&order.FXUpdatedAt, &order.PlanHash, &order.PlanSnapshot, &order.Status,
 			&order.Description, &order.TariffKey, &order.SaleMode, &order.Months, &order.TrafficGB, &order.DeviceCount,
 			&order.ProviderPaymentID, &order.PaymentURL, &order.QRContent, &order.DisplayAmount, &order.DisplayCurrency,
-			&order.PaymentAddress, &order.Network, &order.URLScheme, &order.RawWebhook, &order.CreatedAt, &order.UpdatedAt, &order.PaidAt,
+			&order.PaymentAddress, &order.Network, &order.URLScheme, &order.RawWebhook, &order.ProvisionedAt, &order.ProvisionError,
+			&order.CreatedAt, &order.UpdatedAt, &order.PaidAt,
 		); err != nil {
 			return nil, 0, err
 		}
@@ -460,7 +463,7 @@ func (r *Registry) scanOrder(ctx context.Context, query string, args ...any) (Or
 		&order.Status, &order.Description, &order.TariffKey, &order.SaleMode,
 		&order.Months, &order.TrafficGB, &order.DeviceCount, &order.ProviderPaymentID, &order.PaymentURL, &order.QRContent,
 		&order.DisplayAmount, &order.DisplayCurrency, &order.PaymentAddress, &order.Network, &order.URLScheme,
-		&order.RawWebhook, &order.CreatedAt, &order.UpdatedAt, &order.PaidAt,
+		&order.RawWebhook, &order.ProvisionedAt, &order.ProvisionError, &order.CreatedAt, &order.UpdatedAt, &order.PaidAt,
 	)
 	return order, err
 }

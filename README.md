@@ -19,7 +19,7 @@ docker compose up -d --build
 docker compose ps
 ```
 
-`.env` 只填写最小启动项。首次登录后台后配置 Webhook Base URL、Remnawave、套餐、支付、汇率、外观和语言。
+`.env` 只需要填写最小启动项；Remnawave API、套餐、支付、汇率、外观和语言可以在首次登录后台后配置。`.env` 中的 Remnawave/支付字段会作为后台未覆盖时的兜底值。
 
 ## 文档
 

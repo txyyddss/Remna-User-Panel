@@ -15,11 +15,12 @@ import (
 	"remna-user-panel/internal/config"
 	"remna-user-panel/internal/i18n"
 	"remna-user-panel/internal/payments"
+	"remna-user-panel/internal/remnawave"
 	"remna-user-panel/internal/webassets"
 )
 
 // WebAppRouter builds the Mini App and admin HTTP router.
-func WebAppRouter(settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog, assets webassets.Paths, registry *payments.Registry) http.Handler {
+func WebAppRouter(settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog, assets webassets.Paths, registry *payments.Registry, panel *remnawave.Client) http.Handler {
 	router := chi.NewRouter()
 	router.Use(securityHeaders)
 	router.Use(requestBodyLimit(8 << 20))
@@ -32,15 +33,15 @@ func WebAppRouter(settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Ca
 	})
 	router.Get("/api/bootstrap", bootstrapHandler(settings, catalog))
 	router.Get("/api/i18n", i18nHandler(settings, catalog))
-	router.Get("/api/me", meHandler(settings, pool, registry))
+	router.Get("/api/me", meHandler(settings, pool, registry, panel))
 	router.Post("/api/auth/token", authTokenHandler(settings, pool))
 	router.Post("/api/auth/logout", logoutHandler())
 	router.Post("/api/payments", createPaymentHandler(settings, pool, registry))
-	router.Get("/api/payments/{payment_id}", paymentStatusHandler(settings, pool, registry))
+	router.Get("/api/payments/{payment_id}", paymentStatusHandler(settings, pool, registry, panel))
 	router.Get("/api/admin/settings", adminSettingsHandler(settings, pool))
 	router.Patch("/api/admin/settings", adminSettingsHandler(settings, pool))
 	router.Get("/api/admin/payments", adminPaymentsListHandler(settings, pool, registry))
-	registerExtraAPIRoutes(router, settings, pool, catalog, assets, registry)
+	registerExtraAPIRoutes(router, settings, pool, catalog, assets, registry, panel)
 	router.Get("/api/admin/payments/{payment_id}", adminPaymentDetailHandler(settings, pool, registry))
 	router.Get("/api/*", notImplementedAPI("unknown_api"))
 	router.Post("/api/*", notImplementedAPI("unknown_api"))

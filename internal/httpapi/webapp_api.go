@@ -20,6 +20,7 @@ import (
 	"remna-user-panel/internal/config"
 	"remna-user-panel/internal/fx"
 	"remna-user-panel/internal/payments"
+	"remna-user-panel/internal/remnawave"
 	appsettings "remna-user-panel/internal/settings"
 	"remna-user-panel/internal/tariffs"
 )
@@ -35,14 +36,16 @@ type sessionContext struct {
 }
 
 type webappUser struct {
-	UserID       int64  `json:"user_id"`
-	TelegramID   int64  `json:"telegram_id,omitempty"`
-	Username     string `json:"username,omitempty"`
-	FirstName    string `json:"first_name,omitempty"`
-	LastName     string `json:"last_name,omitempty"`
-	LanguageCode string `json:"language_code"`
-	PhotoURL     string `json:"telegram_photo_url,omitempty"`
-	IsAdmin      bool   `json:"is_admin"`
+	UserID        int64  `json:"user_id"`
+	TelegramID    int64  `json:"telegram_id,omitempty"`
+	Username      string `json:"username,omitempty"`
+	Email         string `json:"email,omitempty"`
+	FirstName     string `json:"first_name,omitempty"`
+	LastName      string `json:"last_name,omitempty"`
+	LanguageCode  string `json:"language_code"`
+	PhotoURL      string `json:"telegram_photo_url,omitempty"`
+	PanelUserUUID string `json:"panel_user_uuid,omitempty"`
+	IsAdmin       bool   `json:"is_admin"`
 }
 
 func authTokenHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
@@ -52,7 +55,8 @@ func authTokenHandler(settings config.Settings, pool *pgxpool.Pool) http.Handler
 			return
 		}
 		var payload struct {
-			InitData string `json:"init_data"`
+			InitData     string `json:"init_data"`
+			ReferralCode string `json:"referral_code"`
 		}
 		if err := decodeJSONBody(r, &payload); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
@@ -68,6 +72,7 @@ func authTokenHandler(settings config.Settings, pool *pgxpool.Pool) http.Handler
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "user_upsert_failed"})
 			return
 		}
+		bindReferralCode(r.Context(), pool, tgUser.ID, payload.ReferralCode)
 		manager := auth.NewManager(settings.WebAppSessionSecret, "")
 		token, csrf, err := manager.Sign(tgUser.ID)
 		if err != nil {
@@ -100,7 +105,7 @@ func logoutHandler() http.HandlerFunc {
 	}
 }
 
-func meHandler(settings config.Settings, pool *pgxpool.Pool, registry *payments.Registry) http.HandlerFunc {
+func meHandler(settings config.Settings, pool *pgxpool.Pool, registry *payments.Registry, panel *remnawave.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		session, ok := requireSession(w, r, settings, pool, false)
 		if !ok {
@@ -122,11 +127,23 @@ func meHandler(settings config.Settings, pool *pgxpool.Pool, registry *payments.
 		if registry != nil {
 			methods = registry.Methods(r.Context(), session.User.LanguageCode, session.User.IsAdmin)
 		}
+		subscription := map[string]any{"active": false}
+		if panel != nil && panel.Configured(r.Context()) {
+			panelUser, found, err := panelUserForWebUser(r.Context(), pool, panel, session.User)
+			if err != nil {
+				writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
+				return
+			}
+			if found {
+				subscription = subscriptionFromPanelUser(r.Context(), pool, session.User, panelUser)
+			}
+		}
 		writeJSON(w, http.StatusOK, map[string]any{
 			"ok":              true,
 			"user":            session.User,
-			"subscription":    map[string]any{"active": false},
-			"settings":        webappFeatureSettings(),
+			"subscription":    subscription,
+			"settings":        webappFeatureSettings(r.Context(), settings, pool, panel, session.User),
+			"referral":        referralPayload(r.Context(), settings, pool, session.User),
 			"plans":           plans,
 			"payment_methods": methods,
 		})
@@ -219,7 +236,7 @@ func createPaymentHandler(settings config.Settings, pool *pgxpool.Pool, registry
 	}
 }
 
-func paymentStatusHandler(settings config.Settings, pool *pgxpool.Pool, registry *payments.Registry) http.HandlerFunc {
+func paymentStatusHandler(settings config.Settings, pool *pgxpool.Pool, registry *payments.Registry, panel *remnawave.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		session, ok := requireSession(w, r, settings, pool, false)
 		if !ok {
@@ -241,6 +258,12 @@ func paymentStatusHandler(settings config.Settings, pool *pgxpool.Pool, registry
 			writeJSON(w, status, map[string]any{"ok": false, "error": code})
 			return
 		}
+		if paymentOrderPaid(order) {
+			_ = provisionPaidOrder(r.Context(), settings, pool, panel, order)
+			if refreshed, err := registry.GetForUser(r.Context(), session.User.UserID, paymentID); err == nil {
+				order = refreshed
+			}
+		}
 		writeJSON(w, http.StatusOK, paymentStatusPayload(order))
 	}
 }
@@ -254,8 +277,11 @@ func adminSettingsHandler(settings config.Settings, pool *pgxpool.Pool) http.Han
 		if r.Method == http.MethodGet {
 			writeJSON(w, http.StatusOK, map[string]any{
 				"ok":       true,
-				"features": []string{"payments"},
+				"features": []string{"remnawave", "payments"},
 				"sections": []map[string]any{{
+					"id":     "remnawave",
+					"fields": remnawaveSettingsFields(r.Context(), settings, store),
+				}, {
 					"id":     "payments",
 					"fields": paymentSettingsFields(r.Context(), settings, store),
 				}},
@@ -412,21 +438,23 @@ ON CONFLICT (user_id) DO UPDATE SET
 
 func loadWebappUser(ctx context.Context, pool *pgxpool.Pool, userID int64, settings config.Settings) (webappUser, error) {
 	var user webappUser
-	var username, firstName, lastName, language, photo string
+	var username, email, firstName, lastName, language, photo, panelUUID string
 	err := pool.QueryRow(ctx, `
-SELECT user_id, COALESCE(telegram_id,0), COALESCE(username,''), COALESCE(first_name,''), COALESCE(last_name,''),
-	COALESCE(language_code,''), COALESCE(telegram_photo_url,'')
+SELECT user_id, COALESCE(telegram_id,0), COALESCE(username,''), COALESCE(email,''), COALESCE(first_name,''), COALESCE(last_name,''),
+	COALESCE(language_code,''), COALESCE(telegram_photo_url,''), COALESCE(panel_user_uuid,'')
 FROM users WHERE user_id=$1`, userID).Scan(
-		&user.UserID, &user.TelegramID, &username, &firstName, &lastName, &language, &photo,
+		&user.UserID, &user.TelegramID, &username, &email, &firstName, &lastName, &language, &photo, &panelUUID,
 	)
 	if err != nil {
 		return webappUser{}, err
 	}
 	user.Username = username
+	user.Email = email
 	user.FirstName = firstName
 	user.LastName = lastName
 	user.LanguageCode = normalizeWebLanguage(language, settings.DefaultLanguage)
 	user.PhotoURL = photo
+	user.PanelUserUUID = panelUUID
 	user.IsAdmin = isAdminID(settings.AdminIDs, user.UserID) || isAdminID(settings.AdminIDs, user.TelegramID)
 	return user, nil
 }
@@ -469,13 +497,26 @@ func isSecureRequest(r *http.Request) bool {
 	return r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
 }
 
-func webappFeatureSettings() map[string]any {
+func webappFeatureSettings(ctx context.Context, settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client, user webappUser) map[string]any {
+	store := appsettings.NewStore(pool)
+	panelConfigured := panel != nil && panel.Configured(ctx)
+	trialEnabled := store.Bool(ctx, "TRIAL_ENABLED", false)
+	trialDurationDays := store.Int(ctx, "TRIAL_DURATION_DAYS", 0)
+	trialTrafficGB := store.Float(ctx, "TRIAL_TRAFFIC_LIMIT_GB", 0)
+	referralWelcomeDays := store.Int(ctx, "REFERRAL_WELCOME_BONUS_DAYS", 0)
 	return map[string]any{
-		"my_devices_enabled":              false,
-		"support_tickets_enabled":         false,
+		"my_devices_enabled":              store.Bool(ctx, "MY_DEVICES_ENABLED", panelConfigured),
+		"support_tickets_enabled":         store.Bool(ctx, "SUPPORT_TICKETS_ENABLED", false),
 		"subscription_guides_enabled":     false,
-		"trial_enabled":                   false,
-		"tariff_change_enabled":           false,
+		"trial_enabled":                   trialEnabled,
+		"trial_available":                 trialEnabled && trialDurationDays > 0 && panelConfigured && trialAvailableForUser(ctx, pool, user.UserID),
+		"trial_duration_days":             trialDurationDays,
+		"trial_traffic_limit_gb":          trialTrafficGB,
+		"trial_traffic_strategy":          store.String(ctx, "TRIAL_TRAFFIC_STRATEGY", settings.UserTrafficStrategy),
+		"trial_requires_telegram":         false,
+		"trial_block_reason":              "",
+		"referral_welcome_bonus_days":     referralWelcomeDays,
+		"tariff_change_enabled":           panelConfigured,
 		"subscription_auto_renew_enabled": false,
 	}
 }
@@ -498,6 +539,9 @@ func paymentStatusPayload(order payments.Order) map[string]any {
 		"payment_address":     order.PaymentAddress,
 		"network":             order.Network,
 		"provider_payment_id": order.ProviderPaymentID,
+		"provisioned":         order.ProvisionedAt != nil,
+		"provisioned_at":      order.ProvisionedAt,
+		"provision_error":     order.ProvisionError,
 	}
 }
 
@@ -532,6 +576,38 @@ func paymentSettingsFields(ctx context.Context, settings config.Settings, store 
 		{Key: "PAYMENT_BEPUSDT_ARBITRUM_LABEL_EN", Type: "string", Label: "Arbitrum label EN", Subsection: "BEPUSDT", Fallback: "USDT Arbitrum"},
 		{Key: "PAYMENT_BEPUSDT_APTOS_LABEL_ZH", Type: "string", Label: "Aptos label ZH", Subsection: "BEPUSDT", Fallback: "USDT Aptos"},
 		{Key: "PAYMENT_BEPUSDT_APTOS_LABEL_EN", Type: "string", Label: "Aptos label EN", Subsection: "BEPUSDT", Fallback: "USDT Aptos"},
+	}
+	result := make([]map[string]any, 0, len(fields))
+	for _, field := range fields {
+		result = append(result, field.toMap(ctx, store))
+	}
+	return result
+}
+
+func remnawaveSettingsFields(ctx context.Context, settings config.Settings, store appsettings.Store) []map[string]any {
+	effectiveWebhookBaseURL := store.String(ctx, "WEBHOOK_BASE_URL", settings.WebhookBaseURL)
+	webhookConfigured := strings.TrimSpace(effectiveWebhookBaseURL) != ""
+	hwidFallback := ""
+	if settings.UserHWIDDeviceLimit != nil {
+		hwidFallback = strconv.Itoa(*settings.UserHWIDDeviceLimit)
+	}
+	fields := []paymentSettingField{
+		{Key: "PANEL_API_URL", Type: "string", Label: "Remnawave API URL", Description: "Panel base URL. Both https://panel.example and https://panel.example/api are accepted.", Subsection: "Remnawave", Fallback: settings.PanelAPIURL},
+		{Key: "PANEL_API_KEY", Type: "string", Label: "Remnawave API key", Description: "Bearer token used to call Remnawave API.", Subsection: "Remnawave", Fallback: settings.PanelAPIKey, Secret: true},
+		{Key: "PANEL_WEBHOOK_SECRET", Type: "string", Label: "Panel webhook secret", Description: "Shared secret checked on incoming Remnawave webhook requests.", Subsection: "Remnawave", Fallback: settings.PanelWebhookSecret, Secret: true, WebhookPath: settings.PanelWebhookPath, ProviderID: "remnawave", WebhookConfigured: webhookConfigured},
+		{Key: "USER_TRAFFIC_LIMIT_GB", Type: "float", Label: "Default traffic limit GB", Description: "Fallback traffic limit when a tariff does not define monthly_gb.", Subsection: "Defaults", Fallback: settings.UserTrafficLimitGB},
+		{Key: "USER_TRAFFIC_STRATEGY", Type: "string", Label: "Traffic reset strategy", Description: "Remnawave trafficLimitStrategy for provisioned users.", Subsection: "Defaults", Fallback: settings.UserTrafficStrategy, Choices: []settingChoice{{Value: "NO_RESET", Label: "No reset"}, {Value: "DAY", Label: "Day"}, {Value: "WEEK", Label: "Week"}, {Value: "MONTH", Label: "Month"}, {Value: "MONTH_ROLLING", Label: "Month rolling"}}},
+		{Key: "USER_SQUAD_UUIDS", Type: "text", Label: "Default internal squads", Description: "Comma-separated Internal Squad UUIDs used when a tariff has no squad_uuids.", Subsection: "Defaults", Fallback: strings.Join(settings.UserSquadUUIDs, ",")},
+		{Key: "USER_EXTERNAL_SQUAD_UUID", Type: "string", Label: "Default external squad", Description: "Optional external squad UUID.", Subsection: "Defaults", Fallback: settings.UserExternalSquadUUID},
+		{Key: "USER_HWID_DEVICE_LIMIT", Type: "int", Label: "Default HWID device limit", Description: "Empty uses Remnawave default; 0 means unlimited.", Subsection: "Defaults", Fallback: hwidFallback},
+		{Key: "TRIAL_ENABLED", Type: "bool", Label: "Trial enabled", Description: "Allow users to activate a one-time trial via Remnawave.", Subsection: "Trial", Fallback: false},
+		{Key: "TRIAL_DURATION_DAYS", Type: "int", Label: "Trial duration days", Description: "Number of days granted by trial activation.", Subsection: "Trial", Fallback: 0},
+		{Key: "TRIAL_TRAFFIC_LIMIT_GB", Type: "float", Label: "Trial traffic limit GB", Description: "Traffic limit applied to trial users. Empty or 0 falls back to default traffic limit.", Subsection: "Trial", Fallback: 0},
+		{Key: "TRIAL_TRAFFIC_STRATEGY", Type: "string", Label: "Trial traffic strategy", Description: "Remnawave trafficLimitStrategy for trial users.", Subsection: "Trial", Fallback: settings.UserTrafficStrategy, Choices: []settingChoice{{Value: "NO_RESET", Label: "No reset"}, {Value: "DAY", Label: "Day"}, {Value: "WEEK", Label: "Week"}, {Value: "MONTH", Label: "Month"}, {Value: "MONTH_ROLLING", Label: "Month rolling"}}},
+		{Key: "TRIAL_SQUAD_UUIDS", Type: "text", Label: "Trial internal squads", Description: "Comma-separated Internal Squad UUIDs for trial users. Empty uses default squads.", Subsection: "Trial", Fallback: ""},
+		{Key: "REFERRAL_WELCOME_BONUS_DAYS", Type: "int", Label: "Referral welcome bonus days", Description: "Days granted once to invited users. 0 disables welcome bonus claiming.", Subsection: "Referral", Fallback: 0},
+		{Key: "MY_DEVICES_ENABLED", Type: "bool", Label: "My devices enabled", Description: "Show HWID device management in the Web App.", Subsection: "Features", Fallback: settings.PanelAPIURL != "" && settings.PanelAPIKey != ""},
+		{Key: "SUPPORT_TICKETS_ENABLED", Type: "bool", Label: "Support tickets enabled", Description: "Show the built-in support ticket UI.", Subsection: "Features", Fallback: false},
 	}
 	result := make([]map[string]any, 0, len(fields))
 	for _, field := range fields {
@@ -575,6 +651,11 @@ func (f paymentSettingField) toMap(ctx context.Context, store appsettings.Store)
 			var parsed float64
 			if json.Unmarshal(raw, &parsed) == nil {
 				value = int(parsed)
+			}
+		case "float":
+			var parsed float64
+			if json.Unmarshal(raw, &parsed) == nil {
+				value = parsed
 			}
 		default:
 			var parsed string
@@ -624,6 +705,10 @@ func allowedPaymentSettingKeys() map[string]bool {
 	for _, key := range []string{
 		"WEBHOOK_BASE_URL", "DEFAULT_CURRENCY_SYMBOL", "FX_PROVIDER", "FX_CUSTOM_USD_CNY", "FX_CACHE_TTL_SECONDS",
 		"PAYMENT_METHODS_ORDER",
+		"PANEL_API_URL", "PANEL_API_KEY", "PANEL_WEBHOOK_SECRET", "USER_TRAFFIC_LIMIT_GB", "USER_TRAFFIC_STRATEGY",
+		"USER_SQUAD_UUIDS", "USER_EXTERNAL_SQUAD_UUID", "USER_HWID_DEVICE_LIMIT", "MY_DEVICES_ENABLED", "SUPPORT_TICKETS_ENABLED",
+		"TRIAL_ENABLED", "TRIAL_DURATION_DAYS", "TRIAL_TRAFFIC_LIMIT_GB", "TRIAL_TRAFFIC_STRATEGY", "TRIAL_SQUAD_UUIDS",
+		"REFERRAL_WELCOME_BONUS_DAYS",
 		"EZPAY_ENABLED", "EZPAY_BASE_URL", "EZPAY_PID", "EZPAY_KEY", "EZPAY_RETURN_URL",
 		"BEPUSDT_ENABLED", "BEPUSDT_BASE_URL", "BEPUSDT_TOKEN", "BEPUSDT_RETURN_URL",
 		"PAYMENT_EZPAY_ALIPAY_LABEL_ZH", "PAYMENT_EZPAY_ALIPAY_LABEL_EN",
@@ -640,7 +725,7 @@ func allowedPaymentSettingKeys() map[string]bool {
 
 func normalizeSettingValue(key string, value any) (any, error) {
 	switch key {
-	case "EZPAY_ENABLED", "BEPUSDT_ENABLED":
+	case "EZPAY_ENABLED", "BEPUSDT_ENABLED", "MY_DEVICES_ENABLED", "SUPPORT_TICKETS_ENABLED", "TRIAL_ENABLED":
 		if typed, ok := value.(bool); ok {
 			return typed, nil
 		}
@@ -652,7 +737,10 @@ func normalizeSettingValue(key string, value any) (any, error) {
 		default:
 			return nil, fmt.Errorf("invalid_bool")
 		}
-	case "EZPAY_PID", "FX_CACHE_TTL_SECONDS":
+	case "EZPAY_PID", "FX_CACHE_TTL_SECONDS", "USER_HWID_DEVICE_LIMIT", "TRIAL_DURATION_DAYS", "REFERRAL_WELCOME_BONUS_DAYS":
+		if key == "USER_HWID_DEVICE_LIMIT" && strings.TrimSpace(fmt.Sprint(value)) == "" {
+			return "", nil
+		}
 		switch typed := value.(type) {
 		case float64:
 			return int(typed), nil
@@ -681,6 +769,14 @@ func normalizeSettingValue(key string, value any) (any, error) {
 		default:
 			return nil, fmt.Errorf("unsupported_fx_provider")
 		}
+	case "USER_TRAFFIC_STRATEGY", "TRIAL_TRAFFIC_STRATEGY":
+		value := strings.ToUpper(strings.TrimSpace(fmt.Sprint(value)))
+		switch value {
+		case "NO_RESET", "DAY", "WEEK", "MONTH", "MONTH_ROLLING":
+			return value, nil
+		default:
+			return nil, fmt.Errorf("unsupported_traffic_strategy")
+		}
 	case "FX_CUSTOM_USD_CNY":
 		if strings.TrimSpace(fmt.Sprint(value)) == "" {
 			return "", nil
@@ -690,6 +786,15 @@ func normalizeSettingValue(key string, value any) (any, error) {
 			return nil, fmt.Errorf("invalid_float")
 		}
 		return strconv.FormatFloat(parsed, 'f', -1, 64), nil
+	case "USER_TRAFFIC_LIMIT_GB", "TRIAL_TRAFFIC_LIMIT_GB":
+		if strings.TrimSpace(fmt.Sprint(value)) == "" {
+			return 0, nil
+		}
+		parsed, err := strconv.ParseFloat(strings.TrimSpace(fmt.Sprint(value)), 64)
+		if err != nil || parsed < 0 {
+			return nil, fmt.Errorf("invalid_float")
+		}
+		return parsed, nil
 	default:
 		return strings.TrimSpace(fmt.Sprint(value)), nil
 	}

@@ -2,8 +2,10 @@ package httpapi
 
 import (
 	"context"
+	"database/sql"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,12 +24,13 @@ import (
 	"remna-user-panel/internal/fx"
 	"remna-user-panel/internal/i18n"
 	"remna-user-panel/internal/payments"
+	"remna-user-panel/internal/remnawave"
 	appsettings "remna-user-panel/internal/settings"
 	"remna-user-panel/internal/tariffs"
 	"remna-user-panel/internal/webassets"
 )
 
-func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog, assets webassets.Paths, registry *payments.Registry) {
+func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog, assets webassets.Paths, registry *payments.Registry, panel *remnawave.Client) {
 	_ = catalog
 	router.Get("/api/tariffs/topup-options", webappPlansOptionsHandler(settings, pool, "topup"))
 	router.Get("/api/devices/topup-options", webappPlansOptionsHandler(settings, pool, "devices"))
@@ -35,8 +38,11 @@ func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *p
 	router.Post("/api/tariffs/change", okSessionMutation(settings, pool))
 	router.Post("/api/tariffs/change-payment", createPaymentHandler(settings, pool, registry))
 	router.Post("/api/subscription/auto-renew", okSessionMutation(settings, pool))
-	router.Get("/api/devices", devicesHandler(settings, pool))
-	router.Post("/api/devices/disconnect", okSessionMutation(settings, pool))
+	router.Post("/api/promo/apply", promoApplyHandler(settings, pool, panel))
+	router.Post("/api/referral/welcome-bonus/claim", referralWelcomeBonusHandler(settings, pool, panel))
+	router.Post("/api/trial/activate", trialActivateHandler(settings, pool, panel))
+	router.Get("/api/devices", devicesHandler(settings, pool, panel))
+	router.Post("/api/devices/disconnect", disconnectDeviceHandler(settings, pool, panel))
 	router.Post("/api/account/email/request", unavailableSessionMutation(settings, pool, "email_delivery_not_configured"))
 	router.Post("/api/account/email/verify", unavailableSessionMutation(settings, pool, "email_delivery_not_configured"))
 	router.Post("/api/account/password/request", unavailableSessionMutation(settings, pool, "email_delivery_not_configured"))
@@ -54,32 +60,32 @@ func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *p
 	router.Post("/api/support/tickets", supportCreateHandler(settings, pool, false))
 	router.Get("/api/support/tickets/{ticket_id}", supportDetailHandler(settings, pool, false))
 	router.Post("/api/support/tickets/{ticket_id}/messages", supportMessageHandler(settings, pool, false))
-	router.Post("/api/support/tickets/{ticket_id}/read", okSessionMutation(settings, pool))
+	router.Post("/api/support/tickets/{ticket_id}/read", supportReadHandler(settings, pool, false))
 	router.Get("/api/support/unread", supportUnreadHandler(settings, pool))
 
 	router.Get("/api/admin/tariffs", adminTariffsHandler(settings, pool))
 	router.Put("/api/admin/tariffs", adminTariffsHandler(settings, pool))
-	router.Get("/api/admin/panel/internal-squads", adminSquadsHandler(settings, pool))
+	router.Get("/api/admin/panel/internal-squads", adminSquadsHandler(settings, pool, panel))
 	router.Get("/api/admin/payments/export.csv", adminPaymentsExportHandler(settings, pool, registry))
-	router.Get("/api/admin/health", adminHealthHandler(settings, pool))
-	router.Get("/api/admin/stats", adminStatsHandler(settings, pool))
+	router.Get("/api/admin/health", adminHealthHandler(settings, pool, panel))
+	router.Get("/api/admin/stats", adminStatsHandler(settings, pool, panel))
 	router.Post("/api/admin/sync", okAdminMutation(settings, pool))
 	router.Get("/api/admin/logs", adminLogsHandler(settings, pool))
-	router.Get("/api/admin/users", adminUsersListHandler(settings, pool))
-	router.Get("/api/admin/users/{user_id}", adminUserDetailHandler(settings, pool))
-	router.Delete("/api/admin/users/{user_id}", adminUserDeleteHandler(settings, pool))
+	router.Get("/api/admin/users", adminUsersListHandler(settings, pool, panel))
+	router.Get("/api/admin/users/{user_id}", adminUserDetailHandler(settings, pool, panel))
+	router.Delete("/api/admin/users/{user_id}", adminUserDeleteHandler(settings, pool, panel))
 	router.Get("/api/admin/users/{user_id}/referrals", adminUserReferralsHandler(settings, pool))
-	router.Post("/api/admin/users/{user_id}/ban", adminUserActionHandler(settings, pool))
+	router.Post("/api/admin/users/{user_id}/ban", adminUserActionHandler(settings, pool, panel))
 	router.Post("/api/admin/users/{user_id}/message", okAdminMutation(settings, pool))
 	router.Post("/api/admin/users/{user_id}/message/preview", adminMessagePreviewHandler(settings, pool))
 	router.Get("/api/admin/users/{user_id}/telegram-profile-link", adminTelegramProfileLinkHandler(settings, pool))
-	router.Post("/api/admin/users/{user_id}/extend", adminUserActionHandler(settings, pool))
-	router.Post("/api/admin/users/{user_id}/tariff", adminUserActionHandler(settings, pool))
-	router.Post("/api/admin/users/{user_id}/reset-trial", adminUserActionHandler(settings, pool))
-	router.Post("/api/admin/users/{user_id}/premium-override", adminUserActionHandler(settings, pool))
-	router.Post("/api/admin/users/{user_id}/regular-traffic-override", adminUserActionHandler(settings, pool))
-	router.Post("/api/admin/users/{user_id}/hwid-device-limit", adminUserActionHandler(settings, pool))
-	router.Post("/api/admin/users/{user_id}/traffic-grant", adminUserActionHandler(settings, pool))
+	router.Post("/api/admin/users/{user_id}/extend", adminUserActionHandler(settings, pool, panel))
+	router.Post("/api/admin/users/{user_id}/tariff", adminUserActionHandler(settings, pool, panel))
+	router.Post("/api/admin/users/{user_id}/reset-trial", adminUserActionHandler(settings, pool, panel))
+	router.Post("/api/admin/users/{user_id}/premium-override", adminUserActionHandler(settings, pool, panel))
+	router.Post("/api/admin/users/{user_id}/regular-traffic-override", adminUserActionHandler(settings, pool, panel))
+	router.Post("/api/admin/users/{user_id}/hwid-device-limit", adminUserActionHandler(settings, pool, panel))
+	router.Post("/api/admin/users/{user_id}/traffic-grant", adminUserActionHandler(settings, pool, panel))
 
 	router.Get("/api/admin/promos", adminListSettingHandler(settings, pool, "ADMIN_PROMOS", "promos"))
 	router.Post("/api/admin/promos", adminCreateSettingItemHandler(settings, pool, "ADMIN_PROMOS", "promo"))
@@ -107,7 +113,7 @@ func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *p
 	router.Get("/api/admin/support/tickets", supportListHandler(settings, pool, true))
 	router.Get("/api/admin/support/tickets/{ticket_id}", supportDetailHandler(settings, pool, true))
 	router.Post("/api/admin/support/tickets/{ticket_id}/messages", supportMessageHandler(settings, pool, true))
-	router.Post("/api/admin/support/tickets/{ticket_id}/read", okAdminMutation(settings, pool))
+	router.Post("/api/admin/support/tickets/{ticket_id}/read", supportReadHandler(settings, pool, true))
 	router.Patch("/api/admin/support/tickets/{ticket_id}", supportPatchHandler(settings, pool))
 }
 
@@ -140,12 +146,71 @@ func webappPlansOptionsHandler(settings config.Settings, pool *pgxpool.Pool, kin
 	}
 }
 
-func devicesHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+func devicesHandler(settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := requireSession(w, r, settings, pool, false); !ok {
+		session, ok := requireSession(w, r, settings, pool, false)
+		if !ok {
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "devices": []any{}, "limit": 0, "used": 0})
+		if panel == nil || !panel.Configured(r.Context()) {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"ok": false, "error": "panel_not_configured"})
+			return
+		}
+		panelUser, found, err := panelUserForWebUser(r.Context(), pool, panel, session.User)
+		if err != nil {
+			writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
+			return
+		}
+		if !found {
+			writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "subscription_not_active"})
+			return
+		}
+		devices, err := panel.GetUserDevices(r.Context(), stringValue(panelUser, "uuid"))
+		if err != nil {
+			writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
+			return
+		}
+		writeJSON(w, http.StatusOK, mapDevicePayload(devices, panelUser))
+	}
+}
+
+func disconnectDeviceHandler(settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, ok := requireSession(w, r, settings, pool, true)
+		if !ok {
+			return
+		}
+		if panel == nil || !panel.Configured(r.Context()) {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"ok": false, "error": "panel_not_configured"})
+			return
+		}
+		var payload struct {
+			Token string `json:"token"`
+			HWID  string `json:"hwid"`
+		}
+		if err := decodeJSONBody(r, &payload); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
+			return
+		}
+		hwid := strings.TrimSpace(firstNonEmpty(payload.HWID, payload.Token))
+		if hwid == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "hwid_required"})
+			return
+		}
+		panelUser, found, err := panelUserForWebUser(r.Context(), pool, panel, session.User)
+		if err != nil {
+			writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
+			return
+		}
+		if !found {
+			writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "subscription_not_active"})
+			return
+		}
+		if err := panel.DisconnectDevice(r.Context(), stringValue(panelUser, "uuid"), hwid); err != nil {
+			writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 	}
 }
 
@@ -168,6 +233,139 @@ func accountLanguageHandler(settings config.Settings, pool *pgxpool.Pool) http.H
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "language": language})
+	}
+}
+
+func promoApplyHandler(settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, ok := requireSession(w, r, settings, pool, true)
+		if !ok {
+			return
+		}
+		var payload struct {
+			Code string `json:"code"`
+		}
+		if err := decodeJSONBody(r, &payload); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
+			return
+		}
+		code := strings.TrimSpace(payload.Code)
+		if code == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "promo_code_required"})
+			return
+		}
+		promos := readSettingList(r.Context(), pool, "ADMIN_PROMOS")
+		for index := range promos {
+			if !strings.EqualFold(strings.TrimSpace(fmt.Sprint(promos[index]["code"])), code) {
+				continue
+			}
+			if !settingItemActive(promos[index]) || promoExpired(promos[index]) {
+				writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "promo_inactive"})
+				return
+			}
+			if promoActivatedByUser(promos[index], session.User.UserID) {
+				writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "promo_already_used"})
+				return
+			}
+			maxActivations := int(int64Value(promos[index], "max_activations"))
+			currentActivations := promoActivationCount(promos[index])
+			if maxActivations > 0 && currentActivations >= maxActivations {
+				writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "promo_exhausted"})
+				return
+			}
+			days := int(int64Value(promos[index], "bonus_days"))
+			if days <= 0 {
+				days = int(int64Value(promos[index], "days"))
+			}
+			if days <= 0 {
+				writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "promo_invalid_reward"})
+				return
+			}
+			panelUser, err := grantPanelAccessDays(r.Context(), pool, panel, session.User, days, accessGrantOptions{Source: "promo:" + strings.ToUpper(code)})
+			if err != nil {
+				writePanelActionError(w, err)
+				return
+			}
+			activations := anyList(promos[index]["activations"])
+			activations = append(activations, map[string]any{"user_id": session.User.UserID, "activated_at": time.Now().UTC().Format(time.RFC3339)})
+			promos[index]["activations"] = activations
+			promos[index]["current_activations"] = currentActivations + 1
+			_ = writeSettingList(r.Context(), pool, "ADMIN_PROMOS", promos)
+			response := grantResponse(r.Context(), pool, session.User, panelUser, days)
+			response["code"] = strings.TrimSpace(fmt.Sprint(promos[index]["code"]))
+			writeJSON(w, http.StatusOK, response)
+			return
+		}
+		writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "promo_not_found"})
+	}
+}
+
+func trialActivateHandler(settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, ok := requireSession(w, r, settings, pool, true)
+		if !ok {
+			return
+		}
+		store := appsettings.NewStore(pool)
+		if !store.Bool(r.Context(), "TRIAL_ENABLED", false) {
+			writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "trial_not_enabled"})
+			return
+		}
+		days := store.Int(r.Context(), "TRIAL_DURATION_DAYS", 0)
+		if days <= 0 {
+			writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "trial_not_configured"})
+			return
+		}
+		if !trialAvailableForUser(r.Context(), pool, session.User.UserID) {
+			writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "trial_already_used"})
+			return
+		}
+		panelUser, err := grantPanelAccessDays(r.Context(), pool, panel, session.User, days, accessGrantOptions{
+			Source:          "trial",
+			TrafficLimitGB:  store.Float(r.Context(), "TRIAL_TRAFFIC_LIMIT_GB", 0),
+			TrafficStrategy: store.String(r.Context(), "TRIAL_TRAFFIC_STRATEGY", settings.UserTrafficStrategy),
+			SquadUUIDs:      splitRuntimeList(store.String(r.Context(), "TRIAL_SQUAD_UUIDS", "")),
+			SetTrafficLimit: true,
+		})
+		if err != nil {
+			writePanelActionError(w, err)
+			return
+		}
+		recordTrialActivation(r.Context(), pool, session.User.UserID)
+		writeJSON(w, http.StatusOK, grantResponse(r.Context(), pool, session.User, panelUser, days))
+	}
+}
+
+func referralWelcomeBonusHandler(settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, ok := requireSession(w, r, settings, pool, true)
+		if !ok {
+			return
+		}
+		store := appsettings.NewStore(pool)
+		days := store.Int(r.Context(), "REFERRAL_WELCOME_BONUS_DAYS", 0)
+		if days <= 0 {
+			writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "referral_welcome_not_enabled"})
+			return
+		}
+		var referredBy int64
+		var claimedAt sql.NullTime
+		err := pool.QueryRow(r.Context(), "SELECT COALESCE(referred_by_id,0), referral_welcome_bonus_claimed_at FROM users WHERE user_id=$1", session.User.UserID).Scan(&referredBy, &claimedAt)
+		if err != nil || referredBy == 0 {
+			writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "referral_welcome_not_available"})
+			return
+		}
+		if claimedAt.Valid {
+			writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "referral_welcome_already_claimed"})
+			return
+		}
+		panelUser, err := grantPanelAccessDays(r.Context(), pool, panel, session.User, days, accessGrantOptions{Source: "referral_welcome"})
+		if err != nil {
+			writePanelActionError(w, err)
+			return
+		}
+		_, _ = pool.Exec(r.Context(), "UPDATE users SET referral_welcome_bonus_claimed_at=NOW() WHERE user_id=$1", session.User.UserID)
+		writeJSON(w, http.StatusOK, grantResponse(r.Context(), pool, session.User, panelUser, days))
 	}
 }
 
@@ -207,12 +405,21 @@ func adminTariffsHandler(settings config.Settings, pool *pgxpool.Pool) http.Hand
 	}
 }
 
-func adminSquadsHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+func adminSquadsHandler(settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := requireAdmin(w, r, settings, pool, false); !ok {
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "squads": []any{}})
+		if panel == nil || !panel.Configured(r.Context()) {
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true, "squads": []any{}, "configured": false})
+			return
+		}
+		squads, err := panel.GetInternalSquads(r.Context())
+		if err != nil {
+			writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "squads": squads, "configured": true})
 	}
 }
 
@@ -245,12 +452,24 @@ func adminPaymentsExportHandler(settings config.Settings, pool *pgxpool.Pool, re
 	}
 }
 
-func adminHealthHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+func adminHealthHandler(settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := requireAdmin(w, r, settings, pool, false); !ok {
 			return
 		}
-		payload := map[string]any{"ok": true, "status": "ok", "checks": map[string]any{"database": pool != nil}}
+		alerts := []map[string]any{}
+		checks := map[string]any{"database": pool != nil}
+		panelConfigured := panel != nil && panel.Configured(r.Context())
+		checks["remnawave_configured"] = panelConfigured
+		if !panelConfigured {
+			alerts = append(alerts, map[string]any{"level": "warning", "code": "panel_not_configured", "message": "PANEL_API_URL and PANEL_API_KEY are required for Remnawave integration."})
+		} else if _, err := panel.GetSystemStats(r.Context()); err != nil {
+			checks["remnawave_api"] = false
+			alerts = append(alerts, map[string]any{"level": "error", "code": panelErrorCode(err), "message": err.Error()})
+		} else {
+			checks["remnawave_api"] = true
+		}
+		payload := map[string]any{"ok": true, "status": "ok", "checks": checks, "alerts": alerts, "checked_at": time.Now().UTC()}
 		if pool != nil {
 			payload["db_pool"] = pool.Stat()
 		}
@@ -258,15 +477,37 @@ func adminHealthHandler(settings config.Settings, pool *pgxpool.Pool) http.Handl
 	}
 }
 
-func adminStatsHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+func adminStatsHandler(settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := requireAdmin(w, r, settings, pool, false); !ok {
 			return
 		}
 		var users, payments int64
+		var revenue float64
 		_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM users").Scan(&users)
 		_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM payment_orders").Scan(&payments)
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "users": users, "payments": payments, "revenue": 0, "series": []any{}})
+		_ = pool.QueryRow(r.Context(), "SELECT COALESCE(SUM(base_amount),0)::float8 FROM payment_orders WHERE status IN ('paid','succeeded')").Scan(&revenue)
+		payload := map[string]any{
+			"ok":       true,
+			"users":    users,
+			"payments": payments,
+			"revenue":  revenue,
+			"series":   []any{},
+		}
+		if panel != nil && panel.Configured(r.Context()) {
+			panelStats := map[string]any{}
+			if stats, err := panel.GetSystemStats(r.Context()); err == nil {
+				panelStats["system"] = stats
+			}
+			if bandwidth, err := panel.GetBandwidthStats(r.Context()); err == nil {
+				panelStats["bandwidth"] = bandwidth
+			}
+			if nodes, err := panel.GetNodesStats(r.Context()); err == nil {
+				panelStats["nodes"] = nodes
+			}
+			payload["panel"] = panelStats
+		}
+		writeJSON(w, http.StatusOK, payload)
 	}
 }
 
@@ -279,7 +520,7 @@ func adminLogsHandler(settings config.Settings, pool *pgxpool.Pool) http.Handler
 	}
 }
 
-func adminUsersListHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+func adminUsersListHandler(settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := requireAdmin(w, r, settings, pool, false); !ok {
 			return
@@ -307,7 +548,7 @@ FROM users ORDER BY registration_date DESC LIMIT $1 OFFSET $2`, pageSize, page*p
 			if err := rows.Scan(&id, &telegramID, &username, &email, &firstName, &lastName, &language, &banned, &created); err != nil {
 				continue
 			}
-			users = append(users, userAdminPayload(id, telegramID, username, email, firstName, lastName, language, banned, created))
+			users = append(users, panelAwareAdminUser(r.Context(), pool, panel, userAdminPayload(id, telegramID, username, email, firstName, lastName, language, banned, created)))
 		}
 		var total int64
 		_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM users").Scan(&total)
@@ -315,21 +556,64 @@ FROM users ORDER BY registration_date DESC LIMIT $1 OFFSET $2`, pageSize, page*p
 	}
 }
 
-func adminUserDetailHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+func adminUserDetailHandler(settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := requireAdmin(w, r, settings, pool, false); !ok {
 			return
 		}
-		user, err := loadAdminUser(r.Context(), pool, chi.URLParam(r, "user_id"))
+		rawUserID := chi.URLParam(r, "user_id")
+		user, err := loadAdminUser(r.Context(), pool, rawUserID)
 		if err != nil {
 			writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "user_not_found"})
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "user": user, "active_subscription": nil, "payments": []any{}, "logs": []any{}})
+		user = panelAwareAdminUser(r.Context(), pool, panel, user)
+		userID, _ := parsePositiveInt64(rawUserID)
+		webUser, _ := loadWebappUser(r.Context(), pool, userID, settings)
+		var activeSubscription any
+		subscriptionURL := ""
+		lastConnectedAt := ""
+		vpnStatus := "unknown"
+		if panel != nil && panel.Configured(r.Context()) {
+			panelUser, found, err := panelUserForWebUser(r.Context(), pool, panel, webUser)
+			if err != nil {
+				writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
+				return
+			}
+			if found {
+				activeSubscription = subscriptionFromPanelUser(r.Context(), pool, webUser, panelUser)
+				subscriptionURL = stringValue(panelUser, "subscriptionUrl")
+				traffic := mapValue(panelUser, "userTraffic")
+				if onlineAt := parsePanelTime(traffic["onlineAt"]); !onlineAt.IsZero() {
+					lastConnectedAt = timeString(onlineAt)
+					if time.Since(onlineAt) <= 5*time.Minute {
+						vpnStatus = "online"
+					} else {
+						vpnStatus = "offline"
+					}
+				}
+			}
+		}
+		recentPayments := loadRecentPaymentsForUser(r.Context(), pool, userID)
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok":                    true,
+			"user":                  user,
+			"active_subscription":   activeSubscription,
+			"subscriptions":         []any{},
+			"payments":              recentPayments,
+			"recent_payments":       recentPayments,
+			"logs":                  []any{},
+			"log_count":             0,
+			"total_paid":            userTotalPaid(r.Context(), pool, userID),
+			"subscription_url":      subscriptionURL,
+			"last_vpn_connected_at": lastConnectedAt,
+			"vpn_connection_status": vpnStatus,
+			"referral":              map[string]any{"code": user["referral_code"], "bot_link": nil, "webapp_link": nil, "inviter": nil, "invitees_total": 0},
+		})
 	}
 }
 
-func adminUserDeleteHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+func adminUserDeleteHandler(settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := requireAdmin(w, r, settings, pool, true); !ok {
 			return
@@ -338,6 +622,14 @@ func adminUserDeleteHandler(settings config.Settings, pool *pgxpool.Pool) http.H
 		if err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_user_id"})
 			return
+		}
+		if panel != nil && panel.Configured(r.Context()) {
+			if panelUUID := loadPanelUUIDForUser(r.Context(), pool, userID); panelUUID != "" {
+				if err := panel.DeleteUser(r.Context(), panelUUID); err != nil {
+					writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
+					return
+				}
+			}
 		}
 		_, _ = pool.Exec(r.Context(), "DELETE FROM users WHERE user_id=$1", userID)
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
@@ -353,7 +645,7 @@ func adminUserReferralsHandler(settings config.Settings, pool *pgxpool.Pool) htt
 	}
 }
 
-func adminUserActionHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+func adminUserActionHandler(settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := requireAdmin(w, r, settings, pool, true); !ok {
 			return
@@ -363,15 +655,59 @@ func adminUserActionHandler(settings config.Settings, pool *pgxpool.Pool) http.H
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_user_id"})
 			return
 		}
+		path := r.URL.Path
 		if strings.HasSuffix(r.URL.Path, "/ban") {
 			var payload struct {
-				IsBanned bool `json:"is_banned"`
+				IsBanned bool  `json:"is_banned"`
+				Banned   *bool `json:"banned"`
 			}
 			_ = decodeJSONBody(r, &payload)
-			_, _ = pool.Exec(r.Context(), "UPDATE users SET is_banned=$2 WHERE user_id=$1", userID, payload.IsBanned)
+			banned := payload.IsBanned
+			if payload.Banned != nil {
+				banned = *payload.Banned
+			}
+			_, _ = pool.Exec(r.Context(), "UPDATE users SET is_banned=$2 WHERE user_id=$1", userID, banned)
+			if panel != nil && panel.Configured(r.Context()) {
+				if panelUUID := loadPanelUUIDForUser(r.Context(), pool, userID); panelUUID != "" {
+					if err := panel.SetUserEnabled(r.Context(), panelUUID, !banned); err != nil {
+						writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
+						return
+					}
+				}
+			}
+		} else if strings.HasSuffix(path, "/extend") {
+			if err := adminExtendPanelUser(r.Context(), settings, pool, panel, userID, r); err != nil {
+				writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
+				return
+			}
+		} else if strings.HasSuffix(path, "/tariff") {
+			if err := adminChangePanelTariff(r.Context(), settings, pool, panel, userID, r); err != nil {
+				writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
+				return
+			}
+		} else if strings.HasSuffix(path, "/hwid-device-limit") {
+			if err := adminSetPanelHWIDLimit(r.Context(), settings, pool, panel, userID, r); err != nil {
+				writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
+				return
+			}
+		} else if strings.HasSuffix(path, "/traffic-grant") {
+			if err := adminGrantPanelTraffic(r.Context(), settings, pool, panel, userID, r); err != nil {
+				writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
+				return
+			}
+		} else if strings.HasSuffix(path, "/reset-trial") {
+			_, _ = pool.Exec(r.Context(), "UPDATE users SET trial_eligibility_reset_at=NOW() WHERE user_id=$1", userID)
 		}
 		user, _ := loadAdminUser(r.Context(), pool, strconv.FormatInt(userID, 10))
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "user": user, "active_subscription": nil})
+		user = panelAwareAdminUser(r.Context(), pool, panel, user)
+		webUser, _ := loadWebappUser(r.Context(), pool, userID, settings)
+		var subscription any
+		if panel != nil && panel.Configured(r.Context()) {
+			if panelUser, found, _ := panelUserForWebUser(r.Context(), pool, panel, webUser); found {
+				subscription = subscriptionFromPanelUser(r.Context(), pool, webUser, panelUser)
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "user": user, "active_subscription": subscription, "subscription": subscription})
 	}
 }
 
@@ -587,15 +923,25 @@ func adminTranslationsHandler(settings config.Settings, pool *pgxpool.Pool) http
 
 func supportListHandler(settings config.Settings, pool *pgxpool.Pool, admin bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		var session sessionContext
+		var ok bool
 		if admin {
-			if _, ok := requireAdmin(w, r, settings, pool, false); !ok {
+			session, ok = requireAdmin(w, r, settings, pool, false)
+			if !ok {
 				return
 			}
-		} else if _, ok := requireSession(w, r, settings, pool, false); !ok {
-			return
+		} else {
+			session, ok = requireSession(w, r, settings, pool, false)
+			if !ok {
+				return
+			}
 		}
-		tickets := readSettingList(r.Context(), pool, "SUPPORT_TICKETS")
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "tickets": tickets, "counts": supportCounts(tickets), "total": len(tickets)})
+		allTickets := supportVisibleTickets(r.Context(), pool, readSettingList(r.Context(), pool, "SUPPORT_TICKETS"), session.User.UserID, admin)
+		counts := supportCounts(allTickets)
+		filtered := filterSupportTickets(allTickets, r.URL.Query())
+		total := len(filtered)
+		filtered = paginateSupportTickets(filtered, r.URL.Query())
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "tickets": filtered, "counts": counts, "total": total})
 	}
 }
 
@@ -610,32 +956,78 @@ func supportCreateHandler(settings config.Settings, pool *pgxpool.Pool, admin bo
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
 			return
 		}
+		subject := strings.TrimSpace(fmt.Sprint(payload["subject"]))
+		body := strings.TrimSpace(fmt.Sprint(payload["body"]))
+		if subject == "" || body == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_ticket"})
+			return
+		}
 		tickets := readSettingList(r.Context(), pool, "SUPPORT_TICKETS")
 		id := nextListID(tickets)
 		now := time.Now().Format(time.RFC3339)
-		ticket := map[string]any{"ticket_id": id, "id": id, "user_id": session.User.UserID, "status": "open", "subject": payload["subject"], "body": payload["body"], "created_at": now, "updated_at": now, "messages": []any{}}
+		message := map[string]any{
+			"message_id":       1,
+			"ticket_id":        id,
+			"body":             body,
+			"is_admin":         false,
+			"is_internal_note": false,
+			"author_role":      "user",
+			"user_id":          session.User.UserID,
+			"created_at":       now,
+		}
+		ticket := map[string]any{
+			"ticket_id":            id,
+			"id":                   id,
+			"user_id":              session.User.UserID,
+			"status":               "awaiting_admin",
+			"priority":             defaultString(payload["priority"], "normal"),
+			"category":             defaultString(payload["category"], "general"),
+			"subject":              subject,
+			"body":                 body,
+			"created_at":           now,
+			"updated_at":           now,
+			"last_message_at":      now,
+			"last_message_preview": supportPreview(body),
+			"message_count":        1,
+			"unread_admin_count":   1,
+			"unread_user_count":    0,
+			"messages":             []any{message},
+		}
 		tickets = append(tickets, ticket)
 		_ = writeSettingList(r.Context(), pool, "SUPPORT_TICKETS", tickets)
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "ticket": ticket})
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "ticket": supportTicketResponse(r.Context(), pool, ticket, false)})
 	}
 }
 
 func supportDetailHandler(settings config.Settings, pool *pgxpool.Pool, admin bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		var session sessionContext
+		var ok bool
 		if admin {
-			if _, ok := requireAdmin(w, r, settings, pool, false); !ok {
+			session, ok = requireAdmin(w, r, settings, pool, false)
+			if !ok {
 				return
 			}
-		} else if _, ok := requireSession(w, r, settings, pool, false); !ok {
-			return
+		} else {
+			session, ok = requireSession(w, r, settings, pool, false)
+			if !ok {
+				return
+			}
 		}
 		ticket, ok := findSettingItem(r.Context(), pool, "SUPPORT_TICKETS", chi.URLParam(r, "ticket_id"), "ticket_id")
-		if !ok {
+		if !ok || (!admin && !supportTicketBelongsToUser(ticket, session.User.UserID)) {
 			writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "ticket_not_found"})
 			return
 		}
-		messages, _ := ticket["messages"].([]any)
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "ticket": ticket, "messages": messages})
+		response := map[string]any{
+			"ok":       true,
+			"ticket":   supportTicketResponse(r.Context(), pool, ticket, admin),
+			"messages": supportVisibleMessages(ticket, admin),
+		}
+		if admin {
+			response["user_snapshot"] = supportUserSnapshot(r.Context(), pool, int64Value(ticket, "user_id"))
+		}
+		writeJSON(w, http.StatusOK, response)
 	}
 }
 
@@ -652,7 +1044,8 @@ func supportMessageHandler(settings config.Settings, pool *pgxpool.Pool, admin b
 			return
 		}
 		var payload struct {
-			Body string `json:"body"`
+			Body           string `json:"body"`
+			IsInternalNote bool   `json:"is_internal_note"`
 		}
 		if err := decodeJSONBody(r, &payload); err != nil || strings.TrimSpace(payload.Body) == "" {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_message"})
@@ -662,12 +1055,48 @@ func supportMessageHandler(settings config.Settings, pool *pgxpool.Pool, admin b
 		tickets := readSettingList(r.Context(), pool, "SUPPORT_TICKETS")
 		for index := range tickets {
 			if fmt.Sprint(tickets[index]["ticket_id"]) == id {
-				messages, _ := tickets[index]["messages"].([]any)
-				message := map[string]any{"message_id": len(messages) + 1, "ticket_id": id, "body": payload.Body, "is_admin": admin, "user_id": session.User.UserID, "created_at": time.Now().Format(time.RFC3339)}
+				if !admin && !supportTicketBelongsToUser(tickets[index], session.User.UserID) {
+					writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "ticket_not_found"})
+					return
+				}
+				messages := supportAllMessages(tickets[index])
+				now := time.Now().Format(time.RFC3339)
+				internalNote := admin && payload.IsInternalNote
+				role := "user"
+				if admin {
+					role = "admin"
+				}
+				if internalNote {
+					role = "internal"
+				}
+				message := map[string]any{
+					"message_id":       len(messages) + 1,
+					"ticket_id":        id,
+					"body":             strings.TrimSpace(payload.Body),
+					"is_admin":         admin,
+					"is_internal_note": internalNote,
+					"author_role":      role,
+					"user_id":          session.User.UserID,
+					"created_at":       now,
+				}
 				tickets[index]["messages"] = append(messages, message)
-				tickets[index]["updated_at"] = time.Now().Format(time.RFC3339)
+				tickets[index]["updated_at"] = now
+				tickets[index]["message_count"] = len(messages) + 1
+				if !internalNote {
+					tickets[index]["last_message_at"] = now
+					tickets[index]["last_message_preview"] = supportPreview(payload.Body)
+				}
+				switch {
+				case internalNote:
+				case admin:
+					tickets[index]["status"] = "awaiting_user"
+					tickets[index]["unread_user_count"] = int64Value(tickets[index], "unread_user_count") + 1
+				default:
+					tickets[index]["status"] = "awaiting_admin"
+					tickets[index]["unread_admin_count"] = int64Value(tickets[index], "unread_admin_count") + 1
+				}
 				_ = writeSettingList(r.Context(), pool, "SUPPORT_TICKETS", tickets)
-				writeJSON(w, http.StatusOK, map[string]any{"ok": true, "ticket": tickets[index], "message": message})
+				writeJSON(w, http.StatusOK, map[string]any{"ok": true, "ticket": supportTicketResponse(r.Context(), pool, tickets[index], admin), "message": message})
 				return
 			}
 		}
@@ -690,10 +1119,57 @@ func supportPatchHandler(settings config.Settings, pool *pgxpool.Pool) http.Hand
 		for index := range tickets {
 			if fmt.Sprint(tickets[index]["ticket_id"]) == id || fmt.Sprint(tickets[index]["id"]) == id {
 				for k, v := range payload {
-					tickets[index][k] = v
+					switch k {
+					case "status":
+						tickets[index][k] = normalizeSupportStatus(v)
+					case "priority":
+						tickets[index][k] = normalizeSupportPriority(v)
+					case "category":
+						tickets[index][k] = defaultString(v, "general")
+					case "subject":
+						if subject := strings.TrimSpace(fmt.Sprint(v)); subject != "" {
+							tickets[index][k] = subject
+						}
+					default:
+						tickets[index][k] = v
+					}
+				}
+				tickets[index]["updated_at"] = time.Now().Format(time.RFC3339)
+				_ = writeSettingList(r.Context(), pool, "SUPPORT_TICKETS", tickets)
+				writeJSON(w, http.StatusOK, map[string]any{"ok": true, "ticket": supportTicketResponse(r.Context(), pool, tickets[index], true)})
+				return
+			}
+		}
+		writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "ticket_not_found"})
+	}
+}
+
+func supportReadHandler(settings config.Settings, pool *pgxpool.Pool, admin bool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var session sessionContext
+		var ok bool
+		if admin {
+			session, ok = requireAdmin(w, r, settings, pool, true)
+		} else {
+			session, ok = requireSession(w, r, settings, pool, true)
+		}
+		if !ok {
+			return
+		}
+		tickets := readSettingList(r.Context(), pool, "SUPPORT_TICKETS")
+		for index := range tickets {
+			if fmt.Sprint(tickets[index]["ticket_id"]) == chi.URLParam(r, "ticket_id") || fmt.Sprint(tickets[index]["id"]) == chi.URLParam(r, "ticket_id") {
+				if !admin && !supportTicketBelongsToUser(tickets[index], session.User.UserID) {
+					writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "ticket_not_found"})
+					return
+				}
+				if admin {
+					tickets[index]["unread_admin_count"] = 0
+				} else {
+					tickets[index]["unread_user_count"] = 0
 				}
 				_ = writeSettingList(r.Context(), pool, "SUPPORT_TICKETS", tickets)
-				writeJSON(w, http.StatusOK, map[string]any{"ok": true, "ticket": tickets[index]})
+				writeJSON(w, http.StatusOK, map[string]any{"ok": true, "ticket": supportTicketResponse(r.Context(), pool, tickets[index], admin)})
 				return
 			}
 		}
@@ -703,10 +1179,17 @@ func supportPatchHandler(settings config.Settings, pool *pgxpool.Pool) http.Hand
 
 func supportUnreadHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := requireSession(w, r, settings, pool, false); !ok {
+		session, ok := requireSession(w, r, settings, pool, false)
+		if !ok {
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "unread": 0})
+		unread := 0
+		for _, ticket := range readSettingList(r.Context(), pool, "SUPPORT_TICKETS") {
+			if supportTicketBelongsToUser(ticket, session.User.UserID) {
+				unread += int(int64Value(ticket, "unread_user_count"))
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "unread": unread})
 	}
 }
 
@@ -716,7 +1199,7 @@ func adminSupportStatsHandler(settings config.Settings, pool *pgxpool.Pool) http
 			return
 		}
 		tickets := readSettingList(r.Context(), pool, "SUPPORT_TICKETS")
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "counts": supportCounts(tickets)})
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "stats": supportCounts(tickets), "counts": supportCounts(tickets)})
 	}
 }
 
@@ -940,6 +1423,491 @@ func findSettingItem(ctx context.Context, pool *pgxpool.Pool, key string, id str
 	return nil, false
 }
 
+func settingItemActive(item map[string]any) bool {
+	if _, ok := item["is_active"]; !ok {
+		if _, enabled := item["enabled"]; !enabled {
+			return true
+		}
+	}
+	if value, ok := item["is_active"]; ok {
+		return boolish(value, true)
+	}
+	return boolish(item["enabled"], true)
+}
+
+func promoExpired(item map[string]any) bool {
+	now := time.Now().UTC()
+	for _, key := range []string{"valid_until", "expires_at", "expired_at"} {
+		if value := parsePanelTime(item[key]); !value.IsZero() && now.After(value) {
+			return true
+		}
+	}
+	validDays := int(int64Value(item, "valid_days"))
+	if validDays <= 0 {
+		return false
+	}
+	createdAt := parsePanelTime(item["created_at"])
+	return !createdAt.IsZero() && now.After(createdAt.AddDate(0, 0, validDays))
+}
+
+func promoActivatedByUser(item map[string]any, userID int64) bool {
+	for _, raw := range anyList(item["activations"]) {
+		activation, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		if int64Value(activation, "user_id") == userID {
+			return true
+		}
+	}
+	return false
+}
+
+func promoActivationCount(item map[string]any) int {
+	current := int(int64Value(item, "current_activations"))
+	if activations := len(anyList(item["activations"])); activations > current {
+		return activations
+	}
+	return current
+}
+
+func trialAvailableForUser(ctx context.Context, pool *pgxpool.Pool, userID int64) bool {
+	if pool == nil || userID == 0 {
+		return false
+	}
+	var resetAt sql.NullTime
+	_ = pool.QueryRow(ctx, "SELECT trial_eligibility_reset_at FROM users WHERE user_id=$1", userID).Scan(&resetAt)
+	for _, raw := range readSettingList(ctx, pool, "TRIAL_ACTIVATIONS") {
+		if int64Value(raw, "user_id") != userID {
+			continue
+		}
+		activatedAt := parsePanelTime(raw["activated_at"])
+		if !resetAt.Valid || activatedAt.IsZero() || activatedAt.After(resetAt.Time) {
+			return false
+		}
+	}
+	return true
+}
+
+func recordTrialActivation(ctx context.Context, pool *pgxpool.Pool, userID int64) {
+	activations := readSettingList(ctx, pool, "TRIAL_ACTIVATIONS")
+	activations = append(activations, map[string]any{"user_id": userID, "activated_at": time.Now().UTC().Format(time.RFC3339)})
+	_ = writeSettingList(ctx, pool, "TRIAL_ACTIVATIONS", activations)
+}
+
+func referralPayload(ctx context.Context, settings config.Settings, pool *pgxpool.Pool, user webappUser) map[string]any {
+	code := ensureReferralCode(ctx, pool, user.UserID)
+	store := appsettings.NewStore(pool)
+	welcomeDays := store.Int(ctx, "REFERRAL_WELCOME_BONUS_DAYS", 0)
+	var invitees int64
+	var referredBy int64
+	var claimedAt sql.NullTime
+	if pool != nil {
+		_ = pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE referred_by_id=$1", user.UserID).Scan(&invitees)
+		_ = pool.QueryRow(ctx, "SELECT COALESCE(referred_by_id,0), referral_welcome_bonus_claimed_at FROM users WHERE user_id=$1", user.UserID).Scan(&referredBy, &claimedAt)
+	}
+	return map[string]any{
+		"code":                         code,
+		"bot_link":                     nil,
+		"webapp_link":                  referralWebAppLink(settings, code),
+		"invited_count":                invitees,
+		"invitees_total":               invitees,
+		"purchased_count":              0,
+		"bonus_details":                []any{},
+		"one_bonus_per_referee":        true,
+		"welcome_bonus_days":           welcomeDays,
+		"welcome_bonus_available":      welcomeDays > 0 && referredBy != 0 && !claimedAt.Valid,
+		"welcome_bonus_claimed":        claimedAt.Valid,
+		"welcome_bonus_claimed_at":     nullableTimeString(claimedAt),
+		"referral_welcome_bonus_days":  welcomeDays,
+		"referral_welcome_available":   welcomeDays > 0 && referredBy != 0 && !claimedAt.Valid,
+		"referral_welcome_claimed":     claimedAt.Valid,
+		"referral_welcome_claimed_at":  nullableTimeString(claimedAt),
+		"referral_welcome_requires_tg": false,
+	}
+}
+
+func ensureReferralCode(ctx context.Context, pool *pgxpool.Pool, userID int64) string {
+	if pool == nil || userID == 0 {
+		return ""
+	}
+	var code string
+	err := pool.QueryRow(ctx, "SELECT COALESCE(referral_code,'') FROM users WHERE user_id=$1", userID).Scan(&code)
+	if err != nil {
+		return ""
+	}
+	code = strings.ToUpper(strings.TrimSpace(code))
+	if code != "" {
+		return code
+	}
+	code = "R" + strings.ToUpper(strconv.FormatInt(userID, 36))
+	_, _ = pool.Exec(ctx, "UPDATE users SET referral_code=$2 WHERE user_id=$1 AND (referral_code IS NULL OR referral_code='')", userID, code)
+	return code
+}
+
+func bindReferralCode(ctx context.Context, pool *pgxpool.Pool, userID int64, rawCode string) {
+	if pool == nil || userID == 0 {
+		return
+	}
+	code := strings.ToUpper(strings.TrimSpace(rawCode))
+	code = strings.TrimPrefix(code, "REF_")
+	code = strings.TrimPrefix(code, "REF-")
+	if code == "" {
+		return
+	}
+	var referrerID int64
+	err := pool.QueryRow(ctx, "SELECT user_id FROM users WHERE UPPER(referral_code)=UPPER($1) LIMIT 1", code).Scan(&referrerID)
+	if err != nil || referrerID == 0 || referrerID == userID {
+		return
+	}
+	_, _ = pool.Exec(ctx, "UPDATE users SET referred_by_id=$2 WHERE user_id=$1 AND referred_by_id IS NULL", userID, referrerID)
+}
+
+func referralWebAppLink(settings config.Settings, code string) string {
+	base := strings.TrimSpace(settings.SubscriptionMiniApp)
+	if base == "" || code == "" {
+		return ""
+	}
+	separator := "?"
+	if strings.Contains(base, "?") {
+		separator = "&"
+	}
+	return base + separator + "startapp=ref_" + code
+}
+
+func grantResponse(ctx context.Context, pool *pgxpool.Pool, user webappUser, panelUser map[string]any, days int) map[string]any {
+	subscription := subscriptionFromPanelUser(ctx, pool, user, panelUser)
+	response := map[string]any{
+		"ok":           true,
+		"bonus_days":   days,
+		"subscription": subscription,
+	}
+	for _, key := range []string{"end_date", "end_date_text", "config_link", "connect_url", "days_left"} {
+		if value, ok := subscription[key]; ok {
+			response[key] = value
+		}
+	}
+	return response
+}
+
+func writePanelActionError(w http.ResponseWriter, err error) {
+	status := http.StatusBadGateway
+	if errors.Is(err, remnawave.ErrNotConfigured) {
+		status = http.StatusServiceUnavailable
+	}
+	writeJSON(w, status, map[string]any{"ok": false, "error": panelErrorCode(err), "message": err.Error()})
+}
+
+func anyList(value any) []any {
+	switch typed := value.(type) {
+	case []any:
+		return typed
+	case []map[string]any:
+		result := make([]any, 0, len(typed))
+		for _, item := range typed {
+			result = append(result, item)
+		}
+		return result
+	default:
+		return []any{}
+	}
+}
+
+func splitRuntimeList(raw string) []string {
+	fields := strings.FieldsFunc(raw, func(r rune) bool {
+		return r == ',' || r == ';' || r == '\n' || r == '\r' || r == '\t' || r == ' '
+	})
+	result := make([]string, 0, len(fields))
+	for _, field := range fields {
+		if value := strings.TrimSpace(field); value != "" {
+			result = append(result, value)
+		}
+	}
+	return result
+}
+
+func boolish(value any, fallback bool) bool {
+	switch typed := value.(type) {
+	case bool:
+		return typed
+	case string:
+		switch strings.ToLower(strings.TrimSpace(typed)) {
+		case "1", "true", "yes", "on":
+			return true
+		case "0", "false", "no", "off":
+			return false
+		}
+	case float64:
+		return typed != 0
+	case int:
+		return typed != 0
+	case int64:
+		return typed != 0
+	}
+	return fallback
+}
+
+func nullableTimeString(value sql.NullTime) any {
+	if !value.Valid {
+		return nil
+	}
+	return value.Time.UTC().Format(time.RFC3339)
+}
+
+func supportVisibleTickets(ctx context.Context, pool *pgxpool.Pool, tickets []map[string]any, userID int64, admin bool) []map[string]any {
+	result := make([]map[string]any, 0, len(tickets))
+	for _, ticket := range tickets {
+		if !admin && !supportTicketBelongsToUser(ticket, userID) {
+			continue
+		}
+		result = append(result, supportTicketResponse(ctx, pool, ticket, admin))
+	}
+	return result
+}
+
+func supportTicketResponse(ctx context.Context, pool *pgxpool.Pool, ticket map[string]any, admin bool) map[string]any {
+	item := make(map[string]any, len(ticket)+2)
+	for key, value := range ticket {
+		if key == "messages" {
+			continue
+		}
+		item[key] = value
+	}
+	item["status"] = normalizeSupportStatus(item["status"])
+	item["priority"] = normalizeSupportPriority(item["priority"])
+	item["category"] = defaultString(item["category"], "general")
+	item["message_count"] = len(supportVisibleMessages(ticket, admin))
+	if item["last_message_at"] == nil || fmt.Sprint(item["last_message_at"]) == "" {
+		item["last_message_at"] = item["updated_at"]
+	}
+	if admin {
+		item["user"] = supportTicketUser(ctx, pool, int64Value(ticket, "user_id"))
+	} else {
+		delete(item, "unread_admin_count")
+	}
+	return item
+}
+
+func supportTicketUser(ctx context.Context, pool *pgxpool.Pool, userID int64) map[string]any {
+	user := map[string]any{"user_id": userID}
+	if pool == nil || userID == 0 {
+		return user
+	}
+	loaded, err := loadAdminUser(ctx, pool, strconv.FormatInt(userID, 10))
+	if err != nil {
+		return user
+	}
+	loaded["name"] = strings.TrimSpace(strings.Join([]string{stringValue(loaded, "first_name"), stringValue(loaded, "last_name")}, " "))
+	if loaded["name"] == "" {
+		loaded["name"] = firstNonEmpty(stringValue(loaded, "username"), stringValue(loaded, "email"), strconv.FormatInt(userID, 10))
+	}
+	return loaded
+}
+
+func supportUserSnapshot(ctx context.Context, pool *pgxpool.Pool, userID int64) map[string]any {
+	user := supportTicketUser(ctx, pool, userID)
+	name := firstNonEmpty(stringValue(user, "name"), stringValue(user, "username"), stringValue(user, "email"), strconv.FormatInt(userID, 10))
+	return map[string]any{
+		"name":         name,
+		"tariff":       "-",
+		"panel_status": "-",
+		"remaining":    "-",
+	}
+}
+
+func supportTicketBelongsToUser(ticket map[string]any, userID int64) bool {
+	return userID != 0 && int64Value(ticket, "user_id") == userID
+}
+
+func supportAllMessages(ticket map[string]any) []any {
+	switch messages := ticket["messages"].(type) {
+	case []any:
+		return messages
+	case []map[string]any:
+		result := make([]any, 0, len(messages))
+		for _, message := range messages {
+			result = append(result, message)
+		}
+		return result
+	default:
+		return []any{}
+	}
+}
+
+func supportVisibleMessages(ticket map[string]any, admin bool) []any {
+	messages := supportAllMessages(ticket)
+	if admin {
+		return messages
+	}
+	result := make([]any, 0, len(messages))
+	for _, message := range messages {
+		if mapped, ok := message.(map[string]any); ok && supportBoolValue(mapped, "is_internal_note") {
+			continue
+		}
+		result = append(result, message)
+	}
+	return result
+}
+
+func filterSupportTickets(tickets []map[string]any, query map[string][]string) []map[string]any {
+	status := strings.ToLower(strings.TrimSpace(firstQuery(query, "status")))
+	priority := strings.ToLower(strings.TrimSpace(firstQuery(query, "priority")))
+	category := strings.ToLower(strings.TrimSpace(firstQuery(query, "category")))
+	search := strings.ToLower(strings.TrimSpace(firstQuery(query, "search")))
+	result := make([]map[string]any, 0, len(tickets))
+	for _, ticket := range tickets {
+		ticketStatus := normalizeSupportStatus(ticket["status"])
+		if status != "" && status != "all" {
+			active := ticketStatus != "closed" && ticketStatus != "resolved"
+			if status == "active" && !active {
+				continue
+			}
+			if status != "active" && ticketStatus != status {
+				continue
+			}
+		}
+		if priority != "" && strings.ToLower(fmt.Sprint(ticket["priority"])) != priority {
+			continue
+		}
+		if category != "" && strings.ToLower(fmt.Sprint(ticket["category"])) != category {
+			continue
+		}
+		if search != "" && !strings.Contains(strings.ToLower(fmt.Sprint(ticket)), search) {
+			continue
+		}
+		result = append(result, ticket)
+	}
+	sortSupportTickets(result, firstQuery(query, "sort"))
+	return result
+}
+
+func paginateSupportTickets(tickets []map[string]any, query map[string][]string) []map[string]any {
+	offset, _ := strconv.Atoi(firstQuery(query, "offset"))
+	limit, _ := strconv.Atoi(firstQuery(query, "limit"))
+	if offset < 0 {
+		offset = 0
+	}
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	if offset >= len(tickets) {
+		return []map[string]any{}
+	}
+	end := offset + limit
+	if end > len(tickets) {
+		end = len(tickets)
+	}
+	return tickets[offset:end]
+}
+
+func sortSupportTickets(tickets []map[string]any, rawSort string) {
+	sortKey := strings.ToLower(strings.TrimSpace(rawSort))
+	sort.SliceStable(tickets, func(i, j int) bool {
+		left := tickets[i]
+		right := tickets[j]
+		switch sortKey {
+		case "created_asc":
+			return supportTimeValue(left, "created_at").Before(supportTimeValue(right, "created_at"))
+		case "created_desc":
+			return supportTimeValue(left, "created_at").After(supportTimeValue(right, "created_at"))
+		case "updated_asc":
+			return supportTimeValue(left, "updated_at").Before(supportTimeValue(right, "updated_at"))
+		default:
+			leftUnread := int64Value(left, "unread_admin_count")
+			rightUnread := int64Value(right, "unread_admin_count")
+			if leftUnread != rightUnread {
+				return leftUnread > rightUnread
+			}
+			leftPriority := supportPriorityRank(left["priority"])
+			rightPriority := supportPriorityRank(right["priority"])
+			if leftPriority != rightPriority {
+				return leftPriority > rightPriority
+			}
+			return supportTimeValue(left, "updated_at").After(supportTimeValue(right, "updated_at"))
+		}
+	})
+}
+
+func supportTimeValue(ticket map[string]any, key string) time.Time {
+	value := stringValue(ticket, key)
+	if value == "" && key == "updated_at" {
+		value = firstNonEmpty(stringValue(ticket, "last_message_at"), stringValue(ticket, "created_at"))
+	}
+	if parsed, err := time.Parse(time.RFC3339, value); err == nil {
+		return parsed
+	}
+	return time.Time{}
+}
+
+func supportPriorityRank(value any) int {
+	switch strings.ToLower(strings.TrimSpace(fmt.Sprint(value))) {
+	case "urgent":
+		return 4
+	case "high":
+		return 3
+	case "normal":
+		return 2
+	case "low":
+		return 1
+	default:
+		return 2
+	}
+}
+
+func normalizeSupportStatus(value any) string {
+	switch strings.ToLower(strings.TrimSpace(fmt.Sprint(value))) {
+	case "closed", "resolved", "awaiting_admin", "awaiting_user", "open":
+		return strings.ToLower(strings.TrimSpace(fmt.Sprint(value)))
+	default:
+		return "open"
+	}
+}
+
+func normalizeSupportPriority(value any) string {
+	switch strings.ToLower(strings.TrimSpace(fmt.Sprint(value))) {
+	case "low", "normal", "high", "urgent":
+		return strings.ToLower(strings.TrimSpace(fmt.Sprint(value)))
+	default:
+		return "normal"
+	}
+}
+
+func supportBoolValue(m map[string]any, key string) bool {
+	switch value := m[key].(type) {
+	case bool:
+		return value
+	case string:
+		return strings.EqualFold(strings.TrimSpace(value), "true") || strings.TrimSpace(value) == "1"
+	default:
+		return false
+	}
+}
+
+func supportPreview(value string) string {
+	clean := strings.Join(strings.Fields(value), " ")
+	runes := []rune(clean)
+	if len(runes) <= 160 {
+		return clean
+	}
+	return string(runes[:160])
+}
+
+func defaultString(value any, fallback string) string {
+	clean := strings.TrimSpace(fmt.Sprint(value))
+	if clean == "" || clean == "<nil>" {
+		return fallback
+	}
+	return clean
+}
+
+func firstQuery(query map[string][]string, key string) string {
+	values := query[key]
+	if len(values) == 0 {
+		return ""
+	}
+	return values[0]
+}
+
 func readThemeCatalog(ctx context.Context, store appsettings.Store, themesDir string) map[string]any {
 	raw, ok, _ := store.Get(ctx, "THEME_CATALOG")
 	if ok {
@@ -967,16 +1935,15 @@ func readThemeCatalog(ctx context.Context, store appsettings.Store, themesDir st
 }
 
 func supportCounts(tickets []map[string]any) map[string]int {
-	counts := map[string]int{"active": 0, "closed": 0, "awaiting_admin": 0, "awaiting_user": 0, "open": 0, "total": len(tickets)}
+	counts := map[string]int{"active": 0, "closed": 0, "resolved": 0, "awaiting_admin": 0, "awaiting_user": 0, "open": 0, "total": len(tickets), "total_unread_admin": 0, "total_unread_user": 0}
 	for _, ticket := range tickets {
-		status := strings.ToLower(fmt.Sprint(ticket["status"]))
-		if status == "" {
-			status = "open"
-		}
+		status := normalizeSupportStatus(ticket["status"])
 		counts[status]++
-		if status != "closed" {
+		if status != "closed" && status != "resolved" {
 			counts["active"]++
 		}
+		counts["total_unread_admin"] += int(int64Value(ticket, "unread_admin_count"))
+		counts["total_unread_user"] += int(int64Value(ticket, "unread_user_count"))
 	}
 	return counts
 }

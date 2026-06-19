@@ -24,37 +24,43 @@ type Catalog struct {
 
 // Tariff is one product family in the catalog.
 type Tariff struct {
-	Key          string            `json:"key"`
-	Names        map[string]string `json:"names"`
-	Descriptions map[string]string `json:"descriptions"`
-	BillingModel string            `json:"billing_model"`
-	MonthlyGB    float64           `json:"monthly_gb"`
-	Enabled      bool              `json:"enabled"`
-	raw          map[string]json.RawMessage
+	Key               string            `json:"key"`
+	Names             map[string]string `json:"names"`
+	Descriptions      map[string]string `json:"descriptions"`
+	BillingModel      string            `json:"billing_model"`
+	MonthlyGB         float64           `json:"monthly_gb"`
+	SquadUUIDs        []string          `json:"squad_uuids,omitempty"`
+	ExternalSquadUUID string            `json:"external_squad_uuid,omitempty"`
+	HWIDDeviceLimit   *int              `json:"hwid_device_limit,omitempty"`
+	Enabled           bool              `json:"enabled"`
+	raw               map[string]json.RawMessage
 }
 
 // Plan is the Web App purchase option shape.
 type Plan struct {
-	ID               string     `json:"id"`
-	PlanHash         string     `json:"plan_hash"`
-	TariffKey        string     `json:"tariff_key"`
-	TariffName       string     `json:"tariff_name"`
-	Title            string     `json:"title"`
-	Description      string     `json:"description,omitempty"`
-	BillingModel     string     `json:"billing_model"`
-	SaleMode         string     `json:"sale_mode"`
-	Months           int        `json:"months,omitempty"`
-	TrafficGB        float64    `json:"traffic_gb,omitempty"`
-	Price            float64    `json:"price"`
-	Currency         string     `json:"currency"`
-	BaseAmount       float64    `json:"base_amount"`
-	BaseCurrency     string     `json:"base_currency"`
-	DisplayCNYAmount float64    `json:"display_cny_amount,omitempty"`
-	FXRate           float64    `json:"fx_rate,omitempty"`
-	FXSource         string     `json:"fx_source,omitempty"`
-	FXUpdatedAt      *time.Time `json:"fx_updated_at,omitempty"`
-	MonthlyGB        float64    `json:"monthly_gb,omitempty"`
-	IsDefault        bool       `json:"is_default_tariff,omitempty"`
+	ID                string     `json:"id"`
+	PlanHash          string     `json:"plan_hash"`
+	TariffKey         string     `json:"tariff_key"`
+	TariffName        string     `json:"tariff_name"`
+	Title             string     `json:"title"`
+	Description       string     `json:"description,omitempty"`
+	BillingModel      string     `json:"billing_model"`
+	SaleMode          string     `json:"sale_mode"`
+	Months            int        `json:"months,omitempty"`
+	TrafficGB         float64    `json:"traffic_gb,omitempty"`
+	Price             float64    `json:"price"`
+	Currency          string     `json:"currency"`
+	BaseAmount        float64    `json:"base_amount"`
+	BaseCurrency      string     `json:"base_currency"`
+	DisplayCNYAmount  float64    `json:"display_cny_amount,omitempty"`
+	FXRate            float64    `json:"fx_rate,omitempty"`
+	FXSource          string     `json:"fx_source,omitempty"`
+	FXUpdatedAt       *time.Time `json:"fx_updated_at,omitempty"`
+	MonthlyGB         float64    `json:"monthly_gb,omitempty"`
+	SquadUUIDs        []string   `json:"squad_uuids,omitempty"`
+	ExternalSquadUUID string     `json:"external_squad_uuid,omitempty"`
+	HWIDDeviceLimit   *int       `json:"hwid_device_limit,omitempty"`
+	IsDefault         bool       `json:"is_default_tariff,omitempty"`
 }
 
 // PaymentSelection identifies the plan a user chose.
@@ -120,41 +126,47 @@ func (c Catalog) Plans(language string, fallbackCurrency string) []Plan {
 		if model == "traffic" {
 			for _, pkg := range packagePrices(tariff.raw["traffic_packages"], currency) {
 				result = append(result, newPlan(Plan{
-					ID:           fmt.Sprintf("%s:traffic:%s", tariff.Key, compactNumber(pkg.Amount)),
-					TariffKey:    tariff.Key,
-					TariffName:   name,
-					Title:        name,
-					Description:  description,
-					BillingModel: "traffic",
-					SaleMode:     "traffic_package",
-					Months:       int(pkg.Amount),
-					TrafficGB:    pkg.Amount,
-					Price:        pkg.Price,
-					Currency:     strings.ToUpper(currency),
-					BaseAmount:   pkg.Price,
-					BaseCurrency: strings.ToUpper(currency),
-					MonthlyGB:    tariff.MonthlyGB,
-					IsDefault:    tariff.Key == c.DefaultTariff,
+					ID:                fmt.Sprintf("%s:traffic:%s", tariff.Key, compactNumber(pkg.Amount)),
+					TariffKey:         tariff.Key,
+					TariffName:        name,
+					Title:             name,
+					Description:       description,
+					BillingModel:      "traffic",
+					SaleMode:          "traffic_package",
+					Months:            int(pkg.Amount),
+					TrafficGB:         pkg.Amount,
+					Price:             pkg.Price,
+					Currency:          strings.ToUpper(currency),
+					BaseAmount:        pkg.Price,
+					BaseCurrency:      strings.ToUpper(currency),
+					MonthlyGB:         tariff.MonthlyGB,
+					SquadUUIDs:        cleanStrings(tariff.SquadUUIDs),
+					ExternalSquadUUID: strings.TrimSpace(tariff.ExternalSquadUUID),
+					HWIDDeviceLimit:   tariff.HWIDDeviceLimit,
+					IsDefault:         tariff.Key == c.DefaultTariff,
 				}))
 			}
 			continue
 		}
 		for _, period := range tariffPeriodPrices(tariff, currency) {
 			result = append(result, newPlan(Plan{
-				ID:           fmt.Sprintf("%s:subscription:%d", tariff.Key, period.Months),
-				TariffKey:    tariff.Key,
-				TariffName:   name,
-				Title:        name,
-				Description:  description,
-				BillingModel: "period",
-				SaleMode:     "subscription",
-				Months:       period.Months,
-				Price:        period.Price,
-				Currency:     strings.ToUpper(currency),
-				BaseAmount:   period.Price,
-				BaseCurrency: strings.ToUpper(currency),
-				MonthlyGB:    tariff.MonthlyGB,
-				IsDefault:    tariff.Key == c.DefaultTariff,
+				ID:                fmt.Sprintf("%s:subscription:%d", tariff.Key, period.Months),
+				TariffKey:         tariff.Key,
+				TariffName:        name,
+				Title:             name,
+				Description:       description,
+				BillingModel:      "period",
+				SaleMode:          "subscription",
+				Months:            period.Months,
+				Price:             period.Price,
+				Currency:          strings.ToUpper(currency),
+				BaseAmount:        period.Price,
+				BaseCurrency:      strings.ToUpper(currency),
+				MonthlyGB:         tariff.MonthlyGB,
+				SquadUUIDs:        cleanStrings(tariff.SquadUUIDs),
+				ExternalSquadUUID: strings.TrimSpace(tariff.ExternalSquadUUID),
+				HWIDDeviceLimit:   tariff.HWIDDeviceLimit,
+				IsDefault:         tariff.Key == c.DefaultTariff,
 			}))
 		}
 	}
@@ -322,6 +334,17 @@ func localized(values map[string]string, language string, fallback string) strin
 		}
 	}
 	return fallback
+}
+
+func cleanStrings(values []string) []string {
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value != "" {
+			result = append(result, value)
+		}
+	}
+	return result
 }
 
 func normalizedCurrency(value string) string {

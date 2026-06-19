@@ -120,6 +120,8 @@ CREATE TABLE IF NOT EXISTS payment_orders (
 	url_scheme TEXT NULL,
 	expires_at TIMESTAMPTZ NULL,
 	raw_webhook JSONB NULL,
+	provisioned_at TIMESTAMPTZ NULL,
+	provision_error TEXT NULL,
 	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 	updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 	paid_at TIMESTAMPTZ NULL
@@ -143,6 +145,16 @@ ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS fx_updated_at TIMESTAMPTZ NU
 ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS plan_hash VARCHAR(128) NULL;
 ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS plan_snapshot JSONB NULL;
 CREATE INDEX IF NOT EXISTS ix_payment_orders_plan_hash ON payment_orders(plan_hash)`)
+				return err
+			},
+		},
+		{
+			ID: "core.go.0004_payment_order_provisioning",
+			Up: func(ctx context.Context, tx pgx.Tx) error {
+				_, err := tx.Exec(ctx, `
+ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS provisioned_at TIMESTAMPTZ NULL;
+ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS provision_error TEXT NULL;
+CREATE INDEX IF NOT EXISTS ix_payment_orders_paid_unprovisioned ON payment_orders(status, provisioned_at)`)
 				return err
 			},
 		},

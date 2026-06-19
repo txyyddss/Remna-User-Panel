@@ -22,7 +22,7 @@ cp .env.example .env
 - `WEBAPP_SESSION_SECRET`
 - `POSTGRES_PASSWORD`
 
-支付、套餐、Remnawave、外观、语言、汇率不要写在 `.env`，首次登录后台后配置。
+支付、套餐、Remnawave、外观、语言、汇率建议首次登录后台后配置。`.env` 中的 Remnawave 与支付字段只作为首次启动或后台未覆盖时的兜底值。
 
 ## 3. 启动
 
@@ -41,7 +41,7 @@ docker compose ps
 2. Tariffs：套餐目录，默认 USD。
 3. Payments：EZPay 或 BEPUSDT。
 4. Appearance：Logo、Favicon、主题。
-5. Remnawave：面板 API、squads、同步参数。
+5. Remnawave：面板 API、默认 traffic strategy、squads、HWID 设备限制。
 
 ## 5. 反向代理
 

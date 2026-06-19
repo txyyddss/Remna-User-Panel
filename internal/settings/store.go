@@ -92,6 +92,25 @@ func (s Store) Int(ctx context.Context, key string, fallback int) int {
 	return fallback
 }
 
+// Float returns a float64 setting or fallback.
+func (s Store) Float(ctx context.Context, key string, fallback float64) float64 {
+	raw, ok, err := s.Get(ctx, key)
+	if err != nil || !ok {
+		return fallback
+	}
+	var number float64
+	if json.Unmarshal(raw, &number) == nil {
+		return number
+	}
+	var text string
+	if json.Unmarshal(raw, &text) == nil {
+		if value, err := strconv.ParseFloat(strings.TrimSpace(text), 64); err == nil {
+			return value
+		}
+	}
+	return fallback
+}
+
 // Upsert writes a JSON setting.
 func (s Store) Upsert(ctx context.Context, key string, value any) error {
 	if s.pool == nil {

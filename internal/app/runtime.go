@@ -18,6 +18,8 @@ import (
 	"remna-user-panel/internal/i18n"
 	"remna-user-panel/internal/payments"
 	"remna-user-panel/internal/redisclient"
+	"remna-user-panel/internal/remnawave"
+	appsettings "remna-user-panel/internal/settings"
 	"remna-user-panel/internal/webassets"
 	"remna-user-panel/internal/workers"
 )
@@ -30,6 +32,7 @@ type Runtime struct {
 	i18n     *i18n.Catalog
 	assets   webassets.Paths
 	payments *payments.Registry
+	panel    *remnawave.Client
 	servers  []*http.Server
 }
 
@@ -67,6 +70,7 @@ func NewRuntime(ctx context.Context, settings config.Settings) (*Runtime, error)
 		i18n:     catalog,
 		assets:   assets,
 		payments: payments.NewRegistry(settings, pool),
+		panel:    remnawave.NewClient(settings, appsettings.NewStore(pool)),
 	}, nil
 }
 
@@ -88,7 +92,7 @@ func (r *Runtime) StartBackend(ctx context.Context) error {
 	if r.settings.WebAppEnabled {
 		webapp := &http.Server{
 			Addr:              r.settings.WebAppListenAddr(),
-			Handler:           httpapi.WebAppRouter(r.settings, r.db, r.i18n, r.assets, r.payments),
+			Handler:           httpapi.WebAppRouter(r.settings, r.db, r.i18n, r.assets, r.payments, r.panel),
 			ReadHeaderTimeout: 10 * time.Second,
 		}
 		r.servers = append(r.servers, webapp)

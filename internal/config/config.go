@@ -17,35 +17,42 @@ const (
 
 // Settings contains process-wide runtime configuration.
 type Settings struct {
-	BotToken             string
-	AdminIDs             []int64
-	DefaultLanguage      string
-	DefaultCurrency      string
-	WebhookBaseURL       string
-	WebhookSecretToken   string
-	WebAppSessionSecret  string
-	WebServerHost        string
-	WebServerPort        int
-	WebAppEnabled        bool
-	WebAppServerHost     string
-	WebAppServerPort     int
-	SubscriptionMiniApp  string
-	PostgresUser         string
-	PostgresPassword     string
-	PostgresHost         string
-	PostgresPort         int
-	PostgresDB           string
-	DatabaseURL          string
-	RedisURL             string
-	RedisKeyPrefix       string
-	TrustedProxies       []string
-	PanelWebhookSecret   string
-	PanelWebhookPath     string
-	LogLevel             string
-	WorkerPanelSyncEvery time.Duration
-	EZPay                EZPaySettings
-	BEPUSDT              BEPUSDTSettings
-	PaymentMethodsOrder  []string
+	BotToken              string
+	AdminIDs              []int64
+	DefaultLanguage       string
+	DefaultCurrency       string
+	WebhookBaseURL        string
+	WebhookSecretToken    string
+	WebAppSessionSecret   string
+	WebServerHost         string
+	WebServerPort         int
+	WebAppEnabled         bool
+	WebAppServerHost      string
+	WebAppServerPort      int
+	SubscriptionMiniApp   string
+	PostgresUser          string
+	PostgresPassword      string
+	PostgresHost          string
+	PostgresPort          int
+	PostgresDB            string
+	DatabaseURL           string
+	RedisURL              string
+	RedisKeyPrefix        string
+	TrustedProxies        []string
+	PanelAPIURL           string
+	PanelAPIKey           string
+	PanelWebhookSecret    string
+	PanelWebhookPath      string
+	LogLevel              string
+	WorkerPanelSyncEvery  time.Duration
+	UserTrafficLimitGB    float64
+	UserTrafficStrategy   string
+	UserSquadUUIDs        []string
+	UserExternalSquadUUID string
+	UserHWIDDeviceLimit   *int
+	EZPay                 EZPaySettings
+	BEPUSDT               BEPUSDTSettings
+	PaymentMethodsOrder   []string
 }
 
 // EZPaySettings contains EZPay merchant configuration.
@@ -68,29 +75,36 @@ type BEPUSDTSettings struct {
 // Load reads settings from the current process environment.
 func Load() (Settings, error) {
 	settings := Settings{
-		BotToken:             env("BOT_TOKEN", ""),
-		DefaultLanguage:      normalizeLanguage(env("DEFAULT_LANGUAGE", defaultLanguage)),
-		DefaultCurrency:      env("DEFAULT_CURRENCY_SYMBOL", "USD"),
-		WebhookBaseURL:       strings.TrimRight(env("WEBHOOK_BASE_URL", ""), "/"),
-		WebhookSecretToken:   env("WEBHOOK_SECRET_TOKEN", ""),
-		WebAppSessionSecret:  env("WEBAPP_SESSION_SECRET", ""),
-		WebServerHost:        env("WEB_SERVER_HOST", "0.0.0.0"),
-		WebServerPort:        envInt("WEB_SERVER_PORT", 8080),
-		WebAppEnabled:        envBool("WEBAPP_ENABLED", true),
-		WebAppServerHost:     env("WEBAPP_SERVER_HOST", "0.0.0.0"),
-		WebAppServerPort:     envInt("WEBAPP_SERVER_PORT", 8081),
-		SubscriptionMiniApp:  env("SUBSCRIPTION_MINI_APP_URL", ""),
-		PostgresUser:         env("POSTGRES_USER", ""),
-		PostgresPassword:     env("POSTGRES_PASSWORD", ""),
-		PostgresHost:         env("POSTGRES_HOST", "localhost"),
-		PostgresPort:         envInt("POSTGRES_PORT", 5432),
-		PostgresDB:           env("POSTGRES_DB", defaultDBName),
-		RedisURL:             env("REDIS_URL", ""),
-		RedisKeyPrefix:       env("REDIS_KEY_PREFIX", "remna-user-panel"),
-		PanelWebhookSecret:   env("PANEL_WEBHOOK_SECRET", ""),
-		PanelWebhookPath:     env("PANEL_WEBHOOK_PATH", "/webhook/panel"),
-		LogLevel:             env("LOG_LEVEL", "INFO"),
-		WorkerPanelSyncEvery: time.Duration(envInt("WORKER_PANEL_SYNC_INTERVAL_SECONDS", 900)) * time.Second,
+		BotToken:              env("BOT_TOKEN", ""),
+		DefaultLanguage:       normalizeLanguage(env("DEFAULT_LANGUAGE", defaultLanguage)),
+		DefaultCurrency:       env("DEFAULT_CURRENCY_SYMBOL", "USD"),
+		WebhookBaseURL:        strings.TrimRight(env("WEBHOOK_BASE_URL", ""), "/"),
+		WebhookSecretToken:    env("WEBHOOK_SECRET_TOKEN", ""),
+		WebAppSessionSecret:   env("WEBAPP_SESSION_SECRET", ""),
+		WebServerHost:         env("WEB_SERVER_HOST", "0.0.0.0"),
+		WebServerPort:         envInt("WEB_SERVER_PORT", 8080),
+		WebAppEnabled:         envBool("WEBAPP_ENABLED", true),
+		WebAppServerHost:      env("WEBAPP_SERVER_HOST", "0.0.0.0"),
+		WebAppServerPort:      envInt("WEBAPP_SERVER_PORT", 8081),
+		SubscriptionMiniApp:   env("SUBSCRIPTION_MINI_APP_URL", ""),
+		PostgresUser:          env("POSTGRES_USER", ""),
+		PostgresPassword:      env("POSTGRES_PASSWORD", ""),
+		PostgresHost:          env("POSTGRES_HOST", "localhost"),
+		PostgresPort:          envInt("POSTGRES_PORT", 5432),
+		PostgresDB:            env("POSTGRES_DB", defaultDBName),
+		RedisURL:              env("REDIS_URL", ""),
+		RedisKeyPrefix:        env("REDIS_KEY_PREFIX", "remna-user-panel"),
+		PanelAPIURL:           strings.TrimRight(env("PANEL_API_URL", ""), "/"),
+		PanelAPIKey:           env("PANEL_API_KEY", ""),
+		PanelWebhookSecret:    env("PANEL_WEBHOOK_SECRET", ""),
+		PanelWebhookPath:      env("PANEL_WEBHOOK_PATH", "/webhook/panel"),
+		LogLevel:              env("LOG_LEVEL", "INFO"),
+		WorkerPanelSyncEvery:  time.Duration(envInt("WORKER_PANEL_SYNC_INTERVAL_SECONDS", 900)) * time.Second,
+		UserTrafficLimitGB:    envFloat("USER_TRAFFIC_LIMIT_GB", 0),
+		UserTrafficStrategy:   normalizeTrafficStrategy(env("USER_TRAFFIC_STRATEGY", "NO_RESET")),
+		UserSquadUUIDs:        splitCSV(env("USER_SQUAD_UUIDS", "")),
+		UserExternalSquadUUID: strings.TrimSpace(env("USER_EXTERNAL_SQUAD_UUID", "")),
+		UserHWIDDeviceLimit:   envOptionalInt("USER_HWID_DEVICE_LIMIT"),
 		EZPay: EZPaySettings{
 			Enabled:   envBool("EZPAY_ENABLED", false),
 			BaseURL:   strings.TrimRight(env("EZPAY_BASE_URL", ""), "/"),
@@ -185,6 +199,30 @@ func envInt(key string, fallback int) int {
 	return value
 }
 
+func envFloat(key string, fallback float64) float64 {
+	raw, ok := os.LookupEnv(key)
+	if !ok {
+		return fallback
+	}
+	value, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
+	if err != nil {
+		return fallback
+	}
+	return value
+}
+
+func envOptionalInt(key string) *int {
+	raw, ok := os.LookupEnv(key)
+	if !ok || strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	value, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil {
+		return nil
+	}
+	return &value
+}
+
 func parseInt64List(raw string) []int64 {
 	parts := splitCSV(raw)
 	result := make([]int64, 0, len(parts))
@@ -217,6 +255,16 @@ func normalizeLanguage(raw string) string {
 		return defaultLanguage
 	}
 	return value
+}
+
+func normalizeTrafficStrategy(raw string) string {
+	value := strings.ToUpper(strings.TrimSpace(raw))
+	switch value {
+	case "DAY", "WEEK", "MONTH", "MONTH_ROLLING":
+		return value
+	default:
+		return "NO_RESET"
+	}
 }
 
 func urlQueryEscape(value string) string {

@@ -20,6 +20,7 @@ func TestBootstrapDefaultsToChinese(t *testing.T) {
 		catalog,
 		webassets.Paths{TemplatesDir: "../../internal/webassets/templates", ThemesDir: "../../internal/webassets/themes"},
 		payments.NewRegistry(config.Settings{}, nil),
+		nil,
 	)
 	request := httptest.NewRequest(http.MethodGet, "/api/bootstrap", nil)
 	response := httptest.NewRecorder()
