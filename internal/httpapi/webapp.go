@@ -79,12 +79,6 @@ func i18nHandler(settings config.Settings, catalog *i18n.Catalog) http.HandlerFu
 	}
 }
 
-func okAPI() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
-	}
-}
-
 func notImplementedAPI(code string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		status := http.StatusNotImplemented
