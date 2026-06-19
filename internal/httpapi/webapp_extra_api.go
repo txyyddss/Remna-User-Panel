@@ -2188,59 +2188,6 @@ func adminBackupRestoreHandler(settings config.Settings, pool *pgxpool.Pool) htt
 	}
 }
 
-func adminUploadPlaceholderHandler(settings config.Settings, pool *pgxpool.Pool, kind string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := requireAdmin(w, r, settings, pool, true); !ok {
-			return
-		}
-		contentType := r.Header.Get("Content-Type")
-		if strings.Contains(contentType, "multipart/form-data") {
-			if err := r.ParseMultipartForm(8 << 20); err != nil {
-				writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_upload"})
-				return
-			}
-			file, header, err := r.FormFile("file")
-			if err == nil {
-				defer func() { _ = file.Close() }()
-				if header.Size > 8<<20 {
-					writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "file_too_large"})
-					return
-				}
-				buf := make([]byte, 512)
-				n, _ := file.Read(buf)
-				mime := http.DetectContentType(buf[:n])
-				if kind != "archive" && !strings.HasPrefix(mime, "image/") {
-					writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "unsupported_mime"})
-					return
-				}
-			}
-		} else if r.Body != nil {
-			_, _ = io.Copy(io.Discard, io.LimitReader(r.Body, 1<<20))
-		}
-		response := map[string]any{"ok": true}
-		switch kind {
-		case "logo":
-			response["logo_url"] = "/default-brand/default-logo.webp"
-			response["favicon_url"] = "/favicon.ico"
-		case "favicon":
-			response["favicon_url"] = "/favicon.ico"
-			response["variants"] = map[string]string{}
-		case "archive":
-			response["archive"] = nil
-		}
-		writeJSON(w, http.StatusOK, response)
-	}
-}
-
-func okAdminMutation(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := requireAdmin(w, r, settings, pool, true); !ok {
-			return
-		}
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
-	}
-}
-
 func unavailableSessionMutation(settings config.Settings, pool *pgxpool.Pool, code string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := requireSession(w, r, settings, pool, true); !ok {

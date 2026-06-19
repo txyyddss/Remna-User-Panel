@@ -93,6 +93,8 @@ func ProcessPanelWebhookEvent(ctx context.Context, settings config.Settings, poo
 
 	// Trigger a lightweight sync for the affected user
 	// This ensures subscription status is up-to-date in our records
-	RunSubscriptionNotifications(ctx, settings, pool, panel)
+	if _, err := RunSubscriptionNotifications(ctx, settings, pool, panel); err != nil {
+		slog.Warn("subscription notification after webhook failed", "error", err)
+	}
 	return nil
 }

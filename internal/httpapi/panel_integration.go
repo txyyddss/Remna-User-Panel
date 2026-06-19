@@ -1447,13 +1447,6 @@ const (
 	subscriptionNotificationsLockKey = "subscription-notification-worker"
 )
 
-type subscriptionNotification struct {
-	UserID   int64
-	ChatID   int64
-	ExpireAt time.Time
-	Status   string
-}
-
 // RunSubscriptionNotifications checks active subscriptions and sends expiry
 // notifications (72h, 48h, 24h before, at expiry, 24h after). It is safe to
 // call from the subscription-notifications worker.
