@@ -21,6 +21,8 @@ import (
 // WebAppRouter builds the Mini App and admin HTTP router.
 func WebAppRouter(settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog, assets webassets.Paths, registry *payments.Registry) http.Handler {
 	router := chi.NewRouter()
+	router.Use(securityHeaders)
+	router.Use(requestBodyLimit(8 << 20))
 	router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
 	})
@@ -38,9 +40,13 @@ func WebAppRouter(settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Ca
 	router.Get("/api/admin/settings", adminSettingsHandler(settings, pool))
 	router.Patch("/api/admin/settings", adminSettingsHandler(settings, pool))
 	router.Get("/api/admin/payments", adminPaymentsListHandler(settings, pool, registry))
+	registerExtraAPIRoutes(router, settings, pool, catalog, assets, registry)
 	router.Get("/api/admin/payments/{payment_id}", adminPaymentDetailHandler(settings, pool, registry))
-	router.Get("/api/*", notImplementedAPI("api_not_ported"))
-	router.Post("/api/*", notImplementedAPI("api_not_ported"))
+	router.Get("/api/*", notImplementedAPI("unknown_api"))
+	router.Post("/api/*", notImplementedAPI("unknown_api"))
+	router.Put("/api/*", notImplementedAPI("unknown_api"))
+	router.Patch("/api/*", notImplementedAPI("unknown_api"))
+	router.Delete("/api/*", notImplementedAPI("unknown_api"))
 	registerAssetRoutes(router, assets)
 	registerIndexRoutes(router, settings, catalog, assets)
 	return router
@@ -116,11 +122,35 @@ func registerAssetRoutes(router chi.Router, assets webassets.Paths) {
 		})
 	}
 	router.Get("/webapp-theme-css/*", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filepath.Join(assets.ThemesDir, strings.TrimPrefix(r.URL.Path, "/webapp-theme-css/")))
+		serveThemeFile(w, r, assets.ThemesDir, "/webapp-theme-css/")
 	})
 	router.Get("/webapp-theme-assets/*", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filepath.Join(assets.ThemesDir, strings.TrimPrefix(r.URL.Path, "/webapp-theme-assets/")))
+		serveThemeFile(w, r, assets.ThemesDir, "/webapp-theme-assets/")
 	})
+}
+
+func serveThemeFile(w http.ResponseWriter, r *http.Request, root string, prefix string) {
+	rel := strings.TrimPrefix(r.URL.Path, prefix)
+	rel = strings.TrimPrefix(filepath.Clean("/"+rel), string(filepath.Separator))
+	if rel == "." || rel == "" || strings.HasPrefix(rel, "..") {
+		http.NotFound(w, r)
+		return
+	}
+	rootAbs, err := filepath.Abs(root)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	fullAbs, err := filepath.Abs(filepath.Join(rootAbs, rel))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if fullAbs != rootAbs && !strings.HasPrefix(fullAbs, rootAbs+string(filepath.Separator)) {
+		http.NotFound(w, r)
+		return
+	}
+	http.ServeFile(w, r, fullAbs)
 }
 
 func registerIndexRoutes(router chi.Router, settings config.Settings, catalog *i18n.Catalog, assets webassets.Paths) {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"net/http"
 	"strconv"
@@ -17,6 +18,7 @@ import (
 
 	"remna-user-panel/internal/auth"
 	"remna-user-panel/internal/config"
+	"remna-user-panel/internal/fx"
 	"remna-user-panel/internal/payments"
 	appsettings "remna-user-panel/internal/settings"
 	"remna-user-panel/internal/tariffs"
@@ -52,7 +54,7 @@ func authTokenHandler(settings config.Settings, pool *pgxpool.Pool) http.Handler
 		var payload struct {
 			InitData string `json:"init_data"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		if err := decodeJSONBody(r, &payload); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
 			return
 		}
@@ -66,7 +68,7 @@ func authTokenHandler(settings config.Settings, pool *pgxpool.Pool) http.Handler
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "user_upsert_failed"})
 			return
 		}
-		manager := auth.NewManager(settings.WebAppSessionSecret, settings.BotToken)
+		manager := auth.NewManager(settings.WebAppSessionSecret, "")
 		token, csrf, err := manager.Sign(tgUser.ID)
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "session_sign_failed"})
@@ -109,7 +111,13 @@ func meHandler(settings config.Settings, pool *pgxpool.Pool, registry *payments.
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "tariffs_load_failed"})
 			return
 		}
-		plans := catalog.Plans(session.User.LanguageCode, settings.DefaultCurrency)
+		rate := fx.NewService(appsettings.NewStore(pool)).USDCNY(r.Context())
+		plans := tariffs.WithCNYDisplay(
+			catalog.Plans(session.User.LanguageCode, effectiveDefaultCurrency(r.Context(), settings, pool)),
+			rate.Rate,
+			rate.Source,
+			rate.UpdatedAt,
+		)
 		methods := []payments.Method{}
 		if registry != nil {
 			methods = registry.Methods(r.Context(), session.User.LanguageCode, session.User.IsAdmin)
@@ -136,15 +144,16 @@ func createPaymentHandler(settings config.Settings, pool *pgxpool.Pool, registry
 			return
 		}
 		var payload struct {
-			Method      string  `json:"method"`
-			TariffKey   string  `json:"tariff_key"`
-			SaleMode    string  `json:"sale_mode"`
-			Months      int     `json:"months"`
-			TrafficGB   float64 `json:"traffic_gb"`
-			DeviceCount int     `json:"device_count"`
+			Method           string `json:"method"`
+			PlanHash         string `json:"plan_hash"`
+			RenewHWIDDevices bool   `json:"renew_hwid_devices"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		if err := decodeJSONBody(r, &payload); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
+			return
+		}
+		if strings.TrimSpace(payload.PlanHash) == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "plan_hash_required"})
 			return
 		}
 		catalog, err := tariffs.Load("data/tariffs.json")
@@ -152,18 +161,26 @@ func createPaymentHandler(settings config.Settings, pool *pgxpool.Pool, registry
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "tariffs_load_failed"})
 			return
 		}
-		if len(catalog.Plans(session.User.LanguageCode, settings.DefaultCurrency)) == 0 {
+		defaultCurrency := effectiveDefaultCurrency(r.Context(), settings, pool)
+		if len(catalog.Plans(session.User.LanguageCode, defaultCurrency)) == 0 {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "tariffs_not_configured"})
 			return
 		}
-		plan, found := catalog.FindPlan(tariffs.PaymentSelection{
-			TariffKey: payload.TariffKey,
-			SaleMode:  payload.SaleMode,
-			Months:    payload.Months,
-			TrafficGB: payload.TrafficGB,
-		}, session.User.LanguageCode, settings.DefaultCurrency)
+		plan, found := catalog.FindPlanByHash(payload.PlanHash, session.User.LanguageCode, defaultCurrency)
 		if !found {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "plan_not_found"})
+			return
+		}
+		rate := fx.NewService(appsettings.NewStore(pool)).USDCNY(r.Context())
+		plan = tariffs.WithCNYDisplay([]tariffs.Plan{plan}, rate.Rate, rate.Source, rate.UpdatedAt)[0]
+		providerAmount, providerCurrency, err := providerCheckoutAmount(payload.Method, plan, rate)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "payment_method_not_supported"})
+			return
+		}
+		planSnapshot, err := json.Marshal(plan)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "plan_snapshot_failed"})
 			return
 		}
 		description := plan.Title
@@ -173,18 +190,26 @@ func createPaymentHandler(settings config.Settings, pool *pgxpool.Pool, registry
 			description = fmt.Sprintf("%s %s GB", plan.Title, compactFloat(plan.TrafficGB))
 		}
 		response, err := registry.Create(r.Context(), payments.CreateOrderRequest{
-			UserID:      session.User.UserID,
-			MethodID:    payload.Method,
-			Amount:      plan.Price,
-			Currency:    plan.Currency,
-			Description: description,
-			TariffKey:   plan.TariffKey,
-			SaleMode:    plan.SaleMode,
-			Months:      plan.Months,
-			TrafficGB:   plan.TrafficGB,
-			DeviceCount: payload.DeviceCount,
-			ClientIP:    clientIP(r),
-			Language:    session.User.LanguageCode,
+			UserID:           session.User.UserID,
+			MethodID:         payload.Method,
+			Amount:           providerAmount,
+			Currency:         providerCurrency,
+			BaseAmount:       plan.BaseAmount,
+			BaseCurrency:     plan.BaseCurrency,
+			DisplayCNYAmount: plan.DisplayCNYAmount,
+			FXRate:           plan.FXRate,
+			FXSource:         plan.FXSource,
+			FXUpdatedAt:      rate.UpdatedAt,
+			PlanHash:         plan.PlanHash,
+			PlanSnapshot:     planSnapshot,
+			Description:      description,
+			TariffKey:        plan.TariffKey,
+			SaleMode:         plan.SaleMode,
+			Months:           plan.Months,
+			TrafficGB:        plan.TrafficGB,
+			DeviceCount:      boolToInt(payload.RenewHWIDDevices),
+			ClientIP:         clientIP(r),
+			Language:         session.User.LanguageCode,
 		})
 		if err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": paymentErrorCode(err)})
@@ -241,7 +266,7 @@ func adminSettingsHandler(settings config.Settings, pool *pgxpool.Pool) http.Han
 			Updates map[string]any `json:"updates"`
 			Deletes []string       `json:"deletes"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		if err := decodeJSONBody(r, &payload); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
 			return
 		}
@@ -341,7 +366,7 @@ func requireSession(w http.ResponseWriter, r *http.Request, settings config.Sett
 		writeJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "auth_required"})
 		return sessionContext{}, false
 	}
-	manager := auth.NewManager(settings.WebAppSessionSecret, settings.BotToken)
+	manager := auth.NewManager(settings.WebAppSessionSecret, "")
 	claims, err := manager.Verify(cookie.Value)
 	if err != nil {
 		writeJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "auth_required"})
@@ -477,8 +502,14 @@ func paymentStatusPayload(order payments.Order) map[string]any {
 }
 
 func paymentSettingsFields(ctx context.Context, settings config.Settings, store appsettings.Store) []map[string]any {
-	webhookConfigured := settings.WebhookBaseURL != ""
+	effectiveWebhookBaseURL := store.String(ctx, "WEBHOOK_BASE_URL", settings.WebhookBaseURL)
+	webhookConfigured := strings.TrimSpace(effectiveWebhookBaseURL) != ""
 	fields := []paymentSettingField{
+		{Key: "WEBHOOK_BASE_URL", Type: "string", Label: "Webhook base URL", Description: "Public HTTPS backend URL used by payment callbacks.", Subsection: "General", Fallback: settings.WebhookBaseURL},
+		{Key: "DEFAULT_CURRENCY_SYMBOL", Type: "string", Label: "Default catalog currency", Description: "Primary catalog currency. New deployments should use USD.", Subsection: "Currency", Fallback: effectiveDefaultCurrency(ctx, settings, nil), Choices: []settingChoice{{Value: "USD", Label: "USD"}, {Value: "CNY", Label: "CNY"}}},
+		{Key: "FX_PROVIDER", Type: "string", Label: "USD/CNY rate provider", Description: "Use frankfurter by default; custom uses the fixed rate below.", Subsection: "Currency", Fallback: "frankfurter", Choices: []settingChoice{{Value: "frankfurter", Label: "Frankfurter"}, {Value: "exchange_rate_api", Label: "ExchangeRate-API"}, {Value: "custom", Label: "Custom"}}},
+		{Key: "FX_CUSTOM_USD_CNY", Type: "float", Label: "Custom USD/CNY rate", Description: "Used only when the provider is custom.", Subsection: "Currency", Fallback: ""},
+		{Key: "FX_CACHE_TTL_SECONDS", Type: "int", Label: "FX cache TTL seconds", Description: "How long a successful rate response is reused.", Subsection: "Currency", Fallback: 3600},
 		{Key: "PAYMENT_METHODS_ORDER", Type: "text", Label: "Payment method order", Description: "Comma-separated method ids, e.g. ezpay:alipay,bepusdt:usdt.polygon.", Fallback: strings.Join(settings.PaymentMethodsOrder, ",")},
 		{Key: "EZPAY_ENABLED", Type: "bool", Label: "EZPay enabled", Description: "Enable EZPay payment methods.", Subsection: "EZPay", Fallback: settings.EZPay.Enabled, WebhookPath: "/webhook/ezpay", ProviderID: "ezpay", WebhookConfigured: webhookConfigured},
 		{Key: "EZPAY_BASE_URL", Type: "string", Label: "EZPay base URL", Description: "Merchant API base URL.", Subsection: "EZPay", Fallback: settings.EZPay.BaseURL},
@@ -520,6 +551,12 @@ type paymentSettingField struct {
 	WebhookPath       string
 	ProviderID        string
 	WebhookConfigured bool
+	Choices           []settingChoice
+}
+
+type settingChoice struct {
+	Value string
+	Label string
 }
 
 func (f paymentSettingField) toMap(ctx context.Context, store appsettings.Store) map[string]any {
@@ -572,12 +609,20 @@ func (f paymentSettingField) toMap(ctx context.Context, store appsettings.Store)
 		item["webhook_requires_base_url"] = true
 		item["webhook_base_url_configured"] = f.WebhookConfigured
 	}
+	if len(f.Choices) > 0 {
+		choices := make([]map[string]string, 0, len(f.Choices))
+		for _, choice := range f.Choices {
+			choices = append(choices, map[string]string{"value": choice.Value, "label": choice.Label})
+		}
+		item["choices"] = choices
+	}
 	return item
 }
 
 func allowedPaymentSettingKeys() map[string]bool {
 	result := map[string]bool{}
 	for _, key := range []string{
+		"WEBHOOK_BASE_URL", "DEFAULT_CURRENCY_SYMBOL", "FX_PROVIDER", "FX_CUSTOM_USD_CNY", "FX_CACHE_TTL_SECONDS",
 		"PAYMENT_METHODS_ORDER",
 		"EZPAY_ENABLED", "EZPAY_BASE_URL", "EZPAY_PID", "EZPAY_KEY", "EZPAY_RETURN_URL",
 		"BEPUSDT_ENABLED", "BEPUSDT_BASE_URL", "BEPUSDT_TOKEN", "BEPUSDT_RETURN_URL",
@@ -607,7 +652,7 @@ func normalizeSettingValue(key string, value any) (any, error) {
 		default:
 			return nil, fmt.Errorf("invalid_bool")
 		}
-	case "EZPAY_PID":
+	case "EZPAY_PID", "FX_CACHE_TTL_SECONDS":
 		switch typed := value.(type) {
 		case float64:
 			return int(typed), nil
@@ -620,6 +665,31 @@ func normalizeSettingValue(key string, value any) (any, error) {
 			}
 			return parsed, nil
 		}
+	case "DEFAULT_CURRENCY_SYMBOL":
+		value := strings.ToUpper(strings.TrimSpace(fmt.Sprint(value)))
+		switch value {
+		case "USD", "CNY":
+			return value, nil
+		default:
+			return nil, fmt.Errorf("unsupported_currency")
+		}
+	case "FX_PROVIDER":
+		value := strings.ToLower(strings.TrimSpace(fmt.Sprint(value)))
+		switch value {
+		case "frankfurter", "exchange_rate_api", "custom":
+			return value, nil
+		default:
+			return nil, fmt.Errorf("unsupported_fx_provider")
+		}
+	case "FX_CUSTOM_USD_CNY":
+		if strings.TrimSpace(fmt.Sprint(value)) == "" {
+			return "", nil
+		}
+		parsed, err := strconv.ParseFloat(strings.TrimSpace(fmt.Sprint(value)), 64)
+		if err != nil || parsed <= 0 {
+			return nil, fmt.Errorf("invalid_float")
+		}
+		return strconv.FormatFloat(parsed, 'f', -1, 64), nil
 	default:
 		return strings.TrimSpace(fmt.Sprint(value)), nil
 	}
@@ -705,4 +775,67 @@ func compactFloat(value float64) string {
 		return strconv.FormatInt(int64(value), 10)
 	}
 	return strconv.FormatFloat(value, 'f', -1, 64)
+}
+
+func effectiveDefaultCurrency(ctx context.Context, settings config.Settings, pool *pgxpool.Pool) string {
+	value := appsettings.NewStore(pool).String(ctx, "DEFAULT_CURRENCY_SYMBOL", settings.DefaultCurrency)
+	value = strings.ToUpper(strings.TrimSpace(value))
+	if value == "" || value == "RUB" {
+		return "USD"
+	}
+	return value
+}
+
+func providerCheckoutAmount(methodID string, plan tariffs.Plan, rate fx.Rate) (float64, string, error) {
+	provider, _, ok := strings.Cut(strings.TrimSpace(methodID), ":")
+	if !ok || provider == "" {
+		return 0, "", fmt.Errorf("invalid payment method")
+	}
+	baseAmount := plan.BaseAmount
+	if baseAmount <= 0 {
+		baseAmount = plan.Price
+	}
+	baseCurrency := strings.ToUpper(strings.TrimSpace(plan.BaseCurrency))
+	if baseCurrency == "" {
+		baseCurrency = strings.ToUpper(plan.Currency)
+	}
+	switch provider {
+	case payments.ProviderEZPay:
+		switch baseCurrency {
+		case "CNY", "RMB":
+			return roundMoney(baseAmount), "CNY", nil
+		case "USD":
+			return roundMoney(baseAmount * rate.Rate), "CNY", nil
+		default:
+			return roundMoney(plan.Price), strings.ToUpper(plan.Currency), nil
+		}
+	case payments.ProviderBEPUSDT:
+		switch baseCurrency {
+		case "USD":
+			return roundMoney(baseAmount), "USD", nil
+		case "CNY", "RMB":
+			if rate.Rate <= 0 {
+				return 0, "", fmt.Errorf("missing fx rate")
+			}
+			return roundMoney(baseAmount / rate.Rate), "USD", nil
+		default:
+			if strings.ToUpper(plan.Currency) == "USD" {
+				return roundMoney(plan.Price), "USD", nil
+			}
+			return 0, "", fmt.Errorf("unsupported currency")
+		}
+	default:
+		return 0, "", fmt.Errorf("unsupported provider")
+	}
+}
+
+func roundMoney(value float64) float64 {
+	return math.Round(value*100) / 100
+}
+
+func boolToInt(value bool) int {
+	if value {
+		return 1
+	}
+	return 0
 }

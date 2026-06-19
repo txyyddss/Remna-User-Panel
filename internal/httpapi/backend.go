@@ -19,6 +19,8 @@ import (
 // BackendRouter builds the webhook/health HTTP router.
 func BackendRouter(settings config.Settings, pool *pgxpool.Pool, redisClient *redis.Client, registry *payments.Registry) http.Handler {
 	router := chi.NewRouter()
+	router.Use(securityHeaders)
+	router.Use(requestBodyLimit(2 << 20))
 	router.Get("/healthz", healthHandler(pool, redisClient))
 	router.Get("/health", healthHandler(pool, redisClient))
 	router.Post(settings.WebhookPath(), telegramWebhookHandler(settings))

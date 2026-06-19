@@ -3,7 +3,7 @@ set -u
 
 # Interactive installer for fresh Docker Compose hosts.
 
-DEFAULT_REPO="${MINISHOP_INSTALL_REPO:-3252a8/remnawave-minishop}"
+DEFAULT_REPO="${MINISHOP_INSTALL_REPO:-remna-user-panel/remna-user-panel}"
 DEFAULT_REF="${MINISHOP_INSTALL_REF:-main}"
 DEFAULT_IMAGE_TAG="${MINISHOP_IMAGE_TAG:-latest}"
 INSTALL_STATE_DIR=".installer"
@@ -11,12 +11,12 @@ IMPORTER_CACHE_PATH="$INSTALL_STATE_DIR/import_legacy"
 APP_UID=10001
 APP_GID=10001
 OLD_TGSHOP_DB_VOLUME="remnawave-tg-shop-db-data"
-NEW_MINISHOP_DB_VOLUME="remnawave-minishop-db-data"
+NEW_MINISHOP_DB_VOLUME="remna-user-panel-db-data"
 OLD_TGSHOP_CADDY_DATA_VOLUME="remnawave-tg-shop-caddy-data"
 OLD_TGSHOP_CADDY_CONFIG_VOLUME="remnawave-tg-shop-caddy-config"
-NEW_MINISHOP_CADDY_DATA_VOLUME="remnawave-minishop-caddy-data"
-NEW_MINISHOP_CADDY_CONFIG_VOLUME="remnawave-minishop-caddy-config"
-KNOWN_LEGACY_CONTAINERS="remnawave-tg-shop remnawave-tg-shop-db remnawave-tg-shop-caddy remnawave-minishop remnawave-minishop-db remnawave-minishop-caddy remnawave-minishop-backend remnawave-minishop-worker remnawave-minishop-frontend remnawave-minishop-migrate remnawave-minishop-postgres remnawave-minishop-redis"
+NEW_MINISHOP_CADDY_DATA_VOLUME="remna-user-panel-caddy-data"
+NEW_MINISHOP_CADDY_CONFIG_VOLUME="remna-user-panel-caddy-config"
+KNOWN_LEGACY_CONTAINERS="remnawave-tg-shop remnawave-tg-shop-db remnawave-tg-shop-caddy remna-user-panel-backend remna-user-panel-worker remna-user-panel-frontend remna-user-panel-migrate remna-user-panel-postgres remna-user-panel-redis"
 
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
     RESET="$(printf '\033[0m')"
@@ -437,7 +437,7 @@ download_profile_files() {
 
 prompt_common_env() {
     section "Minimal .env"
-    prompt_value "Compose project name" "$(env_get COMPOSE_PROJECT_NAME remnawave-minishop)" 0 0 ""
+    prompt_value "Compose project name" "$(env_get COMPOSE_PROJECT_NAME remna-user-panel)" 0 0 ""
     COMPOSE_PROJECT_NAME_VALUE="$PROMPT_VALUE"
     prompt_value "Image tag" "$(env_get IMAGE_TAG "$DEFAULT_IMAGE_TAG")" 0 0 ""
     IMAGE_TAG_VALUE="$PROMPT_VALUE"
@@ -849,15 +849,10 @@ remnashop_webhook_checklist() {
     if [ -n "$panel_secret" ]; then
         printf '  Remnawave Panel -> webhook secret: %s\n' "$(mask_secret "$panel_secret")"
     else
-        warn "PANEL_WEBHOOK_SECRET is empty; set it in Minishop and in Remnawave Panel."
+        warn "PANEL_WEBHOOK_SECRET is empty; set it in Remna User Panel and in Remnawave Panel."
     fi
-    printf '  YooKassa merchant cabinet -> HTTP notifications URL: %s/webhook/yookassa\n' "$base_url"
-    printf '  WATA merchant dashboard -> webhook/callback URL: %s/webhook/wata\n' "$base_url"
-    printf '  CryptoBot/Crypto Pay app -> webhook URL: %s/webhook/cryptopay\n' "$base_url"
-    printf '  Heleket merchant dashboard -> payment webhook/callback URL: %s/webhook/heleket\n' "$base_url"
-    printf '  PayKilla Dashboard -> Settings -> Webhooks URL: %s/webhook/paykilla\n' "$base_url"
-    printf '  FreeKassa shop settings -> notification/result URL: %s/webhook/freekassa\n' "$base_url"
-    printf '  Platega merchant/project settings -> webhook URL: %s/webhook/platega\n' "$base_url"
+    printf '  EZPay merchant settings -> notify URL: %s/webhook/ezpay\n' "$base_url"
+    printf '  BEPUSDT merchant settings -> notify URL: %s/webhook/bepusdt\n' "$base_url"
     printf '  Telegram webhook: %s/tg/webhook (configured automatically on bot startup)\n' "$base_url"
 }
 
