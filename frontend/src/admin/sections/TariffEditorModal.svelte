@@ -30,7 +30,7 @@
     value: squad.uuid,
     label: squad.name,
   }));
-  $: defaultCurrencyKey = normalizeCurrencyKey(tariffsCatalog?.default_currency || "rub");
+  $: defaultCurrencyKey = normalizeCurrencyKey(tariffsCatalog?.default_currency || "usd");
   $: defaultCurrencyCode = defaultCurrencyKey.toUpperCase();
   $: currencyPriceColumnLabel = at(
     "tariff_col_price_currency",

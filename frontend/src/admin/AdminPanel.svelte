@@ -673,7 +673,7 @@
         rel="noopener noreferrer"
         title="Documentation"
       >
-        <span>remnawave-minishop</span>
+        <span>remna-user-panel</span>
         <span>{appVersion || "dev+local"}</span>
       </a>
     </div>

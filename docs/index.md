@@ -1,16 +1,19 @@
-# Remnawave Minishop
+# Remna User Panel 中文文档
 
-## 开发
+Remna User Panel 是面向 Telegram Mini App 的 Remnawave 用户面板。当前版本以 Go 后端、Svelte/Vite 前端、PostgreSQL 和 Redis 为基础，支付范围收敛为 EZPay 与 BEPUSDT。
 
-- [插件和扩展 API](development/plugins.md) — Python 插件钩子、领域事件、功能标志、迁移、本地化和管理面板板块扩展规则。
+## 文档目录
 
-Remnawave Minishop — Telegram 机器人和 Mini App, 用于销售和管理 Remnawave 订阅。文档帮助部署技术栈、配置支付、套餐、管理面板、客服和公开控制台。
+- [Docker 部署](getting-started/deployment.md)
+- [后台配置](configuration/settings.md)
+- [支付配置](features/payments.md)
+- [套餐与 plan_hash](features/tariffs.md)
+- [安全建议](configuration/security.md)
+- [维护、更新与备份](troubleshooting/maintenance.md)
 
-> 项目与 Remnawave Panel 配合工作: 面板存储用户和订阅, Minishop 负责 Telegram、支付、Mini App、套餐和运营管理。
+## 核心约定
 
-## 核心功能
-
-- **订阅销售** — 周期和流量套餐、流量补充、HWID 设备、[Premium Squads](features/tariffs.md#premium-сквады-и-отдельный-лимит)
-- **用户生命周期** — 注册、试用期、续费、面板同步和流量警告.
-- **Mini App** — 控制台、安装指南、[Telegram OAuth](features/telegram-auth.md)、[邮箱登录](features/email-login.md)和公开推荐链接.
-- **运营工具** — 管理面板、客服工单、优惠码、群发、日志、[备份与恢复](features/backups.md)、`.env` 覆盖设置.
+- `.env` 只用于最小启动：数据库、Redis、监听端口、Bot Token、管理员 ID、Session Secret、Webhook Secret、可信代理和日志级别。
+- 套餐、Remnawave、支付、外观、语言、汇率等配置在管理后台维护。
+- 前端下单只提交 `plan_hash` 与支付方式，金额由服务端按套餐快照、汇率和支付 provider 重新计算。
+- 默认主币种是 USD，用户界面显示 USD 主价和 CNY/RMB 参考价。
