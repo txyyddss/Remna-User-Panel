@@ -65,7 +65,7 @@ jobs:
         working-directory: frontend
 
       - name: Prettier frontend
-        run: npm run format:check
+        run: npm run format
         working-directory: frontend
 
       - name: Build webapp

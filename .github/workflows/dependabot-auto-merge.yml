@@ -14,6 +14,7 @@ jobs:
   auto-merge:
     name: Merge Dependabot PR after CI
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: >
       github.event.workflow_run.event == 'pull_request' &&
       github.event.workflow_run.conclusion == 'success'
@@ -37,13 +38,62 @@ jobs:
           echo "Found Dependabot PR #$number for commit $SHA"
           echo "number=$number" >> "$GITHUB_OUTPUT"
 
-      - name: Enable auto-merge
+      - name: Wait for all checks to pass
+        id: checks
         if: steps.pr.outputs.number != ''
+        timeout-minutes: 20
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Waiting for all status checks to complete on PR #${{ steps.pr.outputs.number }}..."
+          if gh pr checks "${{ steps.pr.outputs.number }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --watch; then
+            echo "All checks passed."
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Some checks failed or did not complete successfully."
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify PR is mergeable (no conflicts)
+        id: mergeable
+        if: steps.pr.outputs.number != '' && steps.checks.outputs.passed == 'true'
+        timeout-minutes: 5
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR="${{ steps.pr.outputs.number }}"
+          echo "Verifying PR #$PR has no conflicts..."
+          for i in $(seq 1 15); do
+            STATE="$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" \
+              --json mergeStateStatus --jq '.mergeStateStatus')"
+            echo "  [$i] mergeStateStatus: $STATE"
+            case "$STATE" in
+              CLEAN)
+                echo "PR is clean, no conflicts. Proceeding with merge."
+                echo "ready=true" >> "$GITHUB_OUTPUT"
+                exit 0
+                ;;
+              DIRTY|BLOCKED|HAS_HOOKS|UNKNOWN)
+                echo "PR merge state is '$STATE', cannot auto-merge."
+                echo "ready=false" >> "$GITHUB_OUTPUT"
+                exit 0
+                ;;
+              *)
+                sleep 4
+                ;;
+            esac
+          done
+          echo "Timed out waiting for mergeable state."
+          echo "ready=false" >> "$GITHUB_OUTPUT"
+
+      - name: Auto-merge Dependabot PR
+        if: steps.pr.outputs.number != '' && steps.mergeable.outputs.ready == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr merge "${{ steps.pr.outputs.number }}" \
             --repo "$GITHUB_REPOSITORY" \
             --squash \
-            --admin \
             --delete-branch
