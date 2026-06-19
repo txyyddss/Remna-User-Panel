@@ -2,6 +2,8 @@ package httpapi
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +11,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -27,8 +30,9 @@ import (
 )
 
 const (
-	sessionCookieName = "rw_webapp_session"
-	csrfCookieName    = "rw_webapp_csrf"
+	sessionCookieName       = "rw_webapp_session"
+	csrfCookieName          = "rw_webapp_csrf"
+	telegramNonceCookieName = "rw_telegram_login_nonce"
 )
 
 type sessionContext struct {
@@ -56,9 +60,10 @@ func authTokenHandler(settings config.Settings, pool *pgxpool.Pool) http.Handler
 			return
 		}
 		var payload struct {
-			InitData     string         `json:"init_data"`
-			AuthData     map[string]any `json:"auth_data"`
-			ReferralCode string         `json:"referral_code"`
+			InitData     string `json:"init_data"`
+			IDToken      string `json:"id_token"`
+			Nonce        string `json:"nonce"`
+			ReferralCode string `json:"referral_code"`
 		}
 		if err := decodeJSONBody(r, &payload); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
@@ -68,8 +73,14 @@ func authTokenHandler(settings config.Settings, pool *pgxpool.Pool) http.Handler
 		var err error
 		if strings.TrimSpace(payload.InitData) != "" {
 			tgUser, err = auth.ValidateTelegramInitData(payload.InitData, settings.BotToken, 24*time.Hour)
-		} else if len(payload.AuthData) > 0 {
-			tgUser, err = auth.ValidateTelegramAuthData(payload.AuthData, settings.BotToken, 24*time.Hour)
+		} else if strings.TrimSpace(payload.IDToken) != "" {
+			cookie, cookieErr := r.Cookie(telegramNonceCookieName)
+			clientID := appsettings.NewStore(pool).String(r.Context(), "TELEGRAM_LOGIN_CLIENT_ID", os.Getenv("TELEGRAM_LOGIN_CLIENT_ID"))
+			if cookieErr != nil || cookie.Value == "" || payload.Nonce == "" || cookie.Value != payload.Nonce || clientID == "" {
+				err = errors.New("invalid_telegram_nonce")
+			} else {
+				tgUser, err = auth.ValidateTelegramIDToken(r.Context(), payload.IDToken, clientID, payload.Nonce)
+			}
 		} else {
 			err = errors.New("missing_telegram_auth")
 		}
@@ -90,6 +101,7 @@ func authTokenHandler(settings config.Settings, pool *pgxpool.Pool) http.Handler
 			return
 		}
 		setSessionCookies(w, r, token, csrf)
+		http.SetCookie(w, &http.Cookie{Name: telegramNonceCookieName, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: requestIsHTTPS(r), SameSite: http.SameSiteLaxMode})
 		writeJSON(w, http.StatusOK, map[string]any{
 			"ok":         true,
 			"csrf_token": csrf,
@@ -104,6 +116,24 @@ func authTokenHandler(settings config.Settings, pool *pgxpool.Pool) http.Handler
 				IsAdmin:      isAdminID(settings.AdminIDs, tgUser.ID),
 			},
 		})
+	}
+}
+
+func telegramLoginNonceHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		clientID := appsettings.NewStore(pool).String(r.Context(), "TELEGRAM_LOGIN_CLIENT_ID", os.Getenv("TELEGRAM_LOGIN_CLIENT_ID"))
+		if clientID == "" {
+			writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "telegram_login_not_configured"})
+			return
+		}
+		raw := make([]byte, 32)
+		if _, err := rand.Read(raw); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "nonce_failed"})
+			return
+		}
+		nonce := base64.RawURLEncoding.EncodeToString(raw)
+		http.SetCookie(w, &http.Cookie{Name: telegramNonceCookieName, Value: nonce, Path: "/", MaxAge: 300, HttpOnly: true, Secure: requestIsHTTPS(r), SameSite: http.SameSiteLaxMode})
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "nonce": nonce, "client_id": clientID})
 	}
 }
 
@@ -311,6 +341,10 @@ func adminSettingsHandler(settings config.Settings, pool *pgxpool.Pool) http.Han
 				errorsByKey[key] = "unsupported_setting"
 				continue
 			}
+			if _, locked := os.LookupEnv(key); locked {
+				errorsByKey[key] = "setting_locked_by_env"
+				continue
+			}
 			normalized, err := normalizeSettingValue(key, value)
 			if err != nil {
 				errorsByKey[key] = err.Error()
@@ -325,12 +359,23 @@ func adminSettingsHandler(settings config.Settings, pool *pgxpool.Pool) http.Han
 				errorsByKey[key] = "unsupported_setting"
 				continue
 			}
+			if _, locked := os.LookupEnv(key); locked {
+				errorsByKey[key] = "setting_locked_by_env"
+				continue
+			}
 			if err := store.Delete(r.Context(), key); err != nil {
 				errorsByKey[key] = "delete_failed"
 			}
 		}
 		if len(errorsByKey) > 0 {
-			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "errors": errorsByKey})
+			status := http.StatusBadRequest
+			for _, code := range errorsByKey {
+				if code == "setting_locked_by_env" {
+					status = http.StatusConflict
+					break
+				}
+			}
+			writeJSON(w, status, map[string]any{"ok": false, "errors": errorsByKey})
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
@@ -581,27 +626,14 @@ func paymentSettingsFields(ctx context.Context, settings config.Settings, store 
 		{Key: "FX_CUSTOM_USD_CNY", Type: "float", Label: "Custom USD/CNY rate", Description: "Used only when the provider is custom.", Subsection: "Currency", Fallback: ""},
 		{Key: "FX_CACHE_TTL_SECONDS", Type: "int", Label: "FX cache TTL seconds", Description: "How long a successful rate response is reused.", Subsection: "Currency", Fallback: 3600},
 		{Key: "PAYMENT_METHODS_ORDER", Type: "text", Label: "Payment method order", Description: "Comma-separated method ids, e.g. ezpay:alipay,bepusdt:usdt.polygon.", Fallback: strings.Join(settings.PaymentMethodsOrder, ",")},
+		{Key: "STARS_ENABLED", Type: "bool", Label: "Telegram Stars enabled", Description: "Accept digital-goods payments through Telegram Stars.", Subsection: "Telegram Stars", Fallback: false},
 		{Key: "EZPAY_ENABLED", Type: "bool", Label: "EZPay enabled", Description: "Enable EZPay payment methods.", Subsection: "EZPay", Fallback: settings.EZPay.Enabled, WebhookPath: "/webhook/ezpay", ProviderID: "ezpay", WebhookConfigured: webhookConfigured},
 		{Key: "EZPAY_BASE_URL", Type: "string", Label: "EZPay base URL", Description: "Merchant API base URL.", Subsection: "EZPay", Fallback: settings.EZPay.BaseURL},
 		{Key: "EZPAY_PID", Type: "int", Label: "EZPay PID", Description: "Merchant PID.", Subsection: "EZPay", Fallback: settings.EZPay.PID},
 		{Key: "EZPAY_KEY", Type: "string", Label: "EZPay key", Description: "Merchant signing key.", Subsection: "EZPay", Fallback: settings.EZPay.Key, Secret: true},
-		{Key: "EZPAY_RETURN_URL", Type: "string", Label: "EZPay return URL", Description: "Return URL after checkout.", Subsection: "EZPay", Fallback: settings.EZPay.ReturnURL},
-		{Key: "PAYMENT_EZPAY_ALIPAY_LABEL_ZH", Type: "string", Label: "Alipay label ZH", Subsection: "EZPay", Fallback: "支付宝"},
-		{Key: "PAYMENT_EZPAY_ALIPAY_LABEL_EN", Type: "string", Label: "Alipay label EN", Subsection: "EZPay", Fallback: "Alipay"},
-		{Key: "PAYMENT_EZPAY_WXPAY_LABEL_ZH", Type: "string", Label: "WeChat label ZH", Subsection: "EZPay", Fallback: "微信支付"},
-		{Key: "PAYMENT_EZPAY_WXPAY_LABEL_EN", Type: "string", Label: "WeChat label EN", Subsection: "EZPay", Fallback: "WeChat Pay"},
-		{Key: "PAYMENT_EZPAY_USDT_LABEL_ZH", Type: "string", Label: "EZPay USDT label ZH", Subsection: "EZPay", Fallback: "EZPay USDT"},
-		{Key: "PAYMENT_EZPAY_USDT_LABEL_EN", Type: "string", Label: "EZPay USDT label EN", Subsection: "EZPay", Fallback: "EZPay USDT"},
 		{Key: "BEPUSDT_ENABLED", Type: "bool", Label: "BEPUSDT enabled", Description: "Enable BEPUSDT USDT methods.", Subsection: "BEPUSDT", Fallback: settings.BEPUSDT.Enabled, WebhookPath: "/webhook/bepusdt", ProviderID: "bepusdt", WebhookConfigured: webhookConfigured},
 		{Key: "BEPUSDT_BASE_URL", Type: "string", Label: "BEPUSDT base URL", Description: "BEPUSDT API base URL.", Subsection: "BEPUSDT", Fallback: settings.BEPUSDT.BaseURL},
 		{Key: "BEPUSDT_TOKEN", Type: "string", Label: "BEPUSDT token", Description: "BEPUSDT signing token.", Subsection: "BEPUSDT", Fallback: settings.BEPUSDT.Token, Secret: true},
-		{Key: "BEPUSDT_RETURN_URL", Type: "string", Label: "BEPUSDT return URL", Description: "Return URL after checkout.", Subsection: "BEPUSDT", Fallback: settings.BEPUSDT.ReturnURL},
-		{Key: "PAYMENT_BEPUSDT_POLYGON_LABEL_ZH", Type: "string", Label: "Polygon label ZH", Subsection: "BEPUSDT", Fallback: "USDT Polygon"},
-		{Key: "PAYMENT_BEPUSDT_POLYGON_LABEL_EN", Type: "string", Label: "Polygon label EN", Subsection: "BEPUSDT", Fallback: "USDT Polygon"},
-		{Key: "PAYMENT_BEPUSDT_ARBITRUM_LABEL_ZH", Type: "string", Label: "Arbitrum label ZH", Subsection: "BEPUSDT", Fallback: "USDT Arbitrum"},
-		{Key: "PAYMENT_BEPUSDT_ARBITRUM_LABEL_EN", Type: "string", Label: "Arbitrum label EN", Subsection: "BEPUSDT", Fallback: "USDT Arbitrum"},
-		{Key: "PAYMENT_BEPUSDT_APTOS_LABEL_ZH", Type: "string", Label: "Aptos label ZH", Subsection: "BEPUSDT", Fallback: "USDT Aptos"},
-		{Key: "PAYMENT_BEPUSDT_APTOS_LABEL_EN", Type: "string", Label: "Aptos label EN", Subsection: "BEPUSDT", Fallback: "USDT Aptos"},
 	}
 	result := make([]map[string]any, 0, len(fields))
 	for _, field := range fields {
@@ -611,8 +643,6 @@ func paymentSettingsFields(ctx context.Context, settings config.Settings, store 
 }
 
 func remnawaveSettingsFields(ctx context.Context, settings config.Settings, store appsettings.Store) []map[string]any {
-	effectiveWebhookBaseURL := store.String(ctx, "WEBHOOK_BASE_URL", settings.WebhookBaseURL)
-	webhookConfigured := strings.TrimSpace(effectiveWebhookBaseURL) != ""
 	hwidFallback := ""
 	if settings.UserHWIDDeviceLimit != nil {
 		hwidFallback = strconv.Itoa(*settings.UserHWIDDeviceLimit)
@@ -620,7 +650,6 @@ func remnawaveSettingsFields(ctx context.Context, settings config.Settings, stor
 	fields := []paymentSettingField{
 		{Key: "PANEL_API_URL", Type: "string", Label: "Remnawave API URL", Description: "Panel base URL. Both https://panel.example and https://panel.example/api are accepted.", Subsection: "Remnawave", Fallback: settings.PanelAPIURL},
 		{Key: "PANEL_API_KEY", Type: "string", Label: "Remnawave API key", Description: "Bearer token used to call Remnawave API.", Subsection: "Remnawave", Fallback: settings.PanelAPIKey, Secret: true},
-		{Key: "PANEL_WEBHOOK_SECRET", Type: "string", Label: "Panel webhook secret", Description: "Shared secret checked on incoming Remnawave webhook requests.", Subsection: "Remnawave", Fallback: settings.PanelWebhookSecret, Secret: true, WebhookPath: settings.PanelWebhookPath, ProviderID: "remnawave", WebhookConfigured: webhookConfigured},
 		{Key: "PANEL_API_TOTAL_TIMEOUT_SECONDS", Type: "float", Label: "Remnawave API total timeout", Description: "Maximum total time for one Remnawave API request, in seconds.", Subsection: "Remnawave", Fallback: settings.PanelAPITotalTimeout.Seconds()},
 		{Key: "PANEL_API_CONNECT_TIMEOUT_SECONDS", Type: "float", Label: "Remnawave API connect timeout", Description: "Reserved for compatibility with the reference project; total timeout is enforced by the Go client.", Subsection: "Remnawave", Fallback: settings.PanelAPIConnectTimeout.Seconds()},
 		{Key: "PANEL_API_SOCK_CONNECT_TIMEOUT_SECONDS", Type: "float", Label: "Remnawave API TCP/TLS timeout", Description: "Reserved for compatibility with the reference project; total timeout is enforced by the Go client.", Subsection: "Remnawave", Fallback: settings.PanelAPISockConnectTimeout.Seconds()},
@@ -636,6 +665,10 @@ func remnawaveSettingsFields(ctx context.Context, settings config.Settings, stor
 		{Key: "TRIAL_TRAFFIC_STRATEGY", Type: "string", Label: "Trial traffic strategy", Description: "Remnawave trafficLimitStrategy for trial users.", Subsection: "Trial", Fallback: settings.UserTrafficStrategy, Choices: []settingChoice{{Value: "NO_RESET", Label: "No reset"}, {Value: "DAY", Label: "Day"}, {Value: "WEEK", Label: "Week"}, {Value: "MONTH", Label: "Month"}, {Value: "MONTH_ROLLING", Label: "Month rolling"}}},
 		{Key: "TRIAL_SQUAD_UUIDS", Type: "text", Label: "Trial internal squads", Description: "Comma-separated Internal Squad UUIDs for trial users. Empty uses default squads.", Subsection: "Trial", Fallback: ""},
 		{Key: "REFERRAL_WELCOME_BONUS_DAYS", Type: "int", Label: "Referral welcome bonus days", Description: "Days granted once to invited users. 0 disables welcome bonus claiming.", Subsection: "Referral", Fallback: 0},
+		{Key: "TELEMETRY_ENABLED", Type: "bool", Label: "Anonymous local telemetry", Description: "Collect local-only installation heartbeats and browser risk signals.", Subsection: "Telemetry", Fallback: envBoolValue("TELEMETRY_ENABLED", true)},
+		{Key: "TELEMETRY_RETENTION_HOURS", Type: "int", Label: "Telemetry retention hours", Description: "Delete anonymous records after this many hours without a match (1-720).", Subsection: "Telemetry", Fallback: envIntValue("TELEMETRY_RETENTION_HOURS", 24)},
+		{Key: "TELEMETRY_FINGERPRINT_REJECT_SCORE", Type: "int", Label: "Fingerprint rejection score", Description: "Automatically reject welcome bonuses at or above this similarity score (1-100).", Subsection: "Telemetry", Fallback: envIntValue("TELEMETRY_FINGERPRINT_REJECT_SCORE", 70)},
+		{Key: "TELEGRAM_LOGIN_CLIENT_ID", Type: "string", Label: "Telegram Login Client ID", Description: "Client ID from BotFather Web Login for browser registration and sign-in.", Subsection: "General", Fallback: os.Getenv("TELEGRAM_LOGIN_CLIENT_ID")},
 		{Key: "MY_DEVICES_ENABLED", Type: "bool", Label: "My devices enabled", Description: "Show HWID device management in the Web App.", Subsection: "Features", Fallback: settings.PanelAPIURL != "" && settings.PanelAPIKey != ""},
 		{Key: "SUPPORT_TICKETS_ENABLED", Type: "bool", Label: "Support tickets enabled", Description: "Show the built-in support ticket UI.", Subsection: "Features", Fallback: false},
 		{Key: "SUBSCRIPTION_GUIDES_ENABLED", Type: "bool", Label: "Subscription guides enabled", Description: "Show subscription setup guides in the Web App.", Subsection: "Features", Fallback: false},
@@ -676,8 +709,15 @@ type settingChoice struct {
 func (f paymentSettingField) toMap(ctx context.Context, store appsettings.Store) map[string]any {
 	raw, overridden, _ := store.Get(ctx, f.Key)
 	value := f.Fallback
+	envRaw, envLocked := os.LookupEnv(f.Key)
+	if envLocked {
+		overridden = false
+		if parsed, err := normalizeFieldValue(f.Type, envRaw); err == nil {
+			value = parsed
+		}
+	}
 	hasValue := false
-	if overridden {
+	if overridden && !envLocked {
 		hasValue = true
 		switch f.Type {
 		case "bool":
@@ -708,12 +748,19 @@ func (f paymentSettingField) toMap(ctx context.Context, store appsettings.Store)
 		mappedType = "input"
 	}
 	item := map[string]any{
-		"key":         f.Key,
-		"type":        mappedType,
-		"label":       f.Label,
-		"description": f.Description,
-		"value":       value,
-		"overridden":  overridden,
+		"key":                  f.Key,
+		"type":                 mappedType,
+		"label":                f.Label,
+		"description":          f.Description,
+		"value":                value,
+		"overridden":           overridden,
+		"env_locked":           envLocked,
+		"source":               map[bool]string{true: "env", false: "runtime"}[envLocked],
+		"i18n_label_key":       "admin_settings_field_" + strings.ToLower(f.Key) + "_label",
+		"i18n_description_key": "admin_settings_field_" + strings.ToLower(f.Key) + "_description",
+	}
+	if !envLocked && !overridden {
+		item["source"] = "default"
 	}
 	if f.Subsection != "" {
 		item["subsection"] = f.Subsection
@@ -738,25 +785,69 @@ func (f paymentSettingField) toMap(ctx context.Context, store appsettings.Store)
 	return item
 }
 
+func normalizeFieldValue(fieldType, raw string) (any, error) {
+	switch fieldType {
+	case "bool":
+		value, err := strconv.ParseBool(strings.TrimSpace(raw))
+		if err != nil {
+			return nil, err
+		}
+		return value, nil
+	case "int":
+		value, err := strconv.Atoi(strings.TrimSpace(raw))
+		if err != nil {
+			return nil, err
+		}
+		return value, nil
+	case "float":
+		value, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
+		if err != nil {
+			return nil, err
+		}
+		return value, nil
+	default:
+		return strings.TrimSpace(raw), nil
+	}
+}
+
+func envIntValue(key string, fallback int) int {
+	raw, ok := os.LookupEnv(key)
+	if !ok {
+		return fallback
+	}
+	value, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil {
+		return fallback
+	}
+	return value
+}
+func envBoolValue(key string, fallback bool) bool {
+	raw, ok := os.LookupEnv(key)
+	if !ok {
+		return fallback
+	}
+	value, err := strconv.ParseBool(strings.TrimSpace(raw))
+	if err != nil {
+		return fallback
+	}
+	return value
+}
+
 func allowedPaymentSettingKeys() map[string]bool {
 	result := map[string]bool{}
 	for _, key := range []string{
 		"WEBHOOK_BASE_URL", "DEFAULT_CURRENCY_SYMBOL", "FX_PROVIDER", "FX_CUSTOM_USD_CNY", "FX_CACHE_TTL_SECONDS",
 		"PAYMENT_METHODS_ORDER",
-		"PANEL_API_URL", "PANEL_API_KEY", "PANEL_WEBHOOK_SECRET", "PANEL_API_TOTAL_TIMEOUT_SECONDS", "PANEL_API_CONNECT_TIMEOUT_SECONDS",
+		"STARS_ENABLED",
 		"PANEL_API_SOCK_CONNECT_TIMEOUT_SECONDS", "PANEL_API_SOCK_READ_TIMEOUT_SECONDS", "USER_TRAFFIC_LIMIT_GB", "USER_TRAFFIC_STRATEGY",
 		"USER_SQUAD_UUIDS", "USER_EXTERNAL_SQUAD_UUID", "USER_HWID_DEVICE_LIMIT", "MY_DEVICES_ENABLED", "SUPPORT_TICKETS_ENABLED",
 		"SUBSCRIPTION_GUIDES_ENABLED", "SUBSCRIPTION_AUTO_RENEW_ENABLED",
 		"TRIAL_ENABLED", "TRIAL_DURATION_DAYS", "TRIAL_TRAFFIC_LIMIT_GB", "TRIAL_TRAFFIC_STRATEGY", "TRIAL_SQUAD_UUIDS",
 		"REFERRAL_WELCOME_BONUS_DAYS",
-		"EZPAY_ENABLED", "EZPAY_BASE_URL", "EZPAY_PID", "EZPAY_KEY", "EZPAY_RETURN_URL",
-		"BEPUSDT_ENABLED", "BEPUSDT_BASE_URL", "BEPUSDT_TOKEN", "BEPUSDT_RETURN_URL",
-		"PAYMENT_EZPAY_ALIPAY_LABEL_ZH", "PAYMENT_EZPAY_ALIPAY_LABEL_EN",
-		"PAYMENT_EZPAY_WXPAY_LABEL_ZH", "PAYMENT_EZPAY_WXPAY_LABEL_EN",
-		"PAYMENT_EZPAY_USDT_LABEL_ZH", "PAYMENT_EZPAY_USDT_LABEL_EN",
-		"PAYMENT_BEPUSDT_POLYGON_LABEL_ZH", "PAYMENT_BEPUSDT_POLYGON_LABEL_EN",
-		"PAYMENT_BEPUSDT_ARBITRUM_LABEL_ZH", "PAYMENT_BEPUSDT_ARBITRUM_LABEL_EN",
-		"PAYMENT_BEPUSDT_APTOS_LABEL_ZH", "PAYMENT_BEPUSDT_APTOS_LABEL_EN",
+		"TELEMETRY_ENABLED", "TELEMETRY_RETENTION_HOURS", "TELEMETRY_FINGERPRINT_REJECT_SCORE",
+		"TELEGRAM_LOGIN_CLIENT_ID",
+		"EZPAY_ENABLED", "EZPAY_BASE_URL", "EZPAY_PID", "EZPAY_KEY",
+		"BEPUSDT_ENABLED", "BEPUSDT_BASE_URL", "BEPUSDT_TOKEN",
 		// Web UI 可管理的通用设置
 		"DEFAULT_LANGUAGE", "SUBSCRIPTION_NOTIFY_DAYS_BEFORE", "SUBSCRIPTION_NOTIFY_HOURS_BEFORE",
 		"WORKER_PANEL_SYNC_INTERVAL_SECONDS", "WORKER_PAYMENT_PROVISION_INTERVAL_SECONDS",
@@ -768,7 +859,7 @@ func allowedPaymentSettingKeys() map[string]bool {
 
 func normalizeSettingValue(key string, value any) (any, error) {
 	switch key {
-	case "EZPAY_ENABLED", "BEPUSDT_ENABLED", "MY_DEVICES_ENABLED", "SUPPORT_TICKETS_ENABLED", "TRIAL_ENABLED", "SUBSCRIPTION_GUIDES_ENABLED", "SUBSCRIPTION_AUTO_RENEW_ENABLED":
+	case "EZPAY_ENABLED", "BEPUSDT_ENABLED", "STARS_ENABLED", "MY_DEVICES_ENABLED", "SUPPORT_TICKETS_ENABLED", "TRIAL_ENABLED", "SUBSCRIPTION_GUIDES_ENABLED", "SUBSCRIPTION_AUTO_RENEW_ENABLED", "TELEMETRY_ENABLED":
 		if typed, ok := value.(bool); ok {
 			return typed, nil
 		}
@@ -780,24 +871,32 @@ func normalizeSettingValue(key string, value any) (any, error) {
 		default:
 			return nil, fmt.Errorf("invalid_bool")
 		}
-	case "EZPAY_PID", "FX_CACHE_TTL_SECONDS", "USER_HWID_DEVICE_LIMIT", "TRIAL_DURATION_DAYS", "REFERRAL_WELCOME_BONUS_DAYS",
+	case "EZPAY_PID", "FX_CACHE_TTL_SECONDS", "USER_HWID_DEVICE_LIMIT", "TRIAL_DURATION_DAYS", "REFERRAL_WELCOME_BONUS_DAYS", "TELEMETRY_RETENTION_HOURS", "TELEMETRY_FINGERPRINT_REJECT_SCORE",
 		"SUBSCRIPTION_NOTIFY_DAYS_BEFORE", "SUBSCRIPTION_NOTIFY_HOURS_BEFORE",
 		"WORKER_PANEL_SYNC_INTERVAL_SECONDS", "WORKER_PAYMENT_PROVISION_INTERVAL_SECONDS":
 		if key == "USER_HWID_DEVICE_LIMIT" && strings.TrimSpace(fmt.Sprint(value)) == "" {
 			return "", nil
 		}
+		var parsed int
 		switch typed := value.(type) {
 		case float64:
-			return int(typed), nil
+			parsed = int(typed)
 		case int:
-			return typed, nil
+			parsed = typed
 		default:
-			parsed, err := strconv.Atoi(strings.TrimSpace(fmt.Sprint(value)))
+			value, err := strconv.Atoi(strings.TrimSpace(fmt.Sprint(value)))
 			if err != nil {
 				return nil, fmt.Errorf("invalid_int")
 			}
-			return parsed, nil
+			parsed = value
 		}
+		if key == "TELEMETRY_RETENTION_HOURS" && (parsed < 1 || parsed > 720) {
+			return nil, fmt.Errorf("must_be_between_1_and_720")
+		}
+		if key == "TELEMETRY_FINGERPRINT_REJECT_SCORE" && (parsed < 1 || parsed > 100) {
+			return nil, fmt.Errorf("must_be_between_1_and_100")
+		}
+		return parsed, nil
 	case "DEFAULT_CURRENCY_SYMBOL":
 		value := strings.ToUpper(strings.TrimSpace(fmt.Sprint(value)))
 		switch value {
@@ -991,6 +1090,11 @@ func providerCheckoutAmount(methodID string, plan tariffs.Plan, rate fx.Rate) (f
 			}
 			return 0, "", fmt.Errorf("unsupported currency")
 		}
+	case payments.ProviderTelegramStars:
+		if plan.StarsPrice <= 0 {
+			return 0, "", fmt.Errorf("stars price not configured")
+		}
+		return float64(plan.StarsPrice), "XTR", nil
 	default:
 		return 0, "", fmt.Errorf("unsupported provider")
 	}

@@ -182,5 +182,113 @@ CREATE INDEX IF NOT EXISTS ix_message_logs_event_type ON message_logs(event_type
 				return err
 			},
 		},
+		{
+			ID: "core.go.0006_promos_telemetry_stars",
+			Up: func(ctx context.Context, tx pgx.Tx) error {
+				_, err := tx.Exec(ctx, `
+CREATE TABLE IF NOT EXISTS promo_activations (
+	activation_id BIGSERIAL PRIMARY KEY,
+	promo_id VARCHAR(64) NOT NULL,
+	promo_code VARCHAR(64) NOT NULL,
+	user_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+	status VARCHAR(16) NOT NULL CHECK (status IN ('processing','applied','failed')),
+	bonus_days INT NOT NULL DEFAULT 0,
+	error_code VARCHAR(128) NULL,
+	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	applied_at TIMESTAMPTZ NULL,
+	UNIQUE (promo_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS ix_promo_activations_promo_status ON promo_activations(promo_id, status);
+INSERT INTO promo_activations(promo_id,promo_code,user_id,status,bonus_days,created_at,updated_at,applied_at)
+SELECT COALESCE(NULLIF(promo->>'id',''),UPPER(promo->>'code')),UPPER(COALESCE(promo->>'code','')),
+ (activation->>'user_id')::BIGINT,'applied',CASE WHEN COALESCE(promo->>'bonus_days','') ~ '^[0-9]+$' THEN (promo->>'bonus_days')::INT ELSE 0 END,
+ COALESCE(NULLIF(activation->>'activated_at','')::TIMESTAMPTZ,NOW()),NOW(),COALESCE(NULLIF(activation->>'activated_at','')::TIMESTAMPTZ,NOW())
+FROM app_settings setting
+CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(setting.value)='array' THEN setting.value ELSE '[]'::jsonb END) promo
+CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(promo->'activations')='array' THEN promo->'activations' ELSE '[]'::jsonb END) activation
+WHERE setting.key='ADMIN_PROMOS' AND COALESCE(activation->>'user_id','') ~ '^[0-9]+$'
+ AND EXISTS(SELECT 1 FROM users WHERE user_id=(activation->>'user_id')::BIGINT)
+ON CONFLICT(promo_id,user_id) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS visitor_telemetry (
+	visitor_hash VARCHAR(64) PRIMARY KEY,
+	full_fingerprint_hash VARCHAR(64) NOT NULL,
+	canvas_hash VARCHAR(64) NULL,
+	webgl_hash VARCHAR(64) NULL,
+	fonts_hash VARCHAR(64) NULL,
+	audio_hash VARCHAR(64) NULL,
+	network_hash VARCHAR(64) NULL,
+	browser_hash VARCHAR(64) NULL,
+	platform_hash VARCHAR(64) NULL,
+	timezone_hash VARCHAR(64) NULL,
+	screen_hash VARCHAR(64) NULL,
+	hardware_hash VARCHAR(64) NULL,
+	language_hash VARCHAR(64) NULL,
+	user_id BIGINT NULL REFERENCES users(user_id) ON DELETE SET NULL,
+	first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS ix_visitor_telemetry_fingerprint ON visitor_telemetry(full_fingerprint_hash);
+CREATE INDEX IF NOT EXISTS ix_visitor_telemetry_last_seen ON visitor_telemetry(last_seen_at);
+CREATE TABLE IF NOT EXISTS visitor_user_links (
+	visitor_hash VARCHAR(64) NOT NULL,
+	user_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+	last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	PRIMARY KEY(visitor_hash,user_id)
+);
+CREATE INDEX IF NOT EXISTS ix_visitor_user_links_user ON visitor_user_links(user_id,last_seen_at);
+
+CREATE TABLE IF NOT EXISTS referral_welcome_claims (
+	claim_id BIGSERIAL PRIMARY KEY,
+	user_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+	referrer_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+	visitor_hash VARCHAR(64) NULL,
+	fingerprint_hash VARCHAR(64) NULL,
+	status VARCHAR(16) NOT NULL CHECK (status IN ('processing','applied','rejected','failed')),
+	risk_score INT NOT NULL DEFAULT 0,
+	rule_code VARCHAR(64) NULL,
+	bonus_days INT NOT NULL DEFAULT 0,
+	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	applied_at TIMESTAMPTZ NULL,
+	UNIQUE (user_id)
+);
+CREATE INDEX IF NOT EXISTS ix_referral_claims_visitor ON referral_welcome_claims(visitor_hash, status);
+CREATE INDEX IF NOT EXISTS ix_referral_claims_fingerprint ON referral_welcome_claims(fingerprint_hash, status);
+
+CREATE TABLE IF NOT EXISTS invite_visits (
+	visit_id BIGSERIAL PRIMARY KEY,
+	code VARCHAR(128) NOT NULL,
+	kind VARCHAR(16) NOT NULL CHECK (kind IN ('referral','campaign')),
+	visitor_hash VARCHAR(64) NOT NULL,
+	fingerprint_hash VARCHAR(64) NOT NULL,
+	first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	visit_count INT NOT NULL DEFAULT 1,
+	registered_user_id BIGINT NULL REFERENCES users(user_id) ON DELETE SET NULL,
+	converted_at TIMESTAMPTZ NULL
+);
+CREATE INDEX IF NOT EXISTS ix_invite_visits_code_seen ON invite_visits(kind, code, last_seen_at);
+CREATE INDEX IF NOT EXISTS ix_invite_visits_visitor ON invite_visits(visitor_hash, last_seen_at);
+
+CREATE TABLE IF NOT EXISTS installation_heartbeats (
+	heartbeat_date DATE PRIMARY KEY,
+	version VARCHAR(128) NOT NULL,
+	provenance VARCHAR(16) NOT NULL,
+	os VARCHAR(32) NOT NULL,
+	locale VARCHAR(16) NOT NULL,
+	user_count_range VARCHAR(32) NOT NULL,
+	last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS telegram_payment_charge_id VARCHAR(255) NULL;
+ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS telegram_invoice_payload VARCHAR(255) NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS ux_payment_orders_telegram_charge ON payment_orders(telegram_payment_charge_id) WHERE telegram_payment_charge_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS ux_payment_orders_telegram_payload ON payment_orders(telegram_invoice_payload) WHERE telegram_invoice_payload IS NOT NULL;
+`)
+				return err
+			},
+		},
 	}
 }

@@ -2,6 +2,7 @@ import { mount } from "svelte";
 
 import App from "./App.svelte";
 import "./styles.css";
+import { sendTelemetryHeartbeat } from "./lib/webapp/telemetry.js";
 
 async function loadBootstrap() {
   if (document.getElementById("webapp-config")) return;
@@ -33,5 +34,6 @@ if (target) {
   loadBootstrap().finally(() => {
     target.replaceChildren();
     mount(App, { target });
+    void sendTelemetryHeartbeat();
   });
 }

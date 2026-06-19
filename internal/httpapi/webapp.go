@@ -41,10 +41,11 @@ func RegisterWebAppRoutes(router chi.Router, settings config.Settings, pool *pgx
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		_, _ = w.Write([]byte("User-agent: *\nDisallow: /\n"))
 	})
-	router.Get("/api/bootstrap", bootstrapHandler(settings, pool, catalog))
+	router.Get("/api/bootstrap", bootstrapHandler(settings, pool, catalog, assets))
 	router.Get("/api/i18n", i18nHandler(settings, pool, catalog))
 	router.Get("/api/me", meHandler(settings, pool, registry, panel))
 	router.Post("/api/auth/token", authTokenHandler(settings, pool))
+	router.Get("/api/auth/telegram/nonce", telegramLoginNonceHandler(settings, pool))
 	router.Post("/api/auth/logout", logoutHandler())
 	router.Post("/api/payments", createPaymentHandler(settings, pool, registry))
 	router.Get("/api/payments/{payment_id}", paymentStatusHandler(settings, pool, registry, panel))
@@ -86,24 +87,29 @@ func CombinedRouter(settings config.Settings, pool *pgxpool.Pool, redisClient *r
 	return router
 }
 
-func bootstrapHandler(settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog) http.HandlerFunc {
+func bootstrapHandler(settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog, assets webassets.Paths) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		scope := r.URL.Query().Get("i18n_scope")
 		_ = scope
 		i18nPayload := localePayload(r.Context(), pool, catalog)
 		writeJSON(w, http.StatusOK, map[string]any{
-			"ok": true,
-			"config": map[string]any{
-				"title":            "Subscription",
-				"primaryColor":     "#00fe7a",
-				"apiBase":          "/api",
-				"language":         settings.DefaultLanguage,
-				"languages":        languageOptions(catalog),
-				"emailAuthEnabled": settings.AdminEmail != "" && settings.AdminPassword != "",
-			},
+			"ok":       true,
+			"config":   webappRuntimeConfig(r.Context(), settings, pool, catalog, assets),
 			"i18n":     i18nPayload,
 			"messages": i18nPayload,
 		})
+	}
+}
+
+func webappRuntimeConfig(ctx context.Context, settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog, assets webassets.Paths) map[string]any {
+	store := appsettings.NewStore(pool)
+	return map[string]any{
+		"title": store.String(ctx, "WEBAPP_TITLE", "Subscription"), "primaryColor": store.String(ctx, "WEBAPP_PRIMARY_COLOR", "#00fe7a"),
+		"apiBase": "/api", "language": effectiveDefaultLanguage(ctx, pool, settings), "languages": languageOptions(catalog),
+		"emailAuthEnabled": settings.AdminEmail != "" && settings.AdminPassword != "", "logoUrl": store.String(ctx, "APPEARANCE_LOGO_URL", ""),
+		"telegramLoginClientId": store.String(ctx, "TELEGRAM_LOGIN_CLIENT_ID", os.Getenv("TELEGRAM_LOGIN_CLIENT_ID")),
+		"faviconUrl":            store.String(ctx, "APPEARANCE_FAVICON_URL", ""), "faviconUseCustom": store.String(ctx, "APPEARANCE_FAVICON_URL", "") != "",
+		"themesCatalog": readThemeCatalog(ctx, store, assets.ThemesDir),
 	}
 }
 
@@ -255,14 +261,7 @@ func indexHandler(settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Ca
 			http.Error(w, "template not found", http.StatusInternalServerError)
 			return
 		}
-		configScript := scriptJSON("webapp-config", map[string]any{
-			"title":            "Subscription",
-			"primaryColor":     "#00fe7a",
-			"apiBase":          "/api",
-			"language":         settings.DefaultLanguage,
-			"languages":        languageOptions(catalog),
-			"emailAuthEnabled": settings.AdminEmail != "" && settings.AdminPassword != "",
-		})
+		configScript := scriptJSON("webapp-config", webappRuntimeConfig(r.Context(), settings, pool, catalog, assets))
 		i18nScript := scriptJSON("i18n", localePayload(r.Context(), pool, catalog))
 		htmlBody := string(body)
 		htmlBody = strings.ReplaceAll(htmlBody, "<!-- WEBAPP_CONFIG_SCRIPT -->", configScript)

@@ -1,9 +1,4 @@
-import {
-  readMagicLoginToken,
-  readTelegramAuthStatus,
-  readTelegramLoginWidgetAuthData,
-  clearAuthQuery,
-} from "./authHelpers.js";
+import { readMagicLoginToken, readTelegramAuthStatus, clearAuthQuery } from "./authHelpers.js";
 import { TELEGRAM_SDK_BOOT_TIMEOUT_MS } from "./constants.js";
 
 /**
@@ -68,9 +63,6 @@ export async function runWebappBoot({
       true
     );
   }
-
-  const widgetAuthData = readTelegramLoginWidgetAuthData();
-  if (widgetAuthData && (await finalizeTelegramAuth(widgetAuthData, "auth_data"))) return;
 
   const initData = getInitDataForBoot();
   if (initData) {

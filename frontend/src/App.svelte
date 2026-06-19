@@ -1610,7 +1610,6 @@
     onSettingsSaved: handleAdminPersistedSaved,
     onTariffsSaved: handleAdminPersistedSaved,
     onThemesSaved: handleAdminPersistedSaved,
-    onTranslationsSaved: handleAdminTranslationsSaved,
     routePrefix,
     brandTitle,
     brand,
@@ -2440,12 +2439,6 @@
     } catch (_error) {
       void _error;
     }
-  }
-
-  async function handleAdminTranslationsSaved(options = {}) {
-    adminI18nLoaded = false;
-    await Promise.all([refreshI18nScope("webapp"), refreshI18nScope("admin")]);
-    await handleAdminPersistedSaved({ ...options, deferFrontendReload: true });
   }
 
   function selectTariff(tariff) {

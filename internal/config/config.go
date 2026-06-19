@@ -47,8 +47,6 @@ type Settings struct {
 	PanelAPIConnectTimeout        time.Duration
 	PanelAPISockConnectTimeout    time.Duration
 	PanelAPISockReadTimeout       time.Duration
-	PanelWebhookSecret            string
-	PanelWebhookPath              string
 	LogLevel                      string
 	WorkerPanelSyncEvery          time.Duration
 	WorkerPaymentProvisionEvery   time.Duration
@@ -124,8 +122,6 @@ func Load() (Settings, error) {
 		PanelAPIConnectTimeout:      time.Duration(envInt("PANEL_API_CONNECT_TIMEOUT_SECONDS", 8)) * time.Second,
 		PanelAPISockConnectTimeout:  time.Duration(envInt("PANEL_API_SOCK_CONNECT_TIMEOUT_SECONDS", 8)) * time.Second,
 		PanelAPISockReadTimeout:     time.Duration(envInt("PANEL_API_SOCK_READ_TIMEOUT_SECONDS", 15)) * time.Second,
-		PanelWebhookSecret:          env("PANEL_WEBHOOK_SECRET", ""),
-		PanelWebhookPath:            env("PANEL_WEBHOOK_PATH", "/webhook/panel"),
 		LogLevel:                    env("LOG_LEVEL", "INFO"),
 		WorkerPanelSyncEvery:        time.Duration(envInt("WORKER_PANEL_SYNC_INTERVAL_SECONDS", 900)) * time.Second,
 		WorkerPaymentProvisionEvery: time.Duration(envInt("WORKER_PAYMENT_PROVISION_INTERVAL_SECONDS", 30)) * time.Second,
@@ -139,13 +135,13 @@ func Load() (Settings, error) {
 			BaseURL:   strings.TrimRight(env("EZPAY_BASE_URL", ""), "/"),
 			PID:       envInt("EZPAY_PID", 0),
 			Key:       env("EZPAY_KEY", ""),
-			ReturnURL: env("EZPAY_RETURN_URL", ""),
+			ReturnURL: "",
 		},
 		BEPUSDT: BEPUSDTSettings{
 			Enabled:   envBool("BEPUSDT_ENABLED", false),
 			BaseURL:   strings.TrimRight(env("BEPUSDT_BASE_URL", ""), "/"),
 			Token:     env("BEPUSDT_TOKEN", ""),
-			ReturnURL: env("BEPUSDT_RETURN_URL", ""),
+			ReturnURL: "",
 		},
 		PaymentMethodsOrder:           splitCSV(env("PAYMENT_METHODS_ORDER", "")),
 		SubscriptionNotifyHoursBefore: envInt("SUBSCRIPTION_NOTIFY_HOURS_BEFORE", 0),

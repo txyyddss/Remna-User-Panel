@@ -2,7 +2,12 @@ import { rememberReferral, readReferral } from "./session.js";
 
 export function readReferralParam(tg) {
   const params = new URLSearchParams(window.location.search);
-  const fromQuery = params.get("ref") || params.get("start") || params.get("start_param") || "";
+  const fromQuery =
+    params.get("ref") ||
+    params.get("start") ||
+    params.get("start_param") ||
+    params.get("startapp") ||
+    "";
   const fromTelegram = tg?.initDataUnsafe?.start_param || "";
   const value = String(fromTelegram || fromQuery || "").trim();
   return value ? rememberReferral(value) : readReferral();

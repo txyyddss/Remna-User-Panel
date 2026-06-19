@@ -2304,6 +2304,10 @@
   background: color-mix(in srgb, var(--warning) 7%, transparent);
 }
 
+.admin-setting.is-env-locked {
+  background: color-mix(in srgb, var(--admin-surface-2) 72%, transparent);
+}
+
 .admin-setting-meta {
   display: grid;
   gap: 4px;
@@ -2342,6 +2346,16 @@
   gap: 8px;
   flex-wrap: wrap;
   min-width: 0;
+}
+
+.admin-setting-fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.admin-setting-fieldset:disabled {
+  opacity: 0.7;
 }
 
 .admin-icon-picker-trigger {

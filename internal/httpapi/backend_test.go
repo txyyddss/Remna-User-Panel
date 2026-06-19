@@ -10,7 +10,7 @@ import (
 )
 
 func TestHealthz(t *testing.T) {
-	router := BackendRouter(config.Settings{PanelWebhookPath: "/webhook/panel"}, nil, nil, payments.NewRegistry(config.Settings{}, nil), nil)
+	router := BackendRouter(config.Settings{}, nil, nil, payments.NewRegistry(config.Settings{}, nil), nil)
 	request := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	response := httptest.NewRecorder()
 

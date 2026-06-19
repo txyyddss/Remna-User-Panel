@@ -21,8 +21,9 @@ import (
 )
 
 const (
-	ProviderEZPay   = "ezpay"
-	ProviderBEPUSDT = "bepusdt"
+	ProviderEZPay         = "ezpay"
+	ProviderBEPUSDT       = "bepusdt"
+	ProviderTelegramStars = "telegram_stars"
 )
 
 // Method is one checkout payment method shown in the Web App.
@@ -32,6 +33,7 @@ type Method struct {
 	Provider    string `json:"provider"`
 	PaymentType string `json:"payment_type"`
 	Icon        string `json:"icon"`
+	LabelKey    string `json:"label_key"`
 }
 
 // Config is the effective payment configuration.
@@ -40,6 +42,7 @@ type Config struct {
 	BEPUSDT             config.BEPUSDTSettings
 	PaymentMethodsOrder []string
 	WebhookBaseURL      string
+	StarsEnabled        bool
 }
 
 // CreateOrderRequest describes a server-trusted payment to create.
@@ -163,13 +166,13 @@ func (r *Registry) EffectiveConfig(ctx context.Context) Config {
 	ezpay.BaseURL = strings.TrimRight(r.store.String(ctx, "EZPAY_BASE_URL", ezpay.BaseURL), "/")
 	ezpay.PID = r.store.Int(ctx, "EZPAY_PID", ezpay.PID)
 	ezpay.Key = r.store.String(ctx, "EZPAY_KEY", ezpay.Key)
-	ezpay.ReturnURL = r.store.String(ctx, "EZPAY_RETURN_URL", ezpay.ReturnURL)
+	ezpay.ReturnURL = normalizedReturnURL(r.settings.SubscriptionMiniApp)
 
 	bepusdt := r.settings.BEPUSDT
 	bepusdt.Enabled = r.store.Bool(ctx, "BEPUSDT_ENABLED", bepusdt.Enabled)
 	bepusdt.BaseURL = strings.TrimRight(r.store.String(ctx, "BEPUSDT_BASE_URL", bepusdt.BaseURL), "/")
 	bepusdt.Token = r.store.String(ctx, "BEPUSDT_TOKEN", bepusdt.Token)
-	bepusdt.ReturnURL = r.store.String(ctx, "BEPUSDT_RETURN_URL", bepusdt.ReturnURL)
+	bepusdt.ReturnURL = normalizedReturnURL(r.settings.SubscriptionMiniApp)
 
 	orderRaw := r.store.String(ctx, "PAYMENT_METHODS_ORDER", strings.Join(r.settings.PaymentMethodsOrder, ","))
 	return Config{
@@ -177,6 +180,7 @@ func (r *Registry) EffectiveConfig(ctx context.Context) Config {
 		BEPUSDT:             bepusdt,
 		PaymentMethodsOrder: splitList(orderRaw),
 		WebhookBaseURL:      strings.TrimRight(r.store.String(ctx, "WEBHOOK_BASE_URL", r.settings.WebhookBaseURL), "/"),
+		StarsEnabled:        r.store.Bool(ctx, "STARS_ENABLED", false),
 	}
 }
 
@@ -188,21 +192,25 @@ func (r *Registry) IDs() []string {
 // Methods returns enabled and configured payment methods.
 func (r *Registry) Methods(ctx context.Context, language string, isAdmin bool) []Method {
 	_ = isAdmin
+	_ = language
 	cfg := r.EffectiveConfig(ctx)
 	methods := []Method{}
 	if cfg.EZPay.Enabled && cfg.EZPay.BaseURL != "" && cfg.EZPay.PID != 0 && cfg.EZPay.Key != "" {
 		methods = append(methods,
-			Method{ID: "ezpay:alipay", Name: r.label(ctx, "PAYMENT_EZPAY_ALIPAY_LABEL", language, "支付宝"), Provider: ProviderEZPay, PaymentType: "alipay", Icon: "CreditCard"},
-			Method{ID: "ezpay:wxpay", Name: r.label(ctx, "PAYMENT_EZPAY_WXPAY_LABEL", language, "微信支付"), Provider: ProviderEZPay, PaymentType: "wxpay", Icon: "WalletCards"},
-			Method{ID: "ezpay:usdt", Name: r.label(ctx, "PAYMENT_EZPAY_USDT_LABEL", language, "EZPay USDT"), Provider: ProviderEZPay, PaymentType: "usdt", Icon: "Bitcoin"},
+			Method{ID: "ezpay:alipay", Name: "Alipay", LabelKey: "payment_method_ezpay_alipay", Provider: ProviderEZPay, PaymentType: "alipay", Icon: "CreditCard"},
+			Method{ID: "ezpay:wxpay", Name: "WeChat Pay", LabelKey: "payment_method_ezpay_wxpay", Provider: ProviderEZPay, PaymentType: "wxpay", Icon: "WalletCards"},
+			Method{ID: "ezpay:usdt", Name: "EZPay USDT", LabelKey: "payment_method_ezpay_usdt", Provider: ProviderEZPay, PaymentType: "usdt", Icon: "Bitcoin"},
 		)
 	}
 	if cfg.BEPUSDT.Enabled && cfg.BEPUSDT.BaseURL != "" && cfg.BEPUSDT.Token != "" {
 		methods = append(methods,
-			Method{ID: "bepusdt:usdt.polygon", Name: r.label(ctx, "PAYMENT_BEPUSDT_POLYGON_LABEL", language, "USDT Polygon"), Provider: ProviderBEPUSDT, PaymentType: "usdt.polygon", Icon: "Bitcoin"},
-			Method{ID: "bepusdt:usdt.arbitrum", Name: r.label(ctx, "PAYMENT_BEPUSDT_ARBITRUM_LABEL", language, "USDT Arbitrum"), Provider: ProviderBEPUSDT, PaymentType: "usdt.arbitrum", Icon: "Bitcoin"},
-			Method{ID: "bepusdt:usdt.aptos", Name: r.label(ctx, "PAYMENT_BEPUSDT_APTOS_LABEL", language, "USDT Aptos"), Provider: ProviderBEPUSDT, PaymentType: "usdt.aptos", Icon: "Bitcoin"},
+			Method{ID: "bepusdt:usdt.polygon", Name: "USDT Polygon", LabelKey: "payment_method_bepusdt_polygon", Provider: ProviderBEPUSDT, PaymentType: "usdt.polygon", Icon: "Bitcoin"},
+			Method{ID: "bepusdt:usdt.arbitrum", Name: "USDT Arbitrum", LabelKey: "payment_method_bepusdt_arbitrum", Provider: ProviderBEPUSDT, PaymentType: "usdt.arbitrum", Icon: "Bitcoin"},
+			Method{ID: "bepusdt:usdt.aptos", Name: "USDT Aptos", LabelKey: "payment_method_bepusdt_aptos", Provider: ProviderBEPUSDT, PaymentType: "usdt.aptos", Icon: "Bitcoin"},
 		)
+	}
+	if cfg.StarsEnabled && strings.TrimSpace(r.settings.BotToken) != "" {
+		methods = append(methods, Method{ID: "telegram_stars:xtr", Name: "Telegram Stars", LabelKey: "payment_method_telegram_stars", Provider: ProviderTelegramStars, PaymentType: "xtr", Icon: "Star"})
 	}
 	sortMethods(methods, cfg.PaymentMethodsOrder)
 	return methods
@@ -277,10 +285,17 @@ RETURNING payment_id`,
 	if err := r.updateProviderFields(ctx, paymentID, providerResp); err != nil {
 		return CreateOrderResponse{}, err
 	}
+	if method.Provider == ProviderTelegramStars {
+		_, _ = r.pool.Exec(ctx, "UPDATE payment_orders SET telegram_invoice_payload=$2 WHERE payment_id=$1", paymentID, orderID)
+	}
 
+	action := "show_checkout"
+	if method.Provider == ProviderTelegramStars {
+		action = "open_invoice"
+	}
 	return CreateOrderResponse{
 		OK:                true,
-		Action:            "show_checkout",
+		Action:            action,
 		PaymentID:         paymentID,
 		OrderID:           orderID,
 		Provider:          method.Provider,
@@ -427,6 +442,8 @@ func (r *Registry) createProviderPayment(ctx context.Context, cfg Config, method
 		return createEZPayPayment(ctx, r.client, cfg.EZPay, cfg.WebhookBaseURL+"/webhook/ezpay", req, method.PaymentType)
 	case ProviderBEPUSDT:
 		return createBEPUSDTPayment(ctx, r.client, cfg.BEPUSDT, cfg.WebhookBaseURL+"/webhook/bepusdt", req, method.PaymentType)
+	case ProviderTelegramStars:
+		return createTelegramStarsInvoice(ctx, r.client, r.settings.BotToken, req)
 	default:
 		return providerPaymentResponse{}, fmt.Errorf("unsupported provider %s", method.Provider)
 	}
@@ -468,16 +485,6 @@ func (r *Registry) scanOrder(ctx context.Context, query string, args ...any) (Or
 	return order, err
 }
 
-func (r *Registry) label(ctx context.Context, base string, language string, fallback string) string {
-	lang := strings.ToUpper(strings.Split(strings.ToLower(strings.TrimSpace(language)), "-")[0])
-	for _, candidate := range []string{base + "_" + lang, base + "_ZH", base + "_EN"} {
-		if value := r.store.String(ctx, candidate, ""); value != "" {
-			return value
-		}
-	}
-	return fallback
-}
-
 type paymentMethod struct {
 	Provider    string
 	PaymentType string
@@ -515,6 +522,9 @@ func validateProviderConfig(cfg Config, provider string) error {
 		if cfg.EZPay.BaseURL == "" || cfg.EZPay.PID == 0 || cfg.EZPay.Key == "" {
 			return fmt.Errorf("EZPay is not configured")
 		}
+		if cfg.EZPay.ReturnURL == "" {
+			return fmt.Errorf("SUBSCRIPTION_MINI_APP_URL is required")
+		}
 	case ProviderBEPUSDT:
 		if !cfg.BEPUSDT.Enabled {
 			return fmt.Errorf("BEPUSDT is disabled")
@@ -522,10 +532,25 @@ func validateProviderConfig(cfg Config, provider string) error {
 		if cfg.BEPUSDT.BaseURL == "" || cfg.BEPUSDT.Token == "" {
 			return fmt.Errorf("BEPUSDT is not configured")
 		}
+		if cfg.BEPUSDT.ReturnURL == "" {
+			return fmt.Errorf("SUBSCRIPTION_MINI_APP_URL is required")
+		}
+	case ProviderTelegramStars:
+		if !cfg.StarsEnabled {
+			return fmt.Errorf("Telegram Stars is disabled")
+		}
 	default:
 		return fmt.Errorf("unsupported provider")
 	}
 	return nil
+}
+
+func normalizedReturnURL(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+	return strings.TrimRight(value, "/") + "/"
 }
 
 func sortMethods(methods []Method, order []string) {

@@ -49,7 +49,6 @@
     backups: "Бэкапы",
     tariffs: "Тарифы",
     appearance: "Внешний вид",
-    translations: "Переводы",
     users: "Пользователи",
   };
 

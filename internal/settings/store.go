@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -40,6 +41,9 @@ func (s Store) Get(ctx context.Context, key string) (json.RawMessage, bool, erro
 
 // String returns a string setting or fallback.
 func (s Store) String(ctx context.Context, key string, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return strings.TrimSpace(value)
+	}
 	raw, ok, err := s.Get(ctx, key)
 	if err != nil || !ok {
 		return fallback
@@ -53,6 +57,15 @@ func (s Store) String(ctx context.Context, key string, fallback string) string {
 
 // Bool returns a bool setting or fallback.
 func (s Store) Bool(ctx context.Context, key string, fallback bool) bool {
+	if value, ok := os.LookupEnv(key); ok {
+		switch strings.ToLower(strings.TrimSpace(value)) {
+		case "1", "true", "yes", "y", "on":
+			return true
+		case "0", "false", "no", "n", "off":
+			return false
+		}
+		return fallback
+	}
 	raw, ok, err := s.Get(ctx, key)
 	if err != nil || !ok {
 		return fallback
@@ -75,6 +88,13 @@ func (s Store) Bool(ctx context.Context, key string, fallback bool) bool {
 
 // Int returns an int setting or fallback.
 func (s Store) Int(ctx context.Context, key string, fallback int) int {
+	if value, ok := os.LookupEnv(key); ok {
+		parsed, err := strconv.Atoi(strings.TrimSpace(value))
+		if err == nil {
+			return parsed
+		}
+		return fallback
+	}
 	raw, ok, err := s.Get(ctx, key)
 	if err != nil || !ok {
 		return fallback
@@ -94,6 +114,13 @@ func (s Store) Int(ctx context.Context, key string, fallback int) int {
 
 // Float returns a float64 setting or fallback.
 func (s Store) Float(ctx context.Context, key string, fallback float64) float64 {
+	if value, ok := os.LookupEnv(key); ok {
+		parsed, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
+		if err == nil {
+			return parsed
+		}
+		return fallback
+	}
 	raw, ok, err := s.Get(ctx, key)
 	if err != nil || !ok {
 		return fallback

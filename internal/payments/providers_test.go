@@ -62,7 +62,7 @@ func TestValidateProviderConfig(t *testing.T) {
 
 	err = validateProviderConfig(Config{
 		WebhookBaseURL: "https://example.com",
-		EZPay:          config.EZPaySettings{Enabled: true, BaseURL: "https://pay.example.com", PID: 10, Key: "secret"},
+		EZPay:          config.EZPaySettings{Enabled: true, BaseURL: "https://pay.example.com", PID: 10, Key: "secret", ReturnURL: "https://app.example.com/"},
 	}, ProviderEZPay)
 	if err != nil {
 		t.Fatalf("expected configured EZPay to pass, got %v", err)

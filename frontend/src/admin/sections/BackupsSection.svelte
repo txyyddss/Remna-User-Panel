@@ -12,6 +12,7 @@
   import {
     CheckCircle2,
     Database,
+    Download,
     Plus,
     RefreshCw,
     Server,
@@ -87,6 +88,11 @@
 
   function archiveDate(archive) {
     return archive?.created_at_local || archive?.created_at || archive?.modified_at || "";
+  }
+
+  function downloadArchive(archive) {
+    if (!archive?.name) return;
+    window.location.assign(`/api/admin/backups/${encodeURIComponent(archive.name)}/download`);
   }
 
   function selectedComponentsText() {
@@ -291,6 +297,12 @@
                   data-label={at("backups_col_archive", {}, "Архив")}
                 >
                   {archive.name}
+                  {#if archive.name?.toLowerCase().endsWith(".zip")}
+                    <AdminButton size="sm" variant="ghost" onclick={() => downloadArchive(archive)}>
+                      <Download size={13} />
+                      {at("backups_download", {}, "下载")}
+                    </AdminButton>
+                  {/if}
                 </td>
                 <td data-label={at("backups_col_created", {}, "Создан")}
                   >{fmtDate(archiveDate(archive))}</td

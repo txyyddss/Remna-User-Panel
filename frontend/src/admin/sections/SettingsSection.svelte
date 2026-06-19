@@ -41,6 +41,7 @@
 
   let settingsOpenSections = [];
   let settingsOpenSubsections = {};
+  let settingsDefaultsExpanded = false;
   let revealedSecrets = new Set();
   let iconPickerField = null;
   let iconPickerSearch = "";
@@ -87,6 +88,18 @@
     }
   } else if (!currentSettingsPathKey) {
     lastAppliedSettingsPathKey = "";
+  }
+  $: if (!settingsDefaultsExpanded && visibleSettingsSections.length && !settingsLoading) {
+    settingsDefaultsExpanded = true;
+    settingsOpenSections = visibleSettingsSections.map((section) => section.id);
+    settingsOpenSubsections = Object.fromEntries(
+      visibleSettingsSections.map((section) => [
+        section.id,
+        groupSectionFields(section)
+          .filter((group) => group.label)
+          .map((group) => group.id),
+      ])
+    );
   }
 
   onMount(() => {
@@ -873,7 +886,11 @@
 
 {#snippet renderField(field)}
   {@const revealed = isSecretRevealed(field.key)}
-  <div class="admin-setting" class:is-overridden={isOverridden(field)}>
+  <div
+    class="admin-setting"
+    class:is-overridden={isOverridden(field)}
+    class:is-env-locked={field.env_locked}
+  >
     <div class="admin-setting-meta">
       <strong>
         {fieldLabelText(field)}
@@ -883,13 +900,16 @@
         {#if isOverridden(field)}
           <AdminBadge variant="success">{at("settings_badge_override", {}, "Override")}</AdminBadge>
         {/if}
+        {#if field.env_locked}
+          <AdminBadge variant="muted">{at("settings_badge_env_locked", {}, ".env")}</AdminBadge>
+        {/if}
       </strong>
       <code>{field.key}</code>
       {#if fieldDescriptionText(field)}
         <small>{fieldDescriptionText(field)}</small>
       {/if}
     </div>
-    <div class="admin-setting-control">
+    <fieldset class="admin-setting-control admin-setting-fieldset" disabled={field.env_locked}>
       {#if field.type === "bool"}
         <div class="admin-setting-switch">
           <Switch.Root
@@ -1029,13 +1049,13 @@
           oninput={(e) => settingsStore.markDirty(field.key, e.currentTarget.value)}
         />
       {/if}
-      {#if isOverridden(field) || settingsDirty[field.key]}
+      {#if !field.env_locked && (isOverridden(field) || settingsDirty[field.key])}
         <AdminButton size="sm" variant="ghost" onclick={() => settingsStore.resetField(field)}>
           <X size={12} />
           {at("reset", {}, "Сбросить")}
         </AdminButton>
       {/if}
-    </div>
+    </fieldset>
   </div>
 {/snippet}
 

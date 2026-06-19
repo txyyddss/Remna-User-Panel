@@ -6,9 +6,6 @@ import (
 	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-
-	"remna-user-panel/internal/config"
-	"remna-user-panel/internal/remnawave"
 )
 
 // ProcessQueuedWebhookEvents processes queued webhook events.
@@ -59,42 +56,4 @@ RETURNING w.event_id, picked.provider, picked.payload`, limit)
 		}
 	}
 	return processed, rows.Err()
-}
-
-// ProcessPanelWebhookEvent handles a single panel webhook event payload.
-// It extracts the event type and user reference, then triggers appropriate actions.
-func ProcessPanelWebhookEvent(ctx context.Context, settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client, payload json.RawMessage) error {
-	if panel == nil || !panel.Configured(ctx) || pool == nil {
-		return nil
-	}
-	var event struct {
-		Event string          `json:"event"`
-		Data  json.RawMessage `json:"data"`
-	}
-	if err := json.Unmarshal(payload, &event); err != nil {
-		return nil // non-critical, skip unparseable events
-	}
-
-	// Extract user UUID from event data to trigger targeted sync
-	var data struct {
-		UserUUID string `json:"userUuid"`
-		UserID   string `json:"userId"`
-	}
-	_ = json.Unmarshal(event.Data, &data)
-	userRef := firstNonEmpty(data.UserUUID, data.UserID)
-	if userRef == "" {
-		return nil
-	}
-
-	slog.Info("panel webhook event received",
-		"event", event.Event,
-		"user_ref", userRef,
-	)
-
-	// Trigger a lightweight sync for the affected user
-	// This ensures subscription status is up-to-date in our records
-	if _, err := RunSubscriptionNotifications(ctx, settings, pool, panel); err != nil {
-		slog.Warn("subscription notification after webhook failed", "error", err)
-	}
-	return nil
 }

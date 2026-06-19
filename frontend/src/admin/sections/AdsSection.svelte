@@ -1,6 +1,6 @@
 <script>
   import { Input } from "$components/ui/index.js";
-  import { Trash2 } from "$components/ui/icons.js";
+  import { Check, Copy, Trash2 } from "$components/ui/icons.js";
   import { getContext, onMount } from "svelte";
   import Dialog from "$components/ui/dialog.svelte";
   import {
@@ -16,6 +16,17 @@
   export let fmtMoney;
 
   const adsStore = getContext("adsStore");
+  let copiedAdId = null;
+
+  async function copyInviteLink(ad) {
+    const link = String(ad?.invite_link || "").trim();
+    if (!link) return;
+    await navigator.clipboard.writeText(link);
+    copiedAdId = ad.id;
+    window.setTimeout(() => {
+      if (copiedAdId === ad.id) copiedAdId = null;
+    }, 1600);
+  }
 
   $: ({ ads, adsLoading, adCreateOpen, adDraft } = $adsStore);
   $: adHeaders = [
@@ -83,6 +94,15 @@
               {/if}
             </td>
             <td class="admin-cell-actions" data-label={at("actions", {}, "Действия")}>
+              <AdminButton
+                size="sm"
+                variant="ghost"
+                onclick={() => copyInviteLink(ad)}
+                disabled={!ad.invite_link}
+                aria-label={at("ads_copy_invite_link", {}, "复制邀请链接")}
+              >
+                {#if copiedAdId === ad.id}<Check size={13} />{:else}<Copy size={13} />{/if}
+              </AdminButton>
               <AdminButton size="sm" onclick={() => adsStore.toggleAd(ad)}>
                 {ad.is_active ? at("btn_disable", {}, "Выкл") : at("btn_enable", {}, "Вкл")}
               </AdminButton>

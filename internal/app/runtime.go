@@ -152,6 +152,12 @@ func (r *Runtime) StartWorker(ctx context.Context) error {
 		}
 		return nil
 	}))
+	group.Add("telemetry-maintenance", workers.Interval(time.Hour, func(ctx context.Context) error {
+		if err := httpapi.RunTelemetryMaintenance(ctx, r.settings, r.db); err != nil {
+			slog.Warn("telemetry maintenance failed", "error", err)
+		}
+		return nil
+	}))
 	return group.Run(ctx)
 }
 

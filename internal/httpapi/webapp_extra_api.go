@@ -11,10 +11,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -45,6 +47,7 @@ func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *p
 	router.Post("/api/subscription/auto-renew", autoRenewHandler(settings, pool))
 	router.Post("/api/promo/apply", promoApplyHandler(settings, pool, panel))
 	router.Post("/api/referral/welcome-bonus/claim", referralWelcomeBonusHandler(settings, pool, panel))
+	router.Post("/api/telemetry/heartbeat", telemetryHeartbeatHandler(settings, pool))
 	router.Post("/api/trial/activate", trialActivateHandler(settings, pool, panel))
 	router.Get("/api/devices", devicesHandler(settings, pool, panel))
 	router.Post("/api/devices/disconnect", disconnectDeviceHandler(settings, pool, panel))
@@ -107,6 +110,7 @@ func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *p
 	router.Post("/api/admin/backups/create", adminBackupCreateHandler(settings, pool))
 	router.Post("/api/admin/backups/upload", adminBackupUploadHandler(settings, pool))
 	router.Post("/api/admin/backups/restore", adminBackupRestoreHandler(settings, pool))
+	router.Get("/api/admin/backups/{name}/download", adminBackupDownloadHandler(settings, pool))
 	router.Get("/api/admin/themes", adminThemesHandler(settings, pool, assets))
 	router.Put("/api/admin/themes", adminThemesHandler(settings, pool, assets))
 	router.Post("/api/admin/appearance/logo", adminAppearanceLogoHandler(settings, pool))
@@ -325,12 +329,17 @@ func promoApplyHandler(settings config.Settings, pool *pgxpool.Pool, panel *remn
 				writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "promo_inactive"})
 				return
 			}
+			promoID := strings.TrimSpace(fmt.Sprint(promos[index]["id"]))
+			if promoID == "" {
+				promoID = strings.ToUpper(code)
+			}
 			if promoActivatedByUser(promos[index], session.User.UserID) {
 				writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "promo_already_used"})
 				return
 			}
 			maxActivations := int(int64Value(promos[index], "max_activations"))
 			currentActivations := promoActivationCount(promos[index])
+			_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM promo_activations WHERE promo_id=$1 AND status='applied'", promoID).Scan(&currentActivations)
 			if maxActivations > 0 && currentActivations >= maxActivations {
 				writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "promo_exhausted"})
 				return
@@ -343,8 +352,24 @@ func promoApplyHandler(settings config.Settings, pool *pgxpool.Pool, panel *remn
 				writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "promo_invalid_reward"})
 				return
 			}
+			var activationStatus string
+			err := pool.QueryRow(r.Context(), `
+INSERT INTO promo_activations(promo_id,promo_code,user_id,status,bonus_days)
+VALUES($1,$2,$3,'processing',$4)
+ON CONFLICT(promo_id,user_id) DO UPDATE SET status=CASE WHEN promo_activations.status='failed' THEN 'processing' ELSE promo_activations.status END,
+ error_code=NULL, updated_at=NOW()
+RETURNING status`, promoID, strings.ToUpper(code), session.User.UserID, days).Scan(&activationStatus)
+			if err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "promo_activation_reserve_failed"})
+				return
+			}
+			if activationStatus != "processing" {
+				writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "promo_already_used"})
+				return
+			}
 			panelUser, err := grantPanelAccessDays(r.Context(), pool, panel, session.User, days, accessGrantOptions{Source: "promo:" + strings.ToUpper(code)})
 			if err != nil {
+				_, _ = pool.Exec(r.Context(), "UPDATE promo_activations SET status='failed', error_code=$3, updated_at=NOW() WHERE promo_id=$1 AND user_id=$2", promoID, session.User.UserID, "grant_failed")
 				writePanelActionError(w, err)
 				return
 			}
@@ -352,7 +377,14 @@ func promoApplyHandler(settings config.Settings, pool *pgxpool.Pool, panel *remn
 			activations = append(activations, map[string]any{"user_id": session.User.UserID, "activated_at": time.Now().UTC().Format(time.RFC3339)})
 			promos[index]["activations"] = activations
 			promos[index]["current_activations"] = currentActivations + 1
-			_ = writeSettingList(r.Context(), pool, "ADMIN_PROMOS", promos)
+			if _, err := pool.Exec(r.Context(), "UPDATE promo_activations SET status='applied', applied_at=NOW(), updated_at=NOW() WHERE promo_id=$1 AND user_id=$2 AND status='processing'", promoID, session.User.UserID); err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "promo_activation_finalize_failed"})
+				return
+			}
+			if err := writeSettingList(r.Context(), pool, "ADMIN_PROMOS", promos); err != nil {
+				slog.Warn("promo legacy counter update failed", "error", err, "promo_id", promoID)
+			}
+			recordMessageLog(r.Context(), pool, messageLogEntry{UserID: session.User.UserID, EventType: "promo_activation", Content: strings.ToUpper(code), Payload: map[string]any{"promo_id": promoID, "bonus_days": days}})
 			response := grantResponse(r.Context(), pool, session.User, panelUser, days)
 			response["code"] = strings.TrimSpace(fmt.Sprint(promos[index]["code"]))
 			writeJSON(w, http.StatusOK, response)
@@ -421,12 +453,54 @@ func referralWelcomeBonusHandler(settings config.Settings, pool *pgxpool.Pool, p
 			writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "referral_welcome_already_claimed"})
 			return
 		}
+		if referredBy == session.User.UserID {
+			writeJSON(w, http.StatusForbidden, map[string]any{"ok": false, "error": "referral_welcome_risk_rejected"})
+			return
+		}
+		fingerprint, riskScore, riskRule := evaluateWelcomeRisk(r.Context(), settings, pool, r, session.User.UserID, referredBy)
+		status := "processing"
+		if riskRule != "" {
+			status = "rejected"
+		}
+		var reservedStatus string
+		err = pool.QueryRow(r.Context(), `INSERT INTO referral_welcome_claims
+(user_id,referrer_id,visitor_hash,fingerprint_hash,status,risk_score,rule_code,bonus_days)
+VALUES($1,$2,$3,$4,$5,$6,NULLIF($7,''),$8)
+ON CONFLICT(user_id) DO UPDATE SET status=CASE WHEN referral_welcome_claims.status='failed' THEN EXCLUDED.status ELSE referral_welcome_claims.status END,
+ visitor_hash=CASE WHEN referral_welcome_claims.status='failed' THEN EXCLUDED.visitor_hash ELSE referral_welcome_claims.visitor_hash END,
+ fingerprint_hash=CASE WHEN referral_welcome_claims.status='failed' THEN EXCLUDED.fingerprint_hash ELSE referral_welcome_claims.fingerprint_hash END,
+ risk_score=CASE WHEN referral_welcome_claims.status='failed' THEN EXCLUDED.risk_score ELSE referral_welcome_claims.risk_score END,
+ rule_code=CASE WHEN referral_welcome_claims.status='failed' THEN EXCLUDED.rule_code ELSE referral_welcome_claims.rule_code END, updated_at=NOW()
+RETURNING status`, session.User.UserID, referredBy, fingerprint.Visitor, fingerprint.Full, status, riskScore, riskRule, days).Scan(&reservedStatus)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "referral_welcome_reserve_failed"})
+			return
+		}
+		if reservedStatus != "processing" || riskRule != "" {
+			recordMessageLog(r.Context(), pool, messageLogEntry{UserID: session.User.UserID, TargetUserID: referredBy, EventType: "referral_welcome_risk_rejected", Content: "automatic risk rejection", Payload: map[string]any{"risk_score": riskScore, "rule_code": riskRule}})
+			writeJSON(w, http.StatusForbidden, map[string]any{"ok": false, "error": "referral_welcome_risk_rejected"})
+			return
+		}
 		panelUser, err := grantPanelAccessDays(r.Context(), pool, panel, session.User, days, accessGrantOptions{Source: "referral_welcome"})
 		if err != nil {
+			_, _ = pool.Exec(r.Context(), "UPDATE referral_welcome_claims SET status='failed', rule_code='grant_failed', updated_at=NOW() WHERE user_id=$1", session.User.UserID)
 			writePanelActionError(w, err)
 			return
 		}
-		_, _ = pool.Exec(r.Context(), "UPDATE users SET referral_welcome_bonus_claimed_at=NOW() WHERE user_id=$1", session.User.UserID)
+		tx, err := pool.Begin(r.Context())
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "referral_welcome_finalize_failed"})
+			return
+		}
+		defer func() { _ = tx.Rollback(r.Context()) }()
+		if _, err = tx.Exec(r.Context(), "UPDATE users SET referral_welcome_bonus_claimed_at=NOW() WHERE user_id=$1 AND referral_welcome_bonus_claimed_at IS NULL", session.User.UserID); err == nil {
+			_, err = tx.Exec(r.Context(), "UPDATE referral_welcome_claims SET status='applied', applied_at=NOW(), updated_at=NOW() WHERE user_id=$1 AND status='processing'", session.User.UserID)
+		}
+		if err != nil || tx.Commit(r.Context()) != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "referral_welcome_finalize_failed"})
+			return
+		}
+		recordMessageLog(r.Context(), pool, messageLogEntry{UserID: session.User.UserID, TargetUserID: referredBy, EventType: "referral_welcome_applied", Content: "welcome bonus applied", Payload: map[string]any{"bonus_days": days}})
 		writeJSON(w, http.StatusOK, grantResponse(r.Context(), pool, session.User, panelUser, days))
 	}
 }
@@ -669,6 +743,13 @@ func adminStatsHandler(settings config.Settings, pool *pgxpool.Pool, panel *remn
 			"series":     []any{},
 			"panel_sync": LastPanelSyncStatus(r.Context(), pool),
 		}
+		var anonymousVisitors, inviteVisits, rejectedRewards int64
+		_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM visitor_telemetry").Scan(&anonymousVisitors)
+		_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM invite_visits").Scan(&inviteVisits)
+		_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM referral_welcome_claims WHERE status='rejected'").Scan(&rejectedRewards)
+		var heartbeatDate, version, provenance, osName, locale, userRange string
+		_ = pool.QueryRow(r.Context(), `SELECT heartbeat_date::text,version,provenance,os,locale,user_count_range FROM installation_heartbeats ORDER BY heartbeat_date DESC LIMIT 1`).Scan(&heartbeatDate, &version, &provenance, &osName, &locale, &userRange)
+		payload["local_analytics"] = map[string]any{"anonymous_visitors": anonymousVisitors, "invite_visits": inviteVisits, "rejected_welcome_rewards": rejectedRewards, "heartbeat": map[string]any{"date": heartbeatDate, "version": version, "provenance": provenance, "os": osName, "locale": locale, "user_count_range": userRange}}
 		if panel != nil && panel.Configured(r.Context()) {
 			panelStats := map[string]any{}
 			if stats, err := panel.GetSystemStats(r.Context()); err == nil {
@@ -1282,6 +1363,13 @@ func adminAdsListHandler(settings config.Settings, pool *pgxpool.Pool) http.Hand
 			return
 		}
 		items := readSettingList(r.Context(), pool, "ADMIN_ADS")
+		for _, item := range items {
+			code := strings.TrimSpace(fmt.Sprint(item["start_param"]))
+			var visits, registrations, conversions int64
+			_ = pool.QueryRow(r.Context(), `SELECT COUNT(*),COUNT(registered_user_id),COUNT(converted_at) FROM invite_visits WHERE kind='campaign' AND UPPER(code)=UPPER($1)`, code).Scan(&visits, &registrations, &conversions)
+			item["stats"] = map[string]any{"visits": visits, "registrations": registrations, "conversions": conversions}
+			item["invite_link"] = referralWebAppLink(settings, code)
+		}
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "campaigns": items, "totals": map[string]any{"cost": 0, "revenue": 0}})
 	}
 }
@@ -1292,6 +1380,17 @@ func adminListSettingHandler(settings config.Settings, pool *pgxpool.Pool, key s
 			return
 		}
 		items := readSettingList(r.Context(), pool, key)
+		if key == "ADMIN_PROMOS" {
+			for _, item := range items {
+				promoID := strings.TrimSpace(fmt.Sprint(item["id"]))
+				if promoID == "" {
+					promoID = strings.ToUpper(strings.TrimSpace(fmt.Sprint(item["code"])))
+				}
+				var count int
+				_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM promo_activations WHERE promo_id=$1 AND status='applied'", promoID).Scan(&count)
+				item["current_activations"] = count
+			}
+		}
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, responseKey: items, "total": len(items)})
 	}
 }
@@ -1487,25 +1586,17 @@ func adminBackupsHandler(settings config.Settings, pool *pgxpool.Pool) http.Hand
 		backupDir := filepath.Join("data", "backups")
 		_ = os.MkdirAll(backupDir, 0o755)
 		entries, err := os.ReadDir(backupDir)
-		archives := []map[string]any{}
+		archives := []backupArchiveInfo{}
 		if err == nil {
 			for _, entry := range entries {
 				if entry.IsDir() {
 					continue
 				}
-				info, err := entry.Info()
-				if err != nil {
-					continue
-				}
-				archives = append(archives, map[string]any{
-					"name":       entry.Name(),
-					"size":       info.Size(),
-					"created_at": info.ModTime().Format(time.RFC3339),
-				})
+				archives = append(archives, inspectBackupArchive(filepath.Join(backupDir, entry.Name())))
 			}
 			// Sort by creation time descending
 			sort.Slice(archives, func(i, j int) bool {
-				return archives[i]["created_at"].(string) > archives[j]["created_at"].(string)
+				return archives[i].CreatedAt > archives[j].CreatedAt
 			})
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "archives": archives, "backup_dir": backupDir})
@@ -1519,37 +1610,35 @@ func adminBackupCreateHandler(settings config.Settings, pool *pgxpool.Pool) http
 		}
 		backupDir := filepath.Join("data", "backups")
 		_ = os.MkdirAll(backupDir, 0o755)
-		filename := "backup-" + time.Now().Format("20060102-150405") + ".dump"
+		filename := "backup-" + time.Now().Format("20060102-150405") + ".zip"
 		savePath := filepath.Join(backupDir, filename)
-
-		var note string
-		// Try pg_dump if database URL is configured
-		if settings.DatabaseURL != "" {
-			cmd := exec.CommandContext(r.Context(), "pg_dump",
-				"-d", settings.DatabaseURL,
-				"--format=custom",
-				"--no-owner",
-				"--no-privileges",
-				"-f", savePath,
-			)
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				note = "pg_dump_failed: " + string(output)
-				writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "backup_create_failed", "note": note})
-				return
-			}
-		} else {
-			note = "database_backup_requires_database_url_configuration"
+		result, err := createBackupArchive(r.Context(), settings, savePath)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "backup_create_failed", "note": err.Error()})
+			return
 		}
-
-		result := map[string]any{
-			"name":       filename,
-			"path":       savePath,
-			"created_at": time.Now().Format(time.RFC3339),
-			"note":       note,
-		}
-
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "result": result, "archive": result})
+	}
+}
+
+func adminBackupDownloadHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := requireAdmin(w, r, settings, pool, false); !ok {
+			return
+		}
+		name := filepath.Base(chi.URLParam(r, "name"))
+		if name == "." || name == "" || !strings.HasSuffix(strings.ToLower(name), ".zip") {
+			http.NotFound(w, r)
+			return
+		}
+		path := filepath.Join("data", "backups", name)
+		if _, err := os.Stat(path); err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", name))
+		w.Header().Set("Content-Type", "application/zip")
+		http.ServeFile(w, r, path)
 	}
 }
 
@@ -2203,7 +2292,11 @@ func adminBackupUploadHandler(settings config.Settings, pool *pgxpool.Pool) http
 		}
 		backupDir := filepath.Join("data", "backups")
 		_ = os.MkdirAll(backupDir, 0o755)
-		filename := "uploaded-" + time.Now().Format("20060102-150405") + ".tar.gz"
+		if !strings.HasSuffix(strings.ToLower(header.Filename), ".zip") {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "zip_required"})
+			return
+		}
+		filename := "uploaded-" + time.Now().Format("20060102-150405") + ".zip"
 		savePath := filepath.Join(backupDir, filename)
 		f, err := os.Create(savePath)
 		if err != nil {
@@ -2215,10 +2308,13 @@ func adminBackupUploadHandler(settings config.Settings, pool *pgxpool.Pool) http
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "save_failed"})
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{
-			"ok":      true,
-			"archive": map[string]any{"name": filename, "path": savePath, "size": header.Size, "created_at": time.Now().Format(time.RFC3339)},
-		})
+		info := inspectBackupArchive(savePath)
+		if slices.Contains(info.Warnings, "invalid_zip") {
+			_ = os.Remove(savePath)
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_zip"})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "archive": info})
 	}
 }
 
@@ -2231,7 +2327,7 @@ func adminBackupRestoreHandler(settings config.Settings, pool *pgxpool.Pool) htt
 			ArchiveName     string `json:"archive_name"`
 			RestoreDatabase bool   `json:"restore_database"`
 			RestoreCompose  bool   `json:"restore_compose"`
-			Confirm         string `json:"confirm"`
+			Confirm         any    `json:"confirm"`
 		}
 		if err := decodeJSONBody(r, &payload); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
@@ -2241,7 +2337,8 @@ func adminBackupRestoreHandler(settings config.Settings, pool *pgxpool.Pool) htt
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "archive_name_required"})
 			return
 		}
-		if strings.ToLower(strings.TrimSpace(payload.Confirm)) != "restore" {
+		confirmed := boolish(payload.Confirm, false) || strings.EqualFold(strings.TrimSpace(fmt.Sprint(payload.Confirm)), "restore")
+		if !confirmed {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "confirm_restore_required"})
 			return
 		}
@@ -2254,17 +2351,42 @@ func adminBackupRestoreHandler(settings config.Settings, pool *pgxpool.Pool) htt
 		}
 
 		result := map[string]any{"restored_database": false, "restored_compose": false, "errors": []string{}}
+		if payload.RestoreCompose {
+			snapshot, snapshotErr := snapshotComposeBeforeRestore(backupDir)
+			if snapshotErr != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "pre_restore_snapshot_failed"})
+				return
+			}
+			result["pre_restore_snapshot"] = snapshot
+		}
+
+		tempDir, err := os.MkdirTemp("", "remna-restore-")
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "restore_prepare_failed"})
+			return
+		}
+		defer os.RemoveAll(tempDir)
+		databasePath := archivePath
+		if strings.HasSuffix(strings.ToLower(archivePath), ".zip") {
+			var composeRestored bool
+			databasePath, composeRestored, err = extractBackupArchive(archivePath, tempDir, payload.RestoreCompose)
+			if err != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_backup_archive", "message": err.Error()})
+				return
+			}
+			result["restored_compose"] = composeRestored
+		}
 
 		if payload.RestoreDatabase {
 			// Try to restore database using pg_restore if postgres tools are available
-			if settings.DatabaseURL != "" {
+			if settings.DatabaseURL != "" && databasePath != "" {
 				cmd := exec.CommandContext(r.Context(), "pg_restore",
 					"-d", settings.DatabaseURL,
 					"--clean",
 					"--if-exists",
 					"--no-owner",
 					"--no-privileges",
-					archivePath,
+					databasePath,
 				)
 				output, err := cmd.CombinedOutput()
 				if err != nil {
@@ -2273,11 +2395,6 @@ func adminBackupRestoreHandler(settings config.Settings, pool *pgxpool.Pool) htt
 					result["restored_database"] = true
 				}
 			}
-		}
-
-		if payload.RestoreCompose {
-			// Compose restore is a note - actual implementation depends on deployment
-			result["errors"] = append(result["errors"].([]string), "compose_restore_not_supported_in_this_deployment")
 		}
 
 		writeJSON(w, http.StatusOK, map[string]any{
@@ -2602,9 +2719,18 @@ func bindReferralCode(ctx context.Context, pool *pgxpool.Pool, userID int64, raw
 	var referrerID int64
 	err := pool.QueryRow(ctx, "SELECT user_id FROM users WHERE UPPER(referral_code)=UPPER($1) LIMIT 1", code).Scan(&referrerID)
 	if err != nil || referrerID == 0 || referrerID == userID {
+		for _, campaign := range readSettingList(ctx, pool, "ADMIN_ADS") {
+			if strings.EqualFold(strings.TrimSpace(fmt.Sprint(campaign["start_param"])), code) {
+				_, _ = pool.Exec(ctx, `UPDATE invite_visits SET registered_user_id=$2 WHERE visit_id=(SELECT visit_id FROM invite_visits WHERE kind='campaign' AND UPPER(code)=UPPER($1) ORDER BY last_seen_at DESC LIMIT 1)`, code, userID)
+				return
+			}
+		}
 		return
 	}
-	_, _ = pool.Exec(ctx, "UPDATE users SET referred_by_id=$2 WHERE user_id=$1 AND referred_by_id IS NULL", userID, referrerID)
+	result, _ := pool.Exec(ctx, "UPDATE users SET referred_by_id=$2 WHERE user_id=$1 AND referred_by_id IS NULL", userID, referrerID)
+	if result.RowsAffected() > 0 {
+		_, _ = pool.Exec(ctx, `UPDATE invite_visits SET registered_user_id=$2 WHERE visit_id=(SELECT visit_id FROM invite_visits WHERE kind='referral' AND UPPER(code)=UPPER($1) ORDER BY last_seen_at DESC LIMIT 1)`, code, userID)
+	}
 }
 
 func referralWebAppLink(settings config.Settings, code string) string {

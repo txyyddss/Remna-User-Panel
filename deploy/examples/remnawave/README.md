@@ -16,7 +16,7 @@ cp .env.example .env
 #   - PUBLIC_URL
 #   - BOT_TOKEN、ADMIN_IDS
 #   - WEBAPP_SESSION_SECRET、WEBHOOK_SECRET_TOKEN
-#   - PANEL_API_URL、PANEL_API_KEY、PANEL_WEBHOOK_SECRET
+#   - PANEL_API_URL、PANEL_API_KEY
 #   - JWT_AUTH_SECRET、JWT_API_TOKENS_SECRET（Remnawave 面板）
 #   - SUB_PUBLIC_DOMAIN（Remnawave 面板）
 
@@ -36,6 +36,5 @@ docker compose ps
 | 公共 URL | `PUBLIC_URL` | User Panel（webhook + Mini App） |
 | User Panel | `BOT_TOKEN`, `ADMIN_IDS`, `PANEL_API_URL`, `WEBAPP_SESSION_SECRET`... | Remna User Panel |
 | Remnawave 面板 | `JWT_AUTH_SECRET`, `SUB_PUBLIC_DOMAIN`, `TELEGRAM_BOT_TOKEN`... | Remnawave 面板 |
-| 共享密钥 | `PANEL_WEBHOOK_SECRET` | 同时用于 User Panel 和 Remnawave 的 `WEBHOOK_SECRET_HEADER` |
 
 > **注意**：默认语言、货币、Squad、通知天数等配置请在后台 Web UI → Settings 页面修改，无需设置环境变量。

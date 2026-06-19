@@ -52,6 +52,7 @@ type Plan struct {
 	Currency          string     `json:"currency"`
 	BaseAmount        float64    `json:"base_amount"`
 	BaseCurrency      string     `json:"base_currency"`
+	StarsPrice        int        `json:"stars_price,omitempty"`
 	DisplayCNYAmount  float64    `json:"display_cny_amount,omitempty"`
 	FXRate            float64    `json:"fx_rate,omitempty"`
 	FXSource          string     `json:"fx_source,omitempty"`
@@ -125,6 +126,7 @@ func (c Catalog) Plans(language string, fallbackCurrency string) []Plan {
 		}
 		if model == "traffic" {
 			for _, pkg := range packagePrices(tariff.raw["traffic_packages"], currency) {
+				stars := packagePriceForAmount(packagePrices(tariff.raw["traffic_packages"], "stars"), pkg.Amount)
 				result = append(result, newPlan(Plan{
 					ID:                fmt.Sprintf("%s:traffic:%s", tariff.Key, compactNumber(pkg.Amount)),
 					TariffKey:         tariff.Key,
@@ -139,6 +141,7 @@ func (c Catalog) Plans(language string, fallbackCurrency string) []Plan {
 					Currency:          strings.ToUpper(currency),
 					BaseAmount:        pkg.Price,
 					BaseCurrency:      strings.ToUpper(currency),
+					StarsPrice:        int(stars),
 					MonthlyGB:         tariff.MonthlyGB,
 					SquadUUIDs:        cleanStrings(tariff.SquadUUIDs),
 					ExternalSquadUUID: strings.TrimSpace(tariff.ExternalSquadUUID),
@@ -149,6 +152,7 @@ func (c Catalog) Plans(language string, fallbackCurrency string) []Plan {
 			continue
 		}
 		for _, period := range tariffPeriodPrices(tariff, currency) {
+			stars := periodPriceForMonths(periodPrices(tariff.raw["prices_stars"]), period.Months)
 			result = append(result, newPlan(Plan{
 				ID:                fmt.Sprintf("%s:subscription:%d", tariff.Key, period.Months),
 				TariffKey:         tariff.Key,
@@ -162,6 +166,7 @@ func (c Catalog) Plans(language string, fallbackCurrency string) []Plan {
 				Currency:          strings.ToUpper(currency),
 				BaseAmount:        period.Price,
 				BaseCurrency:      strings.ToUpper(currency),
+				StarsPrice:        int(stars),
 				MonthlyGB:         tariff.MonthlyGB,
 				SquadUUIDs:        cleanStrings(tariff.SquadUUIDs),
 				ExternalSquadUUID: strings.TrimSpace(tariff.ExternalSquadUUID),
@@ -260,6 +265,23 @@ type periodPrice struct {
 type packagePrice struct {
 	Amount float64
 	Price  float64
+}
+
+func periodPriceForMonths(prices []periodPrice, months int) float64 {
+	for _, item := range prices {
+		if item.Months == months {
+			return item.Price
+		}
+	}
+	return 0
+}
+func packagePriceForAmount(prices []packagePrice, amount float64) float64 {
+	for _, item := range prices {
+		if almostEqual(item.Amount, amount) {
+			return item.Price
+		}
+	}
+	return 0
 }
 
 func periodPrices(raw json.RawMessage) []periodPrice {
@@ -389,6 +411,7 @@ func planHash(plan Plan) string {
 		compactNumber(plan.MonthlyGB),
 		strconv.FormatFloat(roundMoney(plan.Price), 'f', 2, 64),
 		strings.ToUpper(plan.Currency),
+		strconv.Itoa(plan.StarsPrice),
 	}, "|")
 	sum := sha256.Sum256([]byte(signature))
 	return "plan_" + hex.EncodeToString(sum[:])[:32]

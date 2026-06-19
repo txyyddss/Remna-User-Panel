@@ -7,7 +7,7 @@
   export let onSelect = () => {};
 
   function methodTitle(method) {
-    return method?.name || t("wa_method_other_title");
+    return method?.label_key ? t(method.label_key) : method?.name || t("wa_method_other_title");
   }
 
   function methodIcon(method) {

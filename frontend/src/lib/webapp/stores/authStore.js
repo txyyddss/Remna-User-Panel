@@ -1,14 +1,50 @@
 import { writable, get } from "svelte/store";
-import {
-  readReferralParam,
-  clearAuthQuery,
-  buildTelegramOAuthStartUrl,
-  emailError,
-} from "../authHelpers.js";
+import { readReferralParam, clearAuthQuery, emailError } from "../authHelpers.js";
+import { sendTelemetryHeartbeat } from "../telemetry.js";
 
 const EMAIL_CODE_PENDING_STORAGE_KEY = "rw_email_code_login_pending_v1";
 const EMAIL_CODE_PENDING_TTL_MS = 10 * 60 * 1000;
 const EMAIL_CODE_RESEND_MS = 60 * 1000;
+const TELEGRAM_LOGIN_LIBRARY_URL = "https://oauth.telegram.org/js/telegram-login.js";
+
+async function loadTelegramLoginLibrary() {
+  if (window.Telegram?.Login?.auth) return window.Telegram.Login;
+  await new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${TELEGRAM_LOGIN_LIBRARY_URL}"]`);
+    if (existing) {
+      existing.addEventListener("load", resolve, { once: true });
+      existing.addEventListener("error", reject, { once: true });
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = TELEGRAM_LOGIN_LIBRARY_URL;
+    script.async = true;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+  if (!window.Telegram?.Login?.auth) throw new Error("telegram_login_library_unavailable");
+  return window.Telegram.Login;
+}
+
+async function browserTelegramLogin(clientId, language) {
+  const nonceResponse = await fetch("/api/auth/telegram/nonce", {
+    credentials: "include",
+    headers: { Accept: "application/json" },
+  });
+  const nonceData = await nonceResponse.json();
+  if (!nonceResponse.ok || !nonceData?.nonce) throw nonceData;
+  const login = await loadTelegramLoginLibrary();
+  return new Promise((resolve, reject) => {
+    login.auth(
+      { client_id: Number(clientId), nonce: nonceData.nonce, lang: language?.() || "en" },
+      (result) => {
+        if (result?.id_token) resolve({ id_token: result.id_token, nonce: nonceData.nonce });
+        else reject(new Error(result?.error || "telegram_login_cancelled"));
+      }
+    );
+  });
+}
 
 export function createAuthStore({
   publicApi,
@@ -214,6 +250,7 @@ export function createAuthStore({
         clearAuthQuery();
         setAuthStatus("");
         await loadData();
+        await sendTelemetryHeartbeat();
         return true;
       }
       setAuthStatus(
@@ -365,10 +402,14 @@ export function createAuthStore({
     const isTelegramMiniAppAttempt = telegramSdk.hasLaunchParams();
     if (!isTelegramMiniAppAttempt && telegramOAuthClientId) {
       state.update((s) => ({ ...s, telegramLoginBusy: true }));
-      window.location.assign(buildTelegramOAuthStartUrl("login", getTg()));
-      window.setTimeout(() => {
+      try {
+        const result = await browserTelegramLogin(telegramOAuthClientId, currentLang);
+        await finalizeTelegramAuth(result, "id_token");
+      } catch {
+        setAuthStatus(t("wa_auth_telegram_not_confirmed"), true);
+      } finally {
         state.update((s) => ({ ...s, telegramLoginBusy: false }));
-      }, 1500);
+      }
       return;
     }
 
@@ -391,7 +432,8 @@ export function createAuthStore({
             return;
           }
 
-          window.location.assign(buildTelegramOAuthStartUrl("login", getTg()));
+          const result = await browserTelegramLogin(telegramOAuthClientId, currentLang);
+          await finalizeTelegramAuth(result, "id_token", { signal: loginTimeout.signal });
         })(),
         loginTimeout.promise,
       ]);

@@ -73,9 +73,8 @@ WEBHOOK_SECRET_TOKEN_VALUE=""
 TRUSTED_PROXIES_VALUE=""
 PANEL_API_URL_VALUE=""
 PANEL_API_KEY_VALUE=""
-PANEL_WEBHOOK_SECRET_VALUE=""
 
-KNOWN_ENV_KEYS="COMPOSE_PROJECT_NAME IMAGE_TAG PUBLIC_HOST PUBLIC_URL WEBHOOK_HOST MINIAPP_HOST WEBHOOK_PUBLIC_URL MINIAPP_PUBLIC_URL HTTP_BIND HTTPS_BIND WEB_SERVER_BIND PANGOLIN_ENDPOINT NEWT_ID NEWT_SECRET BOT_TOKEN ADMIN_IDS POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB WEBAPP_ENABLED WEBAPP_SESSION_SECRET WEBHOOK_SECRET_TOKEN TRUSTED_PROXIES PANEL_API_URL PANEL_API_KEY PANEL_WEBHOOK_SECRET"
+KNOWN_ENV_KEYS="COMPOSE_PROJECT_NAME IMAGE_TAG PUBLIC_HOST PUBLIC_URL WEBHOOK_HOST MINIAPP_HOST WEBHOOK_PUBLIC_URL MINIAPP_PUBLIC_URL HTTP_BIND HTTPS_BIND WEB_SERVER_BIND PANGOLIN_ENDPOINT NEWT_ID NEWT_SECRET BOT_TOKEN ADMIN_IDS POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB WEBAPP_ENABLED WEBAPP_SESSION_SECRET WEBHOOK_SECRET_TOKEN TRUSTED_PROXIES PANEL_API_URL PANEL_API_KEY"
 
 color() {
     printf '%s%s%s' "$2" "$1" "$RESET"
@@ -154,7 +153,7 @@ mask_secret() {
 
 is_secret_key() {
     case "$1" in
-        BOT_TOKEN|POSTGRES_PASSWORD|WEBAPP_SESSION_SECRET|WEBHOOK_SECRET_TOKEN|PANEL_API_KEY|PANEL_WEBHOOK_SECRET|NEWT_SECRET)
+        BOT_TOKEN|POSTGRES_PASSWORD|WEBAPP_SESSION_SECRET|WEBHOOK_SECRET_TOKEN|PANEL_API_KEY|NEWT_SECRET)
             return 0
             ;;
         *)
@@ -470,12 +469,6 @@ prompt_common_env() {
     PANEL_API_URL_VALUE="$PROMPT_VALUE"
     prompt_value "Remnawave Panel API key" "$(env_get PANEL_API_KEY change_me)" 0 1 ""
     PANEL_API_KEY_VALUE="$PROMPT_VALUE"
-    existing_panel_webhook_secret=$(env_get PANEL_WEBHOOK_SECRET "")
-    if [ -z "$existing_panel_webhook_secret" ]; then
-        existing_panel_webhook_secret=$(secret_hex 24)
-    fi
-    prompt_value "Remnawave Panel webhook secret" "$existing_panel_webhook_secret" 0 1 ""
-    PANEL_WEBHOOK_SECRET_VALUE="$PROMPT_VALUE"
 
     case "$PROFILE_KEY" in
         caddy|nginx|newt)
@@ -549,7 +542,6 @@ display_env_summary() {
     show_env_value WEBHOOK_SECRET_TOKEN "$WEBHOOK_SECRET_TOKEN_VALUE"
     show_env_value PANEL_API_URL "$PANEL_API_URL_VALUE"
     show_env_value PANEL_API_KEY "$PANEL_API_KEY_VALUE"
-    show_env_value PANEL_WEBHOOK_SECRET "$PANEL_WEBHOOK_SECRET_VALUE"
 }
 
 append_preserved_env() {
@@ -611,7 +603,6 @@ render_env_file() {
     printf '\n# Remnawave Panel\n' >> "$output"
     env_line PANEL_API_URL "$PANEL_API_URL_VALUE" "$output"
     env_line PANEL_API_KEY "$PANEL_API_KEY_VALUE" "$output"
-    env_line PANEL_WEBHOOK_SECRET "$PANEL_WEBHOOK_SECRET_VALUE" "$output"
 
     append_preserved_env "$output"
 }
@@ -839,13 +830,6 @@ remnashop_webhook_checklist() {
     fi
 
     info "Set these URLs in external dashboards after the migration:"
-    printf '  Remnawave Panel -> WEBHOOK_URL: %s/webhook/panel\n' "$base_url"
-    panel_secret=$(env_get PANEL_WEBHOOK_SECRET "")
-    if [ -n "$panel_secret" ]; then
-        printf '  Remnawave Panel -> webhook secret: %s\n' "$(mask_secret "$panel_secret")"
-    else
-        warn "PANEL_WEBHOOK_SECRET is empty; set it in Remna User Panel and in Remnawave Panel."
-    fi
     printf '  EZPay merchant settings -> notify URL: %s/webhook/ezpay\n' "$base_url"
     printf '  BEPUSDT merchant settings -> notify URL: %s/webhook/bepusdt\n' "$base_url"
     printf '  Telegram webhook: %s/tg/webhook (configured automatically on bot startup)\n' "$base_url"

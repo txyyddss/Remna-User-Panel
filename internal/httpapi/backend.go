@@ -2,10 +2,14 @@
 package httpapi
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -14,6 +18,7 @@ import (
 	"remna-user-panel/internal/config"
 	"remna-user-panel/internal/payments"
 	"remna-user-panel/internal/remnawave"
+	appsettings "remna-user-panel/internal/settings"
 )
 
 // BackendRouter builds the webhook/health HTTP router.
@@ -30,7 +35,6 @@ func RegisterBackendRoutes(router chi.Router, settings config.Settings, pool *pg
 	router.Get("/healthz", healthHandler(pool, redisClient))
 	router.Get("/health", healthHandler(pool, redisClient))
 	router.Post(settings.WebhookPath(), telegramWebhookHandler(settings, pool))
-	router.Post(settings.PanelWebhookPath, panelWebhookHandler(settings, pool))
 	for _, providerID := range registry.IDs() {
 		providerID := providerID
 		router.Post("/webhook/"+providerID, paymentWebhookHandler(settings, pool, registry, panel, providerID))
@@ -71,6 +75,13 @@ func telegramWebhookHandler(settings config.Settings, pool *pgxpool.Pool) http.H
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_body"})
 			return
 		}
+		if handled, err := handleTelegramPaymentUpdate(r.Context(), settings, pool, body); handled {
+			if err != nil {
+				slog.Warn("telegram payment update rejected", "error", err)
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+			return
+		}
 		if pool != nil {
 			payload := json.RawMessage(body)
 			if !json.Valid(payload) {
@@ -88,38 +99,121 @@ func telegramWebhookHandler(settings config.Settings, pool *pgxpool.Pool) http.H
 	}
 }
 
-func panelWebhookHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if settings.PanelWebhookSecret != "" {
-			got := r.Header.Get("X-Remnawave-Webhook-Secret")
-			if got == "" {
-				got = r.Header.Get("X-Webhook-Secret")
-			}
-			if got != settings.PanelWebhookSecret {
-				writeJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "invalid_secret"})
-				return
-			}
-		}
-		body, err := io.ReadAll(io.LimitReader(r.Body, 2<<20))
-		if err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_body"})
-			return
-		}
-		if pool != nil {
-			payload := json.RawMessage(body)
-			if !json.Valid(payload) {
-				payload, _ = json.Marshal(map[string]any{"raw": string(body)})
-			}
-			if _, err := pool.Exec(r.Context(), "INSERT INTO webhook_events (provider, payload, status) VALUES ($1,$2,'queued')", "remnawave", payload); err != nil {
-				slog.Warn("panel webhook accepted but queue insert failed", "error", err)
-				recordMessageLog(r.Context(), pool, messageLogEntry{EventType: "remnawave_webhook_queue_failed", Content: err.Error(), Payload: map[string]any{"provider": "remnawave"}})
-				writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "status": "accepted_not_queued"})
-				return
-			}
-			recordMessageLog(r.Context(), pool, messageLogEntry{EventType: "remnawave_webhook_queued", Content: "queued", Payload: map[string]any{"provider": "remnawave"}})
-		}
-		writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "status": "queued"})
+func handleTelegramPaymentUpdate(ctx context.Context, settings config.Settings, pool *pgxpool.Pool, body []byte) (bool, error) {
+	if pool == nil {
+		return false, nil
 	}
+	var update struct {
+		PreCheckout *struct {
+			ID   string `json:"id"`
+			From struct {
+				ID int64 `json:"id"`
+			} `json:"from"`
+			Currency       string `json:"currency"`
+			TotalAmount    int    `json:"total_amount"`
+			InvoicePayload string `json:"invoice_payload"`
+		} `json:"pre_checkout_query"`
+		Message *struct {
+			From struct {
+				ID int64 `json:"id"`
+			} `json:"from"`
+			Chat struct {
+				ID int64 `json:"id"`
+			} `json:"chat"`
+			Text              string `json:"text"`
+			SuccessfulPayment *struct {
+				Currency         string `json:"currency"`
+				TotalAmount      int    `json:"total_amount"`
+				InvoicePayload   string `json:"invoice_payload"`
+				TelegramChargeID string `json:"telegram_payment_charge_id"`
+			} `json:"successful_payment"`
+		} `json:"message"`
+	}
+	if json.Unmarshal(body, &update) != nil {
+		return false, nil
+	}
+	if update.PreCheckout != nil {
+		query := update.PreCheckout
+		valid, reason := validateStarsOrder(ctx, pool, query.InvoicePayload, query.From.ID, query.Currency, query.TotalAmount)
+		payload := map[string]any{"pre_checkout_query_id": query.ID, "ok": valid}
+		if !valid {
+			payload["error_message"] = "This order is unavailable or no longer valid."
+		}
+		err := callTelegramBotAPI(ctx, settings, "answerPreCheckoutQuery", payload)
+		if err != nil {
+			return true, err
+		}
+		if !valid {
+			return true, fmt.Errorf("precheckout_rejected: %s", reason)
+		}
+		return true, nil
+	}
+	if update.Message != nil && update.Message.SuccessfulPayment != nil {
+		payment := update.Message.SuccessfulPayment
+		valid, reason := validateStarsOrder(ctx, pool, payment.InvoicePayload, update.Message.From.ID, payment.Currency, payment.TotalAmount)
+		if !valid {
+			return true, fmt.Errorf("successful_payment_rejected: %s", reason)
+		}
+		command, err := pool.Exec(ctx, `UPDATE payment_orders SET status='paid',paid_at=COALESCE(paid_at,NOW()),updated_at=NOW(),telegram_payment_charge_id=$2,
+ raw_webhook=$3 WHERE order_id=$1 AND status='pending' AND (telegram_payment_charge_id IS NULL OR telegram_payment_charge_id=$2)`, payment.InvoicePayload, payment.TelegramChargeID, body)
+		if err != nil {
+			return true, err
+		}
+		if command.RowsAffected() > 0 {
+			_, _ = pool.Exec(ctx, `UPDATE invite_visits SET converted_at=NOW() WHERE registered_user_id=(SELECT user_id FROM users WHERE telegram_id=$1) AND converted_at IS NULL`, update.Message.From.ID)
+			recordMessageLog(ctx, pool, messageLogEntry{UserID: update.Message.From.ID, EventType: "telegram_stars_paid", Content: payment.InvoicePayload, Payload: map[string]any{"amount": payment.TotalAmount, "currency": payment.Currency}})
+		}
+		return true, nil
+	}
+	if update.Message != nil && strings.HasPrefix(strings.TrimSpace(update.Message.Text), "/paysupport") {
+		text := "For payment support, contact the service administrator."
+		link := appsettings.NewStore(pool).String(ctx, "SUPPORT_LINK", "")
+		if link != "" {
+			text += "\n" + link
+		}
+		err := sendTelegramText(ctx, settings, update.Message.Chat.ID, text)
+		return true, err
+	}
+	return false, nil
+}
+
+func validateStarsOrder(ctx context.Context, pool *pgxpool.Pool, orderID string, telegramID int64, currency string, amount int) (bool, string) {
+	var expected float64
+	var status string
+	var storedTelegram int64
+	err := pool.QueryRow(ctx, `SELECT p.amount::float8,p.status,COALESCE(u.telegram_id,0) FROM payment_orders p JOIN users u ON u.user_id=p.user_id
+ WHERE p.order_id=$1 AND p.provider='telegram_stars'`, orderID).Scan(&expected, &status, &storedTelegram)
+	if err != nil {
+		return false, "order_not_found"
+	}
+	if status != "pending" {
+		return false, "order_not_pending"
+	}
+	if storedTelegram != telegramID {
+		return false, "user_mismatch"
+	}
+	if currency != "XTR" || int(expected) != amount {
+		return false, "amount_mismatch"
+	}
+	return true, ""
+}
+
+func callTelegramBotAPI(ctx context.Context, settings config.Settings, method string, payload any) error {
+	body, _ := json.Marshal(payload)
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.telegram.org/bot"+strings.TrimSpace(settings.BotToken)+"/"+method, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	if response.StatusCode/100 != 2 {
+		return fmt.Errorf("telegram_status_%d", response.StatusCode)
+	}
+	return nil
 }
 
 func paymentWebhookHandler(settings config.Settings, pool *pgxpool.Pool, registry *payments.Registry, panel *remnawave.Client, providerID string) http.HandlerFunc {
@@ -134,6 +228,7 @@ func paymentWebhookHandler(settings config.Settings, pool *pgxpool.Pool, registr
 			writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "status": "accepted_not_processed"})
 			return
 		}
+		_, _ = pool.Exec(r.Context(), `UPDATE invite_visits v SET converted_at=NOW() FROM payment_orders p WHERE v.registered_user_id=p.user_id AND p.status IN ('paid','succeeded') AND v.converted_at IS NULL`)
 		provision, err := ProvisionPendingPaidOrders(r.Context(), settings, pool, panel, 10)
 		if err != nil {
 			slog.Warn("payment webhook accepted but provisioning is pending", "provider", providerID, "error", err, "scanned", provision.Scanned, "provisioned", provision.Provisioned, "failed", provision.Failed)
