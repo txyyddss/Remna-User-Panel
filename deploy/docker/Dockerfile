@@ -60,7 +60,6 @@ RUN --mount=type=cache,target=/root/.npm \
 COPY frontend ./
 COPY internal/webassets/templates/subscription_webapp.html ../internal/webassets/templates/subscription_webapp.html
 RUN npm run build:webapp
-RUN node ./scripts/prepare_nginx_assets.mjs --out ../frontend-nginx-dist
 
 
 FROM debian:bookworm-slim AS app-base
@@ -121,23 +120,3 @@ LABEL org.opencontainers.image.source="https://github.com/remna-user-panel/remna
       org.opencontainers.image.licenses="MIT"
 
 CMD ["remna-user-panel-worker"]
-
-
-FROM nginx:1.27-alpine AS frontend
-
-LABEL org.opencontainers.image.source="https://github.com/remna-user-panel/remna-user-panel" \
-      org.opencontainers.image.title="remna-user-panel-frontend" \
-      org.opencontainers.image.description="Remna User Panel frontend (nginx serving the subscription Mini App)." \
-      org.opencontainers.image.licenses="MIT"
-
-COPY deploy/docker/frontend/nginx.conf /etc/nginx/conf.d/default.conf
-COPY deploy/docker/frontend/00-startup-banner.sh /docker-entrypoint.d/00-startup-banner.sh
-COPY deploy/docker/frontend/robots.txt /usr/share/nginx/html/robots.txt
-RUN set -eu; \
-    find /docker-entrypoint.d -type f -name '*.sh' -exec sed -i 's/\r$//' {} +; \
-    chmod +x /docker-entrypoint.d/00-startup-banner.sh
-COPY --from=frontend-builder /app/frontend-nginx-dist/ /usr/share/nginx/html/
-COPY --from=version-builder /build-tag /build-tag
-COPY --from=version-builder /build-commit /build-commit
-
-EXPOSE 80

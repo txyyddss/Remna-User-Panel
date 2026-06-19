@@ -31,6 +31,5 @@ docker compose ps
 
 - `ghcr.io/<namespace>/remna-user-panel-backend`
 - `ghcr.io/<namespace>/remna-user-panel-worker`
-- `ghcr.io/<namespace>/remna-user-panel-frontend`
 
 Compose 容器、卷和二进制统一使用 `remna-user-panel-*` 命名。

@@ -22,4 +22,3 @@ build_image() {
 
 build_image backend
 build_image worker
-build_image frontend

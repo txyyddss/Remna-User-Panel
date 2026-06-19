@@ -6,7 +6,7 @@ IMAGE_NAMESPACE="${IMAGE_NAMESPACE:-local}"
 IMAGE_TAG="${IMAGE_TAG:?Set IMAGE_TAG to the release tag you want to build and push}"
 IMAGE_PREFIX="${IMAGE_PREFIX:-remna-user-panel}"
 DOCKERFILE="${DOCKERFILE:-deploy/docker/Dockerfile}"
-TARGETS="${TARGETS:-backend worker frontend}"
+TARGETS="${TARGETS:-backend worker}"
 REMNAWAVE_MINISHOP_BUILD_PROVENANCE="${REMNAWAVE_MINISHOP_BUILD_PROVENANCE:-custom}"
 
 normalize_list() {

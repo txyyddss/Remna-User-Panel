@@ -10,7 +10,7 @@ $imageNamespace = if ($env:IMAGE_NAMESPACE) { $env:IMAGE_NAMESPACE } else { "loc
 $imageTag = $env:IMAGE_TAG
 $imagePrefix = if ($env:IMAGE_PREFIX) { $env:IMAGE_PREFIX } else { "remna-user-panel" }
 $dockerfile = if ($env:DOCKERFILE) { $env:DOCKERFILE } else { "deploy/docker/Dockerfile" }
-$targetsRaw = if ($env:TARGETS) { $env:TARGETS } else { "backend,worker,frontend" }
+$targetsRaw = if ($env:TARGETS) { $env:TARGETS } else { "backend,worker" }
 $targets = @($targetsRaw -split "[,;\s]+" | Where-Object { $_ })
 $buildProvenance = if ($env:REMNAWAVE_MINISHOP_BUILD_PROVENANCE) { $env:REMNAWAVE_MINISHOP_BUILD_PROVENANCE } else { "custom" }
 

@@ -16,7 +16,7 @@ OLD_TGSHOP_CADDY_DATA_VOLUME="remnawave-tg-shop-caddy-data"
 OLD_TGSHOP_CADDY_CONFIG_VOLUME="remnawave-tg-shop-caddy-config"
 NEW_MINISHOP_CADDY_DATA_VOLUME="remna-user-panel-caddy-data"
 NEW_MINISHOP_CADDY_CONFIG_VOLUME="remna-user-panel-caddy-config"
-KNOWN_LEGACY_CONTAINERS="remnawave-tg-shop remnawave-tg-shop-db remnawave-tg-shop-caddy remna-user-panel-backend remna-user-panel-worker remna-user-panel-frontend remna-user-panel-migrate remna-user-panel-postgres remna-user-panel-redis"
+KNOWN_LEGACY_CONTAINERS="remnawave-tg-shop remnawave-tg-shop-db remnawave-tg-shop-caddy remna-user-panel-backend remna-user-panel-worker remna-user-panel-migrate remna-user-panel-postgres remna-user-panel-redis"
 
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
     RESET="$(printf '\033[0m')"

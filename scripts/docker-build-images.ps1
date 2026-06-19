@@ -21,4 +21,3 @@ function Build-Image {
 
 Build-Image backend
 Build-Image worker
-Build-Image frontend
