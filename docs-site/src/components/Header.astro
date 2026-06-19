@@ -1,0 +1,137 @@
+---
+import type { StarlightRouteData } from '@astrojs/starlight/route-data'
+import { Icon } from '@astrojs/starlight/components'
+import LanguageSelect from 'virtual:starlight/components/LanguageSelect'
+import Search from 'virtual:starlight/components/Search'
+import SiteTitle from 'virtual:starlight/components/SiteTitle'
+import SocialIcons from 'virtual:starlight/components/SocialIcons'
+import ThemeSelect from 'virtual:starlight/components/ThemeSelect'
+import config from 'virtual:starlight/user-config'
+
+import MobileMenuToggle from 'starlight-theme-nova/components/MobileMenuToggle.astro'
+import options from 'virtual:starlight-theme-nova/user-config'
+
+const { hasSidebar } = Astro.locals.starlightRoute
+const nav = options.nav ?? []
+const route = Astro.locals.starlightRoute
+
+function getI18nText(
+  value: string | Record<string, string>,
+  route: StarlightRouteData,
+): string {
+  if (typeof value === 'string') {
+    return value
+  }
+
+  const { lang, locale } = route
+
+  if (value[lang]) {
+    return value[lang]
+  }
+
+  if (config.defaultLocale.lang === lang || config.defaultLocale.locale === locale) {
+    if (value.root) {
+      return value.root
+    }
+  }
+
+  if (locale && value[locale]) {
+    return value[locale]
+  }
+
+  throw new Error(`Unable to find the translation for language "${lang}".`)
+}
+
+function navIcon(href: string) {
+  if (href.includes('github.com/remna-user-panel/remna-user-panel')) {
+    return 'github'
+  }
+  if (href.includes('gitlab.com/3252a8/remnawave-minishop')) {
+    return 'gitlab'
+  }
+  if (href.includes('t.me/remnawave_minishop')) {
+    return 'telegram'
+  }
+  return undefined
+}
+
+---
+
+<div class="box-border flex h-full items-center gap-2">
+  <div
+    class:list={[
+      '-m-3 overflow-clip p-3',
+      'flex min-w-0',
+    ]}
+  >
+    <SiteTitle />
+  </div>
+  <nav
+    class="hidden flex-1 flex-row gap-4 overflow-x-auto py-3 pr-4 pl-4 text-sm font-medium md:flex xl:gap-6 xl:pl-6"
+  >
+    {
+      nav.map((item) => {
+        const href = getI18nText(item.href, route)
+        const label = getI18nText(item.label, route)
+        const icon = navIcon(href)
+
+        return (
+          <a
+            class:list={[
+              '-m-1.5 rounded-md p-1.5 text-(--sl-color-gray-3) no-underline hover:text-(--sl-color-white) focus-visible:outline-offset-0',
+              icon && 'minishop-header-link inline-flex items-center',
+            ]}
+            href={href}
+          >
+            {icon && <Icon name={icon} size="1rem" color="currentColor" />}
+            <span>{label}</span>
+          </a>
+        )
+      })
+    }
+  </nav>
+  <div class="minishop-header-search flex md:max-w-60 md:flex-1 print:hidden">
+    <Search />
+  </div>
+  {
+    !hasSidebar && nav.length > 0 && (
+      <details class="minishop-mobile-nav md:hidden print:hidden">
+        <summary aria-label="Menu">
+          <span aria-hidden="true" />
+        </summary>
+        <div class="minishop-mobile-nav-panel">
+          {nav.map((item) => {
+            const href = getI18nText(item.href, route)
+            const label = getI18nText(item.label, route)
+            const icon = navIcon(href)
+
+            return (
+              <a
+                class:list={[
+                  'minishop-mobile-nav-link',
+                  icon && 'minishop-header-link inline-flex items-center',
+                ]}
+                href={href}
+              >
+                {icon && <Icon name={icon} size="1rem" color="currentColor" />}
+                <span>{label}</span>
+              </a>
+            )
+          })}
+        </div>
+      </details>
+    )
+  }
+  <div class="hidden items-center gap-2 md:flex print:hidden">
+    <SocialIcons />
+    <LanguageSelect />
+    <ThemeSelect />
+  </div>
+  {
+    hasSidebar && (
+      <div class="flex items-center gap-2 md:hidden print:hidden">
+        <MobileMenuToggle />
+      </div>
+    )
+  }
+</div>

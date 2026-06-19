@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="__LANG__">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link id="app-favicon" rel="icon" href="data:," sizes="any">
+    <title>__PAGE_TITLE__</title>
+    <style nonce="__NONCE__">
+      :root {
+        color-scheme: dark light;
+        --accent: #14b86f;
+        --accent-contrast: #03120b;
+        --bg: #0b1017;
+        --panel-3: #344052;
+        --border: #2d3847;
+        --text: #f7fafc;
+        --muted: #aeb8c5;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      body {
+        min-height: 100dvh;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        box-sizing: border-box;
+      }
+
+      main {
+        width: min(100%, 420px);
+        display: grid;
+        gap: 14px;
+        text-align: center;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 24px;
+        line-height: 1.2;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.55;
+      }
+
+      .actions {
+        display: grid;
+        gap: 10px;
+        margin-top: 4px;
+      }
+
+      .button {
+        display: inline-flex;
+        min-height: 46px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        background: var(--accent);
+        color: var(--accent-contrast);
+        padding: 0 18px;
+        box-sizing: border-box;
+        font: inherit;
+        font-weight: 800;
+        text-decoration: none;
+        cursor: pointer;
+      }
+
+      .button.secondary {
+        border-color: var(--border);
+        background: transparent;
+        color: var(--text);
+      }
+
+      .button[aria-disabled="true"] {
+        pointer-events: none;
+        background: var(--panel-3);
+        color: var(--muted);
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1 id="title"></h1>
+      <p id="status"></p>
+      <div class="actions">
+        <a id="open-link" class="button" href="#" rel="noreferrer"></a>
+        <button id="close-button" class="button secondary" type="button" hidden></button>
+      </div>
+    </main>
+    <script nonce="__NONCE__">
+      (() => {
+        const messages = __MESSAGES_JSON__;
+        const titleEl = document.getElementById("title");
+        const statusEl = document.getElementById("status");
+        const openLink = document.getElementById("open-link");
+        const closeButton = document.getElementById("close-button");
+        const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+        const target = String(params.get("url") || "").trim();
+        const isUnsafe =
+          !target ||
+          hasControlChars(target) ||
+          /^(?:javascript|data|vbscript|https?):/i.test(target);
+        let attempted = false;
+        let pageLeft = false;
+        let state = "opening";
+        let closeAttemptTimer = null;
+        const CLOSE_ATTEMPT_DELAY_MS = 2500;
+
+        function hasControlChars(value) {
+          return Array.from(String(value || "")).some((char) => {
+            const code = char.charCodeAt(0);
+            return code <= 31 || code === 127;
+          });
+        }
+
+        function text(key, fallback) {
+          const value = messages && messages[key];
+          return typeof value === "string" && value ? value : fallback;
+        }
+
+        function tryCloseWindow() {
+          try {
+            window.close();
+          } catch (_error) {
+            void _error;
+          }
+        }
+
+        function render(nextState) {
+          state = nextState;
+          if (nextState === "unavailable") {
+            titleEl.textContent = text("unavailableTitle", "App link unavailable");
+            statusEl.textContent = text("unavailableHint", "Return to Telegram and try again.");
+            openLink.textContent = text("button", "Open app");
+            openLink.setAttribute("aria-disabled", "true");
+            openLink.removeAttribute("href");
+            closeButton.hidden = true;
+            return;
+          }
+
+          if (nextState === "done") {
+            titleEl.textContent = text("doneTitle", "Settings added");
+            statusEl.textContent = text("doneHint", "You can close this window.");
+            openLink.textContent = text("retryButton", "Open again");
+            openLink.removeAttribute("aria-disabled");
+            openLink.href = target;
+            closeButton.textContent = text("closeButton", "Close window");
+            closeButton.hidden = false;
+            return;
+          }
+
+          titleEl.textContent = text("title", "Opening app");
+          statusEl.textContent =
+            nextState === "manual"
+              ? text("manualHint", "If the app did not open automatically, tap the button below.")
+              : text("hint", "Opening the app on this device...");
+          openLink.textContent = text("button", "Open app");
+          openLink.removeAttribute("aria-disabled");
+          openLink.href = target;
+          closeButton.hidden = true;
+        }
+
+        function markDone() {
+          if (state === "done" || isUnsafe) return;
+          render("done");
+          if (closeAttemptTimer) window.clearTimeout(closeAttemptTimer);
+          closeAttemptTimer = window.setTimeout(() => {
+            if (pageLeft || document.hidden) tryCloseWindow();
+          }, CLOSE_ATTEMPT_DELAY_MS);
+        }
+
+        function notePageLeft() {
+          if (!attempted) return;
+          pageLeft = true;
+          window.setTimeout(markDone, 900);
+        }
+
+        function openTarget() {
+          if (isUnsafe) return;
+          attempted = true;
+          pageLeft = false;
+          render("opening");
+          window.location.href = target;
+          window.setTimeout(() => {
+            if (state === "opening" && !pageLeft) render("manual");
+          }, 1600);
+        }
+
+        if (isUnsafe) {
+          render("unavailable");
+          return;
+        }
+
+        openLink.addEventListener("click", (event) => {
+          event.preventDefault();
+          openTarget();
+        });
+        closeButton.addEventListener("click", () => {
+          tryCloseWindow();
+          render("done");
+        });
+        window.addEventListener("pagehide", notePageLeft);
+        document.addEventListener("visibilitychange", () => {
+          if (!attempted) return;
+          if (document.hidden) {
+            pageLeft = true;
+          } else if (pageLeft) {
+            markDone();
+          }
+        });
+
+        render("opening");
+        window.setTimeout(openTarget, 80);
+      })();
+    </script>
+  </body>
+</html>

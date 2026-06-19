@@ -1,0 +1,737 @@
+<script>
+  import QRCode from "qrcode";
+  import {
+    ArrowLeft,
+    ArrowRight,
+    CheckCircle2,
+    CircleX,
+    Copy,
+    ExternalLink,
+    LockKeyhole,
+    QrCode,
+    TriangleAlert,
+  } from "$components/ui/icons.js";
+  import { Tooltip } from "$components/ui/primitives.js";
+
+  import Button from "$components/ui/button.svelte";
+  import Checkbox from "$components/ui/checkbox.svelte";
+  import Dialog from "$components/ui/dialog.svelte";
+  import EmailCodeScreen from "./auth/EmailCodeScreen.svelte";
+  import Input from "$components/ui/input.svelte";
+  import {
+    EmptyCard,
+    PaymentMethodGrid,
+    StatusMessage,
+  } from "$components/patterns/webapp/index.js";
+  import {
+    planKey as planKeyFn,
+    planDisplayTitle as planDisplayTitleFn,
+    planSubtitle as planSubtitleFn,
+    planUnitHint as planUnitHintFn,
+    tariffLimitLabel as tariffLimitLabelFn,
+    priceLabel as priceLabelFn,
+    firstAvailableMethod,
+    methodSelectable,
+    methodsForPlan,
+  } from "../lib/webapp/tariffs.js";
+
+  export let createPayment = () => {};
+  export let deviceConfirmOpen = false;
+  export let deviceDisconnectBusy = false;
+  export let deviceToDisconnect = null;
+  export let disconnectDevice = () => {};
+  export let linkEmailBusy = false;
+  export let linkEmailCode = "";
+  export let linkEmailFieldError = "";
+  export let linkEmailIsError = false;
+  export let linkEmailOpen = false;
+  export let linkEmailPending = "";
+  export let linkEmailResendCooldown = 0;
+  export let linkEmailStatus = "";
+  export let linkEmailValue = "";
+  export let hasMultipleTariffs = false;
+  export let methods = [];
+  export let payBusy = false;
+  export let paymentModalOpen = false;
+  export let paymentResultOpen = false;
+  export let paymentResult = null;
+  export let paymentStep = "tariff";
+  export let plans = [];
+  export let selectedMethod = "";
+  export let selectedPlan = null;
+  export let selectedTariff = null;
+  export let selectedTariffKey = "";
+  export let selectedTariffPlans = [];
+  export let renewHwidDevices = true;
+  export let setPasswordBusy = false;
+  export let setPasswordCode = "";
+  export let setPasswordConfirm = "";
+  export let setPasswordEmail = "";
+  export let setPasswordIsError = false;
+  export let setPasswordOpen = false;
+  export let setPasswordPending = false;
+  export let setPasswordResendCooldown = 0;
+  export let setPasswordStatus = "";
+  export let setPasswordValue = "";
+  export let singleTariffMode = false;
+  export let subscription = {};
+  export let subscriptionPurchaseDescription = "";
+  export let tariffCatalog = [];
+  export let tariffMode = false;
+  export let trafficMode = false;
+
+  function priceLabel(plan) {
+    return priceLabelFn(plan, selectedMethod);
+  }
+  function methodUsesStars() {
+    return String(selectedMethod || "")
+      .toLowerCase()
+      .includes("stars");
+  }
+  function hwidRenewalFor(plan) {
+    return plan?.hwid_renewal?.available ? plan.hwid_renewal : null;
+  }
+  function isSubscriptionPlan(plan) {
+    const saleMode = String(plan?.sale_mode || "subscription").toLowerCase();
+    return saleMode === "subscription";
+  }
+  function hwidRenewalAvailableForMethod(plan) {
+    const renewal = hwidRenewalFor(plan);
+    if (!subscription?.active || !isSubscriptionPlan(plan) || !renewal) return false;
+    if (methodUsesStars()) return Number(renewal.stars_price || 0) > 0;
+    return Number(renewal.price || 0) > 0;
+  }
+  function planWithSelectedHwidRenewal(plan) {
+    if (!plan || !renewHwidDevices || !hwidRenewalAvailableForMethod(plan)) return plan;
+    const renewal = hwidRenewalFor(plan);
+    const withRenewal = {
+      ...plan,
+      price: Number(plan.price || 0) + Number(renewal.price || 0),
+    };
+    if (Number(plan.stars_price || 0) > 0 && Number(renewal.stars_price || 0) > 0) {
+      withRenewal.stars_price = Number(plan.stars_price || 0) + Number(renewal.stars_price || 0);
+    }
+    return withRenewal;
+  }
+  function paymentPriceLabel(plan) {
+    return priceLabelFn(planWithSelectedHwidRenewal(plan), selectedMethod);
+  }
+  $: selectedPlanForPayment = planWithSelectedHwidRenewal(selectedPlan);
+  $: paymentMethods = methodsForPlan(methods, selectedPlanForPayment);
+  $: paymentMethodSelected = methodSelectable(paymentMethods, selectedMethod);
+  $: if (paymentModalOpen && paymentStep === "checkout" && selectedPlan) {
+    const firstMethod = firstAvailableMethod(paymentMethods);
+    if (firstMethod && !methodSelectable(paymentMethods, selectedMethod)) {
+      selectedMethod = firstMethod;
+    }
+  }
+  function hwidRenewalPriceLabel(plan = selectedPlan) {
+    const renewal = hwidRenewalFor(plan);
+    if (!renewal) return "";
+    return priceLabelFn(
+      {
+        price: renewal.price || 0,
+        stars_price: renewal.stars_price,
+        currency: renewal.currency || plan?.currency,
+      },
+      selectedMethod
+    );
+  }
+  function showHwidRenewalBlock() {
+    return hwidRenewalAvailableForMethod(selectedPlan);
+  }
+  function showHwidRenewalUnavailableNote() {
+    return Boolean(
+      subscription?.active &&
+      Number(subscription?.extra_hwid_devices || 0) > 0 &&
+      isSubscriptionPlan(selectedPlan) &&
+      !showHwidRenewalBlock()
+    );
+  }
+  function hwidRenewalCount(plan = selectedPlan) {
+    return Number(hwidRenewalFor(plan)?.device_count || subscription?.extra_hwid_devices || 0);
+  }
+  function hwidRenewalHint(plan = selectedPlan) {
+    const renewal = hwidRenewalFor(plan);
+    if (renewal?.valid_from_text && renewal?.valid_until_text) {
+      return t("wa_hwid_devices_renewal_checkbox_hint", {
+        from: renewal.valid_from_text,
+        to: renewal.valid_until_text,
+      });
+    }
+    return t("wa_hwid_devices_renewal_checkbox_hint_short");
+  }
+  function showHwidDesyncNotice() {
+    return Boolean(
+      subscription?.device_topup_renewal_available &&
+      subscription?.extra_hwid_devices_valid_until_text
+    );
+  }
+  function planKey(plan) {
+    return planKeyFn(plan);
+  }
+  function planDisplayTitle(plan) {
+    return planDisplayTitleFn(plan, { trafficMode, t });
+  }
+  function planSubtitle(plan) {
+    return planSubtitleFn(plan, { t, termUnitLabel });
+  }
+  function planUnitHint(plan) {
+    return planUnitHintFn(plan, { trafficMode, selectedMethod, t });
+  }
+  function tariffLimitLabel(tariff) {
+    return tariffLimitLabelFn(tariff, { t });
+  }
+
+  let paymentQrDataUrl = "";
+  let paymentQrRequestId = 0;
+
+  $: paymentQrValue =
+    paymentResult?.qr_content || paymentResult?.payment_url || paymentResult?.payment_address || "";
+  $: updatePaymentQr(paymentQrValue);
+
+  function paymentTitle() {
+    if (singleTariffMode) {
+      return selectedTariff?.billing_model === "traffic"
+        ? t("wa_traffic_packages_title")
+        : t("wa_subscription_title");
+    }
+    if (tariffMode) return t("wa_tariffs_title");
+    return trafficMode ? t("wa_traffic_packages_title") : t("wa_subscription_title");
+  }
+
+  function paymentDescription() {
+    if (tariffMode) {
+      if (singleTariffMode) {
+        return selectedTariff?.billing_model === "traffic"
+          ? t("wa_traffic_packages_choose")
+          : t("wa_subscription_choose_period");
+      }
+      return paymentStep === "checkout" && selectedTariff
+        ? t("wa_tariff_choose_period_payment", { tariff: selectedTariff.title })
+        : t("wa_tariffs_choose");
+    }
+    return trafficMode ? t("wa_traffic_packages_choose") : t("wa_subscription_choose_period");
+  }
+
+  function showSubscriptionPurchaseDescription() {
+    if (!subscriptionPurchaseDescription || trafficMode) return false;
+    if (!tariffMode) return true;
+    if (paymentStep === "tariff") return false;
+    return String(selectedTariff?.billing_model || "period").toLowerCase() !== "traffic";
+  }
+
+  async function updatePaymentQr(value) {
+    const text = String(value || "").trim();
+    const requestId = ++paymentQrRequestId;
+    if (!text) {
+      paymentQrDataUrl = "";
+      return;
+    }
+    try {
+      const url = await QRCode.toDataURL(text, {
+        errorCorrectionLevel: "M",
+        margin: 1,
+        width: 520,
+        color: {
+          dark: "#000000",
+          light: "#00000000",
+        },
+      });
+      if (requestId === paymentQrRequestId) paymentQrDataUrl = url;
+    } catch (_error) {
+      if (requestId === paymentQrRequestId) paymentQrDataUrl = "";
+    }
+  }
+
+  function checkoutRows(result) {
+    if (!result) return [];
+    return [
+      {
+        label: t("wa_payment_checkout_amount", {}, "Amount"),
+        value: [result.display_amount, result.display_currency].filter(Boolean).join(" "),
+        copy: result.display_amount,
+      },
+      {
+        label: t("wa_payment_checkout_network", {}, "Network"),
+        value: result.network,
+        copy: result.network,
+      },
+      {
+        label: t("wa_payment_checkout_address", {}, "Address"),
+        value: result.payment_address,
+        copy: result.payment_address,
+      },
+      {
+        label: t("wa_payment_checkout_order", {}, "Order"),
+        value: result.order_id,
+        copy: result.order_id,
+      },
+    ].filter((row) => row.value);
+  }
+
+  export let closeDeviceDisconnectDialog = () => {};
+  export let closeLinkEmailDialog = () => {};
+  export let closePaymentModal = () => {};
+  export let closePaymentResult = () => {};
+  export let copyPaymentText = async () => {};
+  export let openPaymentResultLink = () => {};
+  export let closeSetPasswordDialog = () => {};
+  export let backToTariffList = () => {};
+  export let continueWithSelectedTariff = () => {};
+  export let requestLinkEmailCode = () => {};
+  export let requestSetPasswordCode = () => {};
+  export let selectTariff = () => {};
+  export let t = (key) => key;
+  export let termUnitLabel = () => "";
+  export let verifyLinkEmailCode = () => {};
+  export let confirmSetPassword = () => {};
+</script>
+
+<Dialog
+  open={paymentModalOpen}
+  title={paymentTitle()}
+  description={paymentDescription()}
+  closeLabel={t("wa_close")}
+  onclose={closePaymentModal}
+  class="payment-dialog-card"
+>
+  <div class="payment-dialog-body">
+    {#if tariffMode && !singleTariffMode && paymentStep === "tariff"}
+      {#if tariffCatalog.length}
+        <div class="option-list tariff-list">
+          {#each tariffCatalog as tariff}
+            <button
+              class:active={selectedTariffKey === tariff.key}
+              class="option-row tariff-row"
+              type="button"
+              onclick={() => selectTariff(tariff)}
+            >
+              <span class="option-row-main">
+                <strong>{tariff.title}</strong>
+                <small>{tariff.description || t("wa_tariff_no_description")}</small>
+              </span>
+              <span class="option-row-meta">
+                <em>{tariffLimitLabel(tariff)}</em>
+                {#if selectedTariffKey === tariff.key}
+                  <CheckCircle2 size={18} />
+                {:else}
+                  <ArrowRight size={17} />
+                {/if}
+              </span>
+            </button>
+          {/each}
+        </div>
+        <Button
+          class="wide bottom-action payment-submit-button"
+          onclick={continueWithSelectedTariff}
+          disabled={!selectedTariffKey}
+        >
+          {t("wa_next")}
+          <ArrowRight size={17} />
+        </Button>
+      {:else}
+        <EmptyCard>{t("wa_no_tariff_change_options")}</EmptyCard>
+      {/if}
+    {:else if tariffMode}
+      {#if !singleTariffMode && !(subscription?.active && subscription?.tariff_key && tariffCatalog.some((t) => t.key === subscription.tariff_key))}
+        <button class="back-inline" type="button" onclick={backToTariffList}>
+          <ArrowLeft size={16} />
+          {t("wa_back_to_tariffs")}
+        </button>
+      {/if}
+      {#if hasMultipleTariffs && selectedTariff}
+        <p class="tariff-step-caption">
+          {t("wa_selected_tariff", { tariff: selectedTariff.title })}
+        </p>
+      {/if}
+      {#if selectedTariffPlans.length}
+        {#if showSubscriptionPurchaseDescription()}
+          <div class="subscription-purchase-description">
+            <p>{subscriptionPurchaseDescription}</p>
+          </div>
+        {/if}
+        {#if showHwidRenewalBlock()}
+          <label class="hwid-renewal-option">
+            <Checkbox
+              checked={renewHwidDevices}
+              ariaLabel={t("wa_hwid_devices_renewal_checkbox_aria")}
+              onCheckedChange={(checked) => (renewHwidDevices = checked)}
+            />
+            <span>
+              <strong>
+                {t("wa_hwid_devices_renewal_checkbox", {
+                  count: hwidRenewalCount(),
+                  price: hwidRenewalPriceLabel(),
+                })}
+              </strong>
+              <small>{hwidRenewalHint()}</small>
+              {#if showHwidDesyncNotice()}
+                <small class="hwid-renewal-warning">
+                  {t("wa_hwid_devices_desync_notice", {
+                    date: subscription.extra_hwid_devices_valid_until_text,
+                  })}
+                </small>
+              {/if}
+            </span>
+          </label>
+        {:else if showHwidRenewalUnavailableNote()}
+          <div class="subscription-purchase-description">
+            <p>
+              {t("wa_hwid_devices_renewal_unavailable", {
+                count: Number(subscription.extra_hwid_devices || 0),
+                date: subscription.extra_hwid_devices_valid_until_text || "",
+              })}
+            </p>
+          </div>
+        {/if}
+        <div class="period-grid period-grid-two-columns">
+          {#each selectedTariffPlans as plan}
+            <button
+              class:active={planKey(selectedPlan) === planKey(plan)}
+              class="period-card"
+              type="button"
+              onclick={() => (selectedPlan = plan)}
+            >
+              <strong>{planSubtitle(plan) || planDisplayTitle(plan)}</strong>
+              <span>{priceLabel(plan)}</span>
+              {#if planUnitHint(plan)}
+                <small>{planUnitHint(plan)}</small>
+              {/if}
+              {#if planKey(selectedPlan) === planKey(plan)}
+                <CheckCircle2 size={18} />
+              {/if}
+            </button>
+          {/each}
+        </div>
+        <div class="payment-divider" aria-hidden="true"></div>
+        {#if methods.length}
+          <PaymentMethodGrid
+            methods={paymentMethods}
+            {selectedMethod}
+            {t}
+            onSelect={(id) => (selectedMethod = id)}
+          />
+        {:else}
+          <EmptyCard>{t("wa_payment_methods_not_configured")}</EmptyCard>
+        {/if}
+        <Button
+          class="wide bottom-action payment-submit-button"
+          onclick={createPayment}
+          disabled={!selectedPlan || !paymentMethodSelected || payBusy}
+        >
+          {t("wa_pay")}
+          {selectedPlan ? paymentPriceLabel(selectedPlan) : ""}
+          <LockKeyhole size={17} />
+        </Button>
+      {:else}
+        <EmptyCard>{t("wa_no_tariff_change_options")}</EmptyCard>
+      {/if}
+    {:else}
+      <!--
+        Legacy / non-tariff mode (no JSON tariffs catalog OR traffic-only).
+        Previously this block was also reached *in addition* to the tariff
+        branch above, so users on legacy mode saw the period grid, payment
+        method grid and pay button duplicated.
+      -->
+      {#if showSubscriptionPurchaseDescription()}
+        <div class="subscription-purchase-description">
+          <p>{subscriptionPurchaseDescription}</p>
+        </div>
+      {/if}
+      {#if showHwidRenewalBlock()}
+        <label class="hwid-renewal-option">
+          <Checkbox
+            checked={renewHwidDevices}
+            ariaLabel={t("wa_hwid_devices_renewal_checkbox_aria")}
+            onCheckedChange={(checked) => (renewHwidDevices = checked)}
+          />
+          <span>
+            <strong>
+              {t("wa_hwid_devices_renewal_checkbox", {
+                count: hwidRenewalCount(),
+                price: hwidRenewalPriceLabel(),
+              })}
+            </strong>
+            <small>{hwidRenewalHint()}</small>
+            {#if showHwidDesyncNotice()}
+              <small class="hwid-renewal-warning">
+                {t("wa_hwid_devices_desync_notice", {
+                  date: subscription.extra_hwid_devices_valid_until_text,
+                })}
+              </small>
+            {/if}
+          </span>
+        </label>
+      {:else if showHwidRenewalUnavailableNote()}
+        <div class="subscription-purchase-description">
+          <p>
+            {t("wa_hwid_devices_renewal_unavailable", {
+              count: Number(subscription.extra_hwid_devices || 0),
+              date: subscription.extra_hwid_devices_valid_until_text || "",
+            })}
+          </p>
+        </div>
+      {/if}
+      <div class="period-grid period-grid-two-columns">
+        {#each plans as plan}
+          <button
+            class:active={planKey(selectedPlan) === planKey(plan)}
+            class="period-card"
+            type="button"
+            onclick={() => (selectedPlan = plan)}
+          >
+            <strong>{planDisplayTitle(plan)}</strong>
+            {#if planSubtitle(plan)}
+              <em>{planSubtitle(plan)}</em>
+            {/if}
+            <span>{priceLabel(plan)}</span>
+            {#if planUnitHint(plan)}
+              <small>{planUnitHint(plan)}</small>
+            {/if}
+            {#if planKey(selectedPlan) === planKey(plan)}
+              <CheckCircle2 size={18} />
+            {/if}
+          </button>
+        {/each}
+      </div>
+      <div class="payment-divider" aria-hidden="true"></div>
+      {#if methods.length}
+        <PaymentMethodGrid
+          methods={paymentMethods}
+          {selectedMethod}
+          {t}
+          onSelect={(id) => (selectedMethod = id)}
+        />
+      {:else}
+        <EmptyCard>{t("wa_payment_methods_not_configured")}</EmptyCard>
+      {/if}
+      <Button
+        class="wide bottom-action payment-submit-button"
+        onclick={createPayment}
+        disabled={!selectedPlan || !paymentMethodSelected || payBusy}
+      >
+        {t("wa_pay")}
+        {selectedPlan ? paymentPriceLabel(selectedPlan) : ""}
+        <LockKeyhole size={17} />
+      </Button>
+    {/if}
+  </div>
+</Dialog>
+
+<Dialog
+  open={paymentResultOpen}
+  title={t("wa_payment_checkout_title", {}, "Checkout")}
+  description={t("wa_payment_checkout_desc", {}, "Complete the payment with the details below.")}
+  closeLabel={t("wa_close")}
+  onclose={closePaymentResult}
+  class="payment-dialog-card"
+>
+  <div class="payment-dialog-body payment-checkout-body">
+    <div class="payment-checkout-summary">
+      <span class="payment-checkout-icon" aria-hidden="true"><QrCode size={22} /></span>
+      <div>
+        <strong>
+          {[
+            paymentResult?.display_amount || paymentResult?.amount,
+            paymentResult?.display_currency || paymentResult?.currency,
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        </strong>
+        <small
+          >{paymentResult?.provider} · {paymentResult?.payment_type || paymentResult?.method}</small
+        >
+      </div>
+    </div>
+
+    {#if paymentQrDataUrl}
+      <div class="payment-checkout-qr">
+        <img src={paymentQrDataUrl} alt={t("wa_payment_checkout_qr_alt", {}, "Payment QR code")} />
+      </div>
+    {/if}
+
+    <div class="payment-checkout-rows">
+      {#each checkoutRows(paymentResult) as row}
+        <div class="payment-checkout-row">
+          <span>{row.label}</span>
+          <strong title={row.value}>{row.value}</strong>
+          {#if row.copy}
+            <Button variant="secondary" onclick={() => copyPaymentText(row.copy)}>
+              <Copy size={15} />
+              {t("wa_copy")}
+            </Button>
+          {/if}
+        </div>
+      {/each}
+    </div>
+
+    {#if paymentResult?.payment_url}
+      <div class="payment-checkout-actions">
+        <Button class="wide bottom-action payment-submit-button" onclick={openPaymentResultLink}>
+          <ExternalLink size={17} />
+          {t("wa_payment_checkout_open", {}, "Open payment link")}
+        </Button>
+        <Button
+          variant="secondary"
+          class="wide"
+          onclick={() => copyPaymentText(paymentResult.payment_url)}
+        >
+          <Copy size={16} />
+          {t("wa_payment_checkout_copy_link", {}, "Copy payment link")}
+        </Button>
+      </div>
+    {/if}
+  </div>
+</Dialog>
+
+<Dialog
+  open={deviceConfirmOpen}
+  title={t("wa_devices_disconnect_title")}
+  description={t("wa_devices_disconnect_desc", {
+    device:
+      deviceToDisconnect?.display_name ||
+      t("wa_device_fallback_name", { index: deviceToDisconnect?.index || "" }),
+  })}
+  closeLabel={t("wa_close")}
+  onclose={closeDeviceDisconnectDialog}
+  class="payment-dialog-card"
+>
+  <div class="payment-dialog-body">
+    <Button
+      variant="outline"
+      class="wide device-danger-button"
+      onclick={disconnectDevice}
+      disabled={deviceDisconnectBusy}
+    >
+      <CircleX size={17} />
+      {t("wa_devices_disconnect_confirm")}
+    </Button>
+    <Button
+      variant="secondary"
+      class="wide"
+      onclick={closeDeviceDisconnectDialog}
+      disabled={deviceDisconnectBusy}
+    >
+      {t("wa_cancel")}
+    </Button>
+  </div>
+</Dialog>
+
+<Dialog
+  open={setPasswordOpen && !setPasswordPending}
+  title={t("wa_password_modal_title")}
+  description={t("wa_password_modal_desc")}
+  closeLabel={t("wa_close")}
+  onclose={closeSetPasswordDialog}
+  class="payment-dialog-card"
+>
+  <div class="payment-dialog-body">
+    <Input
+      bind:value={setPasswordValue}
+      type="password"
+      placeholder={t("wa_password_new_placeholder")}
+      autocomplete="new-password"
+    />
+    <Input
+      bind:value={setPasswordConfirm}
+      type="password"
+      placeholder={t("wa_password_confirm_placeholder")}
+      autocomplete="new-password"
+      on:keydown={(event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        requestSetPasswordCode();
+      }}
+    />
+    <Button
+      class="wide bottom-action payment-submit-button"
+      onclick={requestSetPasswordCode}
+      disabled={setPasswordBusy}
+    >
+      <LockKeyhole size={17} />
+      {t("wa_password_send_code_action")}
+    </Button>
+    {#if setPasswordStatus}
+      <StatusMessage error={setPasswordIsError}>{setPasswordStatus}</StatusMessage>
+    {/if}
+  </div>
+</Dialog>
+
+{#if setPasswordOpen && setPasswordPending}
+  <div class="email-code-fullscreen" role="dialog" aria-modal="true">
+    <EmailCodeScreen
+      bind:code={setPasswordCode}
+      email={setPasswordEmail || ""}
+      busy={setPasswordBusy}
+      resendCooldown={setPasswordResendCooldown}
+      status={setPasswordStatus}
+      isError={setPasswordIsError}
+      {t}
+      onBack={closeSetPasswordDialog}
+      onConfirm={confirmSetPassword}
+      onResend={requestSetPasswordCode}
+    />
+  </div>
+{/if}
+
+{#if linkEmailOpen && linkEmailPending}
+  <div class="email-code-fullscreen" role="dialog" aria-modal="true">
+    <EmailCodeScreen
+      bind:code={linkEmailCode}
+      email={linkEmailPending}
+      busy={linkEmailBusy}
+      resendCooldown={linkEmailResendCooldown}
+      status={linkEmailStatus}
+      isError={linkEmailIsError}
+      {t}
+      onBack={closeLinkEmailDialog}
+      onConfirm={verifyLinkEmailCode}
+      onResend={requestLinkEmailCode}
+    />
+  </div>
+{/if}
+
+<Dialog
+  open={linkEmailOpen && !linkEmailPending}
+  title={t("wa_link_email_modal_title")}
+  description={t("wa_link_email_modal_desc")}
+  closeLabel={t("wa_close")}
+  onclose={closeLinkEmailDialog}
+  class="payment-dialog-card"
+>
+  <div class="payment-dialog-body">
+    <div class="field-error-wrap">
+      <Tooltip.Root open={Boolean(linkEmailFieldError)}>
+        <Input
+          bind:value={linkEmailValue}
+          type="email"
+          placeholder={t("wa_email_placeholder")}
+          autocomplete="email"
+          class={linkEmailFieldError ? "input-error" : ""}
+          on:input={() => (linkEmailFieldError = "")}
+        />
+        {#if linkEmailFieldError}
+          <Tooltip.Trigger class="field-error-trigger" aria-label={linkEmailFieldError}>
+            <span class="field-error-icon" aria-hidden="true"><TriangleAlert size={18} /></span>
+          </Tooltip.Trigger>
+        {/if}
+        {#if linkEmailFieldError}
+          <Tooltip.Portal>
+            <Tooltip.Content class="field-error-tooltip">{linkEmailFieldError}</Tooltip.Content>
+          </Tooltip.Portal>
+        {/if}
+      </Tooltip.Root>
+    </div>
+    <Button
+      class="wide bottom-action payment-submit-button"
+      onclick={requestLinkEmailCode}
+      disabled={linkEmailBusy}
+    >
+      {t("wa_send_code_email")}
+    </Button>
+    {#if linkEmailStatus}
+      <StatusMessage error={linkEmailIsError}>{linkEmailStatus}</StatusMessage>
+    {/if}
+  </div>
+</Dialog>

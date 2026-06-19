@@ -1,2 +1,9 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+.gitattributes text eol=lf
+*.sh text eol=lf
+.github/workflows/*.yml text eol=lf
+deploy/docker/frontend/*.sh text eol=lf
+frontend/src/*.js text eol=lf
+frontend/src/**/*.js text eol=lf
+frontend/src/**/*.svelte text eol=lf
+frontend/scripts/*.mjs text eol=lf
+frontend/scripts/**/*.mjs text eol=lf

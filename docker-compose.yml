@@ -1,0 +1,164 @@
+services:
+  frontend:
+    container_name: remnawave-minishop-frontend
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile
+      target: frontend
+    image: ghcr.io/${IMAGE_NAMESPACE:-local}/remna-user-panel-frontend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    # Run with a real init (tini) as PID 1 so healthcheck child processes are
+    # reaped. nginx's master only waits on its own workers, not adopted
+    # orphans, so wget healthchecks would otherwise pile up as zombies.
+    init: true
+    environment:
+      IMAGE_TAG: ${IMAGE_TAG:-latest}
+      FRONTEND_PORT: ${FRONTEND_PORT:-8082}
+      FRONTEND_PUBLIC: 127.0.0.1:${FRONTEND_PORT:-8082}->80
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - remnawave-shop
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-8082}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/health | grep -q ok"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    container_name: remnawave-minishop-backend
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile
+      target: backend
+    image: ghcr.io/${IMAGE_NAMESPACE:-local}/remna-user-panel-backend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    # Run with a real init (tini) as PID 1 so the healthcheck process is reaped.
+    init: true
+    env_file:
+      - ${APP_ENV_FILE:-.env}
+    environment:
+      IMAGE_TAG: ${IMAGE_TAG:-latest}
+      POSTGRES_HOST: postgres
+      REDIS_URL: redis://redis:6379/0
+      WEBAPP_ENABLED: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - shop-data:/app/data
+      - ${COMPOSE_BACKUP_SOURCE:-.}:/app/compose-source:${COMPOSE_RESTORE_MODE:-rw}
+    networks:
+      - remnawave-shop
+    ports:
+      - "127.0.0.1:${WEB_SERVER_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  worker:
+    container_name: remnawave-minishop-worker
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile
+      target: worker
+    image: ghcr.io/${IMAGE_NAMESPACE:-local}/remna-user-panel-worker:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    # Real init (tini) as PID 1 for proper signal forwarding / zombie reaping.
+    init: true
+    env_file:
+      - ${APP_ENV_FILE:-.env}
+    environment:
+      IMAGE_TAG: ${IMAGE_TAG:-latest}
+      POSTGRES_HOST: postgres
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - shop-data:/app/data
+      - ${COMPOSE_BACKUP_SOURCE:-.}:/app/compose-source:ro
+    networks:
+      - remnawave-shop
+
+  migrate:
+    container_name: remnawave-minishop-migrate
+    image: ghcr.io/${IMAGE_NAMESPACE:-local}/remna-user-panel-backend:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile
+      target: backend
+    command: ["remnawave-minishop-migrate"]
+    env_file:
+      - ${APP_ENV_FILE:-.env}
+    environment:
+      IMAGE_TAG: ${IMAGE_TAG:-latest}
+      POSTGRES_HOST: postgres
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - shop-data:/app/data
+    networks:
+      - remnawave-shop
+
+  postgres:
+    image: postgres:17
+    container_name: remnawave-minishop-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - remnawave-shop
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: remnawave-minishop-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    networks:
+      - remnawave-shop
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+networks:
+  remnawave-shop:
+
+volumes:
+  postgres-data:
+    name: remnawave-minishop-db-data
+  redis-data:
+    name: remnawave-minishop-redis-data
+  shop-data:
+    name: remnawave-minishop-shop-data

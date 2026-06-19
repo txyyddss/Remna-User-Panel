@@ -1,0 +1,152 @@
+x-app-env-file: &app_env_file
+  - ${APP_ENV_FILE:-.env}
+
+x-app-environment: &app_environment
+  IMAGE_TAG: ${IMAGE_TAG:-latest}
+  POSTGRES_HOST: postgres
+  REDIS_URL: redis://redis:6379/0
+  WEBHOOK_BASE_URL: https://${WEBHOOK_HOST:?set WEBHOOK_HOST in .env}
+  SUBSCRIPTION_MINI_APP_URL: https://${MINIAPP_HOST:?set MINIAPP_HOST in .env}/
+
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - remnawave-shop
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    networks:
+      - remnawave-shop
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    image: ghcr.io/${IMAGE_NAMESPACE:-local}/remna-user-panel-backend:${IMAGE_TAG:-latest}
+    restart: "no"
+    command: ["remnawave-minishop-migrate"]
+    env_file: *app_env_file
+    environment:
+      <<: *app_environment
+    volumes:
+      - ./data:/app/data
+    networks:
+      - remnawave-shop
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  backend:
+    image: ghcr.io/${IMAGE_NAMESPACE:-local}/remna-user-panel-backend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    # Real init (tini) as PID 1 so the healthcheck process is reaped instead of
+    init: true
+    env_file: *app_env_file
+    environment:
+      <<: *app_environment
+      WEBAPP_ENABLED: ${WEBAPP_ENABLED:-true}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7}
+    volumes:
+      - ./data:/app/data
+      - ${COMPOSE_BACKUP_SOURCE:-.}:/app/compose-source:${COMPOSE_RESTORE_MODE:-rw}
+    networks:
+      - remnawave-shop
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  worker:
+    image: ghcr.io/${IMAGE_NAMESPACE:-local}/remna-user-panel-worker:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    init: true
+    env_file: *app_env_file
+    environment:
+      <<: *app_environment
+    volumes:
+      - ./data:/app/data
+      - ${COMPOSE_BACKUP_SOURCE:-.}:/app/compose-source:ro
+    networks:
+      - remnawave-shop
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  frontend:
+    image: ghcr.io/${IMAGE_NAMESPACE:-local}/remna-user-panel-frontend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    # Real init (tini) reaps wget healthcheck children (nginx master only waits
+    # on its own workers, not adopted orphans).
+    init: true
+    environment:
+      IMAGE_TAG: ${IMAGE_TAG:-latest}
+      FRONTEND_PUBLIC: https://${MINIAPP_HOST:?set MINIAPP_HOST in .env}/
+    networks:
+      - remnawave-shop
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/health | grep -q ok"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  newt:
+    image: fosrl/newt:latest
+    restart: unless-stopped
+    environment:
+      PANGOLIN_ENDPOINT: ${PANGOLIN_ENDPOINT:?set PANGOLIN_ENDPOINT in .env}
+      NEWT_ID: ${NEWT_ID:?set NEWT_ID in .env}
+      NEWT_SECRET: ${NEWT_SECRET:?set NEWT_SECRET in .env}
+      HEALTH_FILE: /tmp/healthy
+    networks:
+      - remnawave-shop
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+networks:
+  remnawave-shop:
+
+volumes:
+  postgres-data:
+    name: remnawave-minishop-db-data
+  redis-data:
+    name: remnawave-minishop-redis-data

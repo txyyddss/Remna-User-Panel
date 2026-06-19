@@ -1,0 +1,5 @@
+node_modules/
+package-lock.json
+bot/app/web/templates/
+**/*.min.js
+.pytest_cache/

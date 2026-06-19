@@ -1,0 +1,15 @@
+# Replace the example domains with your real webhook and Mini App hostnames.
+app.example.com {
+	encode zstd gzip
+
+	# Caddy sets X-Forwarded-For/Host/Proto for reverse_proxy by default.
+	# The backend uses X-Forwarded-For for payment provider IP allowlists.
+	reverse_proxy backend:8080
+}
+
+web.example.com {
+	encode zstd gzip
+
+	# Keep forwarded headers for Web App URL generation and request logging.
+	reverse_proxy frontend:80
+}
