@@ -2,6 +2,8 @@
 # .build-version file. The .git tree is consumed in this throwaway stage and
 # never copied into the runtime image.
 FROM alpine:3.24 AS version-builder
+# hadolint ignore=DL3018
+# Pinning exact apk package versions makes builds brittle; ignore this rule.
 RUN apk add --no-cache git
 WORKDIR /repo
 ARG REMNAWAVE_MINISHOP_BRANCH=""
@@ -67,6 +69,8 @@ FROM debian:bookworm-slim AS app-base
 ENV WEBASSETS_DIR=/app/internal/webassets
 WORKDIR /app
 
+## hadolint ignore=SC1091
+# The following RUN sources /etc/os-release which isn't available to hadolint's shellcheck mock.
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends ca-certificates curl gnupg; \

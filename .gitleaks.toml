@@ -1,7 +1,7 @@
 # Gitleaks configuration for Remna User Panel
 # https://github.com/gitleaks/gitleaks#configuration
 
-title: "Remna User Panel – Gitleaks config"
+title = "Remna User Panel – Gitleaks config"
 
 [allowlist]
   description = "Global allowlist for false positives"
