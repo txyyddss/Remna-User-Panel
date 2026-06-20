@@ -1559,7 +1559,7 @@ func subscriptionNotificationText(stage notifyStage, expireAt time.Time, _ strin
 }
 
 // fmtTrafficExhaustionText formats a traffic exhaustion notification message.
-func fmtTrafficExhaustionText(usedBytes, limitBytes int64, usedPct, _thresholdPct int) string {
+func fmtTrafficExhaustionText(usedBytes, limitBytes int64, usedPct, _ int) string {
 	usedGB := float64(usedBytes) / bytesPerGB
 	limitGB := float64(limitBytes) / bytesPerGB
 	return fmt.Sprintf("📊 You have used %.1f GB out of %.1f GB (%d%%). Your traffic is running low!", usedGB, limitGB, usedPct)

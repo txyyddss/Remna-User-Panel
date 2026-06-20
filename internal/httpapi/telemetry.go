@@ -99,7 +99,7 @@ func visitorCookie(w http.ResponseWriter, r *http.Request) string {
 		return ""
 	}
 	value := hex.EncodeToString(raw)
-	http.SetCookie(w, &http.Cookie{Name: visitorCookieName, Value: value, Path: "/", MaxAge: 86400 * 30, HttpOnly: true, Secure: requestIsHTTPS(r), SameSite: http.SameSiteLaxMode})
+	http.SetCookie(w, &http.Cookie{Name: visitorCookieName, Value: value, Path: "/", MaxAge: 86400 * 30, HttpOnly: true, Secure: requestIsHTTPS(r), SameSite: http.SameSiteLaxMode}) //nolint:gosec // G124: attributes set dynamically.
 	return value
 }
 

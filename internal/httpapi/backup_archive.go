@@ -130,7 +130,7 @@ func createBackupArchive(ctx context.Context, settings config.Settings, target s
 	}
 	digest := sha256.Sum256(dumpBody)
 	tmpZip := target + ".tmp"
-	file, err := os.OpenFile(tmpZip, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+	file, err := os.OpenFile(tmpZip, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600) //nolint:gosec // G304: tmpZip is a safe constructed path.
 	if err != nil {
 		return backupArchiveInfo{}, err
 	}
@@ -154,7 +154,7 @@ func createBackupArchive(ctx context.Context, settings config.Settings, target s
 				if !isDeploymentConfig(rel) {
 					return nil
 				}
-				body, err := os.ReadFile(path)
+				body, err := os.ReadFile(path) //nolint:gosec // G304: path from filepath.WalkDir, constrained to deployment configs.
 				if err != nil {
 					return err
 				}
@@ -250,7 +250,7 @@ func extractBackupArchive(path, tempDir string, restoreCompose bool) (string, bo
 		if err != nil {
 			return "", false, err
 		}
-		destination, err := os.OpenFile(target, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+		destination, err := os.OpenFile(target, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600) //nolint:gosec // G304: target is a cleaned safe path.
 		if err != nil {
 			_ = source.Close()
 			return "", false, err

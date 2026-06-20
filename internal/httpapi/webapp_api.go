@@ -118,7 +118,7 @@ func authTokenHandler(settings config.Settings, pool *pgxpool.Pool) http.Handler
 			return
 		}
 		setSessionCookies(w, r, token, csrf)
-		http.SetCookie(w, &http.Cookie{Name: telegramNonceCookieName, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: requestIsHTTPS(r), SameSite: http.SameSiteLaxMode})
+		http.SetCookie(w, &http.Cookie{Name: telegramNonceCookieName, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: requestIsHTTPS(r), SameSite: http.SameSiteLaxMode}) //nolint:gosec // G124: attributes set dynamically.
 		writeJSON(w, http.StatusOK, map[string]any{
 			"ok":         true,
 			"csrf_token": csrf,
@@ -136,7 +136,7 @@ func authTokenHandler(settings config.Settings, pool *pgxpool.Pool) http.Handler
 	}
 }
 
-func telegramLoginNonceHandler(_settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+func telegramLoginNonceHandler(_ config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		clientID := appsettings.NewStore(pool).String(r.Context(), "TELEGRAM_LOGIN_CLIENT_ID", os.Getenv("TELEGRAM_LOGIN_CLIENT_ID"))
 		if clientID == "" {
@@ -773,7 +773,7 @@ func allowedAdminSettingKeys(sections []map[string]any) map[string]bool {
 	return result
 }
 
-func mailSettingsFields(ctx context.Context, _settings config.Settings, store appsettings.Store) []map[string]any {
+func mailSettingsFields(ctx context.Context, _ config.Settings, store appsettings.Store) []map[string]any {
 	fields := []paymentSettingField{
 		{Key: "SMTP_ENABLED", Type: "bool", Label: "SMTP email enabled", Description: "Enable SMTP email delivery for verification codes, password resets, and notifications.", Subsection: "General", Fallback: false},
 		{Key: "SMTP_HOST", Type: "string", Label: "SMTP host", Description: "SMTP server hostname or IP address.", Subsection: "Server", Fallback: ""},

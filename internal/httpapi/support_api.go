@@ -39,7 +39,7 @@ func supportListHandler(settings config.Settings, pool *pgxpool.Pool, admin bool
 	}
 }
 
-func supportCreateHandler(settings config.Settings, pool *pgxpool.Pool, _admin bool) http.HandlerFunc {
+func supportCreateHandler(settings config.Settings, pool *pgxpool.Pool, _ bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		session, ok := requireSession(w, r, settings, pool, true)
 		if !ok {

@@ -110,7 +110,7 @@ This is an automated email from {{.Brand}}.`
 // emailTemplate returns the rendered email body for the given purpose.
 // It first tries the admin-configured Markdown template, falling back to
 // a language-appropriate default (English for "en" users, Chinese otherwise).
-func emailTemplate(ctx context.Context, store appsettings.Store, purpose, _language, fallback string, vars map[string]any) string {
+func emailTemplate(ctx context.Context, store appsettings.Store, purpose, _ string, fallback string, vars map[string]any) string {
 	var key string
 	switch purpose {
 	case emailCodePurposeVerify:
@@ -390,8 +390,8 @@ func passwordConfirmHandler(settings config.Settings, pool *pgxpool.Pool) http.H
 		}
 		code := strings.TrimSpace(payload.Code)
 		newPassword := strings.TrimSpace(payload.NewPassword)
-		if code == "" || !isValidPassword(newPassword) { //nolint:gosec // Error message, not a credential.
-			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_params", "password_requirements": "min_8_chars_upper_lower_digit"})
+		if code == "" || !isValidPassword(newPassword) {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_params", "password_requirements": "min_8_chars_upper_lower_digit"}) //nolint:gosec // G101: Error message, not a credential.
 			return
 		}
 

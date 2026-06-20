@@ -34,7 +34,7 @@ import (
 	"remna-user-panel/internal/webassets"
 )
 
-func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *pgxpool.Pool, _catalog *i18n.Catalog, assets webassets.Paths, registry *payments.Registry, panel *remnawave.Client) {
+func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *pgxpool.Pool, _ *i18n.Catalog, assets webassets.Paths, registry *payments.Registry, panel *remnawave.Client) {
 	router.Get("/api/tariffs/topup-options", webappPlansOptionsHandler(settings, pool, "topup"))
 	router.Get("/api/tariffs/change-options", webappPlansOptionsHandler(settings, pool, "change"))
 	router.Post("/api/tariffs/change", userTariffChangeHandler(settings, pool, panel))
@@ -2025,7 +2025,7 @@ func adminBackupUploadHandler(settings config.Settings, pool *pgxpool.Pool) http
 			return
 		}
 		backupDir := filepath.Join("data", "backups")
-		_ = os.MkdirAll(backupDir, 0o755)
+		_ = os.MkdirAll(backupDir, 0o750)
 		if !strings.HasSuffix(strings.ToLower(header.Filename), ".zip") {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "zip_required"})
 			return
@@ -2169,7 +2169,7 @@ func accountTelegramLinkHandler(settings config.Settings, pool *pgxpool.Pool) ht
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "telegram_link_failed"})
 			return
 		}
-		http.SetCookie(w, &http.Cookie{Name: telegramNonceCookieName, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: requestIsHTTPS(r), SameSite: http.SameSiteLaxMode})
+		http.SetCookie(w, &http.Cookie{Name: telegramNonceCookieName, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: requestIsHTTPS(r), SameSite: http.SameSiteLaxMode}) //nolint:gosec // G124: attributes set dynamically.
 		user, _ := loadWebappUser(r.Context(), pool, session.User.UserID, settings)
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "user": user, "csrf_token": session.Claims.CSRF})
 	}

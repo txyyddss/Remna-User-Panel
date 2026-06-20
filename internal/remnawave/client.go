@@ -134,9 +134,9 @@ func (c *Client) GetUsersByTelegramID(ctx context.Context, telegramID int64) ([]
 		return []map[string]any{}, nil
 	}
 	return out, err
-	// GetUsersByEmail retrieves all users associated with an email address.
 }
 
+// GetUsersByEmail retrieves all users associated with an email address.
 func (c *Client) GetUsersByEmail(ctx context.Context, email string) ([]map[string]any, error) {
 	var out []map[string]any
 	err := c.request(ctx, http.MethodGet, "/users/by-email/"+url.PathEscape(strings.TrimSpace(email)), nil, nil, &out)
@@ -144,18 +144,18 @@ func (c *Client) GetUsersByEmail(ctx context.Context, email string) ([]map[strin
 		return []map[string]any{}, nil
 	}
 	return out, err
-	// CreateUser creates a new user in the Remnawave panel.
 }
 
+// CreateUser creates a new user in the Remnawave panel.
 func (c *Client) CreateUser(ctx context.Context, payload map[string]any) (map[string]any, error) {
 	var out map[string]any
 	if err := c.request(ctx, http.MethodPost, "/users", nil, payload, &out); err != nil {
 		return nil, err
 	}
 	return out, nil
-	// UpdateUser updates an existing user in the Remnawave panel.
 }
 
+// UpdateUser updates an existing user in the Remnawave panel.
 func (c *Client) UpdateUser(ctx context.Context, payload map[string]any) (map[string]any, error) {
 	var out map[string]any
 	if err := c.request(ctx, http.MethodPatch, "/users", nil, payload, &out); err != nil {
@@ -223,9 +223,9 @@ func (c *Client) AddUsersToInternalSquad(ctx context.Context, squadUUID string, 
 		"users":     cleanStrings(userUUIDs),
 		"userUuids": cleanStrings(userUUIDs),
 	}, nil)
-	// RemoveUsersFromInternalSquad removes users from an internal squad.
 }
 
+// RemoveUsersFromInternalSquad removes users from an internal squad.
 func (c *Client) RemoveUsersFromInternalSquad(ctx context.Context, squadUUID string, userUUIDs []string) error {
 	return c.request(ctx, http.MethodDelete, "/internal-squads/"+url.PathEscape(strings.TrimSpace(squadUUID))+"/bulk-actions/remove-users", nil, map[string]any{
 		"users":     cleanStrings(userUUIDs),
@@ -268,18 +268,18 @@ func (c *Client) GetUserBandwidthStats(ctx context.Context, userUUID string, que
 	var out map[string]any
 	err := c.request(ctx, http.MethodGet, "/bandwidth-stats/users/"+url.PathEscape(strings.TrimSpace(userUUID)), query, nil, &out)
 	return out, err
-	// GetSubscriptionPageConfigs retrieves all subscription page configurations.
 }
 
+// GetSubscriptionPageConfigs retrieves all subscription page configurations.
 func (c *Client) GetSubscriptionPageConfigs(ctx context.Context) ([]map[string]any, error) {
 	var out any
 	if err := c.request(ctx, http.MethodGet, "/subscription-page-configs", nil, nil, &out); err != nil {
 		return nil, err
 	}
 	return mapsFromAny(out), nil
-	// GetSubscriptionPageConfigByUUID retrieves a single subscription page configuration by UUID.
 }
 
+// GetSubscriptionPageConfigByUUID retrieves a single subscription page configuration by UUID.
 func (c *Client) GetSubscriptionPageConfigByUUID(ctx context.Context, uuid string) (map[string]any, bool, error) {
 	var out map[string]any
 	err := c.request(ctx, http.MethodGet, "/subscription-page-configs/"+url.PathEscape(strings.TrimSpace(uuid)), nil, nil, &out)

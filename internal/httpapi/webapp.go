@@ -123,7 +123,7 @@ func webappRuntimeConfig(ctx context.Context, settings config.Settings, pool *pg
 	}
 }
 
-func i18nHandler(settings config.Settings, _pool *pgxpool.Pool, catalog *i18n.Catalog) http.HandlerFunc {
+func i18nHandler(settings config.Settings, _ *pgxpool.Pool, catalog *i18n.Catalog) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		i18nPayload := localePayload(catalog)
 		writeJSON(w, http.StatusOK, map[string]any{
