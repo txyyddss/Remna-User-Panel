@@ -2,7 +2,7 @@ name: Dependabot auto-merge
 
 on:
   workflow_run:
-    workflows: ["Quality, Docker package & release"]
+    workflows: ["Quality & Docker package"]
     types: [completed]
 
 permissions:
