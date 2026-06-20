@@ -733,7 +733,7 @@ func adminHealthHandler(settings config.Settings, pool *pgxpool.Pool, panel *rem
 			}
 			if !configured {
 				for _, path := range []string{"data/subscription-guides.json", "data/subscription-guides.example.json"} {
-					if body, err := os.ReadFile(path); err == nil {
+					if body, err := os.ReadFile(path); err == nil { //nolint:gosec // G304: fixed data file paths.
 						var object map[string]any
 						if json.Unmarshal(body, &object) == nil && validSubscriptionGuidesConfig(object) {
 							configured = true
@@ -2032,7 +2032,7 @@ func adminBackupUploadHandler(settings config.Settings, pool *pgxpool.Pool) http
 		}
 		filename := "uploaded-" + time.Now().Format("20060102-150405") + ".zip"
 		savePath := filepath.Join(backupDir, filename)
-		f, err := os.Create(savePath)
+		f, err := os.Create(savePath) //nolint:gosec // G304: savePath is constructed from safe inputs.
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "save_failed"})
 			return
@@ -2224,7 +2224,7 @@ func subscriptionGuidesHandler(settings config.Settings, pool *pgxpool.Pool, pan
 		if config == nil {
 			source = "file"
 			for _, configPath := range []string{filepath.Join("data", "subscription-guides.json"), filepath.Join("data", "subscription-guides.example.json")} {
-				if body, err := os.ReadFile(configPath); err == nil && json.Unmarshal(body, &config) == nil && validSubscriptionGuidesConfig(config) {
+				if body, err := os.ReadFile(configPath); err == nil && json.Unmarshal(body, &config) == nil && validSubscriptionGuidesConfig(config) { //nolint:gosec // G304: fixed data file paths.
 					break
 				}
 			}
