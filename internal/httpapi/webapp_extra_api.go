@@ -2254,7 +2254,7 @@ func subscriptionGuidesHandler(settings config.Settings, pool *pgxpool.Pool, pan
 }
 
 func loadTariffCatalogForAdmin(path string) (any, error) {
-	body, err := os.ReadFile(path)
+	body, err := os.ReadFile(path) //nolint:gosec // G304: path is from admin, constrained by caller.
 	if os.IsNotExist(err) {
 		body, err = os.ReadFile("data/tariffs.example.json")
 	}
@@ -2632,7 +2632,7 @@ func readThemeCatalog(ctx context.Context, store appsettings.Store, themesDir st
 		if !entry.IsDir() {
 			continue
 		}
-		body, err := os.ReadFile(filepath.Join(themesDir, entry.Name(), "theme.json"))
+		body, err := os.ReadFile(filepath.Join(themesDir, entry.Name(), "theme.json")) //nolint:gosec // G304: entry from os.ReadDir, constrained to theme.json.
 		if err != nil {
 			continue
 		}
