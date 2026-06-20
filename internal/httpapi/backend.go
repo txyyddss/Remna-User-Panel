@@ -160,7 +160,9 @@ func handleTelegramPaymentUpdate(ctx context.Context, settings config.Settings, 
 			return true, err
 		}
 		if command.RowsAffected() > 0 {
-			_, _ = pool.Exec(ctx, `UPDATE invite_visits SET converted_at=NOW() WHERE registered_user_id=(SELECT user_id FROM users WHERE telegram_id=$1) AND converted_at IS NULL`, update.Message.From.ID)
+			if _, err := pool.Exec(ctx, `UPDATE invite_visits SET converted_at=NOW() WHERE registered_user_id=(SELECT user_id FROM users WHERE telegram_id=$1) AND converted_at IS NULL`, update.Message.From.ID); err != nil {
+				slog.Error("failed to update invite_visits", "error", err)
+			}
 			recordMessageLog(ctx, pool, messageLogEntry{UserID: update.Message.From.ID, EventType: "telegram_stars_paid", Content: payment.InvoicePayload, Payload: map[string]any{"amount": payment.TotalAmount, "currency": payment.Currency}})
 		}
 		return true, nil
@@ -219,6 +221,25 @@ func callTelegramBotAPI(ctx context.Context, settings config.Settings, method st
 	return nil
 }
 
+// RegisterTelegramWebhook sets the Telegram Bot webhook URL so that payment
+// callbacks (Stars, etc.) are delivered to this backend. It is safe to call
+// repeatedly — Telegram deduplicates identical URLs.
+func RegisterTelegramWebhook(ctx context.Context, settings config.Settings) error {
+	webhookURL := settings.WebhookURL()
+	if webhookURL == "" || strings.TrimSpace(settings.BotToken) == "" {
+		return nil
+	}
+	payload := map[string]any{"url": webhookURL}
+	if settings.WebhookSecretToken != "" {
+		payload["secret_token"] = settings.WebhookSecretToken
+	}
+	if err := callTelegramBotAPI(ctx, settings, "setWebhook", payload); err != nil {
+		return fmt.Errorf("setWebhook %s: %w", webhookURL, err)
+	}
+	slog.Info("telegram webhook registered", "url", webhookURL)
+	return nil
+}
+
 func paymentWebhookHandler(settings config.Settings, pool *pgxpool.Pool, registry *payments.Registry, panel *remnawave.Client, providerID string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(io.LimitReader(r.Body, 2<<20))
@@ -231,7 +252,9 @@ func paymentWebhookHandler(settings config.Settings, pool *pgxpool.Pool, registr
 			writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "status": "accepted_not_processed"})
 			return
 		}
-		_, _ = pool.Exec(r.Context(), `UPDATE invite_visits v SET converted_at=NOW() FROM payment_orders p WHERE v.registered_user_id=p.user_id AND p.status IN ('paid','succeeded') AND v.converted_at IS NULL`)
+		if _, err := pool.Exec(r.Context(), `UPDATE invite_visits v SET converted_at=NOW() FROM payment_orders p WHERE v.registered_user_id=p.user_id AND p.status IN ('paid','succeeded') AND v.converted_at IS NULL`); err != nil {
+			slog.Error("failed to batch update invite_visits", "error", err)
+		}
 		provision, err := ProvisionPendingPaidOrders(r.Context(), settings, pool, panel, 10)
 		if err != nil {
 			slog.Warn("payment webhook accepted but provisioning is pending", "provider", providerID, "error", err, "scanned", provision.Scanned, "provisioned", provision.Provisioned, "failed", provision.Failed)

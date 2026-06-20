@@ -89,9 +89,7 @@ func CombinedRouter(settings config.Settings, pool *pgxpool.Pool, redisClient *r
 
 func bootstrapHandler(settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog, assets webassets.Paths) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scope := r.URL.Query().Get("i18n_scope")
-		_ = scope
-		i18nPayload := localePayload(r.Context(), pool, catalog)
+		i18nPayload := localePayload(catalog)
 		writeJSON(w, http.StatusOK, map[string]any{
 			"ok":       true,
 			"config":   webappRuntimeConfig(r.Context(), settings, pool, catalog, assets),
@@ -127,7 +125,7 @@ func webappRuntimeConfig(ctx context.Context, settings config.Settings, pool *pg
 
 func i18nHandler(settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		i18nPayload := localePayload(r.Context(), pool, catalog)
+		i18nPayload := localePayload(catalog)
 		writeJSON(w, http.StatusOK, map[string]any{
 			"ok":               true,
 			"default_language": settings.DefaultLanguage,
@@ -273,7 +271,7 @@ func indexHandler(settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Ca
 			return
 		}
 		configScript := scriptJSON("webapp-config", webappRuntimeConfig(r.Context(), settings, pool, catalog, assets))
-		i18nScript := scriptJSON("i18n", localePayload(r.Context(), pool, catalog))
+		i18nScript := scriptJSON("i18n", localePayload(catalog))
 		htmlBody := string(body)
 		htmlBody = strings.ReplaceAll(htmlBody, "<!-- WEBAPP_CONFIG_SCRIPT -->", configScript)
 		htmlBody = strings.ReplaceAll(htmlBody, "<!-- WEBAPP_I18N_SCRIPT -->", i18nScript)
@@ -290,9 +288,7 @@ func scriptJSON(id string, payload any) string {
 	return `<script id="` + html.EscapeString(id) + `" type="application/json">` + string(body) + `</script>`
 }
 
-func localePayload(ctx context.Context, pool *pgxpool.Pool, catalog *i18n.Catalog) map[string]map[string]string {
-	_ = ctx
-	_ = pool
+func localePayload(catalog *i18n.Catalog) map[string]map[string]string {
 	return catalog.Messages()
 }
 

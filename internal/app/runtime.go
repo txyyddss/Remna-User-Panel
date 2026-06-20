@@ -93,6 +93,13 @@ func (r *Runtime) StartBackend(ctx context.Context) error {
 	errCh := make(chan error, 1)
 	go func() {
 		slog.Info("HTTP server listening", "addr", server.Addr, "webapp_enabled", r.settings.WebAppEnabled)
+		// Register Telegram webhook after the server is up (best-effort).
+		go func() {
+			time.Sleep(2 * time.Second)
+			if err := httpapi.RegisterTelegramWebhook(context.Background(), r.settings); err != nil {
+				slog.Warn("failed to register telegram webhook", "error", err)
+			}
+		}()
 		errCh <- server.ListenAndServe()
 	}()
 

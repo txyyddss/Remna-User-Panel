@@ -65,11 +65,8 @@ services:
       - ${COMPOSE_BACKUP_SOURCE:-.}:/app/compose-source:ro
     networks:
       - remna-user-panel
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB} || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    # No healthcheck — the worker is a background task container without an HTTP
+    # endpoint; its liveness is managed by the container runtime / init process.
 
   migrate:
     container_name: remna-user-panel-migrate

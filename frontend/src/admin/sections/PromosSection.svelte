@@ -17,10 +17,9 @@
 
   const promosStore = getContext("promosStore");
 
-  $: ({ promos, promosTotal, promosPage, promosLoading, promoCreateOpen, promoDraft } =
+  $: ({ promos, promosTotal, promosLoading, promoCreateOpen, promoDraft } =
     $promosStore);
 
-  $: promosHasMore = promos.length < promosTotal;
   $: promoHeaders = [
     at("promo_col_code", {}, "Код"),
     at("promo_col_bonus", {}, "Бонус"),
@@ -91,13 +90,6 @@
         {/each}
       </tbody>
     </AdminTable>
-  {/if}
-  {#if promosHasMore}
-    <div style="padding: 12px; text-align: center;">
-      <AdminButton onclick={() => promosStore.setPage(promosPage + 1)}
-        >{at("btn_show_more", {}, "Показать еще")}</AdminButton
-      >
-    </div>
   {/if}
 </div>
 

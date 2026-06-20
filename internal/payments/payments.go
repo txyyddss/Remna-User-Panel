@@ -191,9 +191,7 @@ func (r *Registry) IDs() []string {
 }
 
 // Methods returns enabled and configured payment methods.
-func (r *Registry) Methods(ctx context.Context, language string, isAdmin bool) []Method {
-	_ = isAdmin
-	_ = language
+func (r *Registry) Methods(ctx context.Context, _language string, _isAdmin bool) []Method {
 	cfg := r.EffectiveConfig(ctx)
 	methods := []Method{}
 	if cfg.EZPay.Enabled && cfg.EZPay.BaseURL != "" && cfg.EZPay.PID != 0 && cfg.EZPay.Key != "" {
@@ -507,6 +505,10 @@ func parseMethod(id string) (paymentMethod, error) {
 	case ProviderBEPUSDT:
 		switch paymentType {
 		case "usdt.polygon", "usdt.arbitrum", "usdt.aptos":
+			return paymentMethod{Provider: provider, PaymentType: paymentType}, nil
+		}
+	case ProviderTelegramStars:
+		if paymentType == "xtr" {
 			return paymentMethod{Provider: provider, PaymentType: paymentType}, nil
 		}
 	}

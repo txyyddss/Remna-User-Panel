@@ -68,9 +68,45 @@ const defaultLoginTemplate = `# {{.Brand}}
 ---
 这是来自 {{.Brand}} 的自动邮件。`
 
+// English default templates used when the user's language is English and
+// the admin has not configured custom templates.
+const defaultVerifyTemplateEN = `# {{.Brand}}
+
+Your verification code is:
+
+**{{.Code}}**
+
+This code expires in **{{.ExpireMinutes}}** minutes. If you did not request this, please ignore.
+
+---
+This is an automated email from {{.Brand}}.`
+
+const defaultPasswordResetTemplateEN = `# {{.Brand}}
+
+You are resetting your password. Your verification code is:
+
+**{{.Code}}**
+
+This code expires in **{{.ExpireMinutes}}** minutes. If you did not request this, please ignore.
+
+---
+This is an automated email from {{.Brand}}.`
+
+const defaultLoginTemplateEN = `# {{.Brand}}
+
+Your login code is:
+
+**{{.Code}}**
+
+This code expires in **{{.ExpireMinutes}}** minutes. If you did not request this, please ignore.
+
+---
+This is an automated email from {{.Brand}}.`
+
 // emailTemplate returns the rendered email body for the given purpose.
-// It first tries the admin-configured Markdown template, falling back to the hardcoded default.
-func emailTemplate(ctx context.Context, store appsettings.Store, purpose, fallback string, vars map[string]any) string {
+// It first tries the admin-configured Markdown template, falling back to
+// a language-appropriate default (English for "en" users, Chinese otherwise).
+func emailTemplate(ctx context.Context, store appsettings.Store, purpose, language, fallback string, vars map[string]any) string {
 	var key string
 	switch purpose {
 	case emailCodePurposeVerify:
@@ -86,6 +122,54 @@ func emailTemplate(ctx context.Context, store appsettings.Store, purpose, fallba
 		}
 	}
 	return mail.RenderTemplate(fallback, vars)
+}
+
+// emailFallbackTemplate selects the language-appropriate default template.
+func emailFallbackTemplate(purpose, language string) string {
+	isEN := strings.HasPrefix(strings.ToLower(strings.TrimSpace(language)), "en")
+	switch purpose {
+	case emailCodePurposeVerify:
+		if isEN {
+			return defaultVerifyTemplateEN
+		}
+		return defaultVerifyTemplate
+	case emailCodePurposePasswordReset:
+		if isEN {
+			return defaultPasswordResetTemplateEN
+		}
+		return defaultPasswordResetTemplate
+	case emailCodePurposeLogin:
+		if isEN {
+			return defaultLoginTemplateEN
+		}
+		return defaultLoginTemplate
+	default:
+		return defaultVerifyTemplate
+	}
+}
+
+// emailSubject returns a localized email subject line.
+func emailSubject(brand, purpose, language string) string {
+	isEN := strings.HasPrefix(strings.ToLower(strings.TrimSpace(language)), "en")
+	switch purpose {
+	case emailCodePurposeVerify:
+		if isEN {
+			return fmt.Sprintf("%s — Verification Code", brand)
+		}
+		return fmt.Sprintf("%s — 邮箱验证码", brand)
+	case emailCodePurposePasswordReset:
+		if isEN {
+			return fmt.Sprintf("%s — Password Reset Code", brand)
+		}
+		return fmt.Sprintf("%s — 密码重置验证码", brand)
+	case emailCodePurposeLogin:
+		if isEN {
+			return fmt.Sprintf("%s — Login Code", brand)
+		}
+		return fmt.Sprintf("%s — 登录验证码", brand)
+	default:
+		return brand
+	}
 }
 
 // isMailEnabled checks if SMTP is configured and enabled.
@@ -155,8 +239,9 @@ func emailRequestHandler(settings config.Settings, pool *pgxpool.Pool) http.Hand
 		}
 
 		brand := store.String(r.Context(), "BRAND_NAME", "Remna")
-		subject := fmt.Sprintf("%s — 邮箱验证码", brand)
-		body := emailTemplate(r.Context(), store, emailCodePurposeVerify, defaultVerifyTemplate, map[string]any{
+		lang := session.User.LanguageCode
+		subject := emailSubject(brand, emailCodePurposeVerify, lang)
+		body := emailTemplate(r.Context(), store, emailCodePurposeVerify, lang, emailFallbackTemplate(emailCodePurposeVerify, lang), map[string]any{
 			"Brand":         brand,
 			"Code":          code,
 			"ExpireMinutes": emailCodeExpireMinutes,
@@ -263,8 +348,9 @@ func passwordRequestHandler(settings config.Settings, pool *pgxpool.Pool) http.H
 		}
 
 		brand := store.String(r.Context(), "BRAND_NAME", "Remna")
-		subject := fmt.Sprintf("%s — 密码重置验证码", brand)
-		body := emailTemplate(r.Context(), store, emailCodePurposePasswordReset, defaultPasswordResetTemplate, map[string]any{
+		lang := session.User.LanguageCode
+		subject := emailSubject(brand, emailCodePurposePasswordReset, lang)
+		body := emailTemplate(r.Context(), store, emailCodePurposePasswordReset, lang, emailFallbackTemplate(emailCodePurposePasswordReset, lang), map[string]any{
 			"Brand":         brand,
 			"Code":          code,
 			"ExpireMinutes": emailCodeExpireMinutes,
@@ -341,7 +427,9 @@ func passwordConfirmHandler(settings config.Settings, pool *pgxpool.Pool) http.H
 func emailLoginRequestHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var payload struct {
-			Email string `json:"email"`
+			Email        string `json:"email"`
+			Language     string `json:"language"`
+			ReferralCode string `json:"referral_code"`
 		}
 		if err := decodeJSONBody(r, &payload); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
@@ -394,8 +482,12 @@ func emailLoginRequestHandler(settings config.Settings, pool *pgxpool.Pool) http
 		}
 
 		brand := store.String(r.Context(), "BRAND_NAME", "Remna")
-		subject := fmt.Sprintf("%s — 登录验证码", brand)
-		body := emailTemplate(r.Context(), store, emailCodePurposeLogin, defaultLoginTemplate, map[string]any{
+		lang := normalizeWebLanguage(payload.Language, effectiveDefaultLanguage(r.Context(), pool, settings))
+		if lang == "" && userID != 0 {
+			_ = pool.QueryRow(r.Context(), "SELECT COALESCE(language_code,'') FROM users WHERE user_id=$1", userID).Scan(&lang)
+		}
+		subject := emailSubject(brand, emailCodePurposeLogin, lang)
+		body := emailTemplate(r.Context(), store, emailCodePurposeLogin, lang, emailFallbackTemplate(emailCodePurposeLogin, lang), map[string]any{
 			"Brand":         brand,
 			"Code":          code,
 			"ExpireMinutes": emailCodeExpireMinutes,
@@ -416,8 +508,9 @@ func emailLoginRequestHandler(settings config.Settings, pool *pgxpool.Pool) http
 func emailLoginVerifyHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var payload struct {
-			Email string `json:"email"`
-			Code  string `json:"code"`
+			Email        string `json:"email"`
+			Code         string `json:"code"`
+			ReferralCode string `json:"referral_code"`
 		}
 		if err := decodeJSONBody(r, &payload); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
@@ -445,6 +538,7 @@ func emailLoginVerifyHandler(settings config.Settings, pool *pgxpool.Pool) http.
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "user_not_found"})
 			return
 		}
+		bindReferralCode(r.Context(), pool, userID, payload.ReferralCode)
 
 		// Create session
 		manager := webappSessionManager(settings)
@@ -463,8 +557,9 @@ func emailLoginVerifyHandler(settings config.Settings, pool *pgxpool.Pool) http.
 func emailMagicLinkHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var payload struct {
-			Email string `json:"email"`
-			Token string `json:"token"`
+			Email        string `json:"email"`
+			Token        string `json:"token"`
+			ReferralCode string `json:"referral_code"`
 		}
 		if err := decodeJSONBody(r, &payload); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
@@ -499,6 +594,7 @@ func emailMagicLinkHandler(settings config.Settings, pool *pgxpool.Pool) http.Ha
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "user_not_found"})
 			return
 		}
+		bindReferralCode(r.Context(), pool, userID, payload.ReferralCode)
 
 		// Create session
 		manager := webappSessionManager(settings)

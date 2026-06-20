@@ -2,6 +2,8 @@ package db
 
 import (
 	"context"
+	"fmt"
+	"regexp"
 
 	"github.com/jackc/pgx/v5"
 
@@ -16,6 +18,12 @@ type Migration struct {
 
 func coreMigrations(settings config.Settings) []Migration {
 	defaultLanguage := settings.DefaultLanguage
+	// Double-check that defaultLanguage is safe for SQL DDL concatenation.
+	// normalizeLanguage in the config package restricts to [a-z-], but we
+	// add an additional safety net here as defense-in-depth.
+	if !regexp.MustCompile(`^[a-z0-9-]{1,20}$`).MatchString(defaultLanguage) {
+		panic(fmt.Sprintf("invalid default language code for SQL DDL: %q", defaultLanguage))
+	}
 	return []Migration{
 		{
 			ID: "core.0000_schema_migrations",

@@ -19,10 +19,7 @@ export function userInitials(user) {
 }
 
 export function userAvatarUrl(user) {
-  const cached = String(user?.avatar_url || "").trim();
-  if (cached) return cached;
-  const value = String(user?.telegram_photo_url || "").trim();
-  return value && !value.startsWith("/api/account/avatar") ? value : "";
+  return String(user?.telegram_photo_url || "").trim();
 }
 
 export function userTelegramProfileLink(user) {

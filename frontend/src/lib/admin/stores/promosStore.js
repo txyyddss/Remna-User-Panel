@@ -4,23 +4,15 @@ export function createPromosStore({ api, onToast }) {
   const state = writable({
     promos: [],
     promosTotal: 0,
-    promosPage: 0,
     promosLoading: false,
     promoCreateOpen: false,
     promoDraft: { code: "", bonus_days: 7, max_activations: 1, valid_days: 30 },
   });
 
-  const PROMOS_PAGE_SIZE = 25;
-
   async function loadPromos() {
     state.update((s) => ({ ...s, promosLoading: true }));
-    let currentPage = 0;
-    state.update((s) => {
-      currentPage = s.promosPage;
-      return s;
-    });
     try {
-      const data = await api(`/admin/promos?page=${currentPage}&page_size=${PROMOS_PAGE_SIZE}`);
+      const data = await api("/admin/promos");
       if (data?.ok) {
         state.update((s) => ({ ...s, promos: data.promos || [], promosTotal: data.total || 0 }));
       }
@@ -83,11 +75,6 @@ export function createPromosStore({ api, onToast }) {
     }
   }
 
-  function setPage(page) {
-    state.update((s) => ({ ...s, promosPage: page }));
-    loadPromos();
-  }
-
   function setCreateOpen(open) {
     state.update((s) => ({ ...s, promoCreateOpen: open }));
   }
@@ -104,9 +91,7 @@ export function createPromosStore({ api, onToast }) {
     createPromo,
     togglePromo,
     deletePromo,
-    setPage,
     setCreateOpen,
     updateDraft,
-    PROMOS_PAGE_SIZE,
   };
 }

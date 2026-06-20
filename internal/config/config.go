@@ -98,7 +98,7 @@ func Load() (Settings, error) {
 		BotToken:                    env("BOT_TOKEN", ""),
 		AdminEmail:                  strings.ToLower(env("ADMIN_EMAIL", "")),
 		AdminPassword:               env("ADMIN_PASSWORD", ""),
-		DefaultLanguage:             normalizeLanguage(env("DEFAULT_LANGUAGE", defaultLanguage)),
+		DefaultLanguage:             NormalizeLanguage(env("DEFAULT_LANGUAGE", defaultLanguage)),
 		DefaultCurrency:             env("DEFAULT_CURRENCY_SYMBOL", "USD"),
 		WebhookBaseURL:              webhookBaseURL,
 		WebhookSecretToken:          env("WEBHOOK_SECRET_TOKEN", ""),
@@ -132,13 +132,11 @@ func Load() (Settings, error) {
 			BaseURL:   strings.TrimRight(env("EZPAY_BASE_URL", ""), "/"),
 			PID:       envInt("EZPAY_PID", 0),
 			Key:       env("EZPAY_KEY", ""),
-			ReturnURL: "",
 		},
 		BEPUSDT: BEPUSDTSettings{
 			Enabled:   envBool("BEPUSDT_ENABLED", false),
 			BaseURL:   strings.TrimRight(env("BEPUSDT_BASE_URL", ""), "/"),
 			Token:     env("BEPUSDT_TOKEN", ""),
-			ReturnURL: "",
 		},
 		PaymentMethodsOrder:           splitCSV(env("PAYMENT_METHODS_ORDER", "")),
 		SubscriptionNotifyHoursBefore: envInt("SUBSCRIPTION_NOTIFY_HOURS_BEFORE", 0),
@@ -283,7 +281,7 @@ func splitCSV(raw string) []string {
 	return result
 }
 
-func normalizeLanguage(raw string) string {
+func NormalizeLanguage(raw string) string {
 	value := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(raw), "_", "-"))
 	if value == "" {
 		return defaultLanguage

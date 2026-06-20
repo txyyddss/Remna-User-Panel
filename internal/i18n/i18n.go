@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"remna-user-panel/internal/config"
 )
 
 // Catalog stores locale messages keyed by language code.
@@ -91,9 +93,5 @@ func (c *Catalog) Messages() map[string]map[string]string {
 }
 
 func normalizeLanguage(raw string) string {
-	value := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(raw), "_", "-"))
-	if value == "" {
-		return "zh"
-	}
-	return value
+	return config.NormalizeLanguage(raw)
 }

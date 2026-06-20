@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -21,70 +20,6 @@ import (
 	appsettings "remna-user-panel/internal/settings"
 	"remna-user-panel/internal/tariffs"
 )
-
-const bytesPerGB = 1024 * 1024 * 1024
-
-type paidPlan struct {
-	TariffKey         string   `json:"tariff_key"`
-	TariffName        string   `json:"tariff_name"`
-	Title             string   `json:"title"`
-	Description       string   `json:"description"`
-	BillingModel      string   `json:"billing_model"`
-	SaleMode          string   `json:"sale_mode"`
-	Months            int      `json:"months"`
-	TrafficGB         float64  `json:"traffic_gb"`
-	MonthlyGB         float64  `json:"monthly_gb"`
-	SquadUUIDs        []string `json:"squad_uuids"`
-	ExternalSquadUUID string   `json:"external_squad_uuid"`
-
-	Provider          string   `json:"provider"`
-}
-
-type accessGrantOptions struct {
-	Source          string
-	TrafficLimitGB  float64
-	TrafficStrategy string
-	SquadUUIDs      []string
-	SetTrafficLimit bool
-}
-
-const (
-	userTrafficOverridesSettingKey    = "ADMIN_USER_TRAFFIC_OVERRIDES"
-	panelSyncStatusSettingKey         = "ADMIN_PANEL_SYNC_STATUS"
-	userAutoRenewSettingKey           = "USER_AUTO_RENEW_OVERRIDES"
-	userNotifyExpiryEnabledKey        = "USER_NOTIFY_EXPIRY_ENABLED"
-	userNotifyExpiryDaysBeforeKey     = "USER_NOTIFY_EXPIRY_DAYS_BEFORE"
-	userNotifyTrafficEnabledKey       = "USER_NOTIFY_TRAFFIC_ENABLED"
-	userNotifyTrafficThresholdPctKey  = "USER_NOTIFY_TRAFFIC_THRESHOLD_PCT"
-	paymentProvisionLockNamespace     = int64(0x5257000000000000)
-)
-
-type userTrafficOverride struct {
-	PremiumUnlimited  bool   `json:"premium_unlimited_override"`
-	PremiumBonusBytes int64  `json:"premium_bonus_bytes"`
-	RegularUnlimited  bool   `json:"regular_unlimited_override"`
-	RegularBonusBytes int64  `json:"regular_bonus_bytes"`
-	UpdatedAt         string `json:"updated_at,omitempty"`
-}
-
-// ProvisionResult summarizes one paid-order provisioning pass.
-type ProvisionResult struct {
-	Scanned     int `json:"scanned"`
-	Provisioned int `json:"provisioned"`
-	Failed      int `json:"failed"`
-}
-
-// PanelSyncResult is persisted for the admin stats page and returned by manual sync.
-type PanelSyncResult struct {
-	Status              string   `json:"status"`
-	LastSyncTime        string   `json:"last_sync_time"`
-	UsersProcessed      int      `json:"users_processed"`
-	SubscriptionsSynced int      `json:"subscriptions_synced"`
-	PaymentsScanned     int      `json:"payments_scanned"`
-	PaymentsProvisioned int      `json:"payments_provisioned"`
-	PaymentsFailed      int      `json:"payments_failed"`
-	Errors              []string `json:"errors,omitempty"`
-}
 
 func panelUserForWebUser(ctx context.Context, pool *pgxpool.Pool, panel *remnawave.Client, user webappUser) (map[string]any, bool, error) {
 	if panel == nil || !panel.Configured(ctx) {
@@ -730,8 +665,6 @@ func panelUsername(user webappUser) string {
 	return base
 }
 
-var panelUsernameInvalid = regexp.MustCompile(`[^A-Za-z0-9_-]+`)
-
 func sanitizePanelUsername(value string) string {
 	value = panelUsernameInvalid.ReplaceAllString(strings.TrimSpace(value), "_")
 	value = strings.Trim(value, "_-")
@@ -841,19 +774,6 @@ func saveUserAutoRenew(ctx context.Context, pool *pgxpool.Pool, userID int64, en
 	}
 	return store.Upsert(ctx, userAutoRenewSettingKey, values)
 }
-
-// UserNotificationPrefs holds per-user notification preferences.
-type UserNotificationPrefs struct {
-	ExpiryEnabled       bool `json:"expiry_enabled"`
-	ExpiryDaysBefore    int  `json:"expiry_days_before"`
-	TrafficEnabled      bool `json:"traffic_enabled"`
-	TrafficThresholdPct int  `json:"traffic_threshold_pct"`
-}
-
-const (
-	defaultExpiryDaysBefore    = 3
-	defaultTrafficThresholdPct = 85
-)
 
 func loadUserNotificationPrefs(ctx context.Context, pool *pgxpool.Pool, userID int64) UserNotificationPrefs {
 	prefs := UserNotificationPrefs{
@@ -1425,11 +1345,6 @@ func mergePlanUpdate(update map[string]any, plan tariffs.Plan, cfg remnawave.Eff
 	}
 }
 
-const (
-	subscriptionNotificationsSentKey = "SUBSCRIPTION_NOTIFICATIONS_SENT"
-	subscriptionNotificationsLockKey = "subscription-notification-worker"
-)
-
 // RunSubscriptionNotifications checks active subscriptions and sends expiry
 // and traffic-exhaustion notifications. Users can toggle and configure each
 // notification type through their Web App settings. Notifications are only
@@ -1566,14 +1481,6 @@ func RunSubscriptionNotifications(ctx context.Context, settings config.Settings,
 		}
 	}
 	return notified, nil
-}
-
-type notifyStage struct {
-	key       string
-	daysLeft  int
-	hoursLeft int
-	isExpired bool
-	isPostExp bool
 }
 
 // subscriptionNotificationStagesWithOverrides allows overriding notification
