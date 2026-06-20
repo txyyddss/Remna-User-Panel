@@ -1,5 +1,5 @@
-import { DEMO_DATASET } from "./demoDataset.js";
-import { withDemoAvatar } from "./demoAvatars.js";
+const DEMO_DATASET = {};
+const withDemoAvatar = (user) => user;
 
 const DEMO_LANGUAGE_STORAGE_KEY = "rw_minishop_demo_language";
 const DEFAULT_DISPOSABLE_EMAIL_DOMAINS = [

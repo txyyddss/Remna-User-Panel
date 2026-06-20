@@ -1,8 +1,11 @@
 import { DEV_MOCK } from "./previewMock.js";
-import { DEMO_DATASET } from "./demoDataset.js";
 import SETTINGS_MANIFEST_SECTIONS from "./settingsManifest.generated.json";
-import { withDemoAvatar, withDemoAvatarDetail, withDemoAvatarTicket } from "./demoAvatars.js";
 import { readJsonScript } from "./browser.js";
+
+const DEMO_DATASET = {};
+const withDemoAvatar = (user) => user;
+const withDemoAvatarDetail = (detail) => detail;
+const withDemoAvatarTicket = (ticket) => ticket;
 
 const DEMO_LANGUAGE_STORAGE_KEY = "rw_minishop_demo_language";
 const DEMO_I18N_SCRIPT_ID = "i18n";
