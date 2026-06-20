@@ -24,8 +24,6 @@ title = "Remna User Panel – Gitleaks config"
   ]
 
 # Stop words – tokens containing these substrings are ignored
-[[allowlist.stopwords]]
-  description = "Ignore tokens containing common non-secret placeholders"
   stopwords = [
     "example",
     "sample",

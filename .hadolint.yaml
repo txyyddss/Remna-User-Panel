@@ -12,6 +12,9 @@ ignored:
   # DL3059: Multiple consecutive RUN instructions.
   # The multi-stage build is intentionally structured for clarity.
   - DL3059
+  # SC1091: Not following sourced file.
+  # The /etc/os-release file is not available to hadolint's shellcheck mock.
+  - SC1091
 
 override:
   style:
