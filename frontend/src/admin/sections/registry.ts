@@ -3,7 +3,6 @@ import {
   CreditCard,
   Database,
   FileText,
-  Languages,
   LayoutDashboard,
   LifeBuoy,
   Megaphone,
@@ -25,7 +24,6 @@ import SettingsSection from "./SettingsSection.svelte";
 import StatsSection from "./StatsSection.svelte";
 import SupportSection from "./SupportSection.svelte";
 import TariffsSection from "./TariffsSection.svelte";
-import TranslationsSection from "./TranslationsSection.svelte";
 import UsersSection from "./UsersSection.svelte";
 
 export interface AdminSectionDescriptor {
@@ -185,19 +183,6 @@ const CORE_ADMIN_SECTIONS: AdminSectionDescriptor[] = [
     fallbackSubtitle: "Логотип, темы и акцентные цвета Mini App",
     icon: Paintbrush,
     component: AppearanceSection,
-  },
-  {
-    id: "translations",
-    group: "system",
-    order: 30,
-    i18nKey: "nav_translations",
-    fallbackLabel: "Translations",
-    titleI18nKey: "section_translations_title",
-    fallbackTitle: "Translations",
-    subtitleI18nKey: "section_translations_subtitle",
-    fallbackSubtitle: "Runtime localization overrides",
-    icon: Languages,
-    component: TranslationsSection,
   },
   {
     id: "backups",

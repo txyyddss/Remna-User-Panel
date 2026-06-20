@@ -13,7 +13,8 @@ import (
 const (
 	messageLogRetentionHours   = 72
 	paymentOrderRetentionHours = 72
-	webhookEventRetentionHours = 72
+	webhookEventRetentionHours   = 72
+	telegramOutboxRetentionHours = 72
 	closedTicketRetentionHours = 24
 	pendingOrderExpireHours    = 1
 )
@@ -70,7 +71,14 @@ WHERE status='pending' AND created_at < $1`, pendingCutoff)
 		slog.Debug("data cleanup: deleted old processed webhook events", "count", result.RowsAffected())
 	}
 
-	// 4. Remove closed support tickets older than 24h from app_settings
+	// 4. Delete old completed Telegram outbox messages.
+	outboxCutoff := now.Add(-time.Duration(telegramOutboxRetentionHours) * time.Hour)
+	result, err = pool.Exec(ctx, "DELETE FROM telegram_outbox WHERE status IN ('sent','failed') AND COALESCE(sent_at,created_at) < $1", outboxCutoff)
+	if err != nil {
+		slog.Warn("data cleanup: failed to delete old telegram outbox messages", "error", err)
+	}
+
+	// 5. Remove closed support tickets older than 24h from app_settings.
 	ticketCutoff := now.Add(-time.Duration(closedTicketRetentionHours) * time.Hour)
 	if err := cleanupClosedTickets(ctx, pool, ticketCutoff); err != nil {
 		slog.Warn("data cleanup: failed to cleanup closed support tickets", "error", err)

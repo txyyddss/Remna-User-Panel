@@ -9,8 +9,7 @@ import (
 )
 
 // ProcessQueuedWebhookEvents processes queued webhook events.
-// For panel events (user.expires_in_*, user.expired, etc.), it triggers
-// subscription sync and notification delivery.
+// Telegram and payment callbacks are retained for asynchronous audit work.
 func ProcessQueuedWebhookEvents(ctx context.Context, pool *pgxpool.Pool, limit int) (int, error) {
 	if pool == nil {
 		return 0, nil
@@ -46,11 +45,7 @@ RETURNING w.event_id, picked.provider, picked.payload`, limit)
 		}
 		processed++
 
-		// Handle panel webhook events by triggering subscription sync
-		if provider == "panel" {
-			slog.Debug("webhook queue processed panel event", "event_id", eventID)
-		}
-		// Telegram events are queued for audit; actual bot handling is TBD
+		// Telegram delivery is handled synchronously; the queue is its audit record.
 		if provider == "telegram" {
 			slog.Debug("webhook queue processed telegram event", "event_id", eventID)
 		}

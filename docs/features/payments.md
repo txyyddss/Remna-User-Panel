@@ -1,9 +1,10 @@
 # 支付配置
 
-当前只保留两个支付 provider：
+当前只保留三个支付 provider：
 
 - EZPay：默认按 CNY 创建订单，服务端把 USD 套餐价按 USD/CNY 汇率换算为 CNY。
 - BEPUSDT：按 USD fiat 金额创建 USDT 订单。
+- Telegram Stars：按套餐的 `stars_price` 创建 XTR 数字商品订单。
 
 ## 下单安全
 

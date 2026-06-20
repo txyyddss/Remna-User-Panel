@@ -1,4 +1,4 @@
-import { readMagicLoginToken, readTelegramAuthStatus, clearAuthQuery } from "./authHelpers.js";
+import { readMagicLoginToken } from "./authHelpers.js";
 import { TELEGRAM_SDK_BOOT_TIMEOUT_MS } from "./constants.js";
 
 /**
@@ -19,8 +19,6 @@ export async function runWebappBoot({
   hasEmailCodeLoginDeeplink,
   finalizeMagicLogin,
   finalizeTelegramAuth,
-  setAuthStatus,
-  t,
   getInitDataForBoot,
   getToken,
   getCsrfToken,
@@ -43,26 +41,6 @@ export async function runWebappBoot({
 
   const magicToken = readMagicLoginToken();
   if (magicToken && (await finalizeMagicLogin(magicToken))) return;
-
-  const telegramAuthStatus = readTelegramAuthStatus();
-  if (telegramAuthStatus === "success") {
-    clearManualLogoutFlag();
-    clearAuthQuery();
-    try {
-      await loadData();
-      return;
-    } catch {
-      clearToken();
-    }
-  } else if (telegramAuthStatus) {
-    clearAuthQuery();
-    setAuthStatus(
-      telegramAuthStatus === "cancelled"
-        ? t("wa_auth_telegram_cancelled")
-        : t("wa_auth_telegram_not_confirmed"),
-      true
-    );
-  }
 
   const initData = getInitDataForBoot();
   if (initData) {

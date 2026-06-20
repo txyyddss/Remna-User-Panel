@@ -56,11 +56,11 @@ func RegisterWebAppRoutes(router chi.Router, settings config.Settings, pool *pgx
 	router.Get("/api/admin/payments/{payment_id}", adminPaymentDetailHandler(settings, pool, registry))
 	router.Get("/webapp-uploaded-logo/{filename}", serveUploadedLogo)
 	router.Get("/webapp-logo", serveWebAppLogo)
-	router.Get("/api/*", notImplementedAPI("unknown_api"))
-	router.Post("/api/*", notImplementedAPI("unknown_api"))
-	router.Put("/api/*", notImplementedAPI("unknown_api"))
-	router.Patch("/api/*", notImplementedAPI("unknown_api"))
-	router.Delete("/api/*", notImplementedAPI("unknown_api"))
+	router.Get("/api/*", unknownAPIHandler())
+	router.Post("/api/*", unknownAPIHandler())
+	router.Put("/api/*", unknownAPIHandler())
+	router.Patch("/api/*", unknownAPIHandler())
+	router.Delete("/api/*", unknownAPIHandler())
 	registerAssetRoutes(router, assets)
 	registerIndexRoutes(router, settings, pool, catalog, assets)
 }
@@ -103,12 +103,24 @@ func bootstrapHandler(settings config.Settings, pool *pgxpool.Pool, catalog *i18
 
 func webappRuntimeConfig(ctx context.Context, settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog, assets webassets.Paths) map[string]any {
 	store := appsettings.NewStore(pool)
+	logoURL := store.String(ctx, "WEBAPP_LOGO_URL", "")
+	faviconURL := store.String(ctx, "WEBAPP_FAVICON_URL", "")
+	useCustomFavicon := store.Bool(ctx, "WEBAPP_FAVICON_USE_CUSTOM", faviconURL != "")
+	if !useCustomFavicon {
+		faviconURL = logoURL
+	}
+	emailAuthEnabled := settings.AdminEmail != "" && settings.AdminPassword != ""
+	if store.Bool(ctx, "SMTP_ENABLED", false) && mailerConfigFromSettings(ctx, store).IsConfigured() {
+		emailAuthEnabled = true
+	}
 	return map[string]any{
 		"title": store.String(ctx, "WEBAPP_TITLE", "Subscription"), "primaryColor": store.String(ctx, "WEBAPP_PRIMARY_COLOR", "#00fe7a"),
 		"apiBase": "/api", "language": effectiveDefaultLanguage(ctx, pool, settings), "languages": languageOptions(catalog),
-		"emailAuthEnabled": settings.AdminEmail != "" && settings.AdminPassword != "", "logoUrl": store.String(ctx, "APPEARANCE_LOGO_URL", ""),
+		"emailAuthEnabled": emailAuthEnabled, "logoUrl": logoURL,
 		"telegramLoginClientId": store.String(ctx, "TELEGRAM_LOGIN_CLIENT_ID", os.Getenv("TELEGRAM_LOGIN_CLIENT_ID")),
-		"faviconUrl":            store.String(ctx, "APPEARANCE_FAVICON_URL", ""), "faviconUseCustom": store.String(ctx, "APPEARANCE_FAVICON_URL", "") != "",
+		"faviconUrl": faviconURL, "faviconUseCustom": useCustomFavicon,
+		"supportUrl": store.String(ctx, "SUPPORT_LINK", ""), "serverStatusUrl": store.String(ctx, "SERVER_STATUS_URL", ""),
+		"privacyPolicyUrl": store.String(ctx, "PRIVACY_POLICY_URL", ""), "userAgreementUrl": store.String(ctx, "USER_AGREEMENT_URL", ""),
 		"themesCatalog": readThemeCatalog(ctx, store, assets.ThemesDir),
 	}
 }
@@ -126,13 +138,9 @@ func i18nHandler(settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Cat
 	}
 }
 
-func notImplementedAPI(code string) http.HandlerFunc {
+func unknownAPIHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		status := http.StatusNotImplemented
-		if code == "auth_required" {
-			status = http.StatusUnauthorized
-		}
-		writeJSON(w, status, map[string]any{"ok": false, "error": code})
+		writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "unknown_api"})
 	}
 }
 
@@ -280,34 +288,9 @@ func scriptJSON(id string, payload any) string {
 }
 
 func localePayload(ctx context.Context, pool *pgxpool.Pool, catalog *i18n.Catalog) map[string]map[string]string {
-	payload := catalog.Messages()
-	if pool == nil {
-		return payload
-	}
-	raw, ok, _ := appsettings.NewStore(pool).Get(ctx, "TRANSLATION_OVERRIDES")
-	if !ok || len(raw) == 0 {
-		return payload
-	}
-	var overrides map[string]map[string]string
-	if err := json.Unmarshal(raw, &overrides); err != nil {
-		return payload
-	}
-	for lang, messages := range overrides {
-		lang = strings.ToLower(strings.ReplaceAll(strings.TrimSpace(lang), "_", "-"))
-		if lang == "" {
-			continue
-		}
-		if payload[lang] == nil {
-			payload[lang] = map[string]string{}
-		}
-		for key, value := range messages {
-			if strings.TrimSpace(key) == "" {
-				continue
-			}
-			payload[lang][key] = value
-		}
-	}
-	return payload
+	_ = ctx
+	_ = pool
+	return catalog.Messages()
 }
 
 func languageOptions(catalog *i18n.Catalog) []map[string]string {

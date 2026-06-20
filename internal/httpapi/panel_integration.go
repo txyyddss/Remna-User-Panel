@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"remna-user-panel/internal/config"
+	"remna-user-panel/internal/mail"
 	"remna-user-panel/internal/payments"
 	"remna-user-panel/internal/remnawave"
 	appsettings "remna-user-panel/internal/settings"
@@ -392,6 +393,9 @@ func RunPanelSync(ctx context.Context, settings config.Settings, pool *pgxpool.P
 		}
 		if found && stringValue(panelUser, "uuid") != "" {
 			result.SubscriptionsSynced++
+			cachePanelUserState(ctx, pool, user.UserID, panelUser)
+		} else {
+			_, _ = pool.Exec(ctx, "UPDATE users SET panel_status=NULL,panel_expire_at=NULL,panel_state_synced_at=NOW() WHERE user_id=$1", user.UserID)
 		}
 	}
 	if err := savePanelSyncStatus(ctx, pool, result); err != nil {
@@ -399,6 +403,25 @@ func RunPanelSync(ctx context.Context, settings config.Settings, pool *pgxpool.P
 		result.Errors = appendSyncError(result.Errors, err)
 	}
 	return result, nil
+}
+
+func cachePanelUserState(ctx context.Context, pool *pgxpool.Pool, userID int64, panelUser map[string]any) {
+	if pool == nil || userID == 0 {
+		return
+	}
+	traffic := mapValue(panelUser, "userTraffic")
+	used := int64Value(traffic, "lifetimeUsedTrafficBytes")
+	if used == 0 {
+		used = int64Value(traffic, "usedTrafficBytes")
+	}
+	status := strings.ToUpper(strings.TrimSpace(stringValue(panelUser, "status")))
+	expireAt := parsePanelTime(panelUser["expireAt"])
+	var expireValue any
+	if !expireAt.IsZero() {
+		expireValue = expireAt
+	}
+	_, _ = pool.Exec(ctx, `UPDATE users SET panel_status=$2,panel_expire_at=$3,panel_state_synced_at=NOW(),
+lifetime_used_traffic_bytes=$4,lifetime_used_traffic_synced_at=NOW() WHERE user_id=$1`, userID, emptyStringToNil(status), expireValue, used)
 }
 
 // LastPanelSyncStatus returns the most recent sync status payload for admin stats.
@@ -1479,6 +1502,8 @@ func RunSubscriptionNotifications(ctx context.Context, settings config.Settings,
 	}
 	notified := 0
 	store := appsettings.NewStore(pool)
+	notificationMailer := mail.NewMailer(mailerConfigFromSettings(ctx, store))
+	mailEnabled := store.Bool(ctx, "SMTP_ENABLED", false) && notificationMailer.IsConfigured()
 	notifyHoursBefore := store.Int(ctx, "SUBSCRIPTION_NOTIFY_HOURS_BEFORE", settings.SubscriptionNotifyHoursBefore)
 	notifyDaysBefore := store.Int(ctx, "SUBSCRIPTION_NOTIFY_DAYS_BEFORE", settings.SubscriptionNotifyDaysBefore)
 
@@ -1520,9 +1545,8 @@ func RunSubscriptionNotifications(ctx context.Context, settings config.Settings,
 							sent = true
 						}
 					}
-					if !sent && userEmail != "" && isEmailDeliveryConfigured(settings) {
-						// Email delivery placeholder: send via email when configured
-						sent = true
+					if !sent && userEmail != "" && mailEnabled {
+						sent = trySendSubscriptionEmail(ctx, pool, notificationMailer, user, store.String(ctx, "BRAND_NAME", "Remna"), text)
 					}
 					if sent {
 						recordSubscriptionNotification(ctx, pool, notificationKey)
@@ -1554,8 +1578,8 @@ func RunSubscriptionNotifications(ctx context.Context, settings config.Settings,
 								sent = true
 							}
 						}
-						if !sent && userEmail != "" && isEmailDeliveryConfigured(settings) {
-							sent = true
+						if !sent && userEmail != "" && mailEnabled {
+							sent = trySendSubscriptionEmail(ctx, pool, notificationMailer, user, store.String(ctx, "BRAND_NAME", "Remna"), text)
 						}
 						if sent {
 							recordSubscriptionNotification(ctx, pool, trafficKey)
@@ -1575,11 +1599,18 @@ func RunSubscriptionNotifications(ctx context.Context, settings config.Settings,
 				trialKey := fmt.Sprintf("%d:trial_traffic_depleted", user.UserID)
 				if !subscriptionNotificationAlreadySent(ctx, pool, trialKey, 48*time.Hour) {
 					text := "⚠️ Your trial traffic has been fully used. Upgrade to a paid plan to continue using the service."
+					sent := false
 					if chatID != 0 {
 						if err := sendTelegramText(ctx, settings, chatID, text); err == nil {
-							recordSubscriptionNotification(ctx, pool, trialKey)
-							notified++
+							sent = true
 						}
+					}
+					if !sent && userEmail != "" && mailEnabled {
+						sent = trySendSubscriptionEmail(ctx, pool, notificationMailer, user, store.String(ctx, "BRAND_NAME", "Remna"), text)
+					}
+					if sent {
+						recordSubscriptionNotification(ctx, pool, trialKey)
+						notified++
 					}
 				}
 			}
@@ -1678,10 +1709,20 @@ func fmtTrafficExhaustionText(usedBytes, limitBytes int64, usedPct, thresholdPct
 	return fmt.Sprintf("📊 You have used %.1f GB out of %.1f GB (%d%%). Your traffic is running low!", usedGB, limitGB, usedPct)
 }
 
-// isEmailDeliveryConfigured returns true when email delivery is configured.
-// Currently email delivery is not implemented; this is a placeholder for
-// future email notification support.
-func isEmailDeliveryConfigured(_ config.Settings) bool {
+func sendSubscriptionEmail(mailer *mail.Mailer, recipient, brand, text string) error {
+	return mailer.Send(mail.Message{
+		To:        []string{recipient},
+		Subject:   brand + " subscription notification",
+		BodyPlain: text,
+	})
+}
+
+func trySendSubscriptionEmail(ctx context.Context, pool *pgxpool.Pool, mailer *mail.Mailer, user webappUser, brand, text string) bool {
+	err := sendSubscriptionEmail(mailer, strings.TrimSpace(user.Email), brand, text)
+	if err == nil {
+		return true
+	}
+	recordMessageLog(ctx, pool, messageLogEntry{UserID: user.UserID, TargetUserID: user.UserID, EventType: "subscription_email_failed", Content: text, Payload: map[string]any{"error": err.Error()}})
 	return false
 }
 

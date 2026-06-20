@@ -1668,7 +1668,6 @@
     onSettingsSaved: handleAdminPersistedSaved,
     onTariffsSaved: handleAdminPersistedSaved,
     onThemesSaved: handleAdminPersistedSaved,
-    onTranslationsSaved: handleTranslationsSaved,
     routePrefix,
     brandTitle,
     brand,
@@ -2450,10 +2449,10 @@
       ...(Array.isArray(options.deletes) ? options.deletes : []),
     ]);
     return [
+      "WEBAPP_TITLE",
       "WEBAPP_LOGO_URL",
       "WEBAPP_FAVICON_URL",
       "WEBAPP_FAVICON_USE_CUSTOM",
-      "WEBAPP_LOGO_FAVICON_URL",
     ].some((key) => keys.has(key));
   }
 
@@ -2470,32 +2469,6 @@
       (!options?.deferFrontendReload && adminPayloadHasLogoChange(options));
     if (shouldReloadFrontend && typeof window !== "undefined") {
       window.location.reload();
-    }
-  }
-
-  async function handleTranslationsSaved(options = {}) {
-    await _refreshI18nScope("webapp");
-    await _refreshI18nScope("admin");
-    await handleAdminPersistedSaved({
-      ...options,
-      reloadFrontend: Array.isArray(options?.deletes) && options.deletes.length > 0,
-    });
-  }
-
-  async function _refreshI18nScope(scope) {
-    if (MOCK) return;
-    const apiBase = String(CFG.apiBase || "/api").replace(/\/+$/, "");
-    try {
-      const response = await fetch(`${apiBase}/i18n?scope=${encodeURIComponent(scope)}`, {
-        credentials: "same-origin",
-        headers: { Accept: "application/json" },
-      });
-      if (!response.ok) return;
-      const payload = await response.json();
-      if (payload?.ok && payload.i18n) i18n.mergeMessages(payload.i18n);
-      if (scope === "admin") adminI18nLoaded = true;
-    } catch (_error) {
-      void _error;
     }
   }
 

@@ -513,7 +513,7 @@
             {/each}
           </section>
         {/key}
-        {#if finalSubscriptionLink && !publicMode}
+        {#if finalSubscriptionLink}
           <div
             class="install-qr-divider motion-enter-card"
             style={installMotionStyle(qrDelayIndex, QR_DELAY_EXTRA_MS)}

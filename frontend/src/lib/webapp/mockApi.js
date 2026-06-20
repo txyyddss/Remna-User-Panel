@@ -1,154 +1,102 @@
 import { DEV_MOCK } from "./previewMock.js";
 import SETTINGS_MANIFEST_SECTIONS from "./settingsManifest.generated.json";
-import { readJsonScript } from "./browser.js";
 
 const DEMO_DATASET = {};
+const CURRENT_SETTINGS_KEYS = {
+  general: [
+    "DEFAULT_LANGUAGE",
+    "TELEGRAM_LOGIN_CLIENT_ID",
+    "SUPPORT_LINK",
+    "SERVER_STATUS_URL",
+    "PRIVACY_POLICY_URL",
+    "USER_AGREEMENT_URL",
+  ],
+  remnawave: [
+    "PANEL_API_URL",
+    "PANEL_API_KEY",
+    "PANEL_API_TOTAL_TIMEOUT_SECONDS",
+    "USER_TRAFFIC_LIMIT_GB",
+    "USER_TRAFFIC_STRATEGY",
+    "USER_SQUAD_UUIDS",
+    "USER_EXTERNAL_SQUAD_UUID",
+    "TRIAL_ENABLED",
+    "TRIAL_DURATION_DAYS",
+    "TRIAL_TRAFFIC_LIMIT_GB",
+    "TRIAL_TRAFFIC_STRATEGY",
+    "TRIAL_SQUAD_UUIDS",
+    "REFERRAL_WELCOME_BONUS_DAYS",
+  ],
+  features: ["MY_DEVICES_ENABLED", "SUPPORT_TICKETS_ENABLED", "SUBSCRIPTION_AUTO_RENEW_ENABLED"],
+  notifications: [
+    "SUBSCRIPTION_NOTIFICATIONS_ENABLED",
+    "SUBSCRIPTION_NOTIFY_DAYS_BEFORE",
+    "SUBSCRIPTION_NOTIFY_HOURS_BEFORE",
+  ],
+  telemetry: [
+    "TELEMETRY_ENABLED",
+    "TELEMETRY_RETENTION_HOURS",
+    "TELEMETRY_FINGERPRINT_REJECT_SCORE",
+  ],
+  payments: [
+    "WEBHOOK_BASE_URL",
+    "DEFAULT_CURRENCY_SYMBOL",
+    "FX_PROVIDER",
+    "FX_CUSTOM_USD_CNY",
+    "FX_CACHE_TTL_SECONDS",
+    "PAYMENT_METHODS_ORDER",
+    "STARS_ENABLED",
+    "STARS_USD_RATE",
+    "EZPAY_ENABLED",
+    "EZPAY_BASE_URL",
+    "EZPAY_PID",
+    "EZPAY_KEY",
+    "BEPUSDT_ENABLED",
+    "BEPUSDT_BASE_URL",
+    "BEPUSDT_TOKEN",
+  ],
+  mail: [
+    "SMTP_ENABLED",
+    "SMTP_HOST",
+    "SMTP_PORT",
+    "SMTP_ENCRYPTION",
+    "SMTP_USERNAME",
+    "SMTP_PASSWORD",
+    "SMTP_FROM_EMAIL",
+    "SMTP_FROM_NAME",
+    "BRAND_NAME",
+    "EMAIL_TEMPLATE_VERIFY",
+    "EMAIL_TEMPLATE_PASSWORD_RESET",
+    "EMAIL_TEMPLATE_LOGIN",
+  ],
+  subscription_guides: ["SUBSCRIPTION_GUIDES_ENABLED", "SUBSCRIPTION_GUIDES_CONFIG"],
+  appearance: [
+    "WEBAPP_TITLE",
+    "WEBAPP_LOGO_URL",
+    "WEBAPP_FAVICON_USE_CUSTOM",
+    "WEBAPP_FAVICON_URL",
+  ],
+};
+const BOOLEAN_SETTINGS = new Set([
+  "TRIAL_ENABLED",
+  "MY_DEVICES_ENABLED",
+  "SUPPORT_TICKETS_ENABLED",
+  "SUBSCRIPTION_AUTO_RENEW_ENABLED",
+  "SUBSCRIPTION_NOTIFICATIONS_ENABLED",
+  "TELEMETRY_ENABLED",
+  "STARS_ENABLED",
+  "EZPAY_ENABLED",
+  "BEPUSDT_ENABLED",
+  "SMTP_ENABLED",
+  "SUBSCRIPTION_GUIDES_ENABLED",
+  "WEBAPP_FAVICON_USE_CUSTOM",
+]);
+const JSON_SETTINGS = new Set(["SUBSCRIPTION_GUIDES_CONFIG"]);
 const withDemoAvatar = (user) => user;
 const withDemoAvatarDetail = (detail) => detail;
 const withDemoAvatarTicket = (ticket) => ticket;
 
 const DEMO_LANGUAGE_STORAGE_KEY = "rw_minishop_demo_language";
 const DEMO_I18N_SCRIPT_ID = "i18n";
-const DEMO_TRANSLATION_GROUP_ZHLES = [
-  ["admin_appearance_", "admin_appearance"],
-  ["admin_translations_", "admin_translations"],
-  ["admin_settings_field_payment_", "admin_settings_payments"],
-  ["admin_settings_field_freekassa_", "admin_settings_payments"],
-  ["admin_settings_field_cryptomus_", "admin_settings_payments"],
-  ["admin_settings_field_yookassa_", "admin_settings_payments"],
-  ["admin_settings_field_cloudpayments_", "admin_settings_payments"],
-  ["admin_settings_field_stripe_", "admin_settings_payments"],
-  ["admin_settings_field_platega_", "admin_settings_payments"],
-  ["admin_settings_field_tbank_", "admin_settings_payments"],
-  ["admin_settings_field_subscription_", "admin_settings_subscriptions"],
-  ["admin_settings_field_autorenew_", "admin_settings_subscriptions"],
-  ["admin_settings_field_trial_", "admin_settings_subscriptions"],
-  ["admin_settings_field_stars_", "admin_settings_subscriptions"],
-  ["admin_settings_field_", "admin_settings"],
-  ["admin_settings_", "admin_settings"],
-  ["admin_health_", "admin_settings_notifications"],
-  ["admin_support_", "admin_support"],
-  ["admin_tariff", "admin_tariffs"],
-  ["admin_payment", "admin_payments"],
-  ["admin_promo", "admin_promos_marketing"],
-  ["admin_ads_", "admin_promos_marketing"],
-  ["admin_broadcast_", "admin_promos_marketing"],
-  ["admin_user", "admin_users"],
-  ["admin_log", "admin_logs"],
-  ["admin_export", "admin_logs"],
-  ["admin_stats_", "admin_dashboard"],
-  ["admin_nav_", "admin_navigation"],
-  ["admin_section_", "admin_navigation"],
-  ["admin_", "admin_misc"],
-  ["wa_", "webapp"],
-  ["telegram_", "bot_menu"],
-  ["subscription_", "subscriptions"],
-  ["trial_", "subscriptions"],
-  ["autorenew_", "subscriptions"],
-  ["payment_", "payments"],
-  ["referral_", "referrals_promos"],
-  ["email_", "emails"],
-  ["user_", "auth_security"],
-];
-
-function defaultClone(value) {
-  try {
-    return structuredClone(value);
-  } catch {
-    return JSON.parse(JSON.stringify(value));
-  }
-}
-
-function readDemoI18nMessages() {
-  if (typeof document === "undefined") return {};
-  const payload = readJsonScript(DEMO_I18N_SCRIPT_ID);
-  return payload && typeof payload === "object" ? payload : {};
-}
-
-function translationValue(base, fallback) {
-  const effective = base || fallback || "";
-  return {
-    base: base || "",
-    fallback: fallback || "",
-    effective,
-    override: "",
-    overridden: false,
-    updated_at: null,
-    updated_by: null,
-  };
-}
-
-function messageFor(messages, lang, key) {
-  const value = messages?.[lang]?.[key];
-  return typeof value === "string" ? value : "";
-}
-
-function createLocaleTranslationItem(key, messages, languages) {
-  const fallback =
-    messageFor(messages, "zh", key) ||
-    Object.values(messages || {})
-      .map((bucket) => (bucket && typeof bucket === "object" ? bucket[key] : ""))
-      .find((value) => typeof value === "string" && value.length) ||
-    key;
-  const values = {};
-  for (const language of languages || []) {
-    const code = language?.code;
-    if (!code) continue;
-    values[code] = translationValue(messageFor(messages, code, key) || fallback, fallback);
-  }
-  if (!values.zh) values.zh = translationValue(fallback, fallback);
-  if (!values.en)
-    values.en = translationValue(messageFor(messages, "en", key) || fallback, fallback);
-  return {
-    key,
-    audience: key.startsWith("admin_") ? "internal" : "user",
-    values,
-  };
-}
-
-function targetTranslationGroup(groups, key) {
-  const exact = DEMO_TRANSLATION_GROUP_ZHLES.find(([prefix]) => key.startsWith(prefix));
-  const groupId = exact?.[1] || "common";
-  return (
-    (groups || []).find((group) => group.id === groupId) ||
-    (groups || []).find((group) => group.id === "common") ||
-    (groups || [])[0]
-  );
-}
-
-function withCurrentLocaleTranslations(payload) {
-  const messages = readDemoI18nMessages();
-  const groups = payload?.groups || [];
-  if (!groups.length || !messages || !Object.keys(messages).length) return payload;
-
-  const existingKeys = new Set(
-    groups.flatMap((group) => (group.items || []).map((item) => item.key))
-  );
-  const localeKeys = new Set();
-  for (const bucket of Object.values(messages)) {
-    if (!bucket || typeof bucket !== "object") continue;
-    for (const key of Object.keys(bucket)) localeKeys.add(key);
-  }
-
-  for (const key of Array.from(localeKeys).sort()) {
-    if (existingKeys.has(key)) continue;
-    const group = targetTranslationGroup(groups, key);
-    if (!group) continue;
-    group.items = group.items || [];
-    group.items.push(createLocaleTranslationItem(key, messages, payload.languages || []));
-    existingKeys.add(key);
-  }
-
-  for (const group of groups) {
-    group.items = (group.items || []).sort((a, b) => String(a.key).localeCompare(String(b.key)));
-  }
-  return payload;
-}
-
-function demoTranslationsPayload(clone = defaultClone) {
-  return withCurrentLocaleTranslations(clone(DEMO_DATASET.translations || {}));
-}
-
 let demoPromosState = null;
 let demoAdsState = null;
 let demoSupportTicketsState = null;
@@ -236,6 +184,22 @@ function demoProviderCurrencySupport() {
       directly_supports_default_currency: true,
       default_currency: "usd",
     },
+    {
+      id: "telegram_stars",
+      provider_key: "telegram_stars",
+      provider_label: "Telegram Stars",
+      settings_path: ["payments", "telegram_stars"],
+      label: "Telegram Stars",
+      enabled: true,
+      configured: true,
+      admin_only: false,
+      price_source: "stars_price",
+      currencies: ["XTR"],
+      accepts_any_currency: false,
+      supports_default_currency: true,
+      directly_supports_default_currency: false,
+      default_currency: "usd",
+    },
   ];
 }
 
@@ -249,10 +213,6 @@ function jsonBody(options) {
   } catch {
     return {};
   }
-}
-
-function isDeviceTopupSaleMode(value) {
-  return false;
 }
 
 function demoAuthConfig() {
@@ -476,75 +436,6 @@ function applyDemoTelegramLink(authData = {}) {
     },
     160
   );
-}
-
-function demoDeviceTopupPlan(body) {
-  const deviceCount = Number(body.device_count || body.months || 0);
-  const plans = DEV_MOCK.data.device_topup_options?.plans || [];
-  return (
-    plans.find(
-      (plan) =>
-        String(plan.tariff_key || "") === String(body.tariff_key || plan.tariff_key || "") &&
-        Number(plan.device_count || plan.months || 0) === deviceCount
-    ) ||
-    plans.find(
-      (plan) =>
-        Number(plan.device_count || plan.months || 0) === deviceCount
-    ) ||
-    null
-  );
-}
-
-function applyDemoDeviceTopup(deviceCount) {
-  const count = Math.max(1, Number(deviceCount || 0));
-  const subscription = DEV_MOCK.data.subscription || {};
-  const devicesPayload = DEV_MOCK.data.devices || {};
-  const topupOptions = DEV_MOCK.data.device_topup_options || {};
-  const devices = Array.isArray(devicesPayload.devices) ? devicesPayload.devices : [];
-  const currentMax = Number(
-    subscription.max_devices ||
-      devicesPayload.max_devices ||
-      topupOptions.max_devices ||
-      topupOptions.current_limit ||
-      0
-  );
-  const nextMax = currentMax > 0 ? currentMax + count : currentMax;
-  const currentExtra = Number(
-    subscription.extra_devices || topupOptions.extra_devices || 0
-  );
-  const nextExtra = currentExtra + count;
-  const validUntil =
-    subscription.extra_devices_valid_until_text ||
-    topupOptions.extra_devices_valid_until_text ||
-    subscription.end_date_text ||
-    "28.06.2026 12:00";
-
-  DEV_MOCK.data.subscription = {
-    ...subscription,
-    active: true,
-    can_topup_devices: true,
-    max_devices: nextMax,
-    extra_devices: nextExtra,
-    extra_devices_valid_until_text: validUntil,
-  };
-  DEV_MOCK.data.devices = {
-    ...devicesPayload,
-    ok: true,
-    enabled: true,
-    current_devices: devices.length || Number(devicesPayload.current_devices || 0),
-    max_devices: nextMax,
-    max_devices_label: nextMax > 0 ? String(nextMax) : devicesPayload.max_devices_label || "∞",
-  };
-  DEV_MOCK.data.device_topup_options = {
-    ...topupOptions,
-    ok: true,
-    enabled: true,
-    current_devices: devices.length || Number(topupOptions.current_devices || 0),
-    max_devices: nextMax,
-    current_limit: nextMax,
-    extra_devices: nextExtra,
-    extra_devices_valid_until_text: validUntil,
-  };
 }
 
 function writeDemoLanguage(language) {
@@ -804,17 +695,8 @@ function demoSettingsValuesByKey() {
 
 function demoRuntimeSettingValue(key) {
   const values = {
-    TRIAL_WITHOUT_TELEGRAM_ENABLED: DEV_MOCK.config.trialWithoutTelegramEnabled ?? true,
     REFERRAL_WELCOME_BONUS_DAYS:
       DEV_MOCK.config.referralWelcomeBonusDays ?? DEV_MOCK.data.referral?.welcome_bonus_days ?? 3,
-    REFERRAL_WELCOME_BONUS_WITHOUT_TELEGRAM_ENABLED:
-      DEV_MOCK.config.referralWelcomeWithoutTelegramEnabled ?? true,
-    REFERRAL_ONE_BONUS_PER_REFEREE:
-      DEV_MOCK.config.referralOneBonusPerReferee ??
-      DEV_MOCK.data.referral?.one_bonus_per_referee ??
-      false,
-    LEGACY_REFS: DEV_MOCK.config.legacyRefs ?? true,
-    DISPOSABLE_EMAIL_DOMAINS: DEV_MOCK.config.disposableEmailDomains || "",
   };
   return Object.prototype.hasOwnProperty.call(values, key) ? values[key] : undefined;
 }
@@ -826,7 +708,21 @@ function demoSettingsSections(clone) {
   // key from the dump-based dataset; fields absent there (e.g. a freshly added
   // section) simply show their placeholders.
   const demoValues = demoSettingsValuesByKey();
-  const sections = clone(SETTINGS_MANIFEST_SECTIONS);
+  const sections = SETTINGS_MANIFEST_SECTIONS.length
+    ? clone(SETTINGS_MANIFEST_SECTIONS)
+    : Object.entries(CURRENT_SETTINGS_KEYS).map(([id, keys]) => ({
+        id,
+        fields: keys.map((key) => ({
+          key,
+          type: BOOLEAN_SETTINGS.has(key) ? "bool" : JSON_SETTINGS.has(key) ? "json" : "input",
+          label: key,
+          description: "",
+          value: BOOLEAN_SETTINGS.has(key) ? false : JSON_SETTINGS.has(key) ? {} : "",
+          overridden: false,
+          env_locked: false,
+          source: "default",
+        })),
+      }));
   for (const section of sections) {
     for (const field of section.fields || []) {
       const demoField = demoValues.get(field.key);
@@ -858,7 +754,7 @@ function demoSettingsSections(clone) {
 function applyDemoSettingToMock(key, value) {
   if (key === "WEBAPP_TITLE") DEV_MOCK.config.title = value || "";
   if (key === "WEBAPP_LOGO_URL") DEV_MOCK.config.logoUrl = value || "";
-  if (key === "WEBAPP_FAVICON_URL" || key === "WEBAPP_LOGO_FAVICON_URL") {
+  if (key === "WEBAPP_FAVICON_URL") {
     DEV_MOCK.config.faviconUrl = value || DEV_MOCK.config.faviconUrl || "";
   }
   if (key === "WEBAPP_FAVICON_USE_CUSTOM") DEV_MOCK.config.faviconUseCustom = Boolean(value);
@@ -878,26 +774,10 @@ function applyDemoSettingToMock(key, value) {
     DEV_MOCK.config.trialTrafficStrategy = value || "NO_RESET";
     DEV_MOCK.data.settings.trial_traffic_strategy = value || "NO_RESET";
   }
-  if (key === "TRIAL_WITHOUT_TELEGRAM_ENABLED") {
-    DEV_MOCK.config.trialWithoutTelegramEnabled = Boolean(value);
-    DEV_MOCK.data.settings.trial_without_telegram_enabled = Boolean(value);
-  }
   if (key === "TRIAL_SQUAD_UUIDS") DEV_MOCK.config.trialSquadUuids = value || "";
   if (key === "REFERRAL_WELCOME_BONUS_DAYS") {
     DEV_MOCK.config.referralWelcomeBonusDays = Number(value || 0);
     DEV_MOCK.data.referral.welcome_bonus_days = Number(value || 0);
-  }
-  if (key === "REFERRAL_WELCOME_BONUS_WITHOUT_TELEGRAM_ENABLED") {
-    DEV_MOCK.config.referralWelcomeWithoutTelegramEnabled = Boolean(value);
-    DEV_MOCK.data.referral.welcome_bonus_without_telegram_enabled = Boolean(value);
-  }
-  if (key === "REFERRAL_ONE_BONUS_PER_REFEREE") {
-    DEV_MOCK.config.referralOneBonusPerReferee = Boolean(value);
-    DEV_MOCK.data.referral.one_bonus_per_referee = Boolean(value);
-  }
-  if (key === "LEGACY_REFS") DEV_MOCK.config.legacyRefs = Boolean(value);
-  if (key === "DISPOSABLE_EMAIL_DOMAINS") {
-    DEV_MOCK.config.disposableEmailDomains = value || "";
   }
 }
 
@@ -927,7 +807,14 @@ function demoApiResponse(path, cleanPath, options, context) {
   if (cleanPath === "/admin/broadcast/audience-counts") {
     return {
       ok: true,
-      counts: { all: 1280, active: 742, inactive: 538, expired: 311, never: 227 },
+      counts: {
+        all: 1280,
+        active: 742,
+        inactive: 538,
+        expired: 311,
+        active_never_connected: 46,
+        never: 227,
+      },
     };
   }
   if (cleanPath === "/admin/sync") return { ok: true, status: "queued" };
@@ -937,11 +824,11 @@ function demoApiResponse(path, cleanPath, options, context) {
       ok: true,
       alerts: [
         {
-          id: "provider_not_configured:wata",
+          id: "provider_not_configured:ezpay",
           severity: "error",
           sections: ["settings"],
           message_key: "provider_not_configured",
-          params: { provider: "Wata" },
+          params: { provider: "EZPay" },
         },
         {
           id: "mini_app_url_missing",
@@ -1140,7 +1027,11 @@ function demoApiResponse(path, cleanPath, options, context) {
     };
   }
   if (cleanPath === "/admin/settings")
-    return { ok: true, sections: demoSettingsSections(clone), features: [] };
+    return {
+      ok: true,
+      sections: demoSettingsSections(clone),
+      features: Object.keys(CURRENT_SETTINGS_KEYS),
+    };
 
   if (cleanPath === "/admin/tariffs") {
     if (method === "PUT") {
@@ -1167,13 +1058,6 @@ function demoApiResponse(path, cleanPath, options, context) {
         ]
       ),
     };
-  }
-
-  if (cleanPath === "/admin/translations" && method === "PATCH") {
-    return { ok: true, applied: 1, reverted: 0, file_written: false };
-  }
-  if (cleanPath === "/admin/translations") {
-    return { ok: true, ...demoTranslationsPayload(clone) };
   }
 
   if (cleanPath === "/admin/support/stats") return { ok: true, stats: demoSupportCounts() };
@@ -1435,9 +1319,9 @@ export async function mockApi(path, options = {}, context = {}) {
       telegram_id: 100200300,
       traffic_regular_gb: null,
       traffic_premium_gb: null,
-      provider: "yookassa",
+      provider: "ezpay",
       provider_payment_id: "2f3a7c9e-yk-preview",
-      yookassa_payment_id: "2f3a7c9e-yk-preview",
+      provider_payment_id: "ezpay-preview-12",
       idempotence_key: "admin-preview-payment-12",
       amount: 790,
       currency: "RUB",
@@ -1459,11 +1343,11 @@ export async function mockApi(path, options = {}, context = {}) {
       telegram_id: 87543123,
       traffic_regular_gb: 25,
       traffic_premium_gb: null,
-      provider: "platega",
-      provider_payment_id: "platega-demo-13",
+      provider: "bepusdt",
+      provider_payment_id: "bepusdt-demo-13",
       amount: 199,
       currency: "RUB",
-      status: "pending_platega",
+      status: "pending",
       description: "",
       subscription_duration_months: null,
       sale_mode: "traffic_package",
@@ -1577,7 +1461,7 @@ export async function mockApi(path, options = {}, context = {}) {
     ],
   };
   const mockAdminDailySeries = (() => {
-    const days = 730;
+    const days = 365;
     const out = [];
     const now = new Date();
     for (let i = 0; i < days; i++) {
@@ -1628,7 +1512,7 @@ export async function mockApi(path, options = {}, context = {}) {
   if (path === "/admin/stats") {
     return {
       ok: true,
-      currency_symbol: "RUB",
+      currency_symbol: "USD",
       users: {
         total_users: 248,
         active_today: 9,
@@ -1655,6 +1539,17 @@ export async function mockApi(path, options = {}, context = {}) {
         users_processed: 172,
         subscriptions_synced: 168,
       },
+      local_analytics: {
+        anonymous_visitors: 386,
+        invite_visits: 74,
+        rejected_welcome_rewards: 3,
+        heartbeat: {
+          date: new Date().toISOString().slice(0, 10),
+          version: "demo",
+          user_count_range: "101-500",
+        },
+      },
+      queue: { user_queue_size: 0, failed_messages: 0 },
       recent_payments: adminPayments.slice(0, 1),
     };
   }
@@ -1686,7 +1581,7 @@ export async function mockApi(path, options = {}, context = {}) {
         end_date: "2026-06-08T12:00:00Z",
         tariff_key: "standard",
         auto_renew_enabled: true,
-        provider: "yookassa",
+        provider: "ezpay",
       },
       subscriptions: [
         {
@@ -1710,7 +1605,7 @@ export async function mockApi(path, options = {}, context = {}) {
           payment_id: 12,
           amount: 790,
           currency: "RUB",
-          provider: "yookassa",
+          provider: "ezpay",
           status: "succeeded",
           created_at: "2026-05-01T14:15:00Z",
         },
@@ -1792,20 +1687,23 @@ export async function mockApi(path, options = {}, context = {}) {
     };
   }
   if (path === "/admin/appearance/logo") {
+    const body = jsonBody(options);
+    const file = options.body instanceof FormData ? options.body.get("file") : null;
+    const candidate = String(body.url || "").trim() || (file ? URL.createObjectURL(file) : "");
     return {
       ok: true,
-      logo_url: "/webapp-uploaded-logo/logo-0000000000000000.png",
-      favicon_url: "/webapp-favicon/0000000000000000/icon-180.png",
+      logo_url: candidate,
+      favicon_url: "",
     };
   }
   if (path === "/admin/appearance/favicon") {
+    const body = jsonBody(options);
+    const file = options.body instanceof FormData ? options.body.get("file") : null;
+    const candidate = String(body.url || "").trim() || (file ? URL.createObjectURL(file) : "");
     return {
       ok: true,
-      favicon_url: "/webapp-favicon/1111111111111111/icon-180.png",
-      variants: {
-        32: "/webapp-favicon/1111111111111111/icon-32.png",
-        apple_touch: "/webapp-favicon/1111111111111111/apple-touch-icon.png",
-      },
+      favicon_url: candidate,
+      variants: {},
     };
   }
   if (path === "/admin/backups") {
@@ -1867,337 +1765,6 @@ export async function mockApi(path, options = {}, context = {}) {
       },
     };
   }
-  if (path === "/admin/settings" && String(options.method || "GET").toUpperCase() === "PATCH") {
-    try {
-      const body = options?.body ? JSON.parse(String(options.body)) : {};
-      const updates = body.updates || {};
-      if (Object.prototype.hasOwnProperty.call(updates, "WEBAPP_TITLE")) {
-        DEV_MOCK.config.title = updates.WEBAPP_TITLE || "";
-      }
-      if (Object.prototype.hasOwnProperty.call(updates, "WEBAPP_LOGO_URL")) {
-        DEV_MOCK.config.logoUrl = updates.WEBAPP_LOGO_URL || "";
-      }
-      if (Object.prototype.hasOwnProperty.call(updates, "WEBAPP_FAVICON_URL")) {
-        DEV_MOCK.config.faviconUrl = updates.WEBAPP_FAVICON_URL || "";
-      }
-      if (Object.prototype.hasOwnProperty.call(updates, "WEBAPP_LOGO_FAVICON_URL")) {
-        DEV_MOCK.config.faviconUrl =
-          updates.WEBAPP_LOGO_FAVICON_URL || DEV_MOCK.config.faviconUrl || "";
-      }
-      if (Object.prototype.hasOwnProperty.call(updates, "WEBAPP_FAVICON_USE_CUSTOM")) {
-        DEV_MOCK.config.faviconUseCustom = Boolean(updates.WEBAPP_FAVICON_USE_CUSTOM);
-      }
-      if (Object.prototype.hasOwnProperty.call(updates, "TRIAL_ENABLED")) {
-        DEV_MOCK.config.trialEnabled = Boolean(updates.TRIAL_ENABLED);
-      }
-      if (Object.prototype.hasOwnProperty.call(updates, "TRIAL_DURATION_DAYS")) {
-        DEV_MOCK.config.trialDurationDays = updates.TRIAL_DURATION_DAYS;
-      }
-      if (Object.prototype.hasOwnProperty.call(updates, "TRIAL_TRAFFIC_LIMIT_GB")) {
-        DEV_MOCK.config.trialTrafficLimitGb = updates.TRIAL_TRAFFIC_LIMIT_GB;
-      }
-      if (Object.prototype.hasOwnProperty.call(updates, "TRIAL_TRAFFIC_STRATEGY")) {
-        DEV_MOCK.config.trialTrafficStrategy = updates.TRIAL_TRAFFIC_STRATEGY || "NO_RESET";
-      }
-      if (Object.prototype.hasOwnProperty.call(updates, "TRIAL_WITHOUT_TELEGRAM_ENABLED")) {
-        DEV_MOCK.config.trialWithoutTelegramEnabled = Boolean(
-          updates.TRIAL_WITHOUT_TELEGRAM_ENABLED
-        );
-        DEV_MOCK.data.settings.trial_without_telegram_enabled = Boolean(
-          updates.TRIAL_WITHOUT_TELEGRAM_ENABLED
-        );
-      }
-      if (Object.prototype.hasOwnProperty.call(updates, "TRIAL_SQUAD_UUIDS")) {
-        DEV_MOCK.config.trialSquadUuids = updates.TRIAL_SQUAD_UUIDS || "";
-      }
-      if (Object.prototype.hasOwnProperty.call(updates, "REFERRAL_WELCOME_BONUS_DAYS")) {
-        DEV_MOCK.config.referralWelcomeBonusDays = Number(updates.REFERRAL_WELCOME_BONUS_DAYS || 0);
-        DEV_MOCK.data.referral.welcome_bonus_days = Number(
-          updates.REFERRAL_WELCOME_BONUS_DAYS || 0
-        );
-      }
-      if (
-        Object.prototype.hasOwnProperty.call(
-          updates,
-          "REFERRAL_WELCOME_BONUS_WITHOUT_TELEGRAM_ENABLED"
-        )
-      ) {
-        DEV_MOCK.config.referralWelcomeWithoutTelegramEnabled = Boolean(
-          updates.REFERRAL_WELCOME_BONUS_WITHOUT_TELEGRAM_ENABLED
-        );
-        DEV_MOCK.data.referral.welcome_bonus_without_telegram_enabled = Boolean(
-          updates.REFERRAL_WELCOME_BONUS_WITHOUT_TELEGRAM_ENABLED
-        );
-      }
-      if (Object.prototype.hasOwnProperty.call(updates, "REFERRAL_ONE_BONUS_PER_REFEREE")) {
-        DEV_MOCK.config.referralOneBonusPerReferee = Boolean(
-          updates.REFERRAL_ONE_BONUS_PER_REFEREE
-        );
-        DEV_MOCK.data.referral.one_bonus_per_referee = Boolean(
-          updates.REFERRAL_ONE_BONUS_PER_REFEREE
-        );
-      }
-      if (Object.prototype.hasOwnProperty.call(updates, "LEGACY_REFS")) {
-        DEV_MOCK.config.legacyRefs = Boolean(updates.LEGACY_REFS);
-      }
-      if (Object.prototype.hasOwnProperty.call(updates, "DISPOSABLE_EMAIL_DOMAINS")) {
-        DEV_MOCK.config.disposableEmailDomains = updates.DISPOSABLE_EMAIL_DOMAINS || "";
-      }
-    } catch (_e) {
-      void _e;
-    }
-    return { ok: true, applied: 1, reverted: 0 };
-  }
-  if (path === "/admin/translations" && String(options.method || "GET").toUpperCase() === "PATCH") {
-    return { ok: true, applied: 1, reverted: 0, file_written: true };
-  }
-  if (path === "/admin/translations") {
-    return withCurrentLocaleTranslations({
-      ok: true,
-      path: "data/locales-overrides.json",
-      override_count: 1,
-      languages: [
-        { code: "zh", label: "中文", base: true },
-        { code: "en", label: "English", base: true },
-      ],
-      groups: [
-        {
-          id: "webapp",
-          title: "Mini App",
-          description: "User-facing Mini App strings.",
-          audience: "user",
-          items: [
-            {
-              key: "wa_nav_home",
-              audience: "user",
-              values: {
-                zh: {
-                  base: "Главная",
-                  fallback: "Главная",
-                  effective: "Главная",
-                  override: "",
-                  overridden: false,
-                },
-                en: {
-                  base: "Home",
-                  fallback: "Главная",
-                  effective: "Dashboard",
-                  override: "Dashboard",
-                  overridden: true,
-                },
-              },
-            },
-          ],
-        },
-        {
-          id: "admin",
-          title: "Admin panel",
-          description: "Admin navigation and labels.",
-          audience: "internal",
-          items: [
-            {
-              key: "admin_nav_settings",
-              audience: "internal",
-              values: {
-                zh: {
-                  base: "Настройки",
-                  fallback: "Настройки",
-                  effective: "Настройки",
-                  override: "",
-                  overridden: false,
-                },
-                en: {
-                  base: "Settings",
-                  fallback: "Настройки",
-                  effective: "Settings",
-                  override: "",
-                  overridden: false,
-                },
-              },
-            },
-          ],
-        },
-      ],
-    });
-  }
-  if (path === "/admin/settings")
-    return {
-      ok: true,
-      features: [],
-      sections: [
-        {
-          id: "general",
-          order: 1,
-          fields: [
-            {
-              key: "WEBAPP_TITLE",
-              type: "string",
-              section: "general",
-              label: "Web App title",
-              value: DEV_MOCK.config.title || "",
-              i18n_label_key: "admin_settings_field_webapp_title_label",
-              i18n_placeholder_key: "admin_settings_field_webapp_title_placeholder",
-              placeholder: "My subscription",
-            },
-          ],
-        },
-        {
-          id: "appearance",
-          order: 2,
-          fields: [
-            {
-              key: "WEBAPP_LOGO_URL",
-              type: "url",
-              section: "appearance",
-              label: "URL логотипа",
-              value: DEV_MOCK.config.logoUrl || "",
-            },
-            {
-              key: "WEBAPP_FAVICON_USE_CUSTOM",
-              type: "bool",
-              section: "appearance",
-              label: "Custom favicon",
-              value: Boolean(DEV_MOCK.config.faviconUseCustom),
-            },
-            {
-              key: "WEBAPP_FAVICON_URL",
-              type: "url",
-              section: "appearance",
-              label: "Favicon URL",
-              value: DEV_MOCK.config.faviconUrl || "",
-            },
-            {
-              key: "WEBAPP_LOGO_FAVICON_URL",
-              type: "url",
-              section: "appearance",
-              label: "Logo favicon URL",
-              value: DEV_MOCK.config.faviconUrl || "",
-            },
-          ],
-        },
-        {
-          id: "pricing",
-          order: 11,
-          fields: [
-            {
-              key: "TRIAL_ENABLED",
-              type: "bool",
-              section: "pricing",
-              subsection: "trial",
-              label: "Триал включён",
-              value: Boolean(DEV_MOCK.config.trialEnabled),
-            },
-            {
-              key: "TRIAL_DURATION_DAYS",
-              type: "int",
-              section: "pricing",
-              subsection: "trial",
-              label: "Длительность триала (дней)",
-              value: DEV_MOCK.config.trialDurationDays ?? 3,
-            },
-            {
-              key: "TRIAL_TRAFFIC_LIMIT_GB",
-              type: "float",
-              section: "pricing",
-              subsection: "trial",
-              label: "Лимит трафика триала (ГБ)",
-              value: DEV_MOCK.config.trialTrafficLimitGb ?? 5,
-            },
-            {
-              key: "TRIAL_TRAFFIC_STRATEGY",
-              type: "string",
-              section: "pricing",
-              subsection: "trial",
-              label: "Стратегия сброса трафика триала",
-              value: DEV_MOCK.config.trialTrafficStrategy || "NO_RESET",
-            },
-            {
-              key: "TRIAL_WITHOUT_TELEGRAM_ENABLED",
-              type: "bool",
-              section: "pricing",
-              subsection: "trial",
-              label: "Триал без Telegram",
-              value: DEV_MOCK.config.trialWithoutTelegramEnabled ?? true,
-            },
-            {
-              key: "TRIAL_SQUAD_UUIDS",
-              type: "string",
-              section: "pricing",
-              subsection: "trial",
-              label: "Internal Squads для триала",
-              value: DEV_MOCK.config.trialSquadUuids || "",
-            },
-            {
-              key: "REFERRAL_WELCOME_BONUS_DAYS",
-              type: "int",
-              section: "pricing",
-              subsection: "referral",
-              label: "Приветственный бонус (дней)",
-              value: DEV_MOCK.config.referralWelcomeBonusDays ?? 3,
-            },
-            {
-              key: "REFERRAL_WELCOME_BONUS_WITHOUT_TELEGRAM_ENABLED",
-              type: "bool",
-              section: "pricing",
-              subsection: "referral",
-              label: "Приветственный бонус без Telegram",
-              value: DEV_MOCK.config.referralWelcomeWithoutTelegramEnabled ?? true,
-            },
-            {
-              key: "REFERRAL_ONE_BONUS_PER_REFEREE",
-              type: "bool",
-              section: "pricing",
-              subsection: "referral",
-              label: "Один бонус на приглашённого",
-              value: Boolean(DEV_MOCK.config.referralOneBonusPerReferee),
-            },
-            {
-              key: "LEGACY_REFS",
-              type: "bool",
-              section: "pricing",
-              subsection: "referral",
-              label: "Поддержка старых ref-ссылок",
-              value: DEV_MOCK.config.legacyRefs ?? true,
-            },
-            {
-              key: "DISPOSABLE_EMAIL_DOMAINS",
-              type: "text",
-              section: "pricing",
-              subsection: "referral",
-              label: "Disposable email домены",
-              value: DEV_MOCK.config.disposableEmailDomains || "",
-            },
-            ...[
-              ["MONTH_1_ENABLED", "bool", true],
-              ["RUB_PRICE_1_MONTH", "float", 200],
-              ["REFERRAL_BONUS_DAYS_INVITER_1_MONTH", "int", 3],
-              ["REFERRAL_BONUS_DAYS_REFEREE_1_MONTH", "int", 1],
-              ["MONTH_3_ENABLED", "bool", true],
-              ["RUB_PRICE_3_MONTHS", "float", 600],
-              ["REFERRAL_BONUS_DAYS_INVITER_3_MONTHS", "int", 7],
-              ["REFERRAL_BONUS_DAYS_REFEREE_3_MONTHS", "int", 3],
-              ["MONTH_6_ENABLED", "bool", false],
-              ["RUB_PRICE_6_MONTHS", "float", 1200],
-              ["REFERRAL_BONUS_DAYS_INVITER_6_MONTHS", "int", 15],
-              ["REFERRAL_BONUS_DAYS_REFEREE_6_MONTHS", "int", 7],
-              ["MONTH_12_ENABLED", "bool", false],
-              ["RUB_PRICE_12_MONTHS", "float", 2400],
-              ["REFERRAL_BONUS_DAYS_INVITER_12_MONTHS", "int", 30],
-              ["REFERRAL_BONUS_DAYS_REFEREE_12_MONTHS", "int", 15],
-              ["TRAFFIC_PACKAGES", "string", "10:99,50:399"],
-              ["STARS_USD_RATE", "float", 100],
-            ].map(([key, type, value]) => ({
-              key,
-              type,
-              section: "pricing",
-              subsection: "legacy_tariffs",
-              label: key,
-              value,
-            })),
-          ],
-        },
-      ],
-    };
   if (cleanPath === "/admin/support/stats") {
     return {
       ok: true,
@@ -2335,8 +1902,8 @@ export async function mockApi(path, options = {}, context = {}) {
       auto_renew_available: true,
       auto_renew_can_enable: true,
       auto_renew_provider_label:
-        DEV_MOCK.data.subscription?.auto_renew_provider_label || "CloudPayments",
-      provider: DEV_MOCK.data.subscription?.provider || "cloudpayments",
+        DEV_MOCK.data.subscription?.auto_renew_provider_label || "Telegram Stars",
+      provider: DEV_MOCK.data.subscription?.provider || "telegram_stars",
     };
     return {
       ok: true,
@@ -2349,6 +1916,8 @@ export async function mockApi(path, options = {}, context = {}) {
   if (path === "/subscription-guides") return clone(DEV_MOCK.data.subscription_guides);
   if (cleanPath.startsWith("/subscription-guides/public/")) {
     const shareToken = decodeURIComponent(cleanPath.split("/").pop() || "");
+    if (!/^[a-f0-9]{32}$/i.test(shareToken))
+      return { ok: false, error: "share_not_found", status: 404 };
     const subscription = clone(DEV_MOCK.data.subscription);
     subscription.install_share_token = shareToken;
     subscription.share_url = `${window.location.origin}/s/${shareToken}`;
@@ -2421,8 +1990,6 @@ export async function mockApi(path, options = {}, context = {}) {
     };
   }
   if (path === "/devices") return clone(DEV_MOCK.data.devices);
-  if (path === "/devices/topup-options")
-    return clone(DEV_MOCK.data.device_topup_options || { ok: true, plans: [] });
   if (cleanPath === "/tariffs/topup-options") {
     const kind =
       new URLSearchParams(String(path || "").split("?")[1] || "").get("kind") || "regular";
@@ -2523,7 +2090,8 @@ export async function mockApi(path, options = {}, context = {}) {
   }
   if (path === "/account/telegram/link" && String(options.method || "").toUpperCase() === "POST") {
     const body = jsonBody(options);
-    applyDemoTelegramLink(body.auth_data || {});
+    if (!body.init_data && !body.id_token) return { ok: false, error: "invalid_telegram_auth" };
+    applyDemoTelegramLink({});
     return { ok: true, csrf_token: "local-preview-csrf" };
   }
   if (
@@ -2549,25 +2117,6 @@ export async function mockApi(path, options = {}, context = {}) {
   }
   if (path === "/payments" && String(options.method || "").toUpperCase() === "POST") {
     const body = jsonBody(options);
-    if (isDeviceTopupSaleMode(body.sale_mode)) {
-      const plan = demoDeviceTopupPlan(body);
-      const deviceCount = Number(
-        body.device_count || plan?.device_count || body.months || 1
-      );
-      const paymentId = ++demoPaymentSequence;
-      demoPaymentStatuses.set(String(paymentId), {
-        status: "pending_yookassa",
-        paid: false,
-        sale_mode: body.sale_mode || "ip_devices",
-        device_count: deviceCount,
-        applied: false,
-      });
-      return {
-        ok: true,
-        action: "invoice_sent",
-        payment_id: paymentId,
-      };
-    }
     return {
       ok: true,
       action: "open_link",
@@ -2579,10 +2128,6 @@ export async function mockApi(path, options = {}, context = {}) {
     const paymentId = String(path.split("/").pop());
     const status = demoPaymentStatuses.get(paymentId);
     if (status) {
-      if (!status.applied && isDeviceTopupSaleMode(status.sale_mode)) {
-        applyDemoDeviceTopup(status.device_count);
-        status.applied = true;
-      }
       status.status = "succeeded";
       status.paid = true;
       return {
@@ -2595,7 +2140,7 @@ export async function mockApi(path, options = {}, context = {}) {
     return {
       ok: true,
       payment_id: Number(path.split("/").pop()),
-      status: "pending_yookassa",
+      status: "pending",
       paid: false,
     };
   }

@@ -95,7 +95,6 @@ COPY --from=version-builder /build-tag /app/.build-tag
 COPY --from=version-builder /build-commit /app/.build-commit
 COPY --from=version-builder /build-provenance /app/.build-provenance
 RUN mkdir -p /app/logs /app/data \
-    && if [ ! -f /app/data/locales-overrides.json ]; then printf '{}\n' > /app/data/locales-overrides.json; fi \
     && chown -R appuser:appuser /app/logs /app/data /app/internal/webassets
 
 USER appuser

@@ -485,8 +485,8 @@ export const DEV_MOCK = {
       auto_renew_enabled: false,
       auto_renew_available: false,
       auto_renew_can_enable: false,
-      auto_renew_provider_label: "CloudPayments",
-      provider: "cloudpayments",
+      auto_renew_provider_label: "Telegram Stars",
+      provider: "telegram_stars",
       max_devices: 5,
     },
     subscription_guides: {
@@ -541,11 +541,14 @@ export const DEV_MOCK = {
       { months: 12, price: 2690, currency: "RUB", title: "12 месяцев" },
     ],
     payment_methods: [
-      { id: "cloudpayments", name: "CloudPayments", icon: "CreditCard" },
-      { id: "yookassa", name: "Карта", icon: "CreditCard" },
-      { id: "platega_sbp", name: "Telegram Pay", icon: "CreditCard" },
-      { id: "cryptopay", name: "Криптовалюта", icon: "Bitcoin" },
-      { id: "freekassa", name: "Другие способы", icon: "Smartphone" },
+      { id: "ezpay:alipay", provider: "ezpay", name: "Alipay", icon: "CreditCard" },
+      { id: "bepusdt:usdt", provider: "bepusdt", name: "USDT", icon: "Bitcoin" },
+      {
+        id: "telegram_stars",
+        provider: "telegram_stars",
+        name: "Telegram Stars",
+        icon: "Sparkles",
+      },
     ],
     referral: {
       code: "ABCD1234",
@@ -621,7 +624,6 @@ function applyDemoDataset() {
     tariff_change_options:
       DEMO_DATASET.tariff_change_options || DEV_MOCK.data.tariff_change_options,
     topup_options: DEMO_DATASET.topup_options || DEV_MOCK.data.topup_options,
-    device_topup_options: DEMO_DATASET.device_topup_options || DEV_MOCK.data.device_topup_options,
     settings: {
       ...DEV_MOCK.data.settings,
       ...(DEMO_DATASET.webappSettings || {}),
@@ -646,8 +648,6 @@ function applyDemoTariffScenario(subscriptionPatch = {}) {
   DEV_MOCK.data.tariff_change_options =
     DEMO_DATASET.tariff_change_options || DEV_MOCK.data.tariff_change_options;
   DEV_MOCK.data.topup_options = DEMO_DATASET.topup_options || DEV_MOCK.data.topup_options;
-  DEV_MOCK.data.device_topup_options =
-    DEMO_DATASET.device_topup_options || DEV_MOCK.data.device_topup_options;
 }
 
 function applyInactiveSubscriptionScenario({ trialAvailable = false } = {}) {
@@ -977,28 +977,6 @@ export function applyPreviewMock(kind) {
         },
       ],
     };
-    DEV_MOCK.data.device_topup_options = {
-      ok: true,
-      current_devices: 1,
-      max_devices: 2,
-      available_extra_devices: 3,
-      packages: [
-        { count: 1, price: 120, currency: "RUB" },
-        { count: 3, price: 290, currency: "RUB" },
-      ],
-      plans: [
-        {
-          id: "standard:ip:1",
-          tariff_key: "standard",
-          tariff_name: "Стандарт",
-          sale_mode: "ip_device",
-          purchased_ip_devices: 1,
-          price: 120,
-          currency: "RUB",
-          title: "+1 устройство",
-        },
-      ],
-    };
   } else if (
     mode === "auto-renew" ||
     mode === "autorenew" ||
@@ -1010,8 +988,8 @@ export function applyPreviewMock(kind) {
       auto_renew_enabled: true,
       auto_renew_available: true,
       auto_renew_can_enable: true,
-      auto_renew_provider_label: "CloudPayments",
-      provider: "cloudpayments",
+      auto_renew_provider_label: "Telegram Stars",
+      provider: "telegram_stars",
     });
   } else if (mode === "depleted") {
     DEV_MOCK.data.settings.traffic_mode = false;
@@ -1068,44 +1046,6 @@ export function applyPreviewMock(kind) {
       active: true,
       max_devices: 5,
       can_topup_devices: true,
-    };
-    DEV_MOCK.data.device_topup_options = {
-      ok: true,
-      enabled: true,
-      tariff_key: "standard",
-      tariff_name: "Стандарт",
-      current_limit: 5,
-      current_devices: 5,
-      max_devices: 5,
-      available_extra_devices: 3,
-      renewal_available: false,
-      renewal_recommended_count: 0,
-      plans: [
-        {
-          id: "standard:ip:1",
-          tariff_key: "standard",
-          tariff_name: "Стандарт",
-          sale_mode: "ip_devices",
-          purchased_ip_devices: 1,
-          price: 120,
-          currency: "RUB",
-          title: "+1 устройство",
-          subtitle: "Стандарт",
-          device_count: 1,
-        },
-        {
-          id: "standard:ip:3",
-          tariff_key: "standard",
-          tariff_name: "Стандарт",
-          sale_mode: "ip_devices",
-          purchased_ip_devices: 3,
-          price: 290,
-          currency: "RUB",
-          title: "+3 устройства",
-          subtitle: "Стандарт",
-          device_count: 3,
-        },
-      ],
     };
   } else if (mode === "trial") {
     applyInactiveSubscriptionScenario({ trialAvailable: true });

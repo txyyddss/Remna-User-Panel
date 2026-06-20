@@ -53,24 +53,6 @@
   let settingsAnchorScrollFrames = [];
   let settingsAnchorScrollCleanup = null;
 
-  const PLATEGA_SBP_KEYS = new Set([
-    "PLATEGA_SBP_ENABLED",
-    "PLATEGA_SBP_ADMIN_ONLY_ENABLED",
-    "PLATEGA_SBP_METHOD",
-  ]);
-  const PLATEGA_CRYPTO_KEYS = new Set([
-    "PLATEGA_CRYPTO_ENABLED",
-    "PLATEGA_CRYPTO_ADMIN_ONLY_ENABLED",
-    "PLATEGA_CRYPTO_METHOD",
-  ]);
-  const PLATEGA_LEGACY_KEYS = new Set(["PLATEGA_PAYMENT_METHOD"]);
-  const SEMANTIC_FIELD_GROUP_ORDER = {
-    platega_common: 1,
-    platega_sbp: 2,
-    platega_crypto: 3,
-    platega_legacy: 4,
-  };
-
   $: settingsAllOpen =
     visibleSettingsSections.length > 0 &&
     settingsOpenSections.length === visibleSettingsSections.length;
@@ -271,21 +253,6 @@
   function settingsPathAnchorKey(path, target) {
     const [sectionSegment, subsectionSegment, fieldGroupSegment] = normalizeSettingsPath(path);
     if (!target?.group || !fieldGroupSegment) return target?.anchorKey;
-    const sectionToken = settingsPathToken(sectionSegment);
-    const subsectionToken = compactSettingsPathToken(subsectionSegment);
-    const fieldGroupToken = compactSettingsPathToken(fieldGroupSegment);
-    if (sectionToken === "payments" && subsectionToken === "platega") {
-      if (fieldGroupToken === "crypto" || fieldGroupToken === "plategacrypto") {
-        return settingsFieldGroupAnchorKey("payments", "Platega", "platega_crypto");
-      }
-      if (
-        fieldGroupToken === "sbp" ||
-        fieldGroupToken === "card" ||
-        fieldGroupToken === "plategasbp"
-      ) {
-        return settingsFieldGroupAnchorKey("payments", "Platega", "platega_sbp");
-      }
-    }
     const fieldGroup = findSettingsFieldGroup(target.section, target.group, fieldGroupSegment);
     if (!fieldGroup) return target.anchorKey;
     return settingsFieldGroupAnchorKey(target.section.id, target.group.id, fieldGroup.id);
@@ -490,7 +457,11 @@
     if (Object.prototype.hasOwnProperty.call(settingsDirty, field.key)) {
       return settingsDirty[field.key].value;
     }
-    return field.value ?? "";
+    const value = field.value ?? "";
+    if (field.type === "json" && value && typeof value === "object") {
+      return JSON.stringify(value, null, 2);
+    }
+    return value;
   }
 
   function isOverridden(field) {
@@ -651,65 +622,9 @@
     return { id, titleKey, titleFallback, descriptionKey, descriptionFallback };
   }
 
-  function plategaSemanticGroup(field) {
-    const key = String(field?.key || "");
-    if (PLATEGA_SBP_KEYS.has(key) || key.startsWith("PAYMENT_PLATEGA_SBP_")) {
-      return fieldGroupMeta(
-        "platega_sbp",
-        "settings_group_platega_sbp",
-        "SBP/card button",
-        "settings_group_platega_sbp_hint",
-        "Visibility, method ID, and labels for the SBP/card payment button."
-      );
-    }
-    if (PLATEGA_CRYPTO_KEYS.has(key) || key.startsWith("PAYMENT_PLATEGA_CRYPTO_")) {
-      return fieldGroupMeta(
-        "platega_crypto",
-        "settings_group_platega_crypto",
-        "Crypto button",
-        "settings_group_platega_crypto_hint",
-        "Visibility, method ID, and labels for the crypto payment button."
-      );
-    }
-    if (PLATEGA_LEGACY_KEYS.has(key)) {
-      return fieldGroupMeta(
-        "platega_legacy",
-        "settings_group_platega_legacy",
-        "Legacy compatibility",
-        "settings_group_platega_legacy_hint",
-        "Fallback method for old Platega callbacks and deployments."
-      );
-    }
-    return fieldGroupMeta(
-      "platega_common",
-      "settings_group_platega_common",
-      "Common settings",
-      "settings_group_platega_common_hint",
-      "Shared merchant credentials, redirects, and API endpoint."
-    );
-  }
-
-  function semanticFieldGroup(section, group, field) {
-    if (section?.id === "payments" && group?.id === "Platega") {
-      return plategaSemanticGroup(field);
-    }
-    return null;
-  }
-
-  function semanticFieldGroups(section, group) {
+  function semanticFieldGroups(_section, group) {
     const fields = group?.fields || [];
-    const result = new Map();
-    for (const field of fields) {
-      const meta = semanticFieldGroup(section, group, field) || fieldGroupMeta("_default", "", "");
-      if (!result.has(meta.id)) {
-        result.set(meta.id, { ...meta, fields: [] });
-      }
-      result.get(meta.id).fields.push(field);
-    }
-    return Array.from(result.values()).sort(
-      (a, b) =>
-        (SEMANTIC_FIELD_GROUP_ORDER[a.id] || 999) - (SEMANTIC_FIELD_GROUP_ORDER[b.id] || 999)
-    );
+    return [{ ...fieldGroupMeta("_default", "", ""), fields }];
   }
 
   function fieldGroupTitle(group) {
@@ -1071,11 +986,7 @@
     style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;"
   >
     <p class="admin-muted" style="margin:0;">
-      {at(
-        "settings_hint",
-        {},
-        "Изменения в админке имеют приоритет над .env. Кнопка «Сбросить» возвращает значение из переменных окружения."
-      )}
+      {at("settings_hint", {}, "未被 .env 锁定的设置可在此覆盖默认值；.env 始终拥有最高优先级。")}
     </p>
     <div style="display:flex; gap:8px;">
       <AdminButton size="sm" variant="ghost" onclick={toggleAllSections}>
@@ -1083,16 +994,6 @@
           ? at("collapse_all", {}, "Свернуть всё")
           : at("expand_all", {}, "Развернуть всё")}
       </AdminButton>
-      {#if Object.keys(settingsDirty).length > 0}
-        <AdminButton
-          size="sm"
-          variant="primary"
-          onclick={() => settingsStore.saveSettings(onSettingsSaved)}
-          disabled={settingsSaving}
-        >
-          {settingsSaving ? at("saving", {}, "Сохранение...") : at("save", {}, "Сохранить")}
-        </AdminButton>
-      {/if}
     </div>
   </div>
   <Accordion.Root

@@ -42,11 +42,9 @@ export function createSettingsStore({ api, onToast, at }) {
 
   function setFieldValue(key, value) {
     state.update((s) => {
-      const nextDirty = { ...s.settingsDirty };
-      delete nextDirty[key];
       return {
         ...s,
-        settingsDirty: nextDirty,
+        settingsDirty: { ...s.settingsDirty, [key]: { value, deleted: false } },
         settingsSections: (s.settingsSections || []).map((section) => ({
           ...section,
           fields: (section.fields || []).map((field) =>

@@ -44,9 +44,6 @@ type Settings struct {
 	PanelAPIURL                   string
 	PanelAPIKey                   string
 	PanelAPITotalTimeout          time.Duration
-	PanelAPIConnectTimeout        time.Duration
-	PanelAPISockConnectTimeout    time.Duration
-	PanelAPISockReadTimeout       time.Duration
 	LogLevel                      string
 	WorkerPanelSyncEvery          time.Duration
 	WorkerPaymentProvisionEvery   time.Duration
@@ -99,7 +96,7 @@ func Load() (Settings, error) {
 		AdminEmail:                  strings.ToLower(env("ADMIN_EMAIL", "")),
 		AdminPassword:               env("ADMIN_PASSWORD", ""),
 		DefaultLanguage:             normalizeLanguage(env("DEFAULT_LANGUAGE", defaultLanguage)),
-		DefaultCurrency:             env("DEFAULT_CURRENCY_SYMBOL", "$"),
+		DefaultCurrency:             env("DEFAULT_CURRENCY_SYMBOL", "USD"),
 		WebhookBaseURL:              webhookBaseURL,
 		WebhookSecretToken:          env("WEBHOOK_SECRET_TOKEN", ""),
 		WebAppSessionSecret:         env("WEBAPP_SESSION_SECRET", ""),
@@ -119,9 +116,6 @@ func Load() (Settings, error) {
 		PanelAPIURL:                 strings.TrimRight(env("PANEL_API_URL", ""), "/"),
 		PanelAPIKey:                 env("PANEL_API_KEY", ""),
 		PanelAPITotalTimeout:        time.Duration(envInt("PANEL_API_TOTAL_TIMEOUT_SECONDS", 25)) * time.Second,
-		PanelAPIConnectTimeout:      time.Duration(envInt("PANEL_API_CONNECT_TIMEOUT_SECONDS", 8)) * time.Second,
-		PanelAPISockConnectTimeout:  time.Duration(envInt("PANEL_API_SOCK_CONNECT_TIMEOUT_SECONDS", 8)) * time.Second,
-		PanelAPISockReadTimeout:     time.Duration(envInt("PANEL_API_SOCK_READ_TIMEOUT_SECONDS", 15)) * time.Second,
 		LogLevel:                    env("LOG_LEVEL", "INFO"),
 		WorkerPanelSyncEvery:        time.Duration(envInt("WORKER_PANEL_SYNC_INTERVAL_SECONDS", 900)) * time.Second,
 		WorkerPaymentProvisionEvery: time.Duration(envInt("WORKER_PAYMENT_PROVISION_INTERVAL_SECONDS", 30)) * time.Second,

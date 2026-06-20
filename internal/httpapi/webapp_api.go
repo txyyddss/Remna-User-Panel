@@ -54,37 +54,40 @@ type webappUser struct {
 	IsAdmin       bool   `json:"is_admin"`
 }
 
+type telegramAuthPayload struct {
+	InitData     string `json:"init_data"`
+	IDToken      string `json:"id_token"`
+	Nonce        string `json:"nonce"`
+	ReferralCode string `json:"referral_code"`
+}
+
+func validateTelegramAuthPayload(ctx context.Context, r *http.Request, settings config.Settings, pool *pgxpool.Pool, payload telegramAuthPayload) (auth.TelegramUser, error) {
+	if strings.TrimSpace(payload.InitData) != "" {
+		return auth.ValidateTelegramInitData(payload.InitData, settings.BotToken, 24*time.Hour)
+	}
+	if strings.TrimSpace(payload.IDToken) == "" {
+		return auth.TelegramUser{}, errors.New("missing_telegram_auth")
+	}
+	cookie, cookieErr := r.Cookie(telegramNonceCookieName)
+	clientID := appsettings.NewStore(pool).String(ctx, "TELEGRAM_LOGIN_CLIENT_ID", os.Getenv("TELEGRAM_LOGIN_CLIENT_ID"))
+	if cookieErr != nil || cookie.Value == "" || payload.Nonce == "" || cookie.Value != payload.Nonce || clientID == "" {
+		return auth.TelegramUser{}, errors.New("invalid_telegram_nonce")
+	}
+	return auth.ValidateTelegramIDToken(ctx, payload.IDToken, clientID, payload.Nonce)
+}
+
 func authTokenHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if pool == nil {
 			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"ok": false, "error": "database_not_configured"})
 			return
 		}
-		var payload struct {
-			InitData     string `json:"init_data"`
-			IDToken      string `json:"id_token"`
-			Nonce        string `json:"nonce"`
-			ReferralCode string `json:"referral_code"`
-		}
+		var payload telegramAuthPayload
 		if err := decodeJSONBody(r, &payload); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
 			return
 		}
-		var tgUser auth.TelegramUser
-		var err error
-		if strings.TrimSpace(payload.InitData) != "" {
-			tgUser, err = auth.ValidateTelegramInitData(payload.InitData, settings.BotToken, 24*time.Hour)
-		} else if strings.TrimSpace(payload.IDToken) != "" {
-			cookie, cookieErr := r.Cookie(telegramNonceCookieName)
-			clientID := appsettings.NewStore(pool).String(r.Context(), "TELEGRAM_LOGIN_CLIENT_ID", os.Getenv("TELEGRAM_LOGIN_CLIENT_ID"))
-			if cookieErr != nil || cookie.Value == "" || payload.Nonce == "" || cookie.Value != payload.Nonce || clientID == "" {
-				err = errors.New("invalid_telegram_nonce")
-			} else {
-				tgUser, err = auth.ValidateTelegramIDToken(r.Context(), payload.IDToken, clientID, payload.Nonce)
-			}
-		} else {
-			err = errors.New("missing_telegram_auth")
-		}
+		tgUser, err := validateTelegramAuthPayload(r.Context(), r, settings, pool, payload)
 		if err != nil {
 			writeJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "invalid_telegram_init_data"})
 			return
@@ -179,6 +182,13 @@ func meHandler(settings config.Settings, pool *pgxpool.Pool, registry *payments.
 				subscription = subscriptionFromPanelUser(r.Context(), pool, session.User, panelUser)
 			}
 		}
+		if active, _ := subscription["active"].(bool); active {
+			if token, tokenErr := ensureSubscriptionShareToken(r.Context(), pool, session.User.UserID); tokenErr == nil && token != "" {
+				shareURL := strings.TrimRight(webappPublicBaseURL(r, settings), "/") + "/s/" + token
+				subscription["install_share_token"] = token
+				subscription["install_share_url"] = shareURL
+			}
+		}
 		writeJSON(w, http.StatusOK, map[string]any{
 			"ok":                      true,
 			"user":                    session.User,
@@ -190,6 +200,33 @@ func meHandler(settings config.Settings, pool *pgxpool.Pool, registry *payments.
 			"notification_prefs":      loadUserNotificationPrefs(r.Context(), pool, session.User.UserID),
 		})
 	}
+}
+
+func ensureSubscriptionShareToken(ctx context.Context, pool *pgxpool.Pool, userID int64) (string, error) {
+	if pool == nil || userID == 0 {
+		return "", errors.New("database_not_configured")
+	}
+	raw := make([]byte, 16)
+	if _, err := rand.Read(raw); err != nil {
+		return "", err
+	}
+	token := fmt.Sprintf("%x", raw)
+	var stored string
+	err := pool.QueryRow(ctx, `INSERT INTO subscription_share_tokens(token,user_id) VALUES($1,$2)
+ON CONFLICT(user_id) DO UPDATE SET user_id=EXCLUDED.user_id RETURNING token`, token, userID).Scan(&stored)
+	return stored, err
+}
+
+func webappPublicBaseURL(r *http.Request, settings config.Settings) string {
+	if configured := strings.TrimSpace(settings.SubscriptionMiniApp); configured != "" {
+		return configured
+	}
+	scheme := "http"
+	if requestIsHTTPS(r) {
+		scheme = "https"
+	}
+	host := strings.TrimSpace(r.Host)
+	return scheme + "://" + host
 }
 
 func createPaymentHandler(settings config.Settings, pool *pgxpool.Pool, registry *payments.Registry) http.HandlerFunc {
@@ -317,19 +354,15 @@ func adminSettingsHandler(settings config.Settings, pool *pgxpool.Pool) http.Han
 			return
 		}
 		if r.Method == http.MethodGet {
+			sections, err := adminSettingsSections(r.Context(), settings, store)
+			if err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "settings_catalog_invalid"})
+				return
+			}
 			writeJSON(w, http.StatusOK, map[string]any{
 				"ok":       true,
-				"features": []string{"remnawave", "payments", "mail"},
-				"sections": []map[string]any{{
-					"id":     "remnawave",
-					"fields": remnawaveSettingsFields(r.Context(), settings, store),
-				}, {
-					"id":     "payments",
-					"fields": paymentSettingsFields(r.Context(), settings, store),
-				}, {
-					"id":     "mail",
-					"fields": mailSettingsFields(r.Context(), settings, store),
-				}},
+				"features": []string{"general", "remnawave", "features", "notifications", "telemetry", "payments", "mail", "subscription_guides", "appearance"},
+				"sections": sections,
 			})
 			return
 		}
@@ -341,8 +374,14 @@ func adminSettingsHandler(settings config.Settings, pool *pgxpool.Pool) http.Han
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
 			return
 		}
-		allowed := allowedPaymentSettingKeys()
+		sections, catalogErr := adminSettingsSections(r.Context(), settings, store)
+		if catalogErr != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "settings_catalog_invalid"})
+			return
+		}
+		allowed := allowedAdminSettingKeys(sections)
 		errorsByKey := map[string]string{}
+		normalizedUpdates := map[string]any{}
 		for key, value := range payload.Updates {
 			if !allowed[key] {
 				errorsByKey[key] = "unsupported_setting"
@@ -357,9 +396,7 @@ func adminSettingsHandler(settings config.Settings, pool *pgxpool.Pool) http.Han
 				errorsByKey[key] = err.Error()
 				continue
 			}
-			if err := store.Upsert(r.Context(), key, normalized); err != nil {
-				errorsByKey[key] = "save_failed"
-			}
+			normalizedUpdates[key] = normalized
 		}
 		for _, key := range payload.Deletes {
 			if !allowed[key] {
@@ -369,9 +406,6 @@ func adminSettingsHandler(settings config.Settings, pool *pgxpool.Pool) http.Han
 			if _, locked := os.LookupEnv(key); locked {
 				errorsByKey[key] = "setting_locked_by_env"
 				continue
-			}
-			if err := store.Delete(r.Context(), key); err != nil {
-				errorsByKey[key] = "delete_failed"
 			}
 		}
 		if len(errorsByKey) > 0 {
@@ -383,6 +417,20 @@ func adminSettingsHandler(settings config.Settings, pool *pgxpool.Pool) http.Han
 				}
 			}
 			writeJSON(w, status, map[string]any{"ok": false, "errors": errorsByKey})
+			return
+		}
+		for key, value := range normalizedUpdates {
+			if err := store.Upsert(r.Context(), key, value); err != nil {
+				errorsByKey[key] = "save_failed"
+			}
+		}
+		for _, key := range payload.Deletes {
+			if err := store.Delete(r.Context(), key); err != nil {
+				errorsByKey[key] = "delete_failed"
+			}
+		}
+		if len(errorsByKey) > 0 {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "errors": errorsByKey})
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
@@ -608,6 +656,9 @@ func webappFeatureSettings(ctx context.Context, settings config.Settings, pool *
 		"referral_welcome_bonus_days":     referralWelcomeDays,
 		"tariff_change_enabled":           panelConfigured,
 		"subscription_auto_renew_enabled": autoRenewEnabled,
+		"support_url":                    store.String(ctx, "SUPPORT_LINK", ""),
+		"server_status_url":              store.String(ctx, "SERVER_STATUS_URL", ""),
+		"email_auth_enabled":             store.Bool(ctx, "SMTP_ENABLED", false) && mailerConfigFromSettings(ctx, store).IsConfigured(),
 	}
 }
 
@@ -635,6 +686,80 @@ func paymentStatusPayload(order payments.Order) map[string]any {
 	}
 }
 
+func mapSettingFields(ctx context.Context, store appsettings.Store, fields []paymentSettingField) []map[string]any {
+	mapped := make([]map[string]any, 0, len(fields))
+	for _, field := range fields {
+		mapped = append(mapped, field.toMap(ctx, store))
+	}
+	return mapped
+}
+
+func adminSettingsSections(ctx context.Context, settings config.Settings, store appsettings.Store) ([]map[string]any, error) {
+	sections := []map[string]any{
+		{"id": "general", "fields": mapSettingFields(ctx, store, []paymentSettingField{
+			{Key: "DEFAULT_LANGUAGE", Type: "string", Label: "Default language", Description: "Fallback language when a user has no saved preference.", Fallback: settings.DefaultLanguage, Choices: []settingChoice{{Value: "zh", Label: "中文"}, {Value: "en", Label: "English"}}},
+			{Key: "TELEGRAM_LOGIN_CLIENT_ID", Type: "string", Label: "Telegram Login Client ID", Description: "Client ID from BotFather Web Login for browser sign-in and account linking.", Fallback: os.Getenv("TELEGRAM_LOGIN_CLIENT_ID")},
+			{Key: "SUPPORT_LINK", Type: "string", Label: "Support link", Description: "External support URL shown in the Web App and bot messages.", Fallback: ""},
+			{Key: "SERVER_STATUS_URL", Type: "string", Label: "Server status URL", Description: "Optional public service-status page.", Fallback: ""},
+			{Key: "PRIVACY_POLICY_URL", Type: "string", Label: "Privacy policy URL", Description: "Optional privacy policy shown in account settings.", Fallback: ""},
+			{Key: "USER_AGREEMENT_URL", Type: "string", Label: "User agreement URL", Description: "Optional user agreement shown in account settings.", Fallback: ""},
+		})},
+		{"id": "remnawave", "fields": remnawaveSettingsFields(ctx, settings, store)},
+		{"id": "features", "fields": mapSettingFields(ctx, store, []paymentSettingField{
+			{Key: "MY_DEVICES_ENABLED", Type: "bool", Label: "My devices enabled", Description: "Show IP-based device management in the Web App.", Fallback: settings.PanelAPIURL != "" && settings.PanelAPIKey != ""},
+			{Key: "SUPPORT_TICKETS_ENABLED", Type: "bool", Label: "Support tickets enabled", Description: "Show the built-in support ticket UI.", Fallback: false},
+			{Key: "SUBSCRIPTION_AUTO_RENEW_ENABLED", Type: "bool", Label: "Auto-renew enabled", Description: "Allow users to toggle subscription auto-renewal.", Fallback: false},
+		})},
+		{"id": "notifications", "fields": mapSettingFields(ctx, store, []paymentSettingField{
+			{Key: "SUBSCRIPTION_NOTIFICATIONS_ENABLED", Type: "bool", Label: "Subscription notifications enabled", Description: "Send expiry and traffic notifications through Telegram or email.", Fallback: true},
+			{Key: "SUBSCRIPTION_NOTIFY_DAYS_BEFORE", Type: "int", Label: "Notify days before expiry", Description: "Days before subscription expiry to send notifications.", Fallback: settings.SubscriptionNotifyDaysBefore},
+			{Key: "SUBSCRIPTION_NOTIFY_HOURS_BEFORE", Type: "int", Label: "Notify hours before expiry", Description: "Additional hours-before notification. 0 disables it.", Fallback: settings.SubscriptionNotifyHoursBefore},
+		})},
+		{"id": "telemetry", "fields": mapSettingFields(ctx, store, []paymentSettingField{
+			{Key: "TELEMETRY_ENABLED", Type: "bool", Label: "Anonymous local telemetry", Description: "Collect local-only installation heartbeats and browser risk signals.", Fallback: envBoolValue("TELEMETRY_ENABLED", true)},
+			{Key: "TELEMETRY_RETENTION_HOURS", Type: "int", Label: "Telemetry retention hours", Description: "Delete anonymous records after this many hours without a match (1-720).", Fallback: envIntValue("TELEMETRY_RETENTION_HOURS", 24)},
+			{Key: "TELEMETRY_FINGERPRINT_REJECT_SCORE", Type: "int", Label: "Fingerprint rejection score", Description: "Reject welcome bonuses at or above this similarity score (1-100).", Fallback: envIntValue("TELEMETRY_FINGERPRINT_REJECT_SCORE", 70)},
+		})},
+		{"id": "payments", "fields": paymentSettingsFields(ctx, settings, store)},
+		{"id": "mail", "fields": mailSettingsFields(ctx, settings, store)},
+		{"id": "subscription_guides", "fields": mapSettingFields(ctx, store, []paymentSettingField{
+			{Key: "SUBSCRIPTION_GUIDES_ENABLED", Type: "bool", Label: "Subscription guides enabled", Description: "Show connection guides in the Web App.", Fallback: false},
+			{Key: "SUBSCRIPTION_GUIDES_CONFIG", Type: "json", Label: "Subscription guides configuration", Description: "JSON object containing platform and application instructions.", Fallback: map[string]any{}},
+		})},
+		{"id": "appearance", "fields": mapSettingFields(ctx, store, []paymentSettingField{
+			{Key: "WEBAPP_TITLE", Type: "string", Label: "Web App title", Description: "Name displayed in the header and browser tab.", Fallback: "Subscription"},
+			{Key: "WEBAPP_LOGO_URL", Type: "string", Label: "Logo URL", Description: "Logo used by the Web App and admin panel.", Fallback: ""},
+			{Key: "WEBAPP_FAVICON_USE_CUSTOM", Type: "bool", Label: "Use a separate favicon", Description: "Use the custom favicon URL instead of the logo.", Fallback: false},
+			{Key: "WEBAPP_FAVICON_URL", Type: "string", Label: "Favicon URL", Description: "Custom browser icon URL.", Fallback: ""},
+		})},
+	}
+	seen := map[string]bool{}
+	for _, section := range sections {
+		fields, _ := section["fields"].([]map[string]any)
+		for _, field := range fields {
+			key, _ := field["key"].(string)
+			if key == "" || seen[key] {
+				return nil, fmt.Errorf("duplicate setting key %q", key)
+			}
+			seen[key] = true
+		}
+	}
+	return sections, nil
+}
+
+func allowedAdminSettingKeys(sections []map[string]any) map[string]bool {
+	result := map[string]bool{}
+	for _, section := range sections {
+		fields, _ := section["fields"].([]map[string]any)
+		for _, field := range fields {
+			if key, ok := field["key"].(string); ok && key != "" {
+				result[key] = true
+			}
+		}
+	}
+	return result
+}
+
 func mailSettingsFields(ctx context.Context, settings config.Settings, store appsettings.Store) []map[string]any {
 	fields := []paymentSettingField{
 		{Key: "SMTP_ENABLED", Type: "bool", Label: "SMTP email enabled", Description: "Enable SMTP email delivery for verification codes, password resets, and notifications.", Subsection: "General", Fallback: false},
@@ -650,11 +775,7 @@ func mailSettingsFields(ctx context.Context, settings config.Settings, store app
 		{Key: "EMAIL_TEMPLATE_PASSWORD_RESET", Type: "text", Label: "Password reset email template", Description: "Markdown template for password reset codes. Variables: {{.Brand}}, {{.Code}}, {{.ExpireMinutes}}.", Subsection: "Templates", Fallback: ""},
 		{Key: "EMAIL_TEMPLATE_LOGIN", Type: "text", Label: "Login code email template", Description: "Markdown template for login verification codes. Variables: {{.Brand}}, {{.Code}}, {{.ExpireMinutes}}.", Subsection: "Templates", Fallback: ""},
 	}
-	result := make([]map[string]any, 0, len(fields))
-	for _, field := range fields {
-		result = append(result, field.toMap(ctx, store))
-	}
-	return result
+	return mapSettingFields(ctx, store, fields)
 }
 
 func mailerConfigFromSettings(ctx context.Context, store appsettings.Store) mail.Config {
@@ -701,9 +822,6 @@ func remnawaveSettingsFields(ctx context.Context, settings config.Settings, stor
 		{Key: "PANEL_API_URL", Type: "string", Label: "Remnawave API URL", Description: "Panel base URL. Both https://panel.example and https://panel.example/api are accepted.", Subsection: "Remnawave", Fallback: settings.PanelAPIURL},
 		{Key: "PANEL_API_KEY", Type: "string", Label: "Remnawave API key", Description: "Bearer token used to call Remnawave API.", Subsection: "Remnawave", Fallback: settings.PanelAPIKey, Secret: true},
 		{Key: "PANEL_API_TOTAL_TIMEOUT_SECONDS", Type: "float", Label: "Remnawave API total timeout", Description: "Maximum total time for one Remnawave API request, in seconds.", Subsection: "Remnawave", Fallback: settings.PanelAPITotalTimeout.Seconds()},
-		{Key: "PANEL_API_CONNECT_TIMEOUT_SECONDS", Type: "float", Label: "Remnawave API connect timeout", Description: "Reserved for compatibility with the reference project; total timeout is enforced by the Go client.", Subsection: "Remnawave", Fallback: settings.PanelAPIConnectTimeout.Seconds()},
-		{Key: "PANEL_API_SOCK_CONNECT_TIMEOUT_SECONDS", Type: "float", Label: "Remnawave API TCP/TLS timeout", Description: "Reserved for compatibility with the reference project; total timeout is enforced by the Go client.", Subsection: "Remnawave", Fallback: settings.PanelAPISockConnectTimeout.Seconds()},
-		{Key: "PANEL_API_SOCK_READ_TIMEOUT_SECONDS", Type: "float", Label: "Remnawave API read timeout", Description: "Reserved for compatibility with the reference project; total timeout is enforced by the Go client.", Subsection: "Remnawave", Fallback: settings.PanelAPISockReadTimeout.Seconds()},
 		{Key: "USER_TRAFFIC_LIMIT_GB", Type: "float", Label: "Default traffic limit GB", Description: "Fallback traffic limit when a tariff does not define monthly_gb.", Subsection: "Defaults", Fallback: settings.UserTrafficLimitGB},
 		{Key: "USER_TRAFFIC_STRATEGY", Type: "string", Label: "Traffic reset strategy", Description: "Remnawave trafficLimitStrategy for provisioned users.", Subsection: "Defaults", Fallback: settings.UserTrafficStrategy, Choices: []settingChoice{{Value: "NO_RESET", Label: "No reset"}, {Value: "DAY", Label: "Day"}, {Value: "WEEK", Label: "Week"}, {Value: "MONTH", Label: "Month"}, {Value: "MONTH_ROLLING", Label: "Month rolling"}}},
 		{Key: "USER_SQUAD_UUIDS", Type: "text", Label: "Default internal squads", Description: "Comma-separated Internal Squad UUIDs used when a tariff has no squad_uuids.", Subsection: "Defaults", Fallback: strings.Join(settings.UserSquadUUIDs, ",")},
@@ -714,26 +832,8 @@ func remnawaveSettingsFields(ctx context.Context, settings config.Settings, stor
 		{Key: "TRIAL_TRAFFIC_STRATEGY", Type: "string", Label: "Trial traffic strategy", Description: "Remnawave trafficLimitStrategy for trial users.", Subsection: "Trial", Fallback: settings.UserTrafficStrategy, Choices: []settingChoice{{Value: "NO_RESET", Label: "No reset"}, {Value: "DAY", Label: "Day"}, {Value: "WEEK", Label: "Week"}, {Value: "MONTH", Label: "Month"}, {Value: "MONTH_ROLLING", Label: "Month rolling"}}},
 		{Key: "TRIAL_SQUAD_UUIDS", Type: "text", Label: "Trial internal squads", Description: "Comma-separated Internal Squad UUIDs for trial users. Empty uses default squads.", Subsection: "Trial", Fallback: ""},
 		{Key: "REFERRAL_WELCOME_BONUS_DAYS", Type: "int", Label: "Referral welcome bonus days", Description: "Days granted once to invited users. 0 disables welcome bonus claiming.", Subsection: "Referral", Fallback: 0},
-		{Key: "TELEMETRY_ENABLED", Type: "bool", Label: "Anonymous local telemetry", Description: "Collect local-only installation heartbeats and browser risk signals.", Subsection: "Telemetry", Fallback: envBoolValue("TELEMETRY_ENABLED", true)},
-		{Key: "TELEMETRY_RETENTION_HOURS", Type: "int", Label: "Telemetry retention hours", Description: "Delete anonymous records after this many hours without a match (1-720).", Subsection: "Telemetry", Fallback: envIntValue("TELEMETRY_RETENTION_HOURS", 24)},
-		{Key: "TELEMETRY_FINGERPRINT_REJECT_SCORE", Type: "int", Label: "Fingerprint rejection score", Description: "Automatically reject welcome bonuses at or above this similarity score (1-100).", Subsection: "Telemetry", Fallback: envIntValue("TELEMETRY_FINGERPRINT_REJECT_SCORE", 70)},
-		{Key: "TELEGRAM_LOGIN_CLIENT_ID", Type: "string", Label: "Telegram Login Client ID", Description: "Client ID from BotFather Web Login for browser registration and sign-in.", Subsection: "General", Fallback: os.Getenv("TELEGRAM_LOGIN_CLIENT_ID")},
-		{Key: "MY_DEVICES_ENABLED", Type: "bool", Label: "My devices enabled", Description: "Show IP-based device management in the Web App.", Subsection: "Features", Fallback: settings.PanelAPIURL != "" && settings.PanelAPIKey != ""},
-		{Key: "SUPPORT_TICKETS_ENABLED", Type: "bool", Label: "Support tickets enabled", Description: "Show the built-in support ticket UI.", Subsection: "Features", Fallback: false},
-		{Key: "SUBSCRIPTION_GUIDES_ENABLED", Type: "bool", Label: "Subscription guides enabled", Description: "Show subscription setup guides in the Web App.", Subsection: "Features", Fallback: false},
-		{Key: "SUBSCRIPTION_AUTO_RENEW_ENABLED", Type: "bool", Label: "Auto-renew enabled", Description: "Allow users to toggle subscription auto-renewal.", Subsection: "Features", Fallback: false},
-		// Web UI 管理的通用设置（原 .env 可选变量迁移至此）
-		{Key: "DEFAULT_LANGUAGE", Type: "string", Label: "Default language", Description: "Fallback language when user has no preference.", Subsection: "General", Fallback: settings.DefaultLanguage, Choices: []settingChoice{{Value: "zh", Label: "中文"}, {Value: "en", Label: "English"}}},
-		{Key: "SUBSCRIPTION_NOTIFY_DAYS_BEFORE", Type: "int", Label: "Notify days before expiry", Description: "Days before subscription expiry to send notifications.", Subsection: "General", Fallback: settings.SubscriptionNotifyDaysBefore},
-		{Key: "SUBSCRIPTION_NOTIFY_HOURS_BEFORE", Type: "int", Label: "Notify hours before expiry", Description: "Additional hours-before notifications. 0 disables.", Subsection: "General", Fallback: settings.SubscriptionNotifyHoursBefore},
-		{Key: "WORKER_PANEL_SYNC_INTERVAL_SECONDS", Type: "int", Label: "Panel sync interval (seconds)", Description: "How often to sync Remnawave panel data. Requires restart to apply.", Subsection: "General", Fallback: int(settings.WorkerPanelSyncEvery.Seconds())},
-		{Key: "WORKER_PAYMENT_PROVISION_INTERVAL_SECONDS", Type: "int", Label: "Payment provision interval (seconds)", Description: "How often to provision paid orders. Requires restart to apply.", Subsection: "General", Fallback: int(settings.WorkerPaymentProvisionEvery.Seconds())},
 	}
-	result := make([]map[string]any, 0, len(fields))
-	for _, field := range fields {
-		result = append(result, field.toMap(ctx, store))
-	}
-	return result
+	return mapSettingFields(ctx, store, fields)
 }
 
 type paymentSettingField struct {
@@ -781,6 +881,11 @@ func (f paymentSettingField) toMap(ctx context.Context, store appsettings.Store)
 			}
 		case "float":
 			var parsed float64
+			if json.Unmarshal(raw, &parsed) == nil {
+				value = parsed
+			}
+		case "json":
+			var parsed any
 			if json.Unmarshal(raw, &parsed) == nil {
 				value = parsed
 			}
@@ -882,38 +987,9 @@ func envBoolValue(key string, fallback bool) bool {
 	return value
 }
 
-func allowedPaymentSettingKeys() map[string]bool {
-	result := map[string]bool{}
-	for _, key := range []string{
-		"WEBHOOK_BASE_URL", "DEFAULT_CURRENCY_SYMBOL", "FX_PROVIDER", "FX_CUSTOM_USD_CNY", "FX_CACHE_TTL_SECONDS",
-		"PAYMENT_METHODS_ORDER",
-		"STARS_ENABLED", "STARS_USD_RATE",
-		"PANEL_API_SOCK_CONNECT_TIMEOUT_SECONDS", "PANEL_API_SOCK_READ_TIMEOUT_SECONDS", "USER_TRAFFIC_LIMIT_GB", "USER_TRAFFIC_STRATEGY",
-		"USER_SQUAD_UUIDS", "USER_EXTERNAL_SQUAD_UUID", "MY_DEVICES_ENABLED", "SUPPORT_TICKETS_ENABLED",
-		"SUBSCRIPTION_GUIDES_ENABLED", "SUBSCRIPTION_AUTO_RENEW_ENABLED",
-		"TRIAL_ENABLED", "TRIAL_DURATION_DAYS", "TRIAL_TRAFFIC_LIMIT_GB", "TRIAL_TRAFFIC_STRATEGY", "TRIAL_SQUAD_UUIDS",
-		"REFERRAL_WELCOME_BONUS_DAYS",
-		"TELEMETRY_ENABLED", "TELEMETRY_RETENTION_HOURS", "TELEMETRY_FINGERPRINT_REJECT_SCORE",
-		"TELEGRAM_LOGIN_CLIENT_ID",
-		"EZPAY_ENABLED", "EZPAY_BASE_URL", "EZPAY_PID", "EZPAY_KEY",
-		"BEPUSDT_ENABLED", "BEPUSDT_BASE_URL", "BEPUSDT_TOKEN",
-		// Web UI 可管理的通用设置
-		"DEFAULT_LANGUAGE", "SUBSCRIPTION_NOTIFY_DAYS_BEFORE", "SUBSCRIPTION_NOTIFY_HOURS_BEFORE",
-		"WORKER_PANEL_SYNC_INTERVAL_SECONDS", "WORKER_PAYMENT_PROVISION_INTERVAL_SECONDS",
-		// SMTP / Email 设置
-		"SMTP_ENABLED", "SMTP_HOST", "SMTP_PORT", "SMTP_ENCRYPTION",
-		"SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_FROM_EMAIL", "SMTP_FROM_NAME",
-		"BRAND_NAME",
-		"EMAIL_TEMPLATE_VERIFY", "EMAIL_TEMPLATE_PASSWORD_RESET", "EMAIL_TEMPLATE_LOGIN",
-	} {
-		result[key] = true
-	}
-	return result
-}
-
 func normalizeSettingValue(key string, value any) (any, error) {
 	switch key {
-	case "EZPAY_ENABLED", "BEPUSDT_ENABLED", "STARS_ENABLED", "MY_DEVICES_ENABLED", "SUPPORT_TICKETS_ENABLED", "TRIAL_ENABLED", "SUBSCRIPTION_GUIDES_ENABLED", "SUBSCRIPTION_AUTO_RENEW_ENABLED", "TELEMETRY_ENABLED", "SMTP_ENABLED":
+	case "EZPAY_ENABLED", "BEPUSDT_ENABLED", "STARS_ENABLED", "MY_DEVICES_ENABLED", "SUPPORT_TICKETS_ENABLED", "TRIAL_ENABLED", "SUBSCRIPTION_GUIDES_ENABLED", "SUBSCRIPTION_AUTO_RENEW_ENABLED", "SUBSCRIPTION_NOTIFICATIONS_ENABLED", "TELEMETRY_ENABLED", "SMTP_ENABLED", "WEBAPP_FAVICON_USE_CUSTOM":
 		if typed, ok := value.(bool); ok {
 			return typed, nil
 		}
@@ -927,7 +1003,6 @@ func normalizeSettingValue(key string, value any) (any, error) {
 		}
 	case "EZPAY_PID", "FX_CACHE_TTL_SECONDS", "TRIAL_DURATION_DAYS", "REFERRAL_WELCOME_BONUS_DAYS", "TELEMETRY_RETENTION_HOURS", "TELEMETRY_FINGERPRINT_REJECT_SCORE",
 		"SUBSCRIPTION_NOTIFY_DAYS_BEFORE", "SUBSCRIPTION_NOTIFY_HOURS_BEFORE",
-		"WORKER_PANEL_SYNC_INTERVAL_SECONDS", "WORKER_PAYMENT_PROVISION_INTERVAL_SECONDS",
 		"SMTP_PORT":
 		var parsed int
 		switch typed := value.(type) {
@@ -947,6 +1022,15 @@ func normalizeSettingValue(key string, value any) (any, error) {
 		}
 		if key == "TELEMETRY_FINGERPRINT_REJECT_SCORE" && (parsed < 1 || parsed > 100) {
 			return nil, fmt.Errorf("must_be_between_1_and_100")
+		}
+		if key == "SMTP_PORT" && (parsed < 1 || parsed > 65535) {
+			return nil, fmt.Errorf("must_be_between_1_and_65535")
+		}
+		if key == "FX_CACHE_TTL_SECONDS" && parsed < 1 {
+			return nil, fmt.Errorf("must_be_positive")
+		}
+		if parsed < 0 {
+			return nil, fmt.Errorf("must_be_non_negative")
 		}
 		return parsed, nil
 	case "DEFAULT_CURRENCY_SYMBOL":
@@ -989,6 +1073,15 @@ func normalizeSettingValue(key string, value any) (any, error) {
 		default:
 			return nil, fmt.Errorf("unsupported_smtp_encryption")
 		}
+	case "SUPPORT_LINK", "SERVER_STATUS_URL", "PRIVACY_POLICY_URL", "USER_AGREEMENT_URL", "WEBAPP_LOGO_URL", "WEBAPP_FAVICON_URL", "WEBHOOK_BASE_URL", "PANEL_API_URL", "EZPAY_BASE_URL", "BEPUSDT_BASE_URL":
+		text := strings.TrimSpace(fmt.Sprint(value))
+		if text == "" {
+			return "", nil
+		}
+		if !safeAppearanceURL(text) {
+			return nil, fmt.Errorf("invalid_url")
+		}
+		return text, nil
 	case "FX_CUSTOM_USD_CNY":
 		if strings.TrimSpace(fmt.Sprint(value)) == "" {
 			return "", nil
@@ -998,7 +1091,7 @@ func normalizeSettingValue(key string, value any) (any, error) {
 			return nil, fmt.Errorf("invalid_float")
 		}
 		return strconv.FormatFloat(parsed, 'f', -1, 64), nil
-	case "USER_TRAFFIC_LIMIT_GB", "TRIAL_TRAFFIC_LIMIT_GB", "PANEL_API_TOTAL_TIMEOUT_SECONDS", "PANEL_API_CONNECT_TIMEOUT_SECONDS", "PANEL_API_SOCK_CONNECT_TIMEOUT_SECONDS", "PANEL_API_SOCK_READ_TIMEOUT_SECONDS":
+	case "USER_TRAFFIC_LIMIT_GB", "TRIAL_TRAFFIC_LIMIT_GB", "PANEL_API_TOTAL_TIMEOUT_SECONDS", "STARS_USD_RATE":
 		if strings.TrimSpace(fmt.Sprint(value)) == "" {
 			if strings.HasPrefix(key, "PANEL_API_") {
 				return nil, fmt.Errorf("invalid_float")
@@ -1010,9 +1103,79 @@ func normalizeSettingValue(key string, value any) (any, error) {
 			return nil, fmt.Errorf("invalid_float")
 		}
 		return parsed, nil
+	case "SUBSCRIPTION_GUIDES_CONFIG":
+		var parsed any
+		switch typed := value.(type) {
+		case string:
+			if len(typed) > 512<<10 || json.Unmarshal([]byte(typed), &parsed) != nil {
+				return nil, fmt.Errorf("invalid_json")
+			}
+		default:
+			body, err := json.Marshal(typed)
+			if err != nil || len(body) > 512<<10 || json.Unmarshal(body, &parsed) != nil {
+				return nil, fmt.Errorf("invalid_json")
+			}
+		}
+		object, ok := parsed.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("invalid_guides_config")
+		}
+		if !validSubscriptionGuidesConfig(object) {
+			return nil, fmt.Errorf("invalid_guides_config")
+		}
+		return object, nil
 	default:
 		return strings.TrimSpace(fmt.Sprint(value)), nil
 	}
+}
+
+func validSubscriptionGuidesConfig(config map[string]any) bool {
+	platforms, ok := config["platforms"].(map[string]any)
+	if !ok || len(platforms) == 0 {
+		return false
+	}
+	for key, rawPlatform := range platforms {
+		if strings.TrimSpace(key) == "" {
+			return false
+		}
+		platform, ok := rawPlatform.(map[string]any)
+		if !ok {
+			return false
+		}
+		apps, ok := platform["apps"].([]any)
+		if !ok || len(apps) == 0 {
+			return false
+		}
+		for _, rawApp := range apps {
+			app, ok := rawApp.(map[string]any)
+			if !ok || strings.TrimSpace(fmt.Sprint(app["name"])) == "" {
+				return false
+			}
+			blocks, ok := app["blocks"].([]any)
+			if !ok || len(blocks) == 0 {
+				return false
+			}
+			for _, rawBlock := range blocks {
+				block, ok := rawBlock.(map[string]any)
+				if !ok {
+					return false
+				}
+				buttons, _ := block["buttons"].([]any)
+				for _, rawButton := range buttons {
+					button, ok := rawButton.(map[string]any)
+					if !ok {
+						return false
+					}
+					link := strings.TrimSpace(fmt.Sprint(button["link"]))
+					lower := strings.ToLower(link)
+					if link == "" || strings.ContainsAny(link, "\r\n\x00") || strings.HasPrefix(lower, "javascript:") || strings.HasPrefix(lower, "data:") || strings.HasPrefix(lower, "vbscript:") {
+						return false
+					}
+				}
+			}
+		}
+	}
+	return true
 }
 
 func paymentErrorCode(err error) string {

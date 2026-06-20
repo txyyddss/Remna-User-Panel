@@ -1,5 +1,6 @@
 import { writable, get } from "svelte/store";
-import { emailError, buildTelegramOAuthStartUrl } from "../authHelpers.js";
+import { emailError } from "../authHelpers.js";
+import { browserTelegramLogin } from "../telegramLogin.js";
 
 export function createAccountStore({
   api,
@@ -331,7 +332,11 @@ export function createAccountStore({
       await loadData();
       showToast(t("wa_settings_linked"));
     } catch (error) {
-      showToast(error?.message || t("wa_auth_telegram_not_confirmed"));
+      showToast(
+        error?.error === "telegram_already_linked"
+          ? t("wa_telegram_already_linked")
+          : error?.message || t("wa_auth_telegram_not_confirmed")
+      );
     } finally {
       state.update((s) => ({ ...s, linkTelegramBusy: false }));
     }
@@ -356,7 +361,13 @@ export function createAccountStore({
       return;
     }
     state.update((s) => ({ ...s, linkTelegramBusy: true }));
-    window.location.assign(buildTelegramOAuthStartUrl("link", getTg()));
+    try {
+      const payload = await browserTelegramLogin(getTelegramOAuthClientId(), currentLang);
+      await linkTelegramAccountWithPayload(payload);
+    } catch (error) {
+      showToast(error?.message || t("wa_auth_telegram_not_confirmed"));
+      state.update((s) => ({ ...s, linkTelegramBusy: false }));
+    }
   }
 
   async function updateAccountLanguage(nextValue, options = {}) {

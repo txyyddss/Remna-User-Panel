@@ -39,6 +39,7 @@
   $: currency = stats?.currency_symbol || "RUB";
   $: fin = stats?.financial || {};
   $: users = stats?.users || {};
+  $: analytics = stats?.local_analytics || {};
   $: panelPayload = stats?.panel;
   $: panelMetrics = panelPayload && !panelPayload.error ? parsePanelSystem(panelPayload) : null;
   $: panelBw = panelPayload && !panelPayload.error ? parsePanelBandwidth(panelPayload) : null;
@@ -1158,5 +1159,47 @@
         </div>
       </Card.Content>
     </Card.Root>
+    <AdminSectionHeader
+      title={at("stats_section_telemetry", {}, "本地匿名遥测")}
+      description={at(
+        "stats_section_telemetry_hint",
+        {},
+        "仅展示匿名访问、邀请和安装心跳汇总，不包含个人数据。"
+      )}
+    />
+
+    <AdminDashboardGrid columns={3}>
+      <Card.Root>
+        <Card.Header>
+          <Card.Description>{at("stats_telemetry_visitors", {}, "匿名访问者")}</Card.Description>
+          <Card.Title>{analytics.anonymous_visitors ?? 0}</Card.Title>
+          <Card.Action><Activity size={18} /></Card.Action>
+        </Card.Header>
+      </Card.Root>
+      <Card.Root>
+        <Card.Header>
+          <Card.Description>{at("stats_telemetry_invites", {}, "邀请访问")}</Card.Description>
+          <Card.Title>{analytics.invite_visits ?? 0}</Card.Title>
+          <Card.Action><Radio size={18} /></Card.Action>
+        </Card.Header>
+        <Card.Footer>
+          {at(
+            "stats_telemetry_rejected",
+            { count: analytics.rejected_welcome_rewards ?? 0 },
+            `已拦截 ${analytics.rejected_welcome_rewards ?? 0} 次异常奖励`
+          )}
+        </Card.Footer>
+      </Card.Root>
+      <Card.Root>
+        <Card.Header>
+          <Card.Description>{at("stats_telemetry_heartbeat", {}, "最近安装心跳")}</Card.Description>
+          <Card.Title>{analytics.heartbeat?.date || "—"}</Card.Title>
+          <Card.Action><Zap size={18} /></Card.Action>
+        </Card.Header>
+        <Card.Footer>
+          {analytics.heartbeat?.version || "—"} · {analytics.heartbeat?.user_count_range || "—"}
+        </Card.Footer>
+      </Card.Root>
+    </AdminDashboardGrid>
   </AdminDashboardStack>
 {/if}

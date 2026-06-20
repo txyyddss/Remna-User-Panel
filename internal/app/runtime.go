@@ -141,6 +141,17 @@ func (r *Runtime) StartWorker(ctx context.Context) error {
 		}
 		return nil
 	}))
+	group.Add("telegram-outbox", workers.Interval(2*time.Second, func(ctx context.Context) error {
+		processed, err := httpapi.ProcessTelegramOutbox(ctx, r.settings, r.db, 100)
+		if err != nil {
+			slog.Warn("telegram outbox worker failed", "error", err)
+			return nil
+		}
+		if processed > 0 {
+			slog.Debug("telegram outbox worker processed messages", "processed", processed)
+		}
+		return nil
+	}))
 	group.Add("subscription-notifications", workers.Interval(5*time.Minute, func(ctx context.Context) error {
 		notified, err := httpapi.RunSubscriptionNotifications(ctx, r.settings, r.db, r.panel)
 		if err != nil {

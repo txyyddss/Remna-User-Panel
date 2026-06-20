@@ -150,7 +150,6 @@ export const ADMIN_SECTIONS = new Set([
   "support",
   "tariffs",
   "appearance",
-  "translations",
   "backups",
   "settings",
 ]);

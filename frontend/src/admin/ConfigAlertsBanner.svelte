@@ -12,11 +12,9 @@
   const MESSAGE_FALLBACKS = {
     data_dir_missing:
       "Каталог data ({path}) не найден. Проверьте, что том data смонтирован в контейнер.",
-    data_dir_not_writable:
-      "Нет прав на запись в {path} — бэкапы, тарифы, логотипы и переводы не сохранятся.",
+    data_dir_not_writable: "Нет прав на запись в {path} — бэкапы, тарифы и логотипы не сохранятся.",
     backups_dir_not_writable: "Каталог бэкапов {path} недоступен для записи.",
     tariffs_config_invalid: "Файл тарифов {path} не читается: {error}",
-    locale_overrides_invalid: "Файл переводов {path} повреждён: {error}",
     subscription_page_config_invalid: "Конфиг гайдов подписки не читается: {error}",
     provider_not_configured:
       "Провайдер {provider} включён, но не настроен — оплата через него не работает.",

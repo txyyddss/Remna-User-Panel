@@ -33,7 +33,6 @@
   import { createAdminSupportStore } from "../lib/admin/stores/supportStore.js";
   import { createTariffsStore } from "../lib/admin/stores/tariffsStore.js";
   import { createThemesStore } from "../lib/admin/stores/themesStore.js";
-  import { createTranslationsStore } from "../lib/admin/stores/translationsStore.js";
   import { createUsersStore } from "../lib/admin/stores/usersStore.js";
   import {
     fmtDate,
@@ -72,7 +71,6 @@
   export let onSettingsSaved = () => {};
   export let onTariffsSaved = () => {};
   export let onThemesSaved = () => {};
-  export let onTranslationsSaved = () => {};
   export let routePrefix = "";
   export let brand = {};
   export let brandTitle = "Subscription";
@@ -177,7 +175,6 @@
   const supportStore = createAdminSupportStore({ api, onToast: flash, at, routePrefix });
   const tariffsStore = createTariffsStore({ api, onToast: flash, onTariffsSaved, flash, at });
   const themesStore = createThemesStore({ api, onThemesSaved, flash, at });
-  const translationsStore = createTranslationsStore({ api, onToast: flash, at });
   const usersStore = createUsersStore({ api, onToast: flash, at, routePrefix });
 
   setContext("promosStore", promosStore);
@@ -193,7 +190,6 @@
   setContext("usersStore", usersStore);
   setContext("tariffsStore", tariffsStore);
   setContext("themesStore", themesStore);
-  setContext("translationsStore", translationsStore);
 
   $: usersStore.setActive(active);
   $: paymentsStore.setActive(active);
@@ -763,7 +759,6 @@
               {fmtDateShort}
               {fmtMoney}
               {onSettingsSaved}
-              {onTranslationsSaved}
               {paymentStatusVariant}
               {panelStatusBadge}
               {resolvedAvatarUrl}

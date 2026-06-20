@@ -13,53 +13,15 @@ export function readReferralParam(tg) {
   return value ? rememberReferral(value) : readReferral();
 }
 
-export function readTelegramAuthStatus() {
-  const params = new URLSearchParams(window.location.search);
-  return (params.get("telegram_auth") || "").trim().toLowerCase() || null;
-}
-
 export function readMagicLoginToken() {
   const params = new URLSearchParams(window.location.search);
   return (params.get("login_token") || "").trim() || null;
 }
 
-export function readTelegramLoginWidgetAuthData() {
-  const params = new URLSearchParams(window.location.search);
-  const keys = ["id", "first_name", "last_name", "username", "photo_url", "auth_date", "hash"];
-  const authData = {};
-  let hasAuthValue = false;
-  keys.forEach((key) => {
-    if (!params.has(key)) return;
-    authData[key] = params.get(key) || "";
-    hasAuthValue = true;
-  });
-  if (!hasAuthValue || !authData.id || !authData.auth_date || !authData.hash) return null;
-  return authData;
-}
-
 export function clearAuthQuery() {
   const url = new URL(window.location.href);
-  [
-    "login_token",
-    "login_purpose",
-    "telegram_auth",
-    "id",
-    "first_name",
-    "last_name",
-    "username",
-    "photo_url",
-    "auth_date",
-    "hash",
-  ].forEach((key) => url.searchParams.delete(key));
+  ["login_token", "login_purpose"].forEach((key) => url.searchParams.delete(key));
   window.history?.replaceState?.({}, document.title, url.pathname + url.search + url.hash);
-}
-
-export function buildTelegramOAuthStartUrl(purpose = "login", tg = null) {
-  const url = new URL("/auth/telegram/start", window.location.origin);
-  url.searchParams.set("purpose", purpose);
-  const referralParam = readReferralParam(tg);
-  if (referralParam) url.searchParams.set("referral_code", referralParam);
-  return url.toString();
 }
 
 export function emailError(error, fallback, t) {

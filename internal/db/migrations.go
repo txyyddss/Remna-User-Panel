@@ -310,5 +310,51 @@ CREATE INDEX IF NOT EXISTS ix_email_codes_user ON email_verification_codes(user_
 				return err
 			},
 		},
+		{
+			ID: "core.go.0008_runtime_alignment",
+			Up: func(ctx context.Context, tx pgx.Tx) error {
+				_, err := tx.Exec(ctx, `
+ALTER TABLE users ADD COLUMN IF NOT EXISTS panel_status VARCHAR(32) NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS panel_expire_at TIMESTAMPTZ NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS panel_state_synced_at TIMESTAMPTZ NULL;
+
+CREATE TABLE IF NOT EXISTS subscription_share_tokens (
+	token VARCHAR(32) PRIMARY KEY,
+	user_id BIGINT NOT NULL UNIQUE REFERENCES users(user_id) ON DELETE CASCADE,
+	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	last_used_at TIMESTAMPTZ NULL
+);
+
+CREATE TABLE IF NOT EXISTS telegram_outbox (
+	message_id BIGSERIAL PRIMARY KEY,
+	batch_id VARCHAR(64) NOT NULL,
+	user_id BIGINT NULL REFERENCES users(user_id) ON DELETE SET NULL,
+	chat_id BIGINT NOT NULL,
+	text TEXT NOT NULL,
+	parse_mode VARCHAR(16) NOT NULL DEFAULT '',
+	status VARCHAR(16) NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','sending','sent','failed')),
+	attempts INT NOT NULL DEFAULT 0,
+	last_error TEXT NULL,
+	next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	sent_at TIMESTAMPTZ NULL
+);
+CREATE INDEX IF NOT EXISTS ix_telegram_outbox_pending ON telegram_outbox(status,next_attempt_at,message_id);
+CREATE INDEX IF NOT EXISTS ix_telegram_outbox_batch ON telegram_outbox(batch_id,status);
+
+INSERT INTO app_settings(key,value,updated_at)
+SELECT 'WEBAPP_LOGO_URL',value,updated_at FROM app_settings WHERE key='APPEARANCE_LOGO_URL'
+ON CONFLICT(key) DO NOTHING;
+INSERT INTO app_settings(key,value,updated_at)
+SELECT 'WEBAPP_FAVICON_URL',value,updated_at FROM app_settings WHERE key='APPEARANCE_FAVICON_URL'
+ON CONFLICT(key) DO NOTHING;
+INSERT INTO app_settings(key,value,updated_at)
+SELECT 'WEBAPP_FAVICON_USE_CUSTOM','true'::jsonb,updated_at FROM app_settings WHERE key='APPEARANCE_FAVICON_URL'
+ON CONFLICT(key) DO NOTHING;
+DELETE FROM app_settings WHERE key IN ('APPEARANCE_LOGO_URL','APPEARANCE_FAVICON_URL','TRANSLATION_OVERRIDES');
+`)
+				return err
+			},
+		},
 	}
 }

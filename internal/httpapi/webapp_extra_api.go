@@ -37,9 +37,7 @@ import (
 )
 
 func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog, assets webassets.Paths, registry *payments.Registry, panel *remnawave.Client) {
-	router.Get("/api/admin/me", adminMeHandler(settings, pool))
 	router.Get("/api/tariffs/topup-options", webappPlansOptionsHandler(settings, pool, "topup"))
-	router.Get("/api/devices/topup-options", webappPlansOptionsHandler(settings, pool, "devices"))
 	router.Get("/api/tariffs/change-options", webappPlansOptionsHandler(settings, pool, "change"))
 	router.Post("/api/tariffs/change", userTariffChangeHandler(settings, pool, panel))
 	router.Post("/api/tariffs/change-payment", createPaymentHandler(settings, pool, registry))
@@ -54,7 +52,7 @@ func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *p
 	router.Post("/api/account/email/verify", emailVerifyHandler(settings, pool))
 	router.Post("/api/account/password/request", passwordRequestHandler(settings, pool))
 	router.Post("/api/account/password/confirm", passwordConfirmHandler(settings, pool))
-	router.Post("/api/account/telegram/link", unavailableSessionMutation(settings, pool, "telegram_link_requires_mini_app_login"))
+	router.Post("/api/account/telegram/link", accountTelegramLinkHandler(settings, pool))
 	router.Post("/api/account/language", accountLanguageHandler(settings, pool))
 	router.Get("/api/account/notifications", userNotificationPrefsHandler(settings, pool))
 	router.Post("/api/account/notifications", userNotificationPrefsHandler(settings, pool))
@@ -62,8 +60,8 @@ func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *p
 	router.Post("/api/auth/email/verify", emailLoginVerifyHandler(settings, pool))
 	router.Post("/api/auth/email/password", adminPasswordLoginHandler(settings, pool))
 	router.Post("/api/auth/email/magic", emailMagicLinkHandler(settings, pool))
-	router.Get("/api/subscription-guides", subscriptionGuidesHandler(settings, pool))
-	router.Get("/api/subscription-guides/public/{share_token}", subscriptionGuidesHandler(settings, pool))
+	router.Get("/api/subscription-guides", subscriptionGuidesHandler(settings, pool, panel))
+	router.Get("/api/subscription-guides/public/{share_token}", subscriptionGuidesHandler(settings, pool, panel))
 
 	router.Get("/api/support/tickets", supportListHandler(settings, pool, false))
 	router.Post("/api/support/tickets", supportCreateHandler(settings, pool, false))
@@ -114,12 +112,7 @@ func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *p
 	router.Get("/api/admin/themes", adminThemesHandler(settings, pool, assets))
 	router.Put("/api/admin/themes", adminThemesHandler(settings, pool, assets))
 	router.Post("/api/admin/appearance/logo", adminAppearanceLogoHandler(settings, pool))
-	router.Delete("/api/admin/appearance/logo", adminAppearanceLogoHandler(settings, pool))
 	router.Post("/api/admin/appearance/favicon", adminAppearanceFaviconHandler(settings, pool))
-	router.Delete("/api/admin/appearance/favicon", adminAppearanceFaviconHandler(settings, pool))
-	router.Get("/api/admin/translations", adminTranslationsHandler(settings, pool, catalog))
-	router.Put("/api/admin/translations", adminTranslationsHandler(settings, pool, catalog))
-	router.Patch("/api/admin/translations", adminTranslationsHandler(settings, pool, catalog))
 	router.Get("/api/admin/support/stats", adminSupportStatsHandler(settings, pool))
 	router.Get("/api/admin/support/tickets", supportListHandler(settings, pool, true))
 	router.Get("/api/admin/support/tickets/{ticket_id}", supportDetailHandler(settings, pool, true))
@@ -145,9 +138,6 @@ func webappPlansOptionsHandler(settings config.Settings, pool *pgxpool.Pool, kin
 		plans = tariffs.WithStarsPrice(plans, store.Float(r.Context(), "STARS_USD_RATE", settings.StarsUSDRate))
 		response := map[string]any{"ok": true, "plans": plans, "fx": rate}
 		switch kind {
-		case "devices":
-			response["tariff_name"] = ""
-			response["plans"] = devicePlansFrom(plans)
 		case "change":
 			response["current"] = nil
 			response["targets"] = changeTargetsFrom(plans)
@@ -658,71 +648,6 @@ func adminTariffsHandler(settings config.Settings, pool *pgxpool.Pool) http.Hand
 	}
 }
 
-func adminMeHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		session, ok := requireAdmin(w, r, settings, pool, false)
-		if !ok {
-			return
-		}
-		writeJSON(w, http.StatusOK, map[string]any{
-			"ok":      true,
-			"user_id": session.User.UserID,
-			"admin":   true,
-		})
-	}
-}
-
-func adminPasswordLoginHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if pool == nil {
-			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"ok": false, "error": "database_not_configured"})
-			return
-		}
-		if len(settings.AdminIDs) == 0 || strings.TrimSpace(settings.AdminEmail) == "" || settings.AdminPassword == "" {
-			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"ok": false, "error": "email_password_login_not_configured"})
-			return
-		}
-		var payload struct {
-			Email    string `json:"email"`
-			Password string `json:"password"`
-		}
-		if err := decodeJSONBody(r, &payload); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
-			return
-		}
-		email := strings.ToLower(strings.TrimSpace(payload.Email))
-		if email == "" || subtle.ConstantTimeCompare([]byte(email), []byte(settings.AdminEmail)) != 1 || !constantTimeStringEqual(payload.Password, settings.AdminPassword) {
-			writeJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "invalid_credentials"})
-			return
-		}
-		adminID := settings.AdminIDs[0]
-		language := effectiveDefaultLanguage(r.Context(), pool, settings)
-		if err := ensureAdminUser(r.Context(), pool, adminID, settings.AdminEmail, language); err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "admin_user_upsert_failed"})
-			return
-		}
-		manager := webappSessionManager(settings)
-		token, csrf, err := manager.Sign(adminID)
-		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "session_sign_failed"})
-			return
-		}
-		setSessionCookies(w, r, token, csrf)
-		writeJSON(w, http.StatusOK, map[string]any{
-			"ok":         true,
-			"csrf_token": csrf,
-			"user": webappUser{
-				UserID:       adminID,
-				TelegramID:   adminID,
-				Email:        settings.AdminEmail,
-				FirstName:    "Admin",
-				LanguageCode: language,
-				IsAdmin:      true,
-			},
-		})
-	}
-}
-
 func ensureAdminUser(ctx context.Context, pool *pgxpool.Pool, adminID int64, email string, language string) error {
 	normalizedEmail := strings.ToLower(strings.TrimSpace(email))
 	tx, err := pool.Begin(ctx)
@@ -798,8 +723,11 @@ func adminPaymentsExportHandler(settings config.Settings, pool *pgxpool.Pool, re
 		writer := csv.NewWriter(w)
 		_ = writer.Write([]string{"payment_id", "order_id", "user_id", "provider", "method", "amount", "currency", "base_amount", "base_currency", "status", "created_at", "paid_at"})
 		if registry != nil {
-			orders, _, err := registry.List(r.Context(), 0, 100)
-			if err == nil {
+			for page := 0; ; page++ {
+				orders, total, err := registry.List(r.Context(), page, 100)
+				if err != nil {
+					break
+				}
 				for _, order := range orders {
 					paidAt := ""
 					if order.PaidAt != nil {
@@ -810,6 +738,9 @@ func adminPaymentsExportHandler(settings config.Settings, pool *pgxpool.Pool, re
 						order.Provider, order.Method, fmt.Sprintf("%.2f", order.Amount), order.Currency,
 						fmt.Sprintf("%.2f", order.BaseAmount), order.BaseCurrency, order.Status, order.CreatedAt.Format(time.RFC3339), paidAt,
 					})
+				}
+				if len(orders) == 0 || int64((page+1)*100) >= total {
+					break
 				}
 			}
 		}
@@ -822,22 +753,79 @@ func adminHealthHandler(settings config.Settings, pool *pgxpool.Pool, panel *rem
 		if _, ok := requireAdmin(w, r, settings, pool, false); !ok {
 			return
 		}
+		ctx := r.Context()
+		store := appsettings.NewStore(pool)
 		alerts := []map[string]any{}
-		checks := map[string]any{"database": pool != nil}
-		panelConfigured := panel != nil && panel.Configured(r.Context())
-		checks["remnawave_configured"] = panelConfigured
-		if !panelConfigured {
-			alerts = append(alerts, map[string]any{"level": "warning", "code": "panel_not_configured", "message": "PANEL_API_URL and PANEL_API_KEY are required for Remnawave integration."})
-		} else if _, err := panel.GetSystemStats(r.Context()); err != nil {
+		addAlert := func(severity, key string, params map[string]any, sections ...string) {
+			alerts = append(alerts, map[string]any{"id": fmt.Sprintf("%s:%d", key, len(alerts)), "severity": severity, "message_key": key, "params": params, "sections": sections})
+		}
+		if info, err := os.Stat("data"); err != nil || !info.IsDir() {
+			addAlert("error", "data_dir_missing", map[string]any{"path": "data"}, "settings", "backups", "tariffs")
+		} else if info.Mode().Perm()&0o200 == 0 {
+			addAlert("error", "data_dir_not_writable", map[string]any{"path": "data"}, "backups", "tariffs", "appearance")
+		}
+		if _, err := tariffs.Load("data/tariffs.json"); err != nil {
+			if _, fallbackErr := tariffs.Load("data/tariffs.example.json"); fallbackErr != nil {
+				addAlert("error", "tariffs_config_invalid", map[string]any{"path": "data/tariffs.json", "error": err.Error()}, "tariffs")
+			}
+		}
+		guidesEnabled := store.Bool(ctx, "SUBSCRIPTION_GUIDES_ENABLED", false)
+		if guidesEnabled {
+			configured := false
+			if raw, ok, _ := store.Get(ctx, "SUBSCRIPTION_GUIDES_CONFIG"); ok {
+				var object map[string]any
+				configured = json.Unmarshal(raw, &object) == nil && validSubscriptionGuidesConfig(object)
+			}
+			if !configured {
+				for _, path := range []string{"data/subscription-guides.json", "data/subscription-guides.example.json"} {
+					if body, err := os.ReadFile(path); err == nil {
+						var object map[string]any
+						if json.Unmarshal(body, &object) == nil && validSubscriptionGuidesConfig(object) {
+							configured = true
+							break
+						}
+					}
+				}
+			}
+			if !configured {
+				addAlert("error", "subscription_page_config_invalid", map[string]any{"error": "configuration is empty"}, "settings")
+			}
+		}
+		webhookBase := store.String(ctx, "WEBHOOK_BASE_URL", settings.WebhookBaseURL)
+		if store.Bool(ctx, "EZPAY_ENABLED", settings.EZPay.Enabled) && (store.String(ctx, "EZPAY_BASE_URL", settings.EZPay.BaseURL) == "" || store.String(ctx, "EZPAY_KEY", settings.EZPay.Key) == "") {
+			addAlert("error", "provider_not_configured", map[string]any{"provider": "EZPay"}, "settings", "payments")
+		}
+		if store.Bool(ctx, "BEPUSDT_ENABLED", settings.BEPUSDT.Enabled) && (store.String(ctx, "BEPUSDT_BASE_URL", settings.BEPUSDT.BaseURL) == "" || store.String(ctx, "BEPUSDT_TOKEN", settings.BEPUSDT.Token) == "") {
+			addAlert("error", "provider_not_configured", map[string]any{"provider": "BEPUSDT"}, "settings", "payments")
+		}
+		if (store.Bool(ctx, "EZPAY_ENABLED", settings.EZPay.Enabled) || store.Bool(ctx, "BEPUSDT_ENABLED", settings.BEPUSDT.Enabled)) && strings.TrimSpace(webhookBase) == "" {
+			addAlert("warning", "provider_webhook_needs_base_url", map[string]any{"provider": "payment"}, "settings", "payments")
+		}
+		if strings.TrimSpace(settings.SubscriptionMiniApp) == "" {
+			addAlert("warning", "mini_app_url_missing", map[string]any{}, "settings")
+		}
+		if store.Bool(ctx, "SMTP_ENABLED", false) && !mailerConfigFromSettings(ctx, store).IsConfigured() {
+			addAlert("error", "smtp_incomplete", map[string]any{}, "settings")
+		}
+		if strings.TrimSpace(settings.BotToken) == "" {
+			addAlert("error", "bot_token_invalid", map[string]any{}, "settings")
+		}
+		checks := map[string]any{"database": pool != nil, "remnawave_configured": panel != nil && panel.Configured(ctx)}
+		if panel == nil || !panel.Configured(ctx) {
+			addAlert("warning", "panel_api_not_configured", map[string]any{}, "settings", "users", "tariffs")
+		} else if _, err := panel.GetSystemStats(ctx); err != nil {
 			checks["remnawave_api"] = false
-			alerts = append(alerts, map[string]any{"level": "error", "code": panelErrorCode(err), "message": err.Error()})
+			addAlert("error", "panel_api_unreachable", map[string]any{"url": store.String(ctx, "PANEL_API_URL", settings.PanelAPIURL)}, "settings", "users")
 		} else {
 			checks["remnawave_api"] = true
 		}
-		payload := map[string]any{"ok": true, "status": "ok", "checks": checks, "alerts": alerts, "checked_at": time.Now().UTC()}
-		if pool != nil {
-			payload["db_pool"] = pool.Stat()
+		status := "ok"
+		for _, alert := range alerts {
+			if alert["severity"] == "error" { status = "error"; break }
+			status = "warning"
 		}
+		payload := map[string]any{"ok": true, "status": status, "checks": checks, "alerts": alerts, "checked_at": time.Now().UTC()}
+		if pool != nil { payload["db_pool"] = pool.Stat() }
 		writeJSON(w, http.StatusOK, payload)
 	}
 }
@@ -847,41 +835,111 @@ func adminStatsHandler(settings config.Settings, pool *pgxpool.Pool, panel *remn
 		if _, ok := requireAdmin(w, r, settings, pool, false); !ok {
 			return
 		}
-		var users, payments int64
-		var revenue float64
-		_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM users").Scan(&users)
-		_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM payment_orders").Scan(&payments)
-		_ = pool.QueryRow(r.Context(), "SELECT COALESCE(SUM(base_amount),0)::float8 FROM payment_orders WHERE status IN ('paid','succeeded')").Scan(&revenue)
-		payload := map[string]any{
-			"ok":         true,
-			"users":      users,
-			"payments":   payments,
-			"revenue":    revenue,
-			"series":     []any{},
-			"panel_sync": LastPanelSyncStatus(r.Context(), pool),
+		ctx := r.Context()
+		users := map[string]any{}
+		var totalUsers, activeToday, bannedUsers, referralUsers, activeSubscriptions, paidSubscriptions, trialUsers, expiredSubscriptions int64
+		_ = pool.QueryRow(ctx, "SELECT COUNT(*) FROM users").Scan(&totalUsers)
+		_ = pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE registration_date>=CURRENT_DATE").Scan(&activeToday)
+		_ = pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE is_banned=TRUE").Scan(&bannedUsers)
+		_ = pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE referred_by_id IS NOT NULL").Scan(&referralUsers)
+		_ = pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE UPPER(COALESCE(panel_status,'')) IN ('ACTIVE','LIMITED') AND (panel_expire_at IS NULL OR panel_expire_at>NOW())").Scan(&activeSubscriptions)
+		_ = pool.QueryRow(ctx, "SELECT COUNT(DISTINCT user_id) FROM payment_orders WHERE status IN ('paid','succeeded')").Scan(&paidSubscriptions)
+		_ = pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE UPPER(COALESCE(panel_status,''))='EXPIRED' OR panel_expire_at<=NOW()").Scan(&expiredSubscriptions)
+		trialUserIDs := map[int64]struct{}{}
+		for _, activation := range readSettingList(ctx, pool, "TRIAL_ACTIVATIONS") {
+			if userID := int64Value(activation, "user_id"); userID > 0 {
+				trialUserIDs[userID] = struct{}{}
+			}
 		}
+		trialUsers = int64(len(trialUserIDs))
+		users["total_users"] = totalUsers
+		users["active_today"] = activeToday
+		users["banned_users"] = bannedUsers
+		users["referral_users"] = referralUsers
+		users["active_subscriptions"] = activeSubscriptions
+		users["paid_subscriptions"] = paidSubscriptions
+		users["free_subscription_users"] = maxInt64(0, activeSubscriptions-paidSubscriptions)
+		users["trial_users"] = trialUsers
+		users["inactive_users"] = maxInt64(0, totalUsers-activeSubscriptions)
+		users["expired_subscription_users"] = expiredSubscriptions
+
+		financial := map[string]any{}
+		var todayRevenue, weekRevenue, monthRevenue, allRevenue float64
+		var todayPayments int64
+		_ = pool.QueryRow(ctx, "SELECT COALESCE(SUM(COALESCE(base_amount,amount)),0)::float8,COUNT(*) FROM payment_orders WHERE status IN ('paid','succeeded') AND COALESCE(paid_at,updated_at)>=CURRENT_DATE").Scan(&todayRevenue, &todayPayments)
+		_ = pool.QueryRow(ctx, "SELECT COALESCE(SUM(COALESCE(base_amount,amount)),0)::float8 FROM payment_orders WHERE status IN ('paid','succeeded') AND COALESCE(paid_at,updated_at)>=NOW()-INTERVAL '7 days'").Scan(&weekRevenue)
+		_ = pool.QueryRow(ctx, "SELECT COALESCE(SUM(COALESCE(base_amount,amount)),0)::float8 FROM payment_orders WHERE status IN ('paid','succeeded') AND COALESCE(paid_at,updated_at)>=NOW()-INTERVAL '30 days'").Scan(&monthRevenue)
+		_ = pool.QueryRow(ctx, "SELECT COALESCE(SUM(COALESCE(base_amount,amount)),0)::float8 FROM payment_orders WHERE status IN ('paid','succeeded')").Scan(&allRevenue)
+		financial["today_revenue"] = todayRevenue
+		financial["today_payments_count"] = todayPayments
+		financial["week_revenue"] = weekRevenue
+		financial["month_revenue"] = monthRevenue
+		financial["all_time_revenue"] = allRevenue
+		dailySeries := []map[string]any{}
+		rows, err := pool.Query(ctx, `SELECT day::date::text,COALESCE(SUM(COALESCE(p.base_amount,p.amount)),0)::float8
+FROM generate_series(CURRENT_DATE-INTERVAL '364 days',CURRENT_DATE,INTERVAL '1 day') day
+LEFT JOIN payment_orders p ON p.status IN ('paid','succeeded') AND COALESCE(p.paid_at,p.updated_at)>=day AND COALESCE(p.paid_at,p.updated_at)<day+INTERVAL '1 day'
+GROUP BY day ORDER BY day`)
+		if err == nil {
+			for rows.Next() {
+				var date string
+				var amount float64
+				if rows.Scan(&date, &amount) == nil {
+					dailySeries = append(dailySeries, map[string]any{"date": date, "amount": amount})
+				}
+			}
+			rows.Close()
+		}
+		financial["daily_series"] = dailySeries
+
+		recentPayments := []map[string]any{}
+		paymentRows, err := pool.Query(ctx, `SELECT p.payment_id,p.user_id,COALESCE(NULLIF(u.username,''),NULLIF(u.email,''),p.user_id::text),p.amount::float8,p.currency,p.provider,p.status,p.created_at
+FROM payment_orders p LEFT JOIN users u ON u.user_id=p.user_id ORDER BY p.created_at DESC LIMIT 10`)
+		if err == nil {
+			for paymentRows.Next() {
+				var paymentID, userID int64
+				var userLabel, currency, provider, status string
+				var amount float64
+				var createdAt time.Time
+				if paymentRows.Scan(&paymentID, &userID, &userLabel, &amount, &currency, &provider, &status, &createdAt) == nil {
+					recentPayments = append(recentPayments, map[string]any{"payment_id": paymentID, "user_id": userID, "user_label": userLabel, "amount": amount, "currency": currency, "provider": provider, "status": status, "created_at": createdAt})
+				}
+			}
+			paymentRows.Close()
+		}
+
 		var anonymousVisitors, inviteVisits, rejectedRewards int64
-		_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM visitor_telemetry").Scan(&anonymousVisitors)
-		_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM invite_visits").Scan(&inviteVisits)
-		_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM referral_welcome_claims WHERE status='rejected'").Scan(&rejectedRewards)
+		_ = pool.QueryRow(ctx, "SELECT COUNT(*) FROM visitor_telemetry").Scan(&anonymousVisitors)
+		_ = pool.QueryRow(ctx, "SELECT COUNT(*) FROM invite_visits").Scan(&inviteVisits)
+		_ = pool.QueryRow(ctx, "SELECT COUNT(*) FROM referral_welcome_claims WHERE status='rejected'").Scan(&rejectedRewards)
 		var heartbeatDate, version, provenance, osName, locale, userRange string
-		_ = pool.QueryRow(r.Context(), `SELECT heartbeat_date::text,version,provenance,os,locale,user_count_range FROM installation_heartbeats ORDER BY heartbeat_date DESC LIMIT 1`).Scan(&heartbeatDate, &version, &provenance, &osName, &locale, &userRange)
-		payload["local_analytics"] = map[string]any{"anonymous_visitors": anonymousVisitors, "invite_visits": inviteVisits, "rejected_welcome_rewards": rejectedRewards, "heartbeat": map[string]any{"date": heartbeatDate, "version": version, "provenance": provenance, "os": osName, "locale": locale, "user_count_range": userRange}}
-		if panel != nil && panel.Configured(r.Context()) {
+		_ = pool.QueryRow(ctx, `SELECT heartbeat_date::text,version,provenance,os,locale,user_count_range FROM installation_heartbeats ORDER BY heartbeat_date DESC LIMIT 1`).Scan(&heartbeatDate, &version, &provenance, &osName, &locale, &userRange)
+		payload := map[string]any{
+			"ok": true,
+			"currency_symbol": effectiveDefaultCurrency(ctx, settings, pool),
+			"users": users,
+			"financial": financial,
+			"recent_payments": recentPayments,
+			"panel_sync": LastPanelSyncStatus(ctx, pool),
+			"local_analytics": map[string]any{"anonymous_visitors": anonymousVisitors, "invite_visits": inviteVisits, "rejected_welcome_rewards": rejectedRewards, "heartbeat": map[string]any{"date": heartbeatDate, "version": version, "provenance": provenance, "os": osName, "locale": locale, "user_count_range": userRange}},
+		}
+		var queuedMessages, failedMessages int64
+		_ = pool.QueryRow(ctx, "SELECT COUNT(*) FILTER (WHERE status='queued'),COUNT(*) FILTER (WHERE status='failed') FROM telegram_outbox").Scan(&queuedMessages, &failedMessages)
+		payload["queue"] = map[string]any{"user_queue_size": queuedMessages, "failed_messages": failedMessages}
+		if panel != nil && panel.Configured(ctx) {
 			panelStats := map[string]any{}
-			if stats, err := panel.GetSystemStats(r.Context()); err == nil {
-				panelStats["system"] = stats
-			}
-			if bandwidth, err := panel.GetBandwidthStats(r.Context()); err == nil {
-				panelStats["bandwidth"] = bandwidth
-			}
-			if nodes, err := panel.GetNodesStats(r.Context()); err == nil {
-				panelStats["nodes"] = nodes
-			}
+			if stats, err := panel.GetSystemStats(ctx); err == nil { panelStats["system"] = stats }
+			if bandwidth, err := panel.GetBandwidthStats(ctx); err == nil { panelStats["bandwidth"] = bandwidth }
+			if nodes, err := panel.GetNodesStats(ctx); err == nil { panelStats["nodes"] = nodes }
 			payload["panel"] = panelStats
 		}
 		writeJSON(w, http.StatusOK, payload)
 	}
+}
+
+func maxInt64(a, b int64) int64 {
+	if a > b { return a }
+	return b
 }
 
 func adminSyncHandler(settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) http.HandlerFunc {
@@ -1581,15 +1639,20 @@ func adminBroadcastAudienceHandler(settings config.Settings, pool *pgxpool.Pool)
 		if _, ok := requireAdmin(w, r, settings, pool, false); !ok {
 			return
 		}
-		counts := map[string]int64{"all": 0, "active": 0, "inactive": 0, "expired": 0, "never": 0}
-		var allCount, activeCount, inactiveCount int64
-		_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM users WHERE is_banned=FALSE").Scan(&allCount)
-		_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM users WHERE is_banned=FALSE AND COALESCE(panel_user_uuid,'')<>''").Scan(&activeCount)
-		_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM users WHERE is_banned=FALSE AND COALESCE(panel_user_uuid,'')=''").Scan(&inactiveCount)
-		counts["all"] = allCount
-		counts["active"] = activeCount
-		counts["inactive"] = inactiveCount
-		counts["never"] = counts["inactive"]
+		counts := map[string]int64{}
+		queries := map[string]string{
+			"all": "is_banned=FALSE",
+			"active": "is_banned=FALSE AND UPPER(COALESCE(panel_status,'')) IN ('ACTIVE','LIMITED') AND (panel_expire_at IS NULL OR panel_expire_at>NOW())",
+			"inactive": "is_banned=FALSE AND NOT (UPPER(COALESCE(panel_status,'')) IN ('ACTIVE','LIMITED') AND (panel_expire_at IS NULL OR panel_expire_at>NOW()))",
+			"expired": "is_banned=FALSE AND (UPPER(COALESCE(panel_status,''))='EXPIRED' OR panel_expire_at<=NOW())",
+			"active_never_connected": "is_banned=FALSE AND UPPER(COALESCE(panel_status,'')) IN ('ACTIVE','LIMITED') AND (panel_expire_at IS NULL OR panel_expire_at>NOW()) AND COALESCE(lifetime_used_traffic_bytes,0)=0",
+			"never": "is_banned=FALSE AND COALESCE(panel_user_uuid,'')=''",
+		}
+		for key, where := range queries {
+			var count int64
+			_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM users WHERE "+where).Scan(&count)
+			counts[key] = count
+		}
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "total": counts["all"], "counts": counts, "audiences": counts})
 	}
 }
@@ -1608,36 +1671,42 @@ func adminBroadcastHandler(settings config.Settings, pool *pgxpool.Pool) http.Ha
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_message"})
 			return
 		}
-		recipients, err := broadcastRecipients(r.Context(), pool, payload.Target, 5000)
+		recipients, err := broadcastRecipients(r.Context(), pool, payload.Target)
 		if err != nil {
+			if err.Error() == "invalid_broadcast_target" {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_broadcast_target"})
+				return
+			}
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "broadcast_recipients_failed"})
 			return
 		}
+		batchID := fmt.Sprintf("broadcast-%d-%d", session.User.UserID, time.Now().UnixNano())
+		tx, err := pool.Begin(r.Context())
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "broadcast_queue_failed"})
+			return
+		}
 		queued := 0
-		failed := 0
 		for _, recipient := range recipients {
-			if err := sendTelegramText(r.Context(), settings, recipient.ChatID, payload.Text); err != nil {
-				failed++
-				recordMessageLog(r.Context(), pool, messageLogEntry{
-					UserID:       session.User.UserID,
-					TargetUserID: recipient.UserID,
-					EventType:    "admin_broadcast_failed",
-					Content:      payload.Text,
-					IsAdminEvent: true,
-					Payload:      map[string]any{"target": payload.Target, "error": err.Error()},
-				})
-				continue
+			if _, err := tx.Exec(r.Context(), `INSERT INTO telegram_outbox(batch_id,user_id,chat_id,text,parse_mode) VALUES($1,$2,$3,$4,'HTML')`, batchID, recipient.UserID, recipient.ChatID, strings.TrimSpace(payload.Text)); err != nil {
+				_ = tx.Rollback(r.Context())
+				writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "broadcast_queue_failed"})
+				return
 			}
 			queued++
+		}
+		if err := tx.Commit(r.Context()); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "broadcast_queue_failed"})
+			return
 		}
 		recordMessageLog(r.Context(), pool, messageLogEntry{
 			UserID:       session.User.UserID,
 			EventType:    "admin_broadcast",
 			Content:      payload.Text,
 			IsAdminEvent: true,
-			Payload:      map[string]any{"target": payload.Target, "queued": queued, "failed": failed},
+			Payload:      map[string]any{"target": payload.Target, "queued": queued, "batch_id": batchID},
 		})
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "queued": queued, "failed": failed})
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "queued": queued, "failed": 0, "batch_id": batchID})
 	}
 }
 
@@ -1646,7 +1715,7 @@ type broadcastRecipient struct {
 	ChatID int64
 }
 
-func broadcastRecipients(ctx context.Context, pool *pgxpool.Pool, target string, limit int) ([]broadcastRecipient, error) {
+func broadcastRecipients(ctx context.Context, pool *pgxpool.Pool, target string) ([]broadcastRecipient, error) {
 	target = strings.ToLower(strings.TrimSpace(target))
 	if target == "" {
 		target = "all"
@@ -1654,21 +1723,25 @@ func broadcastRecipients(ctx context.Context, pool *pgxpool.Pool, target string,
 	where := "is_banned=FALSE"
 	switch target {
 	case "active":
-		where += " AND COALESCE(panel_user_uuid,'')<>''"
-	case "inactive", "never":
+		where += " AND UPPER(COALESCE(panel_status,'')) IN ('ACTIVE','LIMITED') AND (panel_expire_at IS NULL OR panel_expire_at>NOW())"
+	case "inactive":
+		where += " AND NOT (UPPER(COALESCE(panel_status,'')) IN ('ACTIVE','LIMITED') AND (panel_expire_at IS NULL OR panel_expire_at>NOW()))"
+	case "never":
 		where += " AND COALESCE(panel_user_uuid,'')=''"
 	case "expired":
-		return []broadcastRecipient{}, nil
-	}
-	if limit <= 0 || limit > 10000 {
-		limit = 5000
+		where += " AND (UPPER(COALESCE(panel_status,''))='EXPIRED' OR panel_expire_at<=NOW())"
+	case "active_never_connected":
+		where += " AND UPPER(COALESCE(panel_status,'')) IN ('ACTIVE','LIMITED') AND (panel_expire_at IS NULL OR panel_expire_at>NOW()) AND COALESCE(lifetime_used_traffic_bytes,0)=0"
+	default:
+		if target != "all" {
+			return nil, fmt.Errorf("invalid_broadcast_target")
+		}
 	}
 	rows, err := pool.Query(ctx, `
 SELECT user_id, COALESCE(telegram_id,0)
 FROM users
 WHERE `+where+`
-ORDER BY registration_date DESC
-LIMIT $1`, limit)
+ORDER BY registration_date DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -1778,329 +1851,6 @@ func adminThemesHandler(settings config.Settings, pool *pgxpool.Pool, assets web
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "catalog": payload.Catalog, "themes_dir": assets.ThemesDir})
 	}
-}
-
-func adminTranslationsHandler(settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := requireAdmin(w, r, settings, pool, r.Method != http.MethodGet); !ok {
-			return
-		}
-		store := appsettings.NewStore(pool)
-		if r.Method == http.MethodGet {
-			raw, ok, _ := store.Get(r.Context(), "TRANSLATION_OVERRIDES")
-			overrides := map[string]map[string]string{}
-			if ok {
-				_ = json.Unmarshal(raw, &overrides)
-			}
-			overrides = normalizeTranslationOverrides(overrides)
-			groups := buildTranslationGroups(catalog, overrides)
-			langs := buildTranslationLanguages(catalog, overrides)
-			writeJSON(w, http.StatusOK, map[string]any{
-				"ok":             true,
-				"translations":   overrides,
-				"overrides":      overrides,
-				"groups":         groups,
-				"languages":      langs,
-				"path":           "locales",
-				"override_count": translationOverrideCount(overrides),
-			})
-			return
-		}
-		var payload struct {
-			Updates map[string]map[string]string `json:"updates"`
-			Deletes []struct {
-				Lang string `json:"lang"`
-				Key  string `json:"key"`
-			} `json:"deletes"`
-		}
-		// Read body once and try both formats
-		bodyBytes, readErr := io.ReadAll(io.LimitReader(r.Body, maxJSONBodyBytes))
-		if readErr != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
-			return
-		}
-		if err := json.Unmarshal(bodyBytes, &payload); err != nil || (len(payload.Updates) == 0 && len(payload.Deletes) == 0) {
-			// Fallback: try flat overrides format
-			var flat map[string]any
-			if json.Unmarshal(bodyBytes, &flat) != nil {
-				writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
-				return
-			}
-			value := flat["translations"]
-			if value == nil {
-				value = flat["overrides"]
-			}
-			if value == nil {
-				value = map[string]any{}
-			}
-			if err := store.Upsert(r.Context(), "TRANSLATION_OVERRIDES", value); err != nil {
-				writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "translations_save_failed"})
-				return
-			}
-			writeJSON(w, http.StatusOK, map[string]any{"ok": true, "translations": value, "overrides": value})
-			return
-		}
-
-		// Load existing overrides
-		raw, ok, _ := store.Get(r.Context(), "TRANSLATION_OVERRIDES")
-		overrides := map[string]map[string]string{}
-		if ok {
-			_ = json.Unmarshal(raw, &overrides)
-		}
-		overrides = normalizeTranslationOverrides(overrides)
-		if overrides == nil {
-			overrides = map[string]map[string]string{}
-		}
-
-		// Apply updates
-		for lang, keys := range payload.Updates {
-			lang = strings.ToLower(strings.ReplaceAll(strings.TrimSpace(lang), "_", "-"))
-			if lang == "" {
-				continue
-			}
-			if overrides[lang] == nil {
-				overrides[lang] = map[string]string{}
-			}
-			for key, value := range keys {
-				if key = strings.TrimSpace(key); key != "" {
-					overrides[lang][key] = value
-				}
-			}
-		}
-
-		// Apply deletes
-		for _, del := range payload.Deletes {
-			lang := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(del.Lang), "_", "-"))
-			if langMap, ok := overrides[lang]; ok {
-				delete(langMap, strings.TrimSpace(del.Key))
-				if len(langMap) == 0 {
-					delete(overrides, lang)
-				}
-			}
-		}
-
-		// Also write to locale override file
-		fileWritten := true
-		overridePath := filepath.Join("data", "locales-overrides.json")
-		overrideData, _ := json.MarshalIndent(overrides, "", "  ")
-		if err := os.MkdirAll(filepath.Dir(overridePath), 0o755); err != nil {
-			fileWritten = false
-		}
-		if fileWritten {
-			if err := os.WriteFile(overridePath, append(overrideData, '\n'), 0o644); err != nil {
-				fileWritten = false
-			}
-		}
-
-		if err := store.Upsert(r.Context(), "TRANSLATION_OVERRIDES", overrides); err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "translations_save_failed"})
-			return
-		}
-		writeJSON(w, http.StatusOK, map[string]any{
-			"ok":           true,
-			"translations": overrides,
-			"overrides":    overrides,
-			"file_written": fileWritten,
-		})
-	}
-}
-
-type translationGroupDefinition struct {
-	ID          string
-	Title       string
-	Description string
-	Audience    string
-}
-
-var translationGroupDefinitions = []translationGroupDefinition{
-	{ID: "admin_navigation", Title: "Admin navigation and shared UI", Description: "Sidebar, section headers, toolbar actions, filters, and shared controls.", Audience: "internal"},
-	{ID: "admin_dashboard", Title: "Admin dashboard and stats", Description: "Dashboard cards, revenue charts, panel sync status, and monitoring copy.", Audience: "internal"},
-	{ID: "admin_users", Title: "Admin users", Description: "User lists, user cards, bans, grants, overrides, and direct messages.", Audience: "internal"},
-	{ID: "admin_payments", Title: "Admin payments", Description: "Payment tables, details, exports, provider labels, and payment stats.", Audience: "internal"},
-	{ID: "admin_promos_marketing", Title: "Admin promos, ads, and broadcasts", Description: "Promo management, ad campaigns, marketing tools, and broadcast workflows.", Audience: "internal"},
-	{ID: "admin_tariffs", Title: "Admin tariffs", Description: "Tariff catalog, tariff dialogs, packages, and trial tariff widgets.", Audience: "internal"},
-	{ID: "admin_support", Title: "Admin support inbox", Description: "Support ticket inbox, filters, replies, and statuses.", Audience: "internal"},
-	{ID: "admin_appearance", Title: "Admin appearance", Description: "Theme catalog, branding, logo, favicon, and public page links.", Audience: "internal"},
-	{ID: "admin_settings", Title: "Admin settings", Description: "Settings groups, fields, helper text, and configuration alerts.", Audience: "internal"},
-	{ID: "admin_translations", Title: "Admin translations", Description: "Translation overrides, language controls, and locale groups.", Audience: "internal"},
-	{ID: "admin_logs", Title: "Admin logs and exports", Description: "Activity logs, exports, CSV headers, and event details.", Audience: "internal"},
-	{ID: "admin_misc", Title: "Admin miscellaneous", Description: "Other admin-only and service strings.", Audience: "internal"},
-	{ID: "webapp", Title: "Mini App", Description: "User-facing Mini App screens, navigation, settings, and toasts.", Audience: "user"},
-	{ID: "bot_menu", Title: "Telegram bot", Description: "Start menu, inline buttons, language selector, and bot-only flows.", Audience: "user"},
-	{ID: "subscriptions", Title: "Subscriptions and devices", Description: "Subscription status, install guides, traffic packages, trials, and devices.", Audience: "user"},
-	{ID: "payments", Title: "Payments", Description: "Payment flows, invoices, payment methods, and checkout messages.", Audience: "user"},
-	{ID: "support", Title: "Support", Description: "Support links, tickets, statuses, and notifications.", Audience: "user"},
-	{ID: "referrals_promos", Title: "Referrals and promos", Description: "Referral program, invite copy, promo codes, and bonuses.", Audience: "user"},
-	{ID: "auth_security", Title: "Auth and security", Description: "Login, email verification, account linking, and security messages.", Audience: "user"},
-	{ID: "emails", Title: "Emails", Description: "Transactional emails, login codes, payments, and reminders.", Audience: "user"},
-	{ID: "notifications_sync", Title: "Notifications and sync", Description: "Notifications, panel sync, logs, and background statuses.", Audience: "internal"},
-	{ID: "common", Title: "Common", Description: "Shared buttons, statuses, validation errors, and uncategorized strings.", Audience: "user"},
-}
-
-func buildTranslationGroups(catalog *i18n.Catalog, overrides map[string]map[string]string) []map[string]any {
-	messages := map[string]map[string]string{}
-	if catalog != nil {
-		messages = catalog.Messages()
-	}
-	keys := map[string]bool{}
-	for _, values := range messages {
-		for key := range values {
-			keys[key] = true
-		}
-	}
-	for _, values := range overrides {
-		for key := range values {
-			keys[key] = true
-		}
-	}
-	languages := translationLanguageCodes(catalog, overrides)
-	groupItems := map[string][]map[string]any{}
-	sortedKeys := make([]string, 0, len(keys))
-	for key := range keys {
-		sortedKeys = append(sortedKeys, key)
-	}
-	sort.Strings(sortedKeys)
-	for _, key := range sortedKeys {
-		groupID, audience := translationGroupForKey(key)
-		values := map[string]any{}
-		fallback := firstNonEmpty(messages["zh"][key], messages["en"][key])
-		for _, lang := range languages {
-			base := messages[lang][key]
-			override := overrides[lang][key]
-			values[lang] = map[string]any{
-				"base": base, "fallback": fallback, "effective": firstNonEmpty(override, base, fallback),
-				"override": override, "overridden": override != "",
-			}
-		}
-		groupItems[groupID] = append(groupItems[groupID], map[string]any{"key": key, "audience": audience, "values": values})
-	}
-	groups := make([]map[string]any, 0, len(translationGroupDefinitions))
-	for _, definition := range translationGroupDefinitions {
-		items := groupItems[definition.ID]
-		if len(items) == 0 {
-			continue
-		}
-		groups = append(groups, map[string]any{
-			"id": definition.ID, "title": definition.Title, "description": definition.Description,
-			"title_key": "translations_group_" + definition.ID,
-			"description_key": "translations_group_" + definition.ID + "_hint",
-			"audience": definition.Audience, "items": items,
-		})
-	}
-	return groups
-}
-
-func translationGroupForKey(key string) (string, string) {
-	if strings.HasPrefix(key, "admin_") {
-		for _, match := range []struct{ id string; prefixes []string }{
-			{"admin_navigation", []string{"admin_nav_", "admin_section_", "admin_sidebar_", "admin_menu", "admin_close_menu"}},
-			{"admin_dashboard", []string{"admin_stats_", "admin_dashboard_"}},
-			{"admin_users", []string{"admin_user_", "admin_users_"}},
-			{"admin_payments", []string{"admin_payment_", "admin_payments_", "admin_provider_", "admin_csv_"}},
-			{"admin_promos_marketing", []string{"admin_promo_", "admin_promos_", "admin_ads_", "admin_ad_", "admin_broadcast_"}},
-			{"admin_tariffs", []string{"admin_tariff_", "admin_tariffs_"}},
-			{"admin_support", []string{"admin_support_"}},
-			{"admin_appearance", []string{"admin_appearance_", "admin_theme_", "admin_themes_"}},
-			{"admin_settings", []string{"admin_settings_", "admin_config_"}},
-			{"admin_translations", []string{"admin_translations_"}},
-			{"admin_logs", []string{"admin_log_", "admin_logs_"}},
-		} {
-			for _, prefix := range match.prefixes {
-				if strings.HasPrefix(key, prefix) {
-					return match.id, "internal"
-				}
-			}
-		}
-		return "admin_misc", "internal"
-	}
-	for _, match := range []struct{ id string; prefixes []string; audience string }{
-		{"auth_security", []string{"auth_", "login_", "email_auth_", "security_", "wa_auth_", "wa_login_", "wa_email_", "wa_password_", "wa_settings_link_"}, "user"},
-		{"support", []string{"support_", "wa_support_"}, "user"},
-		{"payments", []string{"payment_", "payments_", "pay_", "invoice_", "wa_payment_", "wa_pay_", "wa_buy_"}, "user"},
-		{"referrals_promos", []string{"referral_", "promo_", "invite_", "wa_referral_", "wa_promo_", "wa_invite_"}, "user"},
-		{"subscriptions", []string{"subscription_", "trial_", "device_", "traffic_", "install_", "wa_subscription_", "wa_trial_", "wa_device", "wa_ips_", "wa_traffic_", "wa_install_", "wa_bandwidth_"}, "user"},
-		{"emails", []string{"email_", "mail_"}, "user"},
-		{"notifications_sync", []string{"notification_", "sync_", "log_"}, "internal"},
-		{"bot_menu", []string{"menu_", "main_menu_", "channel_subscription_", "bot_"}, "user"},
-		{"webapp", []string{"wa_", "webapp_"}, "user"},
-	} {
-		for _, prefix := range match.prefixes {
-			if strings.HasPrefix(key, prefix) {
-				return match.id, match.audience
-			}
-		}
-	}
-	return "common", "user"
-}
-
-func buildTranslationLanguages(catalog *i18n.Catalog, overrides map[string]map[string]string) []map[string]any {
-	codes := translationLanguageCodes(catalog, overrides)
-	labels := map[string]string{"zh": "中文", "en": "English", "de": "Deutsch", "es": "Español", "fr": "Français", "pt-br": "Português (BR)", "uk": "Українська"}
-	base := map[string]bool{}
-	if catalog != nil {
-		for _, lang := range catalog.Languages() {
-			base[lang] = true
-		}
-	}
-	langs := make([]map[string]any, 0, len(codes))
-	for _, code := range codes {
-		label := labels[code]
-		if label == "" {
-			label = strings.ToUpper(code)
-		}
-		langs = append(langs, map[string]any{"code": code, "label": label, "base": base[code]})
-	}
-	return langs
-}
-
-func translationLanguageCodes(catalog *i18n.Catalog, overrides map[string]map[string]string) []string {
-	seen := map[string]bool{"zh": true, "en": true}
-	if catalog != nil {
-		for _, code := range catalog.Languages() {
-			seen[code] = true
-		}
-	}
-	for code := range overrides {
-		code = strings.ToLower(strings.ReplaceAll(strings.TrimSpace(code), "_", "-"))
-		if code != "" {
-			seen[code] = true
-		}
-	}
-	extra := make([]string, 0, len(seen))
-	for code := range seen {
-		if code != "zh" && code != "en" {
-			extra = append(extra, code)
-		}
-	}
-	sort.Strings(extra)
-	return append([]string{"zh", "en"}, extra...)
-}
-
-func normalizeTranslationOverrides(overrides map[string]map[string]string) map[string]map[string]string {
-	normalized := map[string]map[string]string{}
-	for lang, values := range overrides {
-		lang = strings.ToLower(strings.ReplaceAll(strings.TrimSpace(lang), "_", "-"))
-		if lang == "" {
-			continue
-		}
-		if normalized[lang] == nil {
-			normalized[lang] = map[string]string{}
-		}
-		for key, value := range values {
-			if key = strings.TrimSpace(key); key != "" {
-				normalized[lang][key] = value
-			}
-		}
-	}
-	return normalized
-}
-
-func translationOverrideCount(overrides map[string]map[string]string) int {
-	count := 0
-	for _, values := range overrides {
-		count += len(values)
-	}
-	return count
 }
 
 func supportListHandler(settings config.Settings, pool *pgxpool.Pool, admin bool) http.HandlerFunc {
@@ -2387,18 +2137,6 @@ func adminSupportStatsHandler(settings config.Settings, pool *pgxpool.Pool) http
 
 func adminAppearanceLogoHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		store := appsettings.NewStore(pool)
-
-		if r.Method == http.MethodDelete {
-			if _, ok := requireAdmin(w, r, settings, pool, true); !ok {
-				return
-			}
-			_ = store.Delete(r.Context(), "APPEARANCE_LOGO_URL")
-			_ = store.Delete(r.Context(), "APPEARANCE_FAVICON_URL")
-			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
-			return
-		}
-
 		if _, ok := requireAdmin(w, r, settings, pool, true); !ok {
 			return
 		}
@@ -2411,13 +2149,12 @@ func adminAppearanceLogoHandler(settings config.Settings, pool *pgxpool.Pool) ht
 				URL string `json:"url"`
 			}
 			body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
-			if json.Unmarshal(body, &payload) == nil && strings.TrimSpace(payload.URL) != "" {
-				_ = store.Upsert(r.Context(), "APPEARANCE_LOGO_URL", strings.TrimSpace(payload.URL))
-				logoURL := "/webapp-uploaded-logo/custom-" + time.Now().Format("20060102150405") + ".webp"
+			if json.Unmarshal(body, &payload) == nil && safeAppearanceURL(payload.URL) {
+				logoURL := strings.TrimSpace(payload.URL)
 				writeJSON(w, http.StatusOK, map[string]any{
 					"ok":          true,
 					"logo_url":    logoURL,
-					"favicon_url": "/favicon.ico",
+					"favicon_url": "",
 				})
 				return
 			}
@@ -2426,7 +2163,7 @@ func adminAppearanceLogoHandler(settings config.Settings, pool *pgxpool.Pool) ht
 		}
 
 		// Handle multipart file upload
-		if err := r.ParseMultipartForm(8 << 20); err != nil {
+		if err := r.ParseMultipartForm(5 << 20); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_upload"})
 			return
 		}
@@ -2436,20 +2173,21 @@ func adminAppearanceLogoHandler(settings config.Settings, pool *pgxpool.Pool) ht
 			return
 		}
 		defer func() { _ = file.Close() }()
-		if header.Size > 8<<20 {
+		if header.Size > 5<<20 {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "file_too_large"})
 			return
 		}
 		buf := make([]byte, 512)
 		n, _ := file.Read(buf)
 		mime := http.DetectContentType(buf[:n])
-		if !strings.HasPrefix(mime, "image/") {
+		ext, ok := safeImageExtension(mime)
+		if !ok {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "unsupported_mime"})
 			return
 		}
 		// Read full file
 		_, _ = file.Seek(0, io.SeekStart)
-		full, err := io.ReadAll(io.LimitReader(file, 8<<20))
+		full, err := io.ReadAll(io.LimitReader(file, 5<<20))
 		if err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "read_failed"})
 			return
@@ -2460,7 +2198,7 @@ func adminAppearanceLogoHandler(settings config.Settings, pool *pgxpool.Pool) ht
 		_ = os.MkdirAll(uploadDir, 0o755)
 		hash := sha256.Sum256(full)
 		hashStr := hex.EncodeToString(hash[:])[:16]
-		filename := "logo-" + hashStr + "-" + time.Now().Format("20060102150405") + ".webp"
+		filename := "logo-" + hashStr + "-" + time.Now().Format("20060102150405") + ext
 		savePath := filepath.Join(uploadDir, filename)
 		if err := os.WriteFile(savePath, full, 0o644); err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "save_failed"})
@@ -2468,29 +2206,16 @@ func adminAppearanceLogoHandler(settings config.Settings, pool *pgxpool.Pool) ht
 		}
 
 		logoURL := "/webapp-uploaded-logo/" + filename
-		_ = store.Upsert(r.Context(), "APPEARANCE_LOGO_URL", logoURL)
-
 		writeJSON(w, http.StatusOK, map[string]any{
 			"ok":          true,
 			"logo_url":    logoURL,
-			"favicon_url": "/favicon.ico",
+			"favicon_url": "",
 		})
 	}
 }
 
 func adminAppearanceFaviconHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		store := appsettings.NewStore(pool)
-
-		if r.Method == http.MethodDelete {
-			if _, ok := requireAdmin(w, r, settings, pool, true); !ok {
-				return
-			}
-			_ = store.Delete(r.Context(), "APPEARANCE_FAVICON_URL")
-			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
-			return
-		}
-
 		if _, ok := requireAdmin(w, r, settings, pool, true); !ok {
 			return
 		}
@@ -2503,9 +2228,8 @@ func adminAppearanceFaviconHandler(settings config.Settings, pool *pgxpool.Pool)
 				URL string `json:"url"`
 			}
 			body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
-			if json.Unmarshal(body, &payload) == nil && strings.TrimSpace(payload.URL) != "" {
-				_ = store.Upsert(r.Context(), "APPEARANCE_FAVICON_URL", strings.TrimSpace(payload.URL))
-				faviconURL := "/favicon.ico"
+			if json.Unmarshal(body, &payload) == nil && safeAppearanceURL(payload.URL) {
+				faviconURL := strings.TrimSpace(payload.URL)
 				writeJSON(w, http.StatusOK, map[string]any{
 					"ok":          true,
 					"favicon_url": faviconURL,
@@ -2518,7 +2242,7 @@ func adminAppearanceFaviconHandler(settings config.Settings, pool *pgxpool.Pool)
 		}
 
 		// Handle multipart file upload
-		if err := r.ParseMultipartForm(8 << 20); err != nil {
+		if err := r.ParseMultipartForm(5 << 20); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_upload"})
 			return
 		}
@@ -2528,19 +2252,20 @@ func adminAppearanceFaviconHandler(settings config.Settings, pool *pgxpool.Pool)
 			return
 		}
 		defer func() { _ = file.Close() }()
-		if header.Size > 8<<20 {
+		if header.Size > 5<<20 {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "file_too_large"})
 			return
 		}
 		buf := make([]byte, 512)
 		n, _ := file.Read(buf)
 		mime := http.DetectContentType(buf[:n])
-		if !strings.HasPrefix(mime, "image/") {
+		ext, ok := safeImageExtension(mime)
+		if !ok {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "unsupported_mime"})
 			return
 		}
 		_, _ = file.Seek(0, io.SeekStart)
-		full, err := io.ReadAll(io.LimitReader(file, 8<<20))
+		full, err := io.ReadAll(io.LimitReader(file, 5<<20))
 		if err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "read_failed"})
 			return
@@ -2550,20 +2275,47 @@ func adminAppearanceFaviconHandler(settings config.Settings, pool *pgxpool.Pool)
 		_ = os.MkdirAll(uploadDir, 0o755)
 		hash := sha256.Sum256(full)
 		hashStr := hex.EncodeToString(hash[:])[:16]
-		filename := "favicon-" + hashStr + "-" + time.Now().Format("20060102150405") + ".ico"
+		filename := "favicon-" + hashStr + "-" + time.Now().Format("20060102150405") + ext
 		savePath := filepath.Join(uploadDir, filename)
 		if err := os.WriteFile(savePath, full, 0o644); err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "save_failed"})
 			return
 		}
 
-		_ = store.Upsert(r.Context(), "APPEARANCE_FAVICON_URL", "/webapp-uploaded-logo/"+filename)
-
 		writeJSON(w, http.StatusOK, map[string]any{
 			"ok":          true,
 			"favicon_url": "/webapp-uploaded-logo/" + filename,
 			"variants":    map[string]string{},
 		})
+	}
+}
+
+func safeAppearanceURL(raw string) bool {
+	value := strings.TrimSpace(raw)
+	if value == "" || strings.ContainsAny(value, "\r\n\x00") {
+		return false
+	}
+	if strings.HasPrefix(value, "/") && !strings.HasPrefix(value, "//") {
+		return true
+	}
+	lower := strings.ToLower(value)
+	return strings.HasPrefix(lower, "https://") || strings.HasPrefix(lower, "http://")
+}
+
+func safeImageExtension(mime string) (string, bool) {
+	switch strings.ToLower(strings.TrimSpace(strings.Split(mime, ";")[0])) {
+	case "image/png":
+		return ".png", true
+	case "image/jpeg":
+		return ".jpg", true
+	case "image/gif":
+		return ".gif", true
+	case "image/webp":
+		return ".webp", true
+	case "image/x-icon", "image/vnd.microsoft.icon":
+		return ".ico", true
+	default:
+		return "", false
 	}
 }
 
@@ -2700,44 +2452,118 @@ func adminBackupRestoreHandler(settings config.Settings, pool *pgxpool.Pool) htt
 	}
 }
 
-func unavailableSessionMutation(settings config.Settings, pool *pgxpool.Pool, code string) http.HandlerFunc {
+func accountTelegramLinkHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := requireSession(w, r, settings, pool, true); !ok {
+		session, ok := requireSession(w, r, settings, pool, true)
+		if !ok {
 			return
 		}
-		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"ok": false, "error": code})
+		var payload telegramAuthPayload
+		if err := decodeJSONBody(r, &payload); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
+			return
+		}
+		tgUser, err := validateTelegramAuthPayload(r.Context(), r, settings, pool, payload)
+		if err != nil {
+			writeJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "invalid_telegram_auth"})
+			return
+		}
+		var ownerID int64
+		err = pool.QueryRow(r.Context(), "SELECT user_id FROM users WHERE telegram_id=$1", tgUser.ID).Scan(&ownerID)
+		if err == nil && ownerID != session.User.UserID {
+			writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "telegram_already_linked"})
+			return
+		}
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "telegram_link_failed"})
+			return
+		}
+		_, err = pool.Exec(r.Context(), `UPDATE users SET telegram_id=$2,username=$3,first_name=COALESCE(NULLIF($4,''),first_name),last_name=COALESCE(NULLIF($5,''),last_name),telegram_photo_url=COALESCE(NULLIF($6,''),telegram_photo_url) WHERE user_id=$1`,
+			session.User.UserID, tgUser.ID, emptyStringToNil(tgUser.Username), tgUser.FirstName, tgUser.LastName, tgUser.PhotoURL)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "telegram_link_failed"})
+			return
+		}
+		http.SetCookie(w, &http.Cookie{Name: telegramNonceCookieName, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: requestIsHTTPS(r), SameSite: http.SameSiteLaxMode})
+		user, _ := loadWebappUser(r.Context(), pool, session.User.UserID, settings)
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "user": user, "csrf_token": session.Claims.CSRF})
 	}
 }
 
-func subscriptionGuidesHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+func subscriptionGuidesHandler(settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		isPublic := strings.Contains(r.URL.Path, "/public/")
-		if !isPublic {
+		store := appsettings.NewStore(pool)
+		var user webappUser
+		shareToken := ""
+		if isPublic {
+			shareToken = strings.ToLower(strings.TrimSpace(chi.URLParam(r, "share_token")))
+			if len(shareToken) != 32 || strings.Trim(shareToken, "0123456789abcdef") != "" {
+				writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "share_not_found"})
+				return
+			}
+			var userID int64
+			if err := pool.QueryRow(r.Context(), "SELECT user_id FROM subscription_share_tokens WHERE token=$1", shareToken).Scan(&userID); err != nil {
+				writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "share_not_found"})
+				return
+			}
+			var err error
+			user, err = loadWebappUser(r.Context(), pool, userID, settings)
+			if err != nil {
+				writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "share_not_found"})
+				return
+			}
+			_, _ = pool.Exec(r.Context(), "UPDATE subscription_share_tokens SET last_used_at=NOW() WHERE token=$1", shareToken)
+		} else {
 			session, ok := requireSession(w, r, settings, pool, false)
 			if !ok {
 				return
 			}
-			_ = session
+			user = session.User
 		}
-		// Load subscription guides from config
-		store := appsettings.NewStore(pool)
+
 		enabled := store.Bool(r.Context(), "SUBSCRIPTION_GUIDES_ENABLED", false)
-		if !enabled && !isPublic {
+		if !enabled {
 			writeJSON(w, http.StatusOK, map[string]any{"ok": true, "enabled": false, "config": nil, "source": nil, "subscription": nil})
 			return
 		}
-		// Try to read guides config
-		configPath := filepath.Join("data", "subscription-guides.json")
-		var config any
-		if body, err := os.ReadFile(configPath); err == nil {
-			_ = json.Unmarshal(body, &config)
+
+		var config map[string]any
+		source := "runtime"
+		if raw, ok, _ := store.Get(r.Context(), "SUBSCRIPTION_GUIDES_CONFIG"); ok {
+			_ = json.Unmarshal(raw, &config)
+			if !validSubscriptionGuidesConfig(config) {
+				config = nil
+			}
+		}
+		if config == nil {
+			source = "file"
+			for _, configPath := range []string{filepath.Join("data", "subscription-guides.json"), filepath.Join("data", "subscription-guides.example.json")} {
+				if body, err := os.ReadFile(configPath); err == nil && json.Unmarshal(body, &config) == nil && validSubscriptionGuidesConfig(config) {
+					break
+				}
+			}
+		}
+		if !validSubscriptionGuidesConfig(config) {
+			writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "subscription_guides_not_configured"})
+			return
+		}
+		subscription := map[string]any{"active": false}
+		if panel != nil && panel.Configured(r.Context()) {
+			if panelUser, found, _ := panelUserForWebUser(r.Context(), pool, panel, user); found {
+				subscription = subscriptionFromPanelUser(r.Context(), pool, user, panelUser)
+			}
+		}
+		if shareToken != "" {
+			subscription["install_share_token"] = shareToken
+			subscription["share_url"] = strings.TrimRight(webappPublicBaseURL(r, settings), "/") + "/s/" + shareToken
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
 			"ok":           true,
 			"enabled":      enabled,
 			"config":       config,
-			"source":       "local",
-			"subscription": nil,
+			"source":       source,
+			"subscription": subscription,
 		})
 	}
 }
@@ -2765,30 +2591,6 @@ func providerCurrencySupport() []map[string]any {
 		{"provider": payments.ProviderEZPay, "currencies": []string{"CNY"}, "note": "EZPay checkout amount is converted from USD to CNY."},
 		{"provider": payments.ProviderBEPUSDT, "currencies": []string{"USD"}, "note": "BEPUSDT creates USDT invoices from USD fiat amount."},
 	}
-}
-
-func devicePlansFrom(plans []tariffs.Plan) []map[string]any {
-	result := []map[string]any{}
-	for _, plan := range plans {
-		if plan.SaleMode != "subscription" {
-			continue
-		}
-		result = append(result, map[string]any{
-			"plan_hash":          plan.PlanHash,
-			"title":              plan.Title,
-			"months":             plan.Months,
-			"device_count":       plan.Months,
-			"price":              plan.Price,
-			"currency":           plan.Currency,
-			"base_amount":        plan.BaseAmount,
-			"base_currency":      plan.BaseCurrency,
-			"display_cny_amount": plan.DisplayCNYAmount,
-			"fx_rate":            plan.FXRate,
-			"fx_source":          plan.FXSource,
-			"tariff_key":         plan.TariffKey,
-		})
-	}
-	return result
 }
 
 func changeTargetsFrom(plans []tariffs.Plan) []map[string]any {

@@ -44,7 +44,7 @@ internal/webassets/templates/subscription_webapp_docs_demo.*.css.gz
 # Runtime data
 data/*
 !data/tariffs.example.json
-!data/locales-overrides.example.json
+!data/subscription-guides.example.json
 
 # Local scratch and editor files
 scratch/

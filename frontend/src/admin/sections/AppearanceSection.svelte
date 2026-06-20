@@ -37,8 +37,6 @@
     "WEBAPP_LOGO_URL",
     "WEBAPP_FAVICON_URL",
     "WEBAPP_FAVICON_USE_CUSTOM",
-    "WEBAPP_LOGO_FAVICON_URL",
-    "WEBAPP_ENABLED",
     "WEBAPP_TITLE",
   ]);
   const DEFAULT_THEME_KEY = "dark";
@@ -297,6 +295,10 @@
   $: appearanceFields =
     settingsSections.find((section) => section.id === "appearance")?.fields || [];
   $: fieldMap = new Map(appearanceFields.map((field) => [field.key, field]));
+  $: logoLocked = Boolean(fieldMap.get("WEBAPP_LOGO_URL")?.env_locked);
+  $: faviconURLLocked = Boolean(fieldMap.get("WEBAPP_FAVICON_URL")?.env_locked);
+  $: faviconUseCustomLocked = Boolean(fieldMap.get("WEBAPP_FAVICON_USE_CUSTOM")?.env_locked);
+  $: titleLocked = Boolean(fieldMap.get("WEBAPP_TITLE")?.env_locked);
   $: activeKey = themesCatalog.default_theme;
   $: logoUrl = valueForKey("WEBAPP_LOGO_URL");
   $: currentLogoUrl = pendingLogoPreviewUrl || logoUrl || brand?.logoUrl || "";
@@ -314,8 +316,7 @@
   }
   $: useCustomFavicon = faviconUseCustomDraft;
   $: faviconUrl = valueForKey("WEBAPP_FAVICON_URL", appFaviconUrl);
-  $: logoFaviconUrl = valueForKey("WEBAPP_LOGO_FAVICON_URL");
-  $: generatedFaviconUrl = logoFaviconUrl || appFaviconUrl || previewLogoUrl || "";
+  $: generatedFaviconUrl = previewLogoUrl || appFaviconUrl || "";
   $: currentFaviconUrl = useCustomFavicon
     ? pendingFaviconPreviewUrl || faviconUrl || ""
     : generatedFaviconUrl;
@@ -623,18 +624,27 @@
   }
 
   const MAX_LOGO_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
-  const ALLOWED_LOGO_TYPES = ["image/png", "image/jpeg", "image/webp", "image/svg+xml", "image/gif"];
+  const ALLOWED_LOGO_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 
   function handleLogoFileChange(event) {
     const file = event.currentTarget.files?.[0];
     if (!file) return;
     if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
-      console.warn(at?.("appearance_logo_invalid_type", {}, "Invalid file type. Allowed: PNG, JPEG, WebP, SVG, GIF") || "Invalid file type");
+      console.warn(
+        at?.(
+          "appearance_logo_invalid_type",
+          {},
+          "Invalid file type. Allowed: PNG, JPEG, WebP, GIF"
+        ) || "Invalid file type"
+      );
       if (logoFileInput) logoFileInput.value = "";
       return;
     }
     if (file.size > MAX_LOGO_SIZE_BYTES) {
-      console.warn(at?.("appearance_logo_too_large", {}, "File too large. Maximum size is 5 MB.") || "File too large");
+      console.warn(
+        at?.("appearance_logo_too_large", {}, "File too large. Maximum size is 5 MB.") ||
+          "File too large"
+      );
       if (logoFileInput) logoFileInput.value = "";
       return;
     }
@@ -650,9 +660,6 @@
         return;
       }
       settingsStore.setFieldValue("WEBAPP_LOGO_URL", uploadedUrl);
-      if (uploaded?.faviconUrl) {
-        settingsStore.setFieldValue("WEBAPP_LOGO_FAVICON_URL", uploaded.faviconUrl);
-      }
       if (logoFileInput) logoFileInput.value = "";
     });
   }
@@ -664,9 +671,6 @@
       setPendingLogoPreview(uploadedUrl);
       logoSourceUrl = "";
       settingsStore.setFieldValue("WEBAPP_LOGO_URL", uploadedUrl);
-      if (uploaded?.faviconUrl) {
-        settingsStore.setFieldValue("WEBAPP_LOGO_FAVICON_URL", uploaded.faviconUrl);
-      }
     });
   }
 
@@ -685,8 +689,10 @@
         return;
       }
       settingsStore.setFieldValue("WEBAPP_FAVICON_URL", uploadedUrl);
-      settingsStore.setFieldValue("WEBAPP_FAVICON_USE_CUSTOM", true);
-      faviconUseCustomDraft = true;
+      if (!faviconUseCustomLocked) {
+        settingsStore.setFieldValue("WEBAPP_FAVICON_USE_CUSTOM", true);
+        faviconUseCustomDraft = true;
+      }
       if (faviconFileInput) faviconFileInput.value = "";
     });
   }
@@ -698,8 +704,10 @@
       setPendingFaviconPreview(uploadedUrl);
       faviconSourceUrl = "";
       settingsStore.setFieldValue("WEBAPP_FAVICON_URL", uploadedUrl);
-      settingsStore.setFieldValue("WEBAPP_FAVICON_USE_CUSTOM", true);
-      faviconUseCustomDraft = true;
+      if (!faviconUseCustomLocked) {
+        settingsStore.setFieldValue("WEBAPP_FAVICON_USE_CUSTOM", true);
+        faviconUseCustomDraft = true;
+      }
     });
   }
 
@@ -717,10 +725,10 @@
     const keysToSave = new Set(appearanceDirtyKeys);
     const shouldReloadFrontend = Array.from(keysToSave).some((key) =>
       [
+        "WEBAPP_TITLE",
         "WEBAPP_LOGO_URL",
         "WEBAPP_FAVICON_URL",
         "WEBAPP_FAVICON_USE_CUSTOM",
-        "WEBAPP_LOGO_FAVICON_URL",
       ].includes(key)
     );
     let settingsSaved = true;
@@ -892,14 +900,15 @@
             <FileInput
               bind:element={logoFileInput}
               class="appearance-file-input"
-              accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml,image/x-icon"
+              accept="image/png,image/jpeg,image/gif,image/webp"
               onchange={handleLogoFileChange}
+              disabled={logoLocked}
             />
             <AdminButton
               class="appearance-control"
               size="sm"
               onclick={() => logoFileInput?.click()}
-              disabled={themesSaving}
+              disabled={themesSaving || logoLocked}
             >
               <FileText size={13} />
               {at("appearance_logo_upload_file", {}, "Загрузить файл")}
@@ -910,12 +919,13 @@
                 type="url"
                 placeholder="https://example.com/logo.png"
                 bind:value={logoSourceUrl}
+                disabled={logoLocked}
               />
               <AdminButton
                 class="appearance-control"
                 size="sm"
                 onclick={uploadLogoFromUrl}
-                disabled={themesSaving || !logoSourceUrl.trim()}
+                disabled={themesSaving || logoLocked || !logoSourceUrl.trim()}
               >
                 {at("appearance_logo_upload_url", {}, "По ссылке")}
               </AdminButton>
@@ -949,6 +959,7 @@
                 bind:checked={faviconUseCustomDraft}
                 onCheckedChange={setCustomFavicon}
                 class="admin-switch-root"
+                disabled={faviconUseCustomLocked}
               >
                 <Switch.Thumb class="admin-switch-thumb" />
               </Switch.Root>
@@ -959,14 +970,15 @@
             <FileInput
               bind:element={faviconFileInput}
               class="appearance-file-input"
-              accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml,image/x-icon,.ico"
+              accept="image/png,image/jpeg,image/gif,image/webp,image/x-icon,.ico"
               onchange={handleFaviconFileChange}
+              disabled={faviconURLLocked}
             />
             <AdminButton
               class="appearance-control"
               size="sm"
               onclick={() => faviconFileInput?.click()}
-              disabled={themesSaving}
+              disabled={themesSaving || faviconURLLocked}
             >
               <FileText size={13} />
               {at("appearance_favicon_upload_file", {}, "Загрузить favicon")}
@@ -977,12 +989,13 @@
                 type="url"
                 placeholder="https://example.com/icon.png"
                 bind:value={faviconSourceUrl}
+                disabled={faviconURLLocked}
               />
               <AdminButton
                 class="appearance-control"
                 size="sm"
                 onclick={uploadFaviconFromUrl}
-                disabled={themesSaving || !faviconSourceUrl.trim()}
+                disabled={themesSaving || faviconURLLocked || !faviconSourceUrl.trim()}
               >
                 {at("appearance_favicon_upload_url", {}, "По ссылке")}
               </AdminButton>
@@ -996,7 +1009,13 @@
       <header class="admin-card-head">
         <div>
           <h3>{at("wa_appearance_panel_name", {}, "Panel Name")}</h3>
-          <small>{at("wa_panel_name_description", {}, "Custom name displayed in the header and browser tab.")}</small>
+          <small
+            >{at(
+              "wa_panel_name_description",
+              {},
+              "Custom name displayed in the header and browser tab."
+            )}</small
+          >
         </div>
       </header>
       <div class="admin-card-body">
@@ -1006,6 +1025,7 @@
           placeholder={at("wa_panel_name_placeholder", {}, "Enter panel name")}
           value={valueForKey("WEBAPP_TITLE")}
           on:input={(e) => settingsStore.setFieldValue("WEBAPP_TITLE", e.target.value)}
+          disabled={titleLocked}
         />
       </div>
     </article>
