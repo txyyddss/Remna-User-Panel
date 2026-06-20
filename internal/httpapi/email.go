@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"fmt"
 	"log/slog"
@@ -158,8 +159,8 @@ func emailRequestHandler(settings config.Settings, pool *pgxpool.Pool) http.Hand
 			"ExpireMinutes": emailCodeExpireMinutes,
 		})
 		if err := mailer.Send(mail.Message{
-			To:      []string{email},
-			Subject: subject,
+			To:       []string{email},
+			Subject:  subject,
 			BodyHTML: body,
 		}); err != nil {
 			slog.Error("send verification email failed", "error", err)
@@ -511,6 +512,69 @@ func emailMagicLinkHandler(settings config.Settings, pool *pgxpool.Pool) http.Ha
 			Content:   email,
 		})
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	}
+}
+
+// adminPasswordLoginHandler authenticates an admin user via email and password.
+func adminPasswordLoginHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var payload struct {
+			Email    string `json:"email"`
+			Password string `json:"password"`
+		}
+		if err := decodeJSONBody(r, &payload); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
+			return
+		}
+		email := strings.ToLower(strings.TrimSpace(payload.Email))
+		password := payload.Password
+		if email == "" || !strings.Contains(email, "@") || password == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_params"})
+			return
+		}
+
+		// Look up user by email and retrieve password hash and ban status.
+		var userID int64
+		var passwordHash sql.NullString
+		var isBanned bool
+		err := pool.QueryRow(r.Context(),
+			"SELECT user_id, password_hash, is_banned FROM users WHERE LOWER(email)=$1", email,
+		).Scan(&userID, &passwordHash, &isBanned)
+		if err != nil {
+			if err == pgx.ErrNoRows {
+				writeJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "password_login_failed", "fallback": "email_code"})
+				return
+			}
+			slog.Error("password login lookup failed", "error", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "internal_error"})
+			return
+		}
+
+		if isBanned {
+			writeJSON(w, http.StatusForbidden, map[string]any{"ok": false, "error": "banned"})
+			return
+		}
+
+		if !passwordHash.Valid || !VerifyPassword(password, passwordHash.String) {
+			writeJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "password_login_failed", "fallback": "email_code"})
+			return
+		}
+
+		// Create session
+		manager := webappSessionManager(settings)
+		token, csrf, err := manager.Sign(userID)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "session_create_failed"})
+			return
+		}
+
+		setSessionCookies(w, r, token, csrf)
+		recordMessageLog(r.Context(), pool, messageLogEntry{
+			UserID:    userID,
+			EventType: "email_password_login",
+			Content:   email,
+		})
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "csrf_token": csrf})
 	}
 }
 

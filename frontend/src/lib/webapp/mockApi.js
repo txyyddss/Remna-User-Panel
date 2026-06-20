@@ -1,6 +1,14 @@
 import { DEV_MOCK } from "./previewMock.js";
 import SETTINGS_MANIFEST_SECTIONS from "./settingsManifest.generated.json";
 
+const defaultClone = (value) => {
+  try {
+    return structuredClone(value);
+  } catch {
+    return JSON.parse(JSON.stringify(value));
+  }
+};
+
 const DEMO_DATASET = {};
 const CURRENT_SETTINGS_KEYS = {
   general: [
@@ -1320,7 +1328,6 @@ export async function mockApi(path, options = {}, context = {}) {
       traffic_regular_gb: null,
       traffic_premium_gb: null,
       provider: "ezpay",
-      provider_payment_id: "2f3a7c9e-yk-preview",
       provider_payment_id: "ezpay-preview-12",
       idempotence_key: "admin-preview-payment-12",
       amount: 790,
