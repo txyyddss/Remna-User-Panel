@@ -452,7 +452,7 @@ func emailLoginVerifyHandler(settings config.Settings, pool *pgxpool.Pool) http.
 		}
 
 		setSessionCookies(w, r, token, csrf)
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "csrf_token": csrf})
 	}
 }
 
@@ -511,7 +511,7 @@ func emailMagicLinkHandler(settings config.Settings, pool *pgxpool.Pool) http.Ha
 			EventType: "email_magic_login",
 			Content:   email,
 		})
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "csrf_token": csrf})
 	}
 }
 
