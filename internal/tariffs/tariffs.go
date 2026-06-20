@@ -276,23 +276,6 @@ type packagePrice struct {
 	Price  float64
 }
 
-func periodPriceForMonths(prices []periodPrice, months int) float64 {
-	for _, item := range prices {
-		if item.Months == months {
-			return item.Price
-		}
-	}
-	return 0
-}
-func packagePriceForAmount(prices []packagePrice, amount float64) float64 {
-	for _, item := range prices {
-		if almostEqual(item.Amount, amount) {
-			return item.Price
-		}
-	}
-	return 0
-}
-
 func periodPrices(raw json.RawMessage) []periodPrice {
 	values := map[string]float64{}
 	if len(raw) == 0 || json.Unmarshal(raw, &values) != nil {

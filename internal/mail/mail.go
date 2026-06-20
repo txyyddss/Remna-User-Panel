@@ -86,7 +86,7 @@ func (m *Mailer) Send(msg Message) error {
 
 	var message strings.Builder
 	for k, v := range headers {
-		message.WriteString(fmt.Sprintf("%s: %s\r\n", k, v))
+		fmt.Fprintf(&message, "%s: %s\r\n", k, v)
 	}
 	message.WriteString("\r\n")
 	message.WriteString(body)
@@ -124,13 +124,13 @@ func (m *Mailer) sendWithTLS(addr string, to []string, msg string) error {
 	if err != nil {
 		return fmt.Errorf("tls dial: %w", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	client, err := smtp.NewClient(conn, m.config.Host)
 	if err != nil {
 		return fmt.Errorf("smtp client: %w", err)
 	}
-	defer client.Quit()
+	defer func() { _ = client.Quit() }()
 
 	return m.authAndSend(client, to, msg)
 }
@@ -140,13 +140,13 @@ func (m *Mailer) sendWithSTARTTLS(addr string, to []string, msg string) error {
 	if err != nil {
 		return fmt.Errorf("dial: %w", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	client, err := smtp.NewClient(conn, m.config.Host)
 	if err != nil {
 		return fmt.Errorf("smtp client: %w", err)
 	}
-	defer client.Quit()
+	defer func() { _ = client.Quit() }()
 
 	if ok, _ := client.Extension("STARTTLS"); ok {
 		tlsConfig := &tls.Config{
@@ -166,13 +166,13 @@ func (m *Mailer) sendPlain(addr string, to []string, msg string) error {
 	if err != nil {
 		return fmt.Errorf("dial: %w", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	client, err := smtp.NewClient(conn, m.config.Host)
 	if err != nil {
 		return fmt.Errorf("smtp client: %w", err)
 	}
-	defer client.Quit()
+	defer func() { _ = client.Quit() }()
 
 	return m.authAndSend(client, to, msg)
 }

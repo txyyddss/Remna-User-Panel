@@ -2780,13 +2780,6 @@ func unavailableSessionMutation(settings config.Settings, pool *pgxpool.Pool, co
 	}
 }
 
-func unavailablePublicMutation(code string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		_, _ = io.Copy(io.Discard, io.LimitReader(r.Body, maxJSONBodyBytes))
-		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"ok": false, "error": code})
-	}
-}
-
 func subscriptionGuidesHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		isPublic := strings.Contains(r.URL.Path, "/public/")
