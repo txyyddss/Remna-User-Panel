@@ -158,12 +158,14 @@ func meHandler(settings config.Settings, pool *pgxpool.Pool, registry *payments.
 			return
 		}
 		rate := fx.NewService(appsettings.NewStore(pool)).USDCNY(r.Context())
+		store := appsettings.NewStore(pool)
 		plans := tariffs.WithCNYDisplay(
 			catalog.Plans(session.User.LanguageCode, effectiveDefaultCurrency(r.Context(), settings, pool)),
 			rate.Rate,
 			rate.Source,
 			rate.UpdatedAt,
 		)
+		plans = tariffs.WithStarsPrice(plans, store.Float(r.Context(), "STARS_USD_RATE", settings.StarsUSDRate))
 		methods := []payments.Method{}
 		if registry != nil {
 			methods = registry.Methods(r.Context(), session.User.LanguageCode, session.User.IsAdmin)
@@ -229,7 +231,9 @@ func createPaymentHandler(settings config.Settings, pool *pgxpool.Pool, registry
 			return
 		}
 		rate := fx.NewService(appsettings.NewStore(pool)).USDCNY(r.Context())
+		store := appsettings.NewStore(pool)
 		plan = tariffs.WithCNYDisplay([]tariffs.Plan{plan}, rate.Rate, rate.Source, rate.UpdatedAt)[0]
+		plan = tariffs.WithStarsPrice([]tariffs.Plan{plan}, store.Float(r.Context(), "STARS_USD_RATE", settings.StarsUSDRate))[0]
 		providerAmount, providerCurrency, err := providerCheckoutAmount(payload.Method, plan, rate)
 		if err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "payment_method_not_supported"})
@@ -644,6 +648,9 @@ func mailSettingsFields(ctx context.Context, settings config.Settings, store app
 		{Key: "SMTP_FROM_EMAIL", Type: "string", Label: "From email", Description: "Sender email address for outgoing messages.", Subsection: "Sender", Fallback: ""},
 		{Key: "SMTP_FROM_NAME", Type: "string", Label: "From name", Description: "Sender display name (e.g. your brand name).", Subsection: "Sender", Fallback: ""},
 		{Key: "BRAND_NAME", Type: "string", Label: "Brand name", Description: "Brand name used in email subjects and footers.", Subsection: "Sender", Fallback: "Remna"},
+		{Key: "EMAIL_TEMPLATE_VERIFY", Type: "text", Label: "Verification email template", Description: "Markdown template for email verification codes. Variables: {{.Brand}}, {{.Code}}, {{.ExpireMinutes}}.", Subsection: "Templates", Fallback: ""},
+		{Key: "EMAIL_TEMPLATE_PASSWORD_RESET", Type: "text", Label: "Password reset email template", Description: "Markdown template for password reset codes. Variables: {{.Brand}}, {{.Code}}, {{.ExpireMinutes}}.", Subsection: "Templates", Fallback: ""},
+		{Key: "EMAIL_TEMPLATE_LOGIN", Type: "text", Label: "Login code email template", Description: "Markdown template for login verification codes. Variables: {{.Brand}}, {{.Code}}, {{.ExpireMinutes}}.", Subsection: "Templates", Fallback: ""},
 	}
 	result := make([]map[string]any, 0, len(fields))
 	for _, field := range fields {
@@ -675,6 +682,7 @@ func paymentSettingsFields(ctx context.Context, settings config.Settings, store 
 		{Key: "FX_CACHE_TTL_SECONDS", Type: "int", Label: "FX cache TTL seconds", Description: "How long a successful rate response is reused.", Subsection: "Currency", Fallback: 3600},
 		{Key: "PAYMENT_METHODS_ORDER", Type: "text", Label: "Payment method order", Description: "Comma-separated method ids, e.g. ezpay:alipay,bepusdt:usdt.polygon.", Fallback: strings.Join(settings.PaymentMethodsOrder, ",")},
 		{Key: "STARS_ENABLED", Type: "bool", Label: "Telegram Stars enabled", Description: "Accept digital-goods payments through Telegram Stars.", Subsection: "Telegram Stars", Fallback: false},
+		{Key: "STARS_USD_RATE", Type: "float", Label: "USD to Stars rate", Description: "Exchange rate: 1 USD = X Stars. Stars price = USD price × this rate.", Subsection: "Telegram Stars", Fallback: settings.StarsUSDRate},
 		{Key: "EZPAY_ENABLED", Type: "bool", Label: "EZPay enabled", Description: "Enable EZPay payment methods.", Subsection: "EZPay", Fallback: settings.EZPay.Enabled, WebhookPath: "/webhook/ezpay", ProviderID: "ezpay", WebhookConfigured: webhookConfigured},
 		{Key: "EZPAY_BASE_URL", Type: "string", Label: "EZPay base URL", Description: "Merchant API base URL.", Subsection: "EZPay", Fallback: settings.EZPay.BaseURL},
 		{Key: "EZPAY_PID", Type: "int", Label: "EZPay PID", Description: "Merchant PID.", Subsection: "EZPay", Fallback: settings.EZPay.PID},
@@ -881,7 +889,7 @@ func allowedPaymentSettingKeys() map[string]bool {
 	for _, key := range []string{
 		"WEBHOOK_BASE_URL", "DEFAULT_CURRENCY_SYMBOL", "FX_PROVIDER", "FX_CUSTOM_USD_CNY", "FX_CACHE_TTL_SECONDS",
 		"PAYMENT_METHODS_ORDER",
-		"STARS_ENABLED",
+		"STARS_ENABLED", "STARS_USD_RATE",
 		"PANEL_API_SOCK_CONNECT_TIMEOUT_SECONDS", "PANEL_API_SOCK_READ_TIMEOUT_SECONDS", "USER_TRAFFIC_LIMIT_GB", "USER_TRAFFIC_STRATEGY",
 		"USER_SQUAD_UUIDS", "USER_EXTERNAL_SQUAD_UUID", "MY_DEVICES_ENABLED", "SUPPORT_TICKETS_ENABLED",
 		"SUBSCRIPTION_GUIDES_ENABLED", "SUBSCRIPTION_AUTO_RENEW_ENABLED",
@@ -898,6 +906,7 @@ func allowedPaymentSettingKeys() map[string]bool {
 		"SMTP_ENABLED", "SMTP_HOST", "SMTP_PORT", "SMTP_ENCRYPTION",
 		"SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_FROM_EMAIL", "SMTP_FROM_NAME",
 		"BRAND_NAME",
+		"EMAIL_TEMPLATE_VERIFY", "EMAIL_TEMPLATE_PASSWORD_RESET", "EMAIL_TEMPLATE_LOGIN",
 	} {
 		result[key] = true
 	}

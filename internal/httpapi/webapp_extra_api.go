@@ -143,7 +143,9 @@ func webappPlansOptionsHandler(settings config.Settings, pool *pgxpool.Pool, kin
 			return
 		}
 		rate := fx.NewService(appsettings.NewStore(pool)).USDCNY(r.Context())
+		store := appsettings.NewStore(pool)
 		plans := tariffs.WithCNYDisplay(catalog.Plans(session.User.LanguageCode, effectiveDefaultCurrency(r.Context(), settings, pool)), rate.Rate, rate.Source, rate.UpdatedAt)
+		plans = tariffs.WithStarsPrice(plans, store.Float(r.Context(), "STARS_USD_RATE", settings.StarsUSDRate))
 		response := map[string]any{"ok": true, "plans": plans, "fx": rate}
 		switch kind {
 		case "devices":

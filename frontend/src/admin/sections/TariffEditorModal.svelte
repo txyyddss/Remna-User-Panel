@@ -384,7 +384,7 @@
             <AdminButton
               size="sm"
               onclick={() =>
-                tariffsStore.addDraftRow("premiumTopupRows", { gb: 10, price: "", stars: "" })}
+                tariffsStore.addDraftRow("premiumTopupRows", { gb: 10, price: "" })}
               ><Plus size={12} /> {at("tariff_btn_package", {}, "Пакет")}</AdminButton
             >
           </div>
@@ -395,7 +395,6 @@
               <span></span>
               <span>{at("tariff_col_volume_gb", {}, "Объём, GB")}</span>
               <span>{currencyPriceColumnLabel}</span>
-              <span>{at("tariff_col_price_stars_full", {}, "Цена, ⭐ Stars")}</span>
               <span></span>
             </div>
             <Sortable
@@ -423,19 +422,6 @@
                 placeholder="199"
                 bind:value={row.price}
                 aria-label={currencyPriceAriaLabel}
-              />
-              <Input
-                class="input"
-                type="number"
-                min="0"
-                step="1"
-                placeholder="100"
-                bind:value={row.stars}
-                aria-label={at(
-                  "tariff_label_price_stars",
-                  {},
-                  "Цена premium-пакета в Telegram Stars"
-                )}
               />
               <AdminButton
                 size="sm"
@@ -469,7 +455,6 @@
                 tariffsStore.addDraftRow("periodRows", {
                   months: 1,
                   rub: "",
-                  stars: "",
                   referral_inviter: "",
                   referral_referee: "",
                 })}
@@ -492,7 +477,6 @@
                 <span></span>
                 <span>{at("tariff_col_period_months", {}, "Срок, мес.")}</span>
                 <span>{currencyPriceColumnLabel}</span>
-                <span>{at("tariff_col_price_stars_full", {}, "Цена, ⭐ Stars")}</span>
                 <span>{at("tariff_col_ref_inviter", {}, "Бонус приглашающему")}</span>
                 <span>{at("tariff_col_ref_referee", {}, "Бонус приглашённому")}</span>
                 <span></span>
@@ -521,15 +505,6 @@
                   placeholder="299"
                   bind:value={row.rub}
                   aria-label={currencyPriceAriaLabel}
-                />
-                <Input
-                  class="input"
-                  type="number"
-                  min="0"
-                  step="1"
-                  placeholder="150"
-                  bind:value={row.stars}
-                  aria-label={at("tariff_label_price_stars", {}, "Цена в Telegram Stars")}
                 />
                 <Input
                   class="input"
@@ -578,7 +553,7 @@
               <AdminButton
                 size="sm"
                 onclick={() =>
-                  tariffsStore.addDraftRow("trafficRows", { gb: 10, price: "", stars: "" })}
+                  tariffsStore.addDraftRow("trafficRows", { gb: 10, price: "" })}
                 ><Plus size={12} /> {at("tariff_btn_package", {}, "Пакет")}</AdminButton
               >
             </div>
@@ -589,7 +564,6 @@
                 <span></span>
                 <span>{at("tariff_col_volume_gb", {}, "Объём, GB")}</span>
                 <span>{currencyPriceColumnLabel}</span>
-                <span>{at("tariff_col_price_stars_full", {}, "Цена, ⭐ Stars")}</span>
                 <span></span>
               </div>
               <Sortable
@@ -617,15 +591,6 @@
                   placeholder="299"
                   bind:value={row.price}
                   aria-label={currencyPriceAriaLabel}
-                />
-                <Input
-                  class="input"
-                  type="number"
-                  min="0"
-                  step="1"
-                  placeholder="150"
-                  bind:value={row.stars}
-                  aria-label={at("tariff_label_price_stars", {}, "Цена пакета в Telegram Stars")}
                 />
                 <AdminButton
                   size="sm"
@@ -660,7 +625,7 @@
               <AdminButton
                 size="sm"
                 onclick={() =>
-                  tariffsStore.addDraftRow("topupRows", { gb: 10, price: "", stars: "" })}
+                  tariffsStore.addDraftRow("topupRows", { gb: 10, price: "" })}
                 ><Plus size={12} /> {at("tariff_btn_package", {}, "Пакет")}</AdminButton
               >
             </div>
@@ -671,7 +636,6 @@
                 <span></span>
                 <span>{at("tariff_col_volume_gb", {}, "Объём, GB")}</span>
                 <span>{currencyPriceColumnLabel}</span>
-                <span>{at("tariff_col_price_stars_full", {}, "Цена, ⭐ Stars")}</span>
                 <span></span>
               </div>
               <Sortable
@@ -699,15 +663,6 @@
                   placeholder="149"
                   bind:value={row.price}
                   aria-label={currencyPriceAriaLabel}
-                />
-                <Input
-                  class="input"
-                  type="number"
-                  min="0"
-                  step="1"
-                  placeholder="75"
-                  bind:value={row.stars}
-                  aria-label={at("tariff_label_price_stars", {}, "Цена пакета в Telegram Stars")}
                 />
                 <AdminButton
                   size="sm"

@@ -43,6 +43,7 @@ type Config struct {
 	PaymentMethodsOrder []string
 	WebhookBaseURL      string
 	StarsEnabled        bool
+	StarsUSDRate        float64
 }
 
 // CreateOrderRequest describes a server-trusted payment to create.
@@ -181,6 +182,7 @@ func (r *Registry) EffectiveConfig(ctx context.Context) Config {
 		PaymentMethodsOrder: splitList(orderRaw),
 		WebhookBaseURL:      strings.TrimRight(r.store.String(ctx, "WEBHOOK_BASE_URL", r.settings.WebhookBaseURL), "/"),
 		StarsEnabled:        r.store.Bool(ctx, "STARS_ENABLED", false),
+		StarsUSDRate:        r.store.Float(ctx, "STARS_USD_RATE", r.settings.StarsUSDRate),
 	}
 }
 

@@ -14,9 +14,6 @@
         "usd": [
           { "gb": 10, "price": 2 },
           { "gb": 50, "price": 6 }
-        ],
-        "stars": [
-          { "gb": 10, "price": 2500 }
         ]
       },
       "billing_model": "period",
@@ -26,9 +23,6 @@
           { "gb": 10, "price": 2 },
           { "gb": 50, "price": 6 },
           { "gb": 200, "price": 18 }
-        ],
-        "stars": [
-          { "gb": 10, "price": 2500 }
         ]
       },
       "hwid_device_limit": 5,
@@ -36,13 +30,9 @@
         "usd": [
           { "count": 1, "price": 2 },
           { "count": 3, "price": 5 }
-        ],
-        "stars": [
-          { "count": 1, "price": 2500 }
         ]
       },
       "prices": { "usd": { "1": 3, "3": 9, "6": 18, "12": 36 } },
-      "prices_stars": { "1": 0, "3": 0, "6": 0, "12": 0 },
       "referral_bonus_days_inviter": { "1": 3, "3": 7, "6": 15, "12": 30 },
       "referral_bonus_days_referee": { "1": 1, "3": 3, "6": 7, "12": 15 },
       "enabled_periods": [1, 3, 6, 12],
@@ -64,9 +54,6 @@
           { "gb": 10, "price": 3 },
           { "gb": 50, "price": 10 },
           { "gb": 200, "price": 28 }
-        ],
-        "stars": [
-          { "gb": 10, "price": 2500 }
         ]
       },
       "enabled": true

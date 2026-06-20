@@ -11,15 +11,17 @@ import (
 )
 
 const (
-	messageLogRetentionHours    = 72
-	paymentOrderRetentionHours  = 72
-	webhookEventRetentionHours  = 72
-	closedTicketRetentionHours  = 24
+	messageLogRetentionHours   = 72
+	paymentOrderRetentionHours = 72
+	webhookEventRetentionHours = 72
+	closedTicketRetentionHours = 24
+	pendingOrderExpireHours    = 1
 )
 
 // RunDataCleanup removes expired data from the database to save space.
 // - message_logs older than 72h are deleted
 // - payment_orders in terminal state (failed/expired/cancelled) older than 72h are deleted
+// - payment_orders stuck in pending for over 1h are auto-cancelled
 // - webhook_events that are processed older than 72h are deleted
 // - closed support tickets older than 24h are removed from app_settings
 func RunDataCleanup(ctx context.Context, pool *pgxpool.Pool) error {
@@ -29,9 +31,21 @@ func RunDataCleanup(ctx context.Context, pool *pgxpool.Pool) error {
 
 	now := time.Now().UTC()
 
+	// 0. Auto-cancel pending orders older than 1h
+	pendingCutoff := now.Add(-time.Duration(pendingOrderExpireHours) * time.Hour)
+	result, err := pool.Exec(ctx, `UPDATE payment_orders SET status='expired', updated_at=NOW()
+WHERE status='pending' AND created_at < $1`, pendingCutoff)
+	if err != nil {
+		slog.Warn("data cleanup: failed to expire pending orders", "error", err)
+	} else {
+		if result.RowsAffected() > 0 {
+			slog.Info("data cleanup: auto-expired pending payment orders", "count", result.RowsAffected())
+		}
+	}
+
 	// 1. Delete old message logs
 	logCutoff := now.Add(-time.Duration(messageLogRetentionHours) * time.Hour)
-	result, err := pool.Exec(ctx, "DELETE FROM message_logs WHERE timestamp < $1", logCutoff)
+	result, err = pool.Exec(ctx, "DELETE FROM message_logs WHERE timestamp < $1", logCutoff)
 	if err != nil {
 		slog.Warn("data cleanup: failed to delete old message logs", "error", err)
 	} else {

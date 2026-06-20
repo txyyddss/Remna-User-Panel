@@ -61,7 +61,6 @@
       "1",
       "MONTH_1_ENABLED",
       "RUB_PRICE_1_MONTH",
-      "STARS_PRICE_1_MONTH",
       "REFERRAL_BONUS_DAYS_INVITER_1_MONTH",
       "REFERRAL_BONUS_DAYS_REFEREE_1_MONTH",
     ],
@@ -69,7 +68,6 @@
       "3",
       "MONTH_3_ENABLED",
       "RUB_PRICE_3_MONTHS",
-      "STARS_PRICE_3_MONTHS",
       "REFERRAL_BONUS_DAYS_INVITER_3_MONTHS",
       "REFERRAL_BONUS_DAYS_REFEREE_3_MONTHS",
     ],
@@ -77,7 +75,6 @@
       "6",
       "MONTH_6_ENABLED",
       "RUB_PRICE_6_MONTHS",
-      "STARS_PRICE_6_MONTHS",
       "REFERRAL_BONUS_DAYS_INVITER_6_MONTHS",
       "REFERRAL_BONUS_DAYS_REFEREE_6_MONTHS",
     ],
@@ -85,7 +82,6 @@
       "12",
       "MONTH_12_ENABLED",
       "RUB_PRICE_12_MONTHS",
-      "STARS_PRICE_12_MONTHS",
       "REFERRAL_BONUS_DAYS_INVITER_12_MONTHS",
       "REFERRAL_BONUS_DAYS_REFEREE_12_MONTHS",
     ],
@@ -93,7 +89,6 @@
   const LEGACY_TARIFF_SETTING_KEYS = [
     ...LEGACY_PERIODS.flatMap((row) => row.slice(1)),
     "TRAFFIC_PACKAGES",
-    "STARS_TRAFFIC_PACKAGES",
   ];
   const TRAFFIC_STRATEGY_OPTIONS = [
     { value: "NO_RESET", label: "NO_RESET" },
@@ -1456,11 +1451,10 @@
               <span>{at("tariffs_legacy_period", {}, "Period")}</span>
               <span>{at("tariffs_legacy_enabled", {}, "Enabled")}</span>
               <span>{at("payment_rub", {}, "RUB")}</span>
-              <span>{at("payment_stars", {}, "Stars")}</span>
               <span>{at("tariffs_legacy_ref_inviter", {}, "Inviter")}</span>
               <span>{at("tariffs_legacy_ref_referee", {}, "Friend")}</span>
             </div>
-            {#each LEGACY_PERIODS as [months, enabledKey, rubKey, starsKey, inviterKey, refereeKey]}
+            {#each LEGACY_PERIODS as [months, enabledKey, rubKey, inviterKey, refereeKey]}
               <div class="admin-legacy-tariff-row">
                 <strong>{months} {at("months_short", {}, "mo")}</strong>
                 <div class="admin-setting-switch">
@@ -1485,14 +1479,6 @@
                   type="number"
                   min="0"
                   step="1"
-                  value={valueForKey(starsKey, settingsDirty, settingsFieldMap)}
-                  oninput={(event) => setSetting(starsKey, event.currentTarget.value)}
-                />
-                <Input
-                  class="input"
-                  type="number"
-                  min="0"
-                  step="1"
                   value={valueForKey(inviterKey, settingsDirty, settingsFieldMap)}
                   oninput={(event) => setSetting(inviterKey, event.currentTarget.value)}
                 />
@@ -1508,7 +1494,7 @@
             {/each}
           </div>
 
-          <div class="admin-form-row admin-form-row-2 admin-legacy-traffic-row">
+          <div class="admin-form-row admin-legacy-traffic-row">
             <label class="admin-field-label admin-field-label-compact">
               <span>{at("tariffs_legacy_traffic_packages", {}, "Traffic packages")}</span>
               <small>{at("tariffs_legacy_traffic_hint", {}, "Format: 10:199,50:799")}</small>
@@ -1517,18 +1503,6 @@
                 type="text"
                 value={valueForKey("TRAFFIC_PACKAGES", settingsDirty, settingsFieldMap)}
                 oninput={(event) => setSetting("TRAFFIC_PACKAGES", event.currentTarget.value)}
-              />
-            </label>
-            <label class="admin-field-label admin-field-label-compact">
-              <span
-                >{at("tariffs_legacy_stars_traffic_packages", {}, "Traffic packages, Stars")}</span
-              >
-              <small>{at("tariffs_legacy_traffic_hint", {}, "Format: 10:199,50:799")}</small>
-              <Input
-                class="input"
-                type="text"
-                value={valueForKey("STARS_TRAFFIC_PACKAGES", settingsDirty, settingsFieldMap)}
-                oninput={(event) => setSetting("STARS_TRAFFIC_PACKAGES", event.currentTarget.value)}
               />
             </label>
           </div>

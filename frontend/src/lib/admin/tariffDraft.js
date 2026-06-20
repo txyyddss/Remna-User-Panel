@@ -18,16 +18,16 @@ export function emptyTariffDraft() {
     premium_monthly_gb: "",
     conversion_rate_rub_per_gb: "",
     periodRows: [
-      { months: 1, rub: 3, stars: "", referral_inviter: 3, referral_referee: 1 },
-      { months: 3, rub: 9, stars: "", referral_inviter: 7, referral_referee: 3 },
-      { months: 6, rub: 18, stars: "", referral_inviter: 15, referral_referee: 7 },
-      { months: 12, rub: 36, stars: "", referral_inviter: 30, referral_referee: 15 },
+      { months: 1, rub: 3, referral_inviter: 3, referral_referee: 1 },
+      { months: 3, rub: 9, referral_inviter: 7, referral_referee: 3 },
+      { months: 6, rub: 18, referral_inviter: 15, referral_referee: 7 },
+      { months: 12, rub: 36, referral_inviter: 30, referral_referee: 15 },
     ],
     topupRows: [],
     premiumTopupRows: [],
     trafficRows: [
-      { gb: 10, price: 3, stars: "" },
-      { gb: 50, price: 10, stars: "" },
+      { gb: 10, price: 3 },
+      { gb: 50, price: 10 },
     ],
   };
 }
@@ -66,42 +66,12 @@ function packageValueSignature(value) {
 }
 
 export function packageRowsFromPackageSet(packageSet, currency, valueKey) {
-  const currencyRows = rowsFromPackages(packageSet, currency, valueKey);
-  const starsRows = rowsFromPackages(packageSet, "stars", valueKey);
-  const usedStars = new Set();
-
-  const rows = currencyRows.map((row) => {
-    const rowSignature = packageValueSignature(row[valueKey]);
-    const starsIndex = starsRows.findIndex(
-      (starsRow, index) =>
-        !usedStars.has(index) && packageValueSignature(starsRow[valueKey]) === rowSignature
-    );
-    const starsRow = starsIndex >= 0 ? starsRows[starsIndex] : null;
-    if (starsIndex >= 0) usedStars.add(starsIndex);
-
-    return {
-      [valueKey]: row[valueKey],
-      price: row.price,
-      stars: starsRow?.price ?? "",
-      prices: row.prices,
-      min_price: row.min_price,
-      stars_prices: starsRow?.prices,
-      stars_min_price: starsRow?.min_price ?? "",
-    };
-  });
-
-  starsRows.forEach((starsRow, index) => {
-    if (usedStars.has(index)) return;
-    rows.push({
-      [valueKey]: starsRow[valueKey],
-      price: "",
-      stars: starsRow.price,
-      stars_prices: starsRow.prices,
-      stars_min_price: starsRow.min_price ?? "",
-    });
-  });
-
-  return rows;
+  return (packageSet?.[currency] || []).map((pkg) => ({
+    [valueKey]: pkg[valueKey],
+    price: pkg.price,
+    prices: pkg.prices ? structuredCloneSafe(pkg.prices) : undefined,
+    min_price: pkg.min_price ?? "",
+  }));
 }
 
 export function draftFromTariff(tariff, defaultCurrency = "usd") {
@@ -113,7 +83,6 @@ export function draftFromTariff(tariff, defaultCurrency = "usd") {
     ...(tariff.enabled_periods || []),
     ...Object.keys(defaultPrices).map(Number),
     ...(currency === "rub" ? Object.keys(tariff.prices_rub || {}).map(Number) : []),
-    ...Object.keys(tariff.prices_stars || {}).map(Number),
   ]);
   const periodRows = [...months]
     .filter((month) => Number.isFinite(month) && month > 0)
@@ -123,7 +92,6 @@ export function draftFromTariff(tariff, defaultCurrency = "usd") {
         (currency === "rub" ? tariff.prices_rub?.[String(month)] : undefined) ??
         defaultPrices?.[String(month)] ??
         "",
-      stars: tariff.prices_stars?.[String(month)] ?? "",
       referral_inviter: tariff.referral_bonus_days_inviter?.[String(month)] ?? "",
       referral_referee: tariff.referral_bonus_days_referee?.[String(month)] ?? "",
     }));
@@ -170,40 +138,33 @@ export function compactMap(obj) {
 }
 
 export function packagesFromRows(rows, valueKey) {
-  return (rows || [])
-    .map((row) => {
-      const pkg = {
-        [valueKey]: parseNumber(row[valueKey]),
-        price: parseNumber(row.price),
-      };
-      if (row.prices && typeof row.prices === "object") {
-        pkg.prices = structuredCloneSafe(row.prices);
-      }
-      const minPrice = parseNumber(row.min_price);
-      if (minPrice !== null) {
-        pkg.min_price = minPrice;
-      }
-      return pkg;
-    })
-    .filter((row) => row[valueKey] > 0 && row.price !== null && row.price >= 0);
+  const result = [];
+  for (const row of rows || []) {
+    const pkg = {
+      [valueKey]: parseNumber(row[valueKey]),
+      price: parseNumber(row.price),
+    };
+    if (row.prices && typeof row.prices === "object") {
+      pkg.prices = structuredCloneSafe(row.prices);
+    }
+    const minPrice = parseNumber(row.min_price);
+    if (minPrice !== null) {
+      pkg.min_price = minPrice;
+    }
+    if (pkg[valueKey] > 0 && pkg.price !== null && pkg.price >= 0) {
+      result.push(pkg);
+    }
+  }
+  return result;
 }
 
-export function packagesFromPackageRows(rows, valueKey, priceKey, options = {}) {
-  const pricesKey = options.pricesKey || "prices";
-  const minPriceKey = options.minPriceKey || "min_price";
+export function packagesFromPackageRows(rows, valueKey, priceKey) {
   return (rows || [])
     .map((row) => {
       const pkg = {
         [valueKey]: parseNumber(row[valueKey]),
         price: parseNumber(row[priceKey]),
       };
-      if (row[pricesKey] && typeof row[pricesKey] === "object") {
-        pkg.prices = structuredCloneSafe(row[pricesKey]);
-      }
-      const minPrice = parseNumber(row[minPriceKey]);
-      if (minPrice !== null) {
-        pkg.min_price = minPrice;
-      }
       return pkg;
     })
     .filter((row) => row[valueKey] > 0 && row.price !== null && row.price >= 0);
@@ -212,15 +173,8 @@ export function packagesFromPackageRows(rows, valueKey, priceKey, options = {}) 
 export function packageSetFromRows(rows, valueKey, defaultCurrency = "usd") {
   const currency = normalizeCurrencyKey(defaultCurrency);
   const defaultCurrencyPackages = packagesFromPackageRows(rows, valueKey, "price");
-  const stars = packagesFromPackageRows(rows, valueKey, "stars", {
-    pricesKey: "stars_prices",
-    minPriceKey: "stars_min_price",
-  });
-  if (!defaultCurrencyPackages.length && !stars.length) return null;
-  return {
-    ...(defaultCurrencyPackages.length ? { [currency]: defaultCurrencyPackages } : {}),
-    ...(stars.length ? { stars } : {}),
-  };
+  if (!defaultCurrencyPackages.length) return null;
+  return { [currency]: defaultCurrencyPackages };
 }
 
 export function normalizeUuidList(value) {
@@ -269,7 +223,6 @@ export function tariffFromDraft(draft, fallbackCurrency = "usd") {
       .map((row) => ({
         months: parseIntNumber(row.months),
         rub: parseNumber(row.rub, 0),
-        stars: parseNumber(row.stars, 0),
         referral_inviter: parseIntNumber(row.referral_inviter),
         referral_referee: parseIntNumber(row.referral_referee),
       }))
@@ -287,9 +240,6 @@ export function tariffFromDraft(draft, fallbackCurrency = "usd") {
     } else {
       tariff.prices = { [defaultCurrency]: defaultPrices };
     }
-    tariff.prices_stars = Object.fromEntries(
-      rows.map((row) => [String(row.months), row.stars || 0])
-    );
     tariff.referral_bonus_days_inviter = Object.fromEntries(
       rows
         .filter((row) => row.referral_inviter !== null)

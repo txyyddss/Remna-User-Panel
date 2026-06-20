@@ -1,4 +1,4 @@
-name: Quality, Docker package & release
+name: Quality & Docker package
 
 on:
   pull_request:
@@ -12,7 +12,6 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
-  contents: write
   packages: write
   pull-requests: read
 
@@ -156,7 +155,7 @@ jobs:
           category: trivy-fs
 
   docker:
-    name: Build, push and archive Docker image
+    name: Build and push Docker image
     runs-on: ubuntu-latest
     needs: [quality-go, quality-frontend, govulncheck, npm-audit, trivy]
     if: github.event_name != 'pull_request'
@@ -193,7 +192,6 @@ jobs:
           echo "owner=${owner}" >> "$GITHUB_OUTPUT"
           echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
           echo "image=${image}" >> "$GITHUB_OUTPUT"
-          echo "archive=remna-user-panel-${{ matrix.target }}-${short_sha}.tar.gz" >> "$GITHUB_OUTPUT"
 
       - name: Build and push GHCR image
         uses: docker/build-push-action@v7
@@ -213,62 +211,5 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.target }}
           provenance: false
 
-      - name: Export Docker image tar.gz
-        shell: bash
-        run: |
-          mkdir -p dist
-          docker pull "${{ steps.meta.outputs.image }}:sha-${{ steps.meta.outputs.short_sha }}"
-          docker save "${{ steps.meta.outputs.image }}:sha-${{ steps.meta.outputs.short_sha }}" \
-            | gzip -9 > "dist/${{ steps.meta.outputs.archive }}"
 
-      - name: Upload image archive
-        uses: actions/upload-artifact@v7
-        with:
-          name: docker-${{ matrix.target }}
-          path: dist/*.tar.gz
-          if-no-files-found: error
 
-  release:
-    name: Create GitHub release
-    runs-on: ubuntu-latest
-    needs: docker
-    if: github.event_name != 'pull_request'
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
-      - name: Resolve release tag
-        id: meta
-        shell: bash
-        run: |
-          short_sha="$(git rev-parse --short=12 HEAD)"
-          tag="auto-${GITHUB_RUN_NUMBER}-${short_sha}"
-          echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
-          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
-
-      - name: Download Docker archives
-        uses: actions/download-artifact@v8
-        with:
-          path: dist
-          pattern: docker-*
-          merge-multiple: true
-
-      - name: Create checksums
-        shell: bash
-        run: |
-          cd dist
-          sha256sum *.tar.gz > SHA256SUMS
-
-      - name: Publish release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
-        run: |
-          gh release create "${{ steps.meta.outputs.tag }}" dist/* \
-            --target "${GITHUB_SHA}" \
-            --title "Automated release ${{ steps.meta.outputs.short_sha }}" \
-            --notes "Automated main-branch release for commit ${GITHUB_SHA}. Images were pushed to GHCR and archived as tar.gz assets."

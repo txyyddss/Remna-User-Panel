@@ -60,6 +60,7 @@ type Settings struct {
 	PaymentMethodsOrder           []string
 	SubscriptionNotifyHoursBefore int
 	SubscriptionNotifyDaysBefore  int
+	StarsUSDRate                  float64
 }
 
 // EZPaySettings contains EZPay merchant configuration.
@@ -146,6 +147,7 @@ func Load() (Settings, error) {
 		PaymentMethodsOrder:           splitCSV(env("PAYMENT_METHODS_ORDER", "")),
 		SubscriptionNotifyHoursBefore: envInt("SUBSCRIPTION_NOTIFY_HOURS_BEFORE", 0),
 		SubscriptionNotifyDaysBefore:  envInt("SUBSCRIPTION_NOTIFY_DAYS_BEFORE", 3),
+		StarsUSDRate:                  envFloat("STARS_USD_RATE", 0),
 	}
 	settings.AdminIDs = parseInt64List(env("ADMIN_IDS", ""))
 	settings.TrustedProxies = splitCSV(env("TRUSTED_PROXIES", "127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7"))

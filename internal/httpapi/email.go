@@ -21,13 +21,68 @@ import (
 )
 
 const (
-	emailCodePurposeVerify       = "verify"
-	emailCodePurposeLogin        = "login"
+	emailCodePurposeVerify        = "verify"
+	emailCodePurposeLogin         = "login"
 	emailCodePurposePasswordReset = "password_reset"
-	emailCodeLength              = 6
-	emailCodeExpireMinutes       = 10
-	emailCodeRateLimitSeconds    = 60
+	emailCodeLength               = 6
+	emailCodeExpireMinutes        = 10
+	emailCodeRateLimitSeconds     = 60
 )
+
+// Default email templates (Markdown). Admins can override via app_settings keys
+// EMAIL_TEMPLATE_VERIFY, EMAIL_TEMPLATE_PASSWORD_RESET, EMAIL_TEMPLATE_LOGIN.
+const defaultVerifyTemplate = `# {{.Brand}}
+
+您的邮箱验证码如下
+
+**{{.Code}}**
+
+验证码 **{{.ExpireMinutes}}** 分钟内有效。如非本人操作请忽略。
+
+---
+这是来自 {{.Brand}} 的自动邮件。`
+
+const defaultPasswordResetTemplate = `# {{.Brand}}
+
+您正在重置密码，验证码如下
+
+**{{.Code}}**
+
+验证码 **{{.ExpireMinutes}}** 分钟内有效。如非本人操作请忽略。
+
+---
+这是来自 {{.Brand}} 的自动邮件。`
+
+const defaultLoginTemplate = `# {{.Brand}}
+
+您的登录验证码如下
+
+**{{.Code}}**
+
+验证码 **{{.ExpireMinutes}}** 分钟内有效。如非本人操作请忽略。
+
+---
+这是来自 {{.Brand}} 的自动邮件。`
+
+// emailTemplate returns the rendered email body for the given purpose.
+// It first tries the admin-configured Markdown template, falling back to the hardcoded default.
+func emailTemplate(ctx context.Context, store appsettings.Store, purpose, fallback string, vars map[string]any) string {
+	var key string
+	switch purpose {
+	case emailCodePurposeVerify:
+		key = "EMAIL_TEMPLATE_VERIFY"
+	case emailCodePurposePasswordReset:
+		key = "EMAIL_TEMPLATE_PASSWORD_RESET"
+	case emailCodePurposeLogin:
+		key = "EMAIL_TEMPLATE_LOGIN"
+	}
+	if key != "" {
+		if tmpl := store.String(ctx, key, ""); strings.TrimSpace(tmpl) != "" {
+			return mail.RenderTemplate(tmpl, vars)
+		}
+	}
+	return mail.RenderTemplate(fallback, vars)
+}
 
 // isMailEnabled checks if SMTP is configured and enabled.
 func isMailEnabled(ctx context.Context, store appsettings.Store) bool {
@@ -97,7 +152,11 @@ func emailRequestHandler(settings config.Settings, pool *pgxpool.Pool) http.Hand
 
 		brand := store.String(r.Context(), "BRAND_NAME", "Remna")
 		subject := fmt.Sprintf("%s — 邮箱验证码", brand)
-		body := buildVerificationEmailHTML(brand, code, emailCodeExpireMinutes)
+		body := emailTemplate(r.Context(), store, emailCodePurposeVerify, defaultVerifyTemplate, map[string]any{
+			"Brand":         brand,
+			"Code":          code,
+			"ExpireMinutes": emailCodeExpireMinutes,
+		})
 		if err := mailer.Send(mail.Message{
 			To:      []string{email},
 			Subject: subject,
@@ -201,7 +260,11 @@ func passwordRequestHandler(settings config.Settings, pool *pgxpool.Pool) http.H
 
 		brand := store.String(r.Context(), "BRAND_NAME", "Remna")
 		subject := fmt.Sprintf("%s — 密码重置验证码", brand)
-		body := buildPasswordResetEmailHTML(brand, code, emailCodeExpireMinutes)
+		body := emailTemplate(r.Context(), store, emailCodePurposePasswordReset, defaultPasswordResetTemplate, map[string]any{
+			"Brand":         brand,
+			"Code":          code,
+			"ExpireMinutes": emailCodeExpireMinutes,
+		})
 		if err := mailer.Send(mail.Message{
 			To:       []string{user.Email},
 			Subject:  subject,
@@ -328,7 +391,11 @@ func emailLoginRequestHandler(settings config.Settings, pool *pgxpool.Pool) http
 
 		brand := store.String(r.Context(), "BRAND_NAME", "Remna")
 		subject := fmt.Sprintf("%s — 登录验证码", brand)
-		body := buildLoginEmailHTML(brand, code, emailCodeExpireMinutes)
+		body := emailTemplate(r.Context(), store, emailCodePurposeLogin, defaultLoginTemplate, map[string]any{
+			"Brand":         brand,
+			"Code":          code,
+			"ExpireMinutes": emailCodeExpireMinutes,
+		})
 		if err := mailer.Send(mail.Message{
 			To:       []string{email},
 			Subject:  subject,
@@ -503,63 +570,6 @@ SELECT created_at FROM email_verification_codes
 WHERE email=$1 AND purpose=$2
 ORDER BY created_at DESC LIMIT 1`, email, purpose).Scan(&ts)
 	return ts, err
-}
-
-// buildVerificationEmailHTML generates the HTML body for an email verification code.
-func buildVerificationEmailHTML(brand, code string, expireMinutes int) string {
-	return fmt.Sprintf(`<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
-	<div style="background: #f8f9fa; border-radius: 12px; padding: 30px; text-align: center;">
-		<h2 style="color: #1a1a2e; margin: 0 0 10px;">%s</h2>
-		<p style="color: #666; font-size: 15px; margin: 0 0 24px;">您的邮箱验证码如下</p>
-		<div style="background: #fff; border-radius: 8px; padding: 16px 24px; margin: 0 auto 24px; display: inline-block;">
-			<span style="font-size: 32px; font-weight: 700; letter-spacing: 6px; color: #2563eb;">%s</span>
-		</div>
-		<p style="color: #999; font-size: 13px; margin: 0;">验证码 %d 分钟内有效。如非本人操作请忽略。</p>
-	</div>
-	<p style="color: #aaa; font-size: 12px; text-align: center; margin: 16px 0 0;">这是来自 %s 的自动邮件。</p>
-</body>
-</html>`, brand, code, expireMinutes, brand)
-}
-
-// buildPasswordResetEmailHTML generates the HTML body for a password reset code.
-func buildPasswordResetEmailHTML(brand, code string, expireMinutes int) string {
-	return fmt.Sprintf(`<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
-	<div style="background: #f8f9fa; border-radius: 12px; padding: 30px; text-align: center;">
-		<h2 style="color: #1a1a2e; margin: 0 0 10px;">%s</h2>
-		<p style="color: #666; font-size: 15px; margin: 0 0 24px;">您正在重置密码，验证码如下</p>
-		<div style="background: #fff; border-radius: 8px; padding: 16px 24px; margin: 0 auto 24px; display: inline-block;">
-			<span style="font-size: 32px; font-weight: 700; letter-spacing: 6px; color: #dc2626;">%s</span>
-		</div>
-		<p style="color: #999; font-size: 13px; margin: 0;">验证码 %d 分钟内有效。如非本人操作请忽略。</p>
-	</div>
-	<p style="color: #aaa; font-size: 12px; text-align: center; margin: 16px 0 0;">这是来自 %s 的自动邮件。</p>
-</body>
-</html>`, brand, code, expireMinutes, brand)
-}
-
-// buildLoginEmailHTML generates the HTML body for a login code.
-func buildLoginEmailHTML(brand, code string, expireMinutes int) string {
-	return fmt.Sprintf(`<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
-	<div style="background: #f8f9fa; border-radius: 12px; padding: 30px; text-align: center;">
-		<h2 style="color: #1a1a2e; margin: 0 0 10px;">%s</h2>
-		<p style="color: #666; font-size: 15px; margin: 0 0 24px;">您的登录验证码如下</p>
-		<div style="background: #fff; border-radius: 8px; padding: 16px 24px; margin: 0 auto 24px; display: inline-block;">
-			<span style="font-size: 32px; font-weight: 700; letter-spacing: 6px; color: #2563eb;">%s</span>
-		</div>
-		<p style="color: #999; font-size: 13px; margin: 0;">验证码 %d 分钟内有效。如非本人操作请忽略。</p>
-	</div>
-	<p style="color: #aaa; font-size: 12px; text-align: center; margin: 16px 0 0;">这是来自 %s 的自动邮件。</p>
-</body>
-</html>`, brand, code, expireMinutes, brand)
 }
 
 // hashPassword creates a SHA-256 hash of the password.
