@@ -1327,9 +1327,4 @@ func roundMoney(value float64) float64 {
 	return math.Round(value*100) / 100
 }
 
-func boolToInt(value bool) int {
-	if value {
-		return 1
-	}
-	return 0
-}
+

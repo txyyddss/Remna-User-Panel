@@ -3,7 +3,6 @@ package httpapi
 import (
 	"context"
 	"crypto/sha256"
-	"crypto/subtle"
 	"database/sql"
 	"encoding/csv"
 	"encoding/hex"
@@ -646,53 +645,6 @@ func adminTariffsHandler(settings config.Settings, pool *pgxpool.Pool) http.Hand
 		_ = json.Unmarshal(payload.Catalog, &saved)
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "catalog": saved, "path": path, "provider_currency_support": providerCurrencySupport()})
 	}
-}
-
-func ensureAdminUser(ctx context.Context, pool *pgxpool.Pool, adminID int64, email string, language string) error {
-	normalizedEmail := strings.ToLower(strings.TrimSpace(email))
-	tx, err := pool.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	if normalizedEmail != "" {
-		if _, err := tx.Exec(ctx, `
-UPDATE users
-SET email=NULL, email_verified_at=NULL
-WHERE LOWER(COALESCE(email,''))=$1 AND user_id<>$2`, normalizedEmail, adminID); err != nil {
-			return err
-		}
-	}
-	if _, err := tx.Exec(ctx, `
-UPDATE users
-SET telegram_id=NULL
-WHERE telegram_id=$1 AND user_id<>$1`, adminID); err != nil {
-		return err
-	}
-
-	_, err = tx.Exec(ctx, `
-INSERT INTO users (user_id, telegram_id, email, email_verified_at, first_name, language_code, registration_date)
-VALUES ($1,$1,$2,NOW(),'Admin',$3,NOW())
-ON CONFLICT (user_id) DO UPDATE SET
-	telegram_id=EXCLUDED.telegram_id,
-	email=EXCLUDED.email,
-	email_verified_at=COALESCE(users.email_verified_at, EXCLUDED.email_verified_at),
-	first_name=COALESCE(NULLIF(users.first_name,''), EXCLUDED.first_name),
-	language_code=COALESCE(NULLIF(users.language_code,''), EXCLUDED.language_code)`,
-		adminID, normalizedEmail, language)
-	if err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
-}
-
-func constantTimeStringEqual(got string, want string) bool {
-	gotBytes := []byte(got)
-	wantBytes := []byte(want)
-	gotHash := sha256.Sum256(gotBytes)
-	wantHash := sha256.Sum256(wantBytes)
-	return subtle.ConstantTimeCompare(gotHash[:], wantHash[:]) == 1
 }
 
 func adminSquadsHandler(settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) http.HandlerFunc {

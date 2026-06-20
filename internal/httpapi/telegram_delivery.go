@@ -16,10 +16,6 @@ func sendTelegramText(ctx context.Context, settings config.Settings, chatID int6
 	return sendTelegramMessage(ctx, settings, chatID, text, "")
 }
 
-func sendTelegramHTML(ctx context.Context, settings config.Settings, chatID int64, text string) error {
-	return sendTelegramMessage(ctx, settings, chatID, text, "HTML")
-}
-
 func sendTelegramMessage(ctx context.Context, settings config.Settings, chatID int64, text, parseMode string) error {
 	if strings.TrimSpace(settings.BotToken) == "" {
 		return fmt.Errorf("telegram_bot_not_configured")

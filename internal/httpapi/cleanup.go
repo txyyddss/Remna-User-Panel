@@ -76,6 +76,8 @@ WHERE status='pending' AND created_at < $1`, pendingCutoff)
 	result, err = pool.Exec(ctx, "DELETE FROM telegram_outbox WHERE status IN ('sent','failed') AND COALESCE(sent_at,created_at) < $1", outboxCutoff)
 	if err != nil {
 		slog.Warn("data cleanup: failed to delete old telegram outbox messages", "error", err)
+	} else {
+		slog.Debug("data cleanup: deleted old telegram outbox messages", "count", result.RowsAffected())
 	}
 
 	// 5. Remove closed support tickets older than 24h from app_settings.

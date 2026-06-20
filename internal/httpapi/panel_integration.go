@@ -1086,13 +1086,6 @@ func dateText(value time.Time) string {
 	return value.UTC().Format("2006-01-02")
 }
 
-func dateTimeText(value time.Time) string {
-	if value.IsZero() {
-		return ""
-	}
-	return value.UTC().Format("2006-01-02 15:04")
-}
-
 func remainingText(days int) string {
 	if days <= 0 {
 		return ""
@@ -1148,32 +1141,6 @@ func int64Value(m map[string]any, key string) int64 {
 	}
 }
 
-func optionalIntValue(m map[string]any, key string) (int, bool) {
-	if m == nil {
-		return 0, false
-	}
-	value, ok := m[key]
-	if !ok || value == nil {
-		return 0, false
-	}
-	switch typed := value.(type) {
-	case int:
-		return typed, true
-	case int64:
-		return int(typed), true
-	case float64:
-		return int(typed), true
-	case string:
-		if strings.TrimSpace(typed) == "" {
-			return 0, false
-		}
-		parsed, err := strconv.Atoi(strings.TrimSpace(typed))
-		return parsed, err == nil
-	default:
-		return 0, false
-	}
-}
-
 func mapValue(m map[string]any, key string) map[string]any {
 	if m == nil {
 		return map[string]any{}
@@ -1182,24 +1149,6 @@ func mapValue(m map[string]any, key string) map[string]any {
 		return value
 	}
 	return map[string]any{}
-}
-
-func arrayValue(m map[string]any, key string) []any {
-	if m == nil {
-		return []any{}
-	}
-	switch value := m[key].(type) {
-	case []any:
-		return value
-	case []map[string]any:
-		result := make([]any, 0, len(value))
-		for _, item := range value {
-			result = append(result, item)
-		}
-		return result
-	default:
-		return []any{}
-	}
 }
 
 func cleanStringSlice(values []string) []string {
