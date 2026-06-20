@@ -208,10 +208,6 @@ export function tariffFromDraft(draft, fallbackCurrency = "usd") {
     enabled: Boolean(draft.enabled),
   };
 
-  const hwidLimit = parseIntNumber(draft.hwid_device_limit);
-  if (hwidLimit !== null) tariff.hwid_device_limit = hwidLimit;
-  const hwidPackages = packageSetFromRows(draft.hwidRows, "count", defaultCurrency);
-  if (hwidPackages) tariff.hwid_device_packages = hwidPackages;
   const premiumMonthlyGb = parseNumber(draft.premium_monthly_gb);
   if (premiumMonthlyGb !== null) tariff.premium_monthly_gb = premiumMonthlyGb;
   const premiumTopupPackages = packageSetFromRows(draft.premiumTopupRows, "gb", defaultCurrency);

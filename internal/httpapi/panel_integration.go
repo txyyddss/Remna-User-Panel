@@ -491,12 +491,13 @@ LIMIT $1`, limit)
 	orders := []payments.Order{}
 	for rows.Next() {
 		var order payments.Order
+		var deviceCount int
 		if err := rows.Scan(
 			&order.PaymentID, &order.OrderID, &order.UserID, &order.Provider, &order.Method, &order.PaymentType,
 			&order.Amount, &order.Currency, &order.BaseAmount, &order.BaseCurrency, &order.DisplayCNYAmount,
 			&order.FXRate, &order.FXSource, &order.FXUpdatedAt, &order.PlanHash, &order.PlanSnapshot,
 			&order.Status, &order.Description, &order.TariffKey, &order.SaleMode, &order.Months, &order.TrafficGB,
-			&order.DeviceCount, &order.ProviderPaymentID, &order.PaymentURL, &order.QRContent, &order.DisplayAmount,
+			&deviceCount, &order.ProviderPaymentID, &order.PaymentURL, &order.QRContent, &order.DisplayAmount,
 			&order.DisplayCurrency, &order.PaymentAddress, &order.Network, &order.URLScheme, &order.RawWebhook,
 			&order.ProvisionedAt, &order.ProvisionError, &order.CreatedAt, &order.UpdatedAt, &order.PaidAt,
 		); err != nil {
@@ -956,12 +957,13 @@ FROM payment_orders WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20`, userID)
 	result := []payments.Order{}
 	for rows.Next() {
 		var order payments.Order
+		var deviceCount int
 		if err := rows.Scan(
 			&order.PaymentID, &order.OrderID, &order.UserID, &order.Provider, &order.Method, &order.PaymentType,
 			&order.Amount, &order.Currency, &order.BaseAmount, &order.BaseCurrency, &order.DisplayCNYAmount,
 			&order.FXRate, &order.FXSource, &order.FXUpdatedAt, &order.PlanHash, &order.PlanSnapshot,
 			&order.Status, &order.Description, &order.TariffKey, &order.SaleMode, &order.Months, &order.TrafficGB,
-			&order.DeviceCount, &order.ProviderPaymentID, &order.PaymentURL, &order.QRContent, &order.DisplayAmount,
+			&deviceCount, &order.ProviderPaymentID, &order.PaymentURL, &order.QRContent, &order.DisplayAmount,
 			&order.DisplayCurrency, &order.PaymentAddress, &order.Network, &order.URLScheme, &order.RawWebhook,
 			&order.ProvisionedAt, &order.ProvisionError, &order.CreatedAt, &order.UpdatedAt, &order.PaidAt,
 		); err == nil {
@@ -1032,67 +1034,6 @@ func premiumTrafficPayload(override userTrafficOverride) map[string]any {
 		}
 	}
 	return map[string]any{"state": "none"}
-}
-
-func mapDevicePayload(panelPayload map[string]any, panelUser map[string]any) map[string]any {
-	rawDevices := arrayValue(panelPayload, "devices")
-	devices := make([]map[string]any, 0, len(rawDevices))
-	for index, raw := range rawDevices {
-		device, ok := raw.(map[string]any)
-		if !ok {
-			continue
-		}
-		hwid := stringValue(device, "hwid")
-		devices = append(devices, map[string]any{
-			"index":           index + 1,
-			"token":           hwid,
-			"hwid":            hwid,
-			"hwid_short":      shortHWID(hwid),
-			"display_name":    firstNonEmpty(stringValue(device, "deviceModel"), "Device "+strconv.Itoa(index+1)),
-			"platform_label":  platformLabel(device),
-			"user_agent":      stringValue(device, "userAgent"),
-			"created_at":      timeString(parsePanelTime(device["createdAt"])),
-			"created_at_text": dateTimeText(parsePanelTime(device["createdAt"])),
-			"can_disconnect":  hwid != "",
-		})
-	}
-	maxDevices, hasMax := optionalIntValue(panelUser, "hwidDeviceLimit")
-	maxLabel := ""
-	if hasMax {
-		if maxDevices == 0 {
-			maxLabel = "∞"
-		} else {
-			maxLabel = strconv.Itoa(maxDevices)
-		}
-	}
-	return map[string]any{
-		"ok":                true,
-		"enabled":           true,
-		"current_devices":   len(devices),
-		"max_devices":       maxDevices,
-		"max_devices_label": maxLabel,
-		"devices":           devices,
-	}
-}
-
-func platformLabel(device map[string]any) string {
-	platform := stringValue(device, "platform")
-	osVersion := stringValue(device, "osVersion")
-	if platform == "" {
-		return osVersion
-	}
-	if osVersion == "" {
-		return platform
-	}
-	return platform + " " + osVersion
-}
-
-func shortHWID(hwid string) string {
-	hwid = strings.TrimSpace(hwid)
-	if len(hwid) <= 14 {
-		return hwid
-	}
-	return hwid[:8] + "..." + hwid[len(hwid)-6:]
 }
 
 func parsePanelTime(value any) time.Time {

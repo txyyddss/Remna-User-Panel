@@ -173,22 +173,6 @@ func (c *Client) DeleteUser(ctx context.Context, uuid string) error {
 	return err
 }
 
-func (c *Client) GetUserDevices(ctx context.Context, userUUID string) (map[string]any, error) {
-	var out map[string]any
-	err := c.request(ctx, http.MethodGet, "/hwid/devices/"+url.PathEscape(strings.TrimSpace(userUUID)), nil, nil, &out)
-	if errors.Is(err, ErrNotFound) {
-		return map[string]any{"total": 0, "devices": []any{}}, nil
-	}
-	return out, err
-}
-
-func (c *Client) DisconnectDevice(ctx context.Context, userUUID string, hwid string) error {
-	return c.request(ctx, http.MethodPost, "/hwid/devices/delete", nil, map[string]any{
-		"userUuid": userUUID,
-		"hwid":     hwid,
-	}, nil)
-}
-
 func (c *Client) GetInternalSquads(ctx context.Context) ([]map[string]any, error) {
 	var out any
 	if err := c.request(ctx, http.MethodGet, "/internal-squads", nil, nil, &out); err != nil {

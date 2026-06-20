@@ -1,6 +1,6 @@
 /**
- * Pure helpers for HWID / device limits UI (used by DevicesScreen).
- * @param {Record<string, unknown>} devicesData API payload from /api/devices
+ * Pure helpers for IP-based device limits UI (used by DevicesScreen).
+ * @param {Record<string, unknown>} devicesData API payload from /api/devices/ips
  * @param {(key: string, vars?: Record<string, unknown>, fallback?: string) => string} t i18n function
  * @param {unknown} [maxDevicesOverride] optional max_devices override (defaults to devicesData.max_devices)
  */

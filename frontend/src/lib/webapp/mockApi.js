@@ -154,7 +154,6 @@ let demoTariffsState = null;
 let demoPaymentSequence = 20000;
 const demoSettingsChanges = new Map();
 const demoPaymentStatuses = new Map();
-const deviceTopupSaleModes = new Set(["hwid_device", "hwid_devices", "hwid_devices_renewal"]);
 const DEFAULT_DEMO_AUTH_EMAIL = "admin@example.com";
 const DEFAULT_DEMO_AUTH_CODE = "123456";
 const DEFAULT_DEMO_AUTH_PASSWORD = "demo-password";
@@ -250,7 +249,7 @@ function jsonBody(options) {
 }
 
 function isDeviceTopupSaleMode(value) {
-  return deviceTopupSaleModes.has(String(value || "").toLowerCase());
+  return false;
 }
 
 function demoAuthConfig() {
@@ -316,7 +315,6 @@ function applyDemoEmailAuthUser() {
     can_topup_regular_traffic: false,
     can_topup_premium_traffic: false,
     can_topup_devices: false,
-    extra_hwid_devices: 0,
     max_devices: 0,
   };
   if (DEMO_DATASET.currentSubscription) {
@@ -399,7 +397,6 @@ function applyDemoTelegramAuthUser(authData = {}) {
     can_topup_regular_traffic: false,
     can_topup_premium_traffic: false,
     can_topup_devices: false,
-    extra_hwid_devices: 0,
     max_devices: 0,
   };
   if (DEMO_DATASET.currentSubscription) {
@@ -485,11 +482,11 @@ function demoDeviceTopupPlan(body) {
     plans.find(
       (plan) =>
         String(plan.tariff_key || "") === String(body.tariff_key || plan.tariff_key || "") &&
-        Number(plan.device_count || plan.purchased_hwid_devices || plan.months || 0) === deviceCount
+        Number(plan.device_count || plan.months || 0) === deviceCount
     ) ||
     plans.find(
       (plan) =>
-        Number(plan.device_count || plan.purchased_hwid_devices || plan.months || 0) === deviceCount
+        Number(plan.device_count || plan.months || 0) === deviceCount
     ) ||
     null
   );
@@ -510,12 +507,12 @@ function applyDemoDeviceTopup(deviceCount) {
   );
   const nextMax = currentMax > 0 ? currentMax + count : currentMax;
   const currentExtra = Number(
-    subscription.extra_hwid_devices || topupOptions.extra_hwid_devices || 0
+    subscription.extra_devices || topupOptions.extra_devices || 0
   );
   const nextExtra = currentExtra + count;
   const validUntil =
-    subscription.extra_hwid_devices_valid_until_text ||
-    topupOptions.extra_hwid_devices_valid_until_text ||
+    subscription.extra_devices_valid_until_text ||
+    topupOptions.extra_devices_valid_until_text ||
     subscription.end_date_text ||
     "28.06.2026 12:00";
 
@@ -524,8 +521,8 @@ function applyDemoDeviceTopup(deviceCount) {
     active: true,
     can_topup_devices: true,
     max_devices: nextMax,
-    extra_hwid_devices: nextExtra,
-    extra_hwid_devices_valid_until_text: validUntil,
+    extra_devices: nextExtra,
+    extra_devices_valid_until_text: validUntil,
   };
   DEV_MOCK.data.devices = {
     ...devicesPayload,
@@ -542,8 +539,8 @@ function applyDemoDeviceTopup(deviceCount) {
     current_devices: devices.length || Number(topupOptions.current_devices || 0),
     max_devices: nextMax,
     current_limit: nextMax,
-    extra_hwid_devices: nextExtra,
-    extra_hwid_devices_valid_until_text: validUntil,
+    extra_devices: nextExtra,
+    extra_devices_valid_until_text: validUntil,
   };
 }
 
@@ -1447,7 +1444,7 @@ export async function mockApi(path, options = {}, context = {}) {
       sale_mode: "subscription",
       tariff_key: "standard",
       purchased_gb: null,
-      purchased_hwid_devices: null,
+      purchased_ip_devices: null,
       promo_code: "SPRING",
       created_at: "2026-05-01T14:15:00Z",
       updated_at: "2026-05-01T14:17:00Z",
@@ -1469,7 +1466,7 @@ export async function mockApi(path, options = {}, context = {}) {
       sale_mode: "traffic_package",
       tariff_key: "standard",
       purchased_gb: 25,
-      purchased_hwid_devices: null,
+      purchased_ip_devices: null,
       created_at: new Date(Date.now() - 3 * 3600000).toISOString(),
       updated_at: null,
     },
@@ -2552,13 +2549,13 @@ export async function mockApi(path, options = {}, context = {}) {
     if (isDeviceTopupSaleMode(body.sale_mode)) {
       const plan = demoDeviceTopupPlan(body);
       const deviceCount = Number(
-        body.device_count || plan?.device_count || plan?.purchased_hwid_devices || body.months || 1
+        body.device_count || plan?.device_count || body.months || 1
       );
       const paymentId = ++demoPaymentSequence;
       demoPaymentStatuses.set(String(paymentId), {
         status: "pending_yookassa",
         paid: false,
-        sale_mode: body.sale_mode || "hwid_devices",
+        sale_mode: body.sale_mode || "ip_devices",
         device_count: deviceCount,
         applied: false,
       });

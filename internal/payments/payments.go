@@ -125,7 +125,6 @@ type Order struct {
 	SaleMode          string          `json:"sale_mode,omitempty"`
 	Months            int             `json:"subscription_duration_months,omitempty"`
 	TrafficGB         float64         `json:"traffic_regular_gb,omitempty"`
-	DeviceCount       int             `json:"purchased_hwid_devices,omitempty"`
 	ProviderPaymentID string          `json:"provider_payment_id,omitempty"`
 	PaymentURL        string          `json:"payment_url,omitempty"`
 	QRContent         string          `json:"qr_content,omitempty"`
@@ -385,12 +384,13 @@ LIMIT $1 OFFSET $2`, pageSize, page*pageSize)
 	result := []Order{}
 	for rows.Next() {
 		var order Order
+		var deviceCount int
 		if err := rows.Scan(
 			&order.PaymentID, &order.OrderID, &order.UserID, &order.UserLabel, &order.TelegramID,
 			&order.Provider, &order.Method, &order.PaymentType, &order.Amount, &order.Currency,
 			&order.BaseAmount, &order.BaseCurrency, &order.DisplayCNYAmount, &order.FXRate, &order.FXSource,
 			&order.FXUpdatedAt, &order.PlanHash, &order.PlanSnapshot, &order.Status,
-			&order.Description, &order.TariffKey, &order.SaleMode, &order.Months, &order.TrafficGB, &order.DeviceCount,
+			&order.Description, &order.TariffKey, &order.SaleMode, &order.Months, &order.TrafficGB, &deviceCount,
 			&order.ProviderPaymentID, &order.PaymentURL, &order.QRContent, &order.DisplayAmount, &order.DisplayCurrency,
 			&order.PaymentAddress, &order.Network, &order.URLScheme, &order.RawWebhook, &order.ProvisionedAt, &order.ProvisionError,
 			&order.CreatedAt, &order.UpdatedAt, &order.PaidAt,
@@ -475,12 +475,13 @@ func (r *Registry) markFailed(ctx context.Context, paymentID int64) error {
 
 func (r *Registry) scanOrder(ctx context.Context, query string, args ...any) (Order, error) {
 	var order Order
+	var deviceCount int
 	err := r.pool.QueryRow(ctx, query, args...).Scan(
 		&order.PaymentID, &order.OrderID, &order.UserID, &order.Provider, &order.Method, &order.PaymentType,
 		&order.Amount, &order.Currency, &order.BaseAmount, &order.BaseCurrency, &order.DisplayCNYAmount,
 		&order.FXRate, &order.FXSource, &order.FXUpdatedAt, &order.PlanHash, &order.PlanSnapshot,
 		&order.Status, &order.Description, &order.TariffKey, &order.SaleMode,
-		&order.Months, &order.TrafficGB, &order.DeviceCount, &order.ProviderPaymentID, &order.PaymentURL, &order.QRContent,
+		&order.Months, &order.TrafficGB, &deviceCount, &order.ProviderPaymentID, &order.PaymentURL, &order.QRContent,
 		&order.DisplayAmount, &order.DisplayCurrency, &order.PaymentAddress, &order.Network, &order.URLScheme,
 		&order.RawWebhook, &order.ProvisionedAt, &order.ProvisionError, &order.CreatedAt, &order.UpdatedAt, &order.PaidAt,
 	)

@@ -48,8 +48,6 @@ func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *p
 	router.Post("/api/referral/welcome-bonus/claim", referralWelcomeBonusHandler(settings, pool, panel))
 	router.Post("/api/telemetry/heartbeat", telemetryHeartbeatHandler(settings, pool))
 	router.Post("/api/trial/activate", trialActivateHandler(settings, pool, panel))
-	router.Get("/api/devices", devicesHandler(settings, pool, panel))
-	router.Post("/api/devices/disconnect", disconnectDeviceHandler(settings, pool, panel))
 	router.Post("/api/devices/ips", devicesIPsHandler(settings, pool, panel))
 	router.Post("/api/devices/ips/disconnect", devicesIPsDisconnectHandler(settings, pool, panel))
 	router.Post("/api/account/email/request", emailRequestHandler(settings, pool))
@@ -96,7 +94,6 @@ func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *p
 	router.Post("/api/admin/users/{user_id}/reset-trial", adminUserActionHandler(settings, pool, panel))
 	router.Post("/api/admin/users/{user_id}/premium-override", adminUserActionHandler(settings, pool, panel))
 	router.Post("/api/admin/users/{user_id}/regular-traffic-override", adminUserActionHandler(settings, pool, panel))
-	router.Post("/api/admin/users/{user_id}/hwid-device-limit", adminUserActionHandler(settings, pool, panel))
 	router.Post("/api/admin/users/{user_id}/traffic-grant", adminUserActionHandler(settings, pool, panel))
 
 	router.Get("/api/admin/promos", adminListSettingHandler(settings, pool, "ADMIN_PROMOS", "promos"))
@@ -214,74 +211,6 @@ func autoRenewHandler(settings config.Settings, pool *pgxpool.Pool) http.Handler
 			Payload:      map[string]any{"enabled": payload.Enabled},
 		})
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "enabled": payload.Enabled, "auto_renew_enabled": payload.Enabled})
-	}
-}
-
-func devicesHandler(settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		session, ok := requireSession(w, r, settings, pool, false)
-		if !ok {
-			return
-		}
-		if panel == nil || !panel.Configured(r.Context()) {
-			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"ok": false, "error": "panel_not_configured"})
-			return
-		}
-		panelUser, found, err := panelUserForWebUser(r.Context(), pool, panel, session.User)
-		if err != nil {
-			writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
-			return
-		}
-		if !found {
-			writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "subscription_not_active"})
-			return
-		}
-		devices, err := panel.GetUserDevices(r.Context(), stringValue(panelUser, "uuid"))
-		if err != nil {
-			writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
-			return
-		}
-		writeJSON(w, http.StatusOK, mapDevicePayload(devices, panelUser))
-	}
-}
-
-func disconnectDeviceHandler(settings config.Settings, pool *pgxpool.Pool, panel *remnawave.Client) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		session, ok := requireSession(w, r, settings, pool, true)
-		if !ok {
-			return
-		}
-		if panel == nil || !panel.Configured(r.Context()) {
-			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"ok": false, "error": "panel_not_configured"})
-			return
-		}
-		var payload struct {
-			Token string `json:"token"`
-			HWID  string `json:"hwid"`
-		}
-		if err := decodeJSONBody(r, &payload); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
-			return
-		}
-		hwid := strings.TrimSpace(firstNonEmpty(payload.HWID, payload.Token))
-		if hwid == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "hwid_required"})
-			return
-		}
-		panelUser, found, err := panelUserForWebUser(r.Context(), pool, panel, session.User)
-		if err != nil {
-			writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
-			return
-		}
-		if !found {
-			writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "subscription_not_active"})
-			return
-		}
-		if err := panel.DisconnectDevice(r.Context(), stringValue(panelUser, "uuid"), hwid); err != nil {
-			writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": panelErrorCode(err)})
-			return
-		}
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 	}
 }
 
@@ -2089,7 +2018,7 @@ func translationGroupForKey(key string) (string, string) {
 		{"support", []string{"support_", "wa_support_"}, "user"},
 		{"payments", []string{"payment_", "payments_", "pay_", "invoice_", "wa_payment_", "wa_pay_", "wa_buy_"}, "user"},
 		{"referrals_promos", []string{"referral_", "promo_", "invite_", "wa_referral_", "wa_promo_", "wa_invite_"}, "user"},
-		{"subscriptions", []string{"subscription_", "trial_", "device_", "traffic_", "install_", "wa_subscription_", "wa_trial_", "wa_device", "wa_ips_", "wa_traffic_", "wa_install_", "wa_hwid_", "wa_bandwidth_"}, "user"},
+		{"subscriptions", []string{"subscription_", "trial_", "device_", "traffic_", "install_", "wa_subscription_", "wa_trial_", "wa_device", "wa_ips_", "wa_traffic_", "wa_install_", "wa_bandwidth_"}, "user"},
 		{"emails", []string{"email_", "mail_"}, "user"},
 		{"notifications_sync", []string{"notification_", "sync_", "log_"}, "internal"},
 		{"bot_menu", []string{"menu_", "main_menu_", "channel_subscription_", "bot_"}, "user"},
@@ -2856,7 +2785,6 @@ func devicePlansFrom(plans []tariffs.Plan) []map[string]any {
 			"display_cny_amount": plan.DisplayCNYAmount,
 			"fx_rate":            plan.FXRate,
 			"fx_source":          plan.FXSource,
-			"sale_mode":          "hwid_devices",
 			"tariff_key":         plan.TariffKey,
 		})
 	}

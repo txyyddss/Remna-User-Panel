@@ -203,9 +203,8 @@ func createPaymentHandler(settings config.Settings, pool *pgxpool.Pool, registry
 			return
 		}
 		var payload struct {
-			Method           string `json:"method"`
-			PlanHash         string `json:"plan_hash"`
-			RenewHWIDDevices bool   `json:"renew_hwid_devices"`
+			Method   string `json:"method"`
+			PlanHash string `json:"plan_hash"`
 		}
 		if err := decodeJSONBody(r, &payload); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
@@ -268,7 +267,6 @@ func createPaymentHandler(settings config.Settings, pool *pgxpool.Pool, registry
 			SaleMode:         plan.SaleMode,
 			Months:           plan.Months,
 			TrafficGB:        plan.TrafficGB,
-			DeviceCount:      boolToInt(payload.RenewHWIDDevices),
 			ClientIP:         clientIP(r),
 			Language:         session.User.LanguageCode,
 		})
@@ -720,7 +718,7 @@ func remnawaveSettingsFields(ctx context.Context, settings config.Settings, stor
 		{Key: "TELEMETRY_RETENTION_HOURS", Type: "int", Label: "Telemetry retention hours", Description: "Delete anonymous records after this many hours without a match (1-720).", Subsection: "Telemetry", Fallback: envIntValue("TELEMETRY_RETENTION_HOURS", 24)},
 		{Key: "TELEMETRY_FINGERPRINT_REJECT_SCORE", Type: "int", Label: "Fingerprint rejection score", Description: "Automatically reject welcome bonuses at or above this similarity score (1-100).", Subsection: "Telemetry", Fallback: envIntValue("TELEMETRY_FINGERPRINT_REJECT_SCORE", 70)},
 		{Key: "TELEGRAM_LOGIN_CLIENT_ID", Type: "string", Label: "Telegram Login Client ID", Description: "Client ID from BotFather Web Login for browser registration and sign-in.", Subsection: "General", Fallback: os.Getenv("TELEGRAM_LOGIN_CLIENT_ID")},
-		{Key: "MY_DEVICES_ENABLED", Type: "bool", Label: "My devices enabled", Description: "Show HWID device management in the Web App.", Subsection: "Features", Fallback: settings.PanelAPIURL != "" && settings.PanelAPIKey != ""},
+		{Key: "MY_DEVICES_ENABLED", Type: "bool", Label: "My devices enabled", Description: "Show IP-based device management in the Web App.", Subsection: "Features", Fallback: settings.PanelAPIURL != "" && settings.PanelAPIKey != ""},
 		{Key: "SUPPORT_TICKETS_ENABLED", Type: "bool", Label: "Support tickets enabled", Description: "Show the built-in support ticket UI.", Subsection: "Features", Fallback: false},
 		{Key: "SUBSCRIPTION_GUIDES_ENABLED", Type: "bool", Label: "Subscription guides enabled", Description: "Show subscription setup guides in the Web App.", Subsection: "Features", Fallback: false},
 		{Key: "SUBSCRIPTION_AUTO_RENEW_ENABLED", Type: "bool", Label: "Auto-renew enabled", Description: "Allow users to toggle subscription auto-renewal.", Subsection: "Features", Fallback: false},

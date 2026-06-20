@@ -54,7 +54,6 @@ type Settings struct {
 	UserTrafficStrategy           string
 	UserSquadUUIDs                []string
 	UserExternalSquadUUID         string
-	UserHWIDDeviceLimit           *int
 	EZPay                         EZPaySettings
 	BEPUSDT                       BEPUSDTSettings
 	PaymentMethodsOrder           []string
