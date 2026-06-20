@@ -1,4 +1,4 @@
-import { writable } from "svelte/store";
+import { get, writable } from "svelte/store";
 import { withRoutePrefix } from "../../webapp/routes.js";
 
 export function createAdminSupportStore({ api, onToast, at, routePrefix = "" }) {
@@ -33,18 +33,16 @@ export function createAdminSupportStore({ api, onToast, at, routePrefix = "" }) 
   let visibilityHandler = null;
   let resumeHandler = null;
   let active = "stats";
+  let listRequestId = 0;
+  let pollingEnabled = false;
+  let destroyed = false;
 
   function setActive(section) {
     active = section;
   }
 
   function getSnapshot() {
-    let snapshot;
-    const unsubscribe = state.subscribe((s) => {
-      snapshot = s;
-    });
-    unsubscribe();
-    return snapshot;
+    return get(state);
   }
 
   function currentOpenedTicketId() {
@@ -73,11 +71,15 @@ export function createAdminSupportStore({ api, onToast, at, routePrefix = "" }) 
   }
 
   async function loadStats() {
+    if (destroyed) return null;
     const res = await api("/admin/support/stats");
-    if (res?.ok) state.update((s) => ({ ...s, stats: res.stats || s.stats }));
+    if (!destroyed && res?.ok) state.update((s) => ({ ...s, stats: res.stats || s.stats }));
+    return res;
   }
 
   async function loadList(options = {}) {
+    if (destroyed) return null;
+    const requestId = ++listRequestId;
     const silent = options.silent === true;
     if (!silent) state.update((s) => ({ ...s, loading: true }));
     let filters;
@@ -88,10 +90,14 @@ export function createAdminSupportStore({ api, onToast, at, routePrefix = "" }) 
         if (value) params.set(key, value);
       }
       const res = await api(`/admin/support/tickets?${params.toString()}`);
+      if (requestId !== listRequestId || destroyed) return res;
       if (res?.ok) state.update((s) => ({ ...s, tickets: res.tickets || [] }));
       else if (res?.error) onToast(res.message || res.error);
+      return res;
     } finally {
-      if (!silent) state.update((s) => ({ ...s, loading: false }));
+      if (!silent && requestId === listRequestId && !destroyed) {
+        state.update((s) => ({ ...s, loading: false }));
+      }
     }
   }
 
@@ -275,7 +281,7 @@ export function createAdminSupportStore({ api, onToast, at, routePrefix = "" }) 
   }
 
   function scheduleTicketPoll(delayMs = OPEN_TICKET_POLL_MS) {
-    if (typeof window === "undefined") return;
+    if (!pollingEnabled || destroyed || typeof window === "undefined") return;
     clearTicketPollTimer();
     if (!currentOpenedTicketId()) return;
     ticketPollTimer = window.setTimeout(runTicketPoll, Math.max(0, Number(delayMs) || 0));
@@ -283,6 +289,7 @@ export function createAdminSupportStore({ api, onToast, at, routePrefix = "" }) 
 
   async function runTicketPoll() {
     ticketPollTimer = null;
+    if (!pollingEnabled || destroyed) return;
     if (typeof document !== "undefined" && document.visibilityState !== "visible") {
       scheduleTicketPoll(HIDDEN_POLL_MS);
       return;
@@ -303,7 +310,7 @@ export function createAdminSupportStore({ api, onToast, at, routePrefix = "" }) 
       failed = true;
     } finally {
       ticketPollInFlight = false;
-      if (currentOpenedTicketId()) {
+      if (pollingEnabled && !destroyed && currentOpenedTicketId()) {
         scheduleTicketPoll(failed ? ERROR_POLL_MS : OPEN_TICKET_POLL_MS);
       }
     }
@@ -313,6 +320,7 @@ export function createAdminSupportStore({ api, onToast, at, routePrefix = "" }) 
     if (typeof window === "undefined") return;
     if (!visibilityHandler && typeof document !== "undefined") {
       visibilityHandler = () => {
+        if (!pollingEnabled || destroyed) return;
         if (document.visibilityState === "visible") {
           loadStats();
           scheduleTicketPoll(0);
@@ -324,6 +332,7 @@ export function createAdminSupportStore({ api, onToast, at, routePrefix = "" }) 
     }
     if (!resumeHandler) {
       resumeHandler = () => {
+        if (!pollingEnabled || destroyed) return;
         if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
         loadStats();
         scheduleTicketPoll(0);
@@ -346,21 +355,30 @@ export function createAdminSupportStore({ api, onToast, at, routePrefix = "" }) 
   }
 
   function startStatsPolling() {
-    if (typeof window === "undefined") return;
+    if (destroyed || typeof window === "undefined") return;
+    pollingEnabled = true;
     ensureRealtimeListeners();
     if (statsPollTimer) return;
     loadStats();
     statsPollTimer = window.setInterval(() => {
-      if (document.visibilityState === "visible") loadStats();
+      if (pollingEnabled && !destroyed && document.visibilityState === "visible") loadStats();
     }, STATS_POLL_MS);
   }
 
   function stopStatsPolling() {
+    pollingEnabled = false;
     if (statsPollTimer) window.clearInterval(statsPollTimer);
     statsPollTimer = null;
     clearTicketPollTimer();
     ticketPollInFlight = false;
     stopRealtimeListeners();
+  }
+
+  function destroy() {
+    if (destroyed) return;
+    destroyed = true;
+    listRequestId += 1;
+    stopStatsPolling();
   }
 
   return {
@@ -379,5 +397,6 @@ export function createAdminSupportStore({ api, onToast, at, routePrefix = "" }) 
     setStatusView,
     startStatsPolling,
     stopStatsPolling,
+    destroy,
   };
 }

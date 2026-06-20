@@ -1,4 +1,4 @@
-import { writable } from "svelte/store";
+import { get, writable } from "svelte/store";
 import {
   emptyTariffDraft,
   cloneCatalog,
@@ -56,12 +56,7 @@ export function createTariffsStore({ api, onTariffsSaved, flash, at }) {
   }
 
   async function loadPanelSquads() {
-    let loading = false;
-    state.update((s) => {
-      loading = s.panelSquadsLoading;
-      return s;
-    });
-    if (loading) return;
+    if (get(state).panelSquadsLoading) return;
 
     state.update((s) => ({ ...s, panelSquadsLoading: true }));
     try {
@@ -76,11 +71,7 @@ export function createTariffsStore({ api, onTariffsSaved, flash, at }) {
   }
 
   function squadLabel(uuid) {
-    let squads = [];
-    state.update((s) => {
-      squads = s.panelSquads;
-      return s;
-    });
+    const squads = get(state).panelSquads;
     const squad = squads.find((item) => item.uuid === uuid);
     return squad ? `${squad.name} · ${uuid.slice(0, 8)}…` : uuid;
   }
@@ -107,12 +98,8 @@ export function createTariffsStore({ api, onTariffsSaved, flash, at }) {
   }
 
   async function persistTariffs(nextCatalog, successText) {
+    const currentPath = get(state).tariffsPath;
     state.update((s) => ({ ...s, tariffsSaving: true }));
-    let currentPath = "";
-    state.update((s) => {
-      currentPath = s.tariffsPath;
-      return s;
-    });
 
     try {
       const res = await api("/admin/tariffs", {
@@ -169,11 +156,7 @@ export function createTariffsStore({ api, onTariffsSaved, flash, at }) {
   }
 
   async function saveTariffDraft() {
-    let s;
-    state.update((st) => {
-      s = st;
-      return st;
-    });
+    const s = get(state);
     const tariff = tariffFromDraft(s.tariffDraft, s.tariffsCatalog.default_currency || "usd");
     if (!tariff.key) {
       flash(at("tariff_error_key_required", {}, "Укажите ключ тарифа"));
@@ -207,11 +190,7 @@ export function createTariffsStore({ api, onTariffsSaved, flash, at }) {
   }
 
   async function toggleTariffEnabled(tariff) {
-    let s;
-    state.update((st) => {
-      s = st;
-      return st;
-    });
+    const s = get(state);
     const tariffs = (s.tariffsCatalog.tariffs || []).map((item) =>
       item.key === tariff.key ? { ...item, enabled: item.enabled === false } : item
     );
@@ -230,11 +209,7 @@ export function createTariffsStore({ api, onTariffsSaved, flash, at }) {
   }
 
   async function setDefaultTariff(key) {
-    let s;
-    state.update((st) => {
-      s = st;
-      return st;
-    });
+    const s = get(state);
     if (!key || key === s.tariffsCatalog.default_tariff) return;
     await persistTariffs(
       { ...cloneCatalog(s.tariffsCatalog), default_tariff: key },
@@ -248,11 +223,7 @@ export function createTariffsStore({ api, onTariffsSaved, flash, at }) {
       flash(at("tariff_currency_invalid", {}, "Укажите фиатную или криптовалюту, но не Stars"));
       return;
     }
-    let s;
-    state.update((st) => {
-      s = st;
-      return st;
-    });
+    const s = get(state);
     if (currency === normalizeCurrencyKey(s.tariffsCatalog.default_currency || "usd")) return;
     await persistTariffs(
       { ...cloneCatalog(s.tariffsCatalog), default_currency: currency },
@@ -261,11 +232,7 @@ export function createTariffsStore({ api, onTariffsSaved, flash, at }) {
   }
 
   async function deleteTariff() {
-    let s;
-    state.update((st) => {
-      s = st;
-      return st;
-    });
+    const s = get(state);
     if (!s.tariffDeleteTarget) return;
     const tariffs = (s.tariffsCatalog.tariffs || []).filter(
       (item) => item.key !== s.tariffDeleteTarget.key

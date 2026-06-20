@@ -504,6 +504,7 @@
       }
       if (typeof window !== "undefined") window.removeEventListener("popstate", onPopState);
       if (healthTimer !== null) window.clearInterval(healthTimer);
+      supportStore.destroy();
       clearAdminLanguageClickGuard();
     };
   });

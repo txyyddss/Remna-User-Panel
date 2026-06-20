@@ -15,8 +15,6 @@ const JS_BUILDS = [
   {
     sourcePath: path.join(templatesDir, "subscription_webapp.js"),
     outputPrefix: "subscription_webapp.min",
-    stripDevMock: true,
-    stripFallbackI18nPayload: true,
   },
   {
     sourcePath: path.join(templatesDir, "subscription_webapp_admin.js"),
@@ -36,34 +34,6 @@ const CSS_BUILDS = [
 
 function normalizeLineEndings(value) {
   return value.replace(/\r\n/g, "\n");
-}
-
-function stripMarkedBlock(source, startMarker, endMarker) {
-  const start = source.indexOf(startMarker);
-  if (start === -1) {
-    return source;
-  }
-  const end = source.indexOf(endMarker, start);
-  if (end === -1) {
-    return source.slice(0, start);
-  }
-  return source.slice(0, start) + source.slice(end + endMarker.length);
-}
-
-function stripFallbackI18n(source) {
-  const fallbackStart = source.indexOf("    const FALLBACK_I18N = {");
-  const i18nLine =
-    "    const I18N = readJsonScript('i18n') || (MOCK && MOCK.i18n) || FALLBACK_I18N;";
-  const i18nLineIndex = source.indexOf(i18nLine);
-  if (fallbackStart === -1 || i18nLineIndex === -1 || i18nLineIndex < fallbackStart) {
-    return source;
-  }
-
-  return (
-    source.slice(0, fallbackStart) +
-    "    const I18N = readJsonScript('i18n') || (MOCK && MOCK.i18n) || {};\n" +
-    source.slice(i18nLineIndex + i18nLine.length)
-  );
 }
 
 async function removeOldHashedAssets(assetDir, pattern, keepNames) {
@@ -96,24 +66,9 @@ async function writePrecompressedAssets(outputPath, body) {
   };
 }
 
-async function buildJsAsset({
-  sourcePath,
-  outputPrefix,
-  stripDevMock = false,
-  stripFallbackI18nPayload = false,
-}) {
+async function buildJsAsset({ sourcePath, outputPrefix }) {
   const rawSource = await readFile(sourcePath, "utf8");
-  let strippedSource = normalizeLineEndings(rawSource);
-  if (stripDevMock) {
-    strippedSource = stripMarkedBlock(
-      strippedSource,
-      "/* WEBAPP_DEV_MOCK_START */",
-      "/* WEBAPP_DEV_MOCK_END */"
-    );
-  }
-  if (stripFallbackI18nPayload) {
-    strippedSource = stripFallbackI18n(strippedSource);
-  }
+  const strippedSource = normalizeLineEndings(rawSource);
   const result = await transform(strippedSource, {
     charset: "utf8",
     legalComments: "none",

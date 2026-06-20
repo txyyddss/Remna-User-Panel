@@ -56,7 +56,7 @@ func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *p
 	router.Post("/api/account/notifications", userNotificationPrefsHandler(settings, pool))
 	router.Post("/api/auth/email/request", emailLoginRequestHandler(settings, pool))
 	router.Post("/api/auth/email/verify", emailLoginVerifyHandler(settings, pool))
-	router.Post("/api/auth/email/password", adminPasswordLoginHandler(settings, pool))
+	router.Post("/api/auth/email/password", passwordLoginHandler(settings, pool))
 	router.Post("/api/auth/email/magic", emailMagicLinkHandler(settings, pool))
 	router.Get("/api/subscription-guides", subscriptionGuidesHandler(settings, pool, panel))
 	router.Get("/api/subscription-guides/public/{share_token}", subscriptionGuidesHandler(settings, pool, panel))

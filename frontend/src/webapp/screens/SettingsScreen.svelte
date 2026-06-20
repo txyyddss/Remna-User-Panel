@@ -263,7 +263,8 @@
         >
           {#each [1, 2, 3, 5, 7, 10, 14, 30] as day}
             <option value={day}>
-              {day} {t("wa_days")}
+              {day}
+              {t("wa_days")}
             </option>
           {/each}
         </select>

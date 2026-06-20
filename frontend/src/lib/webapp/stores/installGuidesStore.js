@@ -1,7 +1,8 @@
-import { writable } from "svelte/store";
+import { get, writable } from "svelte/store";
 
 export function createInstallGuidesStore({ api, t, showToast }) {
   let inFlight = null;
+  let requestGeneration = 0;
   const state = writable({
     enabled: false,
     config: null,
@@ -14,12 +15,9 @@ export function createInstallGuidesStore({ api, t, showToast }) {
 
   async function fetchGuides(path, force = false) {
     if (inFlight?.path === path) return inFlight.promise;
-    let snapshot;
-    state.update((s) => {
-      snapshot = s;
-      return s;
-    });
+    const snapshot = get(state);
     if (!force && snapshot?.loaded) return snapshot;
+    const generation = ++requestGeneration;
     const promise = (async () => {
       state.update((s) => ({
         ...s,
@@ -29,6 +27,7 @@ export function createInstallGuidesStore({ api, t, showToast }) {
       }));
       try {
         const response = await api(path);
+        if (generation !== requestGeneration) return get(state);
         const next = {
           enabled: Boolean(response?.enabled),
           config: response?.config || null,
@@ -41,6 +40,7 @@ export function createInstallGuidesStore({ api, t, showToast }) {
         state.set(next);
         return next;
       } catch (error) {
+        if (generation !== requestGeneration) return get(state);
         const message =
           error?.message || t("wa_install_unavailable", {}, "Instructions unavailable");
         if (typeof showToast === "function") showToast(message);
@@ -56,10 +56,10 @@ export function createInstallGuidesStore({ api, t, showToast }) {
         state.set(next);
         return next;
       } finally {
-        inFlight = null;
+        if (inFlight?.generation === generation) inFlight = null;
       }
     })();
-    inFlight = { path, promise };
+    inFlight = { path, promise, generation };
     return promise;
   }
 
@@ -73,6 +73,7 @@ export function createInstallGuidesStore({ api, t, showToast }) {
   }
 
   function reset() {
+    requestGeneration += 1;
     inFlight = null;
     state.set({
       enabled: false,

@@ -94,8 +94,6 @@ function prepareIndexHtml(rawHtml, { cssName, jsName }) {
       (line) =>
         !line.includes("WEBAPP_I18N_SCRIPT") &&
         !line.includes("WEBAPP_CONFIG_SCRIPT") &&
-        !line.includes("WEBAPP_DEV_MOCK_START") &&
-        !line.includes("WEBAPP_DEV_MOCK_END") &&
         !line.includes('subscription_webapp.js" defer')
     )
     .join("\n");

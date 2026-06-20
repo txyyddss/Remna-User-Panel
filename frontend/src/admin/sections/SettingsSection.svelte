@@ -23,7 +23,6 @@
   import { withRoutePrefix } from "$lib/webapp/routes.js";
 
   export let at;
-  export let onSettingsSaved;
   export let currentLang = "zh";
   export let settingsPath = [];
   export let routePrefix = "";

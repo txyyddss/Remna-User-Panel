@@ -1,6 +1,10 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "types": ["vite/client"],
+    "ignoreDeprecations": "6.0",
     "paths": {
       "$lib/*": ["src/lib/*"],
       "$components/*": ["src/lib/components/*"]

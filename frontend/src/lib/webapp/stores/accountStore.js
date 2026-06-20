@@ -1,6 +1,7 @@
 import { writable, get } from "svelte/store";
 import { emailError } from "../authHelpers.js";
 import { browserTelegramLogin } from "../telegramLogin.js";
+import { createStoreCountdown } from "./countdown.js";
 
 export function createAccountStore({
   api,
@@ -13,7 +14,6 @@ export function createAccountStore({
   markManualLogout,
   showLogin,
   telegramSdk,
-  _getTg,
   telegramOAuthClientId,
   currentLang,
   normalizeLangCode,
@@ -42,53 +42,33 @@ export function createAccountStore({
     languageBusy: false,
   });
 
-  let linkEmailResendTimer = null;
-  let setPasswordResendTimer = null;
+  const linkEmailCountdown = createStoreCountdown({
+    update: state.update,
+    field: "linkEmailResendCooldown",
+  });
+  const setPasswordCountdown = createStoreCountdown({
+    update: state.update,
+    field: "setPasswordResendCooldown",
+  });
 
   function setLinkEmailStatus(message, isError = false) {
     state.update((s) => ({ ...s, linkEmailStatus: message, linkEmailIsError: isError }));
   }
 
   function clearCooldownTimer() {
-    if (linkEmailResendTimer) {
-      window.clearInterval(linkEmailResendTimer);
-      linkEmailResendTimer = null;
-    }
+    linkEmailCountdown.clear();
   }
 
   function clearPasswordCooldownTimer() {
-    if (setPasswordResendTimer) {
-      window.clearInterval(setPasswordResendTimer);
-      setPasswordResendTimer = null;
-    }
+    setPasswordCountdown.clear();
   }
 
   function startCooldownTimer(seconds = 60) {
-    clearCooldownTimer();
-    state.update((s) => ({ ...s, linkEmailResendCooldown: Math.max(0, Number(seconds || 60)) }));
-    linkEmailResendTimer = window.setInterval(() => {
-      const s = get(state);
-      if (s.linkEmailResendCooldown <= 1) {
-        state.update((s) => ({ ...s, linkEmailResendCooldown: 0 }));
-        clearCooldownTimer();
-        return;
-      }
-      state.update((s) => ({ ...s, linkEmailResendCooldown: s.linkEmailResendCooldown - 1 }));
-    }, 1000);
+    linkEmailCountdown.start(seconds);
   }
 
   function startPasswordCooldownTimer(seconds = 60) {
-    clearPasswordCooldownTimer();
-    state.update((s) => ({ ...s, setPasswordResendCooldown: Math.max(0, Number(seconds || 60)) }));
-    setPasswordResendTimer = window.setInterval(() => {
-      const s = get(state);
-      if (s.setPasswordResendCooldown <= 1) {
-        state.update((s) => ({ ...s, setPasswordResendCooldown: 0 }));
-        clearPasswordCooldownTimer();
-        return;
-      }
-      state.update((s) => ({ ...s, setPasswordResendCooldown: s.setPasswordResendCooldown - 1 }));
-    }, 1000);
+    setPasswordCountdown.start(seconds);
   }
 
   function openLinkEmailDialog(email) {

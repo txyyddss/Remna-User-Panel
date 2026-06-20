@@ -10,11 +10,13 @@ import (
 	"log/slog"
 	"math/big"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/crypto/bcrypt"
 
 	"remna-user-panel/internal/config"
 	"remna-user-panel/internal/mail"
@@ -386,8 +388,8 @@ func passwordConfirmHandler(settings config.Settings, pool *pgxpool.Pool) http.H
 		}
 		code := strings.TrimSpace(payload.Code)
 		newPassword := strings.TrimSpace(payload.NewPassword)
-		if code == "" || len(newPassword) < 6 {
-			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_params"})
+		if code == "" || !isValidPassword(newPassword) {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_params", "password_requirements": "min_8_chars_upper_lower_digit"})
 			return
 		}
 
@@ -510,6 +512,7 @@ func emailLoginVerifyHandler(settings config.Settings, pool *pgxpool.Pool) http.
 		var payload struct {
 			Email        string `json:"email"`
 			Code         string `json:"code"`
+			Language     string `json:"language"`
 			ReferralCode string `json:"referral_code"`
 		}
 		if err := decodeJSONBody(r, &payload); err != nil {
@@ -540,6 +543,11 @@ func emailLoginVerifyHandler(settings config.Settings, pool *pgxpool.Pool) http.
 		}
 		bindReferralCode(r.Context(), pool, userID, payload.ReferralCode)
 
+		// Persist language preference if provided.
+		if lang := normalizeWebLanguage(payload.Language, effectiveDefaultLanguage(r.Context(), pool, settings)); lang != "" {
+			_, _ = pool.Exec(r.Context(), "UPDATE users SET language_code=$1 WHERE user_id=$2 AND language_code<>$1", lang, userID)
+		}
+
 		// Create session
 		manager := webappSessionManager(settings)
 		token, csrf, err := manager.Sign(userID)
@@ -549,6 +557,11 @@ func emailLoginVerifyHandler(settings config.Settings, pool *pgxpool.Pool) http.
 		}
 
 		setSessionCookies(w, r, token, csrf)
+		recordMessageLog(r.Context(), pool, messageLogEntry{
+			UserID:    userID,
+			EventType: "email_code_login",
+			Content:   email,
+		})
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "csrf_token": csrf})
 	}
 }
@@ -614,8 +627,13 @@ func emailMagicLinkHandler(settings config.Settings, pool *pgxpool.Pool) http.Ha
 	}
 }
 
-// adminPasswordLoginHandler authenticates an admin user via email and password.
-func adminPasswordLoginHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+// passwordLoginHandler authenticates a user (admin or regular) via email and password.
+func passwordLoginHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+	const (
+		passwordLoginMaxAttempts = 5
+		passwordLoginLockMinutes = 15
+	)
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		var payload struct {
 			Email    string `json:"email"`
@@ -632,6 +650,23 @@ func adminPasswordLoginHandler(settings config.Settings, pool *pgxpool.Pool) htt
 			return
 		}
 
+		// Rate limiting: count failed attempts per email since the lock window.
+		var failedAttempts int
+		_ = pool.QueryRow(r.Context(),
+			`SELECT COUNT(*) FROM email_verification_codes
+			 WHERE email=$1 AND purpose='password_login_failed'
+			 AND created_at > NOW() - ($2 || ' minutes')::INTERVAL`,
+			email, strconv.Itoa(passwordLoginLockMinutes),
+		).Scan(&failedAttempts)
+		if failedAttempts >= passwordLoginMaxAttempts {
+			writeJSON(w, http.StatusTooManyRequests, map[string]any{
+				"ok":                  false,
+				"error":               "too_many_attempts",
+				"retry_after_minutes": passwordLoginLockMinutes,
+			})
+			return
+		}
+
 		// Look up user by email and retrieve password hash and ban status.
 		var userID int64
 		var passwordHash sql.NullString
@@ -640,6 +675,8 @@ func adminPasswordLoginHandler(settings config.Settings, pool *pgxpool.Pool) htt
 			"SELECT user_id, password_hash, is_banned FROM users WHERE LOWER(email)=$1", email,
 		).Scan(&userID, &passwordHash, &isBanned)
 		if err != nil {
+			// Record failed attempt even when user doesn't exist (prevents enumeration).
+			_ = storeEmailCode(r.Context(), pool, email, "failed", "password_login_failed", nil, passwordLoginLockMinutes)
 			if err == pgx.ErrNoRows {
 				writeJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "password_login_failed", "fallback": "email_code"})
 				return
@@ -655,8 +692,18 @@ func adminPasswordLoginHandler(settings config.Settings, pool *pgxpool.Pool) htt
 		}
 
 		if !passwordHash.Valid || !VerifyPassword(password, passwordHash.String) {
+			_ = storeEmailCode(r.Context(), pool, email, "failed", "password_login_failed", &userID, passwordLoginLockMinutes)
 			writeJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "password_login_failed", "fallback": "email_code"})
 			return
+		}
+
+		// Auto-migrate legacy SHA-256 hashes to bcrypt.
+		if passwordNeedsRehash(passwordHash.String) {
+			newHash, hashErr := hashPassword(password)
+			if hashErr == nil {
+				_, _ = pool.Exec(r.Context(),
+					"UPDATE users SET password_hash=$1 WHERE user_id=$2", newHash, userID)
+			}
 		}
 
 		// Create session
@@ -735,21 +782,54 @@ ORDER BY created_at DESC LIMIT 1`, email, purpose).Scan(&ts)
 	return ts, err
 }
 
-// hashPassword creates a SHA-256 hash of the password.
+// hashPassword creates a bcrypt hash of the password (cost=12).
 func hashPassword(password string) (string, error) {
-	return fmt.Sprintf("sha256:%s", sha256Hex(password)), nil
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), 12)
+	if err != nil {
+		return "", err
+	}
+	return string(hash), nil
 }
 
-// sha256Hex returns the hex-encoded SHA-256 hash of the input.
-func sha256Hex(input string) string {
-	h := sha256.Sum256([]byte(input))
-	return hex.EncodeToString(h[:])
+// passwordNeedsRehash returns true when a stored hash uses the legacy SHA-256 format
+// and should be upgraded to bcrypt.
+func passwordNeedsRehash(storedHash string) bool {
+	return strings.HasPrefix(storedHash, "sha256:")
 }
 
 // VerifyPassword checks if the given password matches the stored hash.
+// Supports both legacy sha256: prefixed hashes and bcrypt hashes.
 func VerifyPassword(password, storedHash string) bool {
-	if !strings.HasPrefix(storedHash, "sha256:") {
+	if password == "" || storedHash == "" {
 		return false
 	}
-	return sha256Hex(password) == strings.TrimPrefix(storedHash, "sha256:")
+	// Legacy SHA-256 format: "sha256:<hex>"
+	if strings.HasPrefix(storedHash, "sha256:") {
+		h := sha256.Sum256([]byte(password))
+		return hex.EncodeToString(h[:]) == strings.TrimPrefix(storedHash, "sha256:")
+	}
+	// Bcrypt format: "$2a$..."
+	return bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(password)) == nil
+}
+
+// isValidPassword validates password strength: minimum 8 characters,
+// at least one uppercase letter, one lowercase letter, and one digit.
+func isValidPassword(password string) bool {
+	if len(password) < 8 || len(password) > 128 {
+		return false
+	}
+	hasUpper := false
+	hasLower := false
+	hasDigit := false
+	for _, r := range password {
+		switch {
+		case r >= 'A' && r <= 'Z':
+			hasUpper = true
+		case r >= 'a' && r <= 'z':
+			hasLower = true
+		case r >= '0' && r <= '9':
+			hasDigit = true
+		}
+	}
+	return hasUpper && hasLower && hasDigit
 }

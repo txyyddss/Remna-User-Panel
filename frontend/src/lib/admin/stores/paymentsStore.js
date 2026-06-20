@@ -1,4 +1,4 @@
-import { writable } from "svelte/store";
+import { get, writable } from "svelte/store";
 import { withRoutePrefix } from "../../webapp/routes.js";
 
 export function createPaymentsStore({
@@ -19,6 +19,8 @@ export function createPaymentsStore({
 
   const PAYMENTS_PAGE_SIZE = 25;
   let active = "stats";
+  let paymentsRequestId = 0;
+  let paymentDetailRequestId = 0;
 
   function setActive(section) {
     active = section;
@@ -36,16 +38,13 @@ export function createPaymentsStore({
   }
 
   async function loadPayments() {
+    const requestId = ++paymentsRequestId;
+    const currentPage = get(state).paymentsPage;
     state.update((s) => ({ ...s, paymentsLoading: true }));
-    let currentPage = 0;
-    state.update((s) => {
-      currentPage = s.paymentsPage;
-      return s;
-    });
 
     try {
       const data = await api(`/admin/payments?page=${currentPage}&page_size=${PAYMENTS_PAGE_SIZE}`);
-      if (data?.ok) {
+      if (requestId === paymentsRequestId && data?.ok) {
         state.update((s) => ({
           ...s,
           payments: data.payments || [],
@@ -53,7 +52,9 @@ export function createPaymentsStore({
         }));
       }
     } finally {
-      state.update((s) => ({ ...s, paymentsLoading: false }));
+      if (requestId === paymentsRequestId) {
+        state.update((s) => ({ ...s, paymentsLoading: false }));
+      }
     }
   }
 
@@ -68,6 +69,7 @@ export function createPaymentsStore({
         ? Number(paymentOrId.payment_id)
         : Number(paymentOrId);
     if (!Number.isFinite(paymentId) || paymentId <= 0) return;
+    const requestId = ++paymentDetailRequestId;
 
     state.update((s) => ({
       ...s,
@@ -84,11 +86,13 @@ export function createPaymentsStore({
 
     try {
       const res = await api(`/admin/payments/${paymentId}`);
+      if (requestId !== paymentDetailRequestId || get(state).openedPaymentId !== paymentId) return;
       if (res?.ok) {
-        state.update((s) => ({
-          ...s,
-          openedPayment: res.payment || s.openedPayment,
-        }));
+        state.update((s) =>
+          s.openedPaymentId === paymentId
+            ? { ...s, openedPayment: res.payment || s.openedPayment }
+            : s
+        );
       } else {
         onToast(
           res?.message || res?.error || at("payment_load_failed", {}, "Не удалось загрузить платеж")
@@ -97,11 +101,16 @@ export function createPaymentsStore({
         if (!opts.skipPush) pushPaymentPath(null);
       }
     } finally {
-      state.update((s) => ({ ...s, paymentDetailLoading: false }));
+      if (requestId === paymentDetailRequestId) {
+        state.update((s) =>
+          s.openedPaymentId === paymentId ? { ...s, paymentDetailLoading: false } : s
+        );
+      }
     }
   }
 
   function closePayment(opts = {}) {
+    paymentDetailRequestId += 1;
     let wasOpen = false;
     state.update((s) => {
       wasOpen = Boolean(s.openedPaymentId);

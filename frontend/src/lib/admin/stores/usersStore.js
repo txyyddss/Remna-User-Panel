@@ -1,4 +1,4 @@
-import { writable } from "svelte/store";
+import { get, writable } from "svelte/store";
 import { withRoutePrefix } from "../../webapp/routes.js";
 
 export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
@@ -59,6 +59,9 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
   let _activeRef = "stats"; // fallback if active isn't tracked
   let _pathContext = null;
   let _openUserRequestId = 0;
+  let _usersRequestId = 0;
+  let _userLogsRequestId = 0;
+  let _userReferralsRequestId = 0;
 
   function _closedUserModalState() {
     return {
@@ -209,12 +212,9 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
   }
 
   async function loadUsers() {
+    const requestId = ++_usersRequestId;
+    const s = get(state);
     state.update((s) => ({ ...s, usersLoading: true }));
-    let s;
-    state.update((st) => {
-      s = st;
-      return st;
-    });
 
     try {
       const params = new URLSearchParams({
@@ -230,7 +230,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
       }
       if (s.usersSort) params.set("sort", s.usersSort);
       const data = await api(`/admin/users?${params.toString()}`);
-      if (data?.ok) {
+      if (requestId === _usersRequestId && data?.ok) {
         state.update((st) => ({
           ...st,
           users: data.users || [],
@@ -238,7 +238,9 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
         }));
       }
     } finally {
-      state.update((st) => ({ ...st, usersLoading: false }));
+      if (requestId === _usersRequestId) {
+        state.update((st) => ({ ...st, usersLoading: false }));
+      }
     }
   }
 
@@ -287,11 +289,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
   }
 
   async function refreshOpenedUserDetail(options = {}) {
-    let snapshot;
-    state.update((st) => {
-      snapshot = st;
-      return st;
-    });
+    const snapshot = get(state);
     const userId = Number(snapshot?.openedUser?.user_id || 0);
     if (!userId) return null;
     const requestId = _openUserRequestId;
@@ -310,6 +308,8 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
   function closeUser(opts = {}) {
     let wasOpen = false;
     _openUserRequestId += 1;
+    _userLogsRequestId += 1;
+    _userReferralsRequestId += 1;
     state.update((s) => {
       wasOpen = Boolean(s.openedUser);
       return {
@@ -322,14 +322,11 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
   }
 
   async function loadUserLogs(page) {
-    let s;
-    state.update((st) => {
-      s = st;
-      return st;
-    });
+    const s = get(state);
     if (!s.openedUser) return;
     const userId = s.openedUser.user_id;
     const targetPage = Number.isFinite(page) ? Math.max(0, Math.floor(page)) : s.userLogsPage || 0;
+    const requestId = ++_userLogsRequestId;
     state.update((st) => ({
       ...st,
       userLogsLoading: true,
@@ -343,6 +340,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
         user_id: String(userId),
       });
       const data = await api(`/admin/logs?${params.toString()}`);
+      if (requestId !== _userLogsRequestId) return;
       if (data?.ok) {
         state.update((st) => {
           if (!st.openedUser || st.openedUser.user_id !== userId) return st;
@@ -357,7 +355,9 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
         onToast(data.error);
       }
     } finally {
-      state.update((st) => ({ ...st, userLogsLoading: false }));
+      if (requestId === _userLogsRequestId) {
+        state.update((st) => ({ ...st, userLogsLoading: false }));
+      }
     }
   }
 
@@ -366,14 +366,11 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
   }
 
   async function openUserReferrals(page = 0) {
-    let s;
-    state.update((st) => {
-      s = st;
-      return st;
-    });
+    const s = get(state);
     if (!s.openedUser) return;
     const userId = s.openedUser.user_id;
     const targetPage = Number.isFinite(page) ? Math.max(0, Math.floor(page)) : 0;
+    const requestId = ++_userReferralsRequestId;
     state.update((st) => ({
       ...st,
       userReferralsOpen: true,
@@ -386,6 +383,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
         page_size: String(s.userReferralsPageSize || USERS_PAGE_SIZE),
       });
       const data = await api(`/admin/users/${userId}/referrals?${params.toString()}`);
+      if (requestId !== _userReferralsRequestId) return;
       if (data?.ok) {
         state.update((st) => {
           if (!st.openedUser || st.openedUser.user_id !== userId) return st;
@@ -402,11 +400,14 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
         onToast(data.error);
       }
     } finally {
-      state.update((st) => ({ ...st, userReferralsLoading: false }));
+      if (requestId === _userReferralsRequestId) {
+        state.update((st) => ({ ...st, userReferralsLoading: false }));
+      }
     }
   }
 
   function closeUserReferrals() {
+    _userReferralsRequestId += 1;
     state.update((s) => ({
       ...s,
       userReferralsOpen: false,
@@ -430,11 +431,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
   }
 
   function requestBanToggle() {
-    let s;
-    state.update((st) => {
-      s = st;
-      return st;
-    });
+    const s = get(state);
     if (!s.openedUser) return;
     if (s.openedUser.is_banned) {
       applyBanToggle(false);
@@ -444,11 +441,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
   }
 
   async function applyBanToggle(banned) {
-    let s;
-    state.update((st) => {
-      s = st;
-      return st;
-    });
+    const s = get(state);
     if (!s.openedUser) return;
     state.update((st) => ({ ...st, userActionBusy: true }));
     try {
@@ -476,11 +469,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
   }
 
   async function sendUserMessage() {
-    let s;
-    state.update((st) => {
-      s = st;
-      return st;
-    });
+    const s = get(state);
     if (!s.openedUser || !s.userMessageDraft.trim()) return;
     state.update((st) => ({ ...st, userActionBusy: true }));
     try {
@@ -509,11 +498,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
   }
 
   async function previewUserMessage() {
-    let s;
-    state.update((st) => {
-      s = st;
-      return st;
-    });
+    const s = get(state);
     if (!s.openedUser || !s.userMessageDraft.trim()) return;
     state.update((st) => ({ ...st, userActionBusy: true }));
     try {
@@ -529,11 +514,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
   }
 
   async function sendTelegramProfileLink() {
-    let s;
-    state.update((st) => {
-      s = st;
-      return st;
-    });
+    const s = get(state);
     if (!s.openedUser) return;
     state.update((st) => ({ ...st, userActionBusy: true }));
     try {
@@ -551,11 +532,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
   }
 
   async function extendUser() {
-    let s;
-    state.update((st) => {
-      s = st;
-      return st;
-    });
+    const s = get(state);
     if (!s.openedUser) return;
     const days = Number(s.userExtendDays);
     if (!days || days <= 0) return;
@@ -581,11 +558,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
   }
 
   async function changeUserTariff() {
-    let s;
-    state.update((st) => {
-      s = st;
-      return st;
-    });
+    const s = get(state);
     if (!s.openedUser || !s.userTariffActionKey) return;
     state.update((st) => ({ ...st, userActionBusy: true }));
     try {
@@ -602,7 +575,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
         });
         if (_activeRef === "users") await loadUsers();
       } else {
-        onToast(res?.message || res?.error || at("error", {}, "РћС€РёР±РєР°"));
+        onToast(res?.message || res?.error || at("error", {}, "Ошибка"));
       }
     } finally {
       state.update((st) => ({ ...st, userActionBusy: false }));
@@ -610,11 +583,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
   }
 
   async function resetTrialUser() {
-    let s;
-    state.update((st) => {
-      s = st;
-      return st;
-    });
+    const s = get(state);
     if (!s.openedUser) return;
     state.update((st) => ({ ...st, userActionBusy: true }));
     try {
@@ -636,11 +605,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
   }
 
   async function savePremiumTrafficOverride() {
-    let s;
-    state.update((st) => {
-      s = st;
-      return st;
-    });
+    const s = get(state);
     if (!s.openedUser) return;
     state.update((st) => ({ ...st, userActionBusy: true }));
     try {
@@ -678,11 +643,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
   }
 
   async function saveRegularTrafficOverride() {
-    let s;
-    state.update((st) => {
-      s = st;
-      return st;
-    });
+    const s = get(state);
     if (!s.openedUser) return;
     state.update((st) => ({ ...st, userActionBusy: true }));
     try {
@@ -719,11 +680,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
   }
 
   async function grantTraffic() {
-    let s;
-    state.update((st) => {
-      s = st;
-      return st;
-    });
+    const s = get(state);
     if (!s.openedUser) return;
     const gbRaw = s.grantTrafficGbDraft;
     const gb = Number(gbRaw);
@@ -759,11 +716,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
   }
 
   async function deleteUser() {
-    let s;
-    state.update((st) => {
-      s = st;
-      return st;
-    });
+    const s = get(state);
     if (!s.openedUser) return;
     state.update((st) => ({ ...st, userActionBusy: true }));
     try {

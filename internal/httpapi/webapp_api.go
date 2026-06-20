@@ -63,7 +63,20 @@ type telegramAuthPayload struct {
 
 func validateTelegramAuthPayload(ctx context.Context, r *http.Request, settings config.Settings, pool *pgxpool.Pool, payload telegramAuthPayload) (auth.TelegramUser, error) {
 	if strings.TrimSpace(payload.InitData) != "" {
-		return auth.ValidateTelegramInitData(payload.InitData, settings.BotToken, 24*time.Hour)
+		// Nonce is optional but strongly recommended for initData to prevent replay.
+		// When a nonce is provided, validate it the same way as the ID Token path.
+		if payload.Nonce != "" {
+			cookie, cookieErr := r.Cookie(telegramNonceCookieName)
+			if cookieErr != nil || cookie.Value == "" || cookie.Value != payload.Nonce {
+				return auth.TelegramUser{}, errors.New("invalid_telegram_nonce")
+			}
+		}
+		// Reduce maxAge from 24h to 5min when nonce is absent, to limit replay window.
+		maxAge := 5 * time.Minute
+		if payload.Nonce != "" {
+			maxAge = 24 * time.Hour // nonce provides replay protection, allow longer validity
+		}
+		return auth.ValidateTelegramInitData(payload.InitData, settings.BotToken, maxAge)
 	}
 	if strings.TrimSpace(payload.IDToken) == "" {
 		return auth.TelegramUser{}, errors.New("missing_telegram_auth")

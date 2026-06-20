@@ -10,12 +10,8 @@ const templateDir = path.resolve(__dirname, "../internal/webassets/templates");
 
 export default defineConfig(({ mode }) => {
   const isAdminBuild = mode === "admin";
-  const outputBase = isAdminBuild
-    ? "subscription_webapp_admin"
-    : "subscription_webapp";
-  const entry = isAdminBuild
-    ? "src/adminEntry.js"
-    : "src/main.js";
+  const outputBase = isAdminBuild ? "subscription_webapp_admin" : "subscription_webapp";
+  const entry = isAdminBuild ? "src/adminEntry.js" : "src/main.js";
 
   return {
     resolve: {

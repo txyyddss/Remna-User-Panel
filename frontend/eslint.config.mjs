@@ -11,7 +11,7 @@ export default [
   js.configs.recommended,
   ...svelte.configs["flat/base"],
   {
-    files: ["src/**/*.{js,svelte}", "scripts/**/*.mjs"],
+    files: ["src/**/*.{js,svelte}", "scripts/**/*.mjs", "tests/**/*.js"],
     rules: {
       "no-unused-vars": [
         "warn",
@@ -45,6 +45,16 @@ export default [
     languageOptions: {
       globals: {
         ...globals.node,
+        ...globals.es2021,
+      },
+      sourceType: "module",
+    },
+  },
+  {
+    files: ["tests/**/*.js"],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
         ...globals.es2021,
       },
       sourceType: "module",

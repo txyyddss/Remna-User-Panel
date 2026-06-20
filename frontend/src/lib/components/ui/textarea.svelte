@@ -19,5 +19,4 @@
   aria-label={ariaLabel || placeholder}
   on:input
   on:keydown
-  {...$$restProps}
-></textarea>
+  {...$$restProps}></textarea>

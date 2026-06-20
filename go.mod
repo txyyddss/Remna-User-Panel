@@ -7,6 +7,7 @@ require (
 	github.com/go-telegram/bot v1.21.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/redis/go-redis/v9 v9.20.1
+	golang.org/x/crypto v0.40.0
 )
 
 require (

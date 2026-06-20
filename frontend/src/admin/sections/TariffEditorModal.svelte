@@ -217,45 +217,45 @@
         </div>
       </div>
 
-        {#if tariffDraft.billing_model === "period"}
-          <Label.Root class="admin-field-label">
-            <span>{at("tariff_label_traffic_limit", {}, "Месячный лимит трафика, GB")}</span>
-            <small
-              >{at(
-                "tariff_hint_traffic_limit",
-                {},
-                "Сколько GB включено в тариф на каждый месяц. 0 — безлимитный трафика. Сверху можно докупать пакеты на вкладке «Докупки»"
-              )}</small
-            >
-            <Input
-              class="input"
-              type="number"
-              min="0"
-              step="0.1"
-              placeholder="100"
-              bind:value={$tariffsStore.tariffDraft.monthly_gb}
-            />
-          </Label.Root>
-        {:else}
-          <Label.Root class="admin-field-label">
-            <span>{conversionCurrencyLabel}</span>
-            <small
-              >{at(
-                "tariff_hint_conversion",
-                {},
-                "По этому курсу остаток подписки пересчитывается в гигабайты при переходе пользователя с тарифа «Период» на «Трафик»"
-              )}</small
-            >
-            <Input
-              class="input"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="20"
-              bind:value={$tariffsStore.tariffDraft.conversion_rate_rub_per_gb}
-            />
-          </Label.Root>
-        {/if}
+      {#if tariffDraft.billing_model === "period"}
+        <Label.Root class="admin-field-label">
+          <span>{at("tariff_label_traffic_limit", {}, "Месячный лимит трафика, GB")}</span>
+          <small
+            >{at(
+              "tariff_hint_traffic_limit",
+              {},
+              "Сколько GB включено в тариф на каждый месяц. 0 — безлимитный трафика. Сверху можно докупать пакеты на вкладке «Докупки»"
+            )}</small
+          >
+          <Input
+            class="input"
+            type="number"
+            min="0"
+            step="0.1"
+            placeholder="100"
+            bind:value={$tariffsStore.tariffDraft.monthly_gb}
+          />
+        </Label.Root>
+      {:else}
+        <Label.Root class="admin-field-label">
+          <span>{conversionCurrencyLabel}</span>
+          <small
+            >{at(
+              "tariff_hint_conversion",
+              {},
+              "По этому курсу остаток подписки пересчитывается в гигабайты при переходе пользователя с тарифа «Период» на «Трафик»"
+            )}</small
+          >
+          <Input
+            class="input"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="20"
+            bind:value={$tariffsStore.tariffDraft.conversion_rate_rub_per_gb}
+          />
+        </Label.Root>
+      {/if}
     </Tabs.Content>
 
     <Tabs.Content value="premium" class="admin-tabs-content">
@@ -383,8 +383,7 @@
           <div class="admin-editor-section-actions">
             <AdminButton
               size="sm"
-              onclick={() =>
-                tariffsStore.addDraftRow("premiumTopupRows", { gb: 10, price: "" })}
+              onclick={() => tariffsStore.addDraftRow("premiumTopupRows", { gb: 10, price: "" })}
               ><Plus size={12} /> {at("tariff_btn_package", {}, "Пакет")}</AdminButton
             >
           </div>
@@ -552,8 +551,7 @@
             <div class="admin-editor-section-actions">
               <AdminButton
                 size="sm"
-                onclick={() =>
-                  tariffsStore.addDraftRow("trafficRows", { gb: 10, price: "" })}
+                onclick={() => tariffsStore.addDraftRow("trafficRows", { gb: 10, price: "" })}
                 ><Plus size={12} /> {at("tariff_btn_package", {}, "Пакет")}</AdminButton
               >
             </div>
@@ -624,8 +622,7 @@
             <div class="admin-editor-section-actions">
               <AdminButton
                 size="sm"
-                onclick={() =>
-                  tariffsStore.addDraftRow("topupRows", { gb: 10, price: "" })}
+                onclick={() => tariffsStore.addDraftRow("topupRows", { gb: 10, price: "" })}
                 ><Plus size={12} /> {at("tariff_btn_package", {}, "Пакет")}</AdminButton
               >
             </div>
@@ -684,7 +681,6 @@
         </p>
       {/if}
     </Tabs.Content>
-
   </Tabs.Root>
 
   <div class="admin-dialog-actions">

@@ -2,11 +2,10 @@ import { readMagicLoginToken } from "./authHelpers.js";
 import { TELEGRAM_SDK_BOOT_TIMEOUT_MS } from "./constants.js";
 
 /**
- * Initial auth / session bootstrap for the subscription webapp (non-preview).
+ * Initial auth / session bootstrap for the subscription webapp.
  * Keeps side effects in App (mode, tg, token) via injected callbacks.
  */
 export async function runWebappBoot({
-  MOCK,
   setMode,
   hasTelegramLaunchParams,
   loadTelegramSdk,
@@ -26,11 +25,6 @@ export async function runWebappBoot({
   setMode("loading");
   if (hasTelegramLaunchParams()) await loadTelegramSdk(TELEGRAM_SDK_BOOT_TIMEOUT_MS);
   prepareTelegramMiniApp();
-
-  if (MOCK) {
-    await loadData();
-    return;
-  }
 
   if (hasEmailCodeLoginDeeplink?.()) {
     clearManualLogoutFlag();

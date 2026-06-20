@@ -23,9 +23,7 @@
     devicesErrorCode === "subscription_not_active" ||
     devicesStatus === "Subscription is not active";
   $: showInactiveNotice =
-    !hasIPs &&
-    !(devicesBusy && !devicesLoaded) &&
-    (!devicesStatus || subscriptionNotActiveError);
+    !hasIPs && !(devicesBusy && !devicesLoaded) && (!devicesStatus || subscriptionNotActiveError);
 </script>
 
 <main class="content with-nav">

@@ -5,14 +5,10 @@ export function createApiClient({
   csrfCookieName = "rw_webapp_csrf",
   getCsrfToken = () => "",
   onUnauthorized = () => {},
-  mockApi = null,
-  getMockContext = () => ({}),
 } = {}) {
   const isFormDataBody = (body) => typeof FormData !== "undefined" && body instanceof FormData;
 
   async function api(path, options = {}) {
-    if (mockApi) return mockApi(path, options, getMockContext());
-
     const method = String(options.method || "GET").toUpperCase();
     const headers = { ...(options.headers || {}) };
 
@@ -35,9 +31,6 @@ export function createApiClient({
   }
 
   async function publicApi(path, payload = {}, options = {}) {
-    if (mockApi) {
-      return mockApi(path, { method: "POST", body: JSON.stringify(payload) }, getMockContext());
-    }
     const response = await fetch(`${apiBase}${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

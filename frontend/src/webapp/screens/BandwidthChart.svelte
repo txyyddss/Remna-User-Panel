@@ -16,19 +16,11 @@
 
 <Card class="bandwidth-chart-card">
   <h3 class="bandwidth-chart-title">{t("wa_bandwidth_usage_title")}</h3>
-  <div
-    class="bandwidth-bars"
-    role="img"
-    aria-label={t("wa_bandwidth_usage_chart_aria")}
-  >
+  <div class="bandwidth-bars" role="img" aria-label={t("wa_bandwidth_usage_chart_aria")}>
     {#each bars as bar, i (i)}
       <div class="bandwidth-bar-col" style="animation-delay: {i * 0.08}s">
         <div class="bandwidth-bar-value">{bar.value}</div>
-        <div
-          class="bandwidth-bar"
-          style="height: {bar.height}px"
-          aria-hidden="true"
-        ></div>
+        <div class="bandwidth-bar" style="height: {bar.height}px" aria-hidden="true"></div>
         <div class="bandwidth-bar-label">{bar.label}</div>
       </div>
     {/each}
@@ -79,7 +71,11 @@
     width: 100%;
     max-width: 36px;
     border-radius: 6px 6px 2px 2px;
-    background: linear-gradient(180deg, var(--color-accent, #00fe7a) 0%, var(--color-accent-muted, #00c060) 100%);
+    background: linear-gradient(
+      180deg,
+      var(--color-accent, #00fe7a) 0%,
+      var(--color-accent-muted, #00c060) 100%
+    );
     transition: height 0.4s ease;
     min-height: 2px;
   }

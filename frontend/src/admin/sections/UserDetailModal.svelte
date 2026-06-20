@@ -75,7 +75,6 @@
     return trial.active ? `${base} · ${at("user_trial_active", {}, "активен")}` : base;
   }
 
-
   function vpnLastConnectionLabel(detail) {
     const connectedAt = detail?.last_vpn_connected_at;
     const status = detail?.vpn_connection_status;
@@ -134,7 +133,6 @@
     if (!Number.isFinite(leftNum) || !Number.isFinite(rightNum)) return false;
     return Math.abs(leftNum - rightNum) < 0.000001;
   }
-
 
   $: ({
     openedUser,
@@ -388,7 +386,11 @@
           <div class="admin-subsection-title">{at("user_section_profile", {}, "Профиль")}</div>
           <ul class="admin-meta-list">
             <li><span>ID</span><strong>{openedUser.user_id}</strong></li>
-            <li><span>{at("user_label_telegram_id", {}, "Telegram ID")}</span><strong>{openedUser.telegram_id || "—"}</strong></li>
+            <li>
+              <span>{at("user_label_telegram_id", {}, "Telegram ID")}</span><strong
+                >{openedUser.telegram_id || "—"}</strong
+              >
+            </li>
             <li>
               <span>{at("user_label_username", {}, "Username")}</span><strong
                 >{openedUser.username ? "@" + openedUser.username : "—"}</strong
@@ -1217,7 +1219,6 @@
                     </div>
                   </div>
                 </section>
-
 
                 <section class="admin-user-action-sheet admin-user-action-sheet--traffic-grant">
                   <AdminSectionHeader

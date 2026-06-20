@@ -36,6 +36,7 @@ export function createBillingStore({
 
   let topupOptionsRequestId = 0;
   let paymentPollToken = 0;
+  let destroyed = false;
   const successfulPaymentIds = new Set();
 
   function sleep(ms) {
@@ -44,12 +45,7 @@ export function createBillingStore({
 
   function isSubscriptionSale(plan) {
     const saleMode = String(plan?.sale_mode || "subscription").toLowerCase();
-    return ![
-      "traffic",
-      "traffic_package",
-      "topup",
-      "premium_topup",
-    ].includes(saleMode);
+    return !["traffic", "traffic_package", "topup", "premium_topup"].includes(saleMode);
   }
 
   function paymentSuccessContext(s, response = {}) {
@@ -327,14 +323,19 @@ export function createBillingStore({
   }
 
   function startPaymentStatusPolling(paymentId, successContext = {}) {
-    if (!paymentId || !billing.fetchPaymentStatus) return;
+    if (destroyed || !paymentId || !billing.fetchPaymentStatus) return;
     const token = ++paymentPollToken;
     void (async () => {
-      for (let attempt = 0; attempt < 45 && token === paymentPollToken; attempt += 1) {
+      for (
+        let attempt = 0;
+        attempt < 45 && !destroyed && token === paymentPollToken;
+        attempt += 1
+      ) {
         await sleep(attempt === 0 ? 1500 : 2000);
-        if (token !== paymentPollToken) return;
+        if (destroyed || token !== paymentPollToken) return;
         try {
           const status = await billing.fetchPaymentStatus(paymentId);
+          if (destroyed || token !== paymentPollToken) return;
           if (!status?.ok) continue;
           if (status.paid || status.status === "succeeded") {
             await handlePaymentSuccess({ ...successContext, paymentId });
@@ -501,6 +502,13 @@ export function createBillingStore({
     }
   }
 
+  function destroy() {
+    if (destroyed) return;
+    destroyed = true;
+    paymentPollToken += 1;
+    topupOptionsRequestId += 1;
+  }
+
   return {
     subscribe: state.subscribe,
     set: state.set,
@@ -525,5 +533,6 @@ export function createBillingStore({
     closePaymentResult,
     openPaymentResultLink,
     copyPaymentText,
+    destroy,
   };
 }

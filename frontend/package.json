@@ -1,5 +1,6 @@
 {
   "private": true,
+  "type": "module",
   "scripts": {
     "build:webapp:svelte:main": "vite build --config ./vite.config.mjs",
     "build:webapp:svelte:admin": "vite build --config ./vite.config.mjs --mode admin",
@@ -7,12 +8,15 @@
     "build:webapp:css": "npm run build:webapp:svelte",
     "build:webapp:js": "node ./scripts/build_subscription_webapp_js.mjs",
     "build:webapp": "npm run build:webapp:svelte && npm run build:webapp:js",
-    "lint": "eslint src scripts",
+    "lint": "eslint src scripts tests *.config.mjs",
     "lint:fix": "npm run lint:js:fix",
-    "lint:js:fix": "eslint src scripts --fix",
-    "format": "prettier --write \"src/**/*.{js,svelte}\" \"scripts/**/*.mjs\"",
-    "format:check": "prettier --check \"src/**/*.{js,svelte}\" \"scripts/**/*.mjs\"",
-    "check": "npm run lint && npm run format:check",
+    "lint:js:fix": "eslint src scripts tests *.config.mjs --fix",
+    "format": "prettier --write \"src/**/*.{js,ts,svelte}\" \"scripts/**/*.mjs\" \"tests/**/*.js\" \"*.config.mjs\"",
+    "format:check": "prettier --check \"src/**/*.{js,ts,svelte}\" \"scripts/**/*.mjs\" \"tests/**/*.js\" \"*.config.mjs\"",
+    "check:i18n": "node ./scripts/check_i18n_keys.mjs",
+    "check:svelte": "svelte-check --tsconfig ./jsconfig.json",
+    "test": "vitest run",
+    "check": "npm run lint && npm run check:i18n && npm run check:svelte && npm run test && npm run format:check",
     "fix": "npm run format && npm run lint:js:fix"
   },
   "devDependencies": {
@@ -21,6 +25,7 @@
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "@tailwindcss/cli": "4.3.1",
     "@tailwindcss/vite": "^4.3.1",
+    "@testing-library/svelte": "^5.3.1",
     "bits-ui": "^2.18.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -29,15 +34,18 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-svelte": "^3.19.0",
     "globals": "^17.6.0",
+    "happy-dom": "^20.10.6",
     "lucide-svelte": "^1.0.1",
     "prettier": "^3.8.4",
     "prettier-plugin-svelte": "^4.1.1",
     "svelte": "^5.56.3",
+    "svelte-check": "^4.6.0",
     "svelte-eslint-parser": "^1.8.0",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "4.3.1",
     "uplot": "^1.6.32",
-    "vite": "^8.0.16"
+    "vite": "^8.0.16",
+    "vitest": "^4.1.9"
   },
   "dependencies": {
     "qrcode": "^1.5.4"

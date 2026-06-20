@@ -17,8 +17,7 @@
 
   const promosStore = getContext("promosStore");
 
-  $: ({ promos, promosLoading, promoCreateOpen, promoDraft } =
-    $promosStore);
+  $: ({ promos, promosLoading, promoCreateOpen, promoDraft } = $promosStore);
 
   $: promoHeaders = [
     at("promo_col_code", {}, "Код"),

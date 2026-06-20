@@ -1,4 +1,4 @@
-import { writable } from "svelte/store";
+import { get, writable } from "svelte/store";
 
 export function createLogsStore({ api }) {
   const state = writable({
@@ -10,16 +10,14 @@ export function createLogsStore({ api }) {
   });
 
   const LOGS_PAGE_SIZE = 50;
+  let logsRequestId = 0;
 
   async function loadLogs() {
+    const requestId = ++logsRequestId;
+    const snapshot = get(state);
+    const currentPage = snapshot.logsPage;
+    const filter = snapshot.logsUserFilter;
     state.update((s) => ({ ...s, logsLoading: true }));
-    let currentPage = 0;
-    let filter = "";
-    state.update((s) => {
-      currentPage = s.logsPage;
-      filter = s.logsUserFilter;
-      return s;
-    });
 
     try {
       let q = `/admin/logs?page=${currentPage}&page_size=${LOGS_PAGE_SIZE}`;
@@ -27,7 +25,7 @@ export function createLogsStore({ api }) {
         q += `&user_id=${encodeURIComponent(filter.trim())}`;
       }
       const data = await api(q);
-      if (data?.ok) {
+      if (requestId === logsRequestId && data?.ok) {
         state.update((s) => ({
           ...s,
           logs: data.logs || [],
@@ -35,7 +33,9 @@ export function createLogsStore({ api }) {
         }));
       }
     } finally {
-      state.update((s) => ({ ...s, logsLoading: false }));
+      if (requestId === logsRequestId) {
+        state.update((s) => ({ ...s, logsLoading: false }));
+      }
     }
   }
 

@@ -2,6 +2,7 @@ import { writable, get } from "svelte/store";
 import { readReferralParam, clearAuthQuery, emailError } from "../authHelpers.js";
 import { sendTelemetryHeartbeat } from "../telemetry.js";
 import { browserTelegramLogin } from "../telegramLogin.js";
+import { createStoreCountdown } from "./countdown.js";
 
 const EMAIL_CODE_PENDING_STORAGE_KEY = "rw_email_code_login_pending_v1";
 const EMAIL_CODE_PENDING_TTL_MS = 10 * 60 * 1000;
@@ -32,8 +33,11 @@ export function createAuthStore({
     passwordLoginFallback: false,
   });
 
-  let authResendTimer = null;
   let telegramLoginWatchdogTimer = null;
+  const authResendCountdown = createStoreCountdown({
+    update: state.update,
+    field: "authResendCooldown",
+  });
 
   function readPendingEmailCodeSession() {
     if (typeof window === "undefined" || !window.sessionStorage) return null;
@@ -114,24 +118,11 @@ export function createAuthStore({
   }
 
   function clearCooldownTimer() {
-    if (authResendTimer) {
-      window.clearInterval(authResendTimer);
-      authResendTimer = null;
-    }
+    authResendCountdown.clear();
   }
 
   function startCooldownTimer(seconds = 60) {
-    clearCooldownTimer();
-    state.update((s) => ({ ...s, authResendCooldown: Math.max(0, Number(seconds || 60)) }));
-    authResendTimer = window.setInterval(() => {
-      const { authResendCooldown } = get(state);
-      if (authResendCooldown <= 1) {
-        state.update((s) => ({ ...s, authResendCooldown: 0 }));
-        clearCooldownTimer();
-        return;
-      }
-      state.update((s) => ({ ...s, authResendCooldown: authResendCooldown - 1 }));
-    }, 1000);
+    authResendCountdown.start(seconds);
   }
 
   function startTelegramLoginWatchdog() {
@@ -365,8 +356,13 @@ export function createAuthStore({
       try {
         const result = await browserTelegramLogin(telegramOAuthClientId, currentLang);
         await finalizeTelegramAuth(result, "id_token");
-      } catch {
-        setAuthStatus(t("wa_auth_telegram_not_confirmed"), true);
+      } catch (error) {
+        setAuthStatus(
+          error?.name === "AbortError"
+            ? t("wa_auth_telegram_timeout")
+            : t("wa_auth_telegram_not_confirmed"),
+          true
+        );
       } finally {
         state.update((s) => ({ ...s, telegramLoginBusy: false }));
       }
@@ -392,7 +388,9 @@ export function createAuthStore({
             return;
           }
 
-          const result = await browserTelegramLogin(telegramOAuthClientId, currentLang);
+          const result = await browserTelegramLogin(telegramOAuthClientId, currentLang, {
+            signal: loginTimeout.signal,
+          });
           await finalizeTelegramAuth(result, "id_token", { signal: loginTimeout.signal });
         })(),
         loginTimeout.promise,
