@@ -37,7 +37,7 @@ func WebAppRouter(settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Ca
 // register a duplicate /health endpoint to avoid route conflicts when both
 // route sets are combined in CombinedRouter.
 func RegisterWebAppRoutes(router chi.Router, settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog, assets webassets.Paths, registry *payments.Registry, panel *remnawave.Client) {
-	router.Get("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
+	router.Get("/robots.txt", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		_, _ = w.Write([]byte("User-agent: *\nDisallow: /\n"))
 	})
@@ -123,8 +123,8 @@ func webappRuntimeConfig(ctx context.Context, settings config.Settings, pool *pg
 	}
 }
 
-func i18nHandler(settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func i18nHandler(settings config.Settings, _pool *pgxpool.Pool, catalog *i18n.Catalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		i18nPayload := localePayload(catalog)
 		writeJSON(w, http.StatusOK, map[string]any{
 			"ok":               true,

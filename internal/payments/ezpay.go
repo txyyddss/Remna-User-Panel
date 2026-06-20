@@ -2,7 +2,7 @@ package payments
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/md5" //nolint:gosec // G501: required for third-party payment API compatibility.
 	"crypto/subtle"
 	"encoding/json"
 	"fmt"
@@ -142,6 +142,6 @@ func ezpaySign(params map[string]string, key string) string {
 	for _, name := range keys {
 		parts = append(parts, name+"="+params[name])
 	}
-	hash := md5.Sum([]byte(strings.Join(parts, "&") + key))
+	hash := md5.Sum([]byte(strings.Join(parts, "&") + key)) //nolint:gosec // G401: required for third-party payment API.
 	return fmt.Sprintf("%x", hash)
 }

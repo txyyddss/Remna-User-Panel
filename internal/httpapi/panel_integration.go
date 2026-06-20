@@ -1311,7 +1311,7 @@ func adminPanelUser(ctx context.Context, settings config.Settings, pool *pgxpool
 	return user, panelUser, nil
 }
 
-func firstPlanForTariff(ctx context.Context, settings config.Settings, language string, tariffKey string) (tariffs.Plan, bool) {
+func firstPlanForTariff(_ context.Context, settings config.Settings, language string, tariffKey string) (tariffs.Plan, bool) {
 	catalog, err := tariffs.Load("data/tariffs.json")
 	if err != nil {
 		return tariffs.Plan{}, false
@@ -1559,7 +1559,7 @@ func subscriptionNotificationText(stage notifyStage, expireAt time.Time, _ strin
 }
 
 // fmtTrafficExhaustionText formats a traffic exhaustion notification message.
-func fmtTrafficExhaustionText(usedBytes, limitBytes int64, usedPct, thresholdPct int) string {
+func fmtTrafficExhaustionText(usedBytes, limitBytes int64, usedPct, _thresholdPct int) string {
 	usedGB := float64(usedBytes) / bytesPerGB
 	limitGB := float64(limitBytes) / bytesPerGB
 	return fmt.Sprintf("📊 You have used %.1f GB out of %.1f GB (%d%%). Your traffic is running low!", usedGB, limitGB, usedPct)

@@ -48,6 +48,7 @@ const defaultVerifyTemplate = `# {{.Brand}}
 ---
 这是来自 {{.Brand}} 的自动邮件。`
 
+//nolint:gosec // Email template, not a credential.
 const defaultPasswordResetTemplate = `# {{.Brand}}
 
 您正在重置密码，验证码如下
@@ -83,6 +84,7 @@ This code expires in **{{.ExpireMinutes}}** minutes. If you did not request this
 ---
 This is an automated email from {{.Brand}}.`
 
+//nolint:gosec // Email template, not a credential.
 const defaultPasswordResetTemplateEN = `# {{.Brand}}
 
 You are resetting your password. Your verification code is:
@@ -108,7 +110,7 @@ This is an automated email from {{.Brand}}.`
 // emailTemplate returns the rendered email body for the given purpose.
 // It first tries the admin-configured Markdown template, falling back to
 // a language-appropriate default (English for "en" users, Chinese otherwise).
-func emailTemplate(ctx context.Context, store appsettings.Store, purpose, language, fallback string, vars map[string]any) string {
+func emailTemplate(ctx context.Context, store appsettings.Store, purpose, _language, fallback string, vars map[string]any) string {
 	var key string
 	switch purpose {
 	case emailCodePurposeVerify:
@@ -388,7 +390,7 @@ func passwordConfirmHandler(settings config.Settings, pool *pgxpool.Pool) http.H
 		}
 		code := strings.TrimSpace(payload.Code)
 		newPassword := strings.TrimSpace(payload.NewPassword)
-		if code == "" || !isValidPassword(newPassword) {
+		if code == "" || !isValidPassword(newPassword) { //nolint:gosec // Error message, not a credential.
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_params", "password_requirements": "min_8_chars_upper_lower_digit"})
 			return
 		}
@@ -737,7 +739,7 @@ func generateEmailCode(length int) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		code[i] = byte('0' + n.Int64())
+		code[i] = byte('0' + n.Int64()) //nolint:gosec // G115: n.Int64() is 0-9 from rand.Int(10).
 	}
 	return string(code), nil
 }

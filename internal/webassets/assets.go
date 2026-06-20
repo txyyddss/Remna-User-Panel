@@ -24,11 +24,11 @@ func Resolve() (Paths, error) {
 		TemplatesDir: filepath.Join(root, "templates"),
 		ThemesDir:    filepath.Join(root, "themes"),
 	}
-	if _, err := os.Stat(filepath.Join(paths.TemplatesDir, "subscription_webapp.html")); err != nil {
+	if _, err := os.Stat(filepath.Join(paths.TemplatesDir, "subscription_webapp.html")); err != nil { //nolint:gosec // G703: paths are fixed internal paths.
 		return Paths{}, fmt.Errorf("subscription webapp template missing: %w", err)
 	}
 	// Warn if themes directory is missing (non-fatal, admin may not use themes).
-	if _, err := os.Stat(paths.ThemesDir); err != nil {
+	if _, err := os.Stat(paths.ThemesDir); err != nil { //nolint:gosec // G703: paths are fixed internal paths.
 		slog.Warn("themes directory is missing, theme support disabled", "dir", paths.ThemesDir)
 	}
 	return paths, nil

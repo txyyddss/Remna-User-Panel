@@ -36,13 +36,12 @@ func RegisterBackendRoutes(router chi.Router, settings config.Settings, pool *pg
 	router.Get("/health", healthHandler(pool, redisClient))
 	router.Post(settings.WebhookPath(), telegramWebhookHandler(settings, pool))
 	for _, providerID := range registry.IDs() {
-		providerID := providerID
 		router.Post("/webhook/"+providerID, paymentWebhookHandler(settings, pool, registry, panel, providerID))
 	}
 }
 
 func healthHandler(pool *pgxpool.Pool, redisClient *redis.Client) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		payload := map[string]any{"status": "ok"}
 		if pool != nil {
 			stat := pool.Stat()
@@ -130,7 +129,7 @@ func handleTelegramPaymentUpdate(ctx context.Context, settings config.Settings, 
 		} `json:"message"`
 	}
 	if json.Unmarshal(body, &update) != nil {
-		return false, nil
+		return false, nil //nolint:nilerr // Not a payment update, not an error.
 	}
 	if update.PreCheckout != nil {
 		query := update.PreCheckout

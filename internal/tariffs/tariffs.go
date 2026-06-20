@@ -90,7 +90,7 @@ func (t *Tariff) UnmarshalJSON(data []byte) error {
 
 // Load reads a catalog. A missing file is treated as an empty catalog.
 func Load(path string) (Catalog, error) {
-	body, err := os.ReadFile(path)
+	body, err := os.ReadFile(path) //nolint:gosec // G304: path is a fixed data file path.
 	if errors.Is(err, os.ErrNotExist) {
 		return Catalog{}, nil
 	}

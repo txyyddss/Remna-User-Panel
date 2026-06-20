@@ -136,7 +136,7 @@ func authTokenHandler(settings config.Settings, pool *pgxpool.Pool) http.Handler
 	}
 }
 
-func telegramLoginNonceHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+func telegramLoginNonceHandler(_settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		clientID := appsettings.NewStore(pool).String(r.Context(), "TELEGRAM_LOGIN_CLIENT_ID", os.Getenv("TELEGRAM_LOGIN_CLIENT_ID"))
 		if clientID == "" {
@@ -608,7 +608,7 @@ FROM users WHERE user_id=$1`, userID).Scan(
 
 func setSessionCookies(w http.ResponseWriter, r *http.Request, token string, csrf string) {
 	secure := isSecureRequest(r)
-	http.SetCookie(w, &http.Cookie{
+	http.SetCookie(w, &http.Cookie{ //nolint:gosec // G124: Secure/HttpOnly/SameSite set dynamically based on request.
 		Name:     sessionCookieName,
 		Value:    token,
 		Path:     "/",
@@ -617,7 +617,7 @@ func setSessionCookies(w http.ResponseWriter, r *http.Request, token string, csr
 		Secure:   secure,
 		SameSite: http.SameSiteLaxMode,
 	})
-	http.SetCookie(w, &http.Cookie{
+	http.SetCookie(w, &http.Cookie{ //nolint:gosec // G124: Secure/HttpOnly/SameSite set dynamically based on request.
 		Name:     csrfCookieName,
 		Value:    csrf,
 		Path:     "/",
@@ -629,7 +629,7 @@ func setSessionCookies(w http.ResponseWriter, r *http.Request, token string, csr
 }
 
 func clearCookie(w http.ResponseWriter, r *http.Request, name string) {
-	http.SetCookie(w, &http.Cookie{
+	http.SetCookie(w, &http.Cookie{ //nolint:gosec // G124: Secure/HttpOnly/SameSite set dynamically.
 		Name:     name,
 		Value:    "",
 		Path:     "/",
@@ -773,7 +773,7 @@ func allowedAdminSettingKeys(sections []map[string]any) map[string]bool {
 	return result
 }
 
-func mailSettingsFields(ctx context.Context, settings config.Settings, store appsettings.Store) []map[string]any {
+func mailSettingsFields(ctx context.Context, _settings config.Settings, store appsettings.Store) []map[string]any {
 	fields := []paymentSettingField{
 		{Key: "SMTP_ENABLED", Type: "bool", Label: "SMTP email enabled", Description: "Enable SMTP email delivery for verification codes, password resets, and notifications.", Subsection: "General", Fallback: false},
 		{Key: "SMTP_HOST", Type: "string", Label: "SMTP host", Description: "SMTP server hostname or IP address.", Subsection: "Server", Fallback: ""},

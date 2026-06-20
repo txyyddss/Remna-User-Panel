@@ -3,7 +3,7 @@ package payments
 import (
 	"bytes"
 	"context"
-	"crypto/md5"
+	"crypto/md5" //nolint:gosec // G501: required for third-party payment API compatibility.
 	"crypto/subtle"
 	"encoding/json"
 	"fmt"
@@ -173,7 +173,7 @@ func bepusdtSign(params map[string]string, token string) string {
 	for _, name := range keys {
 		parts = append(parts, name+"="+params[name])
 	}
-	hash := md5.Sum([]byte(strings.Join(parts, "&") + token))
+	hash := md5.Sum([]byte(strings.Join(parts, "&") + token)) //nolint:gosec // G401: required for third-party payment API.
 	return fmt.Sprintf("%x", hash)
 }
 

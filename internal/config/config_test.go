@@ -34,7 +34,7 @@ func TestDatabaseURLPrecedence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
-	if settings.DatabaseURL != "postgres://shop_user:shop_pass@shop_host:5432/shop_db?sslmode=disable" {
+	if settings.DatabaseURL != "postgres://shop_user:shop_pass@shop_host:5432/shop_db?sslmode=disable" { //nolint:gosec // Test assertion.
 		t.Fatalf("DatabaseURL = %q, want SHOP_DATABASE_URL value", settings.DatabaseURL)
 	}
 }
@@ -71,7 +71,7 @@ func TestDatabaseURLFallback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
-	if settings.DatabaseURL != "postgres://fb_user:fb_pass@fb_host:5432/fb_db" {
+	if settings.DatabaseURL != "postgres://fb_user:fb_pass@fb_host:5432/fb_db" { //nolint:gosec // Test assertion.
 		t.Fatalf("DatabaseURL = %q, want DATABASE_URL value", settings.DatabaseURL)
 	}
 }

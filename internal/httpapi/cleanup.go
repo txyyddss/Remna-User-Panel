@@ -95,8 +95,7 @@ func cleanupClosedTickets(ctx context.Context, pool *pgxpool.Pool, cutoff time.T
 	var raw json.RawMessage
 	err := pool.QueryRow(ctx, "SELECT value FROM app_settings WHERE key='SUPPORT_TICKETS'").Scan(&raw)
 	if err != nil {
-		// Key doesn't exist or other error - nothing to clean
-		return nil
+		return nil //nolint:nilerr // Key doesn't exist — nothing to clean.
 	}
 
 	var tickets []map[string]any

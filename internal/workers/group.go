@@ -36,7 +36,6 @@ func (g *Group) Run(ctx context.Context) error {
 	errCh := make(chan error, len(g.tasks))
 	var wg sync.WaitGroup
 	for name, task := range g.tasks {
-		name, task := name, task
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

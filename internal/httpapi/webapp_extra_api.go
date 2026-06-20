@@ -34,7 +34,7 @@ import (
 	"remna-user-panel/internal/webassets"
 )
 
-func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog, assets webassets.Paths, registry *payments.Registry, panel *remnawave.Client) {
+func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *pgxpool.Pool, _catalog *i18n.Catalog, assets webassets.Paths, registry *payments.Registry, panel *remnawave.Client) {
 	router.Get("/api/tariffs/topup-options", webappPlansOptionsHandler(settings, pool, "topup"))
 	router.Get("/api/tariffs/change-options", webappPlansOptionsHandler(settings, pool, "change"))
 	router.Post("/api/tariffs/change", userTariffChangeHandler(settings, pool, panel))
@@ -636,7 +636,7 @@ func adminTariffsHandler(settings config.Settings, pool *pgxpool.Pool) http.Hand
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
 			return
 		}
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "tariffs_save_failed"})
 			return
 		}
@@ -1724,7 +1724,7 @@ func adminBackupsHandler(settings config.Settings, pool *pgxpool.Pool) http.Hand
 			return
 		}
 		backupDir := filepath.Join("data", "backups")
-		_ = os.MkdirAll(backupDir, 0o755)
+		_ = os.MkdirAll(backupDir, 0o750)
 		entries, err := os.ReadDir(backupDir)
 		archives := []backupArchiveInfo{}
 		if err == nil {
@@ -1749,7 +1749,7 @@ func adminBackupCreateHandler(settings config.Settings, pool *pgxpool.Pool) http
 			return
 		}
 		backupDir := filepath.Join("data", "backups")
-		_ = os.MkdirAll(backupDir, 0o755)
+		_ = os.MkdirAll(backupDir, 0o750)
 		filename := "backup-" + time.Now().Format("20060102-150405") + ".zip"
 		savePath := filepath.Join(backupDir, filename)
 		result, err := createBackupArchive(r.Context(), settings, savePath)
@@ -1836,7 +1836,7 @@ func adminAppearanceLogoHandler(settings config.Settings, pool *pgxpool.Pool) ht
 		}
 
 		// Handle multipart file upload
-		if err := r.ParseMultipartForm(5 << 20); err != nil {
+		if err := r.ParseMultipartForm(5 << 20); err != nil { //nolint:gosec // G120: bounded to 5 MB.
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_upload"})
 			return
 		}
@@ -1868,12 +1868,12 @@ func adminAppearanceLogoHandler(settings config.Settings, pool *pgxpool.Pool) ht
 
 		// Save to uploads directory
 		uploadDir := filepath.Join("data", "uploads", "logos")
-		_ = os.MkdirAll(uploadDir, 0o755)
+		_ = os.MkdirAll(uploadDir, 0o750)
 		hash := sha256.Sum256(full)
 		hashStr := hex.EncodeToString(hash[:])[:16]
 		filename := "logo-" + hashStr + "-" + time.Now().Format("20060102150405") + ext
 		savePath := filepath.Join(uploadDir, filename)
-		if err := os.WriteFile(savePath, full, 0o644); err != nil {
+		if err := os.WriteFile(savePath, full, 0o600); err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "save_failed"})
 			return
 		}
@@ -1915,7 +1915,7 @@ func adminAppearanceFaviconHandler(settings config.Settings, pool *pgxpool.Pool)
 		}
 
 		// Handle multipart file upload
-		if err := r.ParseMultipartForm(5 << 20); err != nil {
+		if err := r.ParseMultipartForm(5 << 20); err != nil { //nolint:gosec // G120: bounded to 5 MB.
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_upload"})
 			return
 		}
@@ -1945,12 +1945,12 @@ func adminAppearanceFaviconHandler(settings config.Settings, pool *pgxpool.Pool)
 		}
 
 		uploadDir := filepath.Join("data", "uploads", "favicons")
-		_ = os.MkdirAll(uploadDir, 0o755)
+		_ = os.MkdirAll(uploadDir, 0o750)
 		hash := sha256.Sum256(full)
 		hashStr := hex.EncodeToString(hash[:])[:16]
 		filename := "favicon-" + hashStr + "-" + time.Now().Format("20060102150405") + ext
 		savePath := filepath.Join(uploadDir, filename)
-		if err := os.WriteFile(savePath, full, 0o644); err != nil {
+		if err := os.WriteFile(savePath, full, 0o600); err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "save_failed"})
 			return
 		}
@@ -1997,7 +1997,7 @@ func adminBackupUploadHandler(settings config.Settings, pool *pgxpool.Pool) http
 		if _, ok := requireAdmin(w, r, settings, pool, true); !ok {
 			return
 		}
-		if err := r.ParseMultipartForm(256 << 20); err != nil {
+		if err := r.ParseMultipartForm(256 << 20); err != nil { //nolint:gosec // G120: bounded to 256 MB for backup uploads.
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_upload"})
 			return
 		}

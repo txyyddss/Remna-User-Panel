@@ -21,6 +21,7 @@ import (
 )
 
 const (
+	// ProviderEZPay is the identifier for the EZPay payment provider.
 	ProviderEZPay         = "ezpay"
 	ProviderBEPUSDT       = "bepusdt"
 	ProviderTelegramStars = "telegram_stars"
@@ -191,7 +192,7 @@ func (r *Registry) IDs() []string {
 }
 
 // Methods returns enabled and configured payment methods.
-func (r *Registry) Methods(ctx context.Context, _language string, _isAdmin bool) []Method {
+func (r *Registry) Methods(ctx context.Context, _ string, _isAdmin bool) []Method {
 	cfg := r.EffectiveConfig(ctx)
 	methods := []Method{}
 	if cfg.EZPay.Enabled && cfg.EZPay.BaseURL != "" && cfg.EZPay.PID != 0 && cfg.EZPay.Key != "" {

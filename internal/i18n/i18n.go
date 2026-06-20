@@ -31,7 +31,7 @@ func Load(localesDir string, defaultLang string) (*Catalog, error) {
 		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
 			continue
 		}
-		body, err := os.ReadFile(filepath.Join(localesDir, entry.Name()))
+		body, err := os.ReadFile(filepath.Join(localesDir, entry.Name())) //nolint:gosec // G304: entry from os.ReadDir, not user input.
 		if err != nil {
 			return nil, fmt.Errorf("read locale %s: %w", entry.Name(), err)
 		}

@@ -26,6 +26,7 @@ const (
 // safePgCommand builds an exec.Cmd for pg_dump/pg_restore using separate
 // connection parameters instead of passing the full DatabaseURL as a
 // command-line argument, preventing potential shell injection.
+//nolint:gosec // SafePgCommand constructs args from parsed URL, not user input.
 func safePgCommand(ctx context.Context, databaseURL string, prog string, extraArgs ...string) *exec.Cmd {
 	u, err := url.Parse(databaseURL)
 	if err != nil {
@@ -50,7 +51,7 @@ func safePgCommand(ctx context.Context, databaseURL string, prog string, extraAr
 		args = append(args, "-d", dbName)
 	}
 	args = append(args, extraArgs...)
-	cmd := exec.CommandContext(ctx, prog, args...)
+	cmd := exec.CommandContext(ctx, prog, args...) //nolint:gosec // Args from parsed URL.
 	if u.User != nil {
 		if password, ok := u.User.Password(); ok {
 			cmd.Env = append(os.Environ(), "PGPASSWORD="+password)
@@ -122,7 +123,7 @@ func createBackupArchive(ctx context.Context, settings config.Settings, target s
 	if err != nil {
 		return backupArchiveInfo{}, fmt.Errorf("pg_dump_failed: %s", strings.TrimSpace(string(output)))
 	}
-	dumpBody, err := os.ReadFile(dumpPath)
+	dumpBody, err := os.ReadFile(dumpPath) //nolint:gosec // dumpPath is inside a temp dir we created.
 	if err != nil {
 		return backupArchiveInfo{}, err
 	}
@@ -133,7 +134,7 @@ func createBackupArchive(ctx context.Context, settings config.Settings, target s
 		return backupArchiveInfo{}, err
 	}
 	zw := zip.NewWriter(file)
-	writeErr := writeZipFile(zw, "database/database.dump", dumpBody, 0o600)
+	writeErr := writeZipFile(zw, "database/database.dump", dumpBody)
 	hasCompose := false
 	if writeErr == nil {
 		composeRoot := filepath.Join("/app", "compose-source")
@@ -160,14 +161,14 @@ func createBackupArchive(ctx context.Context, settings config.Settings, target s
 					return nil
 				}
 				hasCompose = true
-				return writeZipFile(zw, filepath.ToSlash(filepath.Join("compose", rel)), body, 0o600)
+				return writeZipFile(zw, filepath.ToSlash(filepath.Join("compose", rel)), body)
 			})
 		}
 	}
 	manifest := backupManifest{Format: 1, CreatedAt: time.Now().UTC().Format(time.RFC3339), Version: readSmallBuildFile(".build-version", "dev"), DatabaseSHA256: hex.EncodeToString(digest[:]), HasDatabase: true, HasCompose: hasCompose}
 	if writeErr == nil {
 		body, _ := json.MarshalIndent(manifest, "", "  ")
-		writeErr = writeZipFile(zw, "manifest.json", append(body, '\n'), 0o600)
+		writeErr = writeZipFile(zw, "manifest.json", append(body, '\n'))
 	}
 	if closeErr := zw.Close(); writeErr == nil {
 		writeErr = closeErr
@@ -186,9 +187,9 @@ func createBackupArchive(ctx context.Context, settings config.Settings, target s
 	return inspectBackupArchive(target), nil
 }
 
-func writeZipFile(writer *zip.Writer, name string, body []byte, mode os.FileMode) error {
+func writeZipFile(writer *zip.Writer, name string, body []byte) error {
 	header := &zip.FileHeader{Name: name, Method: zip.Deflate}
-	header.SetMode(mode)
+	header.SetMode(0o600)
 	header.Modified = time.Now()
 	destination, err := writer.CreateHeader(header)
 	if err != nil {
@@ -223,7 +224,7 @@ func extractBackupArchive(path, tempDir string, restoreCompose bool) (string, bo
 		if clean == "." || filepath.IsAbs(clean) || strings.HasPrefix(clean, "..") {
 			return "", false, fmt.Errorf("archive_path_invalid")
 		}
-		expanded += int64(file.UncompressedSize64)
+			expanded += int64(file.UncompressedSize64) //nolint:gosec // G115: bounded by backupMaxExpandedBytes check below.
 		if expanded > backupMaxExpandedBytes {
 			return "", false, fmt.Errorf("archive_too_large")
 		}
@@ -267,7 +268,7 @@ func snapshotComposeBeforeRestore(backupDir string) (string, error) {
 	root := filepath.Join("/app", "compose-source")
 	stat, err := os.Stat(root)
 	if err != nil || !stat.IsDir() {
-		return "", nil
+		return "", nil //nolint:nilerr // No compose source to snapshot.
 	}
 	name := "pre-restore-compose-" + time.Now().Format("20060102-150405") + ".zip"
 	target := filepath.Join(backupDir, name)
@@ -294,7 +295,7 @@ func snapshotComposeBeforeRestore(backupDir string) (string, error) {
 		if err != nil {
 			return err
 		}
-		return writeZipFile(writer, filepath.ToSlash(filepath.Join("compose", rel)), body, 0o600)
+		return writeZipFile(writer, filepath.ToSlash(filepath.Join("compose", rel)), body)
 	})
 	if closeErr := writer.Close(); err == nil {
 		err = closeErr

@@ -281,6 +281,8 @@ func splitCSV(raw string) []string {
 	return result
 }
 
+// NormalizeLanguage converts a language tag to lowercase with hyphens and
+// returns the default language if the result is empty.
 func NormalizeLanguage(raw string) string {
 	value := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(raw), "_", "-"))
 	if value == "" {
