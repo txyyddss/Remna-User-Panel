@@ -273,7 +273,7 @@ func snapshotComposeBeforeRestore(backupDir string) (string, error) {
 	}
 	name := "pre-restore-compose-" + time.Now().Format("20060102-150405") + ".zip"
 	target := filepath.Join(backupDir, name)
-	file, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	file, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600) //nolint:gosec // G304: target is constructed from safe inputs.
 	if err != nil {
 		return "", err
 	}
@@ -292,7 +292,7 @@ func snapshotComposeBeforeRestore(backupDir string) (string, error) {
 		if !isDeploymentConfig(rel) {
 			return nil
 		}
-		body, err := os.ReadFile(path)
+		body, err := os.ReadFile(path) //nolint:gosec // G304: path from filepath.WalkDir, constrained to deployment configs.
 		if err != nil {
 			return err
 		}

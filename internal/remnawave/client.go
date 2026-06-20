@@ -105,14 +105,12 @@ func (c *Client) EffectiveConfig(ctx context.Context) EffectiveConfig {
 }
 
 // Configured reports whether the Remnawave panel has both a base URL and an API key.
-
 func (c *Client) Configured(ctx context.Context) bool {
 	cfg := c.EffectiveConfig(ctx)
 	return cfg.BaseURL != "" && strings.TrimSpace(cfg.APIKey) != ""
 }
 
 // GetUserByUUID retrieves a user by their UUID from the Remnawave panel.
-
 func (c *Client) GetUserByUUID(ctx context.Context, uuid string) (map[string]any, bool, error) {
 	var out map[string]any
 	err := c.request(ctx, http.MethodGet, "/users/"+url.PathEscape(strings.TrimSpace(uuid)), nil, nil, &out)
@@ -126,7 +124,6 @@ func (c *Client) GetUserByUUID(ctx context.Context, uuid string) (map[string]any
 }
 
 // GetUsersByTelegramID retrieves all users associated with a Telegram ID.
-
 func (c *Client) GetUsersByTelegramID(ctx context.Context, telegramID int64) ([]map[string]any, error) {
 	var out []map[string]any
 	err := c.request(ctx, http.MethodGet, "/users/by-telegram-id/"+strconv.FormatInt(telegramID, 10), nil, nil, &out)
@@ -193,7 +190,6 @@ func (c *Client) DeleteUser(ctx context.Context, uuid string) error {
 }
 
 // GetInternalSquads retrieves all internal squads from the Remnawave panel.
-
 func (c *Client) GetInternalSquads(ctx context.Context) ([]map[string]any, error) {
 	var out any
 	if err := c.request(ctx, http.MethodGet, "/internal-squads", nil, nil, &out); err != nil {
@@ -203,7 +199,6 @@ func (c *Client) GetInternalSquads(ctx context.Context) ([]map[string]any, error
 }
 
 // GetInternalSquadAccessibleNodes retrieves the nodes accessible by an internal squad.
-
 func (c *Client) GetInternalSquadAccessibleNodes(ctx context.Context, squadUUID string) ([]map[string]any, error) {
 	var out any
 	err := c.request(ctx, http.MethodGet, "/internal-squads/"+url.PathEscape(strings.TrimSpace(squadUUID))+"/accessible-nodes", nil, nil, &out)
@@ -217,7 +212,6 @@ func (c *Client) GetInternalSquadAccessibleNodes(ctx context.Context, squadUUID 
 }
 
 // AddUsersToInternalSquad adds users to an internal squad.
-
 func (c *Client) AddUsersToInternalSquad(ctx context.Context, squadUUID string, userUUIDs []string) error {
 	return c.request(ctx, http.MethodPost, "/internal-squads/"+url.PathEscape(strings.TrimSpace(squadUUID))+"/bulk-actions/add-users", nil, map[string]any{
 		"users":     cleanStrings(userUUIDs),
@@ -255,7 +249,6 @@ func (c *Client) GetNodesStats(ctx context.Context) (map[string]any, error) {
 }
 
 // GetNodesBandwidthStats retrieves per-node bandwidth statistics with optional query filters.
-
 func (c *Client) GetNodesBandwidthStats(ctx context.Context, query url.Values) (map[string]any, error) {
 	var out map[string]any
 	err := c.request(ctx, http.MethodGet, "/bandwidth-stats/nodes", query, nil, &out)
@@ -263,7 +256,6 @@ func (c *Client) GetNodesBandwidthStats(ctx context.Context, query url.Values) (
 }
 
 // GetUserBandwidthStats retrieves bandwidth statistics for a specific user.
-
 func (c *Client) GetUserBandwidthStats(ctx context.Context, userUUID string, query url.Values) (map[string]any, error) {
 	var out map[string]any
 	err := c.request(ctx, http.MethodGet, "/bandwidth-stats/users/"+url.PathEscape(strings.TrimSpace(userUUID)), query, nil, &out)

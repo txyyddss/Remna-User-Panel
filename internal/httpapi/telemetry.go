@@ -389,7 +389,7 @@ func readSmallBuildFile(path, fallback string) string {
 	return value
 }
 
-var osReadFile = func(path string) ([]byte, error) { return os.ReadFile(path) }
+var osReadFile = func(path string) ([]byte, error) { return os.ReadFile(path) } //nolint:gosec // G304: test helper, callers control paths.
 
 func userCountRange(count int64) string {
 	switch {

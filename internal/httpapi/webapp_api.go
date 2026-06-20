@@ -149,7 +149,7 @@ func telegramLoginNonceHandler(_ config.Settings, pool *pgxpool.Pool) http.Handl
 			return
 		}
 		nonce := base64.RawURLEncoding.EncodeToString(raw)
-		http.SetCookie(w, &http.Cookie{Name: telegramNonceCookieName, Value: nonce, Path: "/", MaxAge: 300, HttpOnly: true, Secure: requestIsHTTPS(r), SameSite: http.SameSiteLaxMode})
+		http.SetCookie(w, &http.Cookie{Name: telegramNonceCookieName, Value: nonce, Path: "/", MaxAge: 300, HttpOnly: true, Secure: requestIsHTTPS(r), SameSite: http.SameSiteLaxMode}) //nolint:gosec // G124: attributes set dynamically.
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "nonce": nonce, "client_id": clientID})
 	}
 }

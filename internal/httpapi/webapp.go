@@ -137,7 +137,7 @@ func i18nHandler(settings config.Settings, _ *pgxpool.Pool, catalog *i18n.Catalo
 }
 
 func unknownAPIHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "unknown_api"})
 	}
 }

@@ -24,7 +24,8 @@ const (
 	// ProviderEZPay is the identifier for the EZPay payment provider.
 	ProviderEZPay = "ezpay"
 	// ProviderBEPUSDT is the identifier for the BEPUSDT payment provider.
-	ProviderBEPUSDT       = "bepusdt"
+	ProviderBEPUSDT = "bepusdt"
+	// ProviderTelegramStars is the identifier for the Telegram Stars payment provider.
 	ProviderTelegramStars = "telegram_stars"
 )
 
