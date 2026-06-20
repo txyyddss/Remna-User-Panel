@@ -60,11 +60,6 @@ export function rowsFromPackages(packageSet, currency, valueKey) {
   }));
 }
 
-function packageValueSignature(value) {
-  const num = Number(value);
-  return Number.isFinite(num) ? String(num) : String(value || "");
-}
-
 export function packageRowsFromPackageSet(packageSet, currency, valueKey) {
   return (packageSet?.[currency] || []).map((pkg) => ({
     [valueKey]: pkg[valueKey],

@@ -1,0 +1,38 @@
+# Gitleaks configuration for Remna User Panel
+# https://github.com/gitleaks/gitleaks#configuration
+
+title: "Remna User Panel – Gitleaks config"
+
+[allowlist]
+  description = "Global allowlist for false positives"
+
+  # Allow common test / example patterns that look like secrets
+  regexes = [
+    '''EXAMPLE_API_KEY''',
+    '''test_token_placeholder''',
+    '''00000000-0000-0000-0000-000000000000''',
+  ]
+
+  paths = [
+    '''\.github/''',
+    '''deploy/.*/nginx/''',
+    '''deploy/.*/caddy/''',
+    '''examples/''',
+    '''docs/''',
+    '''scripts/.*\.(ps1|sh)''',
+    '''\.gitleaks\.toml''',
+  ]
+
+# Stop words – tokens containing these substrings are ignored
+[[allowlist.stopwords]]
+  description = "Ignore tokens containing common non-secret placeholders"
+  stopwords = [
+    "example",
+    "sample",
+    "placeholder",
+    "changeme",
+    "CHANGE_ME",
+    "your-key",
+    "your-secret",
+    "test-key",
+  ]

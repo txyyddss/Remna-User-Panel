@@ -31,7 +31,7 @@
 
   const settingsStore = getContext("settingsStore");
 
-  $: ({ settingsSections, settingsLoading, settingsDirty, settingsSaving } = $settingsStore);
+  $: ({ settingsSections, settingsLoading, settingsDirty } = $settingsStore);
 
   const SETTINGS_SECTION_IDS_HIDDEN_IN_GENERAL_SETTINGS = new Set(["appearance", "pricing"]);
 
@@ -251,7 +251,7 @@
   }
 
   function settingsPathAnchorKey(path, target) {
-    const [sectionSegment, subsectionSegment, fieldGroupSegment] = normalizeSettingsPath(path);
+    const [_sectionSegment, _subsectionSegment, fieldGroupSegment] = normalizeSettingsPath(path);
     if (!target?.group || !fieldGroupSegment) return target?.anchorKey;
     const fieldGroup = findSettingsFieldGroup(target.section, target.group, fieldGroupSegment);
     if (!fieldGroup) return target.anchorKey;

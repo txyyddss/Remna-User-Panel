@@ -104,13 +104,11 @@ const withDemoAvatarDetail = (detail) => detail;
 const withDemoAvatarTicket = (ticket) => ticket;
 
 const DEMO_LANGUAGE_STORAGE_KEY = "rw_minishop_demo_language";
-const DEMO_I18N_SCRIPT_ID = "i18n";
 let demoPromosState = null;
 let demoAdsState = null;
 let demoSupportTicketsState = null;
 let demoSupportMessagesState = null;
 let demoTariffsState = null;
-let demoPaymentSequence = 20000;
 const demoSettingsChanges = new Map();
 const demoPaymentStatuses = new Map();
 const DEFAULT_DEMO_AUTH_EMAIL = "admin@example.com";
@@ -2123,7 +2121,6 @@ export async function mockApi(path, options = {}, context = {}) {
     };
   }
   if (path === "/payments" && String(options.method || "").toUpperCase() === "POST") {
-    const body = jsonBody(options);
     return {
       ok: true,
       action: "open_link",

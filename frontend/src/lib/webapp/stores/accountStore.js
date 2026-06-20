@@ -13,7 +13,7 @@ export function createAccountStore({
   markManualLogout,
   showLogin,
   telegramSdk,
-  getTg,
+  _getTg,
   telegramOAuthClientId,
   currentLang,
   normalizeLangCode,

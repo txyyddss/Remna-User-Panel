@@ -17,7 +17,7 @@
 
   const promosStore = getContext("promosStore");
 
-  $: ({ promos, promosTotal, promosLoading, promoCreateOpen, promoDraft } =
+  $: ({ promos, promosLoading, promoCreateOpen, promoDraft } =
     $promosStore);
 
   $: promoHeaders = [
