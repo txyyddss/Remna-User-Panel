@@ -31,7 +31,6 @@ func main() {
 		slog.Error("failed to initialize backend runtime", "error", err)
 		os.Exit(1)
 	}
-	defer func() { _ = runtime.Close(context.Background()) }()
 
 	if err := runtime.StartBackend(ctx); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.Error("backend stopped with error", "error", err)

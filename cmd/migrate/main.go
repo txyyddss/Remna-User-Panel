@@ -62,7 +62,11 @@ func ensureDatabase(ctx context.Context, settings config.Settings) error {
 	// 构建到 postgres 默认数据库的连接串
 	defaultURL := replaceDatabaseName(settings.DatabaseURL, "postgres")
 
-	pool, err := pgxpool.New(ctx, defaultURL)
+	poolConfig, err := pgxpool.ParseConfig(defaultURL)
+	if err != nil {
+		return fmt.Errorf("parse postgres default database url: %w", err)
+	}
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
 		return fmt.Errorf("connect to postgres default database: %w", err)
 	}

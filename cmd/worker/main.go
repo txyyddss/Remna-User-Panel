@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"remna-user-panel/internal/app"
 	"remna-user-panel/internal/config"
@@ -28,10 +29,15 @@ func main() {
 		slog.Error("failed to initialize worker runtime", "error", err)
 		os.Exit(1)
 	}
-	defer func() { _ = runtime.Close(context.Background()) }()
 
 	if err := runtime.StartWorker(ctx); err != nil {
 		slog.Error("worker stopped with error", "error", err)
 		os.Exit(1)
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	if err := runtime.Close(shutdownCtx); err != nil {
+		slog.Warn("worker shutdown finished with warnings", "error", err)
 	}
 }

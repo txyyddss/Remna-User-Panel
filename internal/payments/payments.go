@@ -180,7 +180,7 @@ func (r *Registry) EffectiveConfig(ctx context.Context) Config {
 		BEPUSDT:             bepusdt,
 		PaymentMethodsOrder: splitList(orderRaw),
 		WebhookBaseURL:      strings.TrimRight(r.store.String(ctx, "WEBHOOK_BASE_URL", r.settings.WebhookBaseURL), "/"),
-		StarsEnabled:        r.store.Bool(ctx, "STARS_ENABLED", false),
+		StarsEnabled:        r.store.Bool(ctx, "STARS_ENABLED", r.settings.StarsEnabled),
 		StarsUSDRate:        r.store.Float(ctx, "STARS_USD_RATE", r.settings.StarsUSDRate),
 	}
 }

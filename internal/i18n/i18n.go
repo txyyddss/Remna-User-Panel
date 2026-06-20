@@ -43,10 +43,25 @@ func Load(localesDir string, defaultLang string) (*Catalog, error) {
 	return catalog, nil
 }
 
-// Translate returns a localized message with zh -> en fallback.
+// Translate returns a localized message with language fallback chain.
 func (c *Catalog) Translate(lang string, key string) string {
 	lang = normalizeLanguage(lang)
-	for _, candidate := range []string{lang, c.defaultLang, "zh", "en"} {
+	seen := map[string]bool{}
+	candidates := []string{}
+	// Priority: requested lang, then defaultLang, then all other loaded languages.
+	for _, candidate := range []string{lang, c.defaultLang} {
+		if !seen[candidate] {
+			candidates = append(candidates, candidate)
+			seen[candidate] = true
+		}
+	}
+	for l := range c.messages {
+		if !seen[l] {
+			candidates = append(candidates, l)
+			seen[l] = true
+		}
+	}
+	for _, candidate := range candidates {
 		if value := c.messages[candidate][key]; value != "" {
 			return value
 		}

@@ -45,7 +45,7 @@ func sendTelegramMessage(ctx context.Context, settings config.Settings, chatID i
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := telegramHTTPClient.Do(req)
 	if err != nil {
 		return err
 	}

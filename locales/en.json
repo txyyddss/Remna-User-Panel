@@ -2279,5 +2279,8 @@
   "admin_health_smtp_incomplete": "SMTP is enabled but incomplete.",
   "admin_health_bot_token_invalid": "BOT_TOKEN is not configured.",
   "admin_health_panel_api_not_configured": "Remnawave API is not configured.",
-  "admin_health_panel_api_unreachable": "Remnawave is unavailable at {url}."
+  "admin_health_panel_api_unreachable": "Remnawave is unavailable at {url}.",
+  "email_template_verify": "# {{.Brand}}\n\nYour verification code is:\n\n**{{.Code}}**\n\nThis code expires in **{{.ExpireMinutes}}** minutes. If you did not request this, ignore this email.\n\n---\nThis is an automated message from {{.Brand}}.",
+  "email_template_password_reset": "# {{.Brand}}\n\nYou are resetting your password. Your verification code is:\n\n**{{.Code}}**\n\nThis code expires in **{{.ExpireMinutes}}** minutes. If you did not request this, ignore this email.\n\n---\nThis is an automated message from {{.Brand}}.",
+  "email_template_login": "# {{.Brand}}\n\nYour login verification code is:\n\n**{{.Code}}**\n\nThis code expires in **{{.ExpireMinutes}}** minutes. If you did not request this, ignore this email.\n\n---\nThis is an automated message from {{.Brand}}."
 }

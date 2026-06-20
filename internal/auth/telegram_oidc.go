@@ -121,7 +121,10 @@ func telegramPublicKey(ctx context.Context, kid string) (*rsa.PublicKey, error) 
 	if time.Now().Before(telegramKeys.expires) && telegramKeys.keys[kid] != nil {
 		return telegramKeys.keys[kid], nil
 	}
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, telegramJWKSURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, telegramJWKSURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create jwks request: %w", err)
+	}
 	client := &http.Client{Timeout: 8 * time.Second}
 	response, err := client.Do(req)
 	if err != nil {

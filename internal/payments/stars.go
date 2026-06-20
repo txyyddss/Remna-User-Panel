@@ -31,7 +31,10 @@ func createTelegramStarsInvoice(ctx context.Context, client *http.Client, botTok
 		description = string([]rune(description)[:255])
 	}
 	payload := map[string]any{"title": title, "description": description, "payload": req.OrderID, "currency": "XTR", "prices": []map[string]any{{"label": title, "amount": amount}}}
-	body, _ := json.Marshal(payload)
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return providerPaymentResponse{}, fmt.Errorf("marshal stars payload: %w", err)
+	}
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.telegram.org/bot"+strings.TrimSpace(botToken)+"/createInvoiceLink", bytes.NewReader(body))
 	if err != nil {
 		return providerPaymentResponse{}, err

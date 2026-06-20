@@ -142,7 +142,14 @@
 
   function iconSvg(key) {
     const iconKey = String(key || "").trim();
-    return iconKey ? config?.svgLibrary?.[iconKey] || "" : "";
+    if (!iconKey) return "";
+    const raw = config?.svgLibrary?.[iconKey] || "";
+    if (!raw) return "";
+    // Sanitize SVG to prevent XSS: strip <script> tags and event handler attributes.
+    return raw
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, "")
+      .replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, "")
+      .replace(/\s+on\w+\s*=\s*[^\s>]+/gi, "");
   }
 
   function iconColorStyle(color) {

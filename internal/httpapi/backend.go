@@ -199,13 +199,16 @@ func validateStarsOrder(ctx context.Context, pool *pgxpool.Pool, orderID string,
 }
 
 func callTelegramBotAPI(ctx context.Context, settings config.Settings, method string, payload any) error {
-	body, _ := json.Marshal(payload)
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal telegram payload: %w", err)
+	}
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.telegram.org/bot"+strings.TrimSpace(settings.BotToken)+"/"+method, bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 	request.Header.Set("Content-Type", "application/json")
-	response, err := http.DefaultClient.Do(request)
+	response, err := telegramHTTPClient.Do(request)
 	if err != nil {
 		return err
 	}

@@ -68,6 +68,7 @@ func (g *Group) Run(ctx context.Context) error {
 // Interval returns a task that executes fn immediately and then on interval.
 func Interval(interval time.Duration, fn func(context.Context) error) Task {
 	if interval <= 0 {
+		slog.Warn("worker interval not positive, using default 1 minute", "interval", interval)
 		interval = time.Minute
 	}
 	return func(ctx context.Context) error {

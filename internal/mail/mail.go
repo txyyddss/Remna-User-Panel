@@ -5,6 +5,7 @@ package mail
 import (
 	"crypto/tls"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/smtp"
 	"strings"
@@ -162,6 +163,9 @@ func (m *Mailer) sendWithSTARTTLS(addr string, to []string, msg string) error {
 }
 
 func (m *Mailer) sendPlain(addr string, to []string, msg string) error {
+	if m.config.Username != "" || m.config.Password != "" {
+		slog.Warn("SMTP running without TLS encryption — credentials will be transmitted in plaintext and may be intercepted on the network")
+	}
 	conn, err := net.DialTimeout("tcp", addr, 10*time.Second)
 	if err != nil {
 		return fmt.Errorf("dial: %w", err)

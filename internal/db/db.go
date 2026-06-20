@@ -15,6 +15,9 @@ const dbInitAdvisoryLockID int64 = 817512404897421337
 
 // Open creates a PostgreSQL connection pool.
 func Open(ctx context.Context, settings config.Settings) (*pgxpool.Pool, error) {
+	if settings.DatabaseURL == "" {
+		return nil, fmt.Errorf("database url is empty")
+	}
 	poolConfig, err := pgxpool.ParseConfig(settings.DatabaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("parse database url: %w", err)
@@ -31,14 +34,16 @@ func Open(ctx context.Context, settings config.Settings) (*pgxpool.Pool, error) 
 }
 
 // RunMigrations applies the Go migration chain.
-func RunMigrations(ctx context.Context, pool *pgxpool.Pool, settings config.Settings) error {
+func RunMigrations(ctx context.Context, pool *pgxpool.Pool, settings config.Settings) (commitErr error) {
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin migration transaction: %w", err)
 	}
 	defer func() {
-		if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
-			slog.Debug("migration rollback skipped", "error", rollbackErr)
+		if commitErr != nil {
+			if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+				slog.Warn("migration rollback failed", "error", rollbackErr)
+			}
 		}
 	}()
 

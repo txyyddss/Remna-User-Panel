@@ -2,7 +2,6 @@
 package telegram
 
 import (
-	"context"
 	"fmt"
 
 	tgbot "github.com/go-telegram/bot"
@@ -11,8 +10,7 @@ import (
 )
 
 // NewBot creates a Telegram bot client configured for webhook secret verification.
-func NewBot(ctx context.Context, settings config.Settings) (*tgbot.Bot, error) {
-	_ = ctx
+func NewBot(settings config.Settings) (*tgbot.Bot, error) {
 	if settings.BotToken == "" {
 		return nil, fmt.Errorf("BOT_TOKEN is required")
 	}

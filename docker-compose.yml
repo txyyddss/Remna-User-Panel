@@ -65,6 +65,11 @@ services:
       - ${COMPOSE_BACKUP_SOURCE:-.}:/app/compose-source:ro
     networks:
       - remna-user-panel
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB} || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   migrate:
     container_name: remna-user-panel-migrate
@@ -112,7 +117,7 @@ services:
     image: redis:7-alpine
     container_name: remna-user-panel-redis
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
     volumes:
       - redis-data:/data
     networks:

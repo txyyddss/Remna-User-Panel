@@ -1,6 +1,9 @@
 package httpapi
 
-import "net/http"
+import (
+	"net/http"
+	"time"
+)
 
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -8,7 +11,7 @@ func securityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Referrer-Policy", "same-origin")
 		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-		w.Header().Set("Content-Security-Policy", "default-src 'self' https://telegram.org https://*.telegram.org; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://telegram.org https://*.telegram.org; connect-src 'self' https:; frame-ancestors 'none'")
+		w.Header().Set("Content-Security-Policy", "default-src 'self' https://telegram.org https://*.telegram.org; img-src 'self' data: https:; style-src 'self'; script-src 'self' https://telegram.org https://*.telegram.org; connect-src 'self' https:; frame-ancestors 'none'")
 		next.ServeHTTP(w, r)
 	})
 }
@@ -23,3 +26,6 @@ func requestBodyLimit(limit int64) func(http.Handler) http.Handler {
 		})
 	}
 }
+
+// client is a shared HTTP client with a reasonable timeout for external calls.
+var telegramHTTPClient = &http.Client{Timeout: 30 * time.Second}

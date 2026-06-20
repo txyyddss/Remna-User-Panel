@@ -117,7 +117,7 @@ func webappRuntimeConfig(ctx context.Context, settings config.Settings, pool *pg
 		"title": store.String(ctx, "WEBAPP_TITLE", "Subscription"), "primaryColor": store.String(ctx, "WEBAPP_PRIMARY_COLOR", "#00fe7a"),
 		"apiBase": "/api", "language": effectiveDefaultLanguage(ctx, pool, settings), "languages": languageOptions(catalog),
 		"emailAuthEnabled": emailAuthEnabled, "logoUrl": logoURL,
-		"telegramLoginClientId": store.String(ctx, "TELEGRAM_LOGIN_CLIENT_ID", os.Getenv("TELEGRAM_LOGIN_CLIENT_ID")),
+		"telegramLoginClientId": store.String(ctx, "TELEGRAM_LOGIN_CLIENT_ID", ""),
 		"faviconUrl": faviconURL, "faviconUseCustom": useCustomFavicon,
 		"supportUrl": store.String(ctx, "SUPPORT_LINK", ""), "serverStatusUrl": store.String(ctx, "SERVER_STATUS_URL", ""),
 		"privacyPolicyUrl": store.String(ctx, "PRIVACY_POLICY_URL", ""), "userAgreementUrl": store.String(ctx, "USER_AGREEMENT_URL", ""),
@@ -180,7 +180,9 @@ func registerAssetRoutes(router chi.Router, assets webassets.Paths) {
 
 func serveThemeFile(w http.ResponseWriter, r *http.Request, root string, prefix string) {
 	rel := strings.TrimPrefix(r.URL.Path, prefix)
-	rel = strings.TrimPrefix(filepath.Clean("/"+rel), string(filepath.Separator))
+	// Clean the path and ensure it doesn't escape the root directory.
+	rel = filepath.Clean(rel)
+	rel = strings.TrimLeft(rel, "/\\")
 	if rel == "." || rel == "" || strings.HasPrefix(rel, "..") {
 		http.NotFound(w, r)
 		return
@@ -235,8 +237,9 @@ func serveWebAppLogo(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				continue
 			}
-			if info.ModTime().After(latestTime) {
-				latestTime = info.ModTime()
+			modTime := info.ModTime()
+			if modTime.After(latestTime) || (modTime.Equal(latestTime) && entry.Name() > latest) {
+				latestTime = modTime
 				latest = entry.Name()
 			}
 		}

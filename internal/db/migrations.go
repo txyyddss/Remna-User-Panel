@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS users (
 	telegram_notifications_blocked_at TIMESTAMPTZ NULL,
 	first_name VARCHAR NULL,
 	last_name VARCHAR NULL,
-	language_code VARCHAR NOT NULL DEFAULT '`+defaultLanguage+`',
+	language_code VARCHAR NOT NULL DEFAULT '`+defaultLanguage+`', // safe: normalized by normalizeLanguage (a-z and - only)
 	registration_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 	is_banned BOOLEAN NOT NULL DEFAULT FALSE,
 	panel_user_uuid VARCHAR NULL UNIQUE,

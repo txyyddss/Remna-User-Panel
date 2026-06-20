@@ -21,6 +21,7 @@ type Catalog struct {
 	DefaultCurrency string            `json:"default_currency"`
 	PlanHashes      map[string]string `json:"plan_hashes,omitempty"`
 	Tariffs         []Tariff          `json:"tariffs"`
+	planIndex       map[string]Plan
 }
 
 // Tariff is one product family in the catalog.
@@ -104,7 +105,8 @@ func Load(path string) (Catalog, error) {
 }
 
 // Plans returns enabled purchase plans for a display language and currency.
-func (c Catalog) Plans(language string, fallbackCurrency string) []Plan {
+// Also builds an internal plan hash index for fast lookup.
+func (c *Catalog) Plans(language string, fallbackCurrency string) []Plan {
 	currency := normalizedCurrency(c.DefaultCurrency)
 	if currency == "" {
 		currency = normalizedCurrency(fallbackCurrency)
@@ -180,14 +182,28 @@ func (c Catalog) Plans(language string, fallbackCurrency string) []Plan {
 		}
 		return result[i].TrafficGB < result[j].TrafficGB
 	})
+	// Build plan hash index for O(1) lookups.
+	if c.planIndex == nil {
+		c.planIndex = make(map[string]Plan, len(result))
+	}
+	for _, plan := range result {
+		c.planIndex[plan.PlanHash] = plan
+	}
 	return result
 }
 
 // FindPlanByHash returns the immutable server-side purchase option selected by hash.
-func (c Catalog) FindPlanByHash(planHash string, language string, fallbackCurrency string) (Plan, bool) {
+// Uses an internal index for O(1) lookup after the first Plans() call for a given
+// currency; falls back to linear scan if the index is cold.
+func (c *Catalog) FindPlanByHash(planHash string, language string, fallbackCurrency string) (Plan, bool) {
 	needle := strings.TrimSpace(planHash)
 	if needle == "" {
 		return Plan{}, false
+	}
+	if c.planIndex != nil {
+		if plan, ok := c.planIndex[needle]; ok {
+			return plan, true
+		}
 	}
 	for _, plan := range c.Plans(language, fallbackCurrency) {
 		if plan.PlanHash == needle {
@@ -238,7 +254,7 @@ func WithCNYDisplay(plans []Plan, rate float64, source string, updatedAt time.Ti
 }
 
 // FindPlan returns the server-trusted plan matching a user selection.
-func (c Catalog) FindPlan(selection PaymentSelection, language string, fallbackCurrency string) (Plan, bool) {
+func (c *Catalog) FindPlan(selection PaymentSelection, language string, fallbackCurrency string) (Plan, bool) {
 	saleMode := strings.ToLower(strings.TrimSpace(selection.SaleMode))
 	if saleMode == "" {
 		saleMode = "subscription"

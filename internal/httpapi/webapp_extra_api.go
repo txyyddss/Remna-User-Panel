@@ -13,7 +13,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -2380,8 +2379,7 @@ func adminBackupRestoreHandler(settings config.Settings, pool *pgxpool.Pool) htt
 		if payload.RestoreDatabase {
 			// Try to restore database using pg_restore if postgres tools are available
 			if settings.DatabaseURL != "" && databasePath != "" {
-				cmd := exec.CommandContext(r.Context(), "pg_restore",
-					"-d", settings.DatabaseURL,
+				cmd := safePgCommand(r.Context(), settings.DatabaseURL, "pg_restore",
 					"--clean",
 					"--if-exists",
 					"--no-owner",

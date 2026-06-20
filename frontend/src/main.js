@@ -24,7 +24,7 @@ async function loadBootstrap() {
       document.head.appendChild(script);
     }
   } catch (_error) {
-    void _error;
+    console.error("Failed to load application bootstrap:", _error);
   }
 }
 

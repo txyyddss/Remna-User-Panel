@@ -3,7 +3,9 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"net"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -57,6 +59,7 @@ type Settings struct {
 	SubscriptionNotifyHoursBefore int
 	SubscriptionNotifyDaysBefore  int
 	StarsUSDRate                  float64
+	StarsEnabled                  bool
 }
 
 // EZPaySettings contains EZPay merchant configuration.
@@ -141,6 +144,7 @@ func Load() (Settings, error) {
 		SubscriptionNotifyHoursBefore: envInt("SUBSCRIPTION_NOTIFY_HOURS_BEFORE", 0),
 		SubscriptionNotifyDaysBefore:  envInt("SUBSCRIPTION_NOTIFY_DAYS_BEFORE", 3),
 		StarsUSDRate:                  envFloat("STARS_USD_RATE", 0),
+		StarsEnabled:                 envBool("STARS_ENABLED", false),
 	}
 	settings.AdminIDs = parseInt64List(env("ADMIN_IDS", ""))
 	settings.TrustedProxies = splitCSV(env("TRUSTED_PROXIES", "127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7"))
@@ -258,6 +262,8 @@ func parseInt64List(raw string) []int64 {
 		value, err := strconv.ParseInt(part, 10, 64)
 		if err == nil {
 			result = append(result, value)
+		} else {
+			slog.Warn("invalid admin id ignored", "value", part, "error", err)
 		}
 	}
 	return result
@@ -296,6 +302,5 @@ func normalizeTrafficStrategy(raw string) string {
 }
 
 func urlQueryEscape(value string) string {
-	replacer := strings.NewReplacer(" ", "%20", "@", "%40", ":", "%3A", "/", "%2F", "?", "%3F", "#", "%23")
-	return replacer.Replace(value)
+	return url.QueryEscape(value)
 }

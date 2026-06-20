@@ -33,7 +33,7 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: templateDir,
       emptyOutDir: false,
-      minify: false,
+      minify: mode === "production",
       sourcemap: false,
       cssCodeSplit: false,
       lib: {

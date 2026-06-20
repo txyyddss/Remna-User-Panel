@@ -32,6 +32,9 @@ const (
 
 // Default email templates (Markdown). Admins can override via app_settings keys
 // EMAIL_TEMPLATE_VERIFY, EMAIL_TEMPLATE_PASSWORD_RESET, EMAIL_TEMPLATE_LOGIN.
+// To support multiple languages, configure these settings in the admin panel
+// with translated text. i18n keys email_template_verify / email_template_password_reset /
+// email_template_login are available in locale files as reference.
 const defaultVerifyTemplate = `# {{.Brand}}
 
 您的邮箱验证码如下

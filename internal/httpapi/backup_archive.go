@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,6 +22,42 @@ const (
 	backupMaxFiles               = 2000
 	backupMaxExpandedBytes int64 = 1 << 30
 )
+
+// safePgCommand builds an exec.Cmd for pg_dump/pg_restore using separate
+// connection parameters instead of passing the full DatabaseURL as a
+// command-line argument, preventing potential shell injection.
+func safePgCommand(ctx context.Context, databaseURL string, prog string, extraArgs ...string) *exec.Cmd {
+	u, err := url.Parse(databaseURL)
+	if err != nil {
+		// Fallback: if parsing fails, use the URL directly (backwards compatibility).
+		args := append([]string{"-d", databaseURL}, extraArgs...)
+		return exec.CommandContext(ctx, prog, args...)
+	}
+	args := []string{}
+	if host := u.Hostname(); host != "" {
+		args = append(args, "-h", host)
+	}
+	if port := u.Port(); port != "" {
+		args = append(args, "-p", port)
+	}
+	if u.User != nil {
+		if username := u.User.Username(); username != "" {
+			args = append(args, "-U", username)
+		}
+	}
+	dbName := strings.TrimPrefix(u.Path, "/")
+	if dbName != "" {
+		args = append(args, "-d", dbName)
+	}
+	args = append(args, extraArgs...)
+	cmd := exec.CommandContext(ctx, prog, args...)
+	if u.User != nil {
+		if password, ok := u.User.Password(); ok {
+			cmd.Env = append(os.Environ(), "PGPASSWORD="+password)
+		}
+	}
+	return cmd
+}
 
 type backupArchiveInfo struct {
 	Name        string   `json:"name"`
@@ -81,7 +118,7 @@ func createBackupArchive(ctx context.Context, settings config.Settings, target s
 	if strings.TrimSpace(settings.DatabaseURL) == "" {
 		return backupArchiveInfo{}, fmt.Errorf("database_url_not_configured")
 	}
-	output, err := exec.CommandContext(ctx, "pg_dump", "-d", settings.DatabaseURL, "--format=custom", "--no-owner", "--no-privileges", "-f", dumpPath).CombinedOutput()
+	output, err := safePgCommand(ctx, settings.DatabaseURL, "pg_dump", "--format=custom", "--no-owner", "--no-privileges", "-f", dumpPath).CombinedOutput()
 	if err != nil {
 		return backupArchiveInfo{}, fmt.Errorf("pg_dump_failed: %s", strings.TrimSpace(string(output)))
 	}

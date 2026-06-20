@@ -3,6 +3,7 @@ package webassets
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 )
@@ -25,6 +26,10 @@ func Resolve() (Paths, error) {
 	}
 	if _, err := os.Stat(filepath.Join(paths.TemplatesDir, "subscription_webapp.html")); err != nil {
 		return Paths{}, fmt.Errorf("subscription webapp template missing: %w", err)
+	}
+	// Warn if themes directory is missing (non-fatal, admin may not use themes).
+	if _, err := os.Stat(paths.ThemesDir); err != nil {
+		slog.Warn("themes directory is missing, theme support disabled", "dir", paths.ThemesDir)
 	}
 	return paths, nil
 }

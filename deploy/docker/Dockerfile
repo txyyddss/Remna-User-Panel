@@ -77,6 +77,8 @@ RUN set -eux; \
     echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
       > /etc/apt/sources.list.d/pgdg.list; \
     apt-get update; \
+    # postgresql-client-17 provides pg_dump and pg_restore for the database
+    # backup/restore feature accessible from the admin panel.
     apt-get install -y --no-install-recommends postgresql-client-17; \
     apt-get purge -y --auto-remove gnupg; \
     rm -rf /var/lib/apt/lists/*

@@ -2276,5 +2276,8 @@
   "admin_health_smtp_incomplete": "SMTP 已启用但配置不完整。",
   "admin_health_bot_token_invalid": "未配置 BOT_TOKEN。",
   "admin_health_panel_api_not_configured": "未配置 Remnawave API。",
-  "admin_health_panel_api_unreachable": "无法访问 {url} 的 Remnawave。"
+  "admin_health_panel_api_unreachable": "无法访问 {url} 的 Remnawave。",
+  "email_template_verify": "# {{.Brand}}\n\n您的邮箱验证码如下\n\n**{{.Code}}**\n\n验证码 **{{.ExpireMinutes}}** 分钟内有效。如非本人操作请忽略。\n\n---\n这是来自 {{.Brand}} 的自动邮件。",
+  "email_template_password_reset": "# {{.Brand}}\n\n您正在重置密码，验证码如下\n\n**{{.Code}}**\n\n验证码 **{{.ExpireMinutes}}** 分钟内有效。如非本人操作请忽略。\n\n---\n这是来自 {{.Brand}} 的自动邮件。",
+  "email_template_login": "# {{.Brand}}\n\n您的登录验证码如下\n\n**{{.Code}}**\n\n验证码 **{{.ExpireMinutes}}** 分钟内有效。如非本人操作请忽略。\n\n---\n这是来自 {{.Brand}} 的自动邮件。"
 }
