@@ -116,7 +116,7 @@ func webappRuntimeConfig(ctx context.Context, settings config.Settings, pool *pg
 		"apiBase": "/api", "language": effectiveDefaultLanguage(ctx, pool, settings), "languages": languageOptions(catalog),
 		"emailAuthEnabled": emailAuthEnabled, "logoUrl": logoURL,
 		"telegramLoginClientId": store.String(ctx, "TELEGRAM_LOGIN_CLIENT_ID", ""),
-		"faviconUrl": faviconURL, "faviconUseCustom": useCustomFavicon,
+		"faviconUrl":            faviconURL, "faviconUseCustom": useCustomFavicon,
 		"supportUrl": store.String(ctx, "SUPPORT_LINK", ""), "serverStatusUrl": store.String(ctx, "SERVER_STATUS_URL", ""),
 		"privacyPolicyUrl": store.String(ctx, "PRIVACY_POLICY_URL", ""), "userAgreementUrl": store.String(ctx, "USER_AGREEMENT_URL", ""),
 		"themesCatalog": readThemeCatalog(ctx, store, assets.ThemesDir),

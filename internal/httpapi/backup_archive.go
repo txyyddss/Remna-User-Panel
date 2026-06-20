@@ -26,6 +26,7 @@ const (
 // safePgCommand builds an exec.Cmd for pg_dump/pg_restore using separate
 // connection parameters instead of passing the full DatabaseURL as a
 // command-line argument, preventing potential shell injection.
+//
 //nolint:gosec // SafePgCommand constructs args from parsed URL, not user input.
 func safePgCommand(ctx context.Context, databaseURL string, prog string, extraArgs ...string) *exec.Cmd {
 	u, err := url.Parse(databaseURL)
@@ -224,7 +225,7 @@ func extractBackupArchive(path, tempDir string, restoreCompose bool) (string, bo
 		if clean == "." || filepath.IsAbs(clean) || strings.HasPrefix(clean, "..") {
 			return "", false, fmt.Errorf("archive_path_invalid")
 		}
-			expanded += int64(file.UncompressedSize64) //nolint:gosec // G115: bounded by backupMaxExpandedBytes check below.
+		expanded += int64(file.UncompressedSize64) //nolint:gosec // G115: bounded by backupMaxExpandedBytes check below.
 		if expanded > backupMaxExpandedBytes {
 			return "", false, fmt.Errorf("archive_too_large")
 		}

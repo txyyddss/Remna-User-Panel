@@ -11,12 +11,12 @@ import (
 )
 
 const (
-	messageLogRetentionHours   = 72
-	paymentOrderRetentionHours = 72
+	messageLogRetentionHours     = 72
+	paymentOrderRetentionHours   = 72
 	webhookEventRetentionHours   = 72
 	telegramOutboxRetentionHours = 72
-	closedTicketRetentionHours = 24
-	pendingOrderExpireHours    = 1
+	closedTicketRetentionHours   = 24
+	pendingOrderExpireHours      = 1
 )
 
 // RunDataCleanup removes expired data from the database to save space.

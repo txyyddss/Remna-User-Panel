@@ -776,11 +776,16 @@ func adminHealthHandler(settings config.Settings, pool *pgxpool.Pool, panel *rem
 		}
 		status := "ok"
 		for _, alert := range alerts {
-			if alert["severity"] == "error" { status = "error"; break }
+			if alert["severity"] == "error" {
+				status = "error"
+				break
+			}
 			status = "warning"
 		}
 		payload := map[string]any{"ok": true, "status": status, "checks": checks, "alerts": alerts, "checked_at": time.Now().UTC()}
-		if pool != nil { payload["db_pool"] = pool.Stat() }
+		if pool != nil {
+			payload["db_pool"] = pool.Stat()
+		}
 		writeJSON(w, http.StatusOK, payload)
 	}
 }
@@ -870,12 +875,12 @@ FROM payment_orders p LEFT JOIN users u ON u.user_id=p.user_id ORDER BY p.create
 		var heartbeatDate, version, provenance, osName, locale, userRange string
 		_ = pool.QueryRow(ctx, `SELECT heartbeat_date::text,version,provenance,os,locale,user_count_range FROM installation_heartbeats ORDER BY heartbeat_date DESC LIMIT 1`).Scan(&heartbeatDate, &version, &provenance, &osName, &locale, &userRange)
 		payload := map[string]any{
-			"ok": true,
+			"ok":              true,
 			"currency_symbol": effectiveDefaultCurrency(ctx, settings, pool),
-			"users": users,
-			"financial": financial,
+			"users":           users,
+			"financial":       financial,
 			"recent_payments": recentPayments,
-			"panel_sync": LastPanelSyncStatus(ctx, pool),
+			"panel_sync":      LastPanelSyncStatus(ctx, pool),
 			"local_analytics": map[string]any{"anonymous_visitors": anonymousVisitors, "invite_visits": inviteVisits, "rejected_welcome_rewards": rejectedRewards, "heartbeat": map[string]any{"date": heartbeatDate, "version": version, "provenance": provenance, "os": osName, "locale": locale, "user_count_range": userRange}},
 		}
 		var queuedMessages, failedMessages int64
@@ -883,9 +888,15 @@ FROM payment_orders p LEFT JOIN users u ON u.user_id=p.user_id ORDER BY p.create
 		payload["queue"] = map[string]any{"user_queue_size": queuedMessages, "failed_messages": failedMessages}
 		if panel != nil && panel.Configured(ctx) {
 			panelStats := map[string]any{}
-			if stats, err := panel.GetSystemStats(ctx); err == nil { panelStats["system"] = stats }
-			if bandwidth, err := panel.GetBandwidthStats(ctx); err == nil { panelStats["bandwidth"] = bandwidth }
-			if nodes, err := panel.GetNodesStats(ctx); err == nil { panelStats["nodes"] = nodes }
+			if stats, err := panel.GetSystemStats(ctx); err == nil {
+				panelStats["system"] = stats
+			}
+			if bandwidth, err := panel.GetBandwidthStats(ctx); err == nil {
+				panelStats["bandwidth"] = bandwidth
+			}
+			if nodes, err := panel.GetNodesStats(ctx); err == nil {
+				panelStats["nodes"] = nodes
+			}
 			payload["panel"] = panelStats
 		}
 		writeJSON(w, http.StatusOK, payload)
@@ -893,7 +904,9 @@ FROM payment_orders p LEFT JOIN users u ON u.user_id=p.user_id ORDER BY p.create
 }
 
 func maxInt64(a, b int64) int64 {
-	if a > b { return a }
+	if a > b {
+		return a
+	}
 	return b
 }
 
@@ -1596,12 +1609,12 @@ func adminBroadcastAudienceHandler(settings config.Settings, pool *pgxpool.Pool)
 		}
 		counts := map[string]int64{}
 		queries := map[string]string{
-			"all": "is_banned=FALSE",
-			"active": "is_banned=FALSE AND UPPER(COALESCE(panel_status,'')) IN ('ACTIVE','LIMITED') AND (panel_expire_at IS NULL OR panel_expire_at>NOW())",
-			"inactive": "is_banned=FALSE AND NOT (UPPER(COALESCE(panel_status,'')) IN ('ACTIVE','LIMITED') AND (panel_expire_at IS NULL OR panel_expire_at>NOW()))",
-			"expired": "is_banned=FALSE AND (UPPER(COALESCE(panel_status,''))='EXPIRED' OR panel_expire_at<=NOW())",
+			"all":                    "is_banned=FALSE",
+			"active":                 "is_banned=FALSE AND UPPER(COALESCE(panel_status,'')) IN ('ACTIVE','LIMITED') AND (panel_expire_at IS NULL OR panel_expire_at>NOW())",
+			"inactive":               "is_banned=FALSE AND NOT (UPPER(COALESCE(panel_status,'')) IN ('ACTIVE','LIMITED') AND (panel_expire_at IS NULL OR panel_expire_at>NOW()))",
+			"expired":                "is_banned=FALSE AND (UPPER(COALESCE(panel_status,''))='EXPIRED' OR panel_expire_at<=NOW())",
 			"active_never_connected": "is_banned=FALSE AND UPPER(COALESCE(panel_status,'')) IN ('ACTIVE','LIMITED') AND (panel_expire_at IS NULL OR panel_expire_at>NOW()) AND COALESCE(lifetime_used_traffic_bytes,0)=0",
-			"never": "is_banned=FALSE AND COALESCE(panel_user_uuid,'')=''",
+			"never":                  "is_banned=FALSE AND COALESCE(panel_user_uuid,'')=''",
 		}
 		for key, where := range queries {
 			var count int64

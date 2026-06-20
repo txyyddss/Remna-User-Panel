@@ -103,12 +103,14 @@ func (c *Client) EffectiveConfig(ctx context.Context) EffectiveConfig {
 	}
 	return cfg
 }
+
 // Configured reports whether the Remnawave panel has both a base URL and an API key.
 
 func (c *Client) Configured(ctx context.Context) bool {
 	cfg := c.EffectiveConfig(ctx)
 	return cfg.BaseURL != "" && strings.TrimSpace(cfg.APIKey) != ""
 }
+
 // GetUserByUUID retrieves a user by their UUID from the Remnawave panel.
 
 func (c *Client) GetUserByUUID(ctx context.Context, uuid string) (map[string]any, bool, error) {
@@ -122,6 +124,7 @@ func (c *Client) GetUserByUUID(ctx context.Context, uuid string) (map[string]any
 	}
 	return out, true, nil
 }
+
 // GetUsersByTelegramID retrieves all users associated with a Telegram ID.
 
 func (c *Client) GetUsersByTelegramID(ctx context.Context, telegramID int64) ([]map[string]any, error) {
@@ -131,7 +134,7 @@ func (c *Client) GetUsersByTelegramID(ctx context.Context, telegramID int64) ([]
 		return []map[string]any{}, nil
 	}
 	return out, err
-// GetUsersByEmail retrieves all users associated with an email address.
+	// GetUsersByEmail retrieves all users associated with an email address.
 }
 
 func (c *Client) GetUsersByEmail(ctx context.Context, email string) ([]map[string]any, error) {
@@ -141,7 +144,7 @@ func (c *Client) GetUsersByEmail(ctx context.Context, email string) ([]map[strin
 		return []map[string]any{}, nil
 	}
 	return out, err
-// CreateUser creates a new user in the Remnawave panel.
+	// CreateUser creates a new user in the Remnawave panel.
 }
 
 func (c *Client) CreateUser(ctx context.Context, payload map[string]any) (map[string]any, error) {
@@ -150,7 +153,7 @@ func (c *Client) CreateUser(ctx context.Context, payload map[string]any) (map[st
 		return nil, err
 	}
 	return out, nil
-// UpdateUser updates an existing user in the Remnawave panel.
+	// UpdateUser updates an existing user in the Remnawave panel.
 }
 
 func (c *Client) UpdateUser(ctx context.Context, payload map[string]any) (map[string]any, error) {
@@ -188,6 +191,7 @@ func (c *Client) DeleteUser(ctx context.Context, uuid string) error {
 	}
 	return err
 }
+
 // GetInternalSquads retrieves all internal squads from the Remnawave panel.
 
 func (c *Client) GetInternalSquads(ctx context.Context) ([]map[string]any, error) {
@@ -197,6 +201,7 @@ func (c *Client) GetInternalSquads(ctx context.Context) ([]map[string]any, error
 	}
 	return mapsFromAny(out), nil
 }
+
 // GetInternalSquadAccessibleNodes retrieves the nodes accessible by an internal squad.
 
 func (c *Client) GetInternalSquadAccessibleNodes(ctx context.Context, squadUUID string) ([]map[string]any, error) {
@@ -210,6 +215,7 @@ func (c *Client) GetInternalSquadAccessibleNodes(ctx context.Context, squadUUID 
 	}
 	return mapsFromAny(out), nil
 }
+
 // AddUsersToInternalSquad adds users to an internal squad.
 
 func (c *Client) AddUsersToInternalSquad(ctx context.Context, squadUUID string, userUUIDs []string) error {
@@ -217,7 +223,7 @@ func (c *Client) AddUsersToInternalSquad(ctx context.Context, squadUUID string, 
 		"users":     cleanStrings(userUUIDs),
 		"userUuids": cleanStrings(userUUIDs),
 	}, nil)
-// RemoveUsersFromInternalSquad removes users from an internal squad.
+	// RemoveUsersFromInternalSquad removes users from an internal squad.
 }
 
 func (c *Client) RemoveUsersFromInternalSquad(ctx context.Context, squadUUID string, userUUIDs []string) error {
@@ -247,6 +253,7 @@ func (c *Client) GetNodesStats(ctx context.Context) (map[string]any, error) {
 	err := c.request(ctx, http.MethodGet, "/system/stats/nodes", nil, nil, &out)
 	return out, err
 }
+
 // GetNodesBandwidthStats retrieves per-node bandwidth statistics with optional query filters.
 
 func (c *Client) GetNodesBandwidthStats(ctx context.Context, query url.Values) (map[string]any, error) {
@@ -254,13 +261,14 @@ func (c *Client) GetNodesBandwidthStats(ctx context.Context, query url.Values) (
 	err := c.request(ctx, http.MethodGet, "/bandwidth-stats/nodes", query, nil, &out)
 	return out, err
 }
+
 // GetUserBandwidthStats retrieves bandwidth statistics for a specific user.
 
 func (c *Client) GetUserBandwidthStats(ctx context.Context, userUUID string, query url.Values) (map[string]any, error) {
 	var out map[string]any
 	err := c.request(ctx, http.MethodGet, "/bandwidth-stats/users/"+url.PathEscape(strings.TrimSpace(userUUID)), query, nil, &out)
 	return out, err
-// GetSubscriptionPageConfigs retrieves all subscription page configurations.
+	// GetSubscriptionPageConfigs retrieves all subscription page configurations.
 }
 
 func (c *Client) GetSubscriptionPageConfigs(ctx context.Context) ([]map[string]any, error) {
@@ -269,7 +277,7 @@ func (c *Client) GetSubscriptionPageConfigs(ctx context.Context) ([]map[string]a
 		return nil, err
 	}
 	return mapsFromAny(out), nil
-// GetSubscriptionPageConfigByUUID retrieves a single subscription page configuration by UUID.
+	// GetSubscriptionPageConfigByUUID retrieves a single subscription page configuration by UUID.
 }
 
 func (c *Client) GetSubscriptionPageConfigByUUID(ctx context.Context, uuid string) (map[string]any, bool, error) {
@@ -418,8 +426,6 @@ func secondsSetting(value float64, fallback time.Duration) time.Duration {
 	}
 	return time.Duration(value * float64(time.Second))
 }
-
-
 
 func splitList(raw string) []string {
 	fields := strings.FieldsFunc(raw, func(r rune) bool {

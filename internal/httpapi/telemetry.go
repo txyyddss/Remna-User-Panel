@@ -407,5 +407,3 @@ func userCountRange(count int64) string {
 		return "10000+"
 	}
 }
-
-

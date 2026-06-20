@@ -89,6 +89,6 @@ type notifyStage struct {
 }
 
 const (
-	defaultExpiryDaysBefore   = 3
+	defaultExpiryDaysBefore    = 3
 	defaultTrafficThresholdPct = 85
 )

@@ -203,14 +203,14 @@ func meHandler(settings config.Settings, pool *pgxpool.Pool, registry *payments.
 			}
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
-			"ok":                      true,
-			"user":                    session.User,
-			"subscription":            subscription,
-			"settings":                webappFeatureSettings(r.Context(), settings, pool, panel, session.User),
-			"referral":                referralPayload(r.Context(), settings, pool, session.User),
-			"plans":                   plans,
-			"payment_methods":         methods,
-			"notification_prefs":      loadUserNotificationPrefs(r.Context(), pool, session.User.UserID),
+			"ok":                 true,
+			"user":               session.User,
+			"subscription":       subscription,
+			"settings":           webappFeatureSettings(r.Context(), settings, pool, panel, session.User),
+			"referral":           referralPayload(r.Context(), settings, pool, session.User),
+			"plans":              plans,
+			"payment_methods":    methods,
+			"notification_prefs": loadUserNotificationPrefs(r.Context(), pool, session.User.UserID),
 		})
 	}
 }
@@ -669,9 +669,9 @@ func webappFeatureSettings(ctx context.Context, settings config.Settings, pool *
 		"referral_welcome_bonus_days":     referralWelcomeDays,
 		"tariff_change_enabled":           panelConfigured,
 		"subscription_auto_renew_enabled": autoRenewEnabled,
-		"support_url":                    store.String(ctx, "SUPPORT_LINK", ""),
-		"server_status_url":              store.String(ctx, "SERVER_STATUS_URL", ""),
-		"email_auth_enabled":             store.Bool(ctx, "SMTP_ENABLED", false) && mailerConfigFromSettings(ctx, store).IsConfigured(),
+		"support_url":                     store.String(ctx, "SUPPORT_LINK", ""),
+		"server_status_url":               store.String(ctx, "SERVER_STATUS_URL", ""),
+		"email_auth_enabled":              store.Bool(ctx, "SMTP_ENABLED", false) && mailerConfigFromSettings(ctx, store).IsConfigured(),
 	}
 }
 
@@ -1339,5 +1339,3 @@ func providerCheckoutAmount(methodID string, plan tariffs.Plan, rate fx.Rate) (f
 func roundMoney(value float64) float64 {
 	return math.Round(value*100) / 100
 }
-
-

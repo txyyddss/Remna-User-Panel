@@ -126,23 +126,23 @@ func Load() (Settings, error) {
 		UserTrafficStrategy:         normalizeTrafficStrategy(env("USER_TRAFFIC_STRATEGY", "NO_RESET")),
 		UserSquadUUIDs:              splitCSV(env("USER_SQUAD_UUIDS", "")),
 		UserExternalSquadUUID:       strings.TrimSpace(env("USER_EXTERNAL_SQUAD_UUID", "")),
-	
+
 		EZPay: EZPaySettings{
-			Enabled:   envBool("EZPAY_ENABLED", false),
-			BaseURL:   strings.TrimRight(env("EZPAY_BASE_URL", ""), "/"),
-			PID:       envInt("EZPAY_PID", 0),
-			Key:       env("EZPAY_KEY", ""),
+			Enabled: envBool("EZPAY_ENABLED", false),
+			BaseURL: strings.TrimRight(env("EZPAY_BASE_URL", ""), "/"),
+			PID:     envInt("EZPAY_PID", 0),
+			Key:     env("EZPAY_KEY", ""),
 		},
 		BEPUSDT: BEPUSDTSettings{
-			Enabled:   envBool("BEPUSDT_ENABLED", false),
-			BaseURL:   strings.TrimRight(env("BEPUSDT_BASE_URL", ""), "/"),
-			Token:     env("BEPUSDT_TOKEN", ""),
+			Enabled: envBool("BEPUSDT_ENABLED", false),
+			BaseURL: strings.TrimRight(env("BEPUSDT_BASE_URL", ""), "/"),
+			Token:   env("BEPUSDT_TOKEN", ""),
 		},
 		PaymentMethodsOrder:           splitCSV(env("PAYMENT_METHODS_ORDER", "")),
 		SubscriptionNotifyHoursBefore: envInt("SUBSCRIPTION_NOTIFY_HOURS_BEFORE", 0),
 		SubscriptionNotifyDaysBefore:  envInt("SUBSCRIPTION_NOTIFY_DAYS_BEFORE", 3),
 		StarsUSDRate:                  envFloat("STARS_USD_RATE", 0),
-		StarsEnabled:                 envBool("STARS_ENABLED", false),
+		StarsEnabled:                  envBool("STARS_ENABLED", false),
 	}
 	settings.AdminIDs = parseInt64List(env("ADMIN_IDS", ""))
 	settings.TrustedProxies = splitCSV(env("TRUSTED_PROXIES", "127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7"))
@@ -250,8 +250,6 @@ func envFloat(key string, fallback float64) float64 {
 	}
 	return value
 }
-
-
 
 func parseInt64List(raw string) []int64 {
 	parts := splitCSV(raw)
