@@ -23,6 +23,7 @@ import (
 	"remna-user-panel/internal/auth"
 	"remna-user-panel/internal/config"
 	"remna-user-panel/internal/fx"
+	"remna-user-panel/internal/mail"
 	"remna-user-panel/internal/payments"
 	"remna-user-panel/internal/remnawave"
 	appsettings "remna-user-panel/internal/settings"
@@ -316,13 +317,16 @@ func adminSettingsHandler(settings config.Settings, pool *pgxpool.Pool) http.Han
 		if r.Method == http.MethodGet {
 			writeJSON(w, http.StatusOK, map[string]any{
 				"ok":       true,
-				"features": []string{"remnawave", "payments"},
+				"features": []string{"remnawave", "payments", "mail"},
 				"sections": []map[string]any{{
 					"id":     "remnawave",
 					"fields": remnawaveSettingsFields(r.Context(), settings, store),
 				}, {
 					"id":     "payments",
 					"fields": paymentSettingsFields(r.Context(), settings, store),
+				}, {
+					"id":     "mail",
+					"fields": mailSettingsFields(r.Context(), settings, store),
 				}},
 			})
 			return
@@ -629,6 +633,37 @@ func paymentStatusPayload(order payments.Order) map[string]any {
 	}
 }
 
+func mailSettingsFields(ctx context.Context, settings config.Settings, store appsettings.Store) []map[string]any {
+	fields := []paymentSettingField{
+		{Key: "SMTP_ENABLED", Type: "bool", Label: "SMTP email enabled", Description: "Enable SMTP email delivery for verification codes, password resets, and notifications.", Subsection: "General", Fallback: false},
+		{Key: "SMTP_HOST", Type: "string", Label: "SMTP host", Description: "SMTP server hostname or IP address.", Subsection: "Server", Fallback: ""},
+		{Key: "SMTP_PORT", Type: "int", Label: "SMTP port", Description: "SMTP server port (465 for TLS, 587 for STARTTLS, 25 for plain).", Subsection: "Server", Fallback: 587},
+		{Key: "SMTP_ENCRYPTION", Type: "string", Label: "SMTP encryption", Description: "Connection encryption method.", Subsection: "Server", Fallback: "starttls", Choices: []settingChoice{{Value: "none", Label: "None"}, {Value: "tls", Label: "TLS (SSL)"}, {Value: "starttls", Label: "STARTTLS"}}},
+		{Key: "SMTP_USERNAME", Type: "string", Label: "SMTP username", Description: "SMTP authentication username. Leave empty if no authentication.", Subsection: "Authentication", Fallback: ""},
+		{Key: "SMTP_PASSWORD", Type: "string", Label: "SMTP password", Description: "SMTP authentication password.", Subsection: "Authentication", Fallback: "", Secret: true},
+		{Key: "SMTP_FROM_EMAIL", Type: "string", Label: "From email", Description: "Sender email address for outgoing messages.", Subsection: "Sender", Fallback: ""},
+		{Key: "SMTP_FROM_NAME", Type: "string", Label: "From name", Description: "Sender display name (e.g. your brand name).", Subsection: "Sender", Fallback: ""},
+		{Key: "BRAND_NAME", Type: "string", Label: "Brand name", Description: "Brand name used in email subjects and footers.", Subsection: "Sender", Fallback: "Remna"},
+	}
+	result := make([]map[string]any, 0, len(fields))
+	for _, field := range fields {
+		result = append(result, field.toMap(ctx, store))
+	}
+	return result
+}
+
+func mailerConfigFromSettings(ctx context.Context, store appsettings.Store) mail.Config {
+	return mail.Config{
+		Host:       store.String(ctx, "SMTP_HOST", ""),
+		Port:       store.Int(ctx, "SMTP_PORT", 587),
+		Username:   store.String(ctx, "SMTP_USERNAME", ""),
+		Password:   store.String(ctx, "SMTP_PASSWORD", ""),
+		FromName:   store.String(ctx, "SMTP_FROM_NAME", ""),
+		FromEmail:  store.String(ctx, "SMTP_FROM_EMAIL", ""),
+		Encryption: store.String(ctx, "SMTP_ENCRYPTION", "starttls"),
+	}
+}
+
 func paymentSettingsFields(ctx context.Context, settings config.Settings, store appsettings.Store) []map[string]any {
 	effectiveWebhookBaseURL := store.String(ctx, "WEBHOOK_BASE_URL", settings.WebhookBaseURL)
 	webhookConfigured := strings.TrimSpace(effectiveWebhookBaseURL) != ""
@@ -859,6 +894,10 @@ func allowedPaymentSettingKeys() map[string]bool {
 		// Web UI 可管理的通用设置
 		"DEFAULT_LANGUAGE", "SUBSCRIPTION_NOTIFY_DAYS_BEFORE", "SUBSCRIPTION_NOTIFY_HOURS_BEFORE",
 		"WORKER_PANEL_SYNC_INTERVAL_SECONDS", "WORKER_PAYMENT_PROVISION_INTERVAL_SECONDS",
+		// SMTP / Email 设置
+		"SMTP_ENABLED", "SMTP_HOST", "SMTP_PORT", "SMTP_ENCRYPTION",
+		"SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_FROM_EMAIL", "SMTP_FROM_NAME",
+		"BRAND_NAME",
 	} {
 		result[key] = true
 	}
@@ -867,7 +906,7 @@ func allowedPaymentSettingKeys() map[string]bool {
 
 func normalizeSettingValue(key string, value any) (any, error) {
 	switch key {
-	case "EZPAY_ENABLED", "BEPUSDT_ENABLED", "STARS_ENABLED", "MY_DEVICES_ENABLED", "SUPPORT_TICKETS_ENABLED", "TRIAL_ENABLED", "SUBSCRIPTION_GUIDES_ENABLED", "SUBSCRIPTION_AUTO_RENEW_ENABLED", "TELEMETRY_ENABLED":
+	case "EZPAY_ENABLED", "BEPUSDT_ENABLED", "STARS_ENABLED", "MY_DEVICES_ENABLED", "SUPPORT_TICKETS_ENABLED", "TRIAL_ENABLED", "SUBSCRIPTION_GUIDES_ENABLED", "SUBSCRIPTION_AUTO_RENEW_ENABLED", "TELEMETRY_ENABLED", "SMTP_ENABLED":
 		if typed, ok := value.(bool); ok {
 			return typed, nil
 		}
@@ -881,7 +920,8 @@ func normalizeSettingValue(key string, value any) (any, error) {
 		}
 	case "EZPAY_PID", "FX_CACHE_TTL_SECONDS", "TRIAL_DURATION_DAYS", "REFERRAL_WELCOME_BONUS_DAYS", "TELEMETRY_RETENTION_HOURS", "TELEMETRY_FINGERPRINT_REJECT_SCORE",
 		"SUBSCRIPTION_NOTIFY_DAYS_BEFORE", "SUBSCRIPTION_NOTIFY_HOURS_BEFORE",
-		"WORKER_PANEL_SYNC_INTERVAL_SECONDS", "WORKER_PAYMENT_PROVISION_INTERVAL_SECONDS":
+		"WORKER_PANEL_SYNC_INTERVAL_SECONDS", "WORKER_PAYMENT_PROVISION_INTERVAL_SECONDS",
+		"SMTP_PORT":
 		var parsed int
 		switch typed := value.(type) {
 		case float64:
@@ -933,6 +973,14 @@ func normalizeSettingValue(key string, value any) (any, error) {
 			return value, nil
 		default:
 			return nil, fmt.Errorf("unsupported_traffic_strategy")
+		}
+	case "SMTP_ENCRYPTION":
+		value := strings.ToLower(strings.TrimSpace(fmt.Sprint(value)))
+		switch value {
+		case "none", "tls", "starttls":
+			return value, nil
+		default:
+			return nil, fmt.Errorf("unsupported_smtp_encryption")
 		}
 	case "FX_CUSTOM_USD_CNY":
 		if strings.TrimSpace(fmt.Sprint(value)) == "" {

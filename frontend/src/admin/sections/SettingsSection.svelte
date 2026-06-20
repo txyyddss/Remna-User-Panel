@@ -743,6 +743,7 @@
       support: "Поддержка",
       devices: "Устройства",
       subscription_guides: "Connection guides",
+      mail: "Email / SMTP",
       system: "Система",
       migrations: "Миграции",
     };

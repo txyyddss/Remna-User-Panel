@@ -342,15 +342,15 @@
     payBusy,
   } = $billingStore);
   $: ({
-    devicesData,
-    devicesLoaded,
-    devicesBusy,
-    devicesStatus,
-    devicesIsError,
-    devicesErrorCode,
-    deviceConfirmOpen,
-    deviceToDisconnect,
-    deviceDisconnectBusy,
+    ipsData: devicesData,
+    ipsLoaded: devicesLoaded,
+    ipsBusy: devicesBusy,
+    ipsStatus: devicesStatus,
+    ipsIsError: devicesIsError,
+    ipsErrorCode: devicesErrorCode,
+    ipConfirmOpen: deviceConfirmOpen,
+    ipToDisconnect: deviceToDisconnect,
+    ipDisconnectBusy: deviceDisconnectBusy,
   } = $devicesStore);
   $: ({
     unreadCount: supportUnreadCount,
@@ -411,13 +411,41 @@
   $: bandwidthData = formatBandwidthData(subscription);
 
   function formatBandwidthData(sub) {
-    const raw = sub?.bandwidth?.bandwidthLastSevenDays || sub?.bandwidth?.bandwidthLast30Days;
-    if (!Array.isArray(raw) || !raw.length) return [];
-    return raw.map((entry) => ({
-      bytes: Number(entry?.bytes || entry?.total || 0),
-      label: entry?.label || entry?.date || entry?.day || "",
-      value: entry?.value || entry?.display || entry?.formatted || "",
-    }));
+    const payload = sub?.bandwidth;
+    const raw =
+      payload?.bandwidthLastSevenDays ||
+      payload?.bandwidthLast30Days ||
+      payload?.stats ||
+      payload?.items ||
+      payload?.data ||
+      payload;
+    const formatBytes = (value) => {
+      const bytes = Number(value || 0);
+      if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+      const units = ["B", "KB", "MB", "GB", "TB"];
+      const unit = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+      const amount = bytes / 1024 ** unit;
+      return `${amount >= 10 || unit === 0 ? amount.toFixed(0) : amount.toFixed(1)} ${units[unit]}`;
+    };
+    const entries = Array.isArray(raw)
+      ? raw
+      : raw && typeof raw === "object"
+        ? Object.entries(raw)
+            .filter(([, value]) => Number.isFinite(Number(value)))
+            .map(([label, bytes]) => ({ label, bytes }))
+        : [];
+    return entries
+      .map((entry) => {
+        const bytes = Number(
+          entry?.bytes ?? entry?.total ?? entry?.totalBytes ?? entry?.usedTrafficBytes ?? 0
+        );
+        return {
+          bytes,
+          label: entry?.label || entry?.date || entry?.day || entry?.timestamp || "",
+          value: entry?.value || entry?.display || entry?.formatted || formatBytes(bytes),
+        };
+      })
+      .filter((entry) => Number.isFinite(entry.bytes));
   }
   $: hasActiveTariffSubscription = Boolean(
     tariffMode && subscription?.active && subscription?.tariff_key
@@ -1640,6 +1668,7 @@
     onSettingsSaved: handleAdminPersistedSaved,
     onTariffsSaved: handleAdminPersistedSaved,
     onThemesSaved: handleAdminPersistedSaved,
+    onTranslationsSaved: handleTranslationsSaved,
     routePrefix,
     brandTitle,
     brand,
@@ -2442,6 +2471,15 @@
     if (shouldReloadFrontend && typeof window !== "undefined") {
       window.location.reload();
     }
+  }
+
+  async function handleTranslationsSaved(options = {}) {
+    await _refreshI18nScope("webapp");
+    await _refreshI18nScope("admin");
+    await handleAdminPersistedSaved({
+      ...options,
+      reloadFrontend: Array.isArray(options?.deletes) && options.deletes.length > 0,
+    });
   }
 
   async function _refreshI18nScope(scope) {

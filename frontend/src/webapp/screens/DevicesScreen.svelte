@@ -41,7 +41,7 @@
         size="icon"
         onclick={() => loadDevices(true)}
         disabled={devicesBusy}
-        aria-label={t("wa_devices_refresh")}
+        aria-label={t("wa_ips_refresh")}
       >
         <RefreshCw size={18} />
       </Button>

@@ -33,6 +33,7 @@ export function createTranslationsStore({ api, onToast, at }) {
     translationGroups: [],
     translationLanguages: [],
     translationsLoading: false,
+    translationsError: "",
     translationsDirty: {},
     translationsSaving: false,
     translationsPath: "",
@@ -40,7 +41,12 @@ export function createTranslationsStore({ api, onToast, at }) {
   });
 
   async function loadTranslations() {
-    state.update((s) => ({ ...s, translationsLoading: true, translationsDirty: {} }));
+    state.update((s) => ({
+      ...s,
+      translationsLoading: true,
+      translationsError: "",
+      translationsDirty: {},
+    }));
     try {
       const data = await api("/admin/translations");
       if (data?.ok) {
@@ -51,7 +57,17 @@ export function createTranslationsStore({ api, onToast, at }) {
           translationsPath: data.path || "",
           translationsOverrideCount: data.override_count || 0,
         }));
+      } else {
+        state.update((s) => ({
+          ...s,
+          translationsError: data?.error || "translations_load_failed",
+        }));
       }
+    } catch (error) {
+      state.update((s) => ({
+        ...s,
+        translationsError: error?.message || "translations_load_failed",
+      }));
     } finally {
       state.update((s) => ({ ...s, translationsLoading: false }));
     }

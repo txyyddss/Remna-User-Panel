@@ -37,7 +37,6 @@ import (
 )
 
 func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog, assets webassets.Paths, registry *payments.Registry, panel *remnawave.Client) {
-	_ = catalog
 	router.Get("/api/admin/me", adminMeHandler(settings, pool))
 	router.Get("/api/tariffs/topup-options", webappPlansOptionsHandler(settings, pool, "topup"))
 	router.Get("/api/devices/topup-options", webappPlansOptionsHandler(settings, pool, "devices"))
@@ -53,18 +52,18 @@ func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *p
 	router.Post("/api/devices/disconnect", disconnectDeviceHandler(settings, pool, panel))
 	router.Post("/api/devices/ips", devicesIPsHandler(settings, pool, panel))
 	router.Post("/api/devices/ips/disconnect", devicesIPsDisconnectHandler(settings, pool, panel))
-	router.Post("/api/account/email/request", unavailableSessionMutation(settings, pool, "email_delivery_not_configured"))
-	router.Post("/api/account/email/verify", unavailableSessionMutation(settings, pool, "email_delivery_not_configured"))
-	router.Post("/api/account/password/request", unavailableSessionMutation(settings, pool, "email_delivery_not_configured"))
-	router.Post("/api/account/password/confirm", unavailableSessionMutation(settings, pool, "email_delivery_not_configured"))
+	router.Post("/api/account/email/request", emailRequestHandler(settings, pool))
+	router.Post("/api/account/email/verify", emailVerifyHandler(settings, pool))
+	router.Post("/api/account/password/request", passwordRequestHandler(settings, pool))
+	router.Post("/api/account/password/confirm", passwordConfirmHandler(settings, pool))
 	router.Post("/api/account/telegram/link", unavailableSessionMutation(settings, pool, "telegram_link_requires_mini_app_login"))
 	router.Post("/api/account/language", accountLanguageHandler(settings, pool))
 	router.Get("/api/account/notifications", userNotificationPrefsHandler(settings, pool))
 	router.Post("/api/account/notifications", userNotificationPrefsHandler(settings, pool))
-	router.Post("/api/auth/email/request", unavailablePublicMutation("email_delivery_not_configured"))
-	router.Post("/api/auth/email/verify", unavailablePublicMutation("email_delivery_not_configured"))
+	router.Post("/api/auth/email/request", emailLoginRequestHandler(settings, pool))
+	router.Post("/api/auth/email/verify", emailLoginVerifyHandler(settings, pool))
 	router.Post("/api/auth/email/password", adminPasswordLoginHandler(settings, pool))
-	router.Post("/api/auth/email/magic", unavailablePublicMutation("email_magic_login_not_configured"))
+	router.Post("/api/auth/email/magic", emailMagicLinkHandler(settings, pool))
 	router.Get("/api/subscription-guides", subscriptionGuidesHandler(settings, pool))
 	router.Get("/api/subscription-guides/public/{share_token}", subscriptionGuidesHandler(settings, pool))
 
@@ -121,9 +120,9 @@ func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *p
 	router.Delete("/api/admin/appearance/logo", adminAppearanceLogoHandler(settings, pool))
 	router.Post("/api/admin/appearance/favicon", adminAppearanceFaviconHandler(settings, pool))
 	router.Delete("/api/admin/appearance/favicon", adminAppearanceFaviconHandler(settings, pool))
-	router.Get("/api/admin/translations", adminTranslationsHandler(settings, pool))
-	router.Put("/api/admin/translations", adminTranslationsHandler(settings, pool))
-	router.Patch("/api/admin/translations", adminTranslationsHandler(settings, pool))
+	router.Get("/api/admin/translations", adminTranslationsHandler(settings, pool, catalog))
+	router.Put("/api/admin/translations", adminTranslationsHandler(settings, pool, catalog))
+	router.Patch("/api/admin/translations", adminTranslationsHandler(settings, pool, catalog))
 	router.Get("/api/admin/support/stats", adminSupportStatsHandler(settings, pool))
 	router.Get("/api/admin/support/tickets", supportListHandler(settings, pool, true))
 	router.Get("/api/admin/support/tickets/{ticket_id}", supportDetailHandler(settings, pool, true))
@@ -1850,7 +1849,7 @@ func adminThemesHandler(settings config.Settings, pool *pgxpool.Pool, assets web
 	}
 }
 
-func adminTranslationsHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
+func adminTranslationsHandler(settings config.Settings, pool *pgxpool.Pool, catalog *i18n.Catalog) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := requireAdmin(w, r, settings, pool, r.Method != http.MethodGet); !ok {
 			return
@@ -1858,13 +1857,13 @@ func adminTranslationsHandler(settings config.Settings, pool *pgxpool.Pool) http
 		store := appsettings.NewStore(pool)
 		if r.Method == http.MethodGet {
 			raw, ok, _ := store.Get(r.Context(), "TRANSLATION_OVERRIDES")
-			overrides := map[string]any{}
+			overrides := map[string]map[string]string{}
 			if ok {
 				_ = json.Unmarshal(raw, &overrides)
 			}
-			// Build groups from overrides for frontend compatibility
-			groups := buildTranslationGroups(overrides)
-			langs := buildTranslationLanguages(overrides)
+			overrides = normalizeTranslationOverrides(overrides)
+			groups := buildTranslationGroups(catalog, overrides)
+			langs := buildTranslationLanguages(catalog, overrides)
 			writeJSON(w, http.StatusOK, map[string]any{
 				"ok":             true,
 				"translations":   overrides,
@@ -1872,7 +1871,7 @@ func adminTranslationsHandler(settings config.Settings, pool *pgxpool.Pool) http
 				"groups":         groups,
 				"languages":      langs,
 				"path":           "locales",
-				"override_count": len(overrides),
+				"override_count": translationOverrideCount(overrides),
 			})
 			return
 		}
@@ -1917,26 +1916,34 @@ func adminTranslationsHandler(settings config.Settings, pool *pgxpool.Pool) http
 		if ok {
 			_ = json.Unmarshal(raw, &overrides)
 		}
+		overrides = normalizeTranslationOverrides(overrides)
 		if overrides == nil {
 			overrides = map[string]map[string]string{}
 		}
 
 		// Apply updates
 		for lang, keys := range payload.Updates {
+			lang = strings.ToLower(strings.ReplaceAll(strings.TrimSpace(lang), "_", "-"))
+			if lang == "" {
+				continue
+			}
 			if overrides[lang] == nil {
 				overrides[lang] = map[string]string{}
 			}
 			for key, value := range keys {
-				overrides[lang][key] = value
+				if key = strings.TrimSpace(key); key != "" {
+					overrides[lang][key] = value
+				}
 			}
 		}
 
 		// Apply deletes
 		for _, del := range payload.Deletes {
-			if langMap, ok := overrides[del.Lang]; ok {
-				delete(langMap, del.Key)
+			lang := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(del.Lang), "_", "-"))
+			if langMap, ok := overrides[lang]; ok {
+				delete(langMap, strings.TrimSpace(del.Key))
 				if len(langMap) == 0 {
-					delete(overrides, del.Lang)
+					delete(overrides, lang)
 				}
 			}
 		}
@@ -1967,26 +1974,202 @@ func adminTranslationsHandler(settings config.Settings, pool *pgxpool.Pool) http
 	}
 }
 
-func buildTranslationGroups(overrides map[string]any) []map[string]any {
-	// Return empty groups - frontend will build from translations data
-	return []map[string]any{}
+type translationGroupDefinition struct {
+	ID          string
+	Title       string
+	Description string
+	Audience    string
 }
 
-func buildTranslationLanguages(overrides map[string]any) []map[string]any {
-	langs := []map[string]any{
-		{"code": "zh", "label": "中文", "base": true},
-		{"code": "en", "label": "English", "base": true},
+var translationGroupDefinitions = []translationGroupDefinition{
+	{ID: "admin_navigation", Title: "Admin navigation and shared UI", Description: "Sidebar, section headers, toolbar actions, filters, and shared controls.", Audience: "internal"},
+	{ID: "admin_dashboard", Title: "Admin dashboard and stats", Description: "Dashboard cards, revenue charts, panel sync status, and monitoring copy.", Audience: "internal"},
+	{ID: "admin_users", Title: "Admin users", Description: "User lists, user cards, bans, grants, overrides, and direct messages.", Audience: "internal"},
+	{ID: "admin_payments", Title: "Admin payments", Description: "Payment tables, details, exports, provider labels, and payment stats.", Audience: "internal"},
+	{ID: "admin_promos_marketing", Title: "Admin promos, ads, and broadcasts", Description: "Promo management, ad campaigns, marketing tools, and broadcast workflows.", Audience: "internal"},
+	{ID: "admin_tariffs", Title: "Admin tariffs", Description: "Tariff catalog, tariff dialogs, packages, and trial tariff widgets.", Audience: "internal"},
+	{ID: "admin_support", Title: "Admin support inbox", Description: "Support ticket inbox, filters, replies, and statuses.", Audience: "internal"},
+	{ID: "admin_appearance", Title: "Admin appearance", Description: "Theme catalog, branding, logo, favicon, and public page links.", Audience: "internal"},
+	{ID: "admin_settings", Title: "Admin settings", Description: "Settings groups, fields, helper text, and configuration alerts.", Audience: "internal"},
+	{ID: "admin_translations", Title: "Admin translations", Description: "Translation overrides, language controls, and locale groups.", Audience: "internal"},
+	{ID: "admin_logs", Title: "Admin logs and exports", Description: "Activity logs, exports, CSV headers, and event details.", Audience: "internal"},
+	{ID: "admin_misc", Title: "Admin miscellaneous", Description: "Other admin-only and service strings.", Audience: "internal"},
+	{ID: "webapp", Title: "Mini App", Description: "User-facing Mini App screens, navigation, settings, and toasts.", Audience: "user"},
+	{ID: "bot_menu", Title: "Telegram bot", Description: "Start menu, inline buttons, language selector, and bot-only flows.", Audience: "user"},
+	{ID: "subscriptions", Title: "Subscriptions and devices", Description: "Subscription status, install guides, traffic packages, trials, and devices.", Audience: "user"},
+	{ID: "payments", Title: "Payments", Description: "Payment flows, invoices, payment methods, and checkout messages.", Audience: "user"},
+	{ID: "support", Title: "Support", Description: "Support links, tickets, statuses, and notifications.", Audience: "user"},
+	{ID: "referrals_promos", Title: "Referrals and promos", Description: "Referral program, invite copy, promo codes, and bonuses.", Audience: "user"},
+	{ID: "auth_security", Title: "Auth and security", Description: "Login, email verification, account linking, and security messages.", Audience: "user"},
+	{ID: "emails", Title: "Emails", Description: "Transactional emails, login codes, payments, and reminders.", Audience: "user"},
+	{ID: "notifications_sync", Title: "Notifications and sync", Description: "Notifications, panel sync, logs, and background statuses.", Audience: "internal"},
+	{ID: "common", Title: "Common", Description: "Shared buttons, statuses, validation errors, and uncategorized strings.", Audience: "user"},
+}
+
+func buildTranslationGroups(catalog *i18n.Catalog, overrides map[string]map[string]string) []map[string]any {
+	messages := map[string]map[string]string{}
+	if catalog != nil {
+		messages = catalog.Messages()
 	}
-	if overrides != nil {
-		seen := map[string]bool{"zh": true, "en": true}
-		for lang := range overrides {
-			if !seen[lang] && strings.TrimSpace(lang) != "" {
-				langs = append(langs, map[string]any{"code": lang, "label": lang, "base": false})
-				seen[lang] = true
+	keys := map[string]bool{}
+	for _, values := range messages {
+		for key := range values {
+			keys[key] = true
+		}
+	}
+	for _, values := range overrides {
+		for key := range values {
+			keys[key] = true
+		}
+	}
+	languages := translationLanguageCodes(catalog, overrides)
+	groupItems := map[string][]map[string]any{}
+	sortedKeys := make([]string, 0, len(keys))
+	for key := range keys {
+		sortedKeys = append(sortedKeys, key)
+	}
+	sort.Strings(sortedKeys)
+	for _, key := range sortedKeys {
+		groupID, audience := translationGroupForKey(key)
+		values := map[string]any{}
+		fallback := firstNonEmpty(messages["zh"][key], messages["en"][key])
+		for _, lang := range languages {
+			base := messages[lang][key]
+			override := overrides[lang][key]
+			values[lang] = map[string]any{
+				"base": base, "fallback": fallback, "effective": firstNonEmpty(override, base, fallback),
+				"override": override, "overridden": override != "",
+			}
+		}
+		groupItems[groupID] = append(groupItems[groupID], map[string]any{"key": key, "audience": audience, "values": values})
+	}
+	groups := make([]map[string]any, 0, len(translationGroupDefinitions))
+	for _, definition := range translationGroupDefinitions {
+		items := groupItems[definition.ID]
+		if len(items) == 0 {
+			continue
+		}
+		groups = append(groups, map[string]any{
+			"id": definition.ID, "title": definition.Title, "description": definition.Description,
+			"title_key": "translations_group_" + definition.ID,
+			"description_key": "translations_group_" + definition.ID + "_hint",
+			"audience": definition.Audience, "items": items,
+		})
+	}
+	return groups
+}
+
+func translationGroupForKey(key string) (string, string) {
+	if strings.HasPrefix(key, "admin_") {
+		for _, match := range []struct{ id string; prefixes []string }{
+			{"admin_navigation", []string{"admin_nav_", "admin_section_", "admin_sidebar_", "admin_menu", "admin_close_menu"}},
+			{"admin_dashboard", []string{"admin_stats_", "admin_dashboard_"}},
+			{"admin_users", []string{"admin_user_", "admin_users_"}},
+			{"admin_payments", []string{"admin_payment_", "admin_payments_", "admin_provider_", "admin_csv_"}},
+			{"admin_promos_marketing", []string{"admin_promo_", "admin_promos_", "admin_ads_", "admin_ad_", "admin_broadcast_"}},
+			{"admin_tariffs", []string{"admin_tariff_", "admin_tariffs_"}},
+			{"admin_support", []string{"admin_support_"}},
+			{"admin_appearance", []string{"admin_appearance_", "admin_theme_", "admin_themes_"}},
+			{"admin_settings", []string{"admin_settings_", "admin_config_"}},
+			{"admin_translations", []string{"admin_translations_"}},
+			{"admin_logs", []string{"admin_log_", "admin_logs_"}},
+		} {
+			for _, prefix := range match.prefixes {
+				if strings.HasPrefix(key, prefix) {
+					return match.id, "internal"
+				}
+			}
+		}
+		return "admin_misc", "internal"
+	}
+	for _, match := range []struct{ id string; prefixes []string; audience string }{
+		{"auth_security", []string{"auth_", "login_", "email_auth_", "security_", "wa_auth_", "wa_login_", "wa_email_", "wa_password_", "wa_settings_link_"}, "user"},
+		{"support", []string{"support_", "wa_support_"}, "user"},
+		{"payments", []string{"payment_", "payments_", "pay_", "invoice_", "wa_payment_", "wa_pay_", "wa_buy_"}, "user"},
+		{"referrals_promos", []string{"referral_", "promo_", "invite_", "wa_referral_", "wa_promo_", "wa_invite_"}, "user"},
+		{"subscriptions", []string{"subscription_", "trial_", "device_", "traffic_", "install_", "wa_subscription_", "wa_trial_", "wa_device", "wa_ips_", "wa_traffic_", "wa_install_", "wa_hwid_", "wa_bandwidth_"}, "user"},
+		{"emails", []string{"email_", "mail_"}, "user"},
+		{"notifications_sync", []string{"notification_", "sync_", "log_"}, "internal"},
+		{"bot_menu", []string{"menu_", "main_menu_", "channel_subscription_", "bot_"}, "user"},
+		{"webapp", []string{"wa_", "webapp_"}, "user"},
+	} {
+		for _, prefix := range match.prefixes {
+			if strings.HasPrefix(key, prefix) {
+				return match.id, match.audience
 			}
 		}
 	}
+	return "common", "user"
+}
+
+func buildTranslationLanguages(catalog *i18n.Catalog, overrides map[string]map[string]string) []map[string]any {
+	codes := translationLanguageCodes(catalog, overrides)
+	labels := map[string]string{"zh": "中文", "en": "English", "de": "Deutsch", "es": "Español", "fr": "Français", "pt-br": "Português (BR)", "uk": "Українська"}
+	base := map[string]bool{}
+	if catalog != nil {
+		for _, lang := range catalog.Languages() {
+			base[lang] = true
+		}
+	}
+	langs := make([]map[string]any, 0, len(codes))
+	for _, code := range codes {
+		label := labels[code]
+		if label == "" {
+			label = strings.ToUpper(code)
+		}
+		langs = append(langs, map[string]any{"code": code, "label": label, "base": base[code]})
+	}
 	return langs
+}
+
+func translationLanguageCodes(catalog *i18n.Catalog, overrides map[string]map[string]string) []string {
+	seen := map[string]bool{"zh": true, "en": true}
+	if catalog != nil {
+		for _, code := range catalog.Languages() {
+			seen[code] = true
+		}
+	}
+	for code := range overrides {
+		code = strings.ToLower(strings.ReplaceAll(strings.TrimSpace(code), "_", "-"))
+		if code != "" {
+			seen[code] = true
+		}
+	}
+	extra := make([]string, 0, len(seen))
+	for code := range seen {
+		if code != "zh" && code != "en" {
+			extra = append(extra, code)
+		}
+	}
+	sort.Strings(extra)
+	return append([]string{"zh", "en"}, extra...)
+}
+
+func normalizeTranslationOverrides(overrides map[string]map[string]string) map[string]map[string]string {
+	normalized := map[string]map[string]string{}
+	for lang, values := range overrides {
+		lang = strings.ToLower(strings.ReplaceAll(strings.TrimSpace(lang), "_", "-"))
+		if lang == "" {
+			continue
+		}
+		if normalized[lang] == nil {
+			normalized[lang] = map[string]string{}
+		}
+		for key, value := range values {
+			if key = strings.TrimSpace(key); key != "" {
+				normalized[lang][key] = value
+			}
+		}
+	}
+	return normalized
+}
+
+func translationOverrideCount(overrides map[string]map[string]string) int {
+	count := 0
+	for _, values := range overrides {
+		count += len(values)
+	}
+	return count
 }
 
 func supportListHandler(settings config.Settings, pool *pgxpool.Pool, admin bool) http.HandlerFunc {

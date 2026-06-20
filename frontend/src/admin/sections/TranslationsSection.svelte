@@ -16,6 +16,7 @@
     translationGroups,
     translationLanguages,
     translationsLoading,
+    translationsError,
     translationsDirty,
     translationsSaving,
     translationsPath,
@@ -452,8 +453,17 @@
   </div>
 {/snippet}
 
-{#if translationsLoading || !translationGroups.length}
+{#if translationsLoading}
   {@render renderTranslationsSkeleton()}
+{:else if translationsError}
+  <AdminEmptyState tone="card">
+    <p>{at("translations_load_error", {}, "Could not load translations")}</p>
+    <AdminButton size="sm" variant="secondary" onclick={translationsStore.loadTranslations}>
+      {at("refresh", {}, "Retry")}
+    </AdminButton>
+  </AdminEmptyState>
+{:else if !translationGroups.length}
+  <AdminEmptyState>{at("translations_empty", {}, "No translation strings found")}</AdminEmptyState>
 {:else}
   <div class="admin-translations-toolbar">
     <label class="admin-translations-search">

@@ -290,5 +290,25 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_payment_orders_telegram_payload ON payment_
 				return err
 			},
 		},
+		{
+			ID: "core.go.0007_email_verification_codes",
+			Up: func(ctx context.Context, tx pgx.Tx) error {
+				_, err := tx.Exec(ctx, `
+CREATE TABLE IF NOT EXISTS email_verification_codes (
+	id BIGSERIAL PRIMARY KEY,
+	email VARCHAR(255) NOT NULL,
+	code VARCHAR(12) NOT NULL,
+	purpose VARCHAR(32) NOT NULL DEFAULT 'verify',
+	user_id BIGINT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+	used BOOLEAN NOT NULL DEFAULT FALSE,
+	expires_at TIMESTAMPTZ NOT NULL,
+	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS ix_email_codes_email_purpose ON email_verification_codes(email, purpose, expires_at);
+CREATE INDEX IF NOT EXISTS ix_email_codes_user ON email_verification_codes(user_id, purpose);
+`)
+				return err
+			},
+		},
 	}
 }

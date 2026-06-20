@@ -454,11 +454,9 @@
 
 <Dialog
   open={deviceConfirmOpen}
-  title={t("wa_devices_disconnect_title")}
-  description={t("wa_devices_disconnect_desc", {
-    device:
-      deviceToDisconnect?.display_name ||
-      t("wa_device_fallback_name", { index: deviceToDisconnect?.index || "" }),
+  title={t("wa_ips_disconnect")}
+  description={t("wa_ips_disconnect_desc", {
+    ip: deviceToDisconnect?.ip || "",
   })}
   closeLabel={t("wa_close")}
   onclose={closeDeviceDisconnectDialog}
@@ -472,7 +470,7 @@
       disabled={deviceDisconnectBusy}
     >
       <CircleX size={17} />
-      {t("wa_devices_disconnect_confirm")}
+      {t("wa_ips_disconnect_confirm")}
     </Button>
     <Button
       variant="secondary"
