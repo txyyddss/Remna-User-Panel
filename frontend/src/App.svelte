@@ -377,43 +377,7 @@
   $: subscription = data?.subscription || {};
   $: bandwidthData = formatBandwidthData(subscription);
 
-  function formatBandwidthData(sub) {
-    const payload = sub?.bandwidth;
-    const raw =
-      payload?.bandwidthLastSevenDays ||
-      payload?.bandwidthLast30Days ||
-      payload?.stats ||
-      payload?.items ||
-      payload?.data ||
-      payload;
-    const formatBytes = (value) => {
-      const bytes = Number(value || 0);
-      if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
-      const units = ["B", "KB", "MB", "GB", "TB"];
-      const unit = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-      const amount = bytes / 1024 ** unit;
-      return `${amount >= 10 || unit === 0 ? amount.toFixed(0) : amount.toFixed(1)} ${units[unit]}`;
-    };
-    const entries = Array.isArray(raw)
-      ? raw
-      : raw && typeof raw === "object"
-        ? Object.entries(raw)
-            .filter(([, value]) => Number.isFinite(Number(value)))
-            .map(([label, bytes]) => ({ label, bytes }))
-        : [];
-    return entries
-      .map((entry) => {
-        const bytes = Number(
-          entry?.bytes ?? entry?.total ?? entry?.totalBytes ?? entry?.usedTrafficBytes ?? 0
-        );
-        return {
-          bytes,
-          label: entry?.label || entry?.date || entry?.day || entry?.timestamp || "",
-          value: entry?.value || entry?.display || entry?.formatted || formatBytes(bytes),
-        };
-      })
-      .filter((entry) => Number.isFinite(entry.bytes));
-  }
+  import { formatBandwidthData } from "$lib/webapp/bandwidth.js";
   $: hasActiveTariffSubscription = Boolean(
     tariffMode && subscription?.active && subscription?.tariff_key
   );
@@ -1981,35 +1945,10 @@
     }
   }
 
-  function trialActivationFailureMessage(error) {
-    if (
-      error?.error === "trial_telegram_required" ||
-      error?.message === "telegram_required" ||
-      error?.message === "disposable_email"
-    ) {
-      return t(
-        "wa_trial_telegram_required_error",
-        {},
-        "Для активации пробного периода привяжите Telegram."
-      );
-    }
-    return error?.message || t("wa_trial_activation_failed");
-  }
-
-  function referralWelcomeFailureMessage(error) {
-    if (
-      error?.error === "referral_welcome_telegram_required" ||
-      error?.message === "telegram_required" ||
-      error?.message === "disposable_email"
-    ) {
-      return t(
-        "wa_referral_welcome_telegram_required_error",
-        {},
-        "Для получения реферального бонуса привяжите Telegram."
-      );
-    }
-    return error?.message || t("wa_referral_welcome_claim_failed");
-  }
+  import {
+    trialActivationFailureMessage,
+    referralWelcomeFailureMessage,
+  } from "$lib/webapp/trial.js";
 
   async function claimReferralWelcomeBonus() {
     try {
@@ -2255,14 +2194,15 @@
     billingStore.backToTariffList(subscription, tariffCatalog);
   }
 
+  import { primaryPayActionLabel as _primaryPayActionLabel } from "$lib/webapp/billingLabels.js";
   function primaryPayActionLabel() {
-    if (!subscription.active && appSettings?.trial_enabled && appSettings?.trial_available) {
-      return t("wa_pay_full_subscription", {}, "Оплатить полную подписку");
-    }
-    if (trafficMode || selectedPlan?.sale_mode === "traffic_package") return t("wa_buy_traffic");
-    return subscription.active
-      ? t("wa_renew_subscription", {}, "Продлить подписку")
-      : t("wa_pay_subscription");
+    return _primaryPayActionLabel({
+      subscriptionActive: subscription.active,
+      trafficMode,
+      appSettings,
+      selectedPlan,
+      t,
+    });
   }
 </script>
 

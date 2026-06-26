@@ -243,31 +243,22 @@ func devicesIPsHandler(settings config.Settings, pool *pgxpool.Pool, panel *remn
 			return
 		}
 
-		// Poll for results (up to 30 attempts, 1 second apart)
+		// Poll for results (up to 30 attempts, 1 second apart).
+		pollCtx, pollCancel := context.WithTimeout(r.Context(), 30*time.Second)
+		defer pollCancel()
 		for i := 0; i < 30; i++ {
 			select {
-			case <-r.Context().Done():
+			case <-pollCtx.Done():
 				writeJSON(w, http.StatusGatewayTimeout, map[string]any{"ok": false, "error": "ips_poll_timeout"})
 				return
 			case <-time.After(time.Second):
 			}
-			result, err := panel.GetFetchUserIPsResult(r.Context(), jobID)
+			result, err := panel.GetFetchUserIPsResult(pollCtx, jobID)
 			if err != nil {
 				continue
 			}
-			// Check if results are ready
 			if ips, ok := result["ips"]; ok && ips != nil {
 				ipsList := anySlice(ips)
-				writeJSON(w, http.StatusOK, map[string]any{
-					"ok":          true,
-					"ips":         ipsList,
-					"current_ips": len(ipsList),
-				})
-				return
-			}
-			// Some panels may return the result directly
-			if _, hasData := result["ips"]; hasData {
-				ipsList := anySlice(result["ips"])
 				writeJSON(w, http.StatusOK, map[string]any{
 					"ok":          true,
 					"ips":         ipsList,

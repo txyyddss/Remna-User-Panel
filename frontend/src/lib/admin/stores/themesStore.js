@@ -196,7 +196,7 @@ export function createThemesStore({ api, onThemesSaved, flash, at }) {
           themesDir: data.themes_dir || "",
         }));
       } else {
-        flash(data?.message || data?.error || at("load_failed", {}, "Не удалось загрузить темы"));
+        flash(data?.message || data?.error || at("load_failed", {}, "Failed to load themes"));
       }
     } finally {
       state.update((s) => ({ ...s, themesLoading: false }));
@@ -224,10 +224,10 @@ export function createThemesStore({ api, onThemesSaved, flash, at }) {
           themesDirty: false,
           themesDir: data.themes_dir || s.themesDir,
         }));
-        if (!silent) flash(at("themes_saved", {}, "Темы сохранены"));
+        if (!silent) flash(at("themes_saved", {}, "Themes saved"));
         if (typeof onThemesSaved === "function") await onThemesSaved();
       } else {
-        flash(data?.message || data?.error || at("themes_save_failed", {}, "Не удалось сохранить"));
+        flash(data?.message || data?.error || at("themes_save_failed", {}, "Failed to save"));
       }
     } finally {
       state.update((s) => ({ ...s, themesSaving: false }));

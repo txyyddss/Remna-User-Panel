@@ -1,8 +1,9 @@
 import { get, writable } from "svelte/store";
+import { createRequestTracker } from "$lib/shared/requestTracker.js";
 
 export function createInstallGuidesStore({ api, t, showToast }) {
   let inFlight = null;
-  let requestGeneration = 0;
+  const requestTracker = createRequestTracker();
   const state = writable({
     enabled: false,
     config: null,
@@ -17,7 +18,7 @@ export function createInstallGuidesStore({ api, t, showToast }) {
     if (inFlight?.path === path) return inFlight.promise;
     const snapshot = get(state);
     if (!force && snapshot?.loaded) return snapshot;
-    const generation = ++requestGeneration;
+    const generation = requestTracker.next();
     const promise = (async () => {
       state.update((s) => ({
         ...s,
@@ -27,7 +28,7 @@ export function createInstallGuidesStore({ api, t, showToast }) {
       }));
       try {
         const response = await api(path);
-        if (generation !== requestGeneration) return get(state);
+        if (requestTracker.isStale(generation)) return get(state);
         const next = {
           enabled: Boolean(response?.enabled),
           config: response?.config || null,
@@ -40,7 +41,7 @@ export function createInstallGuidesStore({ api, t, showToast }) {
         state.set(next);
         return next;
       } catch (error) {
-        if (generation !== requestGeneration) return get(state);
+        if (requestTracker.isStale(generation)) return get(state);
         const message =
           error?.message || t("wa_install_unavailable", {}, "Instructions unavailable");
         if (typeof showToast === "function") showToast(message);
@@ -73,7 +74,7 @@ export function createInstallGuidesStore({ api, t, showToast }) {
   }
 
   function reset() {
-    requestGeneration += 1;
+    requestTracker.next(); // invalidate pending requests
     inFlight = null;
     state.set({
       enabled: false,
