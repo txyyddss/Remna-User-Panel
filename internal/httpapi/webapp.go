@@ -239,9 +239,33 @@ func serveUploadedLogo(w http.ResponseWriter, r *http.Request) {
 	// Check both logos and favicons directories
 	for _, subdir := range []string{"logos", "favicons"} {
 		dir := filepath.Join("data", "uploads", subdir)
-		filePath := filepath.Join(dir, filename)
-		if _, err := os.Stat(filePath); err == nil {
-			http.ServeFile(w, r, filePath)
+		absDir, err := filepath.Abs(dir)
+		if err != nil {
+			continue
+		}
+		filePath := filepath.Join(absDir, filename)
+		absPath, err := filepath.Abs(filePath)
+		if err != nil {
+			continue
+		}
+		// Verify the resolved path stays within the allowed directory.
+		if !strings.HasPrefix(absPath, absDir+string(filepath.Separator)) && absPath != absDir {
+			continue
+		}
+		// Resolve symlinks to prevent TOCTOU / symlink-based path escapes.
+		resolvedDir, err := filepath.EvalSymlinks(absDir)
+		if err != nil {
+			continue
+		}
+		resolvedPath, err := filepath.EvalSymlinks(absPath)
+		if err != nil {
+			continue
+		}
+		if !strings.HasPrefix(resolvedPath, resolvedDir+string(filepath.Separator)) && resolvedPath != resolvedDir {
+			continue
+		}
+		if _, err := os.Stat(resolvedPath); err == nil {
+			http.ServeFile(w, r, resolvedPath)
 			return
 		}
 	}

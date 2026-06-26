@@ -694,14 +694,15 @@ func passwordLoginHandler(settings config.Settings, pool *pgxpool.Pool) http.Han
 			return
 		}
 
-		if !passwordHash.Valid || !VerifyPassword(password, passwordHash.String) {
+		passwordValid, needsRehash := VerifyPassword(password, passwordHash.String)
+		if !passwordHash.Valid || !passwordValid {
 			_ = storeEmailCode(r.Context(), pool, email, "failed", "password_login_failed", &userID, passwordLoginLockMinutes)
 			writeJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "password_login_failed", "fallback": "email_code"})
 			return
 		}
 
 		// Auto-migrate legacy SHA-256 hashes to bcrypt.
-		if passwordNeedsRehash(passwordHash.String) {
+		if needsRehash {
 			newHash, hashErr := hashPassword(password)
 			if hashErr == nil {
 				_, _ = pool.Exec(r.Context(),
@@ -801,22 +802,38 @@ func passwordNeedsRehash(storedHash string) bool {
 }
 
 // VerifyPassword checks if the given password matches the stored hash.
-// Supports both legacy sha256: prefixed hashes and bcrypt hashes.
-func VerifyPassword(password, storedHash string) bool {
+// Supports both legacy sha256: prefixed hashes (auto-migrated to bcrypt on
+// first successful verification) and bcrypt hashes.
+//
+// Returns (valid, needsRehash).  When valid is true and needsRehash is true,
+// the caller MUST rehash the password with bcrypt and persist the new hash.
+func VerifyPassword(password, storedHash string) (valid bool, needsRehash bool) {
 	if password == "" || storedHash == "" {
-		return false
+		return false, false
 	}
-	// Legacy SHA-256 format: "sha256:<hex>"
-	//nolint:gosec // G401: SHA-256 is used only for legacy password compatibility;
-	// all new passwords are hashed with bcrypt (cost=12). This code path will be
-	// removed once all legacy hashes have been upgraded.
 	if strings.HasPrefix(storedHash, "sha256:") {
-		h := sha256.Sum256([]byte(password))
-		expected := strings.TrimPrefix(storedHash, "sha256:")
-		return subtle.ConstantTimeCompare([]byte(hex.EncodeToString(h[:])), []byte(expected)) == 1
+		// Legacy SHA-256 format: "sha256:<hex>".  SHA-256 is not a
+		// suitable password hash (no salt, too fast).  This code path
+		// exists SOLELY for backward compatibility during migration;
+		// all legacy hashes are upgraded to bcrypt (cost=12) on
+		// successful authentication.
+		if verifyLegacySHA256(password, storedHash) {
+			return true, true // valid, needs upgrade
+		}
+		return false, false
 	}
 	// Bcrypt format: "$2a$..."
-	return bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(password)) == nil
+	return bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(password)) == nil, false
+}
+
+// verifyLegacySHA256 compares a plaintext password against a legacy
+// "sha256:<hex>" hash using constant-time comparison.  This function
+// exists ONLY for backward compatibility during the SHA-256 → bcrypt
+// migration and MUST NOT be used for new password hashes.
+func verifyLegacySHA256(password, storedHash string) bool {
+	h := sha256.Sum256([]byte(password))
+	expected := strings.TrimPrefix(storedHash, "sha256:")
+	return subtle.ConstantTimeCompare([]byte(hex.EncodeToString(h[:])), []byte(expected)) == 1
 }
 
 // isValidPassword validates password strength: minimum 8 characters,

@@ -1792,13 +1792,28 @@ func adminBackupDownloadHandler(settings config.Settings, pool *pgxpool.Pool) ht
 			http.NotFound(w, r)
 			return
 		}
-		if _, err := os.Stat(absPath); err != nil {
+		// Resolve symlinks to prevent TOCTOU / symlink-based path escapes.
+		resolvedDir, err := filepath.EvalSymlinks(absBackupDir)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		resolvedPath, err := filepath.EvalSymlinks(absPath)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		if !strings.HasPrefix(resolvedPath, resolvedDir+string(filepath.Separator)) && resolvedPath != resolvedDir {
+			http.NotFound(w, r)
+			return
+		}
+		if _, err := os.Stat(resolvedPath); err != nil {
 			http.NotFound(w, r)
 			return
 		}
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", name))
 		w.Header().Set("Content-Type", "application/zip")
-		http.ServeFile(w, r, absPath)
+		http.ServeFile(w, r, resolvedPath)
 	}
 }
 
@@ -2100,11 +2115,26 @@ func adminBackupRestoreHandler(settings config.Settings, pool *pgxpool.Pool) htt
 			writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "archive_not_found"})
 			return
 		}
-		if _, err := os.Stat(absArchivePath); os.IsNotExist(err) {
+		// Resolve symlinks to prevent TOCTOU / symlink-based path escapes.
+		resolvedDir, err := filepath.EvalSymlinks(absBackupDir)
+		if err != nil {
 			writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "archive_not_found"})
 			return
 		}
-		archivePath = absArchivePath
+		resolvedPath, err := filepath.EvalSymlinks(absArchivePath)
+		if err != nil {
+			writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "archive_not_found"})
+			return
+		}
+		if !strings.HasPrefix(resolvedPath, resolvedDir+string(filepath.Separator)) && resolvedPath != resolvedDir {
+			writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "archive_not_found"})
+			return
+		}
+		if _, err := os.Stat(resolvedPath); os.IsNotExist(err) {
+			writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "archive_not_found"})
+			return
+		}
+		archivePath = resolvedPath
 
 		result := map[string]any{"restored_database": false, "restored_compose": false, "errors": []string{}}
 		if payload.RestoreCompose {

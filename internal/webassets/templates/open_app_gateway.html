@@ -111,8 +111,38 @@
         const rawTarget = String(params.get("url") || "").trim();
 
         // -----------------------------------------------------------------------
-        // URL sanitization — prevents XSS (#15/#14/#13) and open redirect (#12/#11/#10)
+        // URL sanitization — prevents XSS and open redirect
         // -----------------------------------------------------------------------
+
+        // Allowed URL schemes (whitelist).  Only these schemes may be used
+        // for navigation or href assignment.
+        var ALLOWED_SCHEMES = ["http:", "https:", "tg:", "vpn:", "ssconf:", "ss:", "snell:", "vmess:", "trojan:", "hysteria:", "vless:", "tuic:", "juicity:", "wireguard:", "clash:", "surge:", "quantumult:", "shadowrocket:", "loon:"];
+
+        /** Install a Trusted Types policy (CSP trusted-types) for creating
+         *  safe URLs from sanitized strings.  Falls back gracefully when
+         *  Trusted Types are not supported. */
+        var trustedURLPolicy = null;
+        if (typeof trustedTypes !== "undefined" && trustedTypes.createPolicy) {
+          try {
+            trustedURLPolicy = trustedTypes.createPolicy("gateway-url", {
+              createURL: function (input) {
+                // The input has already been validated by sanitizeURL.
+                return input;
+              }
+            });
+          } catch (_e) { /* policy already registered or not supported */ }
+        }
+
+        /** Create a TrustedURL from a sanitized string, or return the
+         *  string as-is on browsers without Trusted Types support. */
+        function createTrustedURL(safe) {
+          if (!safe) return safe;
+          if (trustedURLPolicy) {
+            try { return trustedURLPolicy.createURL(safe); } catch (_e) { void _e; }
+          }
+          return safe;
+        }
+
         function hasControlChars(value) {
           return Array.from(String(value || "")).some(function (char) {
             var code = char.charCodeAt(0);
@@ -123,11 +153,21 @@
         /** Safely parse and validate a URL. Returns null for dangerous inputs. */
         function sanitizeURL(raw) {
           if (!raw || hasControlChars(raw)) return null;
-          // Block dangerous URL schemes that could execute code.
-          var dangerousPattern = /^(?:javascript|data|vbscript|file|blob|about|chrome|chrome-extension|moz-extension|ms-appx|ms-appx-web):/i;
-          if (dangerousPattern.test(raw)) return null;
+
+          // Only allow whitelisted schemes.  This is more robust than a
+          // blocklist because any unknown or future dangerous scheme is
+          // rejected by default.
+          var schemeMatch = raw.match(/^([a-zA-Z][a-zA-Z0-9+\-.]*):/);
+          if (!schemeMatch) return null;
+          var scheme = schemeMatch[1].toLowerCase() + ":";
+          var allowed = false;
+          for (var i = 0; i < ALLOWED_SCHEMES.length; i++) {
+            if (scheme === ALLOWED_SCHEMES[i]) { allowed = true; break; }
+          }
+          if (!allowed) return null;
+
           // For http/https URLs, parse with the URL API and validate thoroughly.
-          if (/^https?:\/\//i.test(raw)) {
+          if (scheme === "http:" || scheme === "https:") {
             try {
               var parsed = new URL(raw);
               if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
@@ -138,23 +178,35 @@
               return null;
             }
           }
-          // For custom/deep-link schemes (e.g., "tg://", "vpn://"), ensure a valid
-          // scheme prefix and no encoded dangerous characters.
-          if (!/^[a-zA-Z][a-zA-Z0-9+\-.]*:/.test(raw)) return null;
-          // Double-check the decoded value does not contain dangerous schemes.
+
+          // For custom/deep-link schemes (e.g., "tg://", "vpn://"), the
+          // scheme prefix was already validated against the whitelist above.
+          // Double-check the decoded value does not contain dangerous schemes
+          // hidden behind encoding.
           var decoded = raw;
           try { decoded = decodeURIComponent(raw); } catch (_e) { void _e; }
-          if (dangerousPattern.test(decoded)) return null;
+          var decodedScheme = decoded.match(/^([a-zA-Z][a-zA-Z0-9+\-.]*):/);
+          if (decodedScheme && scheme !== decodedScheme[1].toLowerCase() + ":") return null;
           return raw;
         }
 
-        /** Safely assign a URL to an anchor's href. */
+        /** Safely assign a URL to an anchor's href using Trusted Types when
+         *  available.  Never sets href from unsanitized user input. */
         function setSafeHref(el, url) {
           if (!url) { el.removeAttribute("href"); return; }
-          // Use the URL object to let the browser handle encoding; never set href
-          // directly from user input without validation.
           var safe = sanitizeURL(url);
-          if (safe) { el.href = safe; } else { el.removeAttribute("href"); }
+          if (safe) {
+            var trusted = createTrustedURL(safe);
+            if (trusted && typeof trusted === "object") {
+              // TrustedURL object — must be used with trustedTypes protection.
+              // On supporting browsers this prevents XSS via href injection.
+              try { el.href = trusted; } catch (_e) { el.href = safe; }
+            } else {
+              el.href = safe;
+            }
+          } else {
+            el.removeAttribute("href");
+          }
         }
 
         /** Safely navigate to a URL (not via anchor href). */

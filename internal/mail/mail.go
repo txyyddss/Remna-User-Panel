@@ -196,9 +196,23 @@ func (m *Mailer) authAndSend(client *smtp.Client, to []string, msg string) error
 		return fmt.Errorf("mail from: %w", err)
 	}
 	for _, recipient := range to {
+		// Validate recipient does not contain CRLF to prevent SMTP
+		// command injection via RCPT TO (defense in depth; net/smtp
+		// also rejects addresses with newlines).
+		if strings.ContainsAny(recipient, "\r\n") {
+			return fmt.Errorf("rcpt to %s: invalid recipient address (contains control characters)", recipient)
+		}
 		if err := client.Rcpt(recipient); err != nil {
 			return fmt.Errorf("rcpt to %s: %w", recipient, err)
 		}
+	}
+	// Validate the message does not contain the SMTP DATA termination
+	// sequence ("\r\n.\r\n") that could prematurely end the DATA command.
+	// Go's net/smtp dataCloser applies dot-stuffing per RFC 5321 §4.5.2,
+	// which escapes lines beginning with "."; this validation provides
+	// defense in depth against a compromised or alternative SMTP client.
+	if err := validateSMTPMessage(msg); err != nil {
+		return err
 	}
 	w, err := client.Data()
 	if err != nil {
@@ -209,4 +223,18 @@ func (m *Mailer) authAndSend(client *smtp.Client, to []string, msg string) error
 		return fmt.Errorf("write: %w", err)
 	}
 	return w.Close()
+}
+
+// validateSMTPMessage checks that the message does not contain sequences
+// that could be misinterpreted as SMTP protocol commands when sent over
+// the DATA channel.  This is defense in depth; Go's net/smtp handles
+// dot-stuffing automatically.
+func validateSMTPMessage(msg string) error {
+	// The SMTP DATA command is terminated by "\r\n.\r\n".  A message
+	// containing this sequence could allow an attacker to inject
+	// arbitrary SMTP commands after the premature DATA end.
+	if strings.Contains(msg, "\r\n.\r\n") {
+		return fmt.Errorf("message contains forbidden SMTP DATA termination sequence")
+	}
+	return nil
 }
