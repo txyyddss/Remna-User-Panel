@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/mail"
 	"net/smtp"
 	"strings"
 	"time"
@@ -65,6 +66,10 @@ func (m *Mailer) Send(msg Message) error {
 	if len(msg.To) == 0 {
 		return fmt.Errorf("no recipients")
 	}
+	recipients, err := sanitizeRecipients(msg.To)
+	if err != nil {
+		return err
+	}
 
 	contentType := msg.ContentType
 	if contentType == "" {
@@ -73,7 +78,7 @@ func (m *Mailer) Send(msg Message) error {
 
 	headers := make(map[string]string)
 	headers["From"] = m.formatFrom()
-	headers["To"] = strings.Join(msg.To, ", ")
+	headers["To"] = strings.Join(recipients, ", ")
 	headers["Subject"] = msg.Subject
 	headers["MIME-Version"] = "1.0"
 	headers["Content-Type"] = contentType
@@ -95,7 +100,27 @@ func (m *Mailer) Send(msg Message) error {
 	message.WriteString("\r\n")
 	message.WriteString(body)
 
-	return m.sendMail(msg.To, message.String())
+	return m.sendMail(recipients, message.String())
+}
+
+func sanitizeRecipients(to []string) ([]string, error) {
+	recipients := make([]string, 0, len(to))
+	for _, recipient := range to {
+		trimmed := strings.TrimSpace(recipient)
+		if trimmed == "" {
+			return nil, fmt.Errorf("invalid recipient address")
+		}
+		addr, err := mail.ParseAddress(trimmed)
+		if err != nil || addr.Address == "" {
+			return nil, fmt.Errorf("invalid recipient address")
+		}
+		// Enforce canonical bare addr-spec only.
+		if addr.Address != trimmed {
+			return nil, fmt.Errorf("invalid recipient address")
+		}
+		recipients = append(recipients, addr.Address)
+	}
+	return recipients, nil
 }
 
 func (m *Mailer) formatFrom() string {
