@@ -184,11 +184,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
-        with:
-          languages: ${{ matrix.language }}
-
       - name: Set up Go (for Go analysis)
         if: matrix.language == 'go'
         uses: actions/setup-go@v6
@@ -208,6 +203,11 @@ jobs:
         if: matrix.language == 'javascript-typescript'
         run: npm ci
         working-directory: frontend
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v4
