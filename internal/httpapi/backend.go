@@ -211,7 +211,7 @@ func callTelegramBotAPI(ctx context.Context, settings config.Settings, method st
 	request.Header.Set("Content-Type", "application/json")
 	response, err := telegramHTTPClient.Do(request)
 	if err != nil {
-		return err
+		return fmt.Errorf("telegram api %s: %w", method, err)
 	}
 	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode/100 != 2 {
