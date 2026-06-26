@@ -116,10 +116,17 @@ func webappRuntimeConfig(ctx context.Context, settings config.Settings, pool *pg
 		"apiBase": "/api", "language": effectiveDefaultLanguage(ctx, pool, settings), "languages": languageOptions(catalog),
 		"emailAuthEnabled": emailAuthEnabled, "logoUrl": logoURL,
 		"telegramLoginClientId": store.String(ctx, "TELEGRAM_LOGIN_CLIENT_ID", ""),
+		"telegramLoginBotId":    store.String(ctx, "TELEGRAM_LOGIN_CLIENT_ID", ""),
+		"telegramOAuthClientId": store.String(ctx, "TELEGRAM_LOGIN_CLIENT_ID", ""),
 		"faviconUrl":            faviconURL, "faviconUseCustom": useCustomFavicon,
 		"supportUrl": store.String(ctx, "SUPPORT_LINK", ""), "serverStatusUrl": store.String(ctx, "SERVER_STATUS_URL", ""),
 		"privacyPolicyUrl": store.String(ctx, "PRIVACY_POLICY_URL", ""), "userAgreementUrl": store.String(ctx, "USER_AGREEMENT_URL", ""),
 		"themesCatalog": readThemeCatalog(ctx, store, assets.ThemesDir),
+		// 前端 admin panel 加载所需的静态资源路径
+		"adminCssAsset": store.String(ctx, "WEBAPP_ADMIN_CSS_ASSET", ""),
+		"adminJsAsset":  store.String(ctx, "WEBAPP_ADMIN_JS_ASSET", ""),
+		"appVersion":    store.String(ctx, "APP_VERSION", "dev+local"),
+		"appRepositoryUrl": store.String(ctx, "APP_REPOSITORY_URL", ""),
 	}
 }
 

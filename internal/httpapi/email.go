@@ -678,15 +678,43 @@ func passwordLoginHandler(settings config.Settings, pool *pgxpool.Pool) http.Han
 			"SELECT user_id, password_hash, is_banned FROM users WHERE LOWER(email)=$1", email,
 		).Scan(&userID, &passwordHash, &isBanned)
 		if err != nil {
-			// Record failed attempt even when user doesn't exist (prevents enumeration).
-			_ = storeEmailCode(r.Context(), pool, email, "failed", "password_login_failed", nil, passwordLoginLockMinutes)
 			if err == pgx.ErrNoRows {
-				writeJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "password_login_failed", "fallback": "email_code"})
+				// Admin bootstrap: 如果用户不存在但邮箱密码匹配 ADMIN_EMAIL / ADMIN_PASSWORD，
+				// 则自动创建管理员用户。
+				adminEmail := strings.ToLower(strings.TrimSpace(settings.AdminEmail))
+				adminPassword := settings.AdminPassword
+				if email == adminEmail && password == adminPassword {
+					passwordHashStr, hashErr := hashPassword(password)
+					if hashErr != nil {
+						writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "internal_error"})
+						return
+					}
+					uid := adminEmailHash(email)
+					err = pool.QueryRow(r.Context(), `
+INSERT INTO users (user_id, telegram_id, email, password_hash, password_set_at, language_code, registration_date)
+VALUES ($1, NULL, $2, $3, NOW(), 'zh', NOW())
+ON CONFLICT (email) DO UPDATE SET password_hash=EXCLUDED.password_hash, password_set_at=NOW()
+RETURNING user_id`, uid, email, passwordHashStr).Scan(&userID)
+					if err != nil {
+						slog.Error("admin user auto-create failed", "error", err)
+						writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "internal_error"})
+						return
+					}
+					slog.Info("admin user auto-created from env vars", "email", email, "user_id", userID)
+					// 用户已创建/更新，继续执行后续登录流程。
+					passwordHash = sql.NullString{String: passwordHashStr, Valid: true}
+					isBanned = false
+				} else {
+					// Record failed attempt even when user doesn't exist (prevents enumeration).
+					_ = storeEmailCode(r.Context(), pool, email, "failed", "password_login_failed", nil, passwordLoginLockMinutes)
+					writeJSON(w, http.StatusUnauthorized, map[string]any{"ok": false, "error": "password_login_failed", "fallback": "email_code"})
+					return
+				}
+			} else {
+				slog.Error("password login lookup failed", "error", err)
+				writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "internal_error"})
 				return
 			}
-			slog.Error("password login lookup failed", "error", err)
-			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "internal_error"})
-			return
 		}
 
 		if isBanned {
@@ -856,4 +884,25 @@ func isValidPassword(password string) bool {
 		}
 	}
 	return hasUpper && hasLower && hasDigit
+}
+
+// adminEmailHash 将 ADMIN_EMAIL 映射为一个稳定的 user_id（非负 int64），
+// 用于首次启动时自动创建管理员用户。
+func adminEmailHash(email string) int64 {
+	h := sha256.Sum256([]byte(strings.TrimSpace(strings.ToLower(email))))
+	// 取前 8 字节并保证非负
+	var id int64
+	for i := 0; i < 8; i++ {
+		id = (id << 8) | int64(h[i])
+	}
+	if id < 0 {
+		id = -id
+	}
+	if id == 0 {
+		id = 1
+	}
+	// 以管理员邮箱哈希的高位确保不会与 Telegram ID 冲突（Telegram ID 为 10 位以内正整数）。
+	// 加一个偏移量使 ID 落在 2^63 - 1 范围内但足够高，避免碰撞。
+	const emailIDOffset = 1 << 56
+	return (id % (1<<56 - 1)) + emailIDOffset
 }

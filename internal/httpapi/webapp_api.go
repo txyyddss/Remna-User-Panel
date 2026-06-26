@@ -603,6 +603,10 @@ FROM users WHERE user_id=$1`, userID).Scan(
 	user.PhotoURL = photo
 	user.PanelUserUUID = panelUUID
 	user.IsAdmin = isAdminID(settings.AdminIDs, user.UserID) || isAdminID(settings.AdminIDs, user.TelegramID)
+	// 如果用户邮箱匹配 ADMIN_EMAIL 且密码已设置，也视为管理员（适配自动创建的管理员账号）。
+	if !user.IsAdmin && email != "" && settings.AdminEmail != "" && settings.AdminPassword != "" && strings.EqualFold(email, settings.AdminEmail) {
+		user.IsAdmin = true
+	}
 	return user, nil
 }
 
