@@ -1084,7 +1084,7 @@
   }
 
   function readAdminBundleApi() {
-    const bundle = window.SubscriptionWebAppAdmin;
+    const bundle = window.__SubscriptionWebAppAdmin__;
     return bundle?.mount ? bundle : null;
   }
 
