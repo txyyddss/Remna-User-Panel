@@ -162,7 +162,19 @@ func registerAssetRoutes(router chi.Router, assets webassets.Paths) {
 		router.Get(pattern, func(w http.ResponseWriter, r *http.Request) {
 			name := filepath.Base(r.URL.Path)
 			if strings.HasPrefix(name, "apple-touch") || strings.HasPrefix(name, "icon-") || name == "favicon.ico" {
-				http.ServeFile(w, r, filepath.Join(assets.TemplatesDir, "default-brand", "favicons", "19b2a242e5b7bc2d", name))
+				faviconDir := filepath.Join(assets.TemplatesDir, "default-brand", "favicons", "19b2a242e5b7bc2d")
+				// Resolve to absolute path and verify it stays within the templates directory.
+				absFaviconDir, err := filepath.Abs(faviconDir)
+				if err != nil {
+					http.NotFound(w, r)
+					return
+				}
+				absPath := filepath.Join(absFaviconDir, name)
+				if !strings.HasPrefix(absPath, absFaviconDir+string(filepath.Separator)) {
+					http.NotFound(w, r)
+					return
+				}
+				http.ServeFile(w, r, absPath)
 				return
 			}
 			fileServer.ServeHTTP(w, r)
@@ -196,6 +208,21 @@ func serveThemeFile(w http.ResponseWriter, r *http.Request, root string, prefix 
 		return
 	}
 	if fullAbs != rootAbs && !strings.HasPrefix(fullAbs, rootAbs+string(filepath.Separator)) {
+		http.NotFound(w, r)
+		return
+	}
+	// Also verify the resolved path does not escape via symlinks outside the root.
+	resolvedRoot, err := filepath.EvalSymlinks(rootAbs)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	resolvedFull, err := filepath.EvalSymlinks(fullAbs)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if resolvedFull != resolvedRoot && !strings.HasPrefix(resolvedFull, resolvedRoot+string(filepath.Separator)) {
 		http.NotFound(w, r)
 		return
 	}

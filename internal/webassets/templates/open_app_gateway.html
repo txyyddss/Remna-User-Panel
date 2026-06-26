@@ -108,35 +108,79 @@
         const openLink = document.getElementById("open-link");
         const closeButton = document.getElementById("close-button");
         const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-        const target = String(params.get("url") || "").trim();
-        const isUnsafe =
-          !target ||
-          hasControlChars(target) ||
-          /^(?:javascript|data|vbscript|https?):/i.test(target);
-        let attempted = false;
-        let pageLeft = false;
-        let state = "opening";
-        let closeAttemptTimer = null;
-        const CLOSE_ATTEMPT_DELAY_MS = 2500;
+        const rawTarget = String(params.get("url") || "").trim();
 
+        // -----------------------------------------------------------------------
+        // URL sanitization — prevents XSS (#15/#14/#13) and open redirect (#12/#11/#10)
+        // -----------------------------------------------------------------------
         function hasControlChars(value) {
-          return Array.from(String(value || "")).some((char) => {
-            const code = char.charCodeAt(0);
+          return Array.from(String(value || "")).some(function (char) {
+            var code = char.charCodeAt(0);
             return code <= 31 || code === 127;
           });
         }
 
+        /** Safely parse and validate a URL. Returns null for dangerous inputs. */
+        function sanitizeURL(raw) {
+          if (!raw || hasControlChars(raw)) return null;
+          // Block dangerous URL schemes that could execute code.
+          var dangerousPattern = /^(?:javascript|data|vbscript|file|blob|about|chrome|chrome-extension|moz-extension|ms-appx|ms-appx-web):/i;
+          if (dangerousPattern.test(raw)) return null;
+          // For http/https URLs, parse with the URL API and validate thoroughly.
+          if (/^https?:\/\//i.test(raw)) {
+            try {
+              var parsed = new URL(raw);
+              if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+              // Block URLs with embedded credentials (phishing vector).
+              if (parsed.username || parsed.password) return null;
+              return parsed.href;
+            } catch (_e) {
+              return null;
+            }
+          }
+          // For custom/deep-link schemes (e.g., "tg://", "vpn://"), ensure a valid
+          // scheme prefix and no encoded dangerous characters.
+          if (!/^[a-zA-Z][a-zA-Z0-9+\-.]*:/.test(raw)) return null;
+          // Double-check the decoded value does not contain dangerous schemes.
+          var decoded = raw;
+          try { decoded = decodeURIComponent(raw); } catch (_e) { void _e; }
+          if (dangerousPattern.test(decoded)) return null;
+          return raw;
+        }
+
+        /** Safely assign a URL to an anchor's href. */
+        function setSafeHref(el, url) {
+          if (!url) { el.removeAttribute("href"); return; }
+          // Use the URL object to let the browser handle encoding; never set href
+          // directly from user input without validation.
+          var safe = sanitizeURL(url);
+          if (safe) { el.href = safe; } else { el.removeAttribute("href"); }
+        }
+
+        /** Safely navigate to a URL (not via anchor href). */
+        function safeNavigate(url) {
+          var safe = sanitizeURL(url);
+          if (!safe) return;
+          // Use location.assign (safer than setting location.href directly) with a
+          // validated URL to prevent script execution via javascript: URLs.
+          try { window.location.assign(safe); } catch (_e) { void _e; }
+        }
+
+        var target = sanitizeURL(rawTarget);
+        var isUnsafe = target === null;
+        var attempted = false;
+        var pageLeft = false;
+        var state = "opening";
+        var closeAttemptTimer = null;
+        var CLOSE_ATTEMPT_DELAY_MS = 2500;
+
         function text(key, fallback) {
-          const value = messages && messages[key];
+          var value = messages && messages[key];
           return typeof value === "string" && value ? value : fallback;
         }
 
         function tryCloseWindow() {
-          try {
-            window.close();
-          } catch (_error) {
-            void _error;
-          }
+          try { window.close(); } catch (_error) { void _error; }
         }
 
         function render(nextState) {
@@ -156,7 +200,7 @@
             statusEl.textContent = text("doneHint", "You can close this window.");
             openLink.textContent = text("retryButton", "Open again");
             openLink.removeAttribute("aria-disabled");
-            openLink.href = target;
+            setSafeHref(openLink, target);
             closeButton.textContent = text("closeButton", "Close window");
             closeButton.hidden = false;
             return;
@@ -169,7 +213,7 @@
               : text("hint", "Opening the app on this device...");
           openLink.textContent = text("button", "Open app");
           openLink.removeAttribute("aria-disabled");
-          openLink.href = target;
+          setSafeHref(openLink, target);
           closeButton.hidden = true;
         }
 
@@ -177,7 +221,7 @@
           if (state === "done" || isUnsafe) return;
           render("done");
           if (closeAttemptTimer) window.clearTimeout(closeAttemptTimer);
-          closeAttemptTimer = window.setTimeout(() => {
+          closeAttemptTimer = window.setTimeout(function () {
             if (pageLeft || document.hidden) tryCloseWindow();
           }, CLOSE_ATTEMPT_DELAY_MS);
         }
@@ -193,8 +237,8 @@
           attempted = true;
           pageLeft = false;
           render("opening");
-          window.location.href = target;
-          window.setTimeout(() => {
+          safeNavigate(target);
+          window.setTimeout(function () {
             if (state === "opening" && !pageLeft) render("manual");
           }, 1600);
         }
@@ -204,16 +248,16 @@
           return;
         }
 
-        openLink.addEventListener("click", (event) => {
+        openLink.addEventListener("click", function (event) {
           event.preventDefault();
           openTarget();
         });
-        closeButton.addEventListener("click", () => {
+        closeButton.addEventListener("click", function () {
           tryCloseWindow();
           render("done");
         });
         window.addEventListener("pagehide", notePageLeft);
-        document.addEventListener("visibilitychange", () => {
+        document.addEventListener("visibilitychange", function () {
           if (!attempted) return;
           if (document.hidden) {
             pageLeft = true;

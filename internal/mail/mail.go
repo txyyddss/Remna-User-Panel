@@ -87,7 +87,10 @@ func (m *Mailer) Send(msg Message) error {
 
 	var message strings.Builder
 	for k, v := range headers {
-		fmt.Fprintf(&message, "%s: %s\r\n", k, v)
+		// Sanitize header values to prevent SMTP header injection (CRLF injection).
+		sanitized := strings.ReplaceAll(v, "\r", "")
+		sanitized = strings.ReplaceAll(sanitized, "\n", "")
+		fmt.Fprintf(&message, "%s: %s\r\n", k, sanitized)
 	}
 	message.WriteString("\r\n")
 	message.WriteString(body)

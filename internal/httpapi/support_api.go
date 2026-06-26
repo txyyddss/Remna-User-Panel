@@ -280,7 +280,7 @@ func supportUnreadHandler(settings config.Settings, pool *pgxpool.Pool) http.Han
 		unread := 0
 		for _, ticket := range readSettingList(r.Context(), pool, "SUPPORT_TICKETS") {
 			if supportTicketBelongsToUser(ticket, session.User.UserID) {
-				unread += int(int64Value(ticket, "unread_user_count"))
+				unread += safeInt(int64Value(ticket, "unread_user_count"))
 			}
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "unread": unread})

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"database/sql"
 	"encoding/hex"
 	"fmt"
@@ -806,9 +807,13 @@ func VerifyPassword(password, storedHash string) bool {
 		return false
 	}
 	// Legacy SHA-256 format: "sha256:<hex>"
+	//nolint:gosec // G401: SHA-256 is used only for legacy password compatibility;
+	// all new passwords are hashed with bcrypt (cost=12). This code path will be
+	// removed once all legacy hashes have been upgraded.
 	if strings.HasPrefix(storedHash, "sha256:") {
 		h := sha256.Sum256([]byte(password))
-		return hex.EncodeToString(h[:]) == strings.TrimPrefix(storedHash, "sha256:")
+		expected := strings.TrimPrefix(storedHash, "sha256:")
+		return subtle.ConstantTimeCompare([]byte(hex.EncodeToString(h[:])), []byte(expected)) == 1
 	}
 	// Bcrypt format: "$2a$..."
 	return bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(password)) == nil

@@ -1061,6 +1061,19 @@ func int64Value(m map[string]any, key string) int64 {
 	}
 }
 
+// safeInt converts int64 to int with overflow protection.
+// On 32-bit architectures, int is 32 bits; this function clamps the value
+// to the int range to prevent undefined behavior from overflow.
+func safeInt(v int64) int {
+	if v > math.MaxInt {
+		return math.MaxInt
+	}
+	if v < math.MinInt {
+		return math.MinInt
+	}
+	return int(v)
+}
+
 func mapValue(m map[string]any, key string) map[string]any {
 	if m == nil {
 		return map[string]any{}

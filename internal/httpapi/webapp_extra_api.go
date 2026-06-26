@@ -423,16 +423,16 @@ func promoApplyHandler(settings config.Settings, pool *pgxpool.Pool, panel *remn
 				writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "promo_already_used"})
 				return
 			}
-			maxActivations := int(int64Value(promos[index], "max_activations"))
+			maxActivations := safeInt(int64Value(promos[index], "max_activations"))
 			currentActivations := promoActivationCount(promos[index])
 			_ = pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM promo_activations WHERE promo_id=$1 AND status='applied'", promoID).Scan(&currentActivations)
 			if maxActivations > 0 && currentActivations >= maxActivations {
 				writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "promo_exhausted"})
 				return
 			}
-			days := int(int64Value(promos[index], "bonus_days"))
+			days := safeInt(int64Value(promos[index], "bonus_days"))
 			if days <= 0 {
-				days = int(int64Value(promos[index], "days"))
+				days = safeInt(int64Value(promos[index], "days"))
 			}
 			if days <= 0 {
 				writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "error": "promo_invalid_reward"})
@@ -1775,14 +1775,30 @@ func adminBackupDownloadHandler(settings config.Settings, pool *pgxpool.Pool) ht
 			http.NotFound(w, r)
 			return
 		}
-		path := filepath.Join("data", "backups", name)
-		if _, err := os.Stat(path); err != nil {
+		backupDir := filepath.Join("data", "backups")
+		path := filepath.Join(backupDir, name)
+		// Resolve to absolute path and verify it stays within the backup directory.
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		absBackupDir, err := filepath.Abs(backupDir)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		if !strings.HasPrefix(absPath, absBackupDir+string(filepath.Separator)) && absPath != absBackupDir {
+			http.NotFound(w, r)
+			return
+		}
+		if _, err := os.Stat(absPath); err != nil {
 			http.NotFound(w, r)
 			return
 		}
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", name))
 		w.Header().Set("Content-Type", "application/zip")
-		http.ServeFile(w, r, path)
+		http.ServeFile(w, r, absPath)
 	}
 }
 
@@ -2069,11 +2085,26 @@ func adminBackupRestoreHandler(settings config.Settings, pool *pgxpool.Pool) htt
 		}
 
 		backupDir := filepath.Join("data", "backups")
+		absBackupDir, err := filepath.Abs(backupDir)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "backup_dir_resolve_failed"})
+			return
+		}
 		archivePath := filepath.Join(backupDir, filepath.Base(payload.ArchiveName))
-		if _, err := os.Stat(archivePath); os.IsNotExist(err) {
+		absArchivePath, err := filepath.Abs(archivePath)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "archive_path_resolve_failed"})
+			return
+		}
+		if !strings.HasPrefix(absArchivePath, absBackupDir+string(filepath.Separator)) && absArchivePath != absBackupDir {
 			writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "archive_not_found"})
 			return
 		}
+		if _, err := os.Stat(absArchivePath); os.IsNotExist(err) {
+			writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "archive_not_found"})
+			return
+		}
+		archivePath = absArchivePath
 
 		result := map[string]any{"restored_database": false, "restored_compose": false, "errors": []string{}}
 		if payload.RestoreCompose {
@@ -2369,7 +2400,7 @@ func promoExpired(item map[string]any) bool {
 			return true
 		}
 	}
-	validDays := int(int64Value(item, "valid_days"))
+	validDays := safeInt(int64Value(item, "valid_days"))
 	if validDays <= 0 {
 		return false
 	}
@@ -2391,7 +2422,7 @@ func promoActivatedByUser(item map[string]any, userID int64) bool {
 }
 
 func promoActivationCount(item map[string]any) int {
-	current := int(int64Value(item, "current_activations"))
+	current := safeInt(int64Value(item, "current_activations"))
 	if activations := len(anyList(item["activations"])); activations > current {
 		return activations
 	}
