@@ -981,7 +981,7 @@
 
   function resolveWebappAssetPath(configValue, fallbackName) {
     const raw = String(configValue || "").trim() || fallbackName;
-    if (/^(?:https?:)?\/\//i.test(raw) || raw.startsWith("data:")) return fallbackName;
+    if (/^(?:https?:)?\/\//i.test(raw) || raw.startsWith("data:")) return raw;
     if (window.location.protocol === "file:" && raw.startsWith("/")) return raw.slice(1);
     return raw.startsWith("/") ? raw : `/${raw}`;
   }
@@ -1084,7 +1084,7 @@
   }
 
   function readAdminBundleApi() {
-    const bundle = window.__SubscriptionWebAppAdmin__;
+    const bundle = window.SubscriptionWebAppAdmin;
     return bundle?.mount ? bundle : null;
   }
 

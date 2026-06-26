@@ -33,13 +33,13 @@ function mountAdminPanel(target, props = {}) {
   };
 }
 
-window.__SubscriptionWebAppAdmin__ = {
+window.SubscriptionWebAppAdmin = {
   AdminPanel,
   mount: mountAdminPanel,
 };
-window.__SubscriptionWebAppAdminPanel__ = AdminPanel;
+window.SubscriptionWebAppAdminPanel = AdminPanel;
 window.dispatchEvent(
   new CustomEvent("subscription-webapp-admin-ready", {
-    detail: window.__SubscriptionWebAppAdmin__,
+    detail: window.SubscriptionWebAppAdmin,
   })
 );
