@@ -48,7 +48,7 @@ export function createTariffsStore({ api, onTariffsSaved, flash, at }) {
           providerCurrencySupport: data.provider_currency_support || [],
         }));
       } else {
-        flash(data?.message || data?.error || at("load_failed", {}, "Не удалось загрузить тарифы"));
+        flash(data?.message || data?.error || at("load_failed", {}, "Failed to load tariffs"));
       }
     } finally {
       state.update((s) => ({ ...s, tariffsLoading: false }));
@@ -117,10 +117,10 @@ export function createTariffsStore({ api, onTariffsSaved, flash, at }) {
           tariffDeleteTarget: null,
         }));
         if (onTariffsSaved) await onTariffsSaved(res.catalog);
-        flash(successText || at("tariffs_saved", {}, "Тарифы сохранены"));
+        flash(successText || at("tariffs_saved", {}, "Tariffs saved"));
       } else {
         flash(
-          res?.message || res?.error || at("tariffs_save_failed", {}, "Ошибка сохранения тарифов")
+          res?.message || res?.error || at("tariffs_save_failed", {}, "Failed to save tariffs")
         );
       }
     } finally {
@@ -159,14 +159,14 @@ export function createTariffsStore({ api, onTariffsSaved, flash, at }) {
     const s = get(state);
     const tariff = tariffFromDraft(s.tariffDraft, s.tariffsCatalog.default_currency || "usd");
     if (!tariff.key) {
-      flash(at("tariff_error_key_required", {}, "Укажите ключ тарифа"));
+      flash(at("tariff_error_key_required", {}, "Tariff key is required"));
       return;
     }
     const existing = (s.tariffsCatalog.tariffs || []).find(
       (item) => item.key === tariff.key && item.key !== s.tariffEditingKey
     );
     if (existing) {
-      flash(at("tariff_error_key_exists", {}, "Тариф с таким ключом уже есть"));
+      flash(at("tariff_error_key_exists", {}, "Tariff with this key already exists"));
       return;
     }
     const current = s.tariffsCatalog.tariffs || [];
@@ -175,7 +175,7 @@ export function createTariffsStore({ api, onTariffsSaved, flash, at }) {
       : [...current, tariff];
     const enabledKeys = tariffs.filter((item) => item.enabled !== false).map((item) => item.key);
     if (!enabledKeys.length) {
-      flash(at("tariff_error_min_enabled", {}, "Должен быть хотя бы один включённый тариф"));
+      flash(at("tariff_error_min_enabled", {}, "At least one tariff must be enabled"));
       return;
     }
     const currentDefault =
@@ -185,7 +185,7 @@ export function createTariffsStore({ api, onTariffsSaved, flash, at }) {
     const defaultTariff = enabledKeys.includes(currentDefault) ? currentDefault : enabledKeys[0];
     await persistTariffs(
       { ...cloneCatalog(s.tariffsCatalog), default_tariff: defaultTariff, tariffs },
-      at("tariff_saved", {}, "Тариф сохранён")
+      at("tariff_saved", {}, "Tariff saved")
     );
   }
 
@@ -196,7 +196,7 @@ export function createTariffsStore({ api, onTariffsSaved, flash, at }) {
     );
     const enabledKeys = tariffs.filter((item) => item.enabled !== false).map((item) => item.key);
     if (!enabledKeys.length) {
-      flash(at("tariff_error_min_enabled", {}, "Должен остаться хотя бы один включённый тариф"));
+      flash(at("tariff_error_min_enabled", {}, "At least one enabled tariff must remain"));
       return;
     }
     const defaultTariff = enabledKeys.includes(s.tariffsCatalog.default_tariff)
@@ -204,7 +204,7 @@ export function createTariffsStore({ api, onTariffsSaved, flash, at }) {
       : enabledKeys[0];
     await persistTariffs(
       { ...cloneCatalog(s.tariffsCatalog), default_tariff: defaultTariff, tariffs },
-      at("tariff_status_updated", {}, "Статус тарифа обновлён")
+      at("tariff_status_updated", {}, "Tariff status updated")
     );
   }
 
@@ -213,21 +213,21 @@ export function createTariffsStore({ api, onTariffsSaved, flash, at }) {
     if (!key || key === s.tariffsCatalog.default_tariff) return;
     await persistTariffs(
       { ...cloneCatalog(s.tariffsCatalog), default_tariff: key },
-      at("tariff_default_updated", {}, "Тариф по умолчанию обновлён")
+      at("tariff_default_updated", {}, "Default tariff updated")
     );
   }
 
   async function setDefaultCurrency(value) {
     const currency = normalizeCurrencyKey(value || "usd");
     if (!currency || currency === "stars") {
-      flash(at("tariff_currency_invalid", {}, "Укажите фиатную или криптовалюту, но не Stars"));
+      flash(at("tariff_currency_invalid", {}, "Specify fiat or crypto, not Stars"));
       return;
     }
     const s = get(state);
     if (currency === normalizeCurrencyKey(s.tariffsCatalog.default_currency || "usd")) return;
     await persistTariffs(
       { ...cloneCatalog(s.tariffsCatalog), default_currency: currency },
-      at("tariff_currency_updated", {}, "Валюта оплаты обновлена")
+      at("tariff_currency_updated", {}, "Payment currency updated")
     );
   }
 
@@ -240,7 +240,7 @@ export function createTariffsStore({ api, onTariffsSaved, flash, at }) {
     const enabledKeys = tariffs.filter((item) => item.enabled !== false).map((item) => item.key);
     if (!enabledKeys.length) {
       flash(
-        at("tariff_error_delete_last_enabled", {}, "Нельзя удалить последний включённый тариф")
+        at("tariff_error_delete_last_enabled", {}, "Cannot delete the last enabled tariff")
       );
       return;
     }
@@ -249,7 +249,7 @@ export function createTariffsStore({ api, onTariffsSaved, flash, at }) {
       : enabledKeys[0];
     await persistTariffs(
       { ...cloneCatalog(s.tariffsCatalog), default_tariff: defaultTariff, tariffs },
-      at("tariff_deleted", {}, "Тариф удалён")
+      at("tariff_deleted", {}, "Tariff deleted")
     );
   }
 

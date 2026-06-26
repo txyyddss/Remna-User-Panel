@@ -31,13 +31,17 @@ export function createApiClient({
   }
 
   async function publicApi(path, payload = {}, options = {}) {
-    const response = await fetch(`${apiBase}${path}`, {
+    const fetchOptions = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       signal: options.signal,
       credentials: "same-origin",
-    });
+    };
+    if (options.keepalive) {
+      fetchOptions.keepalive = true;
+    }
+    const response = await fetch(`${apiBase}${path}`, fetchOptions);
     return response.json();
   }
 

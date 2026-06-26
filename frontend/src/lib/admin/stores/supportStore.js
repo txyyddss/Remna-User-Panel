@@ -1,4 +1,5 @@
 import { get, writable } from "svelte/store";
+import { createRequestTracker } from "$lib/shared/requestTracker.js";
 import { withRoutePrefix } from "../../webapp/routes.js";
 
 export function createAdminSupportStore({ api, onToast, at, routePrefix = "" }) {
@@ -33,7 +34,7 @@ export function createAdminSupportStore({ api, onToast, at, routePrefix = "" }) 
   let visibilityHandler = null;
   let resumeHandler = null;
   let active = "stats";
-  let listRequestId = 0;
+  const listTracker = createRequestTracker();
   let pollingEnabled = false;
   let destroyed = false;
 
@@ -79,7 +80,7 @@ export function createAdminSupportStore({ api, onToast, at, routePrefix = "" }) 
 
   async function loadList(options = {}) {
     if (destroyed) return null;
-    const requestId = ++listRequestId;
+    const requestId = listTracker.next();
     const silent = options.silent === true;
     if (!silent) state.update((s) => ({ ...s, loading: true }));
     let filters;
@@ -90,12 +91,12 @@ export function createAdminSupportStore({ api, onToast, at, routePrefix = "" }) 
         if (value) params.set(key, value);
       }
       const res = await api(`/admin/support/tickets?${params.toString()}`);
-      if (requestId !== listRequestId || destroyed) return res;
+      if (listTracker.isStale(requestId) || destroyed) return res;
       if (res?.ok) state.update((s) => ({ ...s, tickets: res.tickets || [] }));
       else if (res?.error) onToast(res.message || res.error);
       return res;
     } finally {
-      if (!silent && requestId === listRequestId && !destroyed) {
+      if (!silent && !listTracker.isStale(requestId) && !destroyed) {
         state.update((s) => ({ ...s, loading: false }));
       }
     }
@@ -377,7 +378,7 @@ export function createAdminSupportStore({ api, onToast, at, routePrefix = "" }) 
   function destroy() {
     if (destroyed) return;
     destroyed = true;
-    listRequestId += 1;
+    listTracker.next(); // invalidate pending list request
     stopStatsPolling();
   }
 

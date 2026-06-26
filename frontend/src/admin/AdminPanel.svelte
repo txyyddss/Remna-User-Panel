@@ -396,7 +396,7 @@
 
   function panelStatusBadge(user) {
     const status = String(user?.panel_status || "").toLowerCase();
-    if (user?.is_banned) return { label: at("status_banned", {}, "Бан"), variant: "danger" };
+    if (user?.is_banned) return { label: at("status_banned", {}, "Banned"), variant: "danger" };
     switch (status) {
       case "active":
         return { label: at("status_active", {}, "Active"), variant: "success" };
@@ -416,7 +416,7 @@
       case "disabled":
         return { label: at("status_disabled", {}, "Disabled"), variant: "muted" };
       case "bot_only":
-        return { label: at("status_bot_only", {}, "Только бот"), variant: "muted" };
+        return { label: at("status_bot_only", {}, "Bot only"), variant: "muted" };
       default:
         return { label: status || "—", variant: "muted" };
     }
@@ -556,7 +556,7 @@
     <button
       type="button"
       class="admin-sidebar-backdrop"
-      aria-label={at("close_menu", {}, "Закрыть меню")}
+      aria-label={at("close_menu", {}, "Close menu")}
       in:fade={sidebarBackdropFade}
       out:fade={sidebarBackdropFade}
       on:click={() => (sidebarOpen = false)}
@@ -567,23 +567,23 @@
       class="language-select-guard"
       class:language-select-guard--armed={adminLanguageClickGuardArmed}
       type="button"
-      aria-label={t("wa_close", {}, at("close", {}, "Закрыть"))}
+      aria-label={t("wa_close", {}, at("close", {}, "Close"))}
       on:pointerdown={closeAdminLanguageFromGuard}
       on:click={closeAdminLanguageFromGuard}
     ></button>
   {/if}
-  <aside class="admin-sidebar" aria-label={at("sidebar_navigation", {}, "Навигация админки")}>
+  <aside class="admin-sidebar" aria-label={at("sidebar_navigation", {}, "Admin navigation")}>
     <div class="admin-sidebar-brand">
       <BrandMark class="admin-brand-mark" {brand} />
       <div>
         <strong class="admin-brand-title">{brandTitle}</strong>
-        <small>{at("panel_title", {}, "Админ-панель")}</small>
+        <small>{at("panel_title", {}, "Admin panel")}</small>
       </div>
       <AdminButton
         variant="ghost"
         size="icon"
         onclick={onClose}
-        aria-label={at("exit", {}, "Выйти")}
+        aria-label={at("exit", {}, "Exit")}
       >
         <ArrowLeft size={16} />
       </AdminButton>
@@ -681,7 +681,7 @@
           type="button"
           class="admin-mobile-toggle"
           on:click={() => (sidebarOpen = !sidebarOpen)}
-          aria-label={at("menu", {}, "Меню")}
+          aria-label={at("menu", {}, "Menu")}
         >
           <Menu size={18} />
         </button>
@@ -695,8 +695,8 @@
           <AdminButton onclick={statsStore.triggerSync} disabled={syncBusy}>
             <RefreshCw size={14} />
             {syncBusy
-              ? at("btn_syncing", {}, "Синхронизация...")
-              : at("btn_sync", {}, "Синхронизировать")}
+              ? at("btn_syncing", {}, "Syncing...")
+              : at("btn_sync", {}, "Sync")}
           </AdminButton>
         {/if}
         {#if active === "payments"}
@@ -707,19 +707,19 @@
         {#if active === "promos"}
           <AdminButton variant="primary" onclick={() => promosStore.setCreateOpen(true)}>
             <Plus size={14} />
-            {at("btn_create", {}, "Создать")}
+            {at("btn_create", {}, "Create")}
           </AdminButton>
         {/if}
         {#if active === "ads"}
           <AdminButton variant="primary" onclick={() => adsStore.setCreateOpen(true)}>
             <Plus size={14} />
-            {at("btn_campaign", {}, "Кампания")}
+            {at("btn_campaign", {}, "Campaign")}
           </AdminButton>
         {/if}
         {#if active === "tariffs"}
           <AdminButton variant="primary" onclick={tariffsStore.openCreateTariff}>
             <Plus size={14} />
-            {at("btn_tariff", {}, "Тариф")}
+            {at("btn_tariff", {}, "Tariff")}
           </AdminButton>
         {/if}
         {#if active === "settings"}
@@ -739,8 +739,8 @@
           >
             <Save size={14} />
             {settingsSaving
-              ? at("btn_saving", {}, "Сохранение...")
-              : at("btn_save", {}, "Сохранить")}
+              ? at("btn_saving", {}, "Saving...")
+              : at("btn_save", {}, "Save")}
           </AdminButton>
         {/if}
       </div>

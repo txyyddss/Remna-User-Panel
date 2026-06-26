@@ -1,4 +1,5 @@
 import { get, writable } from "svelte/store";
+import { createRequestTracker } from "$lib/shared/requestTracker.js";
 import { withRoutePrefix } from "../../webapp/routes.js";
 
 export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
@@ -58,10 +59,10 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
 
   let _activeRef = "stats"; // fallback if active isn't tracked
   let _pathContext = null;
-  let _openUserRequestId = 0;
-  let _usersRequestId = 0;
-  let _userLogsRequestId = 0;
-  let _userReferralsRequestId = 0;
+  const _openUserTracker = createRequestTracker();
+  const _usersTracker = createRequestTracker();
+  const _userLogsTracker = createRequestTracker();
+  const _userReferralsTracker = createRequestTracker();
 
   function _closedUserModalState() {
     return {
@@ -114,7 +115,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
 
   function _isCurrentUserRequest(s, requestId, userId) {
     return (
-      requestId === _openUserRequestId && Boolean(s.openedUser) && s.openedUser.user_id === userId
+      !_openUserTracker.isStale(requestId) && Boolean(s.openedUser) && s.openedUser.user_id === userId
     );
   }
 
@@ -212,7 +213,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
   }
 
   async function loadUsers() {
-    const requestId = ++_usersRequestId;
+    const requestId = _usersTracker.next();
     const s = get(state);
     state.update((s) => ({ ...s, usersLoading: true }));
 
@@ -230,7 +231,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
       }
       if (s.usersSort) params.set("sort", s.usersSort);
       const data = await api(`/admin/users?${params.toString()}`);
-      if (requestId === _usersRequestId && data?.ok) {
+      if (!_usersTracker.isStale(requestId) && data?.ok) {
         state.update((st) => ({
           ...st,
           users: data.users || [],
@@ -238,7 +239,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
         }));
       }
     } finally {
-      if (requestId === _usersRequestId) {
+      if (!_usersTracker.isStale(requestId)) {
         state.update((st) => ({ ...st, usersLoading: false }));
       }
     }
@@ -248,7 +249,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
     const userId =
       typeof userOrId === "object" && userOrId !== null ? userOrId.user_id : Number(userOrId);
     if (!userId) return;
-    const requestId = ++_openUserRequestId;
+    const requestId = _openUserTracker.next();
     _setPathContext(opts.pathContext);
     const openedUser =
       typeof userOrId === "object" && userOrId !== null ? userOrId : { user_id: userId };
@@ -292,7 +293,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
     const snapshot = get(state);
     const userId = Number(snapshot?.openedUser?.user_id || 0);
     if (!userId) return null;
-    const requestId = _openUserRequestId;
+    const requestId = _openUserTracker.next(); // use fresh ID to force alignment with current request
     const res = await api(`/admin/users/${userId}`);
     if (res?.ok) {
       state.update((s) => {
@@ -307,9 +308,9 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
 
   function closeUser(opts = {}) {
     let wasOpen = false;
-    _openUserRequestId += 1;
-    _userLogsRequestId += 1;
-    _userReferralsRequestId += 1;
+    _openUserTracker.next();
+    _userLogsTracker.next();
+    _userReferralsTracker.next();
     state.update((s) => {
       wasOpen = Boolean(s.openedUser);
       return {
@@ -326,7 +327,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
     if (!s.openedUser) return;
     const userId = s.openedUser.user_id;
     const targetPage = Number.isFinite(page) ? Math.max(0, Math.floor(page)) : s.userLogsPage || 0;
-    const requestId = ++_userLogsRequestId;
+    const requestId = _userLogsTracker.next();
     state.update((st) => ({
       ...st,
       userLogsLoading: true,
@@ -340,7 +341,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
         user_id: String(userId),
       });
       const data = await api(`/admin/logs?${params.toString()}`);
-      if (requestId !== _userLogsRequestId) return;
+      if (_userLogsTracker.isStale(requestId)) return;
       if (data?.ok) {
         state.update((st) => {
           if (!st.openedUser || st.openedUser.user_id !== userId) return st;
@@ -355,7 +356,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
         onToast(data.error);
       }
     } finally {
-      if (requestId === _userLogsRequestId) {
+      if (!_userLogsTracker.isStale(requestId)) {
         state.update((st) => ({ ...st, userLogsLoading: false }));
       }
     }
@@ -370,7 +371,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
     if (!s.openedUser) return;
     const userId = s.openedUser.user_id;
     const targetPage = Number.isFinite(page) ? Math.max(0, Math.floor(page)) : 0;
-    const requestId = ++_userReferralsRequestId;
+    const requestId = _userReferralsTracker.next();
     state.update((st) => ({
       ...st,
       userReferralsOpen: true,
@@ -383,7 +384,7 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
         page_size: String(s.userReferralsPageSize || USERS_PAGE_SIZE),
       });
       const data = await api(`/admin/users/${userId}/referrals?${params.toString()}`);
-      if (requestId !== _userReferralsRequestId) return;
+      if (_userReferralsTracker.isStale(requestId)) return;
       if (data?.ok) {
         state.update((st) => {
           if (!st.openedUser || st.openedUser.user_id !== userId) return st;
@@ -400,14 +401,14 @@ export function createUsersStore({ api, onToast, at, routePrefix = "" }) {
         onToast(data.error);
       }
     } finally {
-      if (requestId === _userReferralsRequestId) {
+      if (!_userReferralsTracker.isStale(requestId)) {
         state.update((st) => ({ ...st, userReferralsLoading: false }));
       }
     }
   }
 
   function closeUserReferrals() {
-    _userReferralsRequestId += 1;
+    _userReferralsTracker.next();
     state.update((s) => ({
       ...s,
       userReferralsOpen: false,

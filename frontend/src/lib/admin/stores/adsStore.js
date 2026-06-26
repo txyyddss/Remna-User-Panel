@@ -39,7 +39,7 @@ export function createAdsStore({ api, onToast, at }) {
     });
 
     if (res?.ok) {
-      onToast(at("ad_created", {}, "Кампания создана"));
+      onToast(at("ad_created", {}, "Campaign created"));
       state.update((s) => ({
         ...s,
         adCreateOpen: false,
@@ -47,7 +47,7 @@ export function createAdsStore({ api, onToast, at }) {
       }));
       await loadAds();
     } else {
-      onToast(res?.error || at("error", {}, "Ошибка"));
+      onToast(res?.error || at("error", {}, "Error"));
     }
   }
 
@@ -62,7 +62,7 @@ export function createAdsStore({ api, onToast, at }) {
         ads: s.ads.map((c) => (c.id === ad.id ? { ...c, is_active: !ad.is_active } : c)),
       }));
     } else {
-      onToast(res?.error || at("error", {}, "Ошибка"));
+      onToast(res?.error || at("error", {}, "Error"));
     }
   }
 
@@ -73,9 +73,9 @@ export function createAdsStore({ api, onToast, at }) {
         ...s,
         ads: s.ads.filter((c) => c.id !== ad.id),
       }));
-      onToast(at("ad_deleted", {}, "Кампания удалена"));
+      onToast(at("ad_deleted", {}, "Campaign deleted"));
     } else {
-      onToast(res?.error || at("error", {}, "Ошибка"));
+      onToast(res?.error || at("error", {}, "Error"));
     }
   }
 
