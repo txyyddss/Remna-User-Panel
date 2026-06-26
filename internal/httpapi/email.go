@@ -7,6 +7,7 @@ import (
 	"crypto/subtle"
 	"database/sql"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math/big"
@@ -429,6 +430,9 @@ func passwordConfirmHandler(settings config.Settings, pool *pgxpool.Pool) http.H
 }
 
 // emailLoginRequestHandler sends a login code to an email (public endpoint, no session required).
+// The caller does NOT need an existing account — a code will be sent regardless so that
+// new users can register via emailLoginVerifyHandler.  This handler never reveals whether
+// an account already exists (anti-enumeration).
 func emailLoginRequestHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var payload struct {
@@ -453,17 +457,15 @@ func emailLoginRequestHandler(settings config.Settings, pool *pgxpool.Pool) http
 		}
 		mailer := mailerFromStore(r.Context(), store)
 
-		// Check if user exists with this email
+		// Look up existing user (may not exist — that's fine, we still send the code for registration).
 		var userID int64
+		var userIDPtr *int64
 		err := pool.QueryRow(r.Context(),
 			"SELECT user_id FROM users WHERE LOWER(email)=$1", email,
 		).Scan(&userID)
-		if err != nil {
-			if err == pgx.ErrNoRows {
-				// Don't reveal whether email exists; silently succeed
-				writeJSON(w, http.StatusOK, map[string]any{"ok": true})
-				return
-			}
+		if err == nil {
+			userIDPtr = &userID
+		} else if !errors.Is(err, pgx.ErrNoRows) {
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "internal_error"})
 			return
 		}
@@ -481,14 +483,14 @@ func emailLoginRequestHandler(settings config.Settings, pool *pgxpool.Pool) http
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "code_generation_failed"})
 			return
 		}
-		if err := storeEmailCode(r.Context(), pool, email, code, emailCodePurposeLogin, &userID, emailCodeExpireMinutes); err != nil {
+		if err := storeEmailCode(r.Context(), pool, email, code, emailCodePurposeLogin, userIDPtr, emailCodeExpireMinutes); err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "code_store_failed"})
 			return
 		}
 
 		brand := store.String(r.Context(), "BRAND_NAME", "Remna")
 		lang := normalizeWebLanguage(payload.Language, effectiveDefaultLanguage(r.Context(), pool, settings))
-		if lang == "" && userID != 0 {
+		if lang == "" && userIDPtr != nil {
 			_ = pool.QueryRow(r.Context(), "SELECT COALESCE(language_code,'') FROM users WHERE user_id=$1", userID).Scan(&lang)
 		}
 		subject := emailSubject(brand, emailCodePurposeLogin, lang)
@@ -510,6 +512,7 @@ func emailLoginRequestHandler(settings config.Settings, pool *pgxpool.Pool) http
 }
 
 // emailLoginVerifyHandler verifies the login code and creates a session (public endpoint).
+// If no user exists with this email, a new user is auto-created (registration on first login).
 func emailLoginVerifyHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var payload struct {
@@ -535,21 +538,39 @@ func emailLoginVerifyHandler(settings config.Settings, pool *pgxpool.Pool) http.
 			return
 		}
 
-		// Look up user
+		// Look up or auto-create user (registration on first email login)
 		var userID int64
 		err = pool.QueryRow(r.Context(),
 			"SELECT user_id FROM users WHERE LOWER(email)=$1", email,
 		).Scan(&userID)
 		if err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "user_not_found"})
-			return
+			if errors.Is(err, pgx.ErrNoRows) {
+				// Auto-create new user on first successful email code verification
+				uid := adminEmailHash(email)
+				lang := normalizeWebLanguage(payload.Language, effectiveDefaultLanguage(r.Context(), pool, settings))
+				err = pool.QueryRow(r.Context(), `
+INSERT INTO users (user_id, email, email_verified_at, language_code, registration_date)
+VALUES ($1, $2, NOW(), $3, NOW())
+ON CONFLICT (email) DO UPDATE SET email_verified_at=NOW()
+RETURNING user_id`, uid, email, lang).Scan(&userID)
+				if err != nil {
+					slog.Error("auto-create user from email login failed", "error", err)
+					writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "internal_error"})
+					return
+				}
+				slog.Info("user auto-created from email login", "email", email, "user_id", userID)
+			} else {
+				slog.Error("email login user lookup failed", "error", err)
+				writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "internal_error"})
+				return
+			}
+		} else {
+			// Persist language preference for existing user if provided.
+			if lang := normalizeWebLanguage(payload.Language, effectiveDefaultLanguage(r.Context(), pool, settings)); lang != "" {
+				_, _ = pool.Exec(r.Context(), "UPDATE users SET language_code=$1 WHERE user_id=$2 AND language_code<>$1", lang, userID)
+			}
 		}
 		bindReferralCode(r.Context(), pool, userID, payload.ReferralCode)
-
-		// Persist language preference if provided.
-		if lang := normalizeWebLanguage(payload.Language, effectiveDefaultLanguage(r.Context(), pool, settings)); lang != "" {
-			_, _ = pool.Exec(r.Context(), "UPDATE users SET language_code=$1 WHERE user_id=$2 AND language_code<>$1", lang, userID)
-		}
 
 		// Create session
 		manager := webappSessionManager(settings)
@@ -570,6 +591,7 @@ func emailLoginVerifyHandler(settings config.Settings, pool *pgxpool.Pool) http.
 }
 
 // emailMagicLinkHandler validates a magic link token and creates a session.
+// If no user exists with this email, a new user is auto-created (registration on first login).
 func emailMagicLinkHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var payload struct {
@@ -601,14 +623,32 @@ func emailMagicLinkHandler(settings config.Settings, pool *pgxpool.Pool) http.Ha
 			return
 		}
 
-		// Look up user
+		// Look up or auto-create user (registration on first email login)
 		var userID int64
 		err = pool.QueryRow(r.Context(),
 			"SELECT user_id FROM users WHERE LOWER(email)=$1", email,
 		).Scan(&userID)
 		if err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "user_not_found"})
-			return
+			if errors.Is(err, pgx.ErrNoRows) {
+				// Auto-create new user on first successful magic link verification
+				uid := adminEmailHash(email)
+				lang := effectiveDefaultLanguage(r.Context(), pool, settings)
+				err = pool.QueryRow(r.Context(), `
+INSERT INTO users (user_id, email, email_verified_at, language_code, registration_date)
+VALUES ($1, $2, NOW(), $3, NOW())
+ON CONFLICT (email) DO UPDATE SET email_verified_at=NOW()
+RETURNING user_id`, uid, email, lang).Scan(&userID)
+				if err != nil {
+					slog.Error("auto-create user from magic link failed", "error", err)
+					writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "internal_error"})
+					return
+				}
+				slog.Info("user auto-created from magic link", "email", email, "user_id", userID)
+			} else {
+				slog.Error("magic link user lookup failed", "error", err)
+				writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "internal_error"})
+				return
+			}
 		}
 		bindReferralCode(r.Context(), pool, userID, payload.ReferralCode)
 
