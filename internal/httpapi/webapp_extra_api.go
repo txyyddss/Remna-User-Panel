@@ -39,7 +39,6 @@ func registerExtraAPIRoutes(router chi.Router, settings config.Settings, pool *p
 	router.Get("/api/tariffs/change-options", webappPlansOptionsHandler(settings, pool, "change"))
 	router.Post("/api/tariffs/change", userTariffChangeHandler(settings, pool, panel))
 	router.Post("/api/tariffs/change-payment", createPaymentHandler(settings, pool, registry))
-	router.Post("/api/subscription/auto-renew", autoRenewHandler(settings, pool))
 	router.Post("/api/promo/apply", promoApplyHandler(settings, pool, panel))
 	router.Post("/api/referral/welcome-bonus/claim", referralWelcomeBonusHandler(settings, pool, panel))
 	router.Post("/api/telemetry/heartbeat", telemetryHeartbeatHandler(settings, pool))
@@ -171,34 +170,6 @@ func userTariffChangeHandler(settings config.Settings, pool *pgxpool.Pool, panel
 			Content:      "tariff changed",
 		})
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "subscription": subscription, "active_subscription": subscription})
-	}
-}
-
-func autoRenewHandler(settings config.Settings, pool *pgxpool.Pool) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		session, ok := requireSession(w, r, settings, pool, true)
-		if !ok {
-			return
-		}
-		var payload struct {
-			Enabled bool `json:"enabled"`
-		}
-		if err := decodeJSONBody(r, &payload); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_json"})
-			return
-		}
-		if err := saveUserAutoRenew(r.Context(), pool, session.User.UserID, payload.Enabled); err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "error": "save_failed"})
-			return
-		}
-		recordMessageLog(r.Context(), pool, messageLogEntry{
-			UserID:       session.User.UserID,
-			TargetUserID: session.User.UserID,
-			EventType:    "user_auto_renew",
-			Content:      strconv.FormatBool(payload.Enabled),
-			Payload:      map[string]any{"enabled": payload.Enabled},
-		})
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "enabled": payload.Enabled, "auto_renew_enabled": payload.Enabled})
 	}
 }
 

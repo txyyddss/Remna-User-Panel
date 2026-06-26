@@ -582,11 +582,6 @@
                     >
                   </li>
                   <li>
-                    <span>{at("user_label_auto_renew", {}, "Авто-продление")}</span><strong
-                      >{pretty(openedUserDetail.active_subscription.auto_renew_enabled)}</strong
-                    >
-                  </li>
-                  <li>
                     <span>{at("user_label_provider", {}, "Провайдер")}</span><strong
                       >{openedUserDetail.active_subscription.provider || "—"}</strong
                     >

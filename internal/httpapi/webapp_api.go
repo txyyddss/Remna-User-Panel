@@ -658,7 +658,6 @@ func webappFeatureSettings(ctx context.Context, settings config.Settings, pool *
 	myDevicesEnabled := store.Bool(ctx, "MY_DEVICES_ENABLED", panelConfigured)
 	supportEnabled := store.Bool(ctx, "SUPPORT_TICKETS_ENABLED", false)
 	guidesEnabled := store.Bool(ctx, "SUBSCRIPTION_GUIDES_ENABLED", false)
-	autoRenewEnabled := store.Bool(ctx, "SUBSCRIPTION_AUTO_RENEW_ENABLED", false)
 	return map[string]any{
 		"my_devices_enabled":              myDevicesEnabled,
 		"support_tickets_enabled":         supportEnabled,
@@ -672,7 +671,6 @@ func webappFeatureSettings(ctx context.Context, settings config.Settings, pool *
 		"trial_block_reason":              "",
 		"referral_welcome_bonus_days":     referralWelcomeDays,
 		"tariff_change_enabled":           panelConfigured,
-		"subscription_auto_renew_enabled": autoRenewEnabled,
 		"support_url":                     store.String(ctx, "SUPPORT_LINK", ""),
 		"server_status_url":               store.String(ctx, "SERVER_STATUS_URL", ""),
 		"email_auth_enabled":              store.Bool(ctx, "SMTP_ENABLED", false) && mailerConfigFromSettings(ctx, store).IsConfigured(),
@@ -725,7 +723,6 @@ func adminSettingsSections(ctx context.Context, settings config.Settings, store 
 		{"id": "features", "fields": mapSettingFields(ctx, store, []paymentSettingField{
 			{Key: "MY_DEVICES_ENABLED", Type: "bool", Label: "My devices enabled", Description: "Show IP-based device management in the Web App.", Fallback: settings.PanelAPIURL != "" && settings.PanelAPIKey != ""},
 			{Key: "SUPPORT_TICKETS_ENABLED", Type: "bool", Label: "Support tickets enabled", Description: "Show the built-in support ticket UI.", Fallback: false},
-			{Key: "SUBSCRIPTION_AUTO_RENEW_ENABLED", Type: "bool", Label: "Auto-renew enabled", Description: "Allow users to toggle subscription auto-renewal.", Fallback: false},
 		})},
 		{"id": "notifications", "fields": mapSettingFields(ctx, store, []paymentSettingField{
 			{Key: "SUBSCRIPTION_NOTIFICATIONS_ENABLED", Type: "bool", Label: "Subscription notifications enabled", Description: "Send expiry and traffic notifications through Telegram or email.", Fallback: true},
@@ -1006,7 +1003,7 @@ func envBoolValue(key string, fallback bool) bool {
 
 func normalizeSettingValue(key string, value any) (any, error) {
 	switch key {
-	case "EZPAY_ENABLED", "BEPUSDT_ENABLED", "STARS_ENABLED", "MY_DEVICES_ENABLED", "SUPPORT_TICKETS_ENABLED", "TRIAL_ENABLED", "SUBSCRIPTION_GUIDES_ENABLED", "SUBSCRIPTION_AUTO_RENEW_ENABLED", "SUBSCRIPTION_NOTIFICATIONS_ENABLED", "TELEMETRY_ENABLED", "SMTP_ENABLED", "WEBAPP_FAVICON_USE_CUSTOM":
+	case "EZPAY_ENABLED", "BEPUSDT_ENABLED", "STARS_ENABLED", "MY_DEVICES_ENABLED", "SUPPORT_TICKETS_ENABLED", "TRIAL_ENABLED", "SUBSCRIPTION_GUIDES_ENABLED", "SUBSCRIPTION_NOTIFICATIONS_ENABLED", "TELEMETRY_ENABLED", "SMTP_ENABLED", "WEBAPP_FAVICON_USE_CUSTOM":
 		if typed, ok := value.(bool); ok {
 			return typed, nil
 		}

@@ -147,7 +147,6 @@
   let publicInstallSubscription = null;
   let publicInstallToken = "";
   let trialBusy = false;
-  let autoRenewBusy = false;
   let trialActivationResult = null;
   let trialActivationError = "";
   let activationSuccessDialogOpen = false;
@@ -1993,27 +1992,6 @@
     }
   }
 
-  async function toggleAutoRenew(enabled) {
-    if (autoRenewBusy) return;
-    autoRenewBusy = true;
-    try {
-      const response = await billing.postAutoRenew(enabled);
-      if (!response.ok) throw response;
-      showToast(
-        response.auto_renew_enabled ? t("wa_auto_renew_enabled") : t("wa_auto_renew_disabled")
-      );
-      await loadData({ fresh: true, preserveView: true });
-    } catch (error) {
-      if (error?.error === "auto_renew_requires_saved_method") {
-        showToast(t("wa_auto_renew_requires_saved_method"));
-      } else {
-        showToast(error?.message || t("wa_auto_renew_update_failed"));
-      }
-    } finally {
-      autoRenewBusy = false;
-    }
-  }
-
   function showToast(message) {
     toastText = message;
     if (toastTimer) window.clearTimeout(toastTimer);
@@ -2343,7 +2321,6 @@
               {regularTrafficTopupUnlocked}
               {referral}
               {subscription}
-              {autoRenewBusy}
               {linkTelegramBusy}
               {telegramNotificationsNeedPrompt}
               {telegramNotificationsStartLink}
@@ -2353,7 +2330,6 @@
               {trialBusy}
               {bandwidthData}
               {activateTrial}
-              {toggleAutoRenew}
               {linkTelegramAndActivateTrial}
               {linkTelegramAndClaimReferralWelcome}
               {openTelegramNotificationsBot}

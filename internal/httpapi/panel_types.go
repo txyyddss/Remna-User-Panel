@@ -30,7 +30,6 @@ type accessGrantOptions struct {
 const (
 	userTrafficOverridesSettingKey   = "ADMIN_USER_TRAFFIC_OVERRIDES"
 	panelSyncStatusSettingKey        = "ADMIN_PANEL_SYNC_STATUS"
-	userAutoRenewSettingKey          = "USER_AUTO_RENEW_OVERRIDES"
 	userNotifyExpiryEnabledKey       = "USER_NOTIFY_EXPIRY_ENABLED"
 	userNotifyExpiryDaysBeforeKey    = "USER_NOTIFY_EXPIRY_DAYS_BEFORE"
 	userNotifyTrafficEnabledKey      = "USER_NOTIFY_TRAFFIC_ENABLED"

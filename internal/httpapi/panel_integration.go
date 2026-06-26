@@ -112,8 +112,6 @@ func subscriptionFromPanelUser(ctx context.Context, pool *pgxpool.Pool, user web
 		"premium_is_limited":         false,
 		"regular_unlimited_override": override.RegularUnlimited,
 		"regular_bonus_bytes":        override.RegularBonusBytes,
-		"auto_renew_enabled":         userAutoRenewEnabled(ctx, pool, user.UserID),
-		"auto_renew_available":       true,
 		"tariff_key":                 plan.TariffKey,
 		"tariff_name":                tariffName,
 		"billing_model":              plan.BillingModel,
@@ -736,43 +734,6 @@ func premiumLimitBytes(override userTrafficOverride) int64 {
 		return override.PremiumBonusBytes
 	}
 	return 0
-}
-
-func userAutoRenewEnabled(ctx context.Context, pool *pgxpool.Pool, userID int64) bool {
-	raw, ok, err := appsettings.NewStore(pool).Get(ctx, userAutoRenewSettingKey)
-	if err != nil || !ok {
-		return false
-	}
-	var values map[string]bool
-	if json.Unmarshal(raw, &values) != nil || values == nil {
-		return false
-	}
-	return values[strconv.FormatInt(userID, 10)]
-}
-
-func saveUserAutoRenew(ctx context.Context, pool *pgxpool.Pool, userID int64, enabled bool) error {
-	if pool == nil {
-		return fmt.Errorf("database_not_configured")
-	}
-	store := appsettings.NewStore(pool)
-	raw, ok, err := store.Get(ctx, userAutoRenewSettingKey)
-	if err != nil {
-		return err
-	}
-	values := map[string]bool{}
-	if ok {
-		_ = json.Unmarshal(raw, &values)
-		if values == nil {
-			values = map[string]bool{}
-		}
-	}
-	key := strconv.FormatInt(userID, 10)
-	if enabled {
-		values[key] = true
-	} else {
-		delete(values, key)
-	}
-	return store.Upsert(ctx, userAutoRenewSettingKey, values)
 }
 
 func loadUserNotificationPrefs(ctx context.Context, pool *pgxpool.Pool, userID int64) UserNotificationPrefs {
