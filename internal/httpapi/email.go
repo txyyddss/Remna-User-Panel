@@ -823,12 +823,6 @@ func hashPassword(password string) (string, error) {
 	return string(hash), nil
 }
 
-// passwordNeedsRehash returns true when a stored hash uses the legacy SHA-256 format
-// and should be upgraded to bcrypt.
-func passwordNeedsRehash(storedHash string) bool {
-	return strings.HasPrefix(storedHash, "sha256:")
-}
-
 // VerifyPassword checks if the given password matches the stored hash.
 // Supports both legacy sha256: prefixed hashes (auto-migrated to bcrypt on
 // first successful verification) and bcrypt hashes.
