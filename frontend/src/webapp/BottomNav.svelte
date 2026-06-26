@@ -30,7 +30,7 @@
   export let t = (key) => key;
 
   $: visibleNavItems = 3 + (devicesEnabled ? 1 : 0) + (supportEnabled ? 1 : 0);
-  $: adminLabel = t("admin_nav_title", {}, "Админ-панель");
+  $: adminLabel = t("admin_nav_title", {}, "Admin panel");
 </script>
 
 <nav

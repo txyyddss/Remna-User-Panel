@@ -1,4 +1,5 @@
 import { writable, get } from "svelte/store";
+import { createRequestTracker } from "$lib/shared/requestTracker.js";
 
 export function createBillingStore({
   billing,
@@ -34,7 +35,7 @@ export function createBillingStore({
     payBusy: false,
   });
 
-  let topupOptionsRequestId = 0;
+  const topupOptionsTracker = createRequestTracker();
   let paymentPollToken = 0;
   let destroyed = false;
   const successfulPaymentIds = new Set();
@@ -381,7 +382,7 @@ export function createBillingStore({
   async function loadTopupOptions(kind) {
     const s = get(state);
     if (s.topupOptions?.topup_kind === kind) return;
-    const requestId = ++topupOptionsRequestId;
+    const requestId = topupOptionsTracker.next();
     state.update((s) => ({
       ...s,
       tariffActionBusy: true,
@@ -390,7 +391,7 @@ export function createBillingStore({
     }));
     try {
       const response = await billing.fetchTopupOptions(kind);
-      if (requestId !== topupOptionsRequestId || kind !== get(state).topupKind) return;
+      if (topupOptionsTracker.isStale(requestId) || kind !== get(state).topupKind) return;
       if (!response?.ok) throw response;
       state.update((s) => ({
         ...s,
@@ -398,11 +399,11 @@ export function createBillingStore({
         selectedTopupPlan: response.plans?.[0] || null,
       }));
     } catch (error) {
-      if (requestId !== topupOptionsRequestId || kind !== get(state).topupKind) return;
+      if (topupOptionsTracker.isStale(requestId) || kind !== get(state).topupKind) return;
       showToast(error?.message || t("wa_tariff_options_failed"));
       state.update((s) => ({ ...s, topupModalOpen: false }));
     } finally {
-      if (requestId === topupOptionsRequestId) {
+      if (!topupOptionsTracker.isStale(requestId)) {
         state.update((s) => ({ ...s, tariffActionBusy: false }));
       }
     }
@@ -506,7 +507,7 @@ export function createBillingStore({
     if (destroyed) return;
     destroyed = true;
     paymentPollToken += 1;
-    topupOptionsRequestId += 1;
+    topupOptionsTracker.next();
   }
 
   return {

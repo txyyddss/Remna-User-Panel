@@ -36,10 +36,10 @@ export function createStatsStore({ api, onToast, at }) {
     try {
       const res = await api("/admin/sync", { method: "POST" });
       if (res?.ok) {
-        onToast(at("sync_started", {}, "Синхронизация запущена"));
+        onToast(at("sync_started", {}, "Sync started"));
         await loadStats();
       } else {
-        onToast(res?.error || at("sync_error", {}, "Ошибка синхронизации"));
+        onToast(res?.error || at("sync_error", {}, "Sync error"));
       }
     } finally {
       state.update((s) => ({ ...s, syncBusy: false }));

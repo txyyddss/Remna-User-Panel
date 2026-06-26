@@ -154,8 +154,8 @@
       <button class="settings-row settings-row-admin" type="button" onclick={openAdminPanel}>
         <Shield size={21} />
         <span>
-          <strong>{t("wa_settings_admin_panel", {}, "Админ-панель")}</strong>
-          <small>{t("wa_settings_admin_panel_hint", {}, "Управление приложением")}</small>
+          <strong>{t("wa_settings_admin_panel", {}, "Admin panel")}</strong>
+          <small>{t("wa_settings_admin_panel_hint", {}, "Manage the application")}</small>
         </span>
         <ArrowRight size={17} />
       </button>
