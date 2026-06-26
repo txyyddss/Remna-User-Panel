@@ -11,23 +11,23 @@
 
   const MESSAGE_FALLBACKS = {
     data_dir_missing:
-      "Каталог data ({path}) не найден. Проверьте, что том data смонтирован в контейнер.",
-    data_dir_not_writable: "Нет прав на запись в {path} — бэкапы, тарифы и логотипы не сохранятся.",
-    backups_dir_not_writable: "Каталог бэкапов {path} недоступен для записи.",
-    tariffs_config_invalid: "Файл тарифов {path} не читается: {error}",
-    subscription_page_config_invalid: "Конфиг гайдов подписки не читается: {error}",
+      "Data directory ({path}) not found. Verify the data volume is mounted.",
+    data_dir_not_writable: "No write permission to {path} — backups, tariffs and logos won't be saved.",
+    backups_dir_not_writable: "Backups directory {path} is not writable.",
+    tariffs_config_invalid: "Tariffs file {path} cannot be read: {error}",
+    subscription_page_config_invalid: "Subscription guides config cannot be read: {error}",
     provider_not_configured:
-      "Провайдер {provider} включён, но не настроен — оплата через него не работает.",
+      "Provider {provider} is enabled but not configured — payments won't work.",
     provider_webhook_needs_base_url:
-      "Провайдеру {provider} нужен WEBHOOK_BASE_URL для приёма вебхуков, а он не задан.",
-    no_payment_methods: "Не включён ни один способ оплаты.",
+      "Provider {provider} needs WEBHOOK_BASE_URL for webhooks, but it is not set.",
+    no_payment_methods: "No payment methods are enabled.",
     mini_app_url_missing:
-      "SUBSCRIPTION_MINI_APP_URL не задан — кнопка Mini App в боте не появится.",
+      "SUBSCRIPTION_MINI_APP_URL is not set — the Mini App button won't appear in the bot.",
     mini_app_url_not_https:
-      "SUBSCRIPTION_MINI_APP_URL должен начинаться с https:// (сейчас {url}).",
+      "SUBSCRIPTION_MINI_APP_URL must start with https:// (currently {url}).",
     redis_not_configured:
-      "REDIS_URL не задан — состояния диалогов бота и кэш не переживут перезапуск.",
-    smtp_incomplete: "SMTP настроен не полностью — вход по email работать не будет.",
+      "REDIS_URL is not set — bot dialog state and cache won't persist across restarts.",
+    smtp_incomplete: "SMTP is not fully configured — email login won't work.",
     proxy_not_trusted:
       "Запросы приходят через прокси {remote}, которого нет в TRUSTED_PROXIES — вебхуки платёжных провайдеров могут отклоняться по IP.",
     bot_token_invalid: "Telegram отверг BOT_TOKEN — бот не работает.",

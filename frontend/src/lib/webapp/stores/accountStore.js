@@ -378,7 +378,7 @@ export function createAccountStore({
     markManualLogout();
     clearToken();
     try {
-      await publicApi("/auth/logout", { keepalive: true });
+      await publicApi("/auth/logout", {}, { keepalive: true });
     } catch (_error) {
       void _error;
     }
