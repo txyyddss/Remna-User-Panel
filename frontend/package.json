@@ -44,7 +44,7 @@
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "4.3.2",
     "uplot": "^1.6.32",
-    "vite": "^8.1.0",
+    "vite": "^8.1.2",
     "vitest": "^4.1.9"
   },
   "dependencies": {
