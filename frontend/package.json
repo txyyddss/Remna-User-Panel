@@ -42,7 +42,7 @@
     "svelte-check": "^4.7.3",
     "svelte-eslint-parser": "^1.8.0",
     "tailwind-merge": "^3.6.0",
-    "tailwindcss": "4.3.2",
+    "tailwindcss": "4.3.3",
     "uplot": "^1.6.32",
     "vite": "^8.1.5",
     "vitest": "^4.1.10"
