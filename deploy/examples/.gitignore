@@ -1,5 +1,0 @@
-**/.env
-**/data/
-nginx/ssl/*
-!nginx/ssl/README.md
-
