@@ -1,0 +1,39 @@
+# Platform and runtime module
+
+## Ownership
+
+The platform layer owns bootstrap configuration, structured logging, IDs, AES-256-GCM setting encryption, SQLite lifecycle and migrations, HTTP lifecycle, embedded Vue assets, the durable outbox scheduler, and online backups. `cmd/server` only parses `serve` or `healthcheck`, loads configuration, builds the application, and manages process cancellation.
+
+Bootstrap environment is intentionally narrow: `ADMIN_TELEGRAM_ID`, `TELEGRAM_BOT_TOKEN`, `PUBLIC_BASE_URL`, and `CONFIG_MASTER_KEY` are required; `PORT`, `DATA_DIR`, `TZ`, and `LOG_LEVEL` have documented defaults. Provider credentials and business configuration belong in the encrypted settings registry rather than process environment.
+
+## Persistence contract
+
+- The database lives at `${DATA_DIR}/tx-carpool.db`; backups live below `${DATA_DIR}/backups`.
+- Every connection enables foreign keys, WAL, and a busy timeout. The pool is bounded to avoid SQLite write starvation.
+- Embedded migrations run in order before HTTP readiness. A migration failure aborts startup without partially advertising readiness.
+- Business transactions write durable state and their required outbox job together. Workers claim jobs with bounded leases/transactions, increment attempts, and preserve the last operator-safe error.
+- `ledger_entries`, `webhook_events`, `audit_events`, and refund records are append-only. The platform never offers raw SQL over HTTP.
+- The embedded filesystem contains the Vite production output. Unknown non-API paths fall back to the SPA entry point; API and operational misses return normal HTTP errors and never the SPA.
+
+## Scheduler and backup behavior
+
+One application-owned scheduler starts after migrations and stops when the root context is cancelled. It handles queued entitlement transitions, expired access, retryable Remnawave work, Stars reconciliation, and the daily backup trigger. Work is idempotent so a crash between provider success and job acknowledgement can be replayed safely.
+
+The backup task uses SQLite's online-safe mechanism, writes a temporary file, verifies that file by opening/checking it, then atomically renames it. Only verified snapshots receive final backup filenames. Files older than seven days are removed during retention scans, and a failed run never publishes its temporary file. Admin-triggered and scheduled runs share the same single-flight guard.
+
+## Failure behavior
+
+- `/healthz` returns success when the process can serve HTTP and SQLite responds. It does not depend on external providers.
+- `/readyz` returns 503 for database failure or incomplete required dashboard setup and includes non-secret checks.
+- Graceful shutdown stops admission, cancels workers, waits within the configured timeout, closes SQLite, and returns wrapped errors.
+- A malformed bootstrap value fails fast with its environment variable named, but its secret value omitted.
+- Decryption failure marks the setting unusable and setup incomplete; the ciphertext and key are never logged.
+- Static asset misses cannot shadow `/api`, `/healthz`, or `/readyz`.
+
+## Verification
+
+- Migration tests cover a fresh database and reopening an existing schema with foreign keys/WAL enabled.
+- Secret tests cover random nonces, authentication failure, invalid base64 master keys, masking, and no plaintext response.
+- Scheduler tests use a controllable clock and cover cancellation, duplicate ticks, crash/retry, and bounded backoff.
+- Backup tests cover atomic completion, verification failure, single-flight behavior, and retention boundaries.
+- HTTP tests cover SPA fallback, API 404 behavior, health/readiness transitions, request IDs, secure headers, and graceful cancellation.

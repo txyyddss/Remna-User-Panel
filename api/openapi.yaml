@@ -1,0 +1,2382 @@
+openapi: 3.1.0
+info:
+  title: TX Carpool API
+  version: 1.0.0
+  description: |
+    HTTP contract for the TX Carpool Telegram Mini App. User and admin endpoints
+    use a Secure, HttpOnly session cookie established from validated Telegram
+    Mini App `initData`. Provider callbacks use provider-specific signatures and
+    are never authenticated by the browser session.
+
+    All identifiers and timestamps are strings. TXB values use integer hundredths
+    encoded as decimal strings. Traffic byte counts are decimal strings. The
+    server is authoritative for prices, exchange rates, entitlement dates, and
+    payment state.
+  license:
+    name: Proprietary
+servers:
+  - url: /
+    description: Same-origin API
+tags:
+  - name: Authentication
+  - name: Onboarding
+  - name: Dashboard
+  - name: Catalog
+  - name: Billing
+  - name: Admin
+  - name: Webhooks
+  - name: Operations
+security:
+  - cookieSession: []
+
+paths:
+  /api/v1/auth/telegram:
+    post:
+      tags: [Authentication]
+      operationId: authenticateTelegram
+      summary: Exchange Telegram Mini App init data for a session
+      description: |
+        Validates the raw query string according to Telegram's Mini App algorithm,
+        rejects `auth_date` older than five minutes, upserts the Telegram identity,
+        and sets a seven-day Secure, HttpOnly, SameSite session cookie. Data from
+        `initDataUnsafe` is never accepted.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TelegramAuthRequest'
+      responses:
+        '200':
+          description: Authenticated; the session cookie is set.
+          headers:
+            Set-Cookie:
+              description: Opaque session cookie. Its value is never exposed to JavaScript.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthState'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/me:
+    get:
+      tags: [Authentication]
+      operationId: getMe
+      summary: Get the current identity and onboarding state
+      responses:
+        '200':
+          description: Current authenticated state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthState'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/onboarding/invites:
+    post:
+      tags: [Onboarding]
+      operationId: createOnboardingInvites
+      summary: Create identity-bound group and channel join-request links
+      description: |
+        Creates or replaces 30-minute join-request links for the authenticated
+        Telegram identity. Only that identity may be approved. Links are revoked
+        after approval or replacement.
+      responses:
+        '200':
+          description: Active one-time join-request links.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnboardingInvites'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '502':
+          $ref: '#/components/responses/UpstreamFailure'
+
+  /api/v1/onboarding/membership/check:
+    post:
+      tags: [Onboarding]
+      operationId: checkOnboardingMembership
+      summary: Recheck canonical group and channel membership
+      description: Calls Telegram `getChatMember` for both configured chats and advances onboarding only when both memberships are valid.
+      responses:
+        '200':
+          description: Refreshed canonical membership and user state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MembershipState'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '502':
+          $ref: '#/components/responses/UpstreamFailure'
+
+  /api/v1/onboarding/username:
+    put:
+      tags: [Onboarding]
+      operationId: reserveUsername
+      summary: Reserve the immutable service username
+      description: |
+        Accepts only `^[a-z]{3,9}$`. The service checks local uniqueness, performs
+        a Remnawave preflight, and also treats Remnawave `A019` as a duplicate if
+        the upstream race is lost.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsernameRequest'
+      responses:
+        '200':
+          description: Username reserved and onboarding advanced.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthState'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '502':
+          $ref: '#/components/responses/UpstreamFailure'
+
+  /api/v1/onboarding/agreement:
+    post:
+      tags: [Onboarding]
+      operationId: acceptSharingAgreement
+      summary: Accept the no-sharing agreement and provision Remnawave
+      description: |
+        Records acceptance and ensures an ACTIVE Remnawave user with a 2099
+        upstream expiry, zero traffic, NO_RESET, and no squads. Recoverable partial
+        failures remain resumable and are reconciled by username and Telegram ID.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgreementRequest'
+      responses:
+        '200':
+          description: Agreement accepted and onboarding complete.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthState'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '502':
+          $ref: '#/components/responses/UpstreamFailure'
+
+  /api/v1/dashboard:
+    get:
+      tags: [Dashboard]
+      operationId: getDashboard
+      summary: Get the current home-page projection
+      description: Returns balance, active and queued purchases, subscription data, and cached Remnawave statistics. `statisticsStale` is true when cached statistics were used after an upstream failure.
+      responses:
+        '200':
+          description: Dashboard projection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dashboard'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/catalog:
+    get:
+      tags: [Catalog]
+      operationId: getCatalog
+      summary: List purchasable combos and add-on squads
+      responses:
+        '200':
+          description: Current visible catalog. The server will recalculate all prices at purchase time.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Catalog'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/purchases:
+    get:
+      tags: [Catalog]
+      operationId: listPurchases
+      summary: List the current user's purchase history
+      responses:
+        '200':
+          description: Purchases newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Purchase'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Catalog]
+      operationId: createPurchase
+      summary: Purchase or renew a combo with optional squads
+      description: |
+        Prices are loaded from the current catalog and debited atomically from the
+        TXB ledger. First purchases activate immediately, same-plan renewals extend
+        from the later of now or current expiry, and plan/add-on changes queue for
+        the current term boundary. No proration is performed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PurchaseRequest'
+      responses:
+        '201':
+          description: Purchase was created and its Remnawave operation was queued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Purchase'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Insufficient balance, outstanding debt, stale catalog choice, or incompatible queued change.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/v1/subscription/revoke:
+    post:
+      tags: [Dashboard]
+      operationId: revokeSubscription
+      summary: Rotate the current Remnawave subscription URL
+      description: Calls Remnawave revoke with `revokeOnlyPasswords:false`. The old URL must be treated as invalid after success.
+      responses:
+        '200':
+          description: Rotated subscription reference.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionRotation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '502':
+          $ref: '#/components/responses/UpstreamFailure'
+
+  /api/v1/balance:
+    get:
+      tags: [Billing]
+      operationId: getBalance
+      summary: Get current TXB balance
+      responses:
+        '200':
+          description: Current ledger-derived balance and enabled-provider availability.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/ledger:
+    get:
+      tags: [Billing]
+      operationId: listLedgerEntries
+      summary: List the current user's immutable TXB ledger
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Ledger entries newest first.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LedgerPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/payments/orders:
+    post:
+      tags: [Billing]
+      operationId: createPaymentOrder
+      summary: Create a balance top-up order
+      description: |
+        The requested TXB minor units are converted using the current fixed-decimal
+        dashboard rate. Provider payable amounts are rounded upward to provider
+        precision. A successful authoritative callback credits exactly `txbMinor`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentOrderRequest'
+      responses:
+        '201':
+          description: Durable payment order, QR payload, and provider navigation target.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentOrder'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '502':
+          $ref: '#/components/responses/UpstreamFailure'
+
+  /api/v1/payments/orders/{id}:
+    get:
+      tags: [Billing]
+      operationId: getPaymentOrder
+      summary: Poll durable payment state
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '200':
+          description: Current authoritative order state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentOrder'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/admin/settings:
+    get:
+      tags: [Admin]
+      operationId: listAdminSettings
+      summary: List dashboard configuration
+      description: Sensitive values return an empty `value` plus `encrypted` and `configured`; plaintext and ciphertext are never returned.
+      responses:
+        '200':
+          description: Setting definitions and safe display values.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminSetting'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Admin]
+      operationId: createAdminSetting
+      summary: Validate and write a known dashboard setting
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminSettingCreate'
+      responses:
+        '204':
+          description: Setting stored; secret values remain write-only.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/admin/settings/{key}:
+    put:
+      tags: [Admin]
+      operationId: updateAdminSetting
+      summary: Validate and replace one dashboard setting
+      description: The setting registry decides whether a value is encrypted with AES-256-GCM. Clients cannot downgrade secret storage to plaintext.
+      parameters:
+        - $ref: '#/components/parameters/SettingKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminSettingUpdate'
+      responses:
+        '204':
+          description: Setting replaced; secret values remain write-only.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/admin/combos:
+    get:
+      tags: [Admin]
+      operationId: listAdminCombos
+      summary: List all combos, including inactive records
+      responses:
+        '200':
+          description: Administrative combo list.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Combo'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Admin]
+      operationId: createAdminCombo
+      summary: Create a validated combo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComboWrite'
+      responses:
+        '201':
+          description: Created combo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Combo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/v1/admin/combos/{id}:
+    put:
+      tags: [Admin]
+      operationId: updateAdminCombo
+      summary: Replace a combo's future-sale definition
+      description: Existing purchases retain their stored catalog snapshot.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComboWrite'
+      responses:
+        '200':
+          description: Updated combo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Combo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Admin]
+      operationId: archiveAdminCombo
+      summary: Archive a combo from future sales
+      description: This is a soft archive. Historical purchases and audit records remain intact.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '204':
+          description: Combo archived.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/admin/squad-products:
+    get:
+      tags: [Admin]
+      operationId: listAdminSquadProducts
+      summary: List imported Remnawave squad products
+      responses:
+        '200':
+          description: Squad products, including hidden or unavailable records.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SquadProduct'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Admin]
+      operationId: createAdminSquadProduct
+      summary: Create a local product for an existing Remnawave squad
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SquadProductWrite'
+      responses:
+        '201':
+          description: Created squad product.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SquadProduct'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/admin/squad-products/import:
+    post:
+      tags: [Admin]
+      operationId: importAdminSquadProducts
+      summary: Reconcile local squad products from Remnawave
+      description: Imports upstream squads and marks missing upstream records unavailable without deleting purchase history.
+      responses:
+        '200':
+          description: Complete reconciled squad-product list.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SquadProduct'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '502':
+          $ref: '#/components/responses/UpstreamFailure'
+
+  /api/v1/admin/squad-products/{id}:
+    put:
+      tags: [Admin]
+      operationId: updateAdminSquadProduct
+      summary: Set a squad product's local merchandising fields
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SquadProductWrite'
+      responses:
+        '200':
+          description: Updated squad product.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SquadProduct'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/admin/users:
+    get:
+      tags: [Admin]
+      operationId: listAdminUsers
+      summary: List users through safe projections
+      responses:
+        '200':
+          description: User page. Subscription bearer URLs are omitted from list results.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/admin/users/{id}:
+    get:
+      tags: [Admin]
+      operationId: getAdminUser
+      summary: Get one safe user identity projection
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '200':
+          description: Domain-safe user identity without subscription bearer data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/admin/users/{id}/balance-adjustments:
+    post:
+      tags: [Admin]
+      operationId: adjustAdminUserBalance
+      summary: Append an audited manual TXB adjustment
+      description: Never edits or deletes an existing ledger row. A non-empty reason is required.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BalanceAdjustmentRequest'
+      responses:
+        '201':
+          description: Appended ledger entry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LedgerEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/admin/entitlements:
+    get:
+      tags: [Admin]
+      operationId: listAdminEntitlements
+      summary: List active, queued, and historical entitlements
+      responses:
+        '200':
+          description: Entitlement page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntitlementPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/admin/entitlements/{id}/cancel:
+    post:
+      tags: [Admin]
+      operationId: cancelAdminEntitlement
+      summary: Cancel queued or active access with an audit reason
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReasonRequest'
+      responses:
+        '200':
+          description: Cancellation recorded and Remnawave revocation queued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Purchase'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/v1/admin/payments:
+    get:
+      tags: [Admin]
+      operationId: listAdminPayments
+      summary: List payment orders and authoritative states
+      responses:
+        '200':
+          description: Payment page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/admin/payments/{id}/refund:
+    post:
+      tags: [Admin]
+      operationId: refundAdminPayment
+      summary: Append an immutable payment reversal
+      description: |
+        Reverses the credited TXB exactly once. If the balance becomes negative,
+        queued purchases are cancelled first, then active purchases newest-first,
+        and Remnawave revocations are queued. Remaining debt blocks purchases.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefundRequest'
+      responses:
+        '200':
+          description: Refunded payment order after the immutable reversal and compensating work were recorded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentOrder'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/v1/admin/refunds:
+    get:
+      tags: [Admin]
+      operationId: listAdminRefunds
+      summary: List immutable refund records
+      responses:
+        '200':
+          description: Refund page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefundPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/admin/backups:
+    get:
+      tags: [Admin]
+      operationId: listAdminBackups
+      summary: List verified online database backups
+      responses:
+        '200':
+          description: Backup runs newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BackupRun'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Admin]
+      operationId: createAdminBackup
+      summary: Run and verify an online SQLite backup now
+      responses:
+        '201':
+          description: Backup completed and verified.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupRun'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/v1/admin/jobs:
+    get:
+      tags: [Admin]
+      operationId: listAdminJobs
+      summary: List persistent outbox and scheduler jobs
+      responses:
+        '200':
+          description: Job page. Secret payload fields are redacted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/admin/jobs/{id}/retry:
+    post:
+      tags: [Admin]
+      operationId: retryAdminJob
+      summary: Make a failed retryable job available now
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '204':
+          description: Job scheduled for retry.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/v1/admin/audit-events:
+    get:
+      tags: [Admin]
+      operationId: listAdminAuditEvents
+      summary: List immutable administrative audit events
+      responses:
+        '200':
+          description: Audit page. Events cannot be updated or deleted through the API.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/webhooks/telegram:
+    post:
+      tags: [Webhooks]
+      operationId: receiveTelegramWebhook
+      summary: Receive Telegram bot updates
+      description: Validates the configured Telegram webhook secret header. Relevant join requests, chat-member updates, pre-checkout queries, and successful payments are processed idempotently.
+      security: []
+      parameters:
+        - name: X-Telegram-Bot-Api-Secret-Token
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TelegramUpdate'
+      responses:
+        '204':
+          description: Update accepted or already processed.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/webhooks/ezpay:
+    get:
+      tags: [Webhooks]
+      operationId: receiveEZPayWebhook
+      summary: Receive the signed EZPay asynchronous notification
+      description: Only a valid signature, `TRADE_SUCCESS`, known order/provider trade, and exact payable amount can credit TXB. Replayed notifications are acknowledged without a second credit.
+      security: []
+      parameters:
+        - name: pid
+          in: query
+          required: true
+          schema: { type: string }
+        - name: trade_no
+          in: query
+          required: true
+          schema: { type: string }
+        - name: out_trade_no
+          in: query
+          required: true
+          schema: { type: string }
+        - name: type
+          in: query
+          required: true
+          schema: { type: string }
+        - name: name
+          in: query
+          required: false
+          schema: { type: string }
+        - name: money
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: '^\d+(\.\d{1,2})?$'
+        - name: trade_status
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [TRADE_SUCCESS]
+        - name: sign
+          in: query
+          required: true
+          schema: { type: string }
+        - name: sign_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [MD5]
+      responses:
+        '200':
+          description: Plain-text `success` for a valid notification, including an idempotent replay.
+          content:
+            text/plain:
+              schema:
+                type: string
+                const: success
+        '400':
+          description: Signature or notification validation failed.
+          content:
+            text/plain:
+              schema:
+                type: string
+                const: fail
+        '409':
+          description: The signed payment did not match durable order state.
+          content:
+            text/plain:
+              schema:
+                type: string
+                const: fail
+
+  /api/v1/webhooks/bepusdt:
+    post:
+      tags: [Webhooks]
+      operationId: receiveBEPusdtWebhook
+      summary: Receive a signed BEPusdt transaction notification
+      description: Status `2` is the only crediting state. Signature, local order, provider trade ID, requested USD amount, actual crypto amount, and recipient are checked before the idempotent ledger transaction.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BEPusdtNotification'
+      responses:
+        '200':
+          description: Configured plain-text acknowledgement; defaults to `ok`.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: ok
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/v1/payments/return/{provider}:
+    get:
+      tags: [Billing]
+      operationId: returnFromPaymentProvider
+      summary: Navigate back to the Mini App after provider checkout
+      description: This route never credits balance. It redirects to the client order screen, which polls durable webhook-confirmed state.
+      security: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [ezpay, bepusdt]
+      responses:
+        '303':
+          description: Redirect to the same-origin payment result route.
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+
+  /api/v1/payments/return/{provider}/{orderID}:
+    get:
+      tags: [Billing]
+      operationId: returnFromPaymentProviderWithOrder
+      summary: Navigate back to a specific Mini App payment order
+      description: Compatibility return route for providers that preserve path parameters more reliably than query parameters. It never credits balance.
+      security: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [ezpay, bepusdt]
+        - name: orderID
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '303':
+          description: Redirect to the same-origin payment result route.
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+
+  /healthz:
+    get:
+      tags: [Operations]
+      operationId: getLiveness
+      summary: HTTP and local database liveness
+      security: []
+      responses:
+        '200':
+          description: The process can serve HTTP and SQLite responds.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        '503':
+          description: The process is serving HTTP but SQLite is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /readyz:
+    get:
+      tags: [Operations]
+      operationId: getReadiness
+      summary: Database and setup readiness
+      description: Returns 503 until the database is usable and required chat, Remnawave, exchange-rate, and catalog configuration is complete.
+      security: []
+      responses:
+        '200':
+          description: Ready to serve the complete product.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeReadiness'
+        '503':
+          description: Alive but not fully configured or a required local dependency is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeReadiness'
+
+components:
+  securitySchemes:
+    cookieSession:
+      type: apiKey
+      in: cookie
+      name: txc_session
+      description: Opaque seven-day session created only by validated Telegram Mini App init data.
+
+  parameters:
+    ResourceID:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    SettingKey:
+      name: key
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^[a-z][a-z0-9_.-]{1,63}$'
+    Cursor:
+      name: cursor
+      in: query
+      description: Opaque cursor returned by the preceding page.
+      schema:
+        type: string
+    PageSize:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+
+  responses:
+    BadRequest:
+      description: Request validation failed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Unauthorized:
+      description: Missing, invalid, or expired authentication or provider signature.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Forbidden:
+      description: The authenticated identity cannot perform this operation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    NotFound:
+      description: Resource not found or not visible to the caller.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Conflict:
+      description: Request conflicts with current persisted state.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    UpstreamFailure:
+      description: A required provider could not complete the synchronous portion of the request.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+
+  schemas:
+    ID:
+      type: string
+      minLength: 1
+      examples: [01JZX6BKW16M0CNQ5Q74K8DN7J]
+
+    Timestamp:
+      type: string
+      format: date-time
+      examples: ['2026-08-07T10:00:00Z']
+
+    DecimalInteger:
+      type: string
+      pattern: '^-?\d+$'
+      examples: ['1250']
+
+    ApiError:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          pattern: '^[A-Z][A-Z0-9_]*$'
+          examples: [INSUFFICIENT_BALANCE]
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties:
+            type: string
+        requestId:
+          type: string
+          minLength: 1
+
+    TelegramAuthRequest:
+      type: object
+      additionalProperties: false
+      required: [initData]
+      properties:
+        initData:
+          type: string
+          minLength: 1
+          description: Raw `Telegram.WebApp.initData` query string.
+
+    OnboardingStep:
+      type: string
+      enum: [intro, membership, username, agreement, complete]
+
+    User:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - telegramId
+        - firstName
+        - lastName
+        - telegramUsername
+        - username
+        - role
+        - onboardingState
+        - groupJoined
+        - channelJoined
+        - policyAcceptedAt
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        telegramId:
+          type: string
+          pattern: '^\d+$'
+        firstName:
+          type: string
+        lastName:
+          type: string
+        telegramUsername:
+          type: string
+        username:
+          type: [string, 'null']
+          pattern: '^[a-z]{3,9}$'
+        role:
+          type: string
+          enum: [user, admin]
+        onboardingState:
+          $ref: '#/components/schemas/OnboardingStep'
+        groupJoined:
+          type: boolean
+        channelJoined:
+          type: boolean
+        policyAcceptedAt:
+          type: [string, 'null']
+          format: date-time
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    AuthState:
+      type: object
+      additionalProperties: false
+      required: [authenticated, user]
+      properties:
+        authenticated:
+          type: boolean
+          const: true
+        user:
+          $ref: '#/components/schemas/User'
+
+    JoinInvite:
+      type: object
+      additionalProperties: false
+      required: [url, expiresAt]
+      properties:
+        url:
+          type: string
+          format: uri
+        expiresAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    OnboardingInvites:
+      type: object
+      additionalProperties: false
+      required: [group, channel]
+      properties:
+        group:
+          $ref: '#/components/schemas/JoinInvite'
+        channel:
+          $ref: '#/components/schemas/JoinInvite'
+
+    MembershipState:
+      type: object
+      additionalProperties: false
+      required: [groupJoined, channelJoined, complete, user]
+      properties:
+        groupJoined:
+          type: boolean
+        channelJoined:
+          type: boolean
+        complete:
+          type: boolean
+        user:
+          $ref: '#/components/schemas/User'
+
+    UsernameRequest:
+      type: object
+      additionalProperties: false
+      required: [username]
+      properties:
+        username:
+          type: string
+          pattern: '^[a-z]{3,9}$'
+
+    AgreementRequest:
+      type: object
+      additionalProperties: false
+      required: [accepted]
+      properties:
+        accepted:
+          type: boolean
+          const: true
+
+    Money:
+      type: object
+      additionalProperties: false
+      required: [currency, minor, display]
+      description: Integer minor units. TXB, CNY, and USD use scale 2; XTR uses scale 0.
+      properties:
+        currency:
+          type: string
+          enum: [TXB, CNY, USD, XTR]
+        minor:
+          $ref: '#/components/schemas/DecimalInteger'
+        display:
+          type: string
+          description: Server-formatted display value; never parse this for calculations.
+
+    PaymentMethod:
+      type: object
+      additionalProperties: false
+      required: [provider, name, currency, available, note]
+      properties:
+        provider:
+          $ref: '#/components/schemas/PaymentProvider'
+        name:
+          type: string
+        currency:
+          type: string
+          enum: [CNY, USD, USDT, XTR]
+        available:
+          type: boolean
+        note:
+          type: string
+
+    BalanceResponse:
+      type: object
+      additionalProperties: false
+      required: [balance, paymentMethods]
+      properties:
+        balance:
+          $ref: '#/components/schemas/Money'
+        paymentMethods:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentMethod'
+
+    ResetStrategy:
+      type: string
+      enum: [DAY, WEEK, MONTH]
+
+    SquadProduct:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - remnaSquadUuid
+        - name
+        - description
+        - price
+        - visible
+        - upstreamPresent
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        remnaSquadUuid:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          $ref: '#/components/schemas/Money'
+        visible:
+          type: boolean
+        upstreamPresent:
+          type: boolean
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    Combo:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - description
+        - price
+        - validityDays
+        - trafficLimitBytes
+        - resetStrategy
+        - active
+        - includedSquads
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          $ref: '#/components/schemas/Money'
+        validityDays:
+          type: integer
+          minimum: 1
+          maximum: 3650
+        trafficLimitBytes:
+          type: string
+          pattern: '^\d+$'
+        resetStrategy:
+          $ref: '#/components/schemas/ResetStrategy'
+        includedSquads:
+          type: array
+          items:
+            $ref: '#/components/schemas/SquadProduct'
+        active:
+          type: boolean
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    Catalog:
+      type: object
+      additionalProperties: false
+      required: [combos, addons]
+      properties:
+        combos:
+          type: array
+          items:
+            $ref: '#/components/schemas/Combo'
+        addons:
+          type: array
+          items:
+            $ref: '#/components/schemas/SquadProduct'
+
+    ComboWrite:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - description
+        - priceTxbMinor
+        - validityDays
+        - trafficLimitBytes
+        - resetStrategy
+        - squadProductIds
+        - active
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        description:
+          type: string
+          maxLength: 1000
+        priceTxbMinor:
+          type: string
+          pattern: '^\d+$'
+        validityDays:
+          type: integer
+          minimum: 1
+          maximum: 3650
+        trafficLimitBytes:
+          type: string
+          pattern: '^[1-9]\d*$'
+        resetStrategy:
+          $ref: '#/components/schemas/ResetStrategy'
+        squadProductIds:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/ID'
+        active:
+          type: boolean
+
+    SquadProductWrite:
+      type: object
+      additionalProperties: false
+      required: [remnaSquadUuid, name, description, priceTxbMinor, visible]
+      properties:
+        remnaSquadUuid:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          maxLength: 1000
+        priceTxbMinor:
+          type: string
+          pattern: '^\d+$'
+        visible:
+          type: boolean
+
+    PurchaseRequest:
+      type: object
+      additionalProperties: false
+      required: [comboId, addonSquadProductIds]
+      properties:
+        comboId:
+          $ref: '#/components/schemas/ID'
+        addonSquadProductIds:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/ID'
+
+    EntitlementStatus:
+      type: string
+      enum: [activating, active, queued, expired, cancelled, failed]
+
+    Entitlement:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - comboId
+        - comboName
+        - squadIds
+        - status
+        - startsAt
+        - endsAt
+        - trafficLimitBytes
+        - resetStrategy
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        comboId:
+          $ref: '#/components/schemas/ID'
+        comboName:
+          type: string
+        squadIds:
+          type: array
+          items:
+            type: string
+        status:
+          $ref: '#/components/schemas/EntitlementStatus'
+        startsAt:
+          $ref: '#/components/schemas/Timestamp'
+        endsAt:
+          $ref: '#/components/schemas/Timestamp'
+        trafficLimitBytes:
+          type: string
+          pattern: '^\d+$'
+        resetStrategy:
+          $ref: '#/components/schemas/ResetStrategy'
+
+    Purchase:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - comboId
+        - comboName
+        - price
+        - validFrom
+        - validUntil
+        - status
+        - trafficLimitBytes
+        - resetStrategy
+        - squadUuids
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        comboId:
+          $ref: '#/components/schemas/ID'
+        comboName:
+          type: string
+        price:
+          $ref: '#/components/schemas/Money'
+        validFrom:
+          $ref: '#/components/schemas/Timestamp'
+        validUntil:
+          $ref: '#/components/schemas/Timestamp'
+        status:
+          $ref: '#/components/schemas/EntitlementStatus'
+        trafficLimitBytes:
+          type: string
+          pattern: '^\d+$'
+        resetStrategy:
+          $ref: '#/components/schemas/ResetStrategy'
+        squadUuids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    SubscriptionRotation:
+      type: object
+      additionalProperties: false
+      required: [subscriptionUrl]
+      description: The URL is a bearer credential and must not be logged, cached outside the authenticated UI, or exposed through admin list endpoints.
+      properties:
+        subscriptionUrl:
+          type: string
+          format: uri
+
+    TopNode:
+      type: object
+      additionalProperties: false
+      required: [uuid, name, countryCode, totalBytes]
+      properties:
+        uuid:
+          type: string
+        name:
+          type: string
+        countryCode:
+          type: string
+        totalBytes:
+          type: string
+          pattern: '^\d+$'
+
+    Statistics:
+      type: object
+      additionalProperties: false
+      required:
+        - usedTrafficBytes
+        - lifetimeTrafficBytes
+        - trafficLimitBytes
+        - onlineAt
+        - categories
+        - sparklineData
+        - topNodes
+      properties:
+        usedTrafficBytes:
+          type: string
+          pattern: '^\d+$'
+        lifetimeTrafficBytes:
+          type: string
+          pattern: '^\d+$'
+        trafficLimitBytes:
+          type: string
+          pattern: '^\d+$'
+        onlineAt:
+          type: [string, 'null']
+          format: date-time
+        categories:
+          type: array
+          items:
+            type: string
+        sparklineData:
+          type: array
+          items:
+            type: string
+            pattern: '^\d+$'
+        topNodes:
+          type: array
+          maxItems: 10
+          items:
+            $ref: '#/components/schemas/TopNode'
+
+    Dashboard:
+      type: object
+      additionalProperties: false
+      required:
+        - user
+        - balance
+        - activePurchase
+        - queuedPurchase
+        - statistics
+        - subscriptionUrl
+        - statisticsStale
+        - statisticsWarning
+        - fetchedAt
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        balance:
+          $ref: '#/components/schemas/Money'
+        activePurchase:
+          oneOf:
+            - $ref: '#/components/schemas/Purchase'
+            - type: 'null'
+        queuedPurchase:
+          oneOf:
+            - $ref: '#/components/schemas/Purchase'
+            - type: 'null'
+        statistics:
+          oneOf:
+            - $ref: '#/components/schemas/Statistics'
+            - type: 'null'
+        subscriptionUrl:
+          type: [string, 'null']
+          format: uri
+        statisticsStale:
+          type: boolean
+        statisticsWarning:
+          type: string
+        fetchedAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    LedgerKind:
+      type: string
+      enum:
+        - payment_credit
+        - payment_reversal
+        - purchase_debit
+        - purchase_cancellation
+        - admin_adjustment
+        - admin_entitlement_cancellation
+
+    LedgerEntry:
+      type: object
+      additionalProperties: false
+      required: [id, delta, balanceAfter, kind, referenceId, note, createdAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        delta:
+          $ref: '#/components/schemas/Money'
+        balanceAfter:
+          $ref: '#/components/schemas/Money'
+        kind:
+          $ref: '#/components/schemas/LedgerKind'
+        referenceId:
+          type: string
+        note:
+          type: string
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    PageInfo:
+      type: object
+      additionalProperties: false
+      required: [nextCursor]
+      properties:
+        nextCursor:
+          type: [string, 'null']
+
+    LedgerPage:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LedgerEntry'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+
+    PaymentProvider:
+      type: string
+      enum: [ezpay, bepusdt, stars]
+
+    PaymentStatus:
+      type: string
+      enum: [creating, pending, paid, expired, failed, refunded]
+
+    PaymentOrderRequest:
+      type: object
+      additionalProperties: false
+      required: [provider, txbMinor]
+      properties:
+        provider:
+          $ref: '#/components/schemas/PaymentProvider'
+        txbMinor:
+          type: string
+          pattern: '^[1-9]\d*$'
+
+    PaymentOrder:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - provider
+        - status
+        - txb
+        - payableAmount
+        - payableCurrency
+        - rateSnapshot
+        - paymentUrl
+        - qrPayload
+        - expiresAt
+        - paidAt
+        - refundedAt
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        provider:
+          $ref: '#/components/schemas/PaymentProvider'
+        status:
+          $ref: '#/components/schemas/PaymentStatus'
+        txb:
+          $ref: '#/components/schemas/Money'
+        payableAmount:
+          type: string
+          pattern: '^\d+(\.\d+)?$'
+        payableCurrency:
+          type: string
+          enum: [CNY, USD, XTR, USDT]
+        rateSnapshot:
+          type: string
+          description: Fixed-decimal rate used when the order was created.
+        paymentUrl:
+          type: [string, 'null']
+          format: uri
+        qrPayload:
+          type: [string, 'null']
+        expiresAt:
+          $ref: '#/components/schemas/Timestamp'
+        paidAt:
+          type: [string, 'null']
+          format: date-time
+        refundedAt:
+          type: [string, 'null']
+          format: date-time
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    AdminSetting:
+      type: object
+      additionalProperties: false
+      required: [key, value, encrypted, configured, category, updatedAt]
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+          description: Empty for encrypted settings; plaintext and ciphertext are never returned.
+        encrypted:
+          type: boolean
+        configured:
+          type: boolean
+        category:
+          type: string
+          enum: [telegram, remnawave, rates, payments, application]
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    AdminSettingCreate:
+      type: object
+      additionalProperties: false
+      required: [key, value]
+      properties:
+        key:
+          type: string
+          pattern: '^[a-z][a-z0-9_.-]{1,63}$'
+        value:
+          type: string
+          writeOnly: true
+
+    AdminSettingUpdate:
+      type: object
+      additionalProperties: false
+      required: [value]
+      properties:
+        value:
+          type: string
+          writeOnly: true
+
+    AdminUserSummary:
+      type: object
+      additionalProperties: false
+      required: [user, balance, createdAt, synchronization]
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        balance:
+          $ref: '#/components/schemas/Money'
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        synchronization:
+          type: object
+          additionalProperties: false
+          required: [status]
+          properties:
+            status:
+              type: string
+              enum: [synchronized, not_provisioned]
+
+    AdminUserPage:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminUserSummary'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+
+    BalanceAdjustmentRequest:
+      type: object
+      additionalProperties: false
+      required: [deltaTxbMinor, reason]
+      properties:
+        deltaTxbMinor:
+          type: string
+          pattern: '^-?[1-9]\d*$'
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+
+    ReasonRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+
+    EntitlementPage:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminEntitlement'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+
+    AdminEntitlement:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - userId
+        - comboId
+        - comboName
+        - price
+        - validFrom
+        - validUntil
+        - status
+        - trafficLimitBytes
+        - resetStrategy
+        - squadUuids
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        userId:
+          $ref: '#/components/schemas/ID'
+        comboId:
+          $ref: '#/components/schemas/ID'
+        comboName:
+          type: string
+        price:
+          $ref: '#/components/schemas/Money'
+        validFrom:
+          $ref: '#/components/schemas/Timestamp'
+        validUntil:
+          $ref: '#/components/schemas/Timestamp'
+        status:
+          $ref: '#/components/schemas/EntitlementStatus'
+        trafficLimitBytes:
+          type: string
+          pattern: '^\d+$'
+        resetStrategy:
+          $ref: '#/components/schemas/ResetStrategy'
+        squadUuids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    PaymentPage:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminPaymentOrder'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+
+    AdminPaymentOrder:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - userId
+        - provider
+        - status
+        - txb
+        - payableAmount
+        - payableCurrency
+        - rateSnapshot
+        - paymentUrl
+        - qrPayload
+        - expiresAt
+        - paidAt
+        - refundedAt
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        userId:
+          $ref: '#/components/schemas/ID'
+        provider:
+          $ref: '#/components/schemas/PaymentProvider'
+        status:
+          $ref: '#/components/schemas/PaymentStatus'
+        txb:
+          $ref: '#/components/schemas/Money'
+        payableAmount:
+          type: string
+          pattern: '^\d+(\.\d+)?$'
+        payableCurrency:
+          type: string
+          enum: [CNY, USD, XTR, USDT]
+        rateSnapshot:
+          type: string
+        paymentUrl:
+          type: [string, 'null']
+          format: uri
+        qrPayload:
+          type: [string, 'null']
+        expiresAt:
+          $ref: '#/components/schemas/Timestamp'
+        paidAt:
+          type: [string, 'null']
+          format: date-time
+        refundedAt:
+          type: [string, 'null']
+          format: date-time
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    RefundRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+
+    Refund:
+      type: object
+      additionalProperties: false
+      required: [id, paymentOrderId, actorUserId, txb, reason, status, createdAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        paymentOrderId:
+          $ref: '#/components/schemas/ID'
+        actorUserId:
+          type: [string, 'null']
+        txb:
+          $ref: '#/components/schemas/Money'
+        reason:
+          type: string
+        status:
+          type: string
+          enum: [completed]
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    RefundPage:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Refund'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+
+    BackupRun:
+      type: object
+      additionalProperties: false
+      required: [id, path, sizeBytes, status, error, createdAt, completedAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        path:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+          minimum: 0
+        status:
+          type: string
+          enum: [running, complete, failed]
+        error:
+          type: string
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        completedAt:
+          type: [string, 'null']
+          format: date-time
+
+    JobStatus:
+      type: string
+      enum: [pending, processing, done, failed]
+
+    Job:
+      type: object
+      additionalProperties: false
+      required: [id, kind, aggregateId, payload, status, attempts, availableAt, lastError, createdAt, updatedAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        kind:
+          type: string
+        aggregateId:
+          type: string
+        payload:
+          type: string
+          description: JSON command payload; provider credentials and bearer URLs are never included.
+        status:
+          $ref: '#/components/schemas/JobStatus'
+        attempts:
+          type: integer
+          minimum: 0
+        availableAt:
+          $ref: '#/components/schemas/Timestamp'
+        lastError:
+          type: string
+          description: Redacted operator-safe error summary.
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    JobPage:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Job'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+
+    AuditEvent:
+      type: object
+      additionalProperties: false
+      required: [id, actorUserId, action, targetType, targetId, detail, createdAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        actorUserId:
+          type: [string, 'null']
+        action:
+          type: string
+        targetType:
+          type: string
+        targetId:
+          type: string
+        detail:
+          type: string
+          description: Redacted JSON object encoded as a string.
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    AuditPage:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEvent'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+
+    TelegramUpdate:
+      type: object
+      required: [update_id]
+      additionalProperties: true
+      properties:
+        update_id:
+          type: integer
+          format: int64
+        chat_join_request:
+          type: object
+          additionalProperties: true
+        chat_member:
+          type: object
+          additionalProperties: true
+        pre_checkout_query:
+          type: object
+          additionalProperties: true
+        message:
+          type: object
+          additionalProperties: true
+          properties:
+            successful_payment:
+              type: object
+              additionalProperties: true
+              properties:
+                currency:
+                  type: string
+                  const: XTR
+                total_amount:
+                  type: integer
+                invoice_payload:
+                  type: string
+                telegram_payment_charge_id:
+                  type: string
+                provider_payment_charge_id:
+                  type: string
+            refunded_payment:
+              type: object
+              additionalProperties: true
+              properties:
+                currency:
+                  type: string
+                  const: XTR
+                total_amount:
+                  type: integer
+                invoice_payload:
+                  type: string
+                telegram_payment_charge_id:
+                  type: string
+                provider_payment_charge_id:
+                  type: string
+
+    FlexibleDecimal:
+      oneOf:
+        - type: string
+          pattern: '^\d+(\.\d+)?$'
+        - type: number
+          minimum: 0
+
+    BEPusdtNotification:
+      type: object
+      additionalProperties: true
+      required: [trade_id, order_id, amount, actual_amount, token, status, signature]
+      properties:
+        trade_id:
+          type: string
+        order_id:
+          type: string
+        amount:
+          $ref: '#/components/schemas/FlexibleDecimal'
+        actual_amount:
+          $ref: '#/components/schemas/FlexibleDecimal'
+        token:
+          type: string
+        block_transaction_id:
+          type: string
+        status:
+          type: integer
+          enum: [1, 2, 3]
+        signature:
+          type: string
+        created_at:
+          type: string
+        expired_at:
+          type: string
+
+    HealthStatus:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          const: ok
+
+    RuntimeReadiness:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, setup_required, degraded]
+        missing:
+          type: array
+          items:
+            type: string

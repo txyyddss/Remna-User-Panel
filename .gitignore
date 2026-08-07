@@ -1,0 +1,40 @@
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Go outputs
+/bin/
+*.test
+*.prof
+coverage.out
+domain-coverage.out
+coverage.html
+
+# Runtime state
+/data/
+/backups/
+*.db
+*.db-shm
+*.db-wal
+
+# Frontend dependencies and generated assets
+/web/node_modules/
+/web/dist/
+!/internal/webui/dist/
+/internal/webui/dist/*
+!/internal/webui/dist/.placeholder
+/web/coverage/
+
+# Tooling and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Local reports and caches
+/.cache/
+/.tmp/
+/.lighthouse/
+*.log

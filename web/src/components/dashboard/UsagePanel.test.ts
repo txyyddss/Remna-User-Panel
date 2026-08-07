@@ -1,0 +1,29 @@
+import { mount } from '@vue/test-utils'
+import { describe, expect, it } from 'vitest'
+
+import UsagePanel from './UsagePanel.vue'
+
+describe('UsagePanel', () => {
+  it('labels cached Remnawave statistics with an inline warning', () => {
+    const wrapper = mount(UsagePanel, {
+      props: {
+        ratio: 0.25,
+        stale: true,
+        warning: 'Live usage is unavailable.',
+        fetchedAt: '2026-08-07T00:00:00Z',
+        statistics: {
+          usedTrafficBytes: '26843545600',
+          lifetimeTrafficBytes: '214748364800',
+          trafficLimitBytes: '107374182400',
+          onlineAt: null,
+          categories: [],
+          sparklineData: ['0', '1073741824'],
+          topNodes: [],
+        },
+      },
+    })
+    expect(wrapper.text()).toContain('Last known data')
+    expect(wrapper.text()).toContain('Live usage is unavailable.')
+    expect(wrapper.text()).toContain('25%')
+  })
+})

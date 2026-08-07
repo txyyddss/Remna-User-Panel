@@ -1,0 +1,92 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import type { Purchase, SquadProduct, SquadProductWrite } from './types'
+import { api } from './client'
+
+const fetchMock = vi.fn()
+
+function jsonResponse(payload: unknown, status = 200): Response {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
+const squad: SquadProduct = {
+  id: 'squad-1',
+  remnaSquadUuid: '4fe62019-e890-4d24-9f43-2c22889ec8da',
+  name: 'Singapore Plus',
+  description: 'Priority Singapore routes.',
+  price: { currency: 'TXB', minor: '725', display: '7.25 TXB' },
+  visible: true,
+  upstreamPresent: true,
+  createdAt: '2026-08-07T00:00:00Z',
+  updatedAt: '2026-08-07T00:00:00Z',
+}
+
+const entitlement: Purchase = {
+  id: 'purchase-1',
+  comboId: 'combo-1',
+  comboName: 'Everyday',
+  price: { currency: 'TXB', minor: '1200', display: '12.00 TXB' },
+  validFrom: '2026-08-07T00:00:00Z',
+  validUntil: '2026-09-06T00:00:00Z',
+  status: 'cancelled',
+  trafficLimitBytes: '107374182400',
+  resetStrategy: 'MONTH',
+  squadUuids: [],
+  createdAt: '2026-08-07T00:00:00Z',
+  updatedAt: '2026-08-07T00:01:00Z',
+}
+
+describe('admin API mutations', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', fetchMock)
+  })
+
+  afterEach(() => {
+    fetchMock.mockReset()
+    vi.unstubAllGlobals()
+  })
+
+  it('sends every required squad merchandising field', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(squad))
+    const payload: SquadProductWrite = {
+      remnaSquadUuid: squad.remnaSquadUuid,
+      name: squad.name,
+      description: squad.description,
+      priceTxbMinor: squad.price.minor,
+      visible: squad.visible,
+    }
+
+    await api.updateAdminSquadProduct('squad/1', payload)
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('/api/v1/admin/squad-products/squad%2F1')
+    expect(options.method).toBe('PUT')
+    expect(JSON.parse(String(options.body))).toEqual(payload)
+  })
+
+  it('binds an entitlement cancellation reason to the selected record', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(entitlement))
+
+    await api.cancelAdminEntitlement('purchase/1', 'Duplicate account request')
+
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('/api/v1/admin/entitlements/purchase%2F1/cancel')
+    expect(options.method).toBe('POST')
+    expect(JSON.parse(String(options.body))).toEqual({ reason: 'Duplicate account request' })
+  })
+
+  it('retries a failed job without sending an invented payload', async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
+
+    await api.retryAdminJob('job/1')
+
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('/api/v1/admin/jobs/job%2F1/retry')
+    expect(options.method).toBe('POST')
+    expect(options.body).toBeUndefined()
+  })
+})

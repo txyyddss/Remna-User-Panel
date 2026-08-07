@@ -1,0 +1,74 @@
+<script setup lang="ts">
+import { shallowRef, watch } from 'vue'
+import { PhArrowSquareOut, PhCheck, PhCopy, PhKey, PhTrash } from '@phosphor-icons/vue'
+
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
+import { useClipboard } from '@/composables/useClipboard'
+import { openExternalLink } from '@/utils/telegram'
+
+const props = defineProps<{
+  subscriptionUrl?: string | null
+  revoking: boolean
+}>()
+
+const emit = defineEmits<{ revoke: [] }>()
+const confirmOpen = shallowRef(false)
+const { copied, copy } = useClipboard()
+
+watch(() => props.revoking, (next, previous) => {
+  if (previous && !next) confirmOpen.value = false
+})
+
+function copyLink(): void {
+  if (props.subscriptionUrl) void copy(props.subscriptionUrl)
+}
+
+function openLink(): void {
+  if (props.subscriptionUrl) openExternalLink(props.subscriptionUrl)
+}
+</script>
+
+<template>
+  <section class="section-block subscription-section">
+    <div class="section-heading">
+      <h2>Subscription link</h2>
+      <span class="feature-icon feature-icon--small"><PhKey :size="19" /></span>
+    </div>
+    <template v-if="subscriptionUrl">
+      <p class="subscription-section__lead">Treat this URL like a password. Anyone with it can use your access.</p>
+      <div class="secret-field">
+        <span>••••••••••••••••••••••••</span>
+        <button class="icon-button" type="button" :aria-label="copied ? 'Copied' : 'Copy subscription link'" @click="copyLink">
+          <PhCheck v-if="copied" :size="20" weight="bold" />
+          <PhCopy v-else :size="20" />
+        </button>
+      </div>
+      <div class="button-row">
+        <button class="button button--secondary" type="button" @click="openLink">
+          <PhArrowSquareOut :size="19" />
+          Open
+        </button>
+        <button class="button button--ghost-danger" type="button" @click="confirmOpen = true">
+          <PhTrash :size="19" />
+          Revoke
+        </button>
+      </div>
+    </template>
+    <div v-else class="empty-inline">
+      <div>
+        <h3>No active link</h3>
+        <p>A subscription URL appears after your combo is activated.</p>
+      </div>
+    </div>
+
+    <ConfirmDialog
+      v-model:open="confirmOpen"
+      title="Revoke this link?"
+      description="Every device using the current subscription URL will lose access. A new link will replace it."
+      confirm-label="Revoke link"
+      :busy="revoking"
+      danger
+      @confirm="emit('revoke')"
+    />
+  </section>
+</template>
