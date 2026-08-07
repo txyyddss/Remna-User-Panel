@@ -2,8 +2,6 @@ package httpapi
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -164,12 +162,20 @@ func (s *Server) bepusdtWebhook(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, http.StatusUnauthorized, "INVALID_SIGNATURE", "Webhook authentication failed.")
 		return
 	}
+	if status < 1 || status > 3 {
+		s.writeError(w, r, http.StatusBadRequest, "INVALID_PAYMENT_STATUS", "Payment status is invalid.")
+		return
+	}
 	if status == 2 {
 		if _, _, err := s.deps.Billing.Settle(r.Context(), event); err != nil {
 			s.writeError(w, r, http.StatusConflict, "PAYMENT_SETTLEMENT_FAILED", "Payment did not match the stored order.")
 			return
 		}
 	} else if status == 3 {
+		if _, err := s.deps.Billing.ValidateEvent(r.Context(), event); err != nil {
+			s.writeError(w, r, http.StatusConflict, "PAYMENT_EXPIRY_FAILED", "Payment timeout did not match the stored order.")
+			return
+		}
 		if err := s.deps.Store.ExpirePaymentOrder(r.Context(), event.OrderID, "bepusdt", time.Now().UTC()); err != nil {
 			s.writeError(w, r, http.StatusConflict, "PAYMENT_EXPIRY_FAILED", "Payment timeout did not match the stored order.")
 			return
@@ -194,11 +200,6 @@ func (s *Server) paymentReturn(w http.ResponseWriter, r *http.Request) {
 	target.Path = strings.TrimRight(target.Path, "/") + "/balance"
 	target.RawQuery = url.Values{"paymentOrder": {orderID}, "provider": {provider}}.Encode()
 	http.Redirect(w, r, target.String(), http.StatusSeeOther)
-}
-
-func hashPayload(body []byte) string {
-	digest := sha256.Sum256(body)
-	return hex.EncodeToString(digest[:])
 }
 
 func contextWithTimeout(r *http.Request, timeout time.Duration) (context.Context, context.CancelFunc) {

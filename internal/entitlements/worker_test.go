@@ -25,7 +25,7 @@ func TestWorkerDrainAppliesEntitlementAndCompletesJob(t *testing.T) {
 	if err := worker.Drain(context.Background(), 1); err != nil {
 		t.Fatalf("Drain(): %v", err)
 	}
-	if remote.applyUserID != remoteID || remote.applyLimit != 1234 || remote.applyResetStrategy != "MONTH" || !remote.applyResetTraffic {
+	if remote.applyUserID != remoteID || remote.applyLimit != 1234 || remote.applyResetStrategy != "MONTH" || remote.removeCalls != 1 || remote.resetCalls != 1 {
 		t.Fatalf("ApplyEntitlement call = %+v", remote)
 	}
 	if len(remote.applySquads) != 2 || repository.markedPurchaseID != "purchase-1" || repository.markedSuccess == nil || !*repository.markedSuccess {
@@ -64,18 +64,46 @@ func TestWorkerRetryDoesNotRedispatchTrafficReset(t *testing.T) {
 	t.Parallel()
 
 	remoteID := "remote-1"
-	alreadyClaimed := false
 	repository := &entitlementRepository{
-		purchase:         model.Purchase{ID: "purchase-1", Status: "activating", ValidUntil: time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC)},
-		user:             model.User{ID: "user-1", RemnaUserID: &remoteID},
-		claimResetResult: &alreadyClaimed,
+		purchase:   model.Purchase{ID: "purchase-1", Status: "activating", ValidUntil: time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC)},
+		user:       model.User{ID: "user-1", RemnaUserID: &remoteID},
+		resetPhase: "reset",
 	}
 	remote := &entitlementRemnawave{}
 	if err := newEntitlementWorkerForTest(repository, remote).process(context.Background(), model.OutboxJob{Kind: "remna_apply_entitlement", AggregateID: "purchase-1", Attempts: 2}); err != nil {
 		t.Fatalf("process(): %v", err)
 	}
-	if remote.applyCalls != 1 || remote.applyResetTraffic {
-		t.Fatalf("retry apply calls/reset = %d/%t, want 1/false", remote.applyCalls, remote.applyResetTraffic)
+	if remote.applyCalls != 1 || remote.removeCalls != 0 || remote.resetCalls != 0 {
+		t.Fatalf("retry calls apply/remove/reset = %d/%d/%d, want 1/0/0", remote.applyCalls, remote.removeCalls, remote.resetCalls)
+	}
+}
+
+func TestWorkerResumesDurableTrafficResetPhases(t *testing.T) {
+	t.Parallel()
+
+	remoteID := "remote-1"
+	future := time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC)
+	for _, test := range []struct {
+		phase      string
+		wantRemove int
+		wantReset  int
+		wantApply  int
+	}{
+		{phase: "pending", wantRemove: 1, wantReset: 1, wantApply: 1},
+		{phase: "quiesced", wantReset: 1, wantApply: 1},
+		{phase: "reset", wantApply: 1},
+	} {
+		t.Run(test.phase, func(t *testing.T) {
+			t.Parallel()
+			repository := &entitlementRepository{purchase: model.Purchase{ID: "purchase", Status: "activating", ValidUntil: future}, user: model.User{RemnaUserID: &remoteID}, resetPhase: test.phase}
+			remote := &entitlementRemnawave{}
+			if err := newEntitlementWorkerForTest(repository, remote).process(context.Background(), model.OutboxJob{Kind: "remna_apply_entitlement", AggregateID: "purchase"}); err != nil {
+				t.Fatalf("process(): %v", err)
+			}
+			if remote.removeCalls != test.wantRemove || remote.resetCalls != test.wantReset || remote.applyCalls != test.wantApply {
+				t.Fatalf("calls remove/reset/apply = %d/%d/%d, want %d/%d/%d", remote.removeCalls, remote.resetCalls, remote.applyCalls, test.wantRemove, test.wantReset, test.wantApply)
+			}
+		})
 	}
 }
 
@@ -141,7 +169,10 @@ func TestWorkerProcessApplyBranches(t *testing.T) {
 		{name: "purchase lookup", repository: &entitlementRepository{purchaseErr: testError}, remote: &entitlementRemnawave{}, wantError: true},
 		{name: "user lookup", repository: &entitlementRepository{purchase: model.Purchase{ID: "purchase", ValidUntil: future}, userForPurchaseErr: testError}, remote: &entitlementRemnawave{}, wantError: true},
 		{name: "missing remote identity", repository: &entitlementRepository{purchase: model.Purchase{ID: "purchase", ValidUntil: future}, user: model.User{}}, remote: &entitlementRemnawave{}, wantError: true},
-		{name: "reset claim", repository: &entitlementRepository{purchase: model.Purchase{ID: "purchase", ValidUntil: future}, user: model.User{RemnaUserID: &remoteID}, claimResetErr: testError}, remote: &entitlementRemnawave{}, wantError: true},
+		{name: "reset phase lookup", repository: &entitlementRepository{purchase: model.Purchase{ID: "purchase", ValidUntil: future}, user: model.User{RemnaUserID: &remoteID}, resetPhaseErr: testError}, remote: &entitlementRemnawave{}, wantError: true},
+		{name: "quiesce", repository: &entitlementRepository{purchase: model.Purchase{ID: "purchase", ValidUntil: future}, user: model.User{RemnaUserID: &remoteID}}, remote: &entitlementRemnawave{removeErr: testError}, wantError: true},
+		{name: "reset traffic", repository: &entitlementRepository{purchase: model.Purchase{ID: "purchase", ValidUntil: future}, user: model.User{RemnaUserID: &remoteID}, resetPhase: "quiesced"}, remote: &entitlementRemnawave{resetErr: testError}, wantError: true},
+		{name: "unknown reset phase", repository: &entitlementRepository{purchase: model.Purchase{ID: "purchase", ValidUntil: future}, user: model.User{RemnaUserID: &remoteID}, resetPhase: "mystery"}, remote: &entitlementRemnawave{}, wantError: true},
 		{name: "remote apply", repository: &entitlementRepository{purchase: model.Purchase{ID: "purchase", ValidUntil: future}, user: model.User{RemnaUserID: &remoteID}}, remote: &entitlementRemnawave{applyErr: testError}, wantError: true, wantApply: true},
 		{name: "mark result", repository: &entitlementRepository{purchase: model.Purchase{ID: "purchase", ValidUntil: future}, user: model.User{RemnaUserID: &remoteID}, markErr: testError}, remote: &entitlementRemnawave{}, wantError: true, wantApply: true},
 	}
@@ -229,7 +260,7 @@ func TestWorkerProcessSynchronizesDesiredOrEmptyState(t *testing.T) {
 			if got := test.remote.removeCalls > 0; got != test.wantRemove {
 				t.Fatalf("RemoveEntitlement called = %t, want %t", got, test.wantRemove)
 			}
-			if test.wantApply && test.remote.applyResetTraffic {
+			if test.wantApply && test.remote.resetCalls != 0 {
 				t.Fatal("sync-user apply unexpectedly reset traffic")
 			}
 		})
@@ -257,8 +288,10 @@ type entitlementRepository struct {
 	userByIDErr        error
 	desired            *model.Purchase
 	desiredErr         error
-	claimResetResult   *bool
-	claimResetErr      error
+	resetPhase         string
+	resetPhaseErr      error
+	advanceResetErr    error
+	resetTransitions   [][2]string
 	markErr            error
 	markedPurchaseID   string
 	markedSuccess      *bool
@@ -296,14 +329,22 @@ func (r *entitlementRepository) UserByID(context.Context, string) (model.User, e
 func (r *entitlementRepository) DesiredEntitlement(context.Context, string, time.Time) (*model.Purchase, error) {
 	return r.desired, r.desiredErr
 }
-func (r *entitlementRepository) ClaimPurchaseTrafficReset(context.Context, string, time.Time) (bool, error) {
-	if r.claimResetErr != nil {
-		return false, r.claimResetErr
+func (r *entitlementRepository) PurchaseTrafficResetPhase(context.Context, string) (string, error) {
+	if r.resetPhaseErr != nil {
+		return "", r.resetPhaseErr
 	}
-	if r.claimResetResult != nil {
-		return *r.claimResetResult, nil
+	if r.resetPhase == "" {
+		return "pending", nil
 	}
-	return true, nil
+	return r.resetPhase, nil
+}
+func (r *entitlementRepository) AdvancePurchaseTrafficReset(_ context.Context, _ string, from, to string, _ time.Time) error {
+	if r.advanceResetErr != nil {
+		return r.advanceResetErr
+	}
+	r.resetTransitions = append(r.resetTransitions, [2]string{from, to})
+	r.resetPhase = to
+	return nil
 }
 func (r *entitlementRepository) MarkPurchaseSyncResult(_ context.Context, purchaseID string, success bool, _ time.Time) error {
 	r.markedPurchaseID = purchaseID
@@ -322,17 +363,22 @@ type entitlementRemnawave struct {
 	applyLimit         int64
 	applyResetStrategy string
 	applySquads        []string
-	applyResetTraffic  bool
 	applyErr           error
 	removeCalls        int
 	removeErr          error
+	resetCalls         int
+	resetErr           error
 }
 
-func (r *entitlementRemnawave) ApplyEntitlement(_ context.Context, userID string, limit int64, strategy string, squads []string, reset bool) error {
+func (r *entitlementRemnawave) ApplyEntitlement(_ context.Context, userID string, limit int64, strategy string, squads []string) error {
 	r.applyCalls++
-	r.applyUserID, r.applyLimit, r.applyResetStrategy, r.applyResetTraffic = userID, limit, strategy, reset
+	r.applyUserID, r.applyLimit, r.applyResetStrategy = userID, limit, strategy
 	r.applySquads = append([]string(nil), squads...)
 	return r.applyErr
+}
+func (r *entitlementRemnawave) ResetTraffic(context.Context, string) error {
+	r.resetCalls++
+	return r.resetErr
 }
 func (r *entitlementRemnawave) RemoveEntitlement(context.Context, string) error {
 	r.removeCalls++

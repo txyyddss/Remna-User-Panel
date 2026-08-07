@@ -365,7 +365,12 @@ func createTestUser(t *testing.T, store *Store, telegramID int64) model.User {
 func saveTestSquad(t *testing.T, store *Store, uuid string, price int64, visible bool) model.SquadProduct {
 	t.Helper()
 
+	imported, err := store.ImportSquad(context.Background(), uuid, uuid)
+	if err != nil {
+		t.Fatalf("ImportSquad(%q): %v", uuid, err)
+	}
 	product, err := store.SaveSquadProduct(context.Background(), SquadProductInput{
+		ID:              imported.ID,
 		RemnaSquadUUID:  uuid,
 		Name:            uuid,
 		Description:     "test squad",

@@ -17,6 +17,9 @@ import (
 // ErrProviderDisabled means the administrator has not enabled a payment method.
 var ErrProviderDisabled = errors.New("payment provider is disabled")
 
+// ErrInvalidOrder means user-controlled checkout selection failed validation.
+var ErrInvalidOrder = errors.New("invalid payment order")
+
 // ProviderCreateRequest is the server-owned checkout input passed to an adapter.
 type ProviderCreateRequest struct {
 	Provider        string
@@ -51,6 +54,7 @@ type ProviderEvent struct {
 	PayableCurrency string
 	FiatAmount      string
 	FiatCurrency    string
+	Recipient       string
 	DedupeKey       string
 	PayloadHash     string
 	TelegramID      *int64
@@ -96,10 +100,10 @@ func NewService(repository Repository, settings Settings, gateway Gateway, publi
 func (s *Service) CreateOrder(ctx context.Context, user model.User, provider string, txbMinor int64) (model.PaymentOrder, error) {
 	provider = strings.ToLower(strings.TrimSpace(provider))
 	if provider != "ezpay" && provider != "bepusdt" && provider != "stars" {
-		return model.PaymentOrder{}, errors.New("unsupported payment provider")
+		return model.PaymentOrder{}, fmt.Errorf("%w: unsupported provider", ErrInvalidOrder)
 	}
 	if txbMinor <= 0 || txbMinor > 100_000_000_00 {
-		return model.PaymentOrder{}, errors.New("TXB amount is out of range")
+		return model.PaymentOrder{}, fmt.Errorf("%w: TXB amount is out of range", ErrInvalidOrder)
 	}
 	enabled, err := s.settings.Optional(ctx, "billing."+provider+".enabled")
 	if err != nil || enabled != "true" {
@@ -176,6 +180,13 @@ func (s *Service) ValidateEvent(ctx context.Context, event ProviderEvent) (model
 		rate, parseErr := ParseDecimal(order.RateSnapshot)
 		expectedFiat, payableErr := Payable(order.TXBMinor, rate, 2)
 		if parseErr != nil || payableErr != nil || !strings.EqualFold(event.FiatCurrency, "USD") || !Equivalent(expectedFiat, event.FiatAmount) {
+			return model.PaymentOrder{}, database.ErrConflict
+		}
+		// Reference versions overload callback token as either the receive
+		// address or the literal currency code. Compare it to the exact checkout
+		// address whenever the provider supplies address semantics.
+		if event.Recipient != "" && !strings.EqualFold(event.Recipient, "USDT") &&
+			(order.QRPayload == nil || event.Recipient != *order.QRPayload) {
 			return model.PaymentOrder{}, database.ErrConflict
 		}
 	}

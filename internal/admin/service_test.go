@@ -86,13 +86,13 @@ func TestAdminSaveComboValidationAndAudit(t *testing.T) {
 func TestAdminDeleteComboAndSaveSquad(t *testing.T) {
 	t.Parallel()
 
-	repository := &adminCatalogRepository{savedSquad: model.SquadProduct{ID: "squad-1", Name: "Fast"}}
+	repository := &adminCatalogRepository{savedSquad: model.SquadProduct{ID: "squad-1", RemnaSquadUUID: "uuid", Name: "Fast", UpstreamPresent: true}}
 	service := newAdminServiceForTest(repository, nil, &adminSquadImporter{}, &adminBackupRunner{}, &adminRefunder{})
 	if err := service.DeleteCombo(context.Background(), "admin", "combo-1"); err != nil || repository.deletedComboID != "combo-1" {
 		t.Fatalf("DeleteCombo() = %v, ID %q", err, repository.deletedComboID)
 	}
 	product, err := service.SaveSquadProduct(context.Background(), "admin", database.SquadProductInput{RemnaSquadUUID: " uuid ", Name: "Fast", PriceTXBMinor: 10})
-	if err != nil || product.ID != "squad-1" || repository.squadInput.RemnaSquadUUID != " uuid " {
+	if err != nil || product.ID != "squad-1" || repository.squadInput.RemnaSquadUUID != "uuid" || repository.squadInput.ID != "squad-1" {
 		t.Fatalf("SaveSquadProduct() = (%+v, %v), input %+v", product, err, repository.squadInput)
 	}
 
@@ -104,6 +104,11 @@ func TestAdminDeleteComboAndSaveSquad(t *testing.T) {
 		if _, err := service.SaveSquadProduct(context.Background(), "admin", input); err == nil {
 			t.Errorf("SaveSquadProduct(%+v) unexpectedly succeeded", input)
 		}
+	}
+	missing := &adminCatalogRepository{squadLookupErr: database.ErrNotFound}
+	if _, err := newAdminServiceForTest(missing, nil, &adminSquadImporter{}, &adminBackupRunner{}, &adminRefunder{}).
+		SaveSquadProduct(context.Background(), "admin", database.SquadProductInput{RemnaSquadUUID: "invented", Name: "name"}); !errors.Is(err, database.ErrNotFound) {
+		t.Fatalf("SaveSquadProduct(invented UUID) = %v, want not found", err)
 	}
 
 	repository.deleteComboErr = errors.New("delete failure")
@@ -305,6 +310,7 @@ type adminCatalogRepository struct {
 	deletedComboID    string
 	deleteComboErr    error
 	savedSquad        model.SquadProduct
+	squadLookupErr    error
 	squadInput        database.SquadProductInput
 	savedSquadInputs  []database.SquadProductInput
 	saveSquadErr      error
@@ -353,6 +359,24 @@ func (r *adminCatalogRepository) SaveSquadProduct(_ context.Context, input datab
 		return r.savedSquad, nil
 	}
 	return model.SquadProduct{ID: input.RemnaSquadUUID, Name: input.Name}, nil
+}
+func (r *adminCatalogRepository) SquadProductByID(_ context.Context, id string) (model.SquadProduct, error) {
+	if r.squadLookupErr != nil {
+		return model.SquadProduct{}, r.squadLookupErr
+	}
+	if r.savedSquad.ID != "" {
+		return r.savedSquad, nil
+	}
+	return model.SquadProduct{ID: id, RemnaSquadUUID: "uuid", UpstreamPresent: true}, nil
+}
+func (r *adminCatalogRepository) SquadProductByRemnaUUID(_ context.Context, uuid string) (model.SquadProduct, error) {
+	if r.squadLookupErr != nil {
+		return model.SquadProduct{}, r.squadLookupErr
+	}
+	if r.savedSquad.ID != "" {
+		return r.savedSquad, nil
+	}
+	return model.SquadProduct{ID: "squad-existing", RemnaSquadUUID: uuid, UpstreamPresent: true}, nil
 }
 func (r *adminCatalogRepository) ListSquadProducts(context.Context, bool) ([]model.SquadProduct, error) {
 	return r.listedSquads, r.listSquadsErr

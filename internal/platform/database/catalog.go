@@ -42,9 +42,11 @@ type ImportedSquad struct {
 	Name string
 }
 
-// SaveCombo creates or replaces a catalog combo and its complete included-squad set.
+// SaveCombo creates a catalog combo when ID is empty and otherwise updates an
+// existing combo. Client-selected IDs can never create records.
 func (s *Store) SaveCombo(ctx context.Context, input ComboInput) (model.Combo, error) {
-	if input.ID == "" {
+	creating := input.ID == ""
+	if creating {
 		var err error
 		input.ID, err = ids.New()
 		if err != nil {
@@ -57,14 +59,23 @@ func (s *Store) SaveCombo(ctx context.Context, input ComboInput) (model.Combo, e
 		return model.Combo{}, fmt.Errorf("begin save combo: %w", err)
 	}
 	defer tx.Rollback()
-	_, err = tx.ExecContext(ctx, `INSERT INTO combos(id,name,description,price_txb_minor,validity_days,traffic_limit_bytes,reset_strategy,active,created_at,updated_at)
-		VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,description=excluded.description,
-		price_txb_minor=excluded.price_txb_minor,validity_days=excluded.validity_days,traffic_limit_bytes=excluded.traffic_limit_bytes,
-		reset_strategy=excluded.reset_strategy,active=excluded.active,updated_at=excluded.updated_at`,
-		input.ID, input.Name, input.Description, input.PriceTXBMinor, input.ValidityDays, input.TrafficLimitBytes,
-		input.ResetStrategy, boolInt(input.Active), now, now)
+	var result sql.Result
+	if creating {
+		result, err = tx.ExecContext(ctx, `INSERT INTO combos(id,name,description,price_txb_minor,validity_days,traffic_limit_bytes,reset_strategy,active,created_at,updated_at)
+			VALUES(?,?,?,?,?,?,?,?,?,?)`, input.ID, input.Name, input.Description, input.PriceTXBMinor, input.ValidityDays,
+			input.TrafficLimitBytes, input.ResetStrategy, boolInt(input.Active), now, now)
+	} else {
+		result, err = tx.ExecContext(ctx, `UPDATE combos SET name=?,description=?,price_txb_minor=?,validity_days=?,traffic_limit_bytes=?,
+			reset_strategy=?,active=?,updated_at=? WHERE id=?`, input.Name, input.Description, input.PriceTXBMinor, input.ValidityDays,
+			input.TrafficLimitBytes, input.ResetStrategy, boolInt(input.Active), now, input.ID)
+	}
 	if err != nil {
 		return model.Combo{}, fmt.Errorf("save combo: %w", err)
+	}
+	if affected, rowsErr := result.RowsAffected(); rowsErr != nil {
+		return model.Combo{}, fmt.Errorf("inspect saved combo: %w", rowsErr)
+	} else if affected != 1 {
+		return model.Combo{}, ErrNotFound
 	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM combo_squads WHERE combo_id=?`, input.ID); err != nil {
 		return model.Combo{}, fmt.Errorf("replace combo squads: %w", err)
@@ -75,8 +86,15 @@ func (s *Store) SaveCombo(ctx context.Context, input ComboInput) (model.Combo, e
 			continue
 		}
 		seen[squadID] = struct{}{}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO combo_squads(combo_id,squad_product_id) VALUES(?,?)`, input.ID, squadID); err != nil {
+		result, err := tx.ExecContext(ctx, `INSERT INTO combo_squads(combo_id,squad_product_id)
+			SELECT ?,id FROM squad_products WHERE id=? AND upstream_present=1`, input.ID, squadID)
+		if err != nil {
 			return model.Combo{}, fmt.Errorf("attach combo squad: %w", err)
+		}
+		if affected, rowsErr := result.RowsAffected(); rowsErr != nil {
+			return model.Combo{}, fmt.Errorf("inspect combo squad: %w", rowsErr)
+		} else if affected != 1 {
+			return model.Combo{}, ErrNotFound
 		}
 	}
 	if err := tx.Commit(); err != nil {
@@ -97,30 +115,30 @@ func (s *Store) DeleteCombo(ctx context.Context, comboID string) error {
 	return nil
 }
 
-// SaveSquadProduct creates or updates local catalog data for an upstream squad.
+// SaveSquadProduct updates merchandising for an imported upstream squad.
+// New upstream identities can only enter through RefreshImportedSquads.
 func (s *Store) SaveSquadProduct(ctx context.Context, input SquadProductInput) (model.SquadProduct, error) {
 	if input.ID == "" {
-		if err := s.db.QueryRowContext(ctx, `SELECT id FROM squad_products WHERE remna_squad_uuid=?`, input.RemnaSquadUUID).Scan(&input.ID); err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return model.SquadProduct{}, fmt.Errorf("find squad product: %w", err)
-		}
-	}
-	if input.ID == "" {
-		var err error
-		input.ID, err = ids.New()
-		if err != nil {
-			return model.SquadProduct{}, err
-		}
+		return model.SquadProduct{}, ErrNotFound
 	}
 	now := stamp(time.Now().UTC())
-	_, err := s.db.ExecContext(ctx, `INSERT INTO squad_products(id,remna_squad_uuid,name,description,price_txb_minor,visible,upstream_present,created_at,updated_at)
-		VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET remna_squad_uuid=excluded.remna_squad_uuid,name=excluded.name,
-		description=excluded.description,price_txb_minor=excluded.price_txb_minor,visible=excluded.visible,
-		upstream_present=excluded.upstream_present,updated_at=excluded.updated_at`, input.ID, input.RemnaSquadUUID, input.Name,
-		input.Description, input.PriceTXBMinor, boolInt(input.Visible), boolInt(input.UpstreamPresent), now, now)
+	result, err := s.db.ExecContext(ctx, `UPDATE squad_products SET name=?,description=?,price_txb_minor=?,visible=?,updated_at=?
+		WHERE id=? AND remna_squad_uuid=?`, input.Name, input.Description, input.PriceTXBMinor, boolInt(input.Visible), now,
+		input.ID, input.RemnaSquadUUID)
 	if err != nil {
 		return model.SquadProduct{}, fmt.Errorf("save squad product: %w", err)
 	}
+	if affected, rowsErr := result.RowsAffected(); rowsErr != nil {
+		return model.SquadProduct{}, fmt.Errorf("inspect saved squad product: %w", rowsErr)
+	} else if affected != 1 {
+		return model.SquadProduct{}, ErrNotFound
+	}
 	return s.SquadProductByID(ctx, input.ID)
+}
+
+// SquadProductByRemnaUUID resolves an already imported upstream squad.
+func (s *Store) SquadProductByRemnaUUID(ctx context.Context, uuid string) (model.SquadProduct, error) {
+	return scanSquad(s.db.QueryRowContext(ctx, squadSelect+` WHERE remna_squad_uuid=?`, uuid))
 }
 
 // ImportSquad refreshes upstream identity while preserving local description, price, and visibility.
@@ -249,7 +267,11 @@ func (s *Store) ComboByID(ctx context.Context, id string, activeOnly bool) (mode
 func (s *Store) ListCombos(ctx context.Context, activeOnly bool) ([]model.Combo, error) {
 	query := comboSelect
 	if activeOnly {
-		query += ` WHERE active=1`
+		query += ` WHERE active=1 AND NOT EXISTS (
+			SELECT 1 FROM combo_squads cs
+			JOIN squad_products sp ON sp.id=cs.squad_product_id
+			WHERE cs.combo_id=combos.id AND sp.upstream_present=0
+		)`
 	}
 	query += ` ORDER BY price_txb_minor,name,id`
 	rows, err := s.db.QueryContext(ctx, query)

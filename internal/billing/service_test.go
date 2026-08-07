@@ -106,9 +106,9 @@ func TestServiceCreateOrderFailures(t *testing.T) {
 		want       error
 		wantFailed bool
 	}{
-		{name: "unsupported provider", provider: "cash", txbMinor: 100},
-		{name: "zero amount", provider: "ezpay", txbMinor: 0},
-		{name: "too large", provider: "ezpay", txbMinor: 100_000_000_01},
+		{name: "unsupported provider", provider: "cash", txbMinor: 100, want: ErrInvalidOrder},
+		{name: "zero amount", provider: "ezpay", txbMinor: 0, want: ErrInvalidOrder},
+		{name: "too large", provider: "ezpay", txbMinor: 100_000_000_01, want: ErrInvalidOrder},
 		{name: "disabled", provider: "ezpay", txbMinor: 100, want: ErrProviderDisabled},
 		{name: "enabled lookup error", provider: "ezpay", txbMinor: 100, configure: func(_ *billingRepository, settings *billingSettings, _ *billingGateway) {
 			settings.errs["billing.ezpay.enabled"] = testError
@@ -301,15 +301,16 @@ func TestServiceAuthorizeEventRequiresLivePendingOrder(t *testing.T) {
 func TestServiceValidateBEPusdtFiatAndCryptoAmounts(t *testing.T) {
 	t.Parallel()
 
+	recipient := "TXExactReceiveAddress"
 	repository := newBillingRepository()
 	repository.orders["order-1"] = model.PaymentOrder{
 		ID: "order-1", UserID: "user-1", Provider: "bepusdt", TXBMinor: 1_000,
-		PayableAmount: "0.950001", PayableCurrency: "USDT", RateSnapshot: "0.1",
+		PayableAmount: "0.950001", PayableCurrency: "USDT", RateSnapshot: "0.1", QRPayload: &recipient,
 	}
 	service := newBillingServiceForTest(repository, &billingSettings{}, &billingGateway{})
 	event := ProviderEvent{
 		Provider: "bepusdt", OrderID: "order-1", PayableAmount: "0.950001", PayableCurrency: "USDT",
-		FiatAmount: "1.00", FiatCurrency: "USD",
+		FiatAmount: "1.00", FiatCurrency: "USD", Recipient: recipient,
 	}
 	if _, err := service.ValidateEvent(context.Background(), event); err != nil {
 		t.Fatalf("ValidateEvent(valid): %v", err)
@@ -322,6 +323,15 @@ func TestServiceValidateBEPusdtFiatAndCryptoAmounts(t *testing.T) {
 	event.PayableAmount = "0.950002"
 	if _, err := service.ValidateEvent(context.Background(), event); !errors.Is(err, database.ErrConflict) {
 		t.Fatalf("ValidateEvent(crypto mismatch) error = %v, want ErrConflict", err)
+	}
+	event.PayableAmount = "0.950001"
+	event.Recipient = "different-address"
+	if _, err := service.ValidateEvent(context.Background(), event); !errors.Is(err, database.ErrConflict) {
+		t.Fatalf("ValidateEvent(recipient mismatch) error = %v, want ErrConflict", err)
+	}
+	event.Recipient = "USDT"
+	if _, err := service.ValidateEvent(context.Background(), event); err != nil {
+		t.Fatalf("ValidateEvent(overloaded token currency): %v", err)
 	}
 }
 

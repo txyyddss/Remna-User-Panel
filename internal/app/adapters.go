@@ -162,21 +162,25 @@ func (a remnaAdapter) RevokeSubscription(ctx context.Context, remoteID string) (
 	return user.SubscriptionURL, nil
 }
 
-func (a remnaAdapter) ApplyEntitlement(ctx context.Context, remoteID string, trafficLimitBytes int64, resetStrategy string, squadUUIDs []string, resetTraffic bool) error {
+func (a remnaAdapter) ApplyEntitlement(ctx context.Context, remoteID string, trafficLimitBytes int64, resetStrategy string, squadUUIDs []string) error {
 	client, userID, err := a.clientAndID(ctx, remoteID)
 	if err != nil {
 		return err
-	}
-	if resetTraffic {
-		if _, err := client.ResetTraffic(ctx, userID); err != nil {
-			return err
-		}
 	}
 	status := remnawave.UserStatusActive
 	strategy := remnawave.TrafficLimitStrategy(resetStrategy)
 	expires := time.Date(2099, 12, 31, 23, 59, 59, 0, time.UTC)
 	_, err = client.UpdateUser(ctx, remnawave.UpdateUserRequest{ID: userID, Status: &status, TrafficLimitBytes: &trafficLimitBytes,
 		TrafficLimitStrategy: &strategy, ExpireAt: &expires, ActiveInternalSquads: &squadUUIDs, ClearExternalSquad: true})
+	return err
+}
+
+func (a remnaAdapter) ResetTraffic(ctx context.Context, remoteID string) error {
+	client, userID, err := a.clientAndID(ctx, remoteID)
+	if err != nil {
+		return err
+	}
+	_, err = client.ResetTraffic(ctx, userID)
 	return err
 }
 
@@ -375,6 +379,6 @@ func (a paymentAdapter) VerifyBEPusdt(ctx context.Context, body []byte) (billing
 	}
 	event := billing.ProviderEvent{Provider: "bepusdt", OrderID: webhook.OrderID, TradeID: webhook.TradeID,
 		ChargeID: webhook.BlockTransactionID, PayableAmount: webhook.ActualAmount, PayableCurrency: "USDT",
-		FiatAmount: webhook.Amount, FiatCurrency: "USD", DedupeKey: dedupe, PayloadHash: hex.EncodeToString(digest[:])}
+		FiatAmount: webhook.Amount, FiatCurrency: "USD", Recipient: webhook.Token, DedupeKey: dedupe, PayloadHash: hex.EncodeToString(digest[:])}
 	return event, webhook.Status, nil
 }

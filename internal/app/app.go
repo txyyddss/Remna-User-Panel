@@ -243,29 +243,53 @@ func (a *Application) reconcileStars(ctx context.Context) {
 		return
 	}
 	for _, transaction := range transactions {
-		if transaction.Source == nil || transaction.Source.InvoicePayload == "" || transaction.NanostarAmount != 0 {
+		event, refund, ok := normalizeStarTransaction(transaction)
+		if !ok {
 			continue
 		}
-		amount := transaction.Amount
-		if amount < 0 {
-			amount = -amount
-		}
-		telegramID := transaction.Source.User.ID
-		event := billing.ProviderEvent{Provider: "stars", OrderID: transaction.Source.InvoicePayload, TradeID: transaction.ID,
-			PayableAmount: strconv.FormatInt(amount, 10), PayableCurrency: "XTR", DedupeKey: transaction.ID, TelegramID: &telegramID}
-		if transaction.Amount > 0 {
+		if !refund {
 			if _, _, err := a.billing.Settle(ctx, event); err != nil && !errors.Is(err, database.ErrConflict) && !errors.Is(err, database.ErrNotFound) {
 				a.logger.Error("reconcile Stars credit", "transaction_id", transaction.ID, "error", err)
 			}
 			continue
 		}
-		event.TradeID = ""
 		if _, err := a.billing.ValidateEvent(ctx, event); err == nil {
 			if _, err := a.store.RefundPayment(ctx, nil, event.OrderID, "Telegram Stars reconciliation refund", time.Now().UTC()); err != nil && !errors.Is(err, database.ErrConflict) {
 				a.logger.Error("reconcile Stars refund", "transaction_id", transaction.ID, "error", err)
 			}
+		} else if !errors.Is(err, database.ErrConflict) && !errors.Is(err, database.ErrNotFound) {
+			a.logger.Error("reconcile Stars refund", "transaction_id", transaction.ID, "error", err)
 		}
 	}
+}
+
+func normalizeStarTransaction(transaction telegram.StarTransaction) (billing.ProviderEvent, bool, bool) {
+	if transaction.NanostarAmount != 0 || transaction.ID == "" {
+		return billing.ProviderEvent{}, false, false
+	}
+	amount := transaction.Amount
+	if amount < 0 {
+		amount = -amount
+	}
+	if amount == 0 {
+		return billing.ProviderEvent{}, false, false
+	}
+	partner := transaction.Source
+	refund := false
+	if partner == nil {
+		partner = transaction.Receiver
+		refund = partner != nil
+	}
+	if partner == nil || partner.Type != "user" || partner.TransactionType != "invoice_payment" || partner.InvoicePayload == "" || partner.User.ID <= 0 {
+		return billing.ProviderEvent{}, false, false
+	}
+	telegramID := partner.User.ID
+	event := billing.ProviderEvent{Provider: "stars", OrderID: partner.InvoicePayload, TradeID: transaction.ID,
+		PayableAmount: strconv.FormatInt(amount, 10), PayableCurrency: "XTR", TelegramID: &telegramID}
+	if !refund {
+		event.DedupeKey = transaction.ID
+	}
+	return event, refund, true
 }
 
 func (a *Application) nextBackup(now time.Time) time.Time {

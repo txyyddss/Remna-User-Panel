@@ -19,6 +19,8 @@ type CatalogRepository interface {
 	DeleteCombo(context.Context, string) error
 	ListCombos(context.Context, bool) ([]model.Combo, error)
 	SaveSquadProduct(context.Context, database.SquadProductInput) (model.SquadProduct, error)
+	SquadProductByID(context.Context, string) (model.SquadProduct, error)
+	SquadProductByRemnaUUID(context.Context, string) (model.SquadProduct, error)
 	ListSquadProducts(context.Context, bool) ([]model.SquadProduct, error)
 	RefreshImportedSquads(context.Context, []database.ImportedSquad) error
 	ListUsers(context.Context, int) ([]model.User, error)
@@ -114,9 +116,29 @@ func (s *Service) DeleteCombo(ctx context.Context, actorID, comboID string) erro
 
 // SaveSquadProduct validates local merchandising data.
 func (s *Service) SaveSquadProduct(ctx context.Context, actorID string, input database.SquadProductInput) (model.SquadProduct, error) {
-	if strings.TrimSpace(input.RemnaSquadUUID) == "" || strings.TrimSpace(input.Name) == "" || input.PriceTXBMinor < 0 || input.PriceTXBMinor > 1_000_000_000_000 {
+	input.RemnaSquadUUID = strings.TrimSpace(input.RemnaSquadUUID)
+	input.Name = strings.TrimSpace(input.Name)
+	if input.RemnaSquadUUID == "" || input.Name == "" || input.PriceTXBMinor < 0 || input.PriceTXBMinor > 1_000_000_000_000 {
 		return model.SquadProduct{}, errors.New("invalid squad product")
 	}
+	var existing model.SquadProduct
+	var err error
+	if input.ID == "" {
+		existing, err = s.repository.SquadProductByRemnaUUID(ctx, input.RemnaSquadUUID)
+	} else {
+		existing, err = s.repository.SquadProductByID(ctx, input.ID)
+	}
+	if err != nil {
+		return model.SquadProduct{}, err
+	}
+	// Upstream identity and presence are import-owned. Admin writes only local
+	// merchandising fields and cannot resurrect or invent a squad UUID.
+	if input.RemnaSquadUUID != existing.RemnaSquadUUID {
+		return model.SquadProduct{}, database.ErrConflict
+	}
+	input.ID = existing.ID
+	input.RemnaSquadUUID = existing.RemnaSquadUUID
+	input.UpstreamPresent = existing.UpstreamPresent
 	product, err := s.repository.SaveSquadProduct(ctx, input)
 	if err != nil {
 		return model.SquadProduct{}, err

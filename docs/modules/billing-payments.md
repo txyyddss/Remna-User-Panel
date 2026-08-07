@@ -18,7 +18,7 @@ User operations are `GET /api/v1/balance`, `GET /api/v1/ledger`, `POST /api/v1/p
 
 Orders move from `creating` to `pending`, then to one terminal state: `paid`, `expired`, `failed`, or `refunded`. Provider setup failure preserves a diagnostic order without exposing secret request data. The client receives the exact payable value, link, QR payload, expiry, and BEPusdt receiving address when applicable.
 
-EZPay checkout uses a signed CNY URL and signed GET notification. BEPusdt calls `/api/v1/order/create-transaction` using USD fiat and records the returned `actual_amount`, token/address, trade ID, and payment URL. Stars creates a single-price XTR invoice link, opened with `Telegram.WebApp.openInvoice`. QR images are generated locally by the frontend from the returned payload.
+EZPay checkout uses a signed CNY URL and signed GET notification. BEPusdt calls `/api/v1/order/create-transaction` using USD fiat and records the returned `actual_amount`, token/address, trade ID, and payment URL. A callback token carrying address semantics must exactly match that stored checkout address; the reference-compatible literal `USDT` token is accepted as a currency marker. Stars creates a single-price XTR invoice link, opened with `Telegram.WebApp.openInvoice`. QR images are generated locally by the frontend from the returned payload.
 
 Redirects and invoice-close UI events are navigation signals only. Settlement requires verified EZPay `TRADE_SUCCESS`, signed BEPusdt status `2`, or Telegram `successful_payment`. Order polling closes the payment sheet only after persisted state is `paid`.
 

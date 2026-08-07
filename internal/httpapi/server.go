@@ -24,7 +24,6 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
-	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 )
 
 const sessionCookie = "txc_session"
@@ -235,12 +234,4 @@ func spaHandler(content fs.FS) http.Handler {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write(index)
 	})
-}
-
-func newRequestID() string {
-	value, err := ids.New()
-	if err != nil {
-		return fmt.Sprintf("fallback-%d", time.Now().UnixNano())
-	}
-	return value
 }

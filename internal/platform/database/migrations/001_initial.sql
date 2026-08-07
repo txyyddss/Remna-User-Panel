@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS purchases (
   traffic_limit_bytes INTEGER NOT NULL,
   reset_strategy TEXT NOT NULL,
   catalog_snapshot TEXT NOT NULL,
-  traffic_reset_started_at TEXT,
+  traffic_reset_phase TEXT NOT NULL DEFAULT 'pending' CHECK (traffic_reset_phase IN ('pending','quiesced','reset')),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

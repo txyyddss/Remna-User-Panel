@@ -74,4 +74,6 @@ docker-build:
 	$(DOCKER) build -t $(IMAGE) .
 
 clean:
-	rm -rf bin web/coverage internal/webui/dist domain-coverage.out coverage.html
+	rm -rf bin web/coverage
+	find internal/webui/dist -mindepth 1 -maxdepth 1 ! -name .placeholder -exec rm -rf {} +
+	rm -f coverage.out domain-coverage domain-coverage.out coverage.html

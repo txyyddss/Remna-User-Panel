@@ -129,6 +129,10 @@ func (s *Store) EnqueueDueEntitlementTransitions(ctx context.Context, now time.T
 		}
 		expired = append(expired, item)
 	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
 	rows.Close()
 	syncUsers := make(map[string]struct{})
 	for _, item := range expired {
@@ -149,6 +153,10 @@ func (s *Store) EnqueueDueEntitlementTransitions(ctx context.Context, now time.T
 			return err
 		}
 		queued = append(queued, id)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
 	}
 	rows.Close()
 	for _, purchaseID := range queued {
@@ -326,20 +334,46 @@ func (s *Store) MarkPurchaseSyncResult(ctx context.Context, purchaseID string, s
 	return err
 }
 
-// ClaimPurchaseTrafficReset records the at-most-once dispatch of a new-term traffic reset.
-// The marker is committed before the external call so retries cannot erase usage accumulated
-// after an ambiguous provider response or process crash.
-func (s *Store) ClaimPurchaseTrafficReset(ctx context.Context, purchaseID string, now time.Time) (bool, error) {
-	result, err := s.db.ExecContext(ctx, `UPDATE purchases SET traffic_reset_started_at=?,updated_at=?
-		WHERE id=? AND status IN ('activating','failed') AND traffic_reset_started_at IS NULL`, stamp(now), stamp(now), purchaseID)
+// PurchaseTrafficResetPhase returns the durable phase of a new-term reset.
+func (s *Store) PurchaseTrafficResetPhase(ctx context.Context, purchaseID string) (string, error) {
+	var phase string
+	err := s.db.QueryRowContext(ctx, `SELECT traffic_reset_phase FROM purchases WHERE id=?`, purchaseID).Scan(&phase)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrNotFound
+	}
 	if err != nil {
-		return false, fmt.Errorf("claim purchase traffic reset: %w", err)
+		return "", fmt.Errorf("load purchase traffic reset phase: %w", err)
+	}
+	return phase, nil
+}
+
+// AdvancePurchaseTrafficReset atomically records a completed external phase.
+// Repeating the same transition is accepted so a DB response loss is harmless.
+func (s *Store) AdvancePurchaseTrafficReset(ctx context.Context, purchaseID, from, to string, now time.Time) error {
+	valid := (from == "pending" && to == "quiesced") || (from == "quiesced" && to == "reset")
+	if !valid {
+		return ErrConflict
+	}
+	result, err := s.db.ExecContext(ctx, `UPDATE purchases SET traffic_reset_phase=?,updated_at=?
+		WHERE id=? AND status IN ('activating','failed') AND traffic_reset_phase=?`, to, stamp(now), purchaseID, from)
+	if err != nil {
+		return fmt.Errorf("advance purchase traffic reset: %w", err)
 	}
 	affected, err := result.RowsAffected()
 	if err != nil {
-		return false, fmt.Errorf("inspect purchase traffic reset claim: %w", err)
+		return fmt.Errorf("inspect purchase traffic reset transition: %w", err)
 	}
-	return affected == 1, nil
+	if affected == 1 {
+		return nil
+	}
+	phase, loadErr := s.PurchaseTrafficResetPhase(ctx, purchaseID)
+	if loadErr != nil {
+		return loadErr
+	}
+	if phase == to {
+		return nil
+	}
+	return ErrConflict
 }
 
 // UserForPurchase returns the local user owning a purchase.

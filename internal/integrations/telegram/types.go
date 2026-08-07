@@ -141,11 +141,13 @@ type StarTransaction struct {
 	NanostarAmount int64                   `json:"nanostar_amount,omitempty"`
 	Date           int64                   `json:"date"`
 	Source         *TransactionPartnerUser `json:"source,omitempty"`
+	Receiver       *TransactionPartnerUser `json:"receiver,omitempty"`
 }
 
 // TransactionPartnerUser is the invoice-originating user subset needed for reconciliation.
 type TransactionPartnerUser struct {
-	Type           string `json:"type"`
-	User           User   `json:"user"`
-	InvoicePayload string `json:"invoice_payload,omitempty"`
+	Type            string `json:"type"`
+	TransactionType string `json:"transaction_type"`
+	User            User   `json:"user"`
+	InvoicePayload  string `json:"invoice_payload,omitempty"`
 }

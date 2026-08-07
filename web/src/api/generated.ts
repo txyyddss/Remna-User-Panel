@@ -686,7 +686,12 @@ export interface paths {
         put?: never;
         /**
          * Receive a signed BEPusdt transaction notification
-         * @description Status `2` is the only crediting state. Signature, local order, provider trade ID, requested USD amount, actual crypto amount, and recipient are checked before the idempotent ledger transaction.
+         * @description Status `2` is the only crediting state. Signature, local order, provider trade ID,
+         *     requested USD amount, and actual crypto amount are checked before the idempotent
+         *     ledger transaction. When the callback's overloaded `token` field carries a receiving
+         *     address, it must exactly match the checkout address; the reference-compatible literal
+         *     `USDT` token is treated as a currency marker. Status `3` is validated against the same
+         *     durable order snapshot before the order is marked expired.
          */
         post: operations["receiveBEPusdtWebhook"];
         delete?: never;
@@ -1279,8 +1284,35 @@ export interface components {
                 "application/json": components["schemas"]["ApiError"];
             };
         };
+        /** @description The JSON shape was valid, but one or more domain values failed validation. */
+        Unprocessable: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ApiError"];
+            };
+        };
+        /** @description A required local operation failed unexpectedly. */
+        InternalFailure: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ApiError"];
+            };
+        };
         /** @description A required provider could not complete the synchronous portion of the request. */
         UpstreamFailure: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ApiError"];
+            };
+        };
+        /** @description A required service or deployment setting is temporarily unavailable. */
+        ServiceUnavailable: {
             headers: {
                 [name: string]: unknown;
             };
@@ -1370,8 +1402,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            409: components["responses"]["Conflict"];
-            502: components["responses"]["UpstreamFailure"];
+            503: components["responses"]["ServiceUnavailable"];
         };
     };
     checkOnboardingMembership: {
@@ -1393,7 +1424,6 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            409: components["responses"]["Conflict"];
             502: components["responses"]["UpstreamFailure"];
         };
     };
@@ -1422,7 +1452,7 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             409: components["responses"]["Conflict"];
-            502: components["responses"]["UpstreamFailure"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     acceptSharingAgreement: {
@@ -1472,7 +1502,8 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            502: components["responses"]["UpstreamFailure"];
         };
     };
     getCatalog: {
@@ -1494,7 +1525,8 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalFailure"];
         };
     };
     listPurchases: {
@@ -1518,7 +1550,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalFailure"];
         };
     };
     createPurchase: {
@@ -1545,7 +1577,7 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
             /** @description Insufficient balance, outstanding debt, stale catalog choice, or incompatible queued change. */
             409: {
                 headers: {
@@ -1576,8 +1608,6 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            409: components["responses"]["Conflict"];
             502: components["responses"]["UpstreamFailure"];
         };
     };
@@ -1600,6 +1630,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalFailure"];
         };
     };
     listLedgerEntries: {
@@ -1625,6 +1656,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalFailure"];
         };
     };
     createPaymentOrder: {
@@ -1652,6 +1684,7 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
             502: components["responses"]["UpstreamFailure"];
         };
     };
@@ -1726,6 +1759,7 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     updateAdminSetting: {
@@ -1754,6 +1788,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     listAdminCombos: {
@@ -1805,7 +1840,9 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     updateAdminCombo: {
@@ -1836,6 +1873,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     archiveAdminCombo: {
@@ -1910,6 +1948,8 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     importAdminSquadProducts: {
@@ -1965,6 +2005,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     listAdminUsers: {
@@ -2042,6 +2083,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     listAdminEntitlements: {
@@ -2095,6 +2137,7 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     listAdminPayments: {
@@ -2148,6 +2191,8 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+            502: components["responses"]["UpstreamFailure"];
         };
     };
     listAdminRefunds: {
@@ -2217,6 +2262,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     listAdminJobs: {
@@ -2263,6 +2309,7 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     listAdminAuditEvents: {
@@ -2309,7 +2356,12 @@ export interface operations {
                 };
                 content?: never;
             };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalFailure"];
+            502: components["responses"]["UpstreamFailure"];
+            503: components["responses"]["ServiceUnavailable"];
         };
     };
     receiveEZPayWebhook: {

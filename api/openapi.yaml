@@ -96,10 +96,8 @@ paths:
                 $ref: '#/components/schemas/OnboardingInvites'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '502':
-          $ref: '#/components/responses/UpstreamFailure'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
 
   /api/v1/onboarding/membership/check:
     post:
@@ -116,8 +114,6 @@ paths:
                 $ref: '#/components/schemas/MembershipState'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '409':
-          $ref: '#/components/responses/Conflict'
         '502':
           $ref: '#/components/responses/UpstreamFailure'
 
@@ -149,8 +145,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '409':
           $ref: '#/components/responses/Conflict'
-        '502':
-          $ref: '#/components/responses/UpstreamFailure'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
 
   /api/v1/onboarding/agreement:
     post:
@@ -198,8 +194,10 @@ paths:
                 $ref: '#/components/schemas/Dashboard'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '502':
+          $ref: '#/components/responses/UpstreamFailure'
   /api/v1/catalog:
     get:
       tags: [Catalog]
@@ -214,8 +212,10 @@ paths:
                 $ref: '#/components/schemas/Catalog'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalFailure'
 
   /api/v1/purchases:
     get:
@@ -237,8 +237,8 @@ paths:
                       $ref: '#/components/schemas/Purchase'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalFailure'
     post:
       tags: [Catalog]
       operationId: createPurchase
@@ -265,8 +265,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           description: Insufficient balance, outstanding debt, stale catalog choice, or incompatible queued change.
           content:
@@ -289,10 +289,6 @@ paths:
                 $ref: '#/components/schemas/SubscriptionRotation'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
         '502':
           $ref: '#/components/responses/UpstreamFailure'
 
@@ -310,6 +306,8 @@ paths:
                 $ref: '#/components/schemas/BalanceResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalFailure'
 
   /api/v1/ledger:
     get:
@@ -328,6 +326,8 @@ paths:
                 $ref: '#/components/schemas/LedgerPage'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalFailure'
 
   /api/v1/payments/orders:
     post:
@@ -357,6 +357,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
         '502':
           $ref: '#/components/responses/UpstreamFailure'
 
@@ -421,6 +423,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
 
   /api/v1/admin/settings/{key}:
     put:
@@ -447,6 +451,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
 
   /api/v1/admin/combos:
     get:
@@ -493,8 +499,12 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
 
   /api/v1/admin/combos/{id}:
     put:
@@ -525,6 +535,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
     delete:
       tags: [Admin]
       operationId: archiveAdminCombo
@@ -587,6 +599,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
 
   /api/v1/admin/squad-products/import:
     post:
@@ -642,6 +658,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
 
   /api/v1/admin/users:
     get:
@@ -710,6 +728,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
 
   /api/v1/admin/entitlements:
     get:
@@ -758,6 +778,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
 
   /api/v1/admin/payments:
     get:
@@ -810,6 +832,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '502':
+          $ref: '#/components/responses/UpstreamFailure'
 
   /api/v1/admin/refunds:
     get:
@@ -867,6 +893,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
 
   /api/v1/admin/jobs:
     get:
@@ -903,6 +931,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
 
   /api/v1/admin/audit-events:
     get:
@@ -943,8 +973,18 @@ paths:
       responses:
         '204':
           description: Update accepted or already processed.
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalFailure'
+        '502':
+          $ref: '#/components/responses/UpstreamFailure'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
 
   /api/v1/webhooks/ezpay:
     get:
@@ -1024,7 +1064,13 @@ paths:
       tags: [Webhooks]
       operationId: receiveBEPusdtWebhook
       summary: Receive a signed BEPusdt transaction notification
-      description: Status `2` is the only crediting state. Signature, local order, provider trade ID, requested USD amount, actual crypto amount, and recipient are checked before the idempotent ledger transaction.
+      description: |
+        Status `2` is the only crediting state. Signature, local order, provider trade ID,
+        requested USD amount, and actual crypto amount are checked before the idempotent
+        ledger transaction. When the callback's overloaded `token` field carries a receiving
+        address, it must exactly match the checkout address; the reference-compatible literal
+        `USDT` token is treated as a currency marker. Status `3` is validated against the same
+        durable order snapshot before the order is marked expired.
       security: []
       requestBody:
         required: true
@@ -1208,8 +1254,26 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ApiError'
+    Unprocessable:
+      description: The JSON shape was valid, but one or more domain values failed validation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    InternalFailure:
+      description: A required local operation failed unexpectedly.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
     UpstreamFailure:
       description: A required provider could not complete the synchronous portion of the request.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ServiceUnavailable:
+      description: A required service or deployment setting is temporarily unavailable.
       content:
         application/json:
           schema:

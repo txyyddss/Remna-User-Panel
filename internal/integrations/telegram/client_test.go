@@ -32,7 +32,7 @@ func TestClientHelpers(t *testing.T) {
 		case "/bot" + token + "/createInvoiceLink":
 			_, _ = writer.Write([]byte(`{"ok":true,"result":"https://t.me/$invoice"}`))
 		case "/bot" + token + "/getStarTransactions":
-			_, _ = writer.Write([]byte(`{"ok":true,"result":{"transactions":[{"id":"charge","amount":25,"date":1}]}}`))
+			_, _ = writer.Write([]byte(`{"ok":true,"result":{"transactions":[{"id":"charge","amount":25,"date":1,"source":{"type":"user","transaction_type":"invoice_payment","user":{"id":42,"is_bot":false,"first_name":"Ada"},"invoice_payload":"order-1"}},{"id":"charge","amount":-25,"date":2,"receiver":{"type":"user","transaction_type":"invoice_payment","user":{"id":42,"is_bot":false,"first_name":"Ada"},"invoice_payload":"order-1"}}]}}`))
 		default:
 			_, _ = writer.Write([]byte(`{"ok":true,"result":true}`))
 		}
@@ -86,7 +86,7 @@ func TestClientHelpers(t *testing.T) {
 	}
 
 	transactions, err := client.GetStarTransactions(ctx, 0, 10)
-	if err != nil || len(transactions) != 1 || transactions[0].ID != "charge" {
+	if err != nil || len(transactions) != 2 || transactions[0].Source == nil || transactions[1].Receiver == nil || transactions[1].Receiver.InvoicePayload != "order-1" {
 		t.Fatalf("GetStarTransactions() = %#v, %v", transactions, err)
 	}
 	request = <-requests

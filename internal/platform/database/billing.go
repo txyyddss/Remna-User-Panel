@@ -150,6 +150,9 @@ func comboSquadsTx(ctx context.Context, tx *sql.Tx, comboID string) ([]model.Squ
 		if err != nil {
 			return nil, err
 		}
+		if !product.UpstreamPresent {
+			return nil, ErrNotFound
+		}
 		products = append(products, product)
 	}
 	return products, rows.Err()

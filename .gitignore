@@ -9,6 +9,7 @@
 *.prof
 coverage.out
 domain-coverage.out
+domain-coverage
 coverage.html
 
 # Runtime state

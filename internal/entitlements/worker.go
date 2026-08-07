@@ -18,14 +18,16 @@ type Repository interface {
 	UserForPurchase(context.Context, string) (model.User, error)
 	UserByID(context.Context, string) (model.User, error)
 	DesiredEntitlement(context.Context, string, time.Time) (*model.Purchase, error)
-	ClaimPurchaseTrafficReset(context.Context, string, time.Time) (bool, error)
+	PurchaseTrafficResetPhase(context.Context, string) (string, error)
+	AdvancePurchaseTrafficReset(context.Context, string, string, string, time.Time) error
 	MarkPurchaseSyncResult(context.Context, string, bool, time.Time) error
 	ExpirePurchase(context.Context, string, time.Time) error
 }
 
 // RemnawaveClient atomically replaces the complete entitlement view upstream.
 type RemnawaveClient interface {
-	ApplyEntitlement(ctx context.Context, remoteUserID string, trafficLimitBytes int64, resetStrategy string, squadUUIDs []string, resetTraffic bool) error
+	ApplyEntitlement(ctx context.Context, remoteUserID string, trafficLimitBytes int64, resetStrategy string, squadUUIDs []string) error
+	ResetTraffic(context.Context, string) error
 	RemoveEntitlement(ctx context.Context, remoteUserID string) error
 }
 
@@ -88,11 +90,34 @@ func (w *Worker) process(ctx context.Context, job model.OutboxJob) error {
 		if user.RemnaUserID == nil {
 			return errors.New("user has no Remnawave identity")
 		}
-		resetTraffic, err := w.repository.ClaimPurchaseTrafficReset(ctx, purchase.ID, w.now().UTC())
+		phase, err := w.repository.PurchaseTrafficResetPhase(ctx, purchase.ID)
 		if err != nil {
 			return err
 		}
-		if err := w.remnawave.ApplyEntitlement(ctx, *user.RemnaUserID, purchase.TrafficLimitBytes, purchase.ResetStrategy, purchase.SquadUUIDs, resetTraffic); err != nil {
+		if phase == "pending" {
+			// Removing squads before resetting makes ambiguous reset retries safe:
+			// no traffic can accrue between two reset attempts.
+			if err := w.remnawave.RemoveEntitlement(ctx, *user.RemnaUserID); err != nil {
+				return fmt.Errorf("quiesce Remnawave entitlement: %w", err)
+			}
+			if err := w.repository.AdvancePurchaseTrafficReset(ctx, purchase.ID, "pending", "quiesced", w.now().UTC()); err != nil {
+				return err
+			}
+			phase = "quiesced"
+		}
+		if phase == "quiesced" {
+			if err := w.remnawave.ResetTraffic(ctx, *user.RemnaUserID); err != nil {
+				return fmt.Errorf("reset Remnawave traffic: %w", err)
+			}
+			if err := w.repository.AdvancePurchaseTrafficReset(ctx, purchase.ID, "quiesced", "reset", w.now().UTC()); err != nil {
+				return err
+			}
+			phase = "reset"
+		}
+		if phase != "reset" {
+			return fmt.Errorf("unknown traffic reset phase %q", phase)
+		}
+		if err := w.remnawave.ApplyEntitlement(ctx, *user.RemnaUserID, purchase.TrafficLimitBytes, purchase.ResetStrategy, purchase.SquadUUIDs); err != nil {
 			return fmt.Errorf("apply Remnawave entitlement: %w", err)
 		}
 		return w.repository.MarkPurchaseSyncResult(ctx, purchase.ID, true, w.now().UTC())
@@ -111,7 +136,7 @@ func (w *Worker) process(ctx context.Context, job model.OutboxJob) error {
 		if desired == nil {
 			return w.remnawave.RemoveEntitlement(ctx, *user.RemnaUserID)
 		}
-		return w.remnawave.ApplyEntitlement(ctx, *user.RemnaUserID, desired.TrafficLimitBytes, desired.ResetStrategy, desired.SquadUUIDs, false)
+		return w.remnawave.ApplyEntitlement(ctx, *user.RemnaUserID, desired.TrafficLimitBytes, desired.ResetStrategy, desired.SquadUUIDs)
 	default:
 		return fmt.Errorf("unknown outbox job kind %q", job.Kind)
 	}

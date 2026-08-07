@@ -38,7 +38,7 @@ func TestReserveUsernameIsImmutableAndRetryable(t *testing.T) {
 	}
 }
 
-func TestClaimPurchaseTrafficResetIsAtMostOnce(t *testing.T) {
+func TestPurchaseTrafficResetPhasesAreDurableAndIdempotent(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
@@ -52,13 +52,91 @@ func TestClaimPurchaseTrafficResetIsAtMostOnce(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreatePurchase(): %v", err)
 	}
-	claimed, err := store.ClaimPurchaseTrafficReset(ctx, purchase.ID, time.Now())
-	if err != nil || !claimed {
-		t.Fatalf("ClaimPurchaseTrafficReset(first) = %t, %v; want true, nil", claimed, err)
+	phase, err := store.PurchaseTrafficResetPhase(ctx, purchase.ID)
+	if err != nil || phase != "pending" {
+		t.Fatalf("PurchaseTrafficResetPhase(initial) = %q, %v", phase, err)
 	}
-	claimed, err = store.ClaimPurchaseTrafficReset(ctx, purchase.ID, time.Now().Add(time.Second))
-	if err != nil || claimed {
-		t.Fatalf("ClaimPurchaseTrafficReset(retry) = %t, %v; want false, nil", claimed, err)
+	if err := store.AdvancePurchaseTrafficReset(ctx, purchase.ID, "pending", "quiesced", time.Now()); err != nil {
+		t.Fatalf("AdvancePurchaseTrafficReset(quiesced): %v", err)
+	}
+	if err := store.AdvancePurchaseTrafficReset(ctx, purchase.ID, "pending", "quiesced", time.Now().Add(time.Second)); err != nil {
+		t.Fatalf("AdvancePurchaseTrafficReset(replay): %v", err)
+	}
+	if err := store.AdvancePurchaseTrafficReset(ctx, purchase.ID, "quiesced", "reset", time.Now().Add(2*time.Second)); err != nil {
+		t.Fatalf("AdvancePurchaseTrafficReset(reset): %v", err)
+	}
+	phase, err = store.PurchaseTrafficResetPhase(ctx, purchase.ID)
+	if err != nil || phase != "reset" {
+		t.Fatalf("PurchaseTrafficResetPhase(final) = %q, %v", phase, err)
+	}
+	if err := store.AdvancePurchaseTrafficReset(ctx, purchase.ID, "pending", "reset", time.Now()); !errors.Is(err, ErrConflict) {
+		t.Fatalf("AdvancePurchaseTrafficReset(invalid) = %v, want ErrConflict", err)
+	}
+}
+
+func TestCatalogUpdatesCannotCreateUnknownRecords(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := newTestStore(t)
+	comboInput := ComboInput{Name: "Known", PriceTXBMinor: 100, ValidityDays: 30, TrafficLimitBytes: 1024, ResetStrategy: "MONTH", Active: true}
+	combo, err := store.SaveCombo(ctx, comboInput)
+	if err != nil {
+		t.Fatalf("SaveCombo(create): %v", err)
+	}
+	comboInput.ID = combo.ID
+	comboInput.Name = "Updated"
+	if updated, err := store.SaveCombo(ctx, comboInput); err != nil || updated.Name != "Updated" {
+		t.Fatalf("SaveCombo(update) = (%+v, %v)", updated, err)
+	}
+	comboInput.ID = "client-selected-missing-id"
+	if _, err := store.SaveCombo(ctx, comboInput); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("SaveCombo(unknown update) = %v, want ErrNotFound", err)
+	}
+
+	if _, err := store.SaveSquadProduct(ctx, SquadProductInput{ID: "invented", RemnaSquadUUID: "invented", Name: "Invented"}); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("SaveSquadProduct(unimported) = %v, want ErrNotFound", err)
+	}
+	if err := store.RefreshImportedSquads(ctx, []ImportedSquad{{UUID: "remote-1", Name: "Remote"}}); err != nil {
+		t.Fatalf("RefreshImportedSquads(): %v", err)
+	}
+	product, err := store.SquadProductByRemnaUUID(ctx, "remote-1")
+	if err != nil {
+		t.Fatalf("SquadProductByRemnaUUID(): %v", err)
+	}
+	productInput := SquadProductInput{ID: product.ID, RemnaSquadUUID: product.RemnaSquadUUID, Name: "Merchandised", Description: "Local copy", PriceTXBMinor: 25, Visible: true}
+	if updated, err := store.SaveSquadProduct(ctx, productInput); err != nil || updated.Name != "Merchandised" || !updated.UpstreamPresent {
+		t.Fatalf("SaveSquadProduct(imported update) = (%+v, %v)", updated, err)
+	}
+	comboInput.ID = ""
+	comboInput.SquadProductIDs = []string{product.ID}
+	squadCombo, err := store.SaveCombo(ctx, comboInput)
+	if err != nil {
+		t.Fatalf("SaveCombo(imported squad): %v", err)
+	}
+	user := createTestUser(t, store, 20004)
+	if _, err := store.AdjustBalance(ctx, user.ID, 500, "catalog-safety", "test credit", time.Now()); err != nil {
+		t.Fatalf("AdjustBalance(): %v", err)
+	}
+	if err := store.RefreshImportedSquads(ctx, nil); err != nil {
+		t.Fatalf("RefreshImportedSquads(empty): %v", err)
+	}
+	if combos, err := store.ListCombos(ctx, true); err != nil || len(combos) != 1 || combos[0].ID == squadCombo.ID {
+		// The original no-squad combo remains available; the combo depending on
+		// the disappeared upstream squad must be hidden.
+		t.Fatalf("ListCombos(after upstream disappearance) = (%+v, %v)", combos, err)
+	}
+	if _, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: squadCombo.ID}, time.Now()); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("CreatePurchase(disappeared squad) = %v, want ErrNotFound", err)
+	}
+	if balance, err := store.Balance(ctx, user.ID); err != nil || balance.Minor != "500" {
+		t.Fatalf("Balance(after rejected purchase) = (%+v, %v)", balance, err)
+	}
+
+	comboInput.ID = ""
+	comboInput.SquadProductIDs = []string{"missing-squad"}
+	if _, err := store.SaveCombo(ctx, comboInput); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("SaveCombo(missing squad) = %v, want ErrNotFound", err)
 	}
 }
 

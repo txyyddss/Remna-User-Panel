@@ -10,7 +10,7 @@ Admin endpoints are grouped below `/api/v1/admin` and expose domain-safe operati
 
 The setting registry defines each known key's category, validator, sensitivity, and readiness impact. Unknown keys are rejected. Sensitive Remnawave and provider values are encrypted using AES-256-GCM with a new random nonce for each write and authenticated context that includes the setting key.
 
-Reads return the setting key, configured/encrypted state, an empty value for secrets, and update time; the UI renders the mask. Plaintext and ciphertext are never returned. Writing an empty secret keeps an existing value, while replacement requires a new explicit value. Every change appends an audit event with redacted metadata.
+Reads return the setting key, display category, configured/encrypted state, an empty value for secrets, and update time; the UI renders the mask. Plaintext and ciphertext are never returned. Writing an empty secret keeps an existing value, while replacement requires a new explicit value. Every change appends an audit event with redacted metadata.
 
 The fixed registry is:
 
