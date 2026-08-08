@@ -27,6 +27,32 @@ func TestSignOfficialFixture(t *testing.T) {
 	}
 }
 
+func TestNewClientTrimsCopiedConfiguration(t *testing.T) {
+	t.Parallel()
+	client, err := NewClient("  https://pay.example/  ", "  token  ")
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	if client.baseURL.String() != "https://pay.example/" || client.token != "token" {
+		t.Fatalf("client configuration was not normalized: %#v", client)
+	}
+}
+
+func TestProviderNumberStringMatchesUpstreamFloatFormatting(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		raw, want string
+	}{
+		{raw: "1.00", want: "1"},
+		{raw: "28.80", want: "28.8"},
+		{raw: "1e3", want: "1000"},
+	} {
+		if got := providerNumberString(test.raw); got != test.want {
+			t.Errorf("providerNumberString(%q) = %q, want %q", test.raw, got, test.want)
+		}
+	}
+}
+
 func TestCreateTransaction(t *testing.T) {
 	t.Parallel()
 	const token = "epusdt_password_xasddawqe"
@@ -252,22 +278,26 @@ func TestLiveCreateCancelDiagnostic(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+	tradeType := os.Getenv("BEPUSDT_DIAGNOSTIC_TRADE_TYPE")
+	if tradeType == "" {
+		tradeType = "usdt.trc20"
+	}
 	transaction, err := client.CreateTransaction(ctx, CreateTransactionRequest{
-		OrderID: "txcp-diag-" + hex.EncodeToString(random), Amount: "1", Fiat: "USD", TradeType: "usdt.trc20",
+		OrderID: "txcp-diag-" + hex.EncodeToString(random), Amount: "1", Fiat: "USD", TradeType: tradeType,
 		NotifyURL: "https://example.invalid/tx-carpool/bepusdt-diagnostic", RedirectURL: "https://example.invalid/tx-carpool/bepusdt-return",
 		Name: "TX Carpool non-user diagnostic", TimeoutSeconds: 120,
 	})
 	if err != nil {
 		var apiError *APIError
 		if errors.As(err, &apiError) {
-			t.Fatalf("live create rejected (http=%d api=%d request_id_present=%t)", apiError.HTTPStatus, apiError.StatusCode, apiError.RequestID != "")
+			t.Fatalf("live create rejected (http=%d api=%d request_id_present=%t message=%q)", apiError.HTTPStatus, apiError.StatusCode, apiError.RequestID != "", apiError.Message)
 		}
 		t.Fatalf("live create failed: %T", err)
 	}
 	if err := client.CancelTransaction(ctx, transaction.TradeID); err != nil {
 		var apiError *APIError
 		if errors.As(err, &apiError) {
-			t.Fatalf("live cancel rejected (http=%d api=%d request_id_present=%t)", apiError.HTTPStatus, apiError.StatusCode, apiError.RequestID != "")
+			t.Fatalf("live cancel rejected (http=%d api=%d request_id_present=%t message=%q)", apiError.HTTPStatus, apiError.StatusCode, apiError.RequestID != "", apiError.Message)
 		}
 		t.Fatalf("live cancel failed: %T", err)
 	}

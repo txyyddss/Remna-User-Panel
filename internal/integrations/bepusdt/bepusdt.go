@@ -124,6 +124,8 @@ func WithHTTPClient(client HTTPDoer) Option {
 
 // NewClient creates a BEPusdt API client.
 func NewClient(rawBaseURL, token string, options ...Option) (*Client, error) {
+	rawBaseURL = strings.TrimSpace(rawBaseURL)
+	token = strings.TrimSpace(token)
 	baseURL, err := url.Parse(rawBaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("bepusdt parse base URL: %w", err)
@@ -178,7 +180,7 @@ func (c *Client) CreateTransaction(ctx context.Context, input CreateTransactionR
 
 	values := map[string]string{
 		"order_id":     input.OrderID,
-		"amount":       input.Amount,
+		"amount":       providerNumberString(input.Amount),
 		"fiat":         input.Fiat,
 		"trade_type":   input.TradeType,
 		"notify_url":   input.NotifyURL,
@@ -496,15 +498,25 @@ func scalarString(data []byte) (string, error) {
 	decoder := json.NewDecoder(bytes.NewReader(trimmed))
 	decoder.UseNumber()
 	if err := decoder.Decode(&number); err == nil {
-		if _, ok := new(big.Rat).SetString(number.String()); !ok {
-			return "", errors.New("invalid numeric value")
-		}
-		return number.String(), nil
+		return providerNumberString(number.String()), nil
 	}
 	if bytes.Equal(trimmed, []byte("true")) || bytes.Equal(trimmed, []byte("false")) {
 		return string(trimmed), nil
 	}
 	return "", errors.New("value must be a JSON scalar")
+}
+
+// providerNumberString mirrors BEPusdt's signing implementation. The
+// upstream server unmarshals JSON into map[string]interface{}, which turns
+// JSON numbers into float64 before formatting them with %v. Signing the
+// original lexical representation (for example, 1.00) would therefore
+// disagree with the provider even though both representations are valid JSON.
+func providerNumberString(raw string) string {
+	value, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		return raw
+	}
+	return strconv.FormatFloat(value, 'g', -1, 64)
 }
 
 func decodeUniqueObject(body []byte) (map[string]json.RawMessage, error) {
