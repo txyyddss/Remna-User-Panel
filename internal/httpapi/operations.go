@@ -166,12 +166,13 @@ func (s *Server) bepusdtWebhook(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, http.StatusBadRequest, "INVALID_PAYMENT_STATUS", "Payment status is invalid.")
 		return
 	}
-	if status == 2 {
+	switch status {
+	case 2:
 		if _, _, err := s.deps.Billing.Settle(r.Context(), event); err != nil {
 			s.writeError(w, r, http.StatusConflict, "PAYMENT_SETTLEMENT_FAILED", "Payment did not match the stored order.")
 			return
 		}
-	} else if status == 3 {
+	case 3:
 		if _, err := s.deps.Billing.ValidateEvent(r.Context(), event); err != nil {
 			s.writeError(w, r, http.StatusConflict, "PAYMENT_EXPIRY_FAILED", "Payment timeout did not match the stored order.")
 			return

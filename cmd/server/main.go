@@ -39,7 +39,7 @@ func run() error {
 	}
 }
 
-func serve() error {
+func serve() (err error) {
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("load configuration: %w", err)
@@ -52,7 +52,11 @@ func serve() error {
 	if err != nil {
 		return fmt.Errorf("build application: %w", err)
 	}
-	defer application.Close()
+	defer func() {
+		if closeErr := application.Close(); err == nil && closeErr != nil {
+			err = fmt.Errorf("close application: %w", closeErr)
+		}
+	}()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -75,7 +79,7 @@ func healthcheck(args []string) error {
 	if err != nil {
 		return fmt.Errorf("perform healthcheck: %w", err)
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusOK {
 		return fmt.Errorf("healthcheck returned %s", response.Status)
 	}
