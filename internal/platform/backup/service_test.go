@@ -43,7 +43,7 @@ func TestRunCreatesVerifiedSQLiteBackup(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open published backup: %v", err)
 	}
-	defer backupDB.Close()
+	defer func() { _ = backupDB.Close() }()
 	var value string
 	if err := backupDB.QueryRowContext(ctx, `SELECT value FROM sample`).Scan(&value); err != nil || value != "durable" {
 		t.Fatalf("backup value = %q, error = %v", value, err)

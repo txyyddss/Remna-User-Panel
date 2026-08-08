@@ -16,7 +16,7 @@ func TestCreateAndUpdateUserWireContract(t *testing.T) {
 	const bearer = "secret-bearer"
 	requests := make(chan remnaRequest, 2)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		defer request.Body.Close()
+		defer func() { _ = request.Body.Close() }()
 		var body map[string]any
 		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
 			t.Errorf("decode request: %v", err)

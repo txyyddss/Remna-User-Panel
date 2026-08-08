@@ -52,7 +52,11 @@ func serve() error {
 	if err != nil {
 		return fmt.Errorf("build application: %w", err)
 	}
-	defer application.Close()
+	defer func() {
+		if err := application.Close(); err != nil {
+			slog.Error("close application", "error", err)
+		}
+	}()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

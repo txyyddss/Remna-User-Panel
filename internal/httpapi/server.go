@@ -222,7 +222,7 @@ func spaHandler(content fs.FS) http.Handler {
 			path = "index.html"
 		}
 		if file, err := content.Open(path); err == nil {
-			file.Close()
+			_ = file.Close()
 			files.ServeHTTP(w, r)
 			return
 		}

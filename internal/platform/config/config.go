@@ -60,7 +60,7 @@ func Load() (Config, error) {
 	if err != nil || parsedURL.Host == "" || parsedURL.User != nil || parsedURL.RawQuery != "" || parsedURL.Fragment != "" || (parsedURL.Path != "" && parsedURL.Path != "/") {
 		return Config{}, fmt.Errorf("PUBLIC_BASE_URL must be an absolute origin without credentials, path, query, or fragment")
 	}
-	if parsedURL.Scheme != "https" && !(cfg.AllowInsecureHTTP && parsedURL.Scheme == "http") {
+	if parsedURL.Scheme != "https" && (parsedURL.Scheme != "http" || !cfg.AllowInsecureHTTP) {
 		return Config{}, fmt.Errorf("PUBLIC_BASE_URL must use https")
 	}
 	parsedURL.Path = ""
