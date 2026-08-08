@@ -16,7 +16,7 @@ const immersive = computed(() => route.meta.immersive === true)
   <LoadingScreen v-if="sessionStore.status === 'idle' || sessionStore.status === 'loading'" />
   <AuthGate
     v-else-if="sessionStore.status === 'error'"
-    :message="sessionStore.error ?? 'Authentication failed.'"
+    :message="sessionStore.error ?? $t('auth.authenticationFailed')"
     @retry="sessionStore.bootstrap(true)"
   />
   <template v-else>

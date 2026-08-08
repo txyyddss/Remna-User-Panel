@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { PhArrowClockwise, PhTelegramLogo } from '@phosphor-icons/vue'
 import LanguageSwitcher from '@/components/common/LanguageSwitcher.vue'
+import { isTelegramWebAppDetected } from '@/utils/telegram'
 
-defineProps<{ message: string }>()
+const props = defineProps<{ message: string }>()
 defineEmits<{ retry: [] }>()
+const authRequestFailed = computed(() => isTelegramWebAppDetected() && props.message !== '')
 </script>
 
 <template>
@@ -14,7 +17,7 @@ defineEmits<{ retry: [] }>()
     </div>
     <div class="auth-screen__copy">
       <p class="eyebrow">{{ $t('auth.telegramAccess') }}</p>
-      <h1>{{ $t('auth.openInTelegram') }}</h1>
+      <h1>{{ authRequestFailed ? $t('auth.authenticationFailed') : $t('auth.openInTelegram') }}</h1>
       <p>{{ message }}</p>
     </div>
     <button class="button button--primary" type="button" @click="$emit('retry')">

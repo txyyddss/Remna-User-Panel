@@ -16,6 +16,12 @@ describe('Telegram bootstrap', () => {
     expect(isTelegramWebAppDetected()).toBe(true)
   })
 
+  it('preserves an unencoded nested launch query', async () => {
+    window.Telegram = { WebApp: { initData: '', initDataUnsafe: {}, colorScheme: 'dark', ready: vi.fn(), expand: vi.fn(), close: vi.fn(), openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn() } }
+    window.history.replaceState({}, '', '/#tgWebAppData=query_id=abc&auth_date=1&hash=deadbeef&tgWebAppVersion=7.0')
+    await expect(getTelegramInitData(100)).resolves.toBe('query_id=abc&auth_date=1&hash=deadbeef')
+  })
+
   it('waits for delayed initData when Telegram has already created WebApp', async () => {
     vi.useFakeTimers()
     const app = { initData: '', initDataUnsafe: {}, colorScheme: 'dark' as const, ready: vi.fn(), expand: vi.fn(), close: vi.fn(), openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn() }
