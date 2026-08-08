@@ -51,7 +51,7 @@ Remnawave credentials, provider credentials, provider feature flags, chat IDs, r
 
 ## Build and run
 
-Prerequisites are Go 1.26.5, Node.js 24 with npm, and GNU Make. The pinned application stack includes Vue 3.5.40, Tailwind CSS 4.3, and `modernc.org/sqlite` 1.54.0 (SQLite 3.53.3).
+Prerequisites are Go 1.26.5, Node.js 26 with npm, and GNU Make. The application stack includes Vue 3.5.41, Tailwind CSS 4.3.3, and `modernc.org/sqlite` 1.56.0.
 
 ```sh
 make frontend-install
