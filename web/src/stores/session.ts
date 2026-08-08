@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 
 import { api, ApiError } from '@/api/client'
 import type { Session } from '@/api/types'
-import { getTelegramWebApp } from '@/utils/telegram'
+import { getTelegramInitData } from '@/utils/telegram'
 
 export type SessionStatus = 'idle' | 'loading' | 'ready' | 'error'
 
@@ -27,7 +27,7 @@ export const useSessionStore = defineStore('session', () => {
         session.value = await api.getMe()
       } catch (caught) {
         if (!(caught instanceof ApiError) || caught.status !== 401) throw caught
-        const initData = getTelegramWebApp()?.initData
+        const initData = await getTelegramInitData()
         if (!initData) throw new Error('Open TX Carpool from the Telegram Mini App to continue.')
         session.value = await api.authTelegram(initData)
       }

@@ -2,6 +2,20 @@ export function getTelegramWebApp(): TelegramWebApp | undefined {
   return window.Telegram?.WebApp
 }
 
+export async function getTelegramInitData(timeoutMs = 3000): Promise<string | undefined> {
+  const startedAt = Date.now()
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const app = getTelegramWebApp()
+    app?.ready()
+    const initData = app?.initData.trim()
+    if (initData) return initData
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 50))
+  }
+
+  return undefined
+}
+
 export function initializeTelegram(): void {
   const app = getTelegramWebApp()
   app?.ready()
