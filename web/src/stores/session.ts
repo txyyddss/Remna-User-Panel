@@ -28,7 +28,9 @@ export const useSessionStore = defineStore('session', () => {
       } catch (caught) {
         if (!(caught instanceof ApiError) || caught.status !== 401) throw caught
         const initData = await getTelegramInitData()
-        if (!initData) throw new Error('Open TX Carpool from the Telegram Mini App to continue.')
+        if (!initData) {
+          throw new Error('Open TX Carpool from the Telegram Mini App to continue.', { cause: caught })
+        }
         session.value = await api.authTelegram(initData)
       }
       status.value = 'ready'
