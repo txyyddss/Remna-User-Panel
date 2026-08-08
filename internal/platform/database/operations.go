@@ -133,7 +133,7 @@ func (s *Store) EnqueueDueEntitlementTransitions(ctx context.Context, now time.T
 		_ = rows.Close()
 		return err
 	}
-	rows.Close()
+	_ = rows.Close()
 	syncUsers := make(map[string]struct{})
 	for _, item := range expired {
 		if _, err := tx.ExecContext(ctx, `UPDATE purchases SET status='expired',updated_at=? WHERE id=? AND status IN ('active','queued','activating')`, stamp(now), item.purchaseID); err != nil {
@@ -149,13 +149,13 @@ func (s *Store) EnqueueDueEntitlementTransitions(ctx context.Context, now time.T
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return err
 		}
 		queued = append(queued, id)
 	}
 	if err := rows.Err(); err != nil {
-		rows.Close()
+		_ = rows.Close()
 		return err
 	}
 	rows.Close()
