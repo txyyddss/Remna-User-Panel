@@ -72,11 +72,11 @@ func migrate(ctx context.Context, db *sql.DB) error {
 			return fmt.Errorf("begin migration %s: %w", entry.Name(), err)
 		}
 		if _, err := tx.ExecContext(ctx, string(script)); err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			return fmt.Errorf("apply migration %s: %w", entry.Name(), err)
 		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO schema_migrations(version, applied_at) VALUES(?, ?)`, entry.Name(), time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			return fmt.Errorf("record migration %s: %w", entry.Name(), err)
 		}
 		if err := tx.Commit(); err != nil {

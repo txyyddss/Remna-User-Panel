@@ -176,7 +176,7 @@ func (s *Store) RefreshImportedSquads(ctx context.Context, squads []ImportedSqua
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	now := stamp(time.Now().UTC())
 	if _, err := tx.ExecContext(ctx, `UPDATE squad_products SET upstream_present=0,updated_at=?`, now); err != nil {
 		return fmt.Errorf("mark squads missing: %w", err)

@@ -719,16 +719,16 @@ func (s *Store) RefundPayment(ctx context.Context, actorID *string, orderID, rea
 	for rows.Next() {
 		var item cancellation
 		if err := rows.Scan(&item.id, &item.price, &item.status); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return model.PaymentOrder{}, err
 		}
 		cancellations = append(cancellations, item)
 	}
 	if err := rows.Err(); err != nil {
-		rows.Close()
+		_ = rows.Close()
 		return model.PaymentOrder{}, err
 	}
-	rows.Close()
+	_ = rows.Close()
 	for _, item := range cancellations {
 		if balance >= 0 {
 			break
