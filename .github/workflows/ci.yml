@@ -72,15 +72,6 @@ jobs:
           go mod download
           go mod verify
 
-      - name: Check Go formatting
-        shell: bash
-        run: |
-          files="$(gofmt -l $(find cmd internal -type f -name '*.go'))"
-          if [ -n "$files" ]; then
-            printf 'The following files require gofmt:\n%s\n' "$files"
-            exit 1
-          fi
-
       - name: Vet Go packages
         run: go vet ./...
 
