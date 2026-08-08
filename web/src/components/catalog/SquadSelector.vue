@@ -27,8 +27,8 @@ function isIncluded(id: string): boolean {
 <template>
   <section class="squad-selector">
     <div class="section-heading section-heading--stacked">
-      <h2>Optional squads</h2>
-      <p>Add regions to the same traffic budget and subscription term.</p>
+      <h2>{{ $t('catalog.optionalSquads') }}</h2>
+      <p>{{ $t('catalog.optionalSquadsHint') }}</p>
     </div>
     <div v-if="squads.length" class="squad-grid">
       <label v-for="squad in squads" :key="squad.id" class="squad-option" :class="{ 'squad-option--selected': isSelected(squad.id), 'squad-option--included': isIncluded(squad.id) }">
@@ -36,7 +36,7 @@ function isIncluded(id: string): boolean {
         <span class="squad-option__copy">
           <strong>{{ squad.name }}</strong>
           <MarkdownContent :source="squad.description" compact />
-          <StatusBadge v-if="isIncluded(squad.id)" tone="neutral" label="Included" />
+          <StatusBadge v-if="isIncluded(squad.id)" tone="neutral" :label="$t('catalog.included')" />
           <span v-else>{{ formatMoney(squad.price) }}</span>
         </span>
         <CheckboxRoot
@@ -51,8 +51,8 @@ function isIncluded(id: string): boolean {
     </div>
     <div v-else class="empty-inline">
       <div>
-        <h3>No optional squads today</h3>
-        <p>Your combo still includes its standard regions.</p>
+        <h3>{{ $t('catalog.noSquads') }}</h3>
+        <p>{{ $t('catalog.noSquadsHint') }}</p>
       </div>
     </div>
   </section>

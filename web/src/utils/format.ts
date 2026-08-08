@@ -1,4 +1,5 @@
 import type { Money, RFC3339 } from '@/api/types'
+import { getLocale, t } from '@/i18n'
 
 const unitSymbols: Record<Money['currency'], string> = {
   TXB: 'TXB',
@@ -32,8 +33,8 @@ export function formatBytes(raw: string | number): string {
 }
 
 export function formatDate(value?: RFC3339): string {
-  if (!value) return 'Not scheduled'
-  return new Intl.DateTimeFormat('en', {
+  if (!value) return t('common.notScheduled')
+  return new Intl.DateTimeFormat(getLocale(), {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -41,8 +42,8 @@ export function formatDate(value?: RFC3339): string {
 }
 
 export function formatDateTime(value?: RFC3339): string {
-  if (!value) return 'Not available'
-  return new Intl.DateTimeFormat('en', {
+  if (!value) return t('common.notAvailable')
+  return new Intl.DateTimeFormat(getLocale(), {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',

@@ -98,12 +98,14 @@ type RefundedPayment struct {
 	ProviderPaymentChargeID string `json:"provider_payment_charge_id,omitempty"`
 }
 
-// Message is the subset of a Telegram message needed for payment updates.
+// Message is the subset of a Telegram message needed for payments and group activity.
 type Message struct {
 	MessageID         int64              `json:"message_id"`
 	From              *User              `json:"from,omitempty"`
 	Chat              Chat               `json:"chat"`
 	Date              int64              `json:"date"`
+	Text              string             `json:"text,omitempty"`
+	ReplyToMessage    *Message           `json:"reply_to_message,omitempty"`
 	SuccessfulPayment *SuccessfulPayment `json:"successful_payment,omitempty"`
 	RefundedPayment   *RefundedPayment   `json:"refunded_payment,omitempty"`
 }

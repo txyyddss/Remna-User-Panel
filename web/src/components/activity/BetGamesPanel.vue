@@ -42,8 +42,8 @@ function submit(): void {
 <template>
   <section class="section-block bet-panel">
     <div class="section-heading section-heading--stacked">
-      <h2>Bet games</h2>
-      <p>Odds and total return are shown before you confirm. One result per tap.</p>
+      <h2>{{ $t('activity.betGames') }}</h2>
+      <p>{{ $t('activity.betCopy') }}</p>
     </div>
     <div v-if="games.length" class="bet-grid">
       <button
@@ -65,21 +65,21 @@ function submit(): void {
       <TxbAmountField
         id="bet-stake"
         v-model="stake"
-        label="Stake"
+        :label="$t('activity.stake')"
         :min-minor="selected.minimumStakeMinor"
         :max-minor="selected.maximumStakeMinor"
-        :hint="`${txbInputFromMinor(selected.minimumStakeMinor)} to ${txbInputFromMinor(selected.maximumStakeMinor)} TXB`"
+        :hint="$t('activity.stakeRange', { minimum: txbInputFromMinor(selected.minimumStakeMinor), maximum: txbInputFromMinor(selected.maximumStakeMinor) })"
         required
       />
       <div class="bet-disclosure">
         <PhTrendUp :size="19" />
-        <span><strong>{{ (selected.returnMultiplierBps / 10000).toFixed(2) }}× total return</strong><small>A loss returns 0 TXB.</small></span>
+        <span><strong>{{ $t('activity.totalReturn', { multiplier: (selected.returnMultiplierBps / 10000).toFixed(2) }) }}</strong><small>{{ $t('activity.lossReturn') }}</small></span>
       </div>
       <button class="button button--primary" type="button" :disabled="!canBet || busy" @click="submit">
-        {{ busy ? 'Resolving securely' : 'Confirm bet' }}
+        {{ busy ? $t('activity.resolving') : $t('activity.confirmBet') }}
       </button>
     </div>
-    <div v-else class="empty-inline"><div><h3>No bet games</h3><p>An administrator can publish games when they are ready.</p></div></div>
+    <div v-else class="empty-inline"><div><h3>{{ $t('activity.noBetGames') }}</h3><p>{{ $t('activity.publishGames') }}</p></div></div>
   </section>
 </template>
 

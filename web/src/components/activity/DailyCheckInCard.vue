@@ -17,13 +17,13 @@ defineEmits<{ checkIn: [] }>()
   <section class="section-block activity-card">
     <span class="feature-icon"><PhCalendarCheck :size="23" /></span>
     <div class="activity-card__copy">
-      <h2>Daily check-in</h2>
-      <p>{{ checkedIn ? 'Today is complete.' : `Claim ${txbInputFromMinor(rewardTxbMinor)} TXB once today.` }}</p>
-      <small>Resets at midnight in {{ timeZone }}.</small>
+      <h2>{{ $t('activity.dailyCheckIn') }}</h2>
+      <p>{{ checkedIn ? $t('activity.todayComplete') : $t('activity.claimToday', { amount: txbInputFromMinor(rewardTxbMinor) }) }}</p>
+      <small>{{ $t('activity.resetsAt', { timezone: timeZone }) }}</small>
     </div>
     <button class="button button--primary" type="button" :disabled="checkedIn || busy" @click="$emit('checkIn')">
       <PhCheckCircle :size="18" weight="fill" />
-      {{ checkedIn ? 'Checked in' : busy ? 'Checking in' : 'Check in' }}
+      {{ checkedIn ? $t('activity.checkedIn') : busy ? $t('activity.checkingIn') : $t('activity.checkIn') }}
     </button>
   </section>
 </template>

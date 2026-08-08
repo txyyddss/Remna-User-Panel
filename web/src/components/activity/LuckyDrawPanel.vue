@@ -10,17 +10,17 @@ defineEmits<{ draw: [id: string] }>()
 
 <template>
   <section class="section-block draw-list">
-    <div class="section-heading section-heading--stacked"><h2>Lucky draws</h2><p>Each draw shows its fee before one secure result.</p></div>
+    <div class="section-heading section-heading--stacked"><h2>{{ $t('activity.luckyDraws') }}</h2><p>{{ $t('activity.drawCopy') }}</p></div>
     <article v-for="draw in draws" :key="draw.id" class="draw-panel">
       <span class="feature-icon"><PhGift :size="24" /></span>
       <div class="draw-panel__copy">
         <h3>{{ draw.name }}</h3>
-        <p>{{ draw.description || 'One weighted prize is selected and recorded.' }}</p>
-        <span class="draw-panel__safety"><PhShieldCheck :size="17" /> Fee and worst-case balance coverage are checked first.</span>
+        <p>{{ draw.description || $t('activity.weightedPrize') }}</p>
+        <span class="draw-panel__safety"><PhShieldCheck :size="17" /> {{ $t('activity.drawSafety') }}</span>
       </div>
-      <button class="button button--primary" type="button" :disabled="!draw.enabled || busy" @click="$emit('draw', draw.id)">{{ busy ? 'Drawing securely' : `Draw for ${txbInputFromMinor(draw.feeTxbMinor)} TXB` }}</button>
+      <button class="button button--primary" type="button" :disabled="!draw.enabled || busy" @click="$emit('draw', draw.id)">{{ busy ? $t('activity.drawing') : $t('activity.drawFor', { amount: txbInputFromMinor(draw.feeTxbMinor) }) }}</button>
     </article>
-    <div v-if="!draws.length" class="empty-inline"><div><h3>No lucky draws</h3><p>An administrator can publish a draw when it is ready.</p></div></div>
+    <div v-if="!draws.length" class="empty-inline"><div><h3>{{ $t('activity.noDraws') }}</h3><p>{{ $t('activity.publishDraw') }}</p></div></div>
   </section>
 </template>
 

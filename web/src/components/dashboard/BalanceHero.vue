@@ -14,17 +14,17 @@ defineProps<{
 <template>
   <section class="balance-hero">
     <div class="balance-hero__copy">
-      <p class="eyebrow">Good to see you, {{ firstName }}</p>
-      <p class="balance-hero__label">Available balance</p>
+      <p class="eyebrow">{{ $t('dashboard.greeting', { name: firstName }) }}</p>
+      <p class="balance-hero__label">{{ $t('billing.availableBalance') }}</p>
       <h1>{{ formatMoney(balance) }}</h1>
     </div>
     <div class="balance-hero__actions">
       <RouterLink class="button button--light" to="/balance">
         <PhPlus :size="19" weight="bold" />
-        Add balance
+        {{ $t('billing.addBalance') }}
       </RouterLink>
       <RouterLink class="text-button text-button--on-accent" to="/catalog">
-        Browse plans
+        {{ $t('catalog.browsePlans') }}
         <PhArrowRight :size="18" />
       </RouterLink>
     </div>

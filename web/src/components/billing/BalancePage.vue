@@ -21,9 +21,9 @@ function handlePaid(): void {
 <template>
   <div class="page page--balance">
     <header class="page-header">
-      <p class="eyebrow">Wallet</p>
-      <h1>Balance and activity.</h1>
-      <p>Top up securely, then use TXB for combos and optional squads.</p>
+      <p class="eyebrow">{{ $t('billing.eyebrow') }}</p>
+      <h1>{{ $t('billing.title') }}</h1>
+      <p>{{ $t('billing.copy') }}</p>
     </header>
 
     <template v-if="loading">
@@ -32,11 +32,11 @@ function handlePaid(): void {
     </template>
     <template v-else-if="balance">
       <section class="wallet-balance">
-        <span>Available</span>
+        <span>{{ $t('billing.available') }}</span>
         <strong>{{ formatMoney(balance) }}</strong>
         <button class="button button--light" type="button" @click="paymentOpen = true">
           <PhPlus :size="19" weight="bold" />
-          Add balance
+          {{ $t('billing.addBalance') }}
         </button>
       </section>
       <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
@@ -45,9 +45,9 @@ function handlePaid(): void {
       <BalancePaymentSheet v-model:open="paymentOpen" :methods="methods" @paid="handlePaid" />
     </template>
     <div v-else class="error-state">
-      <h1>Wallet is unavailable.</h1>
+      <h1>{{ $t('billing.unavailable') }}</h1>
       <p>{{ error }}</p>
-      <button class="button button--primary" type="button" @click="load">Try again</button>
+      <button class="button button--primary" type="button" @click="load">{{ $t('common.tryAgain') }}</button>
     </div>
   </div>
 </template>

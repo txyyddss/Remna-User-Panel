@@ -8,6 +8,7 @@ import { formatMoney } from '@/utils/format'
 import BetGamesPanel from './BetGamesPanel.vue'
 import DailyCheckInCard from './DailyCheckInCard.vue'
 import LuckyDrawPanel from './LuckyDrawPanel.vue'
+import GroupMessageRewardPanel from './GroupMessageRewardPanel.vue'
 
 const { overview, result, loading, busy, error, load, checkIn, placeBet, draw } = useActivity()
 </script>
@@ -15,9 +16,9 @@ const { overview, result, loading, busy, error, load, checkIn, placeBet, draw } 
 <template>
   <div class="page page--activity">
     <header class="page-header">
-      <p class="eyebrow">Community activity</p>
-      <h1>Play with clear odds.</h1>
-      <p>Every fee, chance, and return is shown before you confirm.</p>
+      <p class="eyebrow">{{ $t('activity.eyebrow') }}</p>
+      <h1>{{ $t('activity.title') }}</h1>
+      <p>{{ $t('activity.copy') }}</p>
     </header>
     <template v-if="loading">
       <SkeletonBlock height="9rem" />
@@ -25,10 +26,10 @@ const { overview, result, loading, busy, error, load, checkIn, placeBet, draw } 
     </template>
     <template v-else-if="overview">
       <div class="page-toolbar">
-        <p>Balance {{ formatMoney(overview.balance) }}</p>
-        <button class="text-button" type="button" @click="load({ quiet: true })"><PhArrowClockwise :size="17" /> Refresh</button>
+        <p>{{ $t('activity.balance', { amount: formatMoney(overview.balance) }) }}</p>
+        <button class="text-button" type="button" :aria-label="$t('common.refresh')" @click="load({ quiet: true })"><PhArrowClockwise :size="17" /> {{ $t('common.refresh') }}</button>
       </div>
-      <InlineNotice v-if="result" :tone="result.outcome === 'loss' ? 'warning' : 'success'" title="Result recorded">{{ result.message }}</InlineNotice>
+      <InlineNotice v-if="result" :tone="result.outcome === 'loss' ? 'warning' : 'success'" :title="$t('activity.resultRecorded')">{{ result.message }}</InlineNotice>
       <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
       <div class="activity-layout">
         <DailyCheckInCard
@@ -38,13 +39,14 @@ const { overview, result, loading, busy, error, load, checkIn, placeBet, draw } 
           :busy="busy === 'check-in'"
           @check-in="checkIn"
         />
+        <GroupMessageRewardPanel :reward="overview.groupMessageReward" />
         <BetGamesPanel :games="overview.games" :busy="busy === 'bet'" @bet="placeBet" />
         <LuckyDrawPanel :draws="overview.draws" :busy="busy === 'draw'" @draw="draw" />
       </div>
     </template>
     <div v-else class="error-state">
-      <h1>Activity is unavailable.</h1><p>{{ error }}</p>
-      <button class="button button--primary" type="button" @click="load()">Try again</button>
+      <h1>{{ $t('errors.activityUnavailable') }}</h1><p>{{ error }}</p>
+      <button class="button button--primary" type="button" @click="load()">{{ $t('common.tryAgain') }}</button>
     </div>
   </div>
 </template>

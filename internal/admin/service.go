@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,6 +26,7 @@ type CatalogRepository interface {
 	RefreshImportedSquads(context.Context, []database.ImportedSquad) error
 	ListUsers(context.Context, int) ([]model.User, error)
 	AdjustBalance(context.Context, string, int64, string, string, time.Time) (model.LedgerEntry, error)
+	DeductBalance(context.Context, string, int64, string, string, time.Time) (model.LedgerEntry, error)
 	ListPaymentOrders(context.Context, string, int) ([]model.PaymentOrder, error)
 	PaymentOrderByID(context.Context, string) (model.PaymentOrder, error)
 	RefundPayment(context.Context, *string, string, string, time.Time) (model.PaymentOrder, error)
@@ -174,15 +176,31 @@ func (s *Service) AdjustBalance(ctx context.Context, actorID, userID string, del
 	if delta == 0 || delta < -1_000_000_000_000 || delta > 1_000_000_000_000 || strings.TrimSpace(reason) == "" {
 		return model.LedgerEntry{}, errors.New("non-zero delta and reason are required")
 	}
-	referenceID, err := ids.New()
-	if err != nil {
-		return model.LedgerEntry{}, err
-	}
+	referenceID := fmt.Sprintf("telegram-deduct:%x", sha256.Sum256([]byte(reason)))
 	entry, err := s.repository.AdjustBalance(ctx, userID, delta, referenceID, reason, s.now().UTC())
 	if err != nil {
 		return model.LedgerEntry{}, err
 	}
 	if err := s.audit(ctx, actorID, "balance.adjust", "user", userID, map[string]any{"deltaMinor": delta, "reason": reason, "ledgerEntryId": entry.ID}); err != nil {
+		return model.LedgerEntry{}, err
+	}
+	return entry, nil
+}
+
+// DeductBalance appends an audited exact debit that cannot create debt.
+func (s *Service) DeductBalance(ctx context.Context, actorID, userID string, amount int64, reason string) (model.LedgerEntry, error) {
+	if amount <= 0 || amount > 1_000_000_000_000 || strings.TrimSpace(reason) == "" {
+		return model.LedgerEntry{}, errors.New("positive amount and reason are required")
+	}
+	referenceID, err := ids.New()
+	if err != nil {
+		return model.LedgerEntry{}, err
+	}
+	entry, err := s.repository.DeductBalance(ctx, userID, amount, referenceID, reason, s.now().UTC())
+	if err != nil {
+		return model.LedgerEntry{}, err
+	}
+	if err := s.audit(ctx, actorID, "telegram.balance_deduct", "user", userID, map[string]any{"amountMinor": amount, "reason": reason, "ledgerEntryId": entry.ID}); err != nil {
 		return model.LedgerEntry{}, err
 	}
 	return entry, nil

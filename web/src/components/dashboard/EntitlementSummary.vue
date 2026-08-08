@@ -15,8 +15,8 @@ defineProps<{
 <template>
   <section class="section-block">
     <div class="section-heading">
-      <h2>Your ride</h2>
-      <StatusBadge v-if="active" tone="success" label="Active" />
+      <h2>{{ $t('dashboard.yourRide') }}</h2>
+      <StatusBadge v-if="active" tone="success" :label="$t('common.active')" />
     </div>
 
     <div v-if="active" class="entitlement-panel">
@@ -24,34 +24,34 @@ defineProps<{
         <span class="feature-icon"><PhStack :size="24" /></span>
         <div>
           <h3>{{ active.comboName }}</h3>
-          <p>{{ active.squadUuids.length }} squad{{ active.squadUuids.length === 1 ? '' : 's' }} included</p>
+          <p>{{ $t('dashboard.squadsIncluded', { count: active.squadUuids.length }) }}</p>
         </div>
       </div>
       <dl class="metric-pair">
         <div>
-          <dt><PhGauge :size="17" /> Traffic</dt>
+          <dt><PhGauge :size="17" /> {{ $t('dashboard.traffic') }}</dt>
           <dd>{{ formatBytes(active.trafficLimitBytes) }}</dd>
         </div>
         <div>
-          <dt><PhCalendarBlank :size="17" /> Renews</dt>
+          <dt><PhCalendarBlank :size="17" /> {{ $t('dashboard.renews') }}</dt>
           <dd>{{ formatDate(active.validUntil) }}</dd>
         </div>
       </dl>
       <div v-if="queued" class="queued-plan">
         <span>
-          <StatusBadge tone="warning" label="Queued" />
-          {{ queued.comboName }} starts {{ formatDate(queued.validFrom) }}
+          <StatusBadge tone="warning" :label="$t('common.queued')" />
+          {{ $t('dashboard.queuedStarts', { name: queued.comboName, date: formatDate(queued.validFrom) }) }}
         </span>
       </div>
     </div>
 
     <div v-else class="empty-inline">
       <div>
-        <h3>No active combo</h3>
-        <p>Choose a traffic plan and activate your subscription.</p>
+        <h3>{{ $t('dashboard.noActiveCombo') }}</h3>
+        <p>{{ $t('dashboard.choosePlan') }}</p>
       </div>
       <RouterLink class="button button--secondary" to="/catalog">
-        View combos
+        {{ $t('catalog.viewCombos') }}
         <PhArrowRight :size="18" />
       </RouterLink>
     </div>

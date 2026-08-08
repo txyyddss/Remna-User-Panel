@@ -216,6 +216,7 @@ func ensureBootstrapSettings(ctx context.Context, store *database.Store, vault *
 		"billing.bepusdt.enabled": "false", "billing.bepusdt.methods": "usdt.trc20,usdt.erc20,usdt.polygon,usdt.bep20,usdt.aptos,usdt.solana,usdt.xlayer,usdt.arbitrum,usdt.plasma,usdt.ton",
 		"billing.bepusdt.ack": "ok", "billing.stars.enabled": "true",
 		"activity.timezone": "Asia/Shanghai", "activity.daily_reward_txb": "0",
+		"activity.group_message_threshold": "0", "activity.group_message_reward_txb": "0",
 	}
 	for key, value := range defaults {
 		if _, err := store.GetSetting(ctx, key); errors.Is(err, database.ErrNotFound) {

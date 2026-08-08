@@ -31,14 +31,14 @@ function openLink(): void {
 <template>
   <section class="section-block subscription-section">
     <div class="section-heading">
-      <h2>Subscription link</h2>
+      <h2>{{ $t('dashboard.subscriptionLink') }}</h2>
       <span class="feature-icon feature-icon--small"><PhKey :size="19" /></span>
     </div>
     <template v-if="subscriptionUrl">
-      <p class="subscription-section__lead">Treat this URL like a password. Anyone with it can use your access.</p>
+      <p class="subscription-section__lead">{{ $t('dashboard.subscriptionHint') }}</p>
       <div class="secret-field">
         <span>••••••••••••••••••••••••</span>
-        <button class="icon-button" type="button" :aria-label="copied ? 'Copied' : 'Copy subscription link'" @click="copyLink">
+        <button class="icon-button" type="button" :aria-label="copied ? $t('common.copied') : $t('dashboard.copySubscription')" @click="copyLink">
           <PhCheck v-if="copied" :size="20" weight="bold" />
           <PhCopy v-else :size="20" />
         </button>
@@ -46,26 +46,26 @@ function openLink(): void {
       <div class="button-row">
         <button class="button button--secondary" type="button" @click="openLink">
           <PhArrowSquareOut :size="19" />
-          Open
+          {{ $t('common.open') }}
         </button>
         <button class="button button--ghost-danger" type="button" @click="confirmOpen = true">
           <PhTrash :size="19" />
-          Revoke
+          {{ $t('common.revoke') }}
         </button>
       </div>
     </template>
     <div v-else class="empty-inline">
       <div>
-        <h3>No active link</h3>
-        <p>A subscription URL appears after your combo is activated.</p>
+        <h3>{{ $t('dashboard.noActiveLink') }}</h3>
+        <p>{{ $t('dashboard.linkAfterActivation') }}</p>
       </div>
     </div>
 
     <ConfirmDialog
       v-model:open="confirmOpen"
-      title="Revoke this link?"
-      description="Every device using the current subscription URL will lose access. A new link will replace it."
-      confirm-label="Revoke link"
+      :title="$t('dashboard.revokeTitle')"
+      :description="$t('dashboard.revokeDescription')"
+      :confirm-label="$t('dashboard.revokeLink')"
       :busy="revoking"
       danger
       @confirm="emit('revoke')"

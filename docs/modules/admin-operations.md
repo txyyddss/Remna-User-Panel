@@ -21,6 +21,7 @@ The fixed registry defines each known key's validator, sensitivity, display cate
 | `billing.stars.enabled` | Boolean Stars gate |
 | `emby.base_url`, `emby.api_token`, `emby.setup_price_txb` | Encrypted HTTPS origin/token and human-major setup price |
 | `activity.timezone`, `activity.daily_reward_txb` | IANA timezone and human-major nonnegative daily reward |
+| `activity.group_message_threshold`, `activity.group_message_reward_txb` | Nonnegative message threshold and human-major TXB reward; either zero disables the reward |
 
 All TXB setting/editor fields accept human-major decimals with at most two fractional digits. `150` therefore stores or resolves to `15000` minor units when used financially. Admin API domain records continue to serialize money as decimal-string minor units.
 
@@ -31,6 +32,7 @@ Readiness checks required settings, enabled-provider completeness, and at least 
 - Combo changes affect future purchases only. The editor includes imported-squad selection, safe Markdown preview, and rollover basis-point/cap fields.
 - Squad import reconciles Remnawave identity; local merchandising cannot invent an upstream UUID.
 - Balance adjustment requires a bounded nonzero signed amount and reason and appends one ledger entry plus audit event.
+- Telegram `/deduct <amount>` is accepted only from the configured administrator in the configured group as a reply to a known human sender. Amounts are positive human-major TXB values; the atomic debit rejects insufficient balance, uses a deterministic quoted-message reference for replay safety, and appends `telegram.balance_deduct` audit metadata.
 - Entitlement cancellation and payment refund append durable compensating commands; they never mutate provider state first and hope persistence follows.
 - Activity games/draws, coupons, questionnaires/imports, and Emby retries use their module services so validation, transactions, and idempotency remain centralized.
 - Job retry is allowed only for an eligible failed job and cannot change kind, aggregate, or payload.

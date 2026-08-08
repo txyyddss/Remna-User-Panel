@@ -38,6 +38,19 @@ export interface ActivitySettings {
   timezone: string
   dailyRewardTxb: string
   dailyRewardTxbMinor: string
+  groupMessageThreshold: number
+  groupMessageRewardTxb: string
+  groupMessageRewardTxbMinor: string
+}
+
+export interface GroupMessageRewardStatus {
+  enabled: boolean
+  localDate: string
+  messageCount: number
+  threshold: number
+  rewardMinor: string
+  rewarded: boolean
+  rewardedAt?: RFC3339
 }
 
 export interface LuckyDrawPrize {
@@ -81,6 +94,7 @@ export interface ActivityOverview {
   games: BetGame[]
   draws: LuckyDraw[]
   recentResults: ActivityResult[]
+  groupMessageReward: GroupMessageRewardStatus
 }
 
 export interface CouponDefinition {
@@ -396,7 +410,7 @@ export const featuresApi = {
   }),
   getAdminActivityGames: () => featureRequest<{ items: BetGame[] }>('/api/v1/admin/activity-games'),
   getAdminActivitySettings: () => featureRequest<ActivitySettings>('/api/v1/admin/activity-settings'),
-  saveAdminActivitySettings: (body: { timezone: string; dailyRewardTxb: string }) =>
+  saveAdminActivitySettings: (body: { timezone: string; dailyRewardTxb: string; groupMessageThreshold: number; groupMessageRewardTxb: string }) =>
     featureRequest<ActivitySettings>('/api/v1/admin/activity-settings', { method: 'PUT', body }),
   saveAdminActivityGame: (id: string | null, body: Omit<BetGame, 'id'>) => featureRequest<BetGame>(
     id ? `/api/v1/admin/activity-games/${encodeURIComponent(id)}` : '/api/v1/admin/activity-games',

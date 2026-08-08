@@ -396,6 +396,11 @@ func (r *adminCatalogRepository) AdjustBalance(_ context.Context, _ string, delt
 	r.adjustDelta, r.adjustReference = delta, reference
 	return r.adjustedEntry, r.adjustErr
 }
+
+func (r *adminCatalogRepository) DeductBalance(_ context.Context, _ string, amount int64, reference, _ string, _ time.Time) (model.LedgerEntry, error) {
+	r.adjustDelta, r.adjustReference = -amount, reference
+	return r.adjustedEntry, r.adjustErr
+}
 func (r *adminCatalogRepository) ListPaymentOrders(context.Context, string, int) ([]model.PaymentOrder, error) {
 	return nil, nil
 }

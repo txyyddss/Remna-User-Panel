@@ -16,9 +16,10 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
 import { useSessionStore } from '@/stores/session'
 import { initials } from '@/utils/format'
+import LanguageSwitcher from '@/components/common/LanguageSwitcher.vue'
 
 interface NavItem {
-  label: string
+  labelKey: string
   to: string
   icon: Component
 }
@@ -28,15 +29,15 @@ const router = useRouter()
 const sessionStore = useSessionStore()
 
 const primaryItems: NavItem[] = [
-  { label: 'Home', to: '/home', icon: PhHouse },
-  { label: 'Explore', to: '/catalog', icon: PhCompass },
-  { label: 'Balance', to: '/balance', icon: PhWallet },
+  { labelKey: 'nav.home', to: '/home', icon: PhHouse },
+  { labelKey: 'nav.explore', to: '/catalog', icon: PhCompass },
+  { labelKey: 'nav.balance', to: '/balance', icon: PhWallet },
 ]
 
 const extraItems: NavItem[] = [
-  { label: 'Activity', to: '/activity', icon: PhGameController },
-  { label: 'Questionnaire', to: '/questionnaire', icon: PhListChecks },
-  { label: 'Emby', to: '/emby', icon: PhMonitorPlay },
+  { labelKey: 'nav.activity', to: '/activity', icon: PhGameController },
+  { labelKey: 'nav.questionnaire', to: '/questionnaire', icon: PhListChecks },
+  { labelKey: 'nav.emby', to: '/emby', icon: PhMonitorPlay },
 ]
 
 const displayName = computed(() => [sessionStore.user?.firstName, sessionStore.user?.lastName].filter(Boolean).join(' ') || 'TX Member')
@@ -60,9 +61,9 @@ function isActive(to: string): boolean {
 
 <template>
   <div class="app-frame">
-    <a class="skip-link" href="#main-content">Skip to content</a>
-    <aside class="side-rail" aria-label="Primary navigation">
-      <RouterLink class="side-rail__brand" to="/home" aria-label="TX Carpool home">
+    <a class="skip-link" href="#main-content">{{ $t('nav.skip') }}</a>
+    <aside class="side-rail" :aria-label="$t('nav.primary')">
+      <RouterLink class="side-rail__brand" to="/home" :aria-label="$t('nav.homeLabel')">
         <span class="brand-mark"><PhCirclesFour :size="21" weight="fill" /></span>
         <span>TX Carpool</span>
       </RouterLink>
@@ -76,7 +77,7 @@ function isActive(to: string): boolean {
           :class="{ 'nav-item--active': isActive(item.to) }"
         >
           <component :is="item.icon" :size="20" />
-          <span>{{ item.label }}</span>
+          <span>{{ $t(item.labelKey) }}</span>
         </RouterLink>
         <div class="side-rail__divider" />
         <RouterLink
@@ -87,7 +88,7 @@ function isActive(to: string): boolean {
           :class="{ 'nav-item--active': isActive(item.to) }"
         >
           <component :is="item.icon" :size="20" />
-          <span>{{ item.label }}</span>
+          <span>{{ $t(item.labelKey) }}</span>
         </RouterLink>
         <RouterLink
           v-if="sessionStore.isAdmin"
@@ -96,7 +97,7 @@ function isActive(to: string): boolean {
           :class="{ 'nav-item--active': activePath.startsWith('/admin') }"
         >
           <PhShieldCheck :size="20" />
-          <span>Admin</span>
+          <span>{{ $t('nav.admin') }}</span>
         </RouterLink>
       </nav>
 
@@ -104,17 +105,18 @@ function isActive(to: string): boolean {
         <span class="avatar">{{ userInitials }}</span>
         <span class="side-rail__profile-copy">
           <strong>{{ displayName }}</strong>
-          <small>{{ sessionStore.user?.username ? `@${sessionStore.user.username}` : 'Telegram member' }}</small>
+          <small>{{ sessionStore.user?.username ? `@${sessionStore.user.username}` : $t('nav.member') }}</small>
         </span>
       </div>
     </aside>
 
     <div class="app-frame__content">
       <header class="mobile-header">
-        <RouterLink class="mobile-header__brand" to="/home" aria-label="TX Carpool home">
+        <RouterLink class="mobile-header__brand" to="/home" :aria-label="$t('nav.homeLabel')">
           <span class="brand-mark"><PhCirclesFour :size="19" weight="fill" /></span>
           <strong>TX Carpool</strong>
         </RouterLink>
+        <LanguageSwitcher />
         <span class="avatar avatar--small">{{ userInitials }}</span>
       </header>
       <main id="main-content" ref="mainContent" class="app-main" tabindex="-1">
@@ -122,7 +124,7 @@ function isActive(to: string): boolean {
       </main>
     </div>
 
-    <nav class="bottom-nav" aria-label="Primary navigation">
+    <nav class="bottom-nav" :aria-label="$t('nav.primary')">
       <RouterLink
         v-for="item in primaryItems"
         :key="item.to"
@@ -131,7 +133,7 @@ function isActive(to: string): boolean {
         :class="{ 'bottom-nav__item--active': isActive(item.to) }"
       >
         <component :is="item.icon" :size="21" />
-        <span>{{ item.label }}</span>
+        <span>{{ $t(item.labelKey) }}</span>
       </RouterLink>
     </nav>
   </div>

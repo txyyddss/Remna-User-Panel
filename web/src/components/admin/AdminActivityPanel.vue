@@ -56,7 +56,7 @@ function editGame(game?: BetGame): void {
   } : { name: '', icon: 'dice', description: '', winChancePercent: 50, minStake: '1.00', maxStake: '20.00', returnMultiplier: 2, enabled: true })
 }
 
-async function saveSettings(value: { timezone: string; dailyRewardTxb: string }): Promise<void> {
+async function saveSettings(value: { timezone: string; dailyRewardTxb: string; groupMessageThreshold: number; groupMessageRewardTxb: string }): Promise<void> {
   busy.value = true
   error.value = null
   try {

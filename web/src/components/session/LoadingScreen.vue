@@ -7,7 +7,7 @@ import { PhCirclesFour } from '@phosphor-icons/vue'
     <div class="brand-mark brand-mark--large" aria-hidden="true">
       <PhCirclesFour :size="28" weight="fill" />
     </div>
-    <p class="auth-screen__label">Securing your ride</p>
+    <p class="auth-screen__label">{{ $t('auth.securingRide') }}</p>
     <div class="auth-screen__skeleton" aria-hidden="true">
       <span />
       <span />

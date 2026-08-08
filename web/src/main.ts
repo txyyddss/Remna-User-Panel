@@ -4,11 +4,12 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import { initializeTelegram } from './utils/telegram'
+import { t } from './i18n'
 import './styles/main.css'
 
 initializeTelegram()
 
-createApp(App)
-  .use(createPinia())
-  .use(router)
-  .mount('#app')
+const app = createApp(App)
+app.config.globalProperties.$t = t
+app.use(createPinia()).use(router)
+app.mount('#app')

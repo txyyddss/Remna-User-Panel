@@ -3357,10 +3357,34 @@ components:
         createdAt:
           $ref: '#/components/schemas/Timestamp'
 
+    GroupMessageRewardStatus:
+      type: object
+      additionalProperties: false
+      required: [enabled, localDate, messageCount, threshold, rewardMinor, rewarded]
+      properties:
+        enabled:
+          type: boolean
+        localDate:
+          type: string
+          format: date
+        messageCount:
+          type: integer
+          minimum: 0
+        threshold:
+          type: integer
+          minimum: 0
+        rewardMinor:
+          type: string
+          pattern: '^\\d+$'
+        rewarded:
+          type: boolean
+        rewardedAt:
+          $ref: '#/components/schemas/Timestamp'
+
     ActivityOverview:
       type: object
       additionalProperties: false
-      required: [balance, timeZone, checkedInToday, dailyRewardTxbMinor, games, draws, recentResults]
+      required: [balance, timeZone, checkedInToday, dailyRewardTxbMinor, games, draws, recentResults, groupMessageReward]
       properties:
         balance:
           $ref: '#/components/schemas/Money'
@@ -3384,6 +3408,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ActivityResult'
+        groupMessageReward:
+          $ref: '#/components/schemas/GroupMessageRewardStatus'
 
     ActivityBetRequest:
       type: object
@@ -3407,7 +3433,7 @@ components:
     ActivitySettings:
       type: object
       additionalProperties: false
-      required: [timezone, dailyRewardTxb, dailyRewardTxbMinor]
+      required: [timezone, dailyRewardTxb, dailyRewardTxbMinor, groupMessageThreshold, groupMessageRewardTxb, groupMessageRewardTxbMinor]
       properties:
         timezone:
           type: string
@@ -3417,16 +3443,31 @@ components:
         dailyRewardTxbMinor:
           type: string
           pattern: '^\d+$'
+        groupMessageThreshold:
+          type: integer
+          minimum: 0
+        groupMessageRewardTxb:
+          type: string
+          pattern: '^\d+\.\d{2}$'
+        groupMessageRewardTxbMinor:
+          type: string
+          pattern: '^\d+$'
 
     ActivitySettingsWrite:
       type: object
       additionalProperties: false
-      required: [timezone, dailyRewardTxb]
+      required: [timezone, dailyRewardTxb, groupMessageThreshold, groupMessageRewardTxb]
       properties:
         timezone:
           type: string
           examples: [Asia/Shanghai]
         dailyRewardTxb:
+          type: string
+          pattern: '^\d+(\.\d{1,2})?$'
+        groupMessageThreshold:
+          type: integer
+          minimum: 0
+        groupMessageRewardTxb:
           type: string
           pattern: '^\d+(\.\d{1,2})?$'
 

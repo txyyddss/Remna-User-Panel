@@ -2,6 +2,7 @@ import { onMounted, readonly, shallowRef } from 'vue'
 
 import { featuresApi } from '@/api/features'
 import type { ActivityOverview, ActivityResult } from '@/api/features'
+import { localizedError } from '@/i18n'
 import { notifyHaptic } from '@/utils/telegram'
 
 export function useActivity() {
@@ -26,7 +27,7 @@ export function useActivity() {
     try {
       overview.value = await featuresApi.getActivity()
     } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : 'Activity is unavailable.'
+      error.value = localizedError(caught, 'errors.activityUnavailable')
     } finally {
       loading.value = false
     }
@@ -42,7 +43,7 @@ export function useActivity() {
       notifyHaptic(result.value.outcome === 'loss' ? 'warning' : 'success')
       await load({ quiet: true })
     } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : 'The activity could not be completed.'
+      error.value = localizedError(caught, 'errors.activityFailed')
       notifyHaptic('error')
     } finally {
       busy.value = null

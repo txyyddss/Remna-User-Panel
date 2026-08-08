@@ -14,11 +14,13 @@ The main boundaries are:
 
 `src/api/generated.ts` is generated from `api/openapi.yaml`. `src/api/features.ts` is a narrow handwritten transport adapter for the new feature screens; it uses the same error envelope, credentials, decimal-string conventions, and canonical server routes.
 
+Localization is embedded from `locales/en.json` and `locales/zh-CN.json` through `src/i18n/generated.ts`. Vite validates identical nested leaf-key structures before a build; runtime `t()` supports placeholder interpolation, persisted switching, and Telegram-language defaulting. Known API error codes map to locale keys before generic fallbacks. The language selector is available before authentication and inside the authenticated shell.
+
 ## Routes and state behavior
 
 The canonical member routes are `/home`, `/catalog`, `/balance`, `/activity`, `/questionnaire`, and `/emby`. `/games` redirects to `/activity`. The three expanded product areas are real data-backed routes; they no longer share a placeholder view.
 
-Activity shows daily check-in, enabled betting games, lucky draws, recent outcomes, exact stakes/fees, and resulting balance. It does not use streak pressure, near-miss animation, celebratory loops, or other manipulative gambling cues. Every financial action is disabled while pending and displays the server result.
+Activity shows daily check-in, group-message reward progress/claimed state, enabled betting games, lucky draws, recent outcomes, exact stakes/fees, and resulting balance. It does not use streak pressure, near-miss animation, celebratory loops, or other manipulative gambling cues. Every financial action is disabled while pending and displays the server result.
 
 Coupon wallet redemption is explicit. Catalog checkout displays at most one selected eligible grant, uses the server quote, prunes add-on squads newly included by a changed combo, and disables included squads with an `Included` label. Combo and squad descriptions pass through `MarkdownContent`; admin editing provides the same renderer as a preview.
 
@@ -48,4 +50,4 @@ Interactive targets are at least 44 px. Keyboard focus is visible and restored t
 
 `npm run generate:api` regenerates the OpenAPI types. `npm run typecheck`, `npm run lint`, `npm test -- --run`, and `npm run build` are the local verification sequence. Production assets are written to `internal/webui/dist` for Go embedding.
 
-Feature requests abort or stop polling on unmount, route change, sheet close, or cancellation. Standard loading, empty, stale, validation, upstream-failure, retry, cancelled, and late-settlement states are rendered rather than represented by blank panels. A 401 clears session state and restarts Telegram authentication; no plaintext password, callback capability, subscription URL, or encrypted setting is logged by the client.
+Feature requests abort or stop polling on unmount, route change, sheet close, or cancellation. Standard loading, empty, stale, validation, upstream-failure, retry, cancelled, and late-settlement states are rendered rather than represented by blank panels. Telegram bootstrap waits for delayed WebApp initialization and accepts the standard WebApp data source; an already-detected WebApp context reports a loading state rather than the misleading outside-Telegram message. A 401 clears session state and restarts Telegram authentication; no plaintext password, callback capability, subscription URL, or encrypted setting is logged by the client.

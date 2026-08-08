@@ -126,8 +126,10 @@ type BetResult struct {
 
 // CheckInConfig contains the server-owned daily reward and timezone.
 type CheckInConfig struct {
-	Timezone    string
-	RewardMinor int64
+	Timezone                string
+	RewardMinor             int64
+	GroupMessageThreshold   int
+	GroupMessageRewardMinor int64
 }
 
 // DailyCheckIn is one member's reward for a local calendar date.
@@ -259,6 +261,42 @@ type History struct {
 	Draws    []DrawResult   `json:"draws"`
 }
 
+// GroupMessageRewardConfig controls one local-day group-message reward.
+type GroupMessageRewardConfig struct {
+	Timezone    string
+	Threshold   int
+	RewardMinor int64
+}
+
+// Validate rejects unsafe group-message reward settings.
+func (config GroupMessageRewardConfig) Validate() error {
+	if strings.TrimSpace(config.Timezone) == "" || config.Threshold < 0 || config.RewardMinor < 0 {
+		return fmt.Errorf("%w: invalid group-message reward configuration", ErrInvalidInput)
+	}
+	if _, err := time.LoadLocation(config.Timezone); err != nil {
+		return fmt.Errorf("%w: unknown group-message reward timezone", ErrInvalidInput)
+	}
+	return nil
+}
+
+// GroupMessageRewardStatus is the member-visible progress for the current local day.
+type GroupMessageRewardStatus struct {
+	Enabled      bool       `json:"enabled"`
+	LocalDate    string     `json:"localDate"`
+	MessageCount int        `json:"messageCount"`
+	Threshold    int        `json:"threshold"`
+	RewardMinor  int64      `json:"rewardMinor,string"`
+	Rewarded     bool       `json:"rewarded"`
+	RewardedAt   *time.Time `json:"rewardedAt,omitempty"`
+}
+
+// GroupMessageRewardResult describes one idempotent group-message processing attempt.
+type GroupMessageRewardResult struct {
+	Status   GroupMessageRewardStatus
+	Counted  bool
+	Replayed bool
+}
+
 // Store is the narrow persistence contract required by Service.
 type Store interface {
 	SaveActivityGame(context.Context, GameInput, time.Time) (Game, error)
@@ -269,6 +307,8 @@ type Store interface {
 	ListLuckyDraws(context.Context, bool) ([]LuckyDraw, error)
 	PlayLuckyDraw(context.Context, string, string, string, RandomSource, time.Time) (DrawResult, error)
 	ListActivityHistory(context.Context, string, int) (History, error)
+	GroupMessageRewardStatus(context.Context, string, string, int, int64) (GroupMessageRewardStatus, error)
+	RecordGroupMessage(context.Context, string, int64, int64, string, string, int, int64, time.Time) (GroupMessageRewardResult, error)
 }
 
 // Service applies request validation, trusted time, and cryptographic randomness.
@@ -363,6 +403,33 @@ func (service *Service) History(ctx context.Context, userID string, limit int) (
 		limit = 50
 	}
 	return service.store.ListActivityHistory(ctx, userID, limit)
+}
+
+// GroupMessageStatus returns the configured user's current local-day progress.
+func (service *Service) GroupMessageStatus(ctx context.Context, userID string, config GroupMessageRewardConfig) (GroupMessageRewardStatus, error) {
+	if strings.TrimSpace(userID) == "" {
+		return GroupMessageRewardStatus{}, fmt.Errorf("%w: missing user", ErrInvalidInput)
+	}
+	if err := config.Validate(); err != nil {
+		return GroupMessageRewardStatus{}, err
+	}
+	location, _ := time.LoadLocation(config.Timezone)
+	localDate := service.now().In(location).Format(time.DateOnly)
+	return service.store.GroupMessageRewardStatus(ctx, userID, localDate, config.Threshold, config.RewardMinor)
+}
+
+// RecordGroupMessage counts one eligible Telegram group message and awards at most once per local day.
+func (service *Service) RecordGroupMessage(ctx context.Context, userID string, chatID, messageID int64, config GroupMessageRewardConfig) (GroupMessageRewardResult, error) {
+	if strings.TrimSpace(userID) == "" || chatID == 0 || messageID <= 0 {
+		return GroupMessageRewardResult{}, fmt.Errorf("%w: invalid group message identity", ErrInvalidInput)
+	}
+	if err := config.Validate(); err != nil {
+		return GroupMessageRewardResult{}, err
+	}
+	location, _ := time.LoadLocation(config.Timezone)
+	now := service.now().UTC()
+	localDate := now.In(location).Format(time.DateOnly)
+	return service.store.RecordGroupMessage(ctx, userID, chatID, messageID, localDate, location.String(), config.Threshold, config.RewardMinor, now)
 }
 
 func validIdempotencyKey(value string) bool {

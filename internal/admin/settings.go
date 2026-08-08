@@ -26,30 +26,32 @@ type SettingDefinition struct {
 }
 
 var settingDefinitions = map[string]SettingDefinition{
-	"telegram.group_chat_id":    {Required: true, Validate: validateInteger},
-	"telegram.channel_chat_id":  {Required: true, Validate: validateInteger},
-	"telegram.webhook_secret":   {Secret: true, Validate: validateWebhookSecret},
-	"remnawave.base_url":        {Required: true, Validate: validateHTTPSURL},
-	"remnawave.api_token":       {Secret: true, Required: true, Validate: nonempty},
-	"billing.rate.txb_per_cny":  {Required: true, Validate: validatePositiveDecimal},
-	"billing.rate.txb_per_usd":  {Required: true, Validate: validatePositiveDecimal},
-	"billing.rate.txb_per_xtr":  {Required: true, Validate: validatePositiveDecimal},
-	"billing.ezpay.enabled":     {Validate: validateBoolean},
-	"billing.ezpay.base_url":    {Validate: validateHTTPSURL},
-	"billing.ezpay.merchant_id": {Validate: nonempty},
-	"billing.ezpay.key":         {Secret: true, Validate: nonempty},
-	"billing.ezpay.methods":     {Validate: billing.ValidateEZPayMethods},
-	"billing.bepusdt.enabled":   {Validate: validateBoolean},
-	"billing.bepusdt.base_url":  {Validate: validateHTTPSURL},
-	"billing.bepusdt.api_token": {Secret: true, Validate: nonempty},
-	"billing.bepusdt.methods":   {Validate: billing.ValidateBEPusdtMethods},
-	"billing.bepusdt.ack":       {Validate: validateAck},
-	"billing.stars.enabled":     {Validate: validateBoolean},
-	"emby.base_url":             {Secret: true, Validate: validateHTTPSURL},
-	"emby.api_token":            {Secret: true, Validate: nonempty},
-	"emby.setup_price_txb":      {Validate: validateNonnegativeTXB},
-	"activity.timezone":         {Validate: validateTimezone},
-	"activity.daily_reward_txb": {Validate: validateNonnegativeTXB},
+	"telegram.group_chat_id":            {Required: true, Validate: validateInteger},
+	"telegram.channel_chat_id":          {Required: true, Validate: validateInteger},
+	"telegram.webhook_secret":           {Secret: true, Validate: validateWebhookSecret},
+	"remnawave.base_url":                {Required: true, Validate: validateHTTPSURL},
+	"remnawave.api_token":               {Secret: true, Required: true, Validate: nonempty},
+	"billing.rate.txb_per_cny":          {Required: true, Validate: validatePositiveDecimal},
+	"billing.rate.txb_per_usd":          {Required: true, Validate: validatePositiveDecimal},
+	"billing.rate.txb_per_xtr":          {Required: true, Validate: validatePositiveDecimal},
+	"billing.ezpay.enabled":             {Validate: validateBoolean},
+	"billing.ezpay.base_url":            {Validate: validateHTTPSURL},
+	"billing.ezpay.merchant_id":         {Validate: nonempty},
+	"billing.ezpay.key":                 {Secret: true, Validate: nonempty},
+	"billing.ezpay.methods":             {Validate: billing.ValidateEZPayMethods},
+	"billing.bepusdt.enabled":           {Validate: validateBoolean},
+	"billing.bepusdt.base_url":          {Validate: validateHTTPSURL},
+	"billing.bepusdt.api_token":         {Secret: true, Validate: nonempty},
+	"billing.bepusdt.methods":           {Validate: billing.ValidateBEPusdtMethods},
+	"billing.bepusdt.ack":               {Validate: validateAck},
+	"billing.stars.enabled":             {Validate: validateBoolean},
+	"emby.base_url":                     {Secret: true, Validate: validateHTTPSURL},
+	"emby.api_token":                    {Secret: true, Validate: nonempty},
+	"emby.setup_price_txb":              {Validate: validateNonnegativeTXB},
+	"activity.timezone":                 {Validate: validateTimezone},
+	"activity.daily_reward_txb":         {Validate: validateNonnegativeTXB},
+	"activity.group_message_threshold":  {Validate: validateNonnegativeInteger},
+	"activity.group_message_reward_txb": {Validate: validateNonnegativeTXB},
 }
 
 // SettingsRepository stores encrypted or plain values without interpreting them.
@@ -229,6 +231,14 @@ func validateInteger(value string) error {
 	parsed, err := strconv.ParseInt(value, 10, 64)
 	if err != nil || parsed == 0 {
 		return errors.New("must be a non-zero integer")
+	}
+	return nil
+}
+
+func validateNonnegativeInteger(value string) error {
+	parsed, err := strconv.ParseInt(value, 10, 64)
+	if err != nil || parsed < 0 {
+		return errors.New("must be a non-negative integer")
 	}
 	return nil
 }

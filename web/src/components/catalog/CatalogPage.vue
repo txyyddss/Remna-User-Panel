@@ -38,9 +38,9 @@ const {
 <template>
   <div class="page page--catalog">
     <header class="page-header">
-      <p class="eyebrow">Plans and regions</p>
-      <h1>Choose your combo.</h1>
-      <p>One account-wide traffic budget. Optional squads follow the same term.</p>
+      <p class="eyebrow">{{ $t('catalog.eyebrow') }}</p>
+      <h1>{{ $t('catalog.title') }}</h1>
+      <p>{{ $t('catalog.copy') }}</p>
     </header>
 
     <template v-if="loading">
@@ -50,15 +50,15 @@ const {
       </div>
     </template>
     <template v-else-if="catalog">
-      <InlineNotice v-if="purchase" tone="success" title="Purchase confirmed">
-        {{ purchase.comboName }} was scheduled. Remnawave activation may take a moment.
+      <InlineNotice v-if="purchase" tone="success" :title="$t('catalog.purchaseConfirmed')">
+        {{ $t('catalog.purchaseScheduled', { name: purchase.comboName }) }}
       </InlineNotice>
       <InlineNotice v-else-if="error && !checkoutOpen" tone="warning">{{ error }}</InlineNotice>
 
       <section class="combo-section">
         <div class="section-heading">
-          <h2>Core combos</h2>
-          <span v-if="balance" class="section-heading__meta">Balance {{ formatMoney(balance) }}</span>
+          <h2>{{ $t('catalog.coreCombos') }}</h2>
+          <span v-if="balance" class="section-heading__meta">{{ $t('activity.balance', { amount: formatMoney(balance) }) }}</span>
         </div>
         <div v-if="visibleCombos.length" class="combo-grid">
           <ComboOption
@@ -71,10 +71,10 @@ const {
         </div>
         <div v-else class="empty-inline">
           <div>
-            <h3>No combos are available</h3>
-            <p>The administrator has not published a plan yet.</p>
+            <h3>{{ $t('catalog.noCombos') }}</h3>
+            <p>{{ $t('catalog.noCombosHint') }}</p>
           </div>
-          <button class="button button--secondary" type="button" @click="load">Refresh</button>
+          <button class="button button--secondary" type="button" @click="load">{{ $t('common.refresh') }}</button>
         </div>
       </section>
 
@@ -83,10 +83,10 @@ const {
       <div class="catalog-action">
         <span v-if="selectedCombo">
           <PhCheckCircle :size="20" weight="fill" />
-          {{ selectedCombo.name }} selected
+          {{ $t('catalog.selected', { name: selectedCombo.name }) }}
         </span>
         <button class="button button--primary" type="button" :disabled="!selectedCombo" @click="reviewPurchase">
-          Review purchase
+          {{ $t('catalog.reviewPurchase') }}
           <PhArrowRight :size="19" />
         </button>
       </div>
@@ -106,9 +106,9 @@ const {
       />
     </template>
     <div v-else class="error-state">
-      <h1>Plans are unavailable.</h1>
+      <h1>{{ $t('catalog.unavailable') }}</h1>
       <p>{{ error }}</p>
-      <button class="button button--primary" type="button" @click="load">Try again</button>
+      <button class="button button--primary" type="button" @click="load">{{ $t('common.tryAgain') }}</button>
     </div>
   </div>
 </template>

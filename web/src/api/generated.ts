@@ -1835,6 +1835,16 @@ export interface components {
             balanceAfter: components["schemas"]["Money"];
             createdAt: components["schemas"]["Timestamp"];
         };
+        GroupMessageRewardStatus: {
+            enabled: boolean;
+            /** Format: date */
+            localDate: string;
+            messageCount: number;
+            threshold: number;
+            rewardMinor: string;
+            rewarded: boolean;
+            rewardedAt?: components["schemas"]["Timestamp"];
+        };
         ActivityOverview: {
             balance: components["schemas"]["Money"];
             /** @example Asia/Shanghai */
@@ -1844,6 +1854,7 @@ export interface components {
             games: components["schemas"]["ActivityGame"][];
             draws: components["schemas"]["LuckyDraw"][];
             recentResults: components["schemas"]["ActivityResult"][];
+            groupMessageReward: components["schemas"]["GroupMessageRewardStatus"];
         };
         ActivityBetRequest: {
             gameId: components["schemas"]["ID"];
@@ -1856,11 +1867,16 @@ export interface components {
             timezone: string;
             dailyRewardTxb: string;
             dailyRewardTxbMinor: string;
+            groupMessageThreshold: number;
+            groupMessageRewardTxb: string;
+            groupMessageRewardTxbMinor: string;
         };
         ActivitySettingsWrite: {
             /** @example Asia/Shanghai */
             timezone: string;
             dailyRewardTxb: string;
+            groupMessageThreshold: number;
+            groupMessageRewardTxb: string;
         };
         LuckyDrawPrize: {
             id: components["schemas"]["ID"];

@@ -22,9 +22,9 @@ function iconFor(kind: InviteLink['kind']) {
 <template>
   <section class="onboarding-panel">
     <header class="onboarding-panel__header">
-      <p class="eyebrow">Membership</p>
-      <h1>Two quick joins.</h1>
-      <p>Join the private group and the updates channel. Access is checked against your Telegram account.</p>
+      <p class="eyebrow">{{ $t('onboarding.membership') }}</p>
+      <h1>{{ $t('onboarding.twoQuickJoins') }}</h1>
+      <p>{{ $t('onboarding.membershipCopy') }}</p>
     </header>
 
     <div v-if="invites.length" class="invite-list">

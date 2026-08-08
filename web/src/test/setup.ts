@@ -1,4 +1,9 @@
 import { vi } from 'vitest'
+import { config } from '@vue/test-utils'
+
+import { t } from '@/i18n'
+
+config.global.mocks = { $t: t }
 
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

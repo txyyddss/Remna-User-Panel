@@ -24,7 +24,7 @@ defineEmits<{ select: [id: string] }>()
   >
     <span class="combo-option__top">
       <span>
-        <StatusBadge v-if="selected" tone="success" label="Selected" />
+        <StatusBadge v-if="selected" tone="success" :label="$t('catalog.selectedBadge')" />
         <strong>{{ combo.name }}</strong>
       </span>
       <span v-if="selected" class="selection-mark"><PhCheck :size="17" weight="bold" /></span>
@@ -32,12 +32,12 @@ defineEmits<{ select: [id: string] }>()
     <MarkdownContent class="combo-option__description" :source="combo.description" compact />
     <span class="combo-option__metrics">
       <span><PhGauge :size="17" />{{ formatBytes(combo.trafficLimitBytes) }}</span>
-      <span><PhClock :size="17" />{{ combo.validityDays }} days</span>
-      <span><PhStack :size="17" />{{ combo.includedSquads.length }} squads</span>
+      <span><PhClock :size="17" />{{ $t('catalog.days', { count: combo.validityDays }) }}</span>
+      <span><PhStack :size="17" />{{ $t('catalog.squads', { count: combo.includedSquads.length }) }}</span>
     </span>
     <span class="combo-option__price">
       <strong>{{ formatMoney(combo.price) }}</strong>
-      <small>per term</small>
+      <small>{{ $t('catalog.perTerm') }}</small>
     </span>
   </button>
 </template>

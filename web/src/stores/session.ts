@@ -3,7 +3,8 @@ import { defineStore } from 'pinia'
 
 import { api, ApiError } from '@/api/client'
 import type { Session } from '@/api/types'
-import { getTelegramInitData } from '@/utils/telegram'
+import { localizedError, t } from '@/i18n'
+import { getTelegramInitData, isTelegramWebAppDetected } from '@/utils/telegram'
 
 export type SessionStatus = 'idle' | 'loading' | 'ready' | 'error'
 
@@ -29,7 +30,7 @@ export const useSessionStore = defineStore('session', () => {
         if (!(caught instanceof ApiError) || caught.status !== 401) throw caught
         const initData = await getTelegramInitData()
         if (!initData) {
-          throw new Error('Open TX Carpool from the Telegram Mini App to continue.', { cause: caught })
+          throw new Error(isTelegramWebAppDetected() ? t('auth.telegramLoading') : t('auth.openInTelegram'), { cause: caught })
         }
         session.value = await api.authTelegram(initData)
       }
@@ -37,7 +38,7 @@ export const useSessionStore = defineStore('session', () => {
     } catch (caught) {
       session.value = null
       status.value = 'error'
-      error.value = caught instanceof Error ? caught.message : 'Authentication could not be completed.'
+      error.value = localizedError(caught, 'auth.authenticationFailed')
     }
   }
 

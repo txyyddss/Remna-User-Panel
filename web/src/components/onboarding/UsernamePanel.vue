@@ -15,13 +15,13 @@ defineEmits<{ submit: [] }>()
 <template>
   <section class="onboarding-panel">
     <header class="onboarding-panel__header">
-      <p class="eyebrow">Your handle</p>
-      <h1>Choose a quiet identity.</h1>
-      <p>This permanent username becomes your private Remnawave account name.</p>
+      <p class="eyebrow">{{ $t('onboarding.usernameEyebrow') }}</p>
+      <h1>{{ $t('onboarding.usernameTitle') }}</h1>
+      <p>{{ $t('onboarding.usernameCopy') }}</p>
     </header>
 
     <form class="form-stack" @submit.prevent="$emit('submit')">
-      <label class="field-label" for="carpool-username">Username</label>
+      <label class="field-label" for="carpool-username">{{ $t('onboarding.username') }}</label>
       <div class="input-shell" :class="{ 'input-shell--valid': valid }">
         <PhAt :size="20" aria-hidden="true" />
         <input

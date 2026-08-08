@@ -8,7 +8,7 @@ These documents describe the implemented module boundaries. They are maintenance
 | Telegram identity and onboarding | [accounts-onboarding.md](accounts-onboarding.md) |
 | Catalog, purchases, and access terms | [catalog-entitlements.md](catalog-entitlements.md) |
 | TXB ledger, top-ups, and refunds | [billing-payments.md](billing-payments.md) |
-| Games, daily check-ins, and lucky draws | [activity.md](activity.md) |
+| Games, daily check-ins, group-message rewards, and lucky draws | [activity.md](activity.md) |
 | Coupon definitions, wallet grants, and purchase discounts | [coupons.md](coupons.md) |
 | Questionnaire participation and CSV settlement | [questionnaires.md](questionnaires.md) |
 | Emby account setup and restricted policy management | [emby.md](emby.md) |

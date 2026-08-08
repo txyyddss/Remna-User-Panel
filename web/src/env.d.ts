@@ -1,4 +1,7 @@
 /// <reference types="vite/client" />
+import 'vue'
+
+declare global {
 
 interface TelegramWebAppUser {
   id: number
@@ -33,4 +36,11 @@ interface TelegramWebApp {
 
 interface Window {
   Telegram?: { WebApp: TelegramWebApp }
+}
+}
+
+declare module 'vue' {
+  interface ComponentCustomProperties {
+    $t: (key: string, variables?: Record<string, string | number>) => string
+  }
 }

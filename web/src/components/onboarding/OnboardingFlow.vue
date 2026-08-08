@@ -7,6 +7,7 @@ import AgreementPanel from './AgreementPanel.vue'
 import IntroSequence from './IntroSequence.vue'
 import MembershipPanel from './MembershipPanel.vue'
 import UsernamePanel from './UsernamePanel.vue'
+import LanguageSwitcher from '@/components/common/LanguageSwitcher.vue'
 
 const {
   step,
@@ -31,9 +32,10 @@ const {
   <main v-else class="onboarding-shell">
     <header class="onboarding-shell__top">
       <span class="onboarding-shell__brand"><PhCirclesFour :size="20" weight="fill" /> TX Carpool</span>
+      <LanguageSwitcher />
       <span class="onboarding-shell__percent">{{ Math.round(progress * 100) }}%</span>
     </header>
-    <div class="onboarding-shell__track" aria-label="Setup progress">
+    <div class="onboarding-shell__track" :aria-label="$t('onboarding.setupProgress')">
       <span :style="{ transform: `scaleX(${progress})` }" />
     </div>
 
