@@ -7,11 +7,15 @@ import {
   PhGear,
   PhListMagnifyingGlass,
   PhStack,
+  PhUserPlus,
   PhUsers,
 } from '@phosphor-icons/vue'
 import { RouterLink, useRoute } from 'vue-router'
 
+import { useSessionStore } from '@/stores/session'
+
 const route = useRoute()
+const sessionStore = useSessionStore()
 
 const sections: Array<{ value: string; label: string; icon: Component }> = [
   { value: 'settings', label: 'Settings', icon: PhGear },
@@ -30,6 +34,12 @@ const sections: Array<{ value: string; label: string; icon: Component }> = [
       <p class="eyebrow">Control room</p>
       <h1>TX administration.</h1>
       <p>Configuration and account changes are validated, logged, and reversible where possible.</p>
+      <div v-if="!sessionStore.onboardingComplete" class="button-row">
+        <RouterLink class="button button--secondary" to="/onboarding">
+          <PhUserPlus :size="19" weight="bold" />
+          Set up user account
+        </RouterLink>
+      </div>
     </header>
     <nav class="admin-tabs" aria-label="Admin sections">
       <RouterLink

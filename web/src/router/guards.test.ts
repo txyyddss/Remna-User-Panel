@@ -40,7 +40,29 @@ describe('protected route decisions', () => {
     expect(resolveProtectedRoute(route('/admin/payments'), user())).toBe('/home')
   })
 
-  it('lets an admin bootstrap settings before onboarding completes', () => {
+  it('sends a first-launch admin to settings instead of onboarding', () => {
+    expect(resolveProtectedRoute(route('/'), user({ role: 'admin', onboardingState: 'intro' }))).toBe('/admin/settings')
+  })
+
+  it('lets an un-onboarded admin start optional signup from the dashboard', () => {
+    expect(resolveProtectedRoute(route('/onboarding'), user({ role: 'admin', onboardingState: 'membership' }))).toBeNull()
+  })
+
+  it('keeps an un-onboarded admin out of product routes', () => {
+    expect(resolveProtectedRoute(route('/catalog'), user({ role: 'admin', onboardingState: 'agreement' }))).toBe('/admin/settings')
+  })
+
+  it('lets an admin use every admin section before onboarding completes', () => {
     expect(resolveProtectedRoute(route('/admin/settings'), user({ role: 'admin', onboardingState: 'membership' }))).toBeNull()
+  })
+
+  it('lets a completed admin use user-side routes', () => {
+    const completedAdmin = user({ role: 'admin', onboardingState: 'complete' })
+    expect(resolveProtectedRoute(route('/'), completedAdmin)).toBe('/home')
+    expect(resolveProtectedRoute(route('/catalog'), completedAdmin)).toBeNull()
+  })
+
+  it('keeps a completed admin out of signup', () => {
+    expect(resolveProtectedRoute(route('/onboarding'), user({ role: 'admin', onboardingState: 'complete' }))).toBe('/home')
   })
 })

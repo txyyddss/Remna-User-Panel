@@ -25,6 +25,8 @@ The payment sheet renders the server's exact payable amount and QR payload and u
 
 Subscription revoke requires confirmation. URLs are copied/opened only through explicit user actions and are never placed in analytics or error telemetry. Stale Remnawave statistics remain visible with an inline warning while independent dashboard sections continue working.
 
+An incomplete administrator enters the admin dashboard by default: root and user-product routes redirect to `/admin/settings`, while admin sections remain available. The dashboard provides an explicit entry to the standard signup flow. This does not provision a Remnawave identity until signup completes; a completed administrator can use both admin and user-side interfaces.
+
 ## Visual and accessibility contract
 
 The visual system is English-only premium dark: graphite canvas, layered charcoal surfaces, off-white text, and one muted mint accent. Panels use 16px radii, controls 12px, and pills only communicate semantic status. Telegram top/bottom safe-area variables are honored. Interactive targets are at least 44px, focus is visible, color contrast meets WCAG AA, and dialogs use accessible Reka UI focus/keyboard behavior.

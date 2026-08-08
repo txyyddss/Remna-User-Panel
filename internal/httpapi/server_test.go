@@ -1,10 +1,14 @@
 package httpapi
 
 import (
+	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"testing/fstest"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/model"
 )
 
 func TestDecodeJSONAcceptsOneStrictDocument(t *testing.T) {
@@ -37,6 +41,45 @@ func TestDecodeJSONAcceptsOneStrictDocument(t *testing.T) {
 			}
 			if !test.wantErr && err != nil {
 				t.Fatalf("decodeJSON(): %v", err)
+			}
+		})
+	}
+}
+
+func TestRequireOnboardedKeepsUnonboardedAdminsOutOfProductAPIs(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		user       model.User
+		wantAccess bool
+	}{
+		{name: "unonboarded admin", user: model.User{Role: "admin", OnboardingState: "intro"}},
+		{name: "unonboarded user", user: model.User{Role: "user", OnboardingState: "agreement"}},
+		{name: "completed admin", user: model.User{Role: "admin", OnboardingState: "complete"}, wantAccess: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			response := httptest.NewRecorder()
+			request := httptest.NewRequest(http.MethodGet, "/api/v1/catalog", nil)
+			allowed := (&Server{}).requireOnboarded(response, request, test.user)
+			if allowed != test.wantAccess {
+				t.Fatalf("requireOnboarded() = %t, want %t", allowed, test.wantAccess)
+			}
+			if test.wantAccess {
+				return
+			}
+			if response.Code != http.StatusConflict {
+				t.Fatalf("status = %d, want %d", response.Code, http.StatusConflict)
+			}
+			var body apiError
+			if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
+				t.Fatalf("decode error response: %v", err)
+			}
+			if body.Code != "ONBOARDING_REQUIRED" {
+				t.Fatalf("error code = %q, want ONBOARDING_REQUIRED", body.Code)
 			}
 		})
 	}

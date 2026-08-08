@@ -4,7 +4,7 @@
 
 This module owns Telegram Mini App session exchange, local users and sessions, onboarding state, join-request links, membership verification, immutable username reservation, agreement acceptance, and initial Remnawave provisioning. It consumes narrow Telegram and Remnawave interfaces; it does not know provider HTTP details.
 
-Public operations are `POST /api/v1/auth/telegram`, `GET /api/v1/me`, and the four `/api/v1/onboarding/*` operations documented in OpenAPI. Admin authorization reuses the same validated session and compares the Telegram ID to `ADMIN_TELEGRAM_ID`; no client-supplied role is trusted.
+Public operations are `POST /api/v1/auth/telegram`, `GET /api/v1/me`, and the four `/api/v1/onboarding/*` operations documented in OpenAPI. Admin authorization reuses the same validated session and compares the Telegram ID to `ADMIN_TELEGRAM_ID`; no client-supplied role is trusted. The designated admin starts in the dashboard without a Remnawave identity, but can explicitly enter the standard signup flow to create one.
 
 ## State and invariants
 
@@ -22,7 +22,7 @@ Authentication failures return the same unauthenticated envelope whether data is
 
 Username reservation and upstream provisioning are deliberately resumable. If local reservation succeeds but Remnawave is unavailable, the account remains at the agreement/provisioning boundary. Retrying first reconciles by service username and Telegram ID and adopts only an unambiguous matching upstream user. It never creates a second local identity or silently picks a conflicting upstream user.
 
-Invite creation/approval failures leave local membership false. Revocation must succeed before the invite is marked used, so a replay can safely complete cleanup without approving another identity. An admin can bootstrap configuration before completing ordinary membership onboarding, but all user product routes still require complete onboarding.
+Invite creation/approval failures leave local membership false. Revocation must succeed before the invite is marked used, so a replay can safely complete cleanup without approving another identity. The designated admin is routed directly to the dashboard and is offered an explicit entry to the standard signup flow. Until that flow completes, all user product routes and APIs remain unavailable; after completion, the admin can also use the user-side interfaces.
 
 ## Verification
 
