@@ -20,6 +20,13 @@ coverage.html
 *.db-wal
 *.log
 web/node_modules
+**/node_modules
 web/dist
 web/coverage
+**/coverage
 internal/webui/dist
+.cache
+.codex
+.agents
+*.out
+coverage.html

@@ -4,7 +4,7 @@ FROM node:26-alpine AS frontend-build
 WORKDIR /src
 
 COPY web/package.json web/package-lock.json ./web/
-RUN --mount=type=cache,target=/root/.npm \
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
     cd web && npm ci
 
 COPY api ./api
@@ -20,13 +20,13 @@ ARG TARGETARCH
 WORKDIR /src
 
 COPY go.mod go.sum ./
-RUN --mount=type=cache,target=/go/pkg/mod go mod download
+RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked go mod download
 
 COPY . .
 COPY --from=frontend-build /src/internal/webui/dist ./internal/webui/dist
 
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
+RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
+    --mount=type=cache,target=/root/.cache/go-build,sharing=locked \
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go build -trimpath -ldflags="-s -w" -o /out/tx-carpool ./cmd/server
 

@@ -1,16 +1,61 @@
+name: remna-user-panel
+
 services:
   tx-carpool:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: tx-carpool:local
+    image: ghcr.io/txyyddss/remna-user-panel:latest
+    hostname: tx-carpool
+    pull_policy: always
     restart: unless-stopped
+    stop_grace_period: 30s
+
+    # Copy .env.example to .env, set the required values, and keep .env
+    # outside version control. Provider settings are configured in the admin
+    # dashboard after the first login.
     env_file:
       - .env
+    environment:
+      PORT: 8080
+      DATA_DIR: /data
+      TZ: ${TZ:-UTC}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+
     ports:
-      - "8080:8080"
+      - "${TX_CARPOOL_PORT:-8080}:8080"
+
     volumes:
+      # Includes the SQLite database, verified backups, and durable outbox.
       - tx-carpool-data:/data
+
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/tx-carpool", "healthcheck", "--url", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+    # The image already runs as an unprivileged UID. These settings add
+    # defense in depth; /data remains writable through the named volume.
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
 
 volumes:
   tx-carpool-data:
+    name: tx-carpool-data

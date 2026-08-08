@@ -56,7 +56,16 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: 1.26.5
-          cache: true
+
+      - name: Cache Go modules and build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
       - name: Download and verify Go modules
         run: |
@@ -107,5 +116,5 @@ jobs:
           context: .
           platforms: linux/amd64
           push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=tx-carpool
+          cache-to: type=gha,mode=max,scope=tx-carpool
