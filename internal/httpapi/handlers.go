@@ -194,7 +194,12 @@ func (s *Server) purchase(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, http.StatusBadRequest, "INVALID_REQUEST", "Select a combo to continue.")
 		return
 	}
-	purchase, err := s.deps.Catalog.PurchaseWithCoupon(r.Context(), user, request.ComboID, request.AddonSquadProductIDs, request.CouponGrantID)
+	idempotencyKey, err := optionalOrGeneratedIdempotencyKey(w, r)
+	if err != nil {
+		s.writeError(w, r, http.StatusBadRequest, "INVALID_IDEMPOTENCY_KEY", "Idempotency-Key must contain 1 to 128 characters.")
+		return
+	}
+	purchase, err := s.deps.Catalog.PurchaseWithCoupon(r.Context(), user, request.ComboID, request.AddonSquadProductIDs, request.CouponGrantID, idempotencyKey)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrInsufficientBalance):
