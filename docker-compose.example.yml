@@ -15,6 +15,7 @@ services:
       ADMIN_TELEGRAM_ID: 123456789
       TELEGRAM_BOT_TOKEN: 114514
       PUBLIC_BASE_URL: https://carpool.example.com
+      CONFIG_MASTER_KEY: "GENERATE IT WITH openssl rand -base64 32"
 
     volumes:
       - tx-carpool-data:/data
