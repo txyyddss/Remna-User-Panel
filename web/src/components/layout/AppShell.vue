@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { computed } from 'vue'
+import { computed, nextTick, useTemplateRef, watch } from 'vue'
 import {
   PhCirclesFour,
   PhCompass,
@@ -11,8 +11,9 @@ import {
   PhShieldCheck,
   PhWallet,
 } from '@phosphor-icons/vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
+import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
 import { useSessionStore } from '@/stores/session'
 import { initials } from '@/utils/format'
 
@@ -23,6 +24,7 @@ interface NavItem {
 }
 
 const route = useRoute()
+const router = useRouter()
 const sessionStore = useSessionStore()
 
 const primaryItems: NavItem[] = [
@@ -32,7 +34,7 @@ const primaryItems: NavItem[] = [
 ]
 
 const extraItems: NavItem[] = [
-  { label: 'Games', to: '/games', icon: PhGameController },
+  { label: 'Activity', to: '/activity', icon: PhGameController },
   { label: 'Questionnaire', to: '/questionnaire', icon: PhListChecks },
   { label: 'Emby', to: '/emby', icon: PhMonitorPlay },
 ]
@@ -40,6 +42,16 @@ const extraItems: NavItem[] = [
 const displayName = computed(() => [sessionStore.user?.firstName, sessionStore.user?.lastName].filter(Boolean).join(' ') || 'TX Member')
 const userInitials = computed(() => initials(displayName.value))
 const activePath = computed(() => route.path)
+const showBackButton = computed(() => !['/', '/home'].includes(route.path))
+const mainContent = useTemplateRef<globalThis.HTMLElement>('mainContent')
+
+useTelegramBackButton(showBackButton, () => router.back())
+
+watch(() => route.fullPath, async (_next, previous) => {
+  if (!previous) return
+  await nextTick()
+  mainContent.value?.focus({ preventScroll: true })
+})
 
 function isActive(to: string): boolean {
   return activePath.value === to || (to === '/home' && activePath.value === '/')
@@ -48,6 +60,7 @@ function isActive(to: string): boolean {
 
 <template>
   <div class="app-frame">
+    <a class="skip-link" href="#main-content">Skip to content</a>
     <aside class="side-rail" aria-label="Primary navigation">
       <RouterLink class="side-rail__brand" to="/home" aria-label="TX Carpool home">
         <span class="brand-mark"><PhCirclesFour :size="21" weight="fill" /></span>
@@ -104,7 +117,7 @@ function isActive(to: string): boolean {
         </RouterLink>
         <span class="avatar avatar--small">{{ userInitials }}</span>
       </header>
-      <main class="app-main">
+      <main id="main-content" ref="mainContent" class="app-main" tabindex="-1">
         <slot />
       </main>
     </div>

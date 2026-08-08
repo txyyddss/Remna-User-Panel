@@ -2,41 +2,50 @@
 
 ## Composition and ownership
 
-The web module is a mobile-first Telegram Mini App built with Vue 3 Composition API and `<script setup lang="ts">`. Route views are composition surfaces. API state, polling, Telegram bridge effects, and business interactions live in typed feature composables; presentational components receive readonly props and emit typed events.
+The web module is a mobile-first Telegram Mini App built with Vue 3 Composition API and `<script setup lang="ts">`. Route views are composition surfaces; typed feature composables own remote state, polling, and mutations; reusable components own presentation and local interaction state.
 
-Primary boundaries are:
+The main boundaries are:
 
-- `AppShell`: safe areas, session bootstrap, navigation, global notices, and route outlet.
-- `OnboardingFlow`: timed introduction and resumable membership, username, and agreement steps.
-- `UserHome`: balance, entitlement/renewal, usage, top nodes, subscription copy/open/revoke actions.
-- `CatalogCheckout`: server catalog selection and purchase submission; browser totals are explanatory only.
-- `BalancePaymentSheet`: top-up amount, provider choice, exact payable/QR/link, and durable order polling.
-- `AdminShell`: guarded configuration and domain-operation views.
+- `AppShell`: safe areas, session bootstrap, desktop/mobile navigation, skip link, Telegram BackButton, and focus restoration after navigation.
+- Member features: `ActivityPage`, `CouponWalletPanel`, `QuestionnairePage`, `EmbyPage`, `CatalogCheckout`, and `BalancePaymentSheet`.
+- Shared controls: `TxbAmountField` converts human major-unit input to integer hundredths, `SwitchField` wraps accessible Reka switches, and `MarkdownContent` renders sanitized Markdown with raw HTML disabled.
+- `AdminShell`: lazy section composition grouped as Commerce, Community, Accounts, and System while preserving every `/admin/:section` URL.
+- Workflow surfaces: questionnaire CSV import and database record editing use mobile drawers/dialogs with explicit review states rather than exposing raw SQL or unreviewed mutations.
 
-Pinia stores only session-wide identity/auth state and small navigation concerns. Feature composables own remote state. Pure formatting functions stay utilities. Props flow down, events flow up, and server responses remain the only source of payment, balance, price, and entitlement truth.
+`src/api/generated.ts` is generated from `api/openapi.yaml`. `src/api/features.ts` is a narrow handwritten transport adapter for the new feature screens; it uses the same error envelope, credentials, decimal-string conventions, and canonical server routes.
 
-## Navigation and behavior
+## Routes and state behavior
 
-Unauthenticated startup posts raw `Telegram.WebApp.initData`; browser mock identity is not supported in production. Route guards send incomplete users to their persisted onboarding step, complete users to Home, and the exact administrator to admin setup when requested. Games, Questionnaire, and Emby are accessible polished “Coming soon” routes without placeholder network clients.
+The canonical member routes are `/home`, `/catalog`, `/balance`, `/activity`, `/questionnaire`, and `/emby`. `/games` redirects to `/activity`. The three expanded product areas are real data-backed routes; they no longer share a placeholder view.
 
-New users see “Hi, how are you?”, “Welcome to TX Carpool”, and “Just take you several seconds to complete” for 900ms each with a skip control. One primary action is shown per onboarding step. Joining links open through Telegram; “Already joined” calls the server's canonical check. Username feedback renders server field/conflict errors and never assumes a client preflight reserved the value.
+Activity shows daily check-in, enabled betting games, lucky draws, recent outcomes, exact stakes/fees, and resulting balance. It does not use streak pressure, near-miss animation, celebratory loops, or other manipulative gambling cues. Every financial action is disabled while pending and displays the server result.
 
-The payment sheet renders the server's exact payable amount and QR payload and uses `Telegram.WebApp.openInvoice` for Stars. It polls with cancellation/backoff while visible and closes only when the GET order response is `paid`. Redirect, invoice-close, and app-resume signals trigger a refetch, not optimistic credit.
+Coupon wallet redemption is explicit. Catalog checkout displays at most one selected eligible grant, uses the server quote, prunes add-on squads newly included by a changed combo, and disables included squads with an `Included` label. Combo and squad descriptions pass through `MarkdownContent`; admin editing provides the same renderer as a preview.
 
-Subscription revoke requires confirmation. URLs are copied/opened only through explicit user actions and are never placed in analytics or error telemetry. Stale Remnawave statistics remain visible with an inline warning while independent dashboard sections continue working.
+Questionnaire participation retrieves the same durable validation code on repeat visits. The administrator import flow progresses through upload, header/sample review, validation-column selection, match analysis, explicit settlement, and background-status polling. Empty, malformed, duplicate, unknown, failed, and completed states remain visible without losing the selected import.
 
-An incomplete administrator enters the admin dashboard by default: root and user-product routes redirect to `/admin/settings`, while admin sections remain available. The dashboard provides an explicit entry to the standard signup flow. This does not provision a Remnawave identity until signup completes; a completed administrator can use both admin and user-side interfaces.
+Emby setup collects a write-only password, parental rating, and libraries before debit and shows the exact TXB setup price. Linked accounts expose only approved password and preference controls; raw policy fields are never presented. Failed retryable provisioning shows a bounded retry action.
+
+The payment sheet selects a canonical method ID in two stages: provider, then rail. It separately renders provider URL, QR payload, receiving address, actual crypto amount, and currency when supplied. Pending orders can be cancelled; cancellation stops polling, while the UI still accepts a later authoritative `paid` projection and refreshes the balance exactly once.
+
+## Administration
+
+All TXB form fields accept major-unit decimal strings. For example, entering `150` sends `15000` minor units. Rates, percentages, and multipliers retain their documented server units.
+
+The database editor lists allowlisted application tables, cursor-paginates records, and renders typed null, boolean, numeric, text, and blob controls. A write first requests a server diff/review hash, then requires the optimistic record hash, reason, and typed `EDIT <table>` confirmation. The UI warns that direct edits bypass domain synchronization hooks.
+
+Backup downloads use an authenticated binary response. Restore requires `RESTORE <filename>`, describes the automatic rescue backup, submits a staged restore, polls its operation, and enters reconnect/reauthentication state after the server begins its graceful restart.
+
+Encrypted settings render as masked values and only permit write-only replacement. Financial and destructive actions retain visible text labels even when icons are present.
 
 ## Visual and accessibility contract
 
-The visual system is English-only premium dark: graphite canvas, layered charcoal surfaces, off-white text, and one muted mint accent. Panels use 16px radii, controls 12px, and pills only communicate semantic status. Telegram top/bottom safe-area variables are honored. Interactive targets are at least 44px, focus is visible, color contrast meets WCAG AA, and dialogs use accessible Reka UI focus/keyboard behavior.
+The visual system preserves the existing premium-dark graphite/mint identity: graphite canvas, layered charcoal surfaces, off-white text, one muted mint accent, 16 px panels, and 12 px controls. Member density remains lower than administrator density, copy is task-oriented, and motion is restrained.
 
-Motion lasts roughly 180–240ms except the specified 900ms intro cadence. `prefers-reduced-motion` disables nonessential transitions and turns staged onboarding into immediate readable state. Loading, empty, failure, stale, offline, and success states are designed rather than represented by blank panels.
+Interactive targets are at least 44 px. Keyboard focus is visible and restored to the main landmark after route changes. The skip link, semantic fieldsets, status live regions, Reka dialog focus trapping, Telegram BackButton integration, safe-area variables, and 320 px layouts are part of the acceptance contract. Faint text meets usable contrast, and `prefers-reduced-motion` disables nonessential transitions.
 
 ## Build, failure behavior, and verification
 
-`web` uses npm. `npm run generate:api` creates `src/api/generated.ts` from `../api/openapi.yaml`; generated code is not hand-edited. `npm run build` first type-checks and writes production assets to `../internal/webui/dist` for Go embedding.
+`npm run generate:api` regenerates the OpenAPI types. `npm run typecheck`, `npm run lint`, `npm test -- --run`, and `npm run build` are the local verification sequence. Production assets are written to `internal/webui/dist` for Go embedding.
 
-The API client sends same-origin credentials, parses the standard error envelope, and attaches a request ID to operator-facing diagnostics. A 401 clears session state and reauthenticates from current Telegram init data; onboarding conflict responses route to the appropriate safe surface. Pollers and requests abort on unmount, route change, or sheet close.
-
-Vitest and Vue Test Utils cover auth/onboarding guards, intro skip/reduced motion, resume at each onboarding state, server-owned catalog totals, purchase conflict/debt states, payment polling and cleanup, callback-return refetch, stale statistics, subscription confirmation, admin authorization, placeholders, and loading/empty/error accessibility. ESLint, `vue-tsc --noEmit`, dependency audit, and production build are release gates.
+Feature requests abort or stop polling on unmount, route change, sheet close, or cancellation. Standard loading, empty, stale, validation, upstream-failure, retry, cancelled, and late-settlement states are rendered rather than represented by blank panels. A 401 clears session state and restarts Telegram authentication; no plaintext password, callback capability, subscription URL, or encrypted setting is logged by the client.

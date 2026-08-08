@@ -35,8 +35,7 @@ async function confirmRevoke(): Promise<void> {
     </template>
     <template v-else-if="dashboard">
       <BalanceHero :balance="dashboard.balance" :first-name="firstName" />
-      <div class="page-toolbar">
-        <p>Your account at a glance.</p>
+      <div class="page-toolbar page-toolbar--end">
         <button class="text-button" type="button" :disabled="refreshing" @click="load({ quiet: true })">
           <PhArrowClockwise :size="17" :class="{ 'icon-spin': refreshing }" />
           Refresh

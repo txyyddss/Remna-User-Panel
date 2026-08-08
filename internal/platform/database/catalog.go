@@ -14,15 +14,17 @@ import (
 
 // ComboInput is the validated catalog representation persisted by an administrator.
 type ComboInput struct {
-	ID                string
-	Name              string
-	Description       string
-	PriceTXBMinor     int64
-	ValidityDays      int
-	TrafficLimitBytes int64
-	ResetStrategy     string
-	Active            bool
-	SquadProductIDs   []string
+	ID                      string
+	Name                    string
+	Description             string
+	PriceTXBMinor           int64
+	ValidityDays            int
+	TrafficLimitBytes       int64
+	ResetStrategy           string
+	Active                  bool
+	SquadProductIDs         []string
+	RolloverMinRemainingBPS int
+	RolloverMaxTXBMinor     int64
 }
 
 // SquadProductInput is the local merchandising data associated with a Remnawave squad.
@@ -61,13 +63,13 @@ func (s *Store) SaveCombo(ctx context.Context, input ComboInput) (model.Combo, e
 	defer func() { _ = tx.Rollback() }()
 	var result sql.Result
 	if creating {
-		result, err = tx.ExecContext(ctx, `INSERT INTO combos(id,name,description,price_txb_minor,validity_days,traffic_limit_bytes,reset_strategy,active,created_at,updated_at)
-			VALUES(?,?,?,?,?,?,?,?,?,?)`, input.ID, input.Name, input.Description, input.PriceTXBMinor, input.ValidityDays,
-			input.TrafficLimitBytes, input.ResetStrategy, boolInt(input.Active), now, now)
+		result, err = tx.ExecContext(ctx, `INSERT INTO combos(id,name,description,price_txb_minor,validity_days,traffic_limit_bytes,reset_strategy,active,rollover_min_remaining_bps,rollover_max_txb_minor,created_at,updated_at)
+			VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`, input.ID, input.Name, input.Description, input.PriceTXBMinor, input.ValidityDays,
+			input.TrafficLimitBytes, input.ResetStrategy, boolInt(input.Active), input.RolloverMinRemainingBPS, input.RolloverMaxTXBMinor, now, now)
 	} else {
 		result, err = tx.ExecContext(ctx, `UPDATE combos SET name=?,description=?,price_txb_minor=?,validity_days=?,traffic_limit_bytes=?,
-			reset_strategy=?,active=?,updated_at=? WHERE id=?`, input.Name, input.Description, input.PriceTXBMinor, input.ValidityDays,
-			input.TrafficLimitBytes, input.ResetStrategy, boolInt(input.Active), now, input.ID)
+			reset_strategy=?,active=?,rollover_min_remaining_bps=?,rollover_max_txb_minor=?,updated_at=? WHERE id=?`, input.Name, input.Description, input.PriceTXBMinor, input.ValidityDays,
+			input.TrafficLimitBytes, input.ResetStrategy, boolInt(input.Active), input.RolloverMinRemainingBPS, input.RolloverMaxTXBMinor, now, input.ID)
 	}
 	if err != nil {
 		return model.Combo{}, fmt.Errorf("save combo: %w", err)
@@ -299,14 +301,14 @@ func (s *Store) ListCombos(ctx context.Context, activeOnly bool) ([]model.Combo,
 	return combos, nil
 }
 
-const comboSelect = `SELECT id,name,description,price_txb_minor,validity_days,traffic_limit_bytes,reset_strategy,active,created_at,updated_at FROM combos`
+const comboSelect = `SELECT id,name,description,price_txb_minor,validity_days,traffic_limit_bytes,reset_strategy,active,rollover_min_remaining_bps,rollover_max_txb_minor,created_at,updated_at FROM combos`
 
 func scanCombo(row rowScanner) (model.Combo, error) {
 	var combo model.Combo
 	var active int
 	var created, updated string
 	if err := row.Scan(&combo.ID, &combo.Name, &combo.Description, &combo.PriceTXBMinor, &combo.ValidityDays,
-		&combo.TrafficLimitBytes, &combo.ResetStrategy, &active, &created, &updated); err != nil {
+		&combo.TrafficLimitBytes, &combo.ResetStrategy, &active, &combo.RolloverMinRemainingBPS, &combo.RolloverMaxTXBMinor, &created, &updated); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.Combo{}, ErrNotFound
 		}
@@ -314,6 +316,7 @@ func scanCombo(row rowScanner) (model.Combo, error) {
 	}
 	combo.Active = active == 1
 	combo.Price = model.TXBMoney(combo.PriceTXBMinor)
+	combo.RolloverMax = model.TXBMoney(combo.RolloverMaxTXBMinor)
 	combo.TrafficLimit = fmt.Sprintf("%d", combo.TrafficLimitBytes)
 	var err error
 	combo.CreatedAt, err = parseStamp(created)

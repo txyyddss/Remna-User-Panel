@@ -18,12 +18,15 @@ const {
   purchase,
   selectedComboId,
   selectedSquadIds,
+  selectedCouponGrantId,
   checkoutOpen,
   needsBalance,
   visibleCombos,
   visibleSquads,
   selectedCombo,
   selectedSquads,
+  includedSquadIds,
+  eligibleCoupons,
   load,
   selectCombo,
   toggleSquad,
@@ -75,7 +78,7 @@ const {
         </div>
       </section>
 
-      <SquadSelector :squads="visibleSquads" :selected-ids="selectedSquadIds" @toggle="toggleSquad" />
+      <SquadSelector :squads="visibleSquads" :selected-ids="selectedSquadIds" :included-ids="includedSquadIds" @toggle="toggleSquad" />
 
       <div class="catalog-action">
         <span v-if="selectedCombo">
@@ -93,6 +96,8 @@ const {
         v-model:open="checkoutOpen"
         :combo="selectedCombo"
         :squads="selectedSquads"
+        :coupons="eligibleCoupons"
+        v-model:coupon-grant-id="selectedCouponGrantId"
         :balance="balance"
         :purchasing="purchasing"
         :needs-balance="needsBalance"

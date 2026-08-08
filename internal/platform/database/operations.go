@@ -116,7 +116,7 @@ func (s *Store) EnqueueDueEntitlementTransitions(ctx context.Context, now time.T
 	}
 	defer func() { _ = tx.Rollback() }()
 	type expiredItem struct{ purchaseID, userID string }
-	rows, err := tx.QueryContext(ctx, `SELECT id,user_id FROM purchases WHERE status IN ('active','queued','activating') AND valid_until<=?`, stamp(now))
+	rows, err := tx.QueryContext(ctx, `SELECT id,user_id FROM purchases WHERE status IN ('active','activating') AND valid_until<=?`, stamp(now))
 	if err != nil {
 		return err
 	}
@@ -134,12 +134,21 @@ func (s *Store) EnqueueDueEntitlementTransitions(ctx context.Context, now time.T
 		return err
 	}
 	_ = rows.Close()
-	syncUsers := make(map[string]struct{})
 	for _, item := range expired {
-		if _, err := tx.ExecContext(ctx, `UPDATE purchases SET status='expired',updated_at=? WHERE id=? AND status IN ('active','queued','activating')`, stamp(now), item.purchaseID); err != nil {
+		result, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO purchase_rollovers(purchase_id,status,traffic_limit_bytes,minimum_remaining_bps,maximum_txb_minor,net_paid_txb_minor,created_at,updated_at)
+			SELECT id,'pending',traffic_limit_bytes,rollover_min_remaining_bps,rollover_max_txb_minor,price_txb_minor,?,? FROM purchases WHERE id=?`, stamp(now), stamp(now), item.purchaseID)
+		if err != nil {
 			return err
 		}
-		syncUsers[item.userID] = struct{}{}
+		if affected, _ := result.RowsAffected(); affected == 1 {
+			if err := insertOutboxTx(ctx, tx, "rollover_finalize", item.purchaseID, `{"purchaseId":"`+item.purchaseID+`"}`, now, now); err != nil {
+				return err
+			}
+		}
+	}
+	// Queued terms that were never activated have no upstream traffic to settle.
+	if _, err := tx.ExecContext(ctx, `UPDATE purchases SET status='expired',updated_at=? WHERE status IN ('queued','failed') AND valid_until<=?`, stamp(now), stamp(now)); err != nil {
+		return err
 	}
 	rows, err = tx.QueryContext(ctx, `SELECT id FROM purchases WHERE status='queued' AND valid_from<=? AND valid_until>?`, stamp(now), stamp(now))
 	if err != nil {
@@ -160,15 +169,18 @@ func (s *Store) EnqueueDueEntitlementTransitions(ctx context.Context, now time.T
 	}
 	_ = rows.Close()
 	for _, purchaseID := range queued {
-		if _, err := tx.ExecContext(ctx, `UPDATE purchases SET status='activating',updated_at=? WHERE id=? AND status='queued'`, stamp(now), purchaseID); err != nil {
+		result, err := tx.ExecContext(ctx, `UPDATE purchases SET status='activating',updated_at=? WHERE id=? AND status='queued'
+			AND NOT EXISTS (SELECT 1 FROM purchases prior WHERE prior.user_id=purchases.user_id AND prior.status IN ('active','activating'))`, stamp(now), purchaseID)
+		if err != nil {
+			return err
+		}
+		if affected, _ := result.RowsAffected(); affected != 1 {
+			continue
+		}
+		if err := applyPendingExtensionsToActivationTx(ctx, tx, purchaseID, now); err != nil {
 			return err
 		}
 		if err := insertOutboxTx(ctx, tx, "remna_apply_entitlement", purchaseID, `{"purchaseId":"`+purchaseID+`"}`, now, now); err != nil {
-			return err
-		}
-	}
-	for userID := range syncUsers {
-		if err := insertOutboxTx(ctx, tx, "remna_sync_user", userID, `{"userId":"`+userID+`"}`, now, now); err != nil {
 			return err
 		}
 	}
@@ -396,12 +408,29 @@ func (s *Store) DesiredEntitlement(ctx context.Context, userID string, now time.
 
 // AppendAudit writes an immutable privileged action record.
 func (s *Store) AppendAudit(ctx context.Context, actorUserID *string, action, targetType, targetID, detail string, now time.Time) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	id, err := ids.New()
 	if err != nil {
 		return err
 	}
-	_, err = s.db.ExecContext(ctx, `INSERT INTO audit_events(id,actor_user_id,action,target_type,target_id,detail,created_at) VALUES(?,?,?,?,?,?,?)`, id, actorUserID, action, targetType, targetID, detail, stamp(now))
-	return err
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin audit retention: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, `INSERT INTO audit_events(id,actor_user_id,action,target_type,target_id,detail,created_at) VALUES(?,?,?,?,?,?,?)`, id, actorUserID, action, targetType, targetID, detail, stamp(now)); err != nil {
+		return fmt.Errorf("append audit event: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM audit_events WHERE id IN (
+		SELECT id FROM audit_events ORDER BY created_at DESC,id DESC LIMIT -1 OFFSET 200
+	)`); err != nil {
+		return fmt.Errorf("prune audit events: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit audit retention: %w", err)
+	}
+	return nil
 }
 
 // ListAuditEvents returns the newest administrative actions.

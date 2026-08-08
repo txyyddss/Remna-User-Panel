@@ -18,12 +18,16 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/txyyddss/Remna-User-Panel/internal/accounts"
+	"github.com/txyyddss/Remna-User-Panel/internal/activity"
 	"github.com/txyyddss/Remna-User-Panel/internal/admin"
 	"github.com/txyyddss/Remna-User-Panel/internal/billing"
 	"github.com/txyyddss/Remna-User-Panel/internal/catalog"
+	"github.com/txyyddss/Remna-User-Panel/internal/coupons"
+	"github.com/txyyddss/Remna-User-Panel/internal/emby"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
+	"github.com/txyyddss/Remna-User-Panel/internal/questionnaires"
 )
 
 const sessionCookie = "txc_session"
@@ -38,13 +42,23 @@ type PaymentWebhookVerifier interface {
 	VerifyBEPusdt(context.Context, []byte) (billing.ProviderEvent, int, error)
 }
 
+type bepusdtUnsignedVerifier interface {
+	VerifyBEPusdtUnsigned(context.Context, []byte) (billing.ProviderEvent, int, error)
+}
+
 // Dependencies contains already-constructed application services.
 type Dependencies struct {
 	Accounts        *accounts.Service
 	Catalog         *catalog.Service
 	Billing         *billing.Service
+	Activity        *activity.Service
+	Coupons         *coupons.Service
+	Questionnaires  *questionnaires.Service
+	Emby            *emby.Service
+	EmbyPrice       emby.PriceSource
 	Admin           *admin.Service
 	Settings        *admin.SettingsService
+	DatabaseAdmin   *DatabaseAdministrationHTTP
 	Store           *database.Store
 	Telegram        *telegram.Client
 	Webhooks        PaymentWebhookVerifier
@@ -64,7 +78,7 @@ type Server struct {
 
 // New constructs all public, authenticated, admin, and webhook routes.
 func New(deps Dependencies) (*Server, error) {
-	if deps.Accounts == nil || deps.Catalog == nil || deps.Billing == nil || deps.Admin == nil || deps.Settings == nil || deps.Store == nil || deps.Telegram == nil || deps.Webhooks == nil || deps.PublicURL == nil || deps.Logger == nil || deps.AdminTelegramID <= 0 {
+	if deps.Accounts == nil || deps.Catalog == nil || deps.Billing == nil || deps.Activity == nil || deps.Coupons == nil || deps.Questionnaires == nil || deps.Emby == nil || deps.EmbyPrice == nil || deps.Admin == nil || deps.Settings == nil || deps.Store == nil || deps.Telegram == nil || deps.Webhooks == nil || deps.PublicURL == nil || deps.Logger == nil || deps.AdminTelegramID <= 0 {
 		return nil, errors.New("HTTP API dependencies are incomplete")
 	}
 	server := &Server{deps: deps}
@@ -81,6 +95,7 @@ func New(deps Dependencies) (*Server, error) {
 	router.Post("/api/v1/webhooks/telegram", server.telegramWebhook)
 	router.Get("/api/v1/webhooks/ezpay", server.ezpayWebhook)
 	router.Post("/api/v1/webhooks/bepusdt", server.bepusdtWebhook)
+	router.Post("/api/v1/webhooks/bepusdt/{capability}", server.bepusdtWebhook)
 	router.Get("/api/v1/payments/return/{provider}", server.paymentReturn)
 	router.Get("/api/v1/payments/return/{provider}/{orderID}", server.paymentReturn)
 
@@ -100,9 +115,18 @@ func New(deps Dependencies) (*Server, error) {
 		authenticated.Get("/api/v1/ledger", server.ledger)
 		authenticated.Post("/api/v1/payments/orders", server.createPaymentOrder)
 		authenticated.Get("/api/v1/payments/orders/{id}", server.paymentOrder)
+		authenticated.Post("/api/v1/payments/orders/{id}/cancel", server.cancelPaymentOrder)
+		authenticated.Get("/api/v1/emby/account", server.embyAccount)
+		authenticated.Post("/api/v1/emby/setup", server.setupEmby)
+		authenticated.Put("/api/v1/emby/preferences", server.updateEmbyPreferences)
+		authenticated.Put("/api/v1/emby/password", server.changeEmbyPassword)
+		server.mountCommunity(authenticated)
 
 		authenticated.Route("/api/v1/admin", func(adminRouter chi.Router) {
 			adminRouter.Use(server.requireAdmin)
+			if deps.DatabaseAdmin != nil {
+				deps.DatabaseAdmin.Mount(adminRouter)
+			}
 			server.mountAdmin(adminRouter)
 		})
 	})
@@ -210,7 +234,11 @@ func (s *Server) accessLog(next http.Handler) http.Handler {
 		start := time.Now()
 		wrapper := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 		next.ServeHTTP(wrapper, r)
-		s.deps.Logger.Info("HTTP request", "request_id", middleware.GetReqID(r.Context()), "method", r.Method, "path", r.URL.Path, "status", wrapper.Status(), "duration_ms", time.Since(start).Milliseconds())
+		path := r.URL.Path
+		if strings.HasPrefix(path, "/api/v1/webhooks/bepusdt/") {
+			path = "/api/v1/webhooks/bepusdt/[redacted]"
+		}
+		s.deps.Logger.Info("HTTP request", "request_id", middleware.GetReqID(r.Context()), "method", r.Method, "path", path, "status", wrapper.Status(), "duration_ms", time.Since(start).Milliseconds())
 	})
 }
 

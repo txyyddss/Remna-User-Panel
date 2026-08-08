@@ -2,12 +2,16 @@ package bepusdt
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestSignOfficialFixture(t *testing.T) {
@@ -70,6 +74,44 @@ func TestCreateTransaction(t *testing.T) {
 	}
 	if transaction.Fiat != "USD" || transaction.ActualAmount != "4.25" || transaction.Status != 1 || transaction.ExpirationTime != 1200 {
 		t.Fatalf("transaction = %#v", transaction)
+	}
+}
+
+func TestCancelTransactionUsesSignedDocumentedEndpoint(t *testing.T) {
+	t.Parallel()
+	const token = "cancel-secret"
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodPost || request.URL.Path != "/api/v1/order/cancel-transaction" {
+			t.Fatalf("request = %s %s", request.Method, request.URL.Path)
+		}
+		var body map[string]string
+		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+			t.Fatalf("decode cancellation: %v", err)
+		}
+		if body["trade_id"] != "trade-1" || body["signature"] != Sign(map[string]string{"trade_id": "trade-1"}, token) {
+			t.Fatalf("cancellation body = %#v", body)
+		}
+		_, _ = writer.Write([]byte(`{"status_code":200,"message":"success","data":{"trade_id":"trade-1"}}`))
+	}))
+	defer server.Close()
+	client, err := NewClient(server.URL, token, WithHTTPClient(server.Client()))
+	if err != nil {
+		t.Fatalf("NewClient(): %v", err)
+	}
+	if err := client.CancelTransaction(context.Background(), "trade-1"); err != nil {
+		t.Fatalf("CancelTransaction(): %v", err)
+	}
+}
+
+func TestParseUnsignedWebhookRejectsSignedShape(t *testing.T) {
+	t.Parallel()
+	valid := []byte(`{"order_id":"order-1","amount":"1.00","actual_amount":"0.25","token":"USDT","status":2,"block_transaction_id":"block-1"}`)
+	webhook, err := ParseUnsignedWebhook(valid)
+	if err != nil || webhook.OrderID != "order-1" || !webhook.Paid() {
+		t.Fatalf("ParseUnsignedWebhook() = %#v, %v", webhook, err)
+	}
+	if _, err := ParseUnsignedWebhook([]byte(`{"order_id":"order-1","amount":"1","actual_amount":"1","token":"USDT","status":2,"signature":"bad"}`)); err == nil {
+		t.Fatal("ParseUnsignedWebhook() accepted signed callback")
 	}
 }
 
@@ -185,4 +227,49 @@ func TestCreateTransactionRejectsMismatchedSuccessData(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestLiveCreateCancelDiagnostic is opt-in and creates no local user, ledger,
+// or durable credential. It exercises the supplied deployment with a unique,
+// unpaid one-dollar transaction and immediately cancels it. Failure output is
+// intentionally limited to error types/status codes so secrets and payloads do
+// not enter test logs.
+func TestLiveCreateCancelDiagnostic(t *testing.T) {
+	if os.Getenv("BEPUSDT_DIAGNOSTIC") != "1" {
+		t.Skip("set BEPUSDT_DIAGNOSTIC=1 for the explicit live diagnostic")
+	}
+	baseURL, token := os.Getenv("BEPUSDT_DIAGNOSTIC_URL"), os.Getenv("BEPUSDT_DIAGNOSTIC_TOKEN")
+	if strings.TrimSpace(baseURL) == "" || strings.TrimSpace(token) == "" {
+		t.Fatal("live diagnostic URL and token must be supplied through the process environment")
+	}
+	random := make([]byte, 12)
+	if _, err := rand.Read(random); err != nil {
+		t.Fatalf("generate diagnostic order identifier: %T", err)
+	}
+	client, err := NewClient(baseURL, token)
+	if err != nil {
+		t.Fatalf("construct diagnostic client: %T", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	transaction, err := client.CreateTransaction(ctx, CreateTransactionRequest{
+		OrderID: "txcp-diag-" + hex.EncodeToString(random), Amount: "1", Fiat: "USD", TradeType: "usdt.trc20",
+		NotifyURL: "https://example.invalid/tx-carpool/bepusdt-diagnostic", RedirectURL: "https://example.invalid/tx-carpool/bepusdt-return",
+		Name: "TX Carpool non-user diagnostic", TimeoutSeconds: 120,
+	})
+	if err != nil {
+		var apiError *APIError
+		if errors.As(err, &apiError) {
+			t.Fatalf("live create rejected (http=%d api=%d request_id_present=%t)", apiError.HTTPStatus, apiError.StatusCode, apiError.RequestID != "")
+		}
+		t.Fatalf("live create failed: %T", err)
+	}
+	if err := client.CancelTransaction(ctx, transaction.TradeID); err != nil {
+		var apiError *APIError
+		if errors.As(err, &apiError) {
+			t.Fatalf("live cancel rejected (http=%d api=%d request_id_present=%t)", apiError.HTTPStatus, apiError.StatusCode, apiError.RequestID != "")
+		}
+		t.Fatalf("live cancel failed: %T", err)
+	}
+	t.Log("live BEPusdt create/cancel diagnostic succeeded with redacted identifiers")
 }

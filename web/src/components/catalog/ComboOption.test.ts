@@ -14,6 +14,9 @@ const combo: Combo = {
   resetStrategy: 'MONTH',
   active: true,
   includedSquads: [],
+  rolloverMinRemainingBps: 0,
+  rolloverMaxTxbMinor: '0',
+  rolloverMax: { currency: 'TXB', minor: '0', display: '0.00 TXB' },
   createdAt: '2026-08-07T00:00:00Z',
   updatedAt: '2026-08-07T00:00:00Z',
 }

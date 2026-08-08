@@ -75,6 +75,51 @@ func TestAuthenticationFailures(t *testing.T) {
 	}
 }
 
+func TestAuthenticateRechecksLinkedRemnawaveUser(t *testing.T) {
+	t.Parallel()
+
+	remoteID := "remote-1"
+	profile := model.TelegramProfile{ID: 42, FirstName: "Ada"}
+	upstreamFailure := errors.New("upstream 503")
+	tests := []struct {
+		name         string
+		linked       accountsFindResponse
+		wantRecovery bool
+		wantUpstream bool
+		wantSession  bool
+	}{
+		{name: "linked user still exists", linked: accountsFindResponse{exists: true}, wantSession: true},
+		{name: "confirmed missing starts recovery", linked: accountsFindResponse{}, wantRecovery: true, wantSession: true},
+		{name: "temporary failure blocks authentication", linked: accountsFindResponse{err: upstreamFailure}, wantUpstream: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			user := model.User{ID: "user-1", TelegramID: profile.ID, OnboardingState: "complete", RemnaUserID: &remoteID}
+			repository := &accountsRepository{user: user, recoveryUser: model.User{
+				ID: user.ID, TelegramID: user.TelegramID, OnboardingState: "membership", RecoveryReason: "remnawave_user_missing",
+			}}
+			remote := &accountsRemnawave{linkedResponse: test.linked}
+			_, token, _, err := newAccountsServiceForTest(repository, &accountsValidator{profile: profile}, &accountsTelegram{}, remote, &accountsSettings{}, 99).Authenticate(context.Background(), "signed")
+			if test.wantUpstream {
+				if !errors.Is(err, ErrUpstreamUnavailable) || token != "" || repository.sessionUserID != "" {
+					t.Fatalf("Authenticate() = token %q, err %v, stored session %q", token, err, repository.sessionUserID)
+				}
+				return
+			}
+			if err != nil || (token != "") != test.wantSession {
+				t.Fatalf("Authenticate() = token %q, err %v", token, err)
+			}
+			if repository.recoveryStarted != test.wantRecovery {
+				t.Fatalf("recovery started = %t, want %t", repository.recoveryStarted, test.wantRecovery)
+			}
+			if test.wantRecovery && repository.recoveryReason != "remnawave_user_missing" {
+				t.Fatalf("recovery reason = %q", repository.recoveryReason)
+			}
+		})
+	}
+}
+
 func TestCreateInvites(t *testing.T) {
 	t.Parallel()
 
@@ -391,6 +436,9 @@ type accountsRepository struct {
 	reservedUsername      string
 	completedRemoteID     string
 	completedSubscription string
+	recoveryUser          model.User
+	recoveryStarted       bool
+	recoveryReason        string
 }
 
 func (r *accountsRepository) UpsertTelegramUser(_ context.Context, _ model.TelegramProfile, admin bool) (model.User, bool, error) {
@@ -426,6 +474,10 @@ func (r *accountsRepository) ReserveUsername(_ context.Context, _ string, userna
 func (r *accountsRepository) CompleteOnboarding(_ context.Context, _ string, remoteID, subscription string, _ time.Time) (model.User, error) {
 	r.completedRemoteID, r.completedSubscription = remoteID, subscription
 	return r.user, r.completeErr
+}
+func (r *accountsRepository) BeginRemnawaveRecovery(_ context.Context, _ string, reason string, _ time.Time) (model.User, error) {
+	r.recoveryStarted, r.recoveryReason = true, reason
+	return r.recoveryUser, nil
 }
 func (r *accountsRepository) SaveJoinInvite(_ context.Context, userID, kind string, chatID int64, link string, expires time.Time) (database.JoinInvite, error) {
 	invite := database.JoinInvite{ID: "saved-" + kind, UserID: userID, ChatKind: kind, ChatID: chatID, InviteLink: link, ExpiresAt: expires}
@@ -489,6 +541,7 @@ type accountsRemnawave struct {
 	createRemote     RemoteUser
 	createErr        error
 	created          []RemoteCreateUser
+	linkedResponse   accountsFindResponse
 }
 
 func (r *accountsRemnawave) FindUserByUsername(context.Context, string) (RemoteUser, bool, error) {
@@ -501,6 +554,9 @@ func (r *accountsRemnawave) FindUserByUsername(context.Context, string) (RemoteU
 }
 func (r *accountsRemnawave) FindUserByTelegramID(context.Context, int64) (RemoteUser, bool, error) {
 	return r.telegramResponse.remote, r.telegramResponse.exists, r.telegramResponse.err
+}
+func (r *accountsRemnawave) FindUserByID(context.Context, string) (RemoteUser, bool, error) {
+	return r.linkedResponse.remote, r.linkedResponse.exists, r.linkedResponse.err
 }
 func (r *accountsRemnawave) CreateUser(_ context.Context, input RemoteCreateUser) (RemoteUser, error) {
 	r.created = append(r.created, input)

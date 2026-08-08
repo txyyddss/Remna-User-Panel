@@ -3,6 +3,10 @@ import { reactive, watch } from 'vue'
 import { PhFloppyDisk, PhX } from '@phosphor-icons/vue'
 
 import type { SquadProduct, SquadProductWrite } from '@/api/types'
+import MarkdownContent from '@/components/common/MarkdownContent.vue'
+import SwitchField from '@/components/common/SwitchField.vue'
+import TxbAmountField from '@/components/common/TxbAmountField.vue'
+import { moneyFromTxbInput, txbInputFromMinor } from '@/utils/format'
 
 const props = defineProps<{
   squad: SquadProduct
@@ -16,24 +20,26 @@ const emit = defineEmits<{
 
 const draft = reactive({
   description: '',
-  priceTxbMinor: '',
+  priceTxb: '',
   visible: false,
 })
 
 watch(() => props.squad, (squad) => {
   Object.assign(draft, {
     description: squad.description,
-    priceTxbMinor: squad.price.minor,
+    priceTxb: txbInputFromMinor(squad.price.minor),
     visible: squad.visible,
   })
 }, { immediate: true })
 
 function submit(): void {
+  const priceTxbMinor = moneyFromTxbInput(draft.priceTxb)
+  if (!priceTxbMinor) return
   emit('save', {
     remnaSquadUuid: props.squad.remnaSquadUuid,
     name: props.squad.name,
     description: draft.description.trim(),
-    priceTxbMinor: draft.priceTxbMinor,
+    priceTxbMinor,
     visible: draft.visible,
   })
 }
@@ -54,16 +60,28 @@ function submit(): void {
       <span>Description</span>
       <textarea v-model="draft.description" rows="3" maxlength="1000" />
     </label>
-    <label>
-      <span>Price, TXB minor units</span>
-      <input v-model="draft.priceTxbMinor" required inputmode="numeric" pattern="[0-9]+" />
-    </label>
-    <label class="switch-row">
-      <input v-model="draft.visible" type="checkbox" />
-      <span>Visible in the user catalog</span>
-    </label>
+    <div class="catalog-editor__wide markdown-preview"><span>Preview</span><MarkdownContent :source="draft.description || 'Description preview'" compact /></div>
+    <TxbAmountField id="squad-price" v-model="draft.priceTxb" label="Price" min-minor="0" required />
+    <SwitchField id="squad-visible" v-model="draft.visible" label="Visible in the user catalog" help="Upstream-missing squads remain unavailable even when visible." />
     <button class="button button--primary catalog-editor__wide" type="submit" :disabled="busy">
       <PhFloppyDisk :size="18" /> {{ busy ? 'Saving' : 'Save squad' }}
     </button>
   </form>
 </template>
+
+<style scoped>
+.markdown-preview {
+  padding: 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+}
+
+.markdown-preview > span {
+  display: block;
+  margin-bottom: 0.45rem;
+  color: var(--text-faint);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+</style>

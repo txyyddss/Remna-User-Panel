@@ -9,9 +9,10 @@ TX Carpool is a Telegram Mini App for onboarding members, funding a TXB balance,
 - Server-priced combos, optional Remnawave internal squads, renewals, queued plan changes, and a transactional TXB ledger.
 - EZPay, BEPusdt, and Telegram Stars top-ups with signed, idempotent callback processing.
 - Remnawave provisioning, subscription rotation, traffic statistics, and persistent synchronization jobs.
-- Audited administration for settings, catalog, users, adjustments, entitlements, refunds, backups, and failed jobs.
-- Daily verified SQLite backups with seven-day retention.
-- Finished "Coming soon" surfaces for Games, Questionnaire, and Emby; no Emby integration is active in v1.
+- Multiple Activity games, daily check-ins, weighted lucky draws, coupon wallets, and one-active questionnaire CSV settlement.
+- Durable Emby account setup, encrypted temporary credentials, server-enforced restricted policies, and compensating refunds.
+- Audited administration for settings, catalog, users, adjustments, entitlements, refunds, schema-aware database editing, backups, staged restore, and failed jobs.
+- Daily verified SQLite backups with seven-day retention, authenticated download, and pre-open atomic restore recovery.
 
 The machine-readable HTTP contract is [api/openapi.yaml](api/openapi.yaml). Module boundaries, invariants, failure behavior, and test expectations are indexed in [docs/modules/README.md](docs/modules/README.md).
 
@@ -27,6 +28,7 @@ Go HTTP server :8080 ---- embedded Vue assets
       +---- persistent outbox and scheduler
       +---- Telegram Bot API
       +---- Remnawave API
+      +---- Emby API
       +---- EZPay / BEPusdt / Telegram Stars
 ```
 
@@ -92,7 +94,7 @@ If a host bind mount is used instead of a named volume, make the mounted directo
 
 1. Deploy the HTTPS origin with the required environment and a durable `/data` volume.
 2. Open the Mini App as `ADMIN_TELEGRAM_ID`. It opens directly to the admin dashboard; authorization is the validated Telegram session plus the exact environment ID. Select **Set up user account** there only when the admin also needs normal user-side access and a Remnawave identity.
-3. Configure the target Telegram group and channel, Remnawave endpoint and token, enabled payment providers, fixed-decimal exchange rates, and at least one combo.
+3. Configure the target Telegram group and channel, Remnawave endpoint and token, enabled payment methods and required `txb_per_*` rates, and at least one combo. Configure the encrypted Emby token, HTTPS URL, and setup price only when Emby access is offered.
 4. Import Remnawave internal squads, then add local descriptions, TXB term prices, visibility, and availability.
 5. In BotFather, select the deployed URL as the bot's Main Mini App. The service configures the Telegram webhook and chat menu button from `PUBLIC_BASE_URL`; the bot needs invite and join-request administration rights in both chats.
 6. Confirm `/readyz` reports `status: ok` before sharing the Mini App.
@@ -108,12 +110,12 @@ Payment redirects are navigation only. TXB is credited exclusively after a verif
 ## Operations and recovery
 
 - `/healthz` proves HTTP and local SQLite liveness. `/readyz` also checks required dashboard setup readiness.
-- A single context-managed scheduler handles entitlement boundaries, Remnawave outbox retries, Stars reconciliation, and daily online backups.
+- A single context-managed scheduler handles entitlement boundaries, kind-routed outbox retries, payment reconciliation, rollover finalization, questionnaire settlement, Emby provisioning, and daily online backups.
 - Verified backups are written atomically under `/data/backups`; completed files older than seven days are removed. Failed backup attempts remain visible to the admin and never publish a partial database file.
-- Restore is an operator action: stop the container, preserve the current data directory, copy a verified backup to `/data/tx-carpool.db`, retain the same `CONFIG_MASTER_KEY`, and restart. The scheduler reconciles outstanding durable jobs after startup.
+- An administrator can download a verified backup. Restore accepts only a stored snapshot, creates a rescue backup, verifies integrity and migration compatibility, stages an adjacent copy, records a marker, returns `202`, and exits gracefully. Startup performs the atomic pre-open swap, rolls back a failed swap, records the result, and requires clients to reauthenticate.
 - Logs are structured. Bot tokens, provider secrets, encrypted setting plaintext, session cookies, Telegram raw `initData`, and Remnawave subscription URLs must never appear in logs or audit details.
 
-The admin API exposes domain operations, not arbitrary database access. Ledger rows, refunds, audit events, and provider event records are append-only. There is intentionally no raw SQL endpoint or general-purpose table editor.
+The admin API exposes domain operations plus an allowlisted, schema-aware table editor; it never accepts raw SQL. Generic edits use typed values, cursor pagination, optimistic hashes, diff review, typed confirmation, automatic rescue backup, and audit records. The UI warns that direct table edits bypass domain synchronization hooks. Ordinary domain APIs keep ledger rows, refunds, audit events, and provider event records append-only; the break-glass editor can bypass those hooks only through its reviewed, rescued, and audited workflow.
 
 ## CI and release images
 

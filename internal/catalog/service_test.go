@@ -30,11 +30,11 @@ func TestCatalogAndPurchaseForwarding(t *testing.T) {
 	}
 
 	user := model.User{ID: "user-1", OnboardingState: "complete"}
-	purchase, err := service.Purchase(context.Background(), user, "combo-1", []string{"addon-1"})
+	purchase, err := service.Purchase(context.Background(), user, "combo-1", []string{"addon-1"}, "purchase-attempt-1")
 	if err != nil || purchase.ID != "purchase-1" {
 		t.Fatalf("Purchase() = (%+v, %v)", purchase, err)
 	}
-	if repository.purchaseInput.UserID != user.ID || repository.purchaseInput.ComboID != "combo-1" || len(repository.purchaseInput.AddonSquadIDs) != 1 {
+	if repository.purchaseInput.UserID != user.ID || repository.purchaseInput.ComboID != "combo-1" || len(repository.purchaseInput.AddonSquadIDs) != 1 || repository.purchaseInput.IdempotencyKey != "purchase-attempt-1" {
 		t.Fatalf("purchase input = %+v", repository.purchaseInput)
 	}
 	if !repository.purchaseAt.Equal(service.now().UTC()) {
@@ -46,15 +46,18 @@ func TestCatalogAndPurchaseForwarding(t *testing.T) {
 		t.Fatalf("Purchases() = (%+v, %v), user %q", history, err, repository.listPurchasesUserID)
 	}
 
-	_, err = service.Purchase(context.Background(), model.User{ID: user.ID, OnboardingState: "agreement"}, "combo-1", nil)
+	_, err = service.Purchase(context.Background(), model.User{ID: user.ID, OnboardingState: "agreement"}, "combo-1", nil, "purchase-attempt-2")
 	if err == nil {
 		t.Fatal("Purchase() before onboarding unexpectedly succeeded")
 	}
-	if _, err := service.Purchase(context.Background(), user, "", nil); err == nil {
+	if _, err := service.Purchase(context.Background(), user, "", nil, "purchase-attempt-3"); err == nil {
 		t.Fatal("Purchase() accepted an empty combo ID")
 	}
-	if _, err := service.Purchase(context.Background(), user, "combo-1", make([]string, 101)); err == nil {
+	if _, err := service.Purchase(context.Background(), user, "combo-1", make([]string, 101), "purchase-attempt-4"); err == nil {
 		t.Fatal("Purchase() accepted too many add-ons")
+	}
+	if _, err := service.Purchase(context.Background(), user, "combo-1", nil, ""); err == nil {
+		t.Fatal("Purchase() accepted an empty idempotency key")
 	}
 }
 

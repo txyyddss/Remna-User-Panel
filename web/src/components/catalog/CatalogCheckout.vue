@@ -11,14 +11,17 @@ import {
 import { PhArrowRight, PhCheck, PhInfo, PhWallet, PhX } from '@phosphor-icons/vue'
 import { RouterLink } from 'vue-router'
 
+import type { CouponGrant } from '@/api/features'
 import type { Combo, Money, SquadProduct } from '@/api/types'
 import { formatMoney } from '@/utils/format'
 
 const open = defineModel<boolean>('open', { required: true })
+const couponGrantId = defineModel<string | null>('couponGrantId', { required: true })
 
 defineProps<{
   combo?: Combo
   squads: readonly SquadProduct[]
+  coupons: readonly CouponGrant[]
   balance: Money
   purchasing: boolean
   needsBalance: boolean
@@ -57,6 +60,14 @@ defineEmits<{ confirm: [] }>()
               <strong>{{ formatMoney(squad.price) }}</strong>
             </div>
           </div>
+          <label v-if="coupons.length" class="checkout-coupon">
+            <span>Coupon</span>
+            <select v-model="couponGrantId" class="compact-select">
+              <option :value="null">No coupon</option>
+              <option v-for="grant in coupons" :key="grant.id" :value="grant.id">{{ grant.coupon.name }} · {{ grant.coupon.code }}</option>
+            </select>
+            <small>One eligible discount can be applied. The server confirms the final total.</small>
+          </label>
           <div class="checkout-balance">
             <span><PhWallet :size="18" /> Current balance</span>
             <strong>{{ formatMoney(balance) }}</strong>
@@ -80,3 +91,24 @@ defineEmits<{ confirm: [] }>()
     </DialogPortal>
   </DialogRoot>
 </template>
+
+<style scoped>
+.checkout-coupon {
+  display: grid;
+  gap: 0.4rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
+.checkout-coupon > span {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.checkout-coupon small {
+  color: var(--text-faint);
+  font-size: 0.66rem;
+  line-height: 1.4;
+}
+</style>

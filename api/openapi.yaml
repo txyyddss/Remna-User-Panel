@@ -23,7 +23,12 @@ tags:
   - name: Dashboard
   - name: Catalog
   - name: Billing
+  - name: Activity
+  - name: Coupons
+  - name: Questionnaires
+  - name: Emby
   - name: Admin
+  - name: Database Administration
   - name: Webhooks
   - name: Operations
 security:
@@ -63,6 +68,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/me:
     get:
       tags: [Authentication]
@@ -247,7 +254,10 @@ paths:
         Prices are loaded from the current catalog and debited atomically from the
         TXB ledger. First purchases activate immediately, same-plan renewals extend
         from the later of now or current expiry, and plan/add-on changes queue for
-        the current term boundary. No proration is performed.
+        the current term boundary. No proration is performed. Repeating the same
+        caller-owned idempotency key returns the original purchase without another debit.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -335,9 +345,11 @@ paths:
       operationId: createPaymentOrder
       summary: Create a balance top-up order
       description: |
-        The requested TXB minor units are converted using the current fixed-decimal
-        dashboard rate. Provider payable amounts are rounded upward to provider
-        precision. A successful authoritative callback credits exactly `txbMinor`.
+        The requested TXB minor units are divided by the required `txb_per_cny`,
+        `txb_per_usd`, or `txb_per_xtr` fixed-decimal rate and rounded upward at
+        provider precision. A successful authoritative callback credits exactly
+        `txbMinor`. At most 200 durable orders are retained; only terminal evidence
+        is pruned before creation.
       requestBody:
         required: true
         content:
@@ -346,7 +358,7 @@ paths:
               $ref: '#/components/schemas/PaymentOrderRequest'
       responses:
         '201':
-          description: Durable payment order, QR payload, and provider navigation target.
+          description: Durable payment order with separate URL, QR, receiving-address, and actual-crypto fields.
           content:
             application/json:
               schema:
@@ -356,7 +368,16 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '409':
-          $ref: '#/components/responses/Conflict'
+          description: Method unavailable or all 200 retained orders are currently non-prunable. Capacity conflicts are retryable.
+          headers:
+            Retry-After:
+              schema:
+                type: string
+                pattern: '^\d+$'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '422':
           $ref: '#/components/responses/Unprocessable'
         '502':
@@ -380,6 +401,791 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /api/v1/payments/orders/{id}/cancel:
+    post:
+      tags: [Billing]
+      operationId: cancelPaymentOrder
+      summary: Cancel a user-owned unpaid payment order
+      description: |
+        Stops client polling, records a local cancellation, and asks BEPusdt to
+        cancel the direct transaction when that provider supports it. A later
+        authoritative paid event may still settle and credit the order exactly once.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '200':
+          description: Current order state after the cancellation attempt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentOrder'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/v1/emby/account:
+    get:
+      tags: [Emby]
+      operationId: getEmbyAccount
+      summary: Get setup choices and the current linked Emby account
+      responses:
+        '200':
+          description: Server-priced setup state plus choices fetched from Emby.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmbyOverview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '502':
+          $ref: '#/components/responses/UpstreamFailure'
+
+  /api/v1/emby/setup:
+    post:
+      tags: [Emby]
+      operationId: setupEmbyAccount
+      summary: Debit and queue durable Emby provisioning
+      description: The password is write-only, encrypted for the provisioning saga, and erased after terminal completion.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmbySetupRequest'
+      responses:
+        '202':
+          description: Setup was debited atomically and queued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmbyAccount'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+
+  /api/v1/emby/preferences:
+    put:
+      tags: [Emby]
+      operationId: updateEmbyPreferences
+      summary: Replace the allowed Emby rating and library preferences
+      description: The server fetches the current upstream policy and overlays only approved preference fields plus mandatory restrictions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmbyPreferencesRequest'
+      responses:
+        '200':
+          description: Updated safe account projection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmbyAccount'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '502':
+          $ref: '#/components/responses/UpstreamFailure'
+
+  /api/v1/emby/password:
+    put:
+      tags: [Emby]
+      operationId: changeEmbyPassword
+      summary: Change the linked Emby password synchronously
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmbyPasswordRequest'
+      responses:
+        '204':
+          description: Password changed; plaintext is not returned or retained.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '502':
+          $ref: '#/components/responses/UpstreamFailure'
+
+  /api/v1/activity:
+    get:
+      tags: [Activity]
+      operationId: getActivityOverview
+      summary: Get daily check-in, games, draws, and recent results
+      responses:
+        '200':
+          description: Current server-configured Activity state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityOverview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/v1/activity/check-ins:
+    post:
+      tags: [Activity]
+      operationId: checkInActivity
+      summary: Claim the configured reward once per local calendar day
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: New or replayed daily check-in result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/v1/activity/bets:
+    post:
+      tags: [Activity]
+      operationId: playActivityGame
+      summary: Debit a stake and record a cryptographically selected result
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityBetRequest'
+      responses:
+        '201':
+          description: Immutable bet result with its balance projection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+
+  /api/v1/activity/draws:
+    post:
+      tags: [Activity]
+      operationId: playLuckyDraw
+      summary: Pay the configured fee and apply one weighted prize atomically
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityDrawRequest'
+      responses:
+        '201':
+          description: Immutable draw result and typed reward.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+
+  /api/v1/coupons/wallet:
+    get:
+      tags: [Coupons]
+      operationId: getCouponWallet
+      summary: List the current user's coupon grants
+      responses:
+        '200':
+          description: Coupon grants available or retained for history.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CouponGrantList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/v1/coupons/redeem:
+    post:
+      tags: [Coupons]
+      operationId: redeemCoupon
+      summary: Redeem one canonical coupon code
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CouponRedeemRequest'
+      responses:
+        '200':
+          description: Idempotent redemption, wallet grant, or immediate balance effect.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CouponRedemption'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+
+  /api/v1/questionnaires/active:
+    get:
+      tags: [Questionnaires]
+      operationId: getActiveQuestionnaire
+      summary: Get the single active questionnaire and durable validation code
+      responses:
+        '200':
+          description: Active questionnaire, or JSON null when none is active.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ActiveQuestionnaire'
+                  - type: 'null'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/v1/questionnaires/history:
+    get:
+      tags: [Questionnaires]
+      operationId: getQuestionnaireHistory
+      summary: List this user's questionnaire participations
+      responses:
+        '200':
+          description: Questionnaire and validation-code history.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionnaireHistoryList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/questionnaires/{id}/participation:
+    post:
+      tags: [Questionnaires]
+      operationId: participateInQuestionnaire
+      summary: Create or retrieve this user's durable validation code
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Existing or newly created participant record.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionnaireParticipation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/v1/admin/activity-settings:
+    get:
+      tags: [Admin, Activity]
+      operationId: getAdminActivitySettings
+      summary: Get local-day and daily-reward settings
+      responses:
+        '200':
+          description: Current Activity settings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivitySettings'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      tags: [Admin, Activity]
+      operationId: updateAdminActivitySettings
+      summary: Replace local-day and daily-reward settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivitySettingsWrite'
+      responses:
+        '200':
+          description: Updated Activity settings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivitySettings'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /api/v1/admin/activity-games:
+    get:
+      tags: [Admin, Activity]
+      operationId: listAdminActivityGames
+      summary: List all configured betting games
+      responses:
+        '200':
+          description: Enabled and disabled games.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityGameList'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Admin, Activity]
+      operationId: createAdminActivityGame
+      summary: Create a betting game
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityGameWrite'
+      responses:
+        '201':
+          description: Created game.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityGame'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /api/v1/admin/activity-games/{id}:
+    put:
+      tags: [Admin, Activity]
+      operationId: updateAdminActivityGame
+      summary: Replace a betting-game definition
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityGameWrite'
+      responses:
+        '200':
+          description: Updated game.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityGame'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /api/v1/admin/lucky-draw:
+    get:
+      tags: [Admin, Activity]
+      operationId: listAdminLuckyDraws
+      summary: List lucky draws and weighted prizes
+      responses:
+        '200':
+          description: Enabled and disabled draw definitions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LuckyDrawAdminList'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Admin, Activity]
+      operationId: createAdminLuckyDraw
+      summary: Create a lucky draw and its typed rewards
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LuckyDrawWrite'
+      responses:
+        '201':
+          description: Created draw.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LuckyDrawAdmin'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /api/v1/admin/lucky-draw/{id}:
+    put:
+      tags: [Admin, Activity]
+      operationId: updateAdminLuckyDraw
+      summary: Replace a lucky draw and its typed rewards
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LuckyDrawWrite'
+      responses:
+        '200':
+          description: Updated draw.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LuckyDrawAdmin'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /api/v1/admin/coupons:
+    get:
+      tags: [Admin, Coupons]
+      operationId: listAdminCoupons
+      summary: List active and inactive coupon definitions
+      responses:
+        '200':
+          description: Coupon definitions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CouponList'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Admin, Coupons]
+      operationId: createAdminCoupon
+      summary: Create a coupon definition
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CouponWrite'
+      responses:
+        '201':
+          description: Created coupon.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Coupon'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /api/v1/admin/coupons/{id}:
+    put:
+      tags: [Admin, Coupons]
+      operationId: updateAdminCoupon
+      summary: Partially replace a coupon definition
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CouponWrite'
+      responses:
+        '200':
+          description: Updated coupon.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Coupon'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+    delete:
+      tags: [Admin, Coupons]
+      operationId: deactivateAdminCoupon
+      summary: Deactivate a coupon without removing history
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '204':
+          description: Coupon deactivated.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/admin/questionnaires:
+    get:
+      tags: [Admin, Questionnaires]
+      operationId: listAdminQuestionnaires
+      summary: List questionnaire definitions and settlement state
+      responses:
+        '200':
+          description: Questionnaire definitions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionnaireList'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Admin, Questionnaires]
+      operationId: createAdminQuestionnaire
+      summary: Create a Google or Microsoft Forms questionnaire
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionnaireWrite'
+      responses:
+        '201':
+          description: Created questionnaire.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Questionnaire'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /api/v1/admin/questionnaires/{id}:
+    put:
+      tags: [Admin, Questionnaires]
+      operationId: updateAdminQuestionnaire
+      summary: Partially replace a questionnaire definition
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionnaireWrite'
+      responses:
+        '200':
+          description: Updated questionnaire.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Questionnaire'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+    delete:
+      tags: [Admin, Questionnaires]
+      operationId: closeAdminQuestionnaire
+      summary: Close a questionnaire without deleting participants
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '204':
+          description: Questionnaire closed.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/admin/questionnaires/{id}/activate:
+    post:
+      tags: [Admin, Questionnaires]
+      operationId: activateAdminQuestionnaire
+      summary: Make this the single active questionnaire
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '200':
+          description: Activated questionnaire.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Questionnaire'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/admin/questionnaires/{id}/imports:
+    post:
+      tags: [Admin, Questionnaires]
+      operationId: uploadQuestionnaireImport
+      summary: Upload and parse a bounded questionnaire response CSV
+      description: Accepts one UTF-8 or UTF-8-BOM file, at most 5 MiB, 50000 rows, and 100 columns. Delimiter detection supports comma, semicolon, and tab.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+        - $ref: '#/components/parameters/OptionalIdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Parsed headers and bounded sample. A generated idempotency key is returned in headers when none was supplied.
+          headers:
+            Idempotency-Key:
+              schema: { type: string }
+            Idempotency-Key-Generated:
+              schema: { type: string, enum: ['true'] }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionnaireImportPreview'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /api/v1/admin/questionnaires/{id}/imports/{importID}:
+    get:
+      tags: [Admin, Questionnaires]
+      operationId: getQuestionnaireImport
+      summary: Get import analysis or durable settlement status
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+        - $ref: '#/components/parameters/ImportID'
+      responses:
+        '200':
+          description: Current import state and optional final report.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionnaireImportState'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/admin/questionnaires/{id}/imports/{importID}/analyze:
+    post:
+      tags: [Admin, Questionnaires]
+      operationId: analyzeQuestionnaireImport
+      summary: Analyze one selected validation-code column without crediting
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+        - $ref: '#/components/parameters/ImportID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionnaireImportAnalyzeRequest'
+      responses:
+        '200':
+          description: Matched, duplicate, unknown, malformed, and already-awarded counts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionnaireImportAnalysis'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /api/v1/admin/questionnaires/{id}/imports/{importID}/settle:
+    post:
+      tags: [Admin, Questionnaires]
+      operationId: settleQuestionnaireImport
+      summary: Confirm the analyzed import and queue idempotent settlement
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+        - $ref: '#/components/parameters/ImportID'
+      responses:
+        '202':
+          description: Settlement queued; poll the import resource for its report.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionnaireImportPreview'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/admin/emby-accounts:
+    get:
+      tags: [Admin, Emby]
+      operationId: listAdminEmbyAccounts
+      summary: List safe local Emby provisioning state
+      responses:
+        '200':
+          description: Password-free Emby account projections.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmbyAccountList'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/admin/emby-accounts/{id}/retry:
+    post:
+      tags: [Admin, Emby]
+      operationId: retryAdminEmbyAccount
+      summary: Requeue a retryable Emby provisioning attempt
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '202':
+          description: Provisioning retry queued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmbyAccount'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
 
   /api/v1/admin/settings:
     get:
@@ -854,9 +1660,123 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
+  /api/v1/admin/database/tables:
+    get:
+      tags: [Admin, Database Administration]
+      operationId: listAdminDatabaseTables
+      summary: List allowlisted application tables and typed columns
+      description: Excludes `schema_migrations` and SQLite internal tables. Direct edits bypass domain synchronization hooks.
+      responses:
+        '200':
+          description: Schema-aware editable table catalog.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseTableList'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/admin/database/tables/{table}/rows:
+    get:
+      tags: [Admin, Database Administration]
+      operationId: listAdminDatabaseRows
+      summary: Page typed rows by declared primary key or rowid
+      parameters:
+        - $ref: '#/components/parameters/DatabaseTableName'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/DatabasePageLimit'
+      responses:
+        '200':
+          description: Typed rows with optimistic hashes and a continuation cursor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseRowPage'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Admin, Database Administration]
+      operationId: updateAdminDatabaseRowCompatibility
+      summary: Apply a previously reviewed update through the compatibility route
+      description: One-step writes are refused. The review hash and typed confirmation must match a live review.
+      parameters:
+        - $ref: '#/components/parameters/DatabaseTableName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatabaseCompatibilityUpdate'
+      responses:
+        '200':
+          description: Updated typed row.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseRow'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /api/v1/admin/database/mutations/review:
+    post:
+      tags: [Admin, Database Administration]
+      operationId: reviewAdminDatabaseMutation
+      summary: Review a typed database mutation and its redacted diff
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatabaseMutationReviewRequest'
+      responses:
+        '200':
+          description: Redacted before/after diff and exact typed confirmation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseMutationReview'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /api/v1/admin/database/mutations:
+    post:
+      tags: [Admin, Database Administration]
+      operationId: applyAdminDatabaseMutation
+      summary: Apply an exact reviewed mutation after a rescue backup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatabaseMutationApplyRequest'
+      responses:
+        '200':
+          description: Mutation result and automatic rescue-backup identifier.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseMutationResult'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalFailure' }
+
   /api/v1/admin/backups:
     get:
-      tags: [Admin]
+      tags: [Admin, Database Administration]
       operationId: listAdminBackups
       summary: List verified online database backups
       responses:
@@ -877,7 +1797,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     post:
-      tags: [Admin]
+      tags: [Admin, Database Administration]
       operationId: createAdminBackup
       summary: Run and verify an online SQLite backup now
       responses:
@@ -895,6 +1815,93 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/Unprocessable'
+
+  /api/v1/admin/backups/{id}/download:
+    get:
+      tags: [Admin, Database Administration]
+      operationId: downloadAdminBackup
+      summary: Download an authenticated verified SQLite snapshot
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '200':
+          description: Streamed SQLite database snapshot.
+          headers:
+            Content-Disposition:
+              required: true
+              schema:
+                type: string
+                pattern: '^attachment;'
+            Content-Length:
+              required: true
+              schema:
+                type: string
+                pattern: '^\d+$'
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                const: no-store
+            X-Content-Type-Options:
+              required: true
+              schema:
+                type: string
+                const: nosniff
+          content:
+            application/vnd.sqlite3:
+              schema:
+                type: string
+                format: binary
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/admin/backups/{id}/restore:
+    post:
+      tags: [Admin, Database Administration]
+      operationId: stageAdminRestore
+      summary: Verify and stage a stored snapshot for restart-time restore
+      description: Creates a rescue backup, verifies integrity and migration compatibility, stages beside the live database, writes a restore marker, and requests graceful restart.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestoreRequest'
+      responses:
+        '202':
+          description: Restore staged; clients should reconnect, reauthenticate, and poll status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestoreOperation'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalFailure' }
+
+  /api/v1/admin/restores/{id}:
+    get:
+      tags: [Admin, Database Administration]
+      operationId: getAdminRestoreStatus
+      summary: Get staged restore and rollback status
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '200':
+          description: Current safe restore projection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestoreOperation'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/v1/admin/jobs:
     get:
@@ -1009,7 +2016,10 @@ paths:
         - name: type
           in: query
           required: true
-          schema: { type: string }
+          description: Signed rail subtype; it must equal the immutable order snapshot.
+          schema:
+            type: string
+            enum: [alipay, wxpay, qqpay, bank, jdpay]
         - name: name
           in: query
           required: false
@@ -1080,18 +2090,55 @@ paths:
               $ref: '#/components/schemas/BEPusdtNotification'
       responses:
         '200':
-          description: Configured plain-text acknowledgement; defaults to `ok`.
+          description: Configured plain-text acknowledgement; defaults to `ok` and may be `success`.
           content:
             text/plain:
               schema:
                 type: string
-                example: ok
+                enum: [ok, success]
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '409':
           $ref: '#/components/responses/Conflict'
+
+  /api/v1/webhooks/bepusdt/{capability}:
+    post:
+      tags: [Webhooks]
+      operationId: receiveBEPusdtCapabilityWebhook
+      summary: Receive a BEPusdt notification authenticated by signature or per-order capability
+      description: |
+        Signed notifications retain normal signature validation. Unsigned v1.19
+        notifications are accepted only when the unguessable HMAC capability in
+        this callback URL matches the stored order. Capabilities are redacted from logs.
+      security: []
+      parameters:
+        - name: capability
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 32
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/BEPusdtNotification'
+                - $ref: '#/components/schemas/BEPusdtUnsignedNotification'
+      responses:
+        '200':
+          description: Configured plain-text acknowledgement, either `ok` or `success`.
+          content:
+            text/plain:
+              schema:
+                type: string
+                enum: [ok, success]
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
 
   /api/v1/payments/return/{provider}:
     get:
@@ -1201,6 +2248,39 @@ components:
       schema:
         type: string
         minLength: 1
+    ImportID:
+      name: importID
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    DatabaseTableName:
+      name: table
+      in: path
+      required: true
+      description: Exact name from the server-provided allowlisted table catalog.
+      schema:
+        type: string
+        pattern: '^[A-Za-z_][A-Za-z0-9_]*$'
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Caller-owned semantic idempotency reference.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+    OptionalIdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Caller-owned semantic idempotency reference; the server generates one when omitted.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
     SettingKey:
       name: key
       in: path
@@ -1222,6 +2302,14 @@ components:
         minimum: 1
         maximum: 100
         default: 25
+    DatabasePageLimit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
 
   responses:
     BadRequest:
@@ -1343,6 +2431,7 @@ components:
         - groupJoined
         - channelJoined
         - policyAcceptedAt
+        - recoveryReason
         - createdAt
         - updatedAt
       properties:
@@ -1372,6 +2461,10 @@ components:
         policyAcceptedAt:
           type: [string, 'null']
           format: date-time
+        recoveryReason:
+          type: string
+          enum: ['', remnawave_user_missing]
+          description: Non-empty only while confirmed linked-user recovery onboarding is required.
         createdAt:
           $ref: '#/components/schemas/Timestamp'
         updatedAt:
@@ -1459,10 +2552,15 @@ components:
     PaymentMethod:
       type: object
       additionalProperties: false
-      required: [provider, name, currency, available, note]
+      required: [id, provider, rail, name, currency, available, note]
       properties:
+        id:
+          $ref: '#/components/schemas/PaymentMethodID'
         provider:
           $ref: '#/components/schemas/PaymentProvider'
+        rail:
+          type: string
+          description: Provider-owned rail identifier; empty for Telegram Stars.
         name:
           type: string
         currency:
@@ -1536,6 +2634,9 @@ components:
         - resetStrategy
         - active
         - includedSquads
+        - rolloverMinRemainingBps
+        - rolloverMaxTxbMinor
+        - rolloverMax
         - createdAt
         - updatedAt
       properties:
@@ -1562,6 +2663,16 @@ components:
             $ref: '#/components/schemas/SquadProduct'
         active:
           type: boolean
+        rolloverMinRemainingBps:
+          type: integer
+          minimum: 0
+          maximum: 10000
+          description: Remaining traffic must be strictly greater than this basis-point threshold.
+        rolloverMaxTxbMinor:
+          type: string
+          pattern: '^\d+$'
+        rolloverMax:
+          $ref: '#/components/schemas/Money'
         createdAt:
           $ref: '#/components/schemas/Timestamp'
         updatedAt:
@@ -1591,8 +2702,9 @@ components:
         - validityDays
         - trafficLimitBytes
         - resetStrategy
-        - squadProductIds
         - active
+        - rolloverMinRemainingBps
+        - rolloverMaxTxbMinor
       properties:
         name:
           type: string
@@ -1618,8 +2730,21 @@ components:
           uniqueItems: true
           items:
             $ref: '#/components/schemas/ID'
+        includedSquadIds:
+          type: array
+          uniqueItems: true
+          description: Compatibility alias used by the combo picker for included imported squads.
+          items:
+            $ref: '#/components/schemas/ID'
         active:
           type: boolean
+        rolloverMinRemainingBps:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        rolloverMaxTxbMinor:
+          type: string
+          pattern: '^\d+$'
 
     SquadProductWrite:
       type: object
@@ -1653,6 +2778,10 @@ components:
           uniqueItems: true
           items:
             $ref: '#/components/schemas/ID'
+        couponGrantId:
+          type: string
+          minLength: 1
+          description: One explicitly selected eligible wallet grant; discounts never stack.
 
     EntitlementStatus:
       type: string
@@ -1702,12 +2831,18 @@ components:
         - comboId
         - comboName
         - price
+        - grossPrice
+        - couponDiscount
+        - couponGrantId
         - validFrom
         - validUntil
         - status
         - trafficLimitBytes
         - resetStrategy
         - squadUuids
+        - rolloverMinRemainingBps
+        - rolloverMaxTxbMinor
+        - rolloverMax
         - createdAt
         - updatedAt
       properties:
@@ -1719,6 +2854,12 @@ components:
           type: string
         price:
           $ref: '#/components/schemas/Money'
+        grossPrice:
+          $ref: '#/components/schemas/Money'
+        couponDiscount:
+          $ref: '#/components/schemas/Money'
+        couponGrantId:
+          type: [string, 'null']
         validFrom:
           $ref: '#/components/schemas/Timestamp'
         validUntil:
@@ -1735,6 +2876,15 @@ components:
           items:
             type: string
             format: uuid
+        rolloverMinRemainingBps:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        rolloverMaxTxbMinor:
+          type: string
+          pattern: '^\d+$'
+        rolloverMax:
+          $ref: '#/components/schemas/Money'
         createdAt:
           $ref: '#/components/schemas/Timestamp'
         updatedAt:
@@ -1853,6 +3003,17 @@ components:
         - purchase_cancellation
         - admin_adjustment
         - admin_entitlement_cancellation
+        - activity_bet_stake
+        - activity_bet_payout
+        - activity_daily_checkin
+        - activity_draw_fee
+        - activity_draw_reward
+        - coupon_balance_add
+        - coupon_balance_multiply
+        - questionnaire_reward
+        - emby_setup_debit
+        - emby_setup_refund
+        - rollover_credit
 
     LedgerEntry:
       type: object
@@ -1894,21 +3055,48 @@ components:
         page:
           $ref: '#/components/schemas/PageInfo'
 
+    PaymentMethodID:
+      type: string
+      enum:
+        - ezpay:alipay
+        - ezpay:wxpay
+        - ezpay:qqpay
+        - ezpay:bank
+        - ezpay:jdpay
+        - bepusdt:usdt.trc20
+        - bepusdt:usdt.erc20
+        - bepusdt:usdt.polygon
+        - bepusdt:usdt.bep20
+        - bepusdt:usdt.aptos
+        - bepusdt:usdt.solana
+        - bepusdt:usdt.xlayer
+        - bepusdt:usdt.arbitrum
+        - bepusdt:usdt.plasma
+        - bepusdt:usdt.ton
+        - stars
+
+    PaymentOrderMethodID:
+      description: Stable method ID for new orders; legacy pending snapshots may expose an empty value or provider alias.
+      oneOf:
+        - $ref: '#/components/schemas/PaymentMethodID'
+        - type: string
+          enum: ['', ezpay, bepusdt]
+
     PaymentProvider:
       type: string
       enum: [ezpay, bepusdt, stars]
 
     PaymentStatus:
       type: string
-      enum: [creating, pending, paid, expired, failed, refunded]
+      enum: [creating, pending, paid, expired, failed, refunded, cancelled]
 
     PaymentOrderRequest:
       type: object
       additionalProperties: false
-      required: [provider, txbMinor]
+      required: [methodId, txbMinor]
       properties:
-        provider:
-          $ref: '#/components/schemas/PaymentProvider'
+        methodId:
+          $ref: '#/components/schemas/PaymentMethodID'
         txbMinor:
           type: string
           pattern: '^[1-9]\d*$'
@@ -1919,16 +3107,25 @@ components:
       required:
         - id
         - provider
+        - methodId
+        - providerRail
         - status
         - txb
         - payableAmount
         - payableCurrency
         - rateSnapshot
+        - rateDirection
         - paymentUrl
         - qrPayload
+        - receivingAddress
+        - actualCryptoAmount
+        - actualCryptoCurrency
         - expiresAt
         - paidAt
         - refundedAt
+        - cancelledAt
+        - cancelReason
+        - providerCancelStatus
         - createdAt
         - updatedAt
       properties:
@@ -1936,6 +3133,10 @@ components:
           $ref: '#/components/schemas/ID'
         provider:
           $ref: '#/components/schemas/PaymentProvider'
+        methodId:
+          $ref: '#/components/schemas/PaymentOrderMethodID'
+        providerRail:
+          type: string
         status:
           $ref: '#/components/schemas/PaymentStatus'
         txb:
@@ -1948,12 +3149,25 @@ components:
           enum: [CNY, USD, XTR, USDT]
         rateSnapshot:
           type: string
-          description: Fixed-decimal rate used when the order was created.
+          pattern: '^\d+(\.\d+)?$'
+          description: Immutable fixed-decimal rate used when the order was created.
+        rateDirection:
+          type: string
+          enum: [txb_per_currency, currency_per_txb]
+          description: New orders use txb_per_currency; the legacy direction is retained only for immutable pending snapshots.
         paymentUrl:
           type: [string, 'null']
           format: uri
         qrPayload:
           type: [string, 'null']
+        receivingAddress:
+          type: [string, 'null']
+        actualCryptoAmount:
+          type: [string, 'null']
+          pattern: '^\d+(\.\d+)?$'
+        actualCryptoCurrency:
+          type: [string, 'null']
+          enum: [USDT, null]
         expiresAt:
           $ref: '#/components/schemas/Timestamp'
         paidAt:
@@ -1962,10 +3176,927 @@ components:
         refundedAt:
           type: [string, 'null']
           format: date-time
+        cancelledAt:
+          type: [string, 'null']
+          format: date-time
+        cancelReason:
+          type: string
+        providerCancelStatus:
+          type: string
+          enum: ['', unsupported, requested, cancelled, failed]
         createdAt:
           $ref: '#/components/schemas/Timestamp'
         updatedAt:
           $ref: '#/components/schemas/Timestamp'
+
+    ActivityGame:
+      type: object
+      additionalProperties: false
+      required: [id, name, icon, description, enabled, winChanceBps, minimumStakeMinor, maximumStakeMinor, returnMultiplierBps]
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        name:
+          type: string
+        icon:
+          type: string
+        description:
+          type: string
+        enabled:
+          type: boolean
+        winChanceBps:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        minimumStakeMinor:
+          type: string
+          pattern: '^[1-9]\d*$'
+        maximumStakeMinor:
+          type: string
+          pattern: '^[1-9]\d*$'
+        returnMultiplierBps:
+          type: integer
+          format: int64
+          minimum: 0
+
+    ActivityGameWrite:
+      type: object
+      additionalProperties: false
+      required: [name, icon, description, enabled, winChanceBps, minimumStakeMinor, maximumStakeMinor, returnMultiplierBps]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        icon:
+          type: string
+        description:
+          type: string
+        enabled:
+          type: boolean
+        winChanceBps:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        minimumStakeMinor:
+          type: string
+          pattern: '^[1-9]\d*$'
+        maximumStakeMinor:
+          type: string
+          pattern: '^[1-9]\d*$'
+        returnMultiplierBps:
+          type: integer
+          format: int64
+          minimum: 0
+
+    ActivityGameList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActivityGame'
+
+    LuckyDraw:
+      type: object
+      additionalProperties: false
+      required: [id, name, description, feeTxbMinor, enabled]
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        name:
+          type: string
+        description:
+          type: string
+        feeTxbMinor:
+          type: string
+          pattern: '^\d+$'
+        enabled:
+          type: boolean
+
+    NoPrizeReward:
+      type: object
+      additionalProperties: false
+      required: [kind]
+      properties:
+        kind:
+          type: string
+          const: none
+
+    TXBDeltaReward:
+      type: object
+      additionalProperties: false
+      required: [kind, txbDeltaMinor]
+      properties:
+        kind:
+          type: string
+          const: txb_delta
+        txbDeltaMinor:
+          $ref: '#/components/schemas/DecimalInteger'
+
+    CouponGrantReward:
+      type: object
+      additionalProperties: false
+      required: [kind, couponId]
+      properties:
+        kind:
+          type: string
+          const: coupon_grant
+        couponId:
+          $ref: '#/components/schemas/ID'
+
+    SubscriptionExtensionReward:
+      type: object
+      additionalProperties: false
+      required: [kind, extensionDays]
+      properties:
+        kind:
+          type: string
+          const: subscription_extension
+        extensionDays:
+          type: integer
+          minimum: 1
+
+    Reward:
+      oneOf:
+        - $ref: '#/components/schemas/NoPrizeReward'
+        - $ref: '#/components/schemas/TXBDeltaReward'
+        - $ref: '#/components/schemas/CouponGrantReward'
+        - $ref: '#/components/schemas/SubscriptionExtensionReward'
+      discriminator:
+        propertyName: kind
+        mapping:
+          none: '#/components/schemas/NoPrizeReward'
+          txb_delta: '#/components/schemas/TXBDeltaReward'
+          coupon_grant: '#/components/schemas/CouponGrantReward'
+          subscription_extension: '#/components/schemas/SubscriptionExtensionReward'
+
+    ActivityResult:
+      type: object
+      additionalProperties: false
+      required: [id, kind, outcome, message, reward, balanceAfter, createdAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        kind:
+          type: string
+          enum: [check_in, bet, draw]
+        outcome:
+          type: string
+          enum: [complete, win, loss]
+        message:
+          type: string
+        reward:
+          $ref: '#/components/schemas/Reward'
+        stakeTxbMinor:
+          type: string
+          pattern: '^[1-9]\d*$'
+        balanceAfter:
+          $ref: '#/components/schemas/Money'
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    ActivityOverview:
+      type: object
+      additionalProperties: false
+      required: [balance, timeZone, checkedInToday, dailyRewardTxbMinor, games, draws, recentResults]
+      properties:
+        balance:
+          $ref: '#/components/schemas/Money'
+        timeZone:
+          type: string
+          examples: [Asia/Shanghai]
+        checkedInToday:
+          type: boolean
+        dailyRewardTxbMinor:
+          type: string
+          pattern: '^\d+$'
+        games:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActivityGame'
+        draws:
+          type: array
+          items:
+            $ref: '#/components/schemas/LuckyDraw'
+        recentResults:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActivityResult'
+
+    ActivityBetRequest:
+      type: object
+      additionalProperties: false
+      required: [gameId, stakeTxbMinor]
+      properties:
+        gameId:
+          $ref: '#/components/schemas/ID'
+        stakeTxbMinor:
+          type: string
+          pattern: '^[1-9]\d*$'
+
+    ActivityDrawRequest:
+      type: object
+      additionalProperties: false
+      required: [drawId]
+      properties:
+        drawId:
+          $ref: '#/components/schemas/ID'
+
+    ActivitySettings:
+      type: object
+      additionalProperties: false
+      required: [timezone, dailyRewardTxb, dailyRewardTxbMinor]
+      properties:
+        timezone:
+          type: string
+        dailyRewardTxb:
+          type: string
+          pattern: '^\d+\.\d{2}$'
+        dailyRewardTxbMinor:
+          type: string
+          pattern: '^\d+$'
+
+    ActivitySettingsWrite:
+      type: object
+      additionalProperties: false
+      required: [timezone, dailyRewardTxb]
+      properties:
+        timezone:
+          type: string
+          examples: [Asia/Shanghai]
+        dailyRewardTxb:
+          type: string
+          pattern: '^\d+(\.\d{1,2})?$'
+
+    LuckyDrawPrize:
+      type: object
+      additionalProperties: false
+      required: [id, name, weight, reward]
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        name:
+          type: string
+        weight:
+          type: string
+          pattern: '^[1-9]\d*$'
+        stockRemaining:
+          type: [integer, 'null']
+          format: int64
+          minimum: 0
+        reward:
+          $ref: '#/components/schemas/Reward'
+
+    LuckyDrawPrizeWrite:
+      type: object
+      additionalProperties: false
+      required: [name, weight, reward]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          minLength: 1
+        weight:
+          type: string
+          pattern: '^[1-9]\d*$'
+        stockRemaining:
+          type: [integer, 'null']
+          format: int64
+          minimum: 0
+        reward:
+          $ref: '#/components/schemas/Reward'
+
+    LuckyDrawAdmin:
+      type: object
+      additionalProperties: false
+      required: [id, name, description, enabled, feeTxbMinor, prizes, createdAt, updatedAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        name:
+          type: string
+        description:
+          type: string
+        enabled:
+          type: boolean
+        feeTxbMinor:
+          type: string
+          pattern: '^\d+$'
+        prizes:
+          type: array
+          items:
+            $ref: '#/components/schemas/LuckyDrawPrize'
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    LuckyDrawWrite:
+      type: object
+      additionalProperties: false
+      required: [name, description, enabled, feeTxbMinor, prizes]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        enabled:
+          type: boolean
+        feeTxbMinor:
+          type: string
+          pattern: '^\d+$'
+        prizes:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/LuckyDrawPrizeWrite'
+
+    LuckyDrawAdminList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LuckyDrawAdmin'
+
+    CouponKind:
+      type: string
+      enum: [purchase_recurring, purchase_once, balance_add, balance_multiply]
+
+    CouponDiscountMode:
+      type: string
+      enum: [fixed, percent]
+
+    Coupon:
+      type: object
+      additionalProperties: false
+      required: [id, code, name, kind, valueMinorOrBps, eligibleComboIds, eligibleSquadIds, expiresAt, globalUseLimit, perUserUseLimit, active, createdAt, updatedAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        code:
+          type: string
+          pattern: '^[A-Z0-9][A-Z0-9_-]{3,63}$'
+        name:
+          type: string
+        kind:
+          $ref: '#/components/schemas/CouponKind'
+        discountMode:
+          $ref: '#/components/schemas/CouponDiscountMode'
+        valueMinorOrBps:
+          type: string
+          pattern: '^\d+$'
+        percentCapMinor:
+          type: string
+          pattern: '^\d+$'
+        eligibleComboIds:
+          type: array
+          items:
+            $ref: '#/components/schemas/ID'
+        eligibleSquadIds:
+          type: array
+          items:
+            $ref: '#/components/schemas/ID'
+        expiresAt:
+          type: [string, 'null']
+          format: date-time
+        globalUseLimit:
+          type: [integer, 'null']
+          format: int64
+          minimum: 1
+        perUserUseLimit:
+          type: [integer, 'null']
+          format: int64
+          minimum: 1
+        active:
+          type: boolean
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    CouponWrite:
+      type: object
+      additionalProperties: false
+      description: Create requests supply all definition fields; updates may supply only fields to replace.
+      properties:
+        code:
+          type: string
+          pattern: '^[A-Za-z0-9][A-Za-z0-9_-]{3,63}$'
+        name:
+          type: string
+        kind:
+          $ref: '#/components/schemas/CouponKind'
+        discountMode:
+          $ref: '#/components/schemas/CouponDiscountMode'
+        valueMinorOrBps:
+          type: string
+          pattern: '^\d+$'
+        percentCapMinor:
+          type: [string, 'null']
+          pattern: '^\d+$'
+          description: Omit to preserve the current cap, send null to clear it, or send a decimal-string TXB amount to replace it.
+        eligibleComboIds:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/ID'
+        eligibleSquadIds:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/ID'
+        expiresAt:
+          type: [string, 'null']
+          format: date-time
+        globalUseLimit:
+          type: [integer, 'null']
+          format: int64
+          minimum: 1
+        perUserUseLimit:
+          type: [integer, 'null']
+          format: int64
+          minimum: 1
+        active:
+          type: boolean
+
+    CouponList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Coupon'
+
+    CouponGrant:
+      type: object
+      additionalProperties: false
+      required: [id, coupon, sourceType, sourceId, status, useCount, createdAt, consumedAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        coupon:
+          $ref: '#/components/schemas/Coupon'
+        sourceType:
+          type: string
+        sourceId:
+          type: string
+        status:
+          type: string
+          enum: [active, consumed, expired]
+        useCount:
+          type: integer
+          format: int64
+          minimum: 0
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        consumedAt:
+          type: [string, 'null']
+          format: date-time
+
+    CouponGrantList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CouponGrant'
+
+    CouponRedeemRequest:
+      type: object
+      additionalProperties: false
+      required: [code]
+      properties:
+        code:
+          type: string
+          minLength: 4
+          maxLength: 64
+
+    CouponRedemption:
+      type: object
+      additionalProperties: false
+      required: [id, coupon, grant, balanceDeltaMinor, balanceAfterMinor, idempotencyKey, replayed, createdAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        coupon:
+          $ref: '#/components/schemas/Coupon'
+        grant:
+          oneOf:
+            - $ref: '#/components/schemas/CouponGrant'
+            - type: 'null'
+        balanceDeltaMinor:
+          $ref: '#/components/schemas/DecimalInteger'
+        balanceAfterMinor:
+          $ref: '#/components/schemas/DecimalInteger'
+        idempotencyKey:
+          type: string
+        replayed:
+          type: boolean
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    QuestionnaireStatus:
+      type: string
+      enum: [draft, active, closed, settling, settled]
+
+    Questionnaire:
+      type: object
+      additionalProperties: false
+      required: [id, title, description, formUrl, rewardTxbMinor, status, closesAt, participantCount, rewardedCount, createdAt, updatedAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        title:
+          type: string
+        description:
+          type: string
+        formUrl:
+          type: string
+          format: uri
+          pattern: '^https://'
+        rewardTxbMinor:
+          type: string
+          pattern: '^\d+$'
+        status:
+          $ref: '#/components/schemas/QuestionnaireStatus'
+        closesAt:
+          type: [string, 'null']
+          format: date-time
+        participantCount:
+          type: integer
+          minimum: 0
+        rewardedCount:
+          type: integer
+          minimum: 0
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    QuestionnaireWrite:
+      type: object
+      additionalProperties: false
+      description: Create requests supply all definition fields; updates may replace selected fields.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 4000
+        formUrl:
+          type: string
+          format: uri
+          pattern: '^https://'
+        rewardTxbMinor:
+          type: string
+          pattern: '^\d+$'
+        closesAt:
+          type: [string, 'null']
+          format: date-time
+          description: Omit to preserve the current close time, send null to clear it, or send an RFC3339 timestamp to replace it.
+        status:
+          type: string
+          enum: [draft, active, closed]
+
+    QuestionnaireList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Questionnaire'
+
+    QuestionnaireParticipation:
+      type: object
+      additionalProperties: false
+      required: [id, questionnaireId, validationCode, awardedAt, createdAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        questionnaireId:
+          $ref: '#/components/schemas/ID'
+        validationCode:
+          type: string
+          pattern: '^TXQ-[A-Z2-7]+$'
+        awardedAt:
+          type: [string, 'null']
+          format: date-time
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    ActiveQuestionnaire:
+      type: object
+      additionalProperties: false
+      required: [id, title, description, formUrl, rewardTxbMinor, closesAt, participation]
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        title:
+          type: string
+        description:
+          type: string
+        formUrl:
+          type: string
+          format: uri
+        rewardTxbMinor:
+          type: string
+          pattern: '^\d+$'
+        closesAt:
+          type: [string, 'null']
+          format: date-time
+        participation:
+          oneOf:
+            - $ref: '#/components/schemas/QuestionnaireParticipation'
+            - type: 'null'
+
+    QuestionnaireHistoryItem:
+      type: object
+      additionalProperties: false
+      required: [questionnaire, participation]
+      properties:
+        questionnaire:
+          $ref: '#/components/schemas/Questionnaire'
+        participation:
+          $ref: '#/components/schemas/QuestionnaireParticipation'
+
+    QuestionnaireHistoryList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionnaireHistoryItem'
+
+    QuestionnaireImportStatus:
+      type: string
+      enum: [preview, queued, processing, settled, failed]
+
+    QuestionnaireImportAnalysis:
+      type: object
+      additionalProperties: false
+      required: [importId, questionnaireId, codeColumn, matchedCount, duplicateCount, unknownCount, malformedCount, alreadyAwardedCount]
+      properties:
+        importId:
+          $ref: '#/components/schemas/ID'
+        questionnaireId:
+          $ref: '#/components/schemas/ID'
+        codeColumn:
+          type: string
+        matchedCount:
+          type: integer
+          minimum: 0
+        duplicateCount:
+          type: integer
+          minimum: 0
+        unknownCount:
+          type: integer
+          minimum: 0
+        malformedCount:
+          type: integer
+          minimum: 0
+        alreadyAwardedCount:
+          type: integer
+          minimum: 0
+
+    QuestionnaireImportPreview:
+      type: object
+      additionalProperties: false
+      required: [id, questionnaireId, status, delimiter, headers, sampleRows, dataRowCount, malformedRowCount, createdAt, updatedAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        questionnaireId:
+          $ref: '#/components/schemas/ID'
+        status:
+          $ref: '#/components/schemas/QuestionnaireImportStatus'
+        delimiter:
+          type: string
+          enum: [comma, semicolon, tab]
+        headers:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            type: string
+        sampleRows:
+          type: array
+          maxItems: 10
+          items:
+            type: array
+            maxItems: 100
+            items:
+              type: string
+        dataRowCount:
+          type: integer
+          minimum: 0
+          maximum: 50000
+        malformedRowCount:
+          type: integer
+          minimum: 0
+        codeColumn:
+          type: string
+        analysis:
+          $ref: '#/components/schemas/QuestionnaireImportAnalysis'
+        idempotencyKey:
+          type: string
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    QuestionnaireImportAnalyzeRequest:
+      type: object
+      additionalProperties: false
+      required: [codeColumn]
+      properties:
+        codeColumn:
+          type: string
+          minLength: 1
+
+    QuestionnaireSettlementReport:
+      type: object
+      additionalProperties: false
+      required: [importId, questionnaireId, matchedCount, duplicateCount, unknownCount, malformedCount, alreadyAwardedCount, rewardedCount, rewardTxbMinor, settledAt, replayed]
+      properties:
+        importId:
+          $ref: '#/components/schemas/ID'
+        questionnaireId:
+          $ref: '#/components/schemas/ID'
+        matchedCount:
+          type: integer
+          minimum: 0
+        duplicateCount:
+          type: integer
+          minimum: 0
+        unknownCount:
+          type: integer
+          minimum: 0
+        malformedCount:
+          type: integer
+          minimum: 0
+        alreadyAwardedCount:
+          type: integer
+          minimum: 0
+        rewardedCount:
+          type: integer
+          minimum: 0
+        rewardTxbMinor:
+          type: string
+          pattern: '^\d+$'
+        settledAt:
+          $ref: '#/components/schemas/Timestamp'
+        replayed:
+          type: boolean
+
+    QuestionnaireImportState:
+      type: object
+      additionalProperties: false
+      required: [preview]
+      properties:
+        preview:
+          $ref: '#/components/schemas/QuestionnaireImportPreview'
+        report:
+          $ref: '#/components/schemas/QuestionnaireSettlementReport'
+
+    EmbyRating:
+      type: object
+      additionalProperties: false
+      required: [name, value]
+      properties:
+        name:
+          type: string
+        value:
+          type: integer
+          format: int32
+
+    EmbyLibrary:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+
+    EmbyAccount:
+      type: object
+      additionalProperties: false
+      required: [id, username, status, maxParentalRating, libraryIds, retryable, updatedAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        username:
+          type: string
+        status:
+          type: string
+          enum: [queued, provisioning, active, failed]
+        maxParentalRating:
+          type: [integer, 'null']
+          format: int32
+        libraryIds:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        retryable:
+          type: boolean
+        errorMessage:
+          type: string
+          description: Redacted operator-safe failure detail; absent when empty.
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    EmbyOverview:
+      type: object
+      additionalProperties: false
+      required: [configured, setupPrice, ratings, libraries, account]
+      properties:
+        configured:
+          type: boolean
+        setupPrice:
+          $ref: '#/components/schemas/Money'
+        ratings:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmbyRating'
+        libraries:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmbyLibrary'
+        account:
+          oneOf:
+            - $ref: '#/components/schemas/EmbyAccount'
+            - type: 'null'
+
+    EmbyPreferencesRequest:
+      type: object
+      additionalProperties: false
+      required: [libraryIds]
+      properties:
+        maxParentalRating:
+          type: [integer, 'null']
+          format: int32
+        libraryIds:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+
+    EmbySetupRequest:
+      type: object
+      additionalProperties: false
+      required: [password, libraryIds]
+      properties:
+        password:
+          type: string
+          minLength: 1
+          writeOnly: true
+        maxParentalRating:
+          type: [integer, 'null']
+          format: int32
+        libraryIds:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+
+    EmbyPasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [password]
+      properties:
+        password:
+          type: string
+          minLength: 1
+          writeOnly: true
+
+    EmbyAccountList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmbyAccount'
 
     AdminSetting:
       type: object
@@ -1983,7 +4114,7 @@ components:
           type: boolean
         category:
           type: string
-          enum: [telegram, remnawave, rates, payments, application]
+          enum: [telegram, remnawave, rates, payments, activity, emby, application]
         updatedAt:
           $ref: '#/components/schemas/Timestamp'
 
@@ -2084,12 +4215,18 @@ components:
         - comboId
         - comboName
         - price
+        - grossPrice
+        - couponDiscount
+        - couponGrantId
         - validFrom
         - validUntil
         - status
         - trafficLimitBytes
         - resetStrategy
         - squadUuids
+        - rolloverMinRemainingBps
+        - rolloverMaxTxbMinor
+        - rolloverMax
         - createdAt
         - updatedAt
       properties:
@@ -2103,6 +4240,12 @@ components:
           type: string
         price:
           $ref: '#/components/schemas/Money'
+        grossPrice:
+          $ref: '#/components/schemas/Money'
+        couponDiscount:
+          $ref: '#/components/schemas/Money'
+        couponGrantId:
+          type: [string, 'null']
         validFrom:
           $ref: '#/components/schemas/Timestamp'
         validUntil:
@@ -2119,6 +4262,15 @@ components:
           items:
             type: string
             format: uuid
+        rolloverMinRemainingBps:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        rolloverMaxTxbMinor:
+          type: string
+          pattern: '^\d+$'
+        rolloverMax:
+          $ref: '#/components/schemas/Money'
         createdAt:
           $ref: '#/components/schemas/Timestamp'
         updatedAt:
@@ -2143,16 +4295,25 @@ components:
         - id
         - userId
         - provider
+        - methodId
+        - providerRail
         - status
         - txb
         - payableAmount
         - payableCurrency
         - rateSnapshot
+        - rateDirection
         - paymentUrl
         - qrPayload
+        - receivingAddress
+        - actualCryptoAmount
+        - actualCryptoCurrency
         - expiresAt
         - paidAt
         - refundedAt
+        - cancelledAt
+        - cancelReason
+        - providerCancelStatus
         - createdAt
         - updatedAt
       properties:
@@ -2162,6 +4323,10 @@ components:
           $ref: '#/components/schemas/ID'
         provider:
           $ref: '#/components/schemas/PaymentProvider'
+        methodId:
+          $ref: '#/components/schemas/PaymentOrderMethodID'
+        providerRail:
+          type: string
         status:
           $ref: '#/components/schemas/PaymentStatus'
         txb:
@@ -2174,11 +4339,23 @@ components:
           enum: [CNY, USD, XTR, USDT]
         rateSnapshot:
           type: string
+          pattern: '^\d+(\.\d+)?$'
+        rateDirection:
+          type: string
+          enum: [txb_per_currency, currency_per_txb]
         paymentUrl:
           type: [string, 'null']
           format: uri
         qrPayload:
           type: [string, 'null']
+        receivingAddress:
+          type: [string, 'null']
+        actualCryptoAmount:
+          type: [string, 'null']
+          pattern: '^\d+(\.\d+)?$'
+        actualCryptoCurrency:
+          type: [string, 'null']
+          enum: [USDT, null]
         expiresAt:
           $ref: '#/components/schemas/Timestamp'
         paidAt:
@@ -2187,6 +4364,14 @@ components:
         refundedAt:
           type: [string, 'null']
           format: date-time
+        cancelledAt:
+          type: [string, 'null']
+          format: date-time
+        cancelReason:
+          type: string
+        providerCancelStatus:
+          type: string
+          enum: ['', unsupported, requested, cancelled, failed]
         createdAt:
           $ref: '#/components/schemas/Timestamp'
         updatedAt:
@@ -2235,6 +4420,258 @@ components:
         page:
           $ref: '#/components/schemas/PageInfo'
 
+    DatabaseColumn:
+      type: object
+      additionalProperties: false
+      required: [name, declaredType, nullable, primaryKeyPosition, editable, sensitive]
+      properties:
+        name:
+          type: string
+        declaredType:
+          type: string
+        nullable:
+          type: boolean
+        primaryKeyPosition:
+          type: integer
+          minimum: 0
+        editable:
+          type: boolean
+        sensitive:
+          type: boolean
+
+    DatabaseTable:
+      type: object
+      additionalProperties: false
+      required: [name, columns, highRisk, supportsRowId, warning]
+      properties:
+        name:
+          type: string
+          pattern: '^[A-Za-z_][A-Za-z0-9_]*$'
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/DatabaseColumn'
+        highRisk:
+          type: boolean
+          const: true
+        supportsRowId:
+          type: boolean
+        warning:
+          type: string
+
+    DatabaseTableList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DatabaseTable'
+
+    DatabaseBlobValue:
+      type: object
+      additionalProperties: false
+      required: [blobBase64]
+      properties:
+        blobBase64:
+          type: string
+          contentEncoding: base64
+
+    DatabaseValue:
+      description: SQLite NULL, boolean, lossless text/decimal string, or base64 blob. INTEGER, REAL, and NUMERIC cells are always returned as strings.
+      oneOf:
+        - type: 'null'
+        - type: boolean
+        - type: string
+        - $ref: '#/components/schemas/DatabaseBlobValue'
+
+    DatabaseKey:
+      type: object
+      additionalProperties:
+        type: string
+      minProperties: 1
+
+    DatabaseValues:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/DatabaseValue'
+
+    DatabaseRow:
+      type: object
+      additionalProperties: false
+      required: [key, values, recordHash]
+      properties:
+        key:
+          $ref: '#/components/schemas/DatabaseKey'
+        values:
+          $ref: '#/components/schemas/DatabaseValues'
+        recordHash:
+          type: string
+          minLength: 32
+
+    DatabaseRowPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DatabaseRow'
+        nextCursor:
+          type: [string, 'null']
+
+    DatabaseMutationAction:
+      type: string
+      enum: [insert, update, delete]
+
+    DatabaseMutationReviewRequest:
+      type: object
+      additionalProperties: false
+      required: [action, table, reason]
+      properties:
+        action:
+          $ref: '#/components/schemas/DatabaseMutationAction'
+        table:
+          type: string
+          pattern: '^[A-Za-z_][A-Za-z0-9_]*$'
+        key:
+          $ref: '#/components/schemas/DatabaseKey'
+        values:
+          $ref: '#/components/schemas/DatabaseValues'
+        recordHash:
+          type: string
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+
+    DatabaseMutationApplyRequest:
+      type: object
+      additionalProperties: false
+      required: [action, table, reason, reviewHash, confirmation]
+      properties:
+        action:
+          $ref: '#/components/schemas/DatabaseMutationAction'
+        table:
+          type: string
+          pattern: '^[A-Za-z_][A-Za-z0-9_]*$'
+        key:
+          $ref: '#/components/schemas/DatabaseKey'
+        values:
+          $ref: '#/components/schemas/DatabaseValues'
+        recordHash:
+          type: string
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+        reviewHash:
+          type: string
+          minLength: 32
+        confirmation:
+          type: string
+          minLength: 1
+
+    DatabaseCompatibilityUpdate:
+      type: object
+      additionalProperties: false
+      required: [key, values, recordHash, reason, reviewHash, confirmation]
+      properties:
+        key:
+          $ref: '#/components/schemas/DatabaseKey'
+        values:
+          $ref: '#/components/schemas/DatabaseValues'
+        recordHash:
+          type: string
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+        reviewHash:
+          type: string
+          minLength: 32
+        confirmation:
+          type: string
+          minLength: 1
+
+    DatabaseMutationReview:
+      type: object
+      additionalProperties: false
+      required: [action, table, changedColumns, reviewHash, requiredConfirmation, rescueBackupRequired, warning]
+      properties:
+        action:
+          $ref: '#/components/schemas/DatabaseMutationAction'
+        table:
+          type: string
+        key:
+          $ref: '#/components/schemas/DatabaseKey'
+        before:
+          $ref: '#/components/schemas/DatabaseValues'
+        after:
+          $ref: '#/components/schemas/DatabaseValues'
+        changedColumns:
+          type: array
+          items:
+            type: string
+        reviewHash:
+          type: string
+        requiredConfirmation:
+          type: string
+          description: Exact phrase the administrator must type, such as `EDIT users`.
+        rescueBackupRequired:
+          type: boolean
+          const: true
+        warning:
+          type: string
+
+    DatabaseMutationResult:
+      type: object
+      additionalProperties: false
+      required: [deleted, rescueBackupId]
+      properties:
+        row:
+          $ref: '#/components/schemas/DatabaseRow'
+        deleted:
+          type: boolean
+        rescueBackupId:
+          $ref: '#/components/schemas/ID'
+
+    RestoreRequest:
+      type: object
+      additionalProperties: false
+      required: [reason, confirmation]
+      properties:
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+        confirmation:
+          type: string
+          minLength: 1
+          description: Exact `RESTORE <filename>` phrase shown during review.
+
+    RestoreOperation:
+      type: object
+      additionalProperties: false
+      required: [id, backupId, status, createdAt, updatedAt]
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        backupId:
+          $ref: '#/components/schemas/ID'
+        status:
+          type: string
+          enum: [staging, restarting, complete, failed]
+        error:
+          type: string
+          description: Redacted recovery guidance; present only for failed restores.
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+
     BackupRun:
       type: object
       additionalProperties: false
@@ -2245,9 +4682,8 @@ components:
         path:
           type: string
         sizeBytes:
-          type: integer
-          format: int64
-          minimum: 0
+          type: string
+          pattern: '^\d+$'
         status:
           type: string
           enum: [running, complete, failed]
@@ -2418,6 +4854,31 @@ components:
           enum: [1, 2, 3]
         signature:
           type: string
+        created_at:
+          type: string
+        expired_at:
+          type: string
+
+    BEPusdtUnsignedNotification:
+      type: object
+      additionalProperties: true
+      required: [order_id, amount, actual_amount, token, status]
+      properties:
+        trade_id:
+          type: string
+        order_id:
+          type: string
+        amount:
+          $ref: '#/components/schemas/FlexibleDecimal'
+        actual_amount:
+          $ref: '#/components/schemas/FlexibleDecimal'
+        token:
+          type: string
+        block_transaction_id:
+          type: string
+        status:
+          type: integer
+          enum: [1, 2, 3]
         created_at:
           type: string
         expired_at:

@@ -3,6 +3,7 @@ package httpapi
 import (
 	"errors"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -13,6 +14,9 @@ import (
 )
 
 func (s *Server) mountAdmin(router chi.Router) {
+	s.mountCommunityAdmin(router)
+	router.Get("/emby-accounts", s.adminEmbyAccounts)
+	router.Post("/emby-accounts/{id}/retry", s.retryAdminEmbyAccount)
 	router.Get("/settings", s.adminSettings)
 	router.Post("/settings", s.adminCreateSetting)
 	router.Put("/settings/{key}", s.adminUpdateSetting)
@@ -89,15 +93,17 @@ func (s *Server) adminCombos(w http.ResponseWriter, r *http.Request) {
 }
 
 type comboRequest struct {
-	Name              string   `json:"name"`
-	Description       string   `json:"description"`
-	PriceTXBMinor     string   `json:"priceTxbMinor"`
-	ValidityDays      int      `json:"validityDays"`
-	TrafficLimitBytes string   `json:"trafficLimitBytes"`
-	ResetStrategy     string   `json:"resetStrategy"`
-	Active            bool     `json:"active"`
-	SquadProductIDs   []string `json:"squadProductIds"`
-	IncludedSquadIDs  []string `json:"includedSquadIds"`
+	Name                    string   `json:"name"`
+	Description             string   `json:"description"`
+	PriceTXBMinor           string   `json:"priceTxbMinor"`
+	ValidityDays            int      `json:"validityDays"`
+	TrafficLimitBytes       string   `json:"trafficLimitBytes"`
+	ResetStrategy           string   `json:"resetStrategy"`
+	Active                  bool     `json:"active"`
+	SquadProductIDs         []string `json:"squadProductIds"`
+	IncludedSquadIDs        []string `json:"includedSquadIds"`
+	RolloverMinRemainingBPS int      `json:"rolloverMinRemainingBps"`
+	RolloverMaxTXBMinor     string   `json:"rolloverMaxTxbMinor"`
 }
 
 func (s *Server) adminCreateCombo(w http.ResponseWriter, r *http.Request) {
@@ -116,7 +122,11 @@ func (s *Server) adminSaveCombo(w http.ResponseWriter, r *http.Request, id strin
 	}
 	price, priceErr := strconv.ParseInt(request.PriceTXBMinor, 10, 64)
 	traffic, trafficErr := strconv.ParseInt(request.TrafficLimitBytes, 10, 64)
-	if priceErr != nil || trafficErr != nil {
+	rolloverMax, rolloverErr := strconv.ParseInt(request.RolloverMaxTXBMinor, 10, 64)
+	if request.RolloverMaxTXBMinor == "" {
+		rolloverMax, rolloverErr = 0, nil
+	}
+	if priceErr != nil || trafficErr != nil || rolloverErr != nil {
 		s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_COMBO", "Price and traffic must be decimal integer strings.")
 		return
 	}
@@ -126,7 +136,8 @@ func (s *Server) adminSaveCombo(w http.ResponseWriter, r *http.Request, id strin
 	}
 	combo, err := s.deps.Admin.SaveCombo(r.Context(), currentUser(r).ID, database.ComboInput{ID: id, Name: request.Name,
 		Description: request.Description, PriceTXBMinor: price, ValidityDays: request.ValidityDays, TrafficLimitBytes: traffic,
-		ResetStrategy: request.ResetStrategy, Active: request.Active, SquadProductIDs: squadIDs})
+		ResetStrategy: request.ResetStrategy, Active: request.Active, SquadProductIDs: squadIDs,
+		RolloverMinRemainingBPS: request.RolloverMinRemainingBPS, RolloverMaxTXBMinor: rolloverMax})
 	if err != nil {
 		s.adminFailure(w, r, err)
 		return
@@ -348,7 +359,11 @@ func (s *Server) adminBackups(w http.ResponseWriter, r *http.Request) {
 		s.adminFailure(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	response := make([]backupRunResponse, 0, len(items))
+	for _, item := range items {
+		response = append(response, mapBackupRun(item))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": response})
 }
 
 func (s *Server) adminCreateBackup(w http.ResponseWriter, r *http.Request) {
@@ -357,7 +372,22 @@ func (s *Server) adminCreateBackup(w http.ResponseWriter, r *http.Request) {
 		s.adminFailure(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, run)
+	writeJSON(w, http.StatusCreated, mapBackupRun(run))
+}
+
+type backupRunResponse struct {
+	ID          string     `json:"id"`
+	Path        string     `json:"path"`
+	SizeBytes   string     `json:"sizeBytes"`
+	Status      string     `json:"status"`
+	Error       string     `json:"error"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	CompletedAt *time.Time `json:"completedAt"`
+}
+
+func mapBackupRun(run model.BackupRun) backupRunResponse {
+	return backupRunResponse{ID: run.ID, Path: filepath.Base(run.Path), SizeBytes: strconv.FormatInt(run.SizeBytes, 10),
+		Status: run.Status, Error: run.Error, CreatedAt: run.CreatedAt, CompletedAt: run.CompletedAt}
 }
 
 func (s *Server) adminJobs(w http.ResponseWriter, r *http.Request) {

@@ -159,14 +159,28 @@ func (s *Server) bepusdtWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 	event, status, err := s.deps.Webhooks.VerifyBEPusdt(r.Context(), body)
 	if err != nil {
-		s.writeError(w, r, http.StatusUnauthorized, "INVALID_SIGNATURE", "Webhook authentication failed.")
-		return
+		capability := chiURLParam(r, "capability")
+		unsigned, ok := s.deps.Webhooks.(bepusdtUnsignedVerifier)
+		if !ok || capability == "" {
+			s.writeError(w, r, http.StatusUnauthorized, "INVALID_SIGNATURE", "Webhook authentication failed.")
+			return
+		}
+		event, status, err = unsigned.VerifyBEPusdtUnsigned(r.Context(), body)
+		if err != nil || !s.deps.Billing.VerifyBEPusdtCallbackCapability(r.Context(), event.OrderID, capability) {
+			s.writeError(w, r, http.StatusUnauthorized, "INVALID_CAPABILITY", "Webhook authentication failed.")
+			return
+		}
 	}
 	if status < 1 || status > 3 {
 		s.writeError(w, r, http.StatusBadRequest, "INVALID_PAYMENT_STATUS", "Payment status is invalid.")
 		return
 	}
 	switch status {
+	case 1:
+		if _, err := s.deps.Billing.ValidateEvent(r.Context(), event); err != nil {
+			s.writeError(w, r, http.StatusConflict, "PAYMENT_STATUS_FAILED", "Pending payment status did not match the stored order.")
+			return
+		}
 	case 2:
 		if _, _, err := s.deps.Billing.Settle(r.Context(), event); err != nil {
 			s.writeError(w, r, http.StatusConflict, "PAYMENT_SETTLEMENT_FAILED", "Payment did not match the stored order.")

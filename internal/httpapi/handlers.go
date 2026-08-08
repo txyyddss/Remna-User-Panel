@@ -26,6 +26,7 @@ type userResponse struct {
 	GroupJoined      bool       `json:"groupJoined"`
 	ChannelJoined    bool       `json:"channelJoined"`
 	PolicyAcceptedAt *time.Time `json:"policyAcceptedAt"`
+	RecoveryReason   string     `json:"recoveryReason"`
 	CreatedAt        time.Time  `json:"createdAt"`
 	UpdatedAt        time.Time  `json:"updatedAt"`
 }
@@ -35,7 +36,7 @@ func mapUser(user model.User) userResponse {
 		ID: user.ID, TelegramID: strconv.FormatInt(user.TelegramID, 10), FirstName: user.TelegramFirstName,
 		LastName: user.TelegramLastName, TelegramUsername: user.TelegramUsername, Username: user.Username, Role: user.Role,
 		OnboardingState: user.OnboardingState, GroupJoined: user.GroupJoined, ChannelJoined: user.ChannelJoined,
-		PolicyAcceptedAt: user.PolicyAcceptedAt, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt,
+		PolicyAcceptedAt: user.PolicyAcceptedAt, RecoveryReason: user.RecoveryReason, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt,
 	}
 }
 
@@ -54,6 +55,10 @@ func (s *Server) authenticate(w http.ResponseWriter, r *http.Request) {
 	}
 	user, token, expiresAt, err := s.deps.Accounts.Authenticate(r.Context(), request.InitData)
 	if err != nil {
+		if errors.Is(err, accounts.ErrUpstreamUnavailable) {
+			s.writeError(w, r, http.StatusServiceUnavailable, "REMNAWAVE_UNAVAILABLE", "Account verification is temporarily unavailable. Please retry.")
+			return
+		}
 		s.writeError(w, r, http.StatusUnauthorized, "INVALID_TELEGRAM_DATA", "Telegram authentication could not be verified.")
 		return
 	}
@@ -183,12 +188,13 @@ func (s *Server) purchase(w http.ResponseWriter, r *http.Request) {
 	var request struct {
 		ComboID              string   `json:"comboId"`
 		AddonSquadProductIDs []string `json:"addonSquadProductIds"`
+		CouponGrantID        string   `json:"couponGrantId"`
 	}
 	if err := decodeJSON(w, r, &request); err != nil || request.ComboID == "" {
 		s.writeError(w, r, http.StatusBadRequest, "INVALID_REQUEST", "Select a combo to continue.")
 		return
 	}
-	purchase, err := s.deps.Catalog.Purchase(r.Context(), user, request.ComboID, request.AddonSquadProductIDs)
+	purchase, err := s.deps.Catalog.PurchaseWithCoupon(r.Context(), user, request.ComboID, request.AddonSquadProductIDs, request.CouponGrantID)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrInsufficientBalance):
@@ -221,31 +227,18 @@ func (s *Server) revokeSubscription(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"subscriptionUrl": url})
 }
 
-type paymentMethod struct {
-	Provider  string `json:"provider"`
-	Name      string `json:"name"`
-	Currency  string `json:"currency"`
-	Available bool   `json:"available"`
-	Note      string `json:"note"`
-}
-
 func (s *Server) balance(w http.ResponseWriter, r *http.Request) {
 	balance, err := s.deps.Store.Balance(r.Context(), currentUser(r).ID)
 	if err != nil {
 		s.writeError(w, r, http.StatusInternalServerError, "BALANCE_UNAVAILABLE", "Balance could not be loaded.")
 		return
 	}
-	methods := []paymentMethod{
-		{Provider: "ezpay", Name: "EZPay", Currency: "CNY", Available: s.providerEnabled(r, "ezpay"), Note: "Hosted checkout"},
-		{Provider: "bepusdt", Name: "USDT", Currency: "USDT", Available: s.providerEnabled(r, "bepusdt"), Note: "Exact address and amount"},
-		{Provider: "stars", Name: "Telegram Stars", Currency: "XTR", Available: s.providerEnabled(r, "stars"), Note: "Telegram invoice"},
+	methods, err := s.deps.Billing.Methods(r.Context())
+	if err != nil {
+		s.writeError(w, r, http.StatusInternalServerError, "PAYMENT_METHODS_UNAVAILABLE", "Payment methods could not be loaded.")
+		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"balance": balance, "paymentMethods": methods})
-}
-
-func (s *Server) providerEnabled(r *http.Request, provider string) bool {
-	value, err := s.deps.Settings.Optional(r.Context(), "billing."+provider+".enabled")
-	return err == nil && value == "true"
 }
 
 func (s *Server) ledger(w http.ResponseWriter, r *http.Request) {
@@ -263,7 +256,7 @@ func (s *Server) createPaymentOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var request struct {
-		Provider string `json:"provider"`
+		MethodID string `json:"methodId"`
 		TXBMinor string `json:"txbMinor"`
 	}
 	if err := decodeJSON(w, r, &request); err != nil {
@@ -271,22 +264,41 @@ func (s *Server) createPaymentOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	amount, err := strconv.ParseInt(request.TXBMinor, 10, 64)
-	if err != nil {
+	if err != nil || !billing.CanonicalMethodID(request.MethodID) {
 		s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_AMOUNT", "TXB amount must be integer hundredths.")
 		return
 	}
-	order, err := s.deps.Billing.CreateOrder(r.Context(), user, strings.ToLower(request.Provider), amount)
+	order, err := s.deps.Billing.CreateOrder(r.Context(), user, strings.ToLower(request.MethodID), amount)
 	if err != nil {
 		if errors.Is(err, billing.ErrInvalidOrder) {
 			s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_PAYMENT_ORDER", "The provider or TXB amount is invalid.")
 		} else if errors.Is(err, billing.ErrProviderDisabled) {
 			s.writeError(w, r, http.StatusConflict, "PROVIDER_DISABLED", "This payment provider is not available.")
+		} else if errors.Is(err, database.ErrPaymentCapacity) {
+			w.Header().Set("Retry-After", "30")
+			s.writeError(w, r, http.StatusConflict, "PAYMENT_CAPACITY", "Too many unsettled payment orders. Retry after an existing order settles.")
 		} else {
 			s.writeError(w, r, http.StatusBadGateway, "PAYMENT_CREATE_FAILED", "The payment order could not be created.")
 		}
 		return
 	}
 	writeJSON(w, http.StatusCreated, order)
+}
+
+func (s *Server) cancelPaymentOrder(w http.ResponseWriter, r *http.Request) {
+	order, err := s.deps.Billing.Cancel(r.Context(), chiURLParam(r, "id"), currentUser(r).ID)
+	if err != nil {
+		switch {
+		case errors.Is(err, database.ErrNotFound):
+			s.writeError(w, r, http.StatusNotFound, "PAYMENT_NOT_FOUND", "Payment order not found.")
+		case errors.Is(err, database.ErrConflict):
+			s.writeError(w, r, http.StatusConflict, "PAYMENT_NOT_CANCELLABLE", "This payment can no longer be cancelled.")
+		default:
+			s.writeError(w, r, http.StatusInternalServerError, "PAYMENT_CANCEL_FAILED", "The payment could not be cancelled.")
+		}
+		return
+	}
+	writeJSON(w, http.StatusOK, order)
 }
 
 func (s *Server) paymentOrder(w http.ResponseWriter, r *http.Request) {

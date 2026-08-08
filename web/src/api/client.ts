@@ -7,19 +7,17 @@ import type {
   LedgerEntry,
   MembershipState,
   Paginated,
-  PaymentMethod,
   PaymentOrder,
-  PaymentProvider,
   Purchase,
   Session,
   SquadProduct,
   SquadProductWrite,
 } from './types'
 import type { components } from './generated'
+import type { FeaturePaymentMethod, FeaturePaymentOrder } from './features'
 
 type TelegramAuthRequest = components['schemas']['TelegramAuthRequest']
 type PurchaseRequest = components['schemas']['PurchaseRequest']
-type PaymentOrderRequest = components['schemas']['PaymentOrderRequest']
 type BalanceAdjustmentRequest = components['schemas']['BalanceAdjustmentRequest']
 type ReasonRequest = components['schemas']['ReasonRequest']
 type RefundRequest = components['schemas']['RefundRequest']
@@ -123,21 +121,23 @@ export const api = {
   }),
   getDashboard: () => request<Dashboard>('/api/v1/dashboard'),
   getCatalog: () => request<Catalog>('/api/v1/catalog'),
-  createPurchase: (comboId: string, squadProductIds: string[]) => request<Purchase>('/api/v1/purchases', {
+  createPurchase: (comboId: string, squadProductIds: string[], couponGrantId: string | undefined, idempotencyKey: string) => request<Purchase>('/api/v1/purchases', {
     method: 'POST',
-    body: { comboId, addonSquadProductIds: squadProductIds } satisfies PurchaseRequest,
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: { comboId, addonSquadProductIds: squadProductIds, couponGrantId } as PurchaseRequest & { couponGrantId?: string },
   }),
   getPurchases: () => request<Paginated<Purchase>>('/api/v1/purchases'),
   revokeSubscription: () => request<{ subscriptionUrl: string }>('/api/v1/subscription/revoke', {
     method: 'POST',
   }),
-  getBalance: () => request<{ balance: Dashboard['balance']; paymentMethods: PaymentMethod[] }>('/api/v1/balance'),
+  getBalance: () => request<{ balance: Dashboard['balance']; paymentMethods: FeaturePaymentMethod[] }>('/api/v1/balance'),
   getLedger: (cursor?: string) => request<Paginated<LedgerEntry>>('/api/v1/ledger', { query: { cursor } }),
-  createPaymentOrder: (provider: PaymentProvider, txbMinorUnits: string) => request<PaymentOrder>('/api/v1/payments/orders', {
+  createPaymentOrder: (methodId: string, txbMinorUnits: string) => request<FeaturePaymentOrder>('/api/v1/payments/orders', {
     method: 'POST',
-    body: { provider, txbMinor: txbMinorUnits } satisfies PaymentOrderRequest,
+    body: { methodId, txbMinor: txbMinorUnits },
   }),
-  getPaymentOrder: (id: string) => request<PaymentOrder>(`/api/v1/payments/orders/${encodeURIComponent(id)}`),
+  getPaymentOrder: (id: string) => request<FeaturePaymentOrder>(`/api/v1/payments/orders/${encodeURIComponent(id)}`),
+  cancelPaymentOrder: (id: string) => request<FeaturePaymentOrder>(`/api/v1/payments/orders/${encodeURIComponent(id)}/cancel`, { method: 'POST' }),
   getAdminResource: <T>(resource: AdminResource, query?: Record<string, QueryValue>) =>
     request<T>(`/api/v1/admin/${resource}`, { query }),
   updateAdminSetting: <T>(key: string, value: string) =>

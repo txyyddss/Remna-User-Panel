@@ -1,11 +1,12 @@
 import { onMounted, readonly, shallowRef } from 'vue'
 
 import { api } from '@/api/client'
-import type { LedgerEntry, Money, PaymentMethod } from '@/api/types'
+import type { FeaturePaymentMethod } from '@/api/features'
+import type { LedgerEntry, Money } from '@/api/types'
 
 export function useBalance() {
   const balance = shallowRef<Money | null>(null)
-  const methods = shallowRef<PaymentMethod[]>([])
+  const methods = shallowRef<FeaturePaymentMethod[]>([])
   const ledger = shallowRef<LedgerEntry[]>([])
   const loading = shallowRef(true)
   const error = shallowRef<string | null>(null)

@@ -20,6 +20,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/remnawave"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/rollover"
 )
 
 type initDataAdapter struct{ verifier *telegram.InitDataVerifier }
@@ -96,6 +97,21 @@ func (a remnaAdapter) FindUserByTelegramID(ctx context.Context, telegramID int64
 	}
 	if user == nil {
 		return accounts.RemoteUser{}, false, nil
+	}
+	return mapRemoteUser(*user), true, nil
+}
+
+func (a remnaAdapter) FindUserByID(ctx context.Context, remoteID string) (accounts.RemoteUser, bool, error) {
+	client, userID, err := a.clientAndID(ctx, remoteID)
+	if err != nil {
+		return accounts.RemoteUser{}, false, err
+	}
+	user, err := client.GetUserByID(ctx, userID)
+	if remnawave.IsNotFound(err) {
+		return accounts.RemoteUser{}, false, nil
+	}
+	if err != nil {
+		return accounts.RemoteUser{}, false, err
 	}
 	return mapRemoteUser(*user), true, nil
 }
@@ -199,6 +215,34 @@ func (a remnaAdapter) RemoveEntitlement(ctx context.Context, remoteID string) er
 	return err
 }
 
+func (a remnaAdapter) QuiesceForRollover(ctx context.Context, remoteID string) error {
+	client, userID, err := a.clientAndID(ctx, remoteID)
+	if err != nil {
+		return err
+	}
+	status := remnawave.UserStatusDisabled
+	_, err = client.UpdateUser(ctx, remnawave.UpdateUserRequest{ID: userID, Status: &status})
+	if remnawave.IsNotFound(err) {
+		return rollover.ErrRemoteUserMissing
+	}
+	return err
+}
+
+func (a remnaAdapter) TrafficForRollover(ctx context.Context, remoteID string) (int64, int64, error) {
+	client, userID, err := a.clientAndID(ctx, remoteID)
+	if err != nil {
+		return 0, 0, err
+	}
+	user, err := client.GetUserByID(ctx, userID)
+	if remnawave.IsNotFound(err) {
+		return 0, 0, rollover.ErrRemoteUserMissing
+	}
+	if err != nil {
+		return 0, 0, err
+	}
+	return user.TrafficLimitBytes, user.UserTraffic.UsedTrafficBytes, nil
+}
+
 func (a remnaAdapter) ListInternalSquads(ctx context.Context) ([]admin.UpstreamSquad, error) {
 	client, err := a.client(ctx)
 	if err != nil {
@@ -230,6 +274,7 @@ func (a remnaAdapter) clientAndID(ctx context.Context, remoteID string) (*remnaw
 var _ accounts.RemnawaveClient = remnaAdapter{}
 var _ catalog.RemnawaveClient = remnaAdapter{}
 var _ entitlements.RemnawaveClient = remnaAdapter{}
+var _ rollover.Remote = remnaAdapter{}
 var _ admin.SquadImporter = remnaAdapter{}
 
 type paymentAdapter struct {
@@ -272,16 +317,12 @@ func (a paymentAdapter) createEZPay(ctx context.Context, request billing.Provide
 	if err != nil {
 		return billing.ProviderCheckout{}, err
 	}
-	paymentType, _ := a.settings.Optional(ctx, "billing.ezpay.payment_type")
-	if paymentType == "" {
-		paymentType = string(ezpay.PaymentAlipay)
-	}
-	checkoutURL, err := client.CheckoutURL(ezpay.CheckoutRequest{Type: ezpay.PaymentType(paymentType), NotifyURL: request.NotifyURL,
+	checkoutURL, err := client.CheckoutURL(ezpay.CheckoutRequest{Type: ezpay.PaymentType(request.Rail), NotifyURL: request.NotifyURL,
 		ReturnURL: request.ReturnURL, OutTradeNo: request.OrderID, Name: "TXB balance", Money: request.PayableAmount})
 	if err != nil {
 		return billing.ProviderCheckout{}, err
 	}
-	return billing.ProviderCheckout{PaymentURL: &checkoutURL, QRPayload: &checkoutURL, PayableAmount: request.PayableAmount,
+	return billing.ProviderCheckout{PaymentURL: &checkoutURL, PayableAmount: request.PayableAmount,
 		PayableCurrency: "CNY", ProviderPayload: `{}`, ExpiresAt: time.Now().UTC().Add(30 * time.Minute)}, nil
 }
 
@@ -290,20 +331,29 @@ func (a paymentAdapter) createBEPusdt(ctx context.Context, request billing.Provi
 	if err != nil {
 		return billing.ProviderCheckout{}, err
 	}
-	tradeType, _ := a.settings.Optional(ctx, "billing.bepusdt.trade_type")
-	if tradeType == "" {
-		tradeType = "usdt.trc20"
-	}
 	transaction, err := client.CreateTransaction(ctx, bepusdt.CreateTransactionRequest{OrderID: request.OrderID, Amount: request.PayableAmount,
-		Fiat: "USD", TradeType: tradeType, Name: "TXB balance", NotifyURL: request.NotifyURL, RedirectURL: request.RedirectURL, TimeoutSeconds: 1200})
+		Fiat: "USD", TradeType: request.Rail, Name: "TXB balance", NotifyURL: request.NotifyURL, RedirectURL: request.RedirectURL, TimeoutSeconds: 1200})
 	if err != nil {
 		return billing.ProviderCheckout{}, err
 	}
 	payload, _ := json.Marshal(transaction)
 	tradeID, paymentURL, address := transaction.TradeID, transaction.PaymentURL, transaction.Token
+	actualAmount, actualCurrency := transaction.ActualAmount, "USDT"
 	expiresAt := transaction.ExpiresAt(time.Now().UTC())
-	return billing.ProviderCheckout{TradeID: &tradeID, PaymentURL: &paymentURL, QRPayload: &address, PayableAmount: transaction.ActualAmount,
-		PayableCurrency: "USDT", ProviderPayload: string(payload), ExpiresAt: expiresAt}, nil
+	return billing.ProviderCheckout{TradeID: &tradeID, PaymentURL: &paymentURL, ReceivingAddress: &address,
+		ActualCryptoAmount: &actualAmount, ActualCryptoCurrency: &actualCurrency, PayableAmount: request.PayableAmount,
+		PayableCurrency: "USD", ProviderPayload: string(payload), ExpiresAt: expiresAt}, nil
+}
+
+func (a paymentAdapter) Cancel(ctx context.Context, order model.PaymentOrder) error {
+	if order.Provider != "bepusdt" || order.ProviderTradeID == nil || *order.ProviderTradeID == "" {
+		return nil
+	}
+	client, err := a.bepusdtClient(ctx)
+	if err != nil {
+		return err
+	}
+	return client.CancelTransaction(ctx, *order.ProviderTradeID)
 }
 
 func (a paymentAdapter) createStars(ctx context.Context, request billing.ProviderCreateRequest) (billing.ProviderCheckout, error) {
@@ -316,7 +366,7 @@ func (a paymentAdapter) createStars(ctx context.Context, request billing.Provide
 	if err != nil {
 		return billing.ProviderCheckout{}, err
 	}
-	return billing.ProviderCheckout{PaymentURL: &link, QRPayload: &link, PayableAmount: request.PayableAmount,
+	return billing.ProviderCheckout{PaymentURL: &link, PayableAmount: request.PayableAmount,
 		PayableCurrency: "XTR", ProviderPayload: `{}`, ExpiresAt: time.Now().UTC().Add(30 * time.Minute)}, nil
 }
 
@@ -358,7 +408,7 @@ func (a paymentAdapter) VerifyEZPay(ctx context.Context, values url.Values) (bil
 		return billing.ProviderEvent{}, false, err
 	}
 	digest := sha256.Sum256([]byte(values.Encode()))
-	event := billing.ProviderEvent{Provider: "ezpay", OrderID: notification.OutTradeNo, TradeID: notification.TradeNo,
+	event := billing.ProviderEvent{Provider: "ezpay", Rail: string(notification.Type), OrderID: notification.OutTradeNo, TradeID: notification.TradeNo,
 		PayableAmount: notification.Money, PayableCurrency: "CNY", DedupeKey: notification.TradeNo, PayloadHash: hex.EncodeToString(digest[:])}
 	return event, notification.Successful(), nil
 }
@@ -376,6 +426,22 @@ func (a paymentAdapter) VerifyBEPusdt(ctx context.Context, body []byte) (billing
 	dedupe := webhook.BlockTransactionID
 	if dedupe == "" {
 		dedupe = webhook.TradeID + ":" + strconv.Itoa(webhook.Status)
+	}
+	event := billing.ProviderEvent{Provider: "bepusdt", OrderID: webhook.OrderID, TradeID: webhook.TradeID,
+		ChargeID: webhook.BlockTransactionID, PayableAmount: webhook.ActualAmount, PayableCurrency: "USDT",
+		FiatAmount: webhook.Amount, FiatCurrency: "USD", Recipient: webhook.Token, DedupeKey: dedupe, PayloadHash: hex.EncodeToString(digest[:])}
+	return event, webhook.Status, nil
+}
+
+func (a paymentAdapter) VerifyBEPusdtUnsigned(_ context.Context, body []byte) (billing.ProviderEvent, int, error) {
+	webhook, err := bepusdt.ParseUnsignedWebhook(body)
+	if err != nil {
+		return billing.ProviderEvent{}, 0, err
+	}
+	digest := sha256.Sum256(body)
+	dedupe := webhook.BlockTransactionID
+	if dedupe == "" {
+		dedupe = webhook.OrderID + ":" + strconv.Itoa(webhook.Status) + ":" + hex.EncodeToString(digest[:8])
 	}
 	event := billing.ProviderEvent{Provider: "bepusdt", OrderID: webhook.OrderID, TradeID: webhook.TradeID,
 		ChargeID: webhook.BlockTransactionID, PayableAmount: webhook.ActualAmount, PayableCurrency: "USDT",

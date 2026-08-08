@@ -22,6 +22,7 @@ function session(onboardingState: Session['user']['onboardingState']): Session {
       groupJoined: false,
       channelJoined: false,
       policyAcceptedAt: null,
+      recoveryReason: '',
       createdAt: '2026-08-08T00:00:00Z',
       updatedAt: '2026-08-08T00:00:00Z',
     },

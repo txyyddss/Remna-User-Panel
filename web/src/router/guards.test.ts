@@ -24,6 +24,7 @@ function user(overrides: Partial<User> = {}): User {
     createdAt: '2026-08-07T00:00:00Z',
     updatedAt: '2026-08-07T00:00:00Z',
     ...overrides,
+    recoveryReason: overrides.recoveryReason ?? '',
   }
 }
 

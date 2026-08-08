@@ -5,14 +5,15 @@ import { PhMagnifyingGlass, PhMinus, PhPlus, PhUserFocus } from '@phosphor-icons
 import type { AdminUserSummary } from '@/api/types'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import TxbAmountField from '@/components/common/TxbAmountField.vue'
 import { useAdminSection } from '@/composables/useAdminSection'
-import { formatDate, formatMoney } from '@/utils/format'
+import { formatDate, formatMoney, moneyFromTxbInput } from '@/utils/format'
 import AdminSectionState from './AdminSectionState.vue'
 
 const { items, loading, busy, error, load, perform } = useAdminSection<AdminUserSummary>('users')
 const query = shallowRef('')
 const selected = shallowRef<AdminUserSummary | null>(null)
-const form = reactive({ amountMinor: '', reason: '' })
+const form = reactive({ amountTxb: '', reason: '' })
 const success = shallowRef<string | null>(null)
 
 const filteredUsers = computed(() => {
@@ -28,13 +29,14 @@ function displayName(summary: AdminUserSummary): string {
 }
 
 async function adjust(sign: 1 | -1): Promise<void> {
-  if (!selected.value || !/^\d+$/.test(form.amountMinor) || form.reason.length < 4) return
-  const amount = sign === -1 ? `-${form.amountMinor}` : form.amountMinor
+  const amountMinor = moneyFromTxbInput(form.amountTxb)
+  if (!selected.value || !amountMinor || form.reason.length < 4) return
+  const amount = sign === -1 ? `-${amountMinor}` : amountMinor
   const ok = await perform(() => import('@/api/client').then(({ api }) => api.adjustBalance(selected.value!.user.id, amount, form.reason)))
   if (ok) {
     success.value = `Balance adjusted for ${displayName(selected.value)}.`
     selected.value = null
-    form.amountMinor = ''
+    form.amountTxb = ''
     form.reason = ''
   }
 }
@@ -63,8 +65,8 @@ async function adjust(sign: 1 | -1): Promise<void> {
     </AdminSectionState>
 
     <form v-if="selected" class="admin-drawer" @submit.prevent>
-      <div class="admin-drawer__heading"><div><h3>Adjust {{ displayName(selected) }}</h3><p>Enter TXB minor units. For example, 1250 is 12.50 TXB.</p></div><button class="text-button" type="button" @click="selected = null">Close</button></div>
-      <label><span>Amount, minor units</span><input v-model="form.amountMinor" required inputmode="numeric" pattern="[0-9]+" /></label>
+      <div class="admin-drawer__heading"><div><h3>Adjust {{ displayName(selected) }}</h3><p>Enter a human TXB amount. The API receives integer hundredths.</p></div><button class="text-button" type="button" @click="selected = null">Close</button></div>
+      <TxbAmountField id="balance-adjustment" v-model="form.amountTxb" label="Amount" min-minor="1" required />
       <label><span>Reason</span><input v-model.trim="form.reason" required minlength="4" maxlength="300" /></label>
       <div class="button-row">
         <button class="button button--secondary" type="button" :disabled="busy" @click="adjust(1)"><PhPlus :size="18" /> Add TXB</button>

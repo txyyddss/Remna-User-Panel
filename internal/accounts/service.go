@@ -27,6 +27,10 @@ var ErrMembershipRequired = errors.New("membership is required")
 // ErrUsernameUnavailable means either the local database or Remnawave owns the name.
 var ErrUsernameUnavailable = errors.New("username is unavailable")
 
+// ErrUpstreamUnavailable distinguishes a temporary Remnawave failure from bad
+// Telegram authentication data.
+var ErrUpstreamUnavailable = errors.New("Remnawave is temporarily unavailable")
+
 // InitDataValidator authenticates raw Mini App initData and returns only trusted identity fields.
 type InitDataValidator interface {
 	Validate(raw string) (model.TelegramProfile, error)
@@ -65,6 +69,14 @@ type RemnawaveClient interface {
 	FindUserByTelegramID(ctx context.Context, telegramID int64) (RemoteUser, bool, error)
 	CreateUser(ctx context.Context, input RemoteCreateUser) (RemoteUser, error)
 	IsDuplicateError(err error) bool
+}
+
+type linkedUserVerifier interface {
+	FindUserByID(context.Context, string) (RemoteUser, bool, error)
+}
+
+type recoveryRepository interface {
+	BeginRemnawaveRecovery(context.Context, string, string, time.Time) (model.User, error)
 }
 
 // Settings supplies validated runtime configuration.
@@ -114,6 +126,24 @@ func (s *Service) Authenticate(ctx context.Context, raw string) (model.User, str
 	user, _, err := s.repository.UpsertTelegramUser(ctx, profile, profile.ID == s.adminID)
 	if err != nil {
 		return model.User{}, "", time.Time{}, err
+	}
+	if user.OnboardingState == "complete" && user.RemnaUserID != nil {
+		if verifier, ok := s.remnawave.(linkedUserVerifier); ok {
+			_, exists, verifyErr := verifier.FindUserByID(ctx, *user.RemnaUserID)
+			if verifyErr != nil {
+				return model.User{}, "", time.Time{}, fmt.Errorf("%w: %v", ErrUpstreamUnavailable, verifyErr)
+			}
+			if !exists {
+				repository, supported := s.repository.(recoveryRepository)
+				if !supported {
+					return model.User{}, "", time.Time{}, errors.New("Remnawave recovery is unavailable")
+				}
+				user, err = repository.BeginRemnawaveRecovery(ctx, user.ID, "remnawave_user_missing", s.now().UTC())
+				if err != nil {
+					return model.User{}, "", time.Time{}, err
+				}
+			}
+		}
 	}
 	token, err := ids.Token(32)
 	if err != nil {

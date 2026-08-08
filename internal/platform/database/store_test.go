@@ -38,6 +38,51 @@ func TestReserveUsernameIsImmutableAndRetryable(t *testing.T) {
 	}
 }
 
+func TestBeginRemnawaveRecoveryIsIdempotentAcrossConcurrentAuthentication(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := newTestStore(t)
+	user := createTestUser(t, store, 20005)
+	now := time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC)
+	if _, err := store.DB().ExecContext(ctx, `UPDATE users SET username='river',onboarding_state='complete',group_joined=1,channel_joined=1,
+		policy_accepted_at=?,remna_user_id='remote-user',remna_subscription_url='https://subscription.example/token' WHERE id=?`, stamp(now), user.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.AdjustBalance(ctx, user.ID, 500, "recovery-balance", "preserved", now); err != nil {
+		t.Fatal(err)
+	}
+
+	start := make(chan struct{})
+	results := make(chan error, 2)
+	for range 2 {
+		go func() {
+			<-start
+			_, err := store.BeginRemnawaveRecovery(ctx, user.ID, "remnawave_user_missing", now.Add(time.Second))
+			results <- err
+		}()
+	}
+	close(start)
+	for range 2 {
+		if err := <-results; err != nil {
+			t.Fatalf("BeginRemnawaveRecovery() error = %v", err)
+		}
+	}
+	recovered, err := store.UserByID(ctx, user.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recovered.Username == nil || *recovered.Username != "river" || recovered.OnboardingState != "membership" ||
+		recovered.RecoveryReason != "remnawave_user_missing" || recovered.RemnaUserID != nil || recovered.PolicyAcceptedAt != nil {
+		t.Fatalf("recovered user = %+v", recovered)
+	}
+	if balance, err := store.Balance(ctx, user.ID); err != nil || balance.Minor != "500" {
+		t.Fatalf("preserved balance = (%+v, %v)", balance, err)
+	}
+	if _, err := store.BeginRemnawaveRecovery(ctx, user.ID, "different_reason", now.Add(2*time.Second)); !errors.Is(err, ErrConflict) {
+		t.Fatalf("different recovery reason error = %v, want conflict", err)
+	}
+}
+
 func TestPurchaseTrafficResetPhasesAreDurableAndIdempotent(t *testing.T) {
 	t.Parallel()
 
@@ -48,7 +93,7 @@ func TestPurchaseTrafficResetPhasesAreDurableAndIdempotent(t *testing.T) {
 	if _, err := store.AdjustBalance(ctx, user.ID, 100, "reset-seed", "test credit", time.Now()); err != nil {
 		t.Fatalf("AdjustBalance(): %v", err)
 	}
-	purchase, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID}, time.Now())
+	purchase, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID, IdempotencyKey: "reset-phase"}, time.Now())
 	if err != nil {
 		t.Fatalf("CreatePurchase(): %v", err)
 	}
@@ -126,7 +171,7 @@ func TestCatalogUpdatesCannotCreateUnknownRecords(t *testing.T) {
 		// the disappeared upstream squad must be hidden.
 		t.Fatalf("ListCombos(after upstream disappearance) = (%+v, %v)", combos, err)
 	}
-	if _, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: squadCombo.ID}, time.Now()); !errors.Is(err, ErrNotFound) {
+	if _, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: squadCombo.ID, IdempotencyKey: "missing-squad"}, time.Now()); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("CreatePurchase(disappeared squad) = %v, want ErrNotFound", err)
 	}
 	if balance, err := store.Balance(ctx, user.ID); err != nil || balance.Minor != "500" {
@@ -140,7 +185,7 @@ func TestCatalogUpdatesCannotCreateUnknownRecords(t *testing.T) {
 	}
 }
 
-func TestDueRenewalEnqueuesExactlyOneActivation(t *testing.T) {
+func TestDueRenewalWaitsForRolloverThenEnqueuesExactlyOneActivation(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
@@ -151,11 +196,11 @@ func TestDueRenewalEnqueuesExactlyOneActivation(t *testing.T) {
 		t.Fatalf("AdjustBalance(): %v", err)
 	}
 	start := time.Date(2026, 8, 7, 12, 0, 0, 0, time.UTC)
-	first, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID}, start)
+	first, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID, IdempotencyKey: "activation-first"}, start)
 	if err != nil {
 		t.Fatalf("CreatePurchase(first): %v", err)
 	}
-	renewal, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID}, start.Add(time.Hour))
+	renewal, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID, IdempotencyKey: "activation-renewal"}, start.Add(time.Hour))
 	if err != nil {
 		t.Fatalf("CreatePurchase(renewal): %v", err)
 	}
@@ -166,11 +211,29 @@ func TestDueRenewalEnqueuesExactlyOneActivation(t *testing.T) {
 		t.Fatalf("EnqueueDueEntitlementTransitions(retry): %v", err)
 	}
 	var count int
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind='rollover_finalize' AND aggregate_id=?`, first.ID).Scan(&count); err != nil {
+		t.Fatalf("count rollover jobs: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("rollover job count = %d, want 1", count)
+	}
 	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind='remna_apply_entitlement' AND aggregate_id=?`, renewal.ID).Scan(&count); err != nil {
 		t.Fatalf("count renewal activation jobs: %v", err)
 	}
+	if count != 0 {
+		t.Fatalf("renewal activated before rollover: count = %d", count)
+	}
+	if err := store.MarkRolloverProcessing(ctx, first.ID, first.ValidUntil); err != nil {
+		t.Fatalf("MarkRolloverProcessing(): %v", err)
+	}
+	if _, err := store.FinalizeRollover(ctx, first.ID, 1000, 500, "", first.ValidUntil); err != nil {
+		t.Fatalf("FinalizeRollover(): %v", err)
+	}
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind='remna_apply_entitlement' AND aggregate_id=?`, renewal.ID).Scan(&count); err != nil {
+		t.Fatalf("count renewal activation jobs after rollover: %v", err)
+	}
 	if count != 1 {
-		t.Fatalf("renewal activation job count = %d, want 1", count)
+		t.Fatalf("renewal activation job count after rollover = %d, want 1", count)
 	}
 }
 

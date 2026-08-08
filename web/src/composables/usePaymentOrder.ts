@@ -1,22 +1,22 @@
 import { computed, onScopeDispose, readonly, shallowRef } from 'vue'
 import QRCode from 'qrcode'
 
+import type { FeaturePaymentMethod, FeaturePaymentOrder } from '@/api/features'
 import { api } from '@/api/client'
-import type { PaymentMethod, PaymentOrder, PaymentProvider } from '@/api/types'
 import { moneyFromTxbInput } from '@/utils/format'
 import { getTelegramWebApp, notifyHaptic, openExternalLink } from '@/utils/telegram'
 
-export type PaymentStage = 'configure' | 'creating' | 'pending' | 'paid'
+export type PaymentStage = 'configure' | 'creating' | 'pending' | 'cancelling' | 'cancelled' | 'paid'
 
-export function isTerminalPaymentStatus(status: PaymentOrder['status']): boolean {
-  return ['paid', 'expired', 'failed', 'refunded'].includes(status)
+export function isTerminalPaymentStatus(status: FeaturePaymentOrder['status']): boolean {
+  return ['paid', 'cancelled', 'expired', 'failed', 'refunded'].includes(status)
 }
 
 export function usePaymentOrder(options: { onPaid: () => void }) {
   const amount = shallowRef('20.00')
-  const selectedProvider = shallowRef<PaymentProvider | null>(null)
+  const selectedMethodId = shallowRef<string | null>(null)
   const stage = shallowRef<PaymentStage>('configure')
-  const order = shallowRef<PaymentOrder | null>(null)
+  const order = shallowRef<FeaturePaymentOrder | null>(null)
   const qrDataUrl = shallowRef<string | null>(null)
   const error = shallowRef<string | null>(null)
   let pollTimer: ReturnType<typeof setTimeout> | undefined
@@ -24,41 +24,45 @@ export function usePaymentOrder(options: { onPaid: () => void }) {
 
   const amountMinor = computed(() => moneyFromTxbInput(amount.value))
   const amountValid = computed(() => amountMinor.value !== '' && BigInt(amountMinor.value) >= 100n)
-  const canCreate = computed(() => amountValid.value && selectedProvider.value !== null && stage.value === 'configure')
+  const canCreate = computed(() => amountValid.value && selectedMethodId.value !== null && stage.value === 'configure')
 
   function stopPolling(): void {
     if (pollTimer !== undefined) clearTimeout(pollTimer)
     pollTimer = undefined
   }
 
-  function reset(methods: readonly PaymentMethod[]): void {
+  function reset(methods: readonly FeaturePaymentMethod[]): void {
     stopPolling()
     if (closeTimer !== undefined) clearTimeout(closeTimer)
     order.value = null
     qrDataUrl.value = null
     error.value = null
     stage.value = 'configure'
-    selectedProvider.value = methods.find((method) => method.available)?.provider ?? null
+    selectedMethodId.value = methods.find((method) => method.available)?.id ?? null
   }
 
-  function chooseProvider(provider: PaymentProvider): void {
+  function chooseMethod(methodId: string): void {
     if (stage.value !== 'configure') return
-    selectedProvider.value = provider
+    selectedMethodId.value = methodId
   }
 
   async function createOrder(): Promise<void> {
-    if (!canCreate.value || !selectedProvider.value) return
+    if (!canCreate.value || !selectedMethodId.value) return
     stage.value = 'creating'
     error.value = null
     try {
-      order.value = await api.createPaymentOrder(selectedProvider.value, amountMinor.value)
-      if (!order.value.qrPayload) throw new Error('The provider did not return a payment QR payload.')
-      qrDataUrl.value = await QRCode.toDataURL(order.value.qrPayload, {
-        width: 360,
-        margin: 1,
-        color: { dark: '#111512', light: '#edf2ee' },
-        errorCorrectionLevel: 'M',
-      })
+      order.value = await api.createPaymentOrder(selectedMethodId.value, amountMinor.value)
+      qrDataUrl.value = order.value.qrPayload
+        ? await QRCode.toDataURL(order.value.qrPayload, {
+          width: 360,
+          margin: 1,
+          color: { dark: '#111512', light: '#edf2ee' },
+          errorCorrectionLevel: 'M',
+        })
+        : null
+      if (!order.value.paymentUrl && !order.value.qrPayload && !order.value.receivingAddress) {
+        throw new Error('The provider did not return a payment target.')
+      }
       stage.value = order.value.status === 'paid' ? 'paid' : 'pending'
 
       if (order.value.provider === 'stars' && order.value.paymentUrl) {
@@ -92,13 +96,30 @@ export function usePaymentOrder(options: { onPaid: () => void }) {
         error.value = refreshed.status === 'expired'
           ? 'This payment order expired. Start a new one when you are ready.'
           : `Payment status: ${refreshed.status.toLowerCase()}.`
-        stage.value = 'configure'
+        stage.value = refreshed.status === 'cancelled' ? 'cancelled' : 'configure'
         return
       }
     } catch {
       // A transient polling failure should not discard a valid order.
     }
     schedulePoll()
+  }
+
+  async function cancelOrder(): Promise<void> {
+    if (!order.value || stage.value !== 'pending') return
+    stopPolling()
+    stage.value = 'cancelling'
+    error.value = null
+    try {
+      order.value = await api.cancelPaymentOrder(order.value.id)
+      stage.value = order.value.status === 'paid' ? 'paid' : 'cancelled'
+      if (stage.value === 'paid') handlePaid()
+      else notifyHaptic('success')
+    } catch (caught) {
+      stage.value = 'pending'
+      error.value = caught instanceof Error ? caught.message : 'Cancellation could not be confirmed. Payment polling resumed.'
+      schedulePoll()
+    }
   }
 
   function handlePaid(): void {
@@ -120,7 +141,7 @@ export function usePaymentOrder(options: { onPaid: () => void }) {
 
   return {
     amount,
-    selectedProvider,
+    selectedMethodId: readonly(selectedMethodId),
     stage: readonly(stage),
     order: readonly(order),
     qrDataUrl: readonly(qrDataUrl),
@@ -129,8 +150,9 @@ export function usePaymentOrder(options: { onPaid: () => void }) {
     amountValid,
     canCreate,
     reset,
-    chooseProvider,
+    chooseMethod,
     createOrder,
+    cancelOrder,
     openPaymentTarget,
     stopPolling,
   }

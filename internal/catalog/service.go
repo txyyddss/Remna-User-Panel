@@ -4,6 +4,7 @@ package catalog
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"time"
 
@@ -68,14 +69,21 @@ func (s *Service) Catalog(ctx context.Context) (model.Catalog, error) {
 }
 
 // Purchase delegates all pricing and balance work to one SQLite transaction.
-func (s *Service) Purchase(ctx context.Context, user model.User, comboID string, addonIDs []string) (model.Purchase, error) {
+func (s *Service) Purchase(ctx context.Context, user model.User, comboID string, addonIDs []string, idempotencyKey string) (model.Purchase, error) {
+	return s.PurchaseWithCoupon(ctx, user, comboID, addonIDs, "", idempotencyKey)
+}
+
+// PurchaseWithCoupon applies at most one explicitly selected wallet grant.
+func (s *Service) PurchaseWithCoupon(ctx context.Context, user model.User, comboID string, addonIDs []string, couponGrantID, idempotencyKey string) (model.Purchase, error) {
 	if user.OnboardingState != "complete" {
 		return model.Purchase{}, errors.New("onboarding is incomplete")
 	}
-	if comboID == "" || len(addonIDs) > 100 {
+	idempotencyKey = strings.TrimSpace(idempotencyKey)
+	if comboID == "" || len(addonIDs) > 100 || idempotencyKey == "" || len(idempotencyKey) > 128 {
 		return model.Purchase{}, errors.New("invalid purchase selection")
 	}
-	return s.repository.CreatePurchase(ctx, database.PurchaseInput{UserID: user.ID, ComboID: comboID, AddonSquadIDs: addonIDs}, s.now().UTC())
+	return s.repository.CreatePurchase(ctx, database.PurchaseInput{UserID: user.ID, ComboID: comboID, AddonSquadIDs: addonIDs,
+		CouponGrantID: couponGrantID, IdempotencyKey: idempotencyKey}, s.now().UTC())
 }
 
 // Purchases returns the account's immutable purchase history.

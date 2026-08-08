@@ -22,9 +22,9 @@ func TestServiceCreateOrderByProvider(t *testing.T) {
 		amount   string
 		currency string
 	}{
-		{provider: "ezpay", rate: "6.50", txbMinor: 123, amount: "8.00", currency: "CNY"},
-		{provider: "bepusdt", rate: "0.125", txbMinor: 101, amount: "0.13", currency: "USD"},
-		{provider: "stars", rate: "3", txbMinor: 250, amount: "8", currency: "XTR"},
+		{provider: "ezpay", rate: "0.15375", txbMinor: 123, amount: "8.00", currency: "CNY"},
+		{provider: "bepusdt", rate: "8", txbMinor: 101, amount: "0.13", currency: "USD"},
+		{provider: "stars", rate: "0.3125", txbMinor: 250, amount: "8", currency: "XTR"},
 	}
 
 	for _, test := range tests {
@@ -32,8 +32,8 @@ func TestServiceCreateOrderByProvider(t *testing.T) {
 			t.Parallel()
 			repository := newBillingRepository()
 			settings := &billingSettings{values: map[string]string{
-				"billing." + test.provider + ".enabled":                       "true",
-				"billing.rate." + strings.ToLower(test.currency) + "_per_txb": test.rate,
+				"billing." + test.provider + ".enabled":                  "true",
+				"billing.rate.txb_per_" + strings.ToLower(test.currency): test.rate,
 			}}
 			gateway := &billingGateway{}
 			service := newBillingServiceForTest(repository, settings, gateway)
@@ -52,7 +52,12 @@ func TestServiceCreateOrderByProvider(t *testing.T) {
 			if gateway.request.OrderID != "order-1" || gateway.request.TelegramID != user.TelegramID || gateway.request.TXBMinor != test.txbMinor {
 				t.Fatalf("gateway request identity = %+v", gateway.request)
 			}
-			if gateway.request.NotifyURL != "https://example.test/base/api/v1/webhooks/"+test.provider {
+			wantNotify := "https://example.test/base/api/v1/webhooks/" + test.provider
+			if test.provider == "bepusdt" {
+				if !strings.HasPrefix(gateway.request.NotifyURL, wantNotify+"/") {
+					t.Fatalf("notify URL = %q", gateway.request.NotifyURL)
+				}
+			} else if gateway.request.NotifyURL != wantNotify {
 				t.Fatalf("notify URL = %q", gateway.request.NotifyURL)
 			}
 			wantReturn := "https://example.test/base/api/v1/payments/return/" + test.provider + "/order-1"
@@ -72,13 +77,13 @@ func TestServiceCreateOrderPreservesProviderCheckout(t *testing.T) {
 	repository := newBillingRepository()
 	settings := &billingSettings{values: map[string]string{
 		"billing.ezpay.enabled":    "true",
-		"billing.rate.cny_per_txb": "1",
+		"billing.rate.txb_per_cny": "1",
 	}}
 	tradeID, paymentURL, qr := "trade", "https://pay.test/order", "qr-payload"
 	expires := time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC)
 	gateway := &billingGateway{checkout: ProviderCheckout{
 		TradeID: &tradeID, PaymentURL: &paymentURL, QRPayload: &qr,
-		PayableAmount: "1.234", PayableCurrency: "ALT", ProviderPayload: `{"ok":true}`, ExpiresAt: expires,
+		PayableAmount: "1.0", PayableCurrency: "cny", ProviderPayload: `{"ok":true}`, ExpiresAt: expires,
 	}}
 	service := newBillingServiceForTest(repository, settings, gateway)
 
@@ -89,7 +94,7 @@ func TestServiceCreateOrderPreservesProviderCheckout(t *testing.T) {
 	if order.ProviderTradeID == nil || *order.ProviderTradeID != tradeID || order.PaymentURL == nil || *order.PaymentURL != paymentURL || order.QRPayload == nil || *order.QRPayload != qr {
 		t.Fatalf("provider checkout not preserved: %+v", order)
 	}
-	if order.PayableAmount != "1.234" || order.PayableCurrency != "ALT" || order.ProviderPayload != `{"ok":true}` || !order.ExpiresAt.Equal(expires) {
+	if order.PayableAmount != "1.00" || order.PayableCurrency != "CNY" || order.ProviderPayload != `{"ok":true}` || !order.ExpiresAt.Equal(expires) {
 		t.Fatalf("provider checkout values not preserved: %+v", order)
 	}
 }
@@ -115,29 +120,40 @@ func TestServiceCreateOrderFailures(t *testing.T) {
 		}, want: ErrProviderDisabled},
 		{name: "rate lookup error", provider: "ezpay", txbMinor: 100, configure: func(_ *billingRepository, settings *billingSettings, _ *billingGateway) {
 			settings.values["billing.ezpay.enabled"] = "true"
-			settings.errs["billing.rate.cny_per_txb"] = testError
+			settings.errs["billing.rate.txb_per_cny"] = testError
 		}},
 		{name: "invalid rate", provider: "ezpay", txbMinor: 100, configure: func(_ *billingRepository, settings *billingSettings, _ *billingGateway) {
 			settings.values["billing.ezpay.enabled"] = "true"
-			settings.values["billing.rate.cny_per_txb"] = "zero"
+			settings.values["billing.rate.txb_per_cny"] = "zero"
 		}},
 		{name: "zero rate", provider: "ezpay", txbMinor: 100, configure: func(_ *billingRepository, settings *billingSettings, _ *billingGateway) {
 			settings.values["billing.ezpay.enabled"] = "true"
-			settings.values["billing.rate.cny_per_txb"] = "0"
+			settings.values["billing.rate.txb_per_cny"] = "0"
 		}},
 		{name: "repository create", provider: "ezpay", txbMinor: 100, configure: func(repository *billingRepository, settings *billingSettings, _ *billingGateway) {
 			settings.values["billing.ezpay.enabled"] = "true"
-			settings.values["billing.rate.cny_per_txb"] = "1"
+			settings.values["billing.rate.txb_per_cny"] = "1"
 			repository.createErr = testError
 		}},
 		{name: "gateway create", provider: "ezpay", txbMinor: 100, configure: func(_ *billingRepository, settings *billingSettings, gateway *billingGateway) {
 			settings.values["billing.ezpay.enabled"] = "true"
-			settings.values["billing.rate.cny_per_txb"] = "1"
+			settings.values["billing.rate.txb_per_cny"] = "1"
 			gateway.err = testError
 		}, wantFailed: true},
+		{name: "provider checkout changes immutable price", provider: "ezpay", txbMinor: 100, configure: func(_ *billingRepository, settings *billingSettings, gateway *billingGateway) {
+			settings.values["billing.ezpay.enabled"] = "true"
+			settings.values["billing.rate.txb_per_cny"] = "1"
+			gateway.checkout.PayableAmount = "0.01"
+			gateway.checkout.PayableCurrency = "CNY"
+		}, want: ErrInvalidOrder, wantFailed: true},
+		{name: "provider checkout has incomplete crypto price", provider: "bepusdt", txbMinor: 100, configure: func(_ *billingRepository, settings *billingSettings, gateway *billingGateway) {
+			settings.values["billing.bepusdt.enabled"] = "true"
+			settings.values["billing.rate.txb_per_usd"] = "1"
+			gateway.checkout.ActualCryptoAmount = ptrString("1")
+		}, want: ErrInvalidOrder, wantFailed: true},
 		{name: "repository update", provider: "ezpay", txbMinor: 100, configure: func(repository *billingRepository, settings *billingSettings, _ *billingGateway) {
 			settings.values["billing.ezpay.enabled"] = "true"
-			settings.values["billing.rate.cny_per_txb"] = "1"
+			settings.values["billing.rate.txb_per_cny"] = "1"
 			repository.updateErr = testError
 		}},
 	}
@@ -172,7 +188,7 @@ func TestServiceRetriesAmbiguousBEPusdtCreateWithSameOrder(t *testing.T) {
 	repository := newBillingRepository()
 	settings := &billingSettings{values: map[string]string{
 		"billing.bepusdt.enabled":  "true",
-		"billing.rate.usd_per_txb": "1",
+		"billing.rate.txb_per_usd": "1",
 	}}
 	gateway := &bepusdtRetryGateway{firstErr: errors.New("ambiguous timeout")}
 	service := newBillingServiceForTest(repository, settings, gateway)
@@ -189,7 +205,7 @@ func TestServiceValidateEvent(t *testing.T) {
 	t.Parallel()
 
 	tradeID := "trade-1"
-	baseOrder := model.PaymentOrder{ID: "order-1", UserID: "user-1", Provider: "ezpay", PayableAmount: "1.00", PayableCurrency: "CNY", ProviderTradeID: &tradeID}
+	baseOrder := model.PaymentOrder{ID: "order-1", UserID: "user-1", Provider: "ezpay", ProviderRail: "alipay", PayableAmount: "1.00", PayableCurrency: "CNY", ProviderTradeID: &tradeID}
 	telegramID := int64(42)
 	tests := []struct {
 		name      string
@@ -199,6 +215,7 @@ func TestServiceValidateEvent(t *testing.T) {
 		{name: "valid", mutate: func(_ *billingRepository, event *ProviderEvent) { event.TelegramID = &telegramID }},
 		{name: "order lookup", mutate: func(repository *billingRepository, _ *ProviderEvent) { repository.lookupErr = errors.New("lookup") }},
 		{name: "provider mismatch", mutate: func(_ *billingRepository, event *ProviderEvent) { event.Provider = "stars" }, wantError: database.ErrConflict},
+		{name: "signed subtype mismatch", mutate: func(_ *billingRepository, event *ProviderEvent) { event.Rail = "wxpay" }, wantError: database.ErrConflict},
 		{name: "currency mismatch", mutate: func(_ *billingRepository, event *ProviderEvent) { event.PayableCurrency = "USD" }, wantError: database.ErrConflict},
 		{name: "amount mismatch", mutate: func(_ *billingRepository, event *ProviderEvent) { event.PayableAmount = "1.01" }, wantError: database.ErrConflict},
 		{name: "trade mismatch", mutate: func(_ *billingRepository, event *ProviderEvent) { event.TradeID = "other" }, wantError: database.ErrConflict},
@@ -215,7 +232,7 @@ func TestServiceValidateEvent(t *testing.T) {
 			repository := newBillingRepository()
 			repository.orders[baseOrder.ID] = baseOrder
 			repository.user = model.User{ID: "user-1", TelegramID: telegramID}
-			event := ProviderEvent{Provider: "ezpay", OrderID: baseOrder.ID, TradeID: tradeID, PayableAmount: "1.0", PayableCurrency: "cny"}
+			event := ProviderEvent{Provider: "ezpay", Rail: "alipay", OrderID: baseOrder.ID, TradeID: tradeID, PayableAmount: "1.0", PayableCurrency: "cny"}
 			if test.mutate != nil {
 				test.mutate(repository, &event)
 			}
@@ -305,7 +322,8 @@ func TestServiceValidateBEPusdtFiatAndCryptoAmounts(t *testing.T) {
 	repository := newBillingRepository()
 	repository.orders["order-1"] = model.PaymentOrder{
 		ID: "order-1", UserID: "user-1", Provider: "bepusdt", TXBMinor: 1_000,
-		PayableAmount: "0.950001", PayableCurrency: "USDT", RateSnapshot: "0.1", QRPayload: &recipient,
+		PayableAmount: "1.00", PayableCurrency: "USD", RateSnapshot: "0.1", ReceivingAddress: &recipient,
+		ActualCryptoAmount: ptrString("0.950001"), ActualCryptoCurrency: ptrString("USDT"),
 	}
 	service := newBillingServiceForTest(repository, &billingSettings{}, &billingGateway{})
 	event := ProviderEvent{
@@ -334,6 +352,40 @@ func TestServiceValidateBEPusdtFiatAndCryptoAmounts(t *testing.T) {
 		t.Fatalf("ValidateEvent(overloaded token currency): %v", err)
 	}
 }
+
+func TestServiceValidateLegacyBEPusdtPendingSnapshot(t *testing.T) {
+	t.Parallel()
+
+	recipient := "TXLegacyReceiveAddress"
+	repository := newBillingRepository()
+	repository.orders["legacy-order"] = model.PaymentOrder{
+		ID: "legacy-order", UserID: "user-1", Provider: "bepusdt", TXBMinor: 1_000,
+		PayableAmount: "0.950001", PayableCurrency: "USDT", RateSnapshot: "0.1", RateDirection: "currency_per_txb",
+		QRPayload: &recipient,
+	}
+	service := newBillingServiceForTest(repository, &billingSettings{}, &billingGateway{})
+	event := ProviderEvent{
+		Provider: "bepusdt", OrderID: "legacy-order", PayableAmount: "0.950001", PayableCurrency: "USDT",
+		FiatAmount: "1.00", FiatCurrency: "USD", Recipient: recipient,
+	}
+	if _, err := service.ValidateEvent(context.Background(), event); err != nil {
+		t.Fatalf("ValidateEvent(legacy valid): %v", err)
+	}
+	event.Recipient = "different-address"
+	if _, err := service.ValidateEvent(context.Background(), event); !errors.Is(err, database.ErrConflict) {
+		t.Fatalf("ValidateEvent(legacy recipient mismatch) error = %v, want ErrConflict", err)
+	}
+	event.Recipient = recipient
+	repository.orders["legacy-order"] = model.PaymentOrder{
+		ID: "legacy-order", UserID: "user-1", Provider: "bepusdt", TXBMinor: 1_000,
+		PayableAmount: "0.950001", PayableCurrency: "USDT", RateSnapshot: "10", RateDirection: "txb_per_currency",
+	}
+	if _, err := service.ValidateEvent(context.Background(), event); !errors.Is(err, database.ErrConflict) {
+		t.Fatalf("ValidateEvent(new direction without crypto snapshot) error = %v, want ErrConflict", err)
+	}
+}
+
+func ptrString(value string) *string { return &value }
 
 type billingRepository struct {
 	orders         map[string]model.PaymentOrder
@@ -417,7 +469,19 @@ func (s *billingSettings) Plaintext(_ context.Context, key string) (string, erro
 	if s.errs != nil && s.errs[key] != nil {
 		return "", s.errs[key]
 	}
-	return s.values[key], nil
+	if value, ok := s.values[key]; ok {
+		return value, nil
+	}
+	switch key {
+	case "billing.ezpay.methods":
+		return "alipay", nil
+	case "billing.bepusdt.methods":
+		return "usdt.trc20", nil
+	case "billing.bepusdt.api_token":
+		return "test-callback-secret", nil
+	default:
+		return "", nil
+	}
 }
 
 func (s *billingSettings) Optional(ctx context.Context, key string) (string, error) {

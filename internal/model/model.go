@@ -29,6 +29,7 @@ type User struct {
 	PolicyAcceptedAt     *time.Time `json:"policyAcceptedAt"`
 	RemnaUserID          *string    `json:"-"`
 	RemnaSubscriptionURL *string    `json:"-"`
+	RecoveryReason       string     `json:"recoveryReason"`
 	CreatedAt            time.Time  `json:"createdAt"`
 	UpdatedAt            time.Time  `json:"updatedAt"`
 }
@@ -56,38 +57,67 @@ type SquadProduct struct {
 
 // Combo is a time-limited traffic entitlement and its included squads.
 type Combo struct {
-	ID                string         `json:"id"`
-	Name              string         `json:"name"`
-	Description       string         `json:"description"`
-	PriceTXBMinor     int64          `json:"-"`
-	Price             Money          `json:"price"`
-	ValidityDays      int            `json:"validityDays"`
-	TrafficLimitBytes int64          `json:"-"`
-	TrafficLimit      string         `json:"trafficLimitBytes"`
-	ResetStrategy     string         `json:"resetStrategy"`
-	Active            bool           `json:"active"`
-	IncludedSquads    []SquadProduct `json:"includedSquads"`
-	CreatedAt         time.Time      `json:"createdAt"`
-	UpdatedAt         time.Time      `json:"updatedAt"`
+	ID                      string         `json:"id"`
+	Name                    string         `json:"name"`
+	Description             string         `json:"description"`
+	PriceTXBMinor           int64          `json:"-"`
+	Price                   Money          `json:"price"`
+	ValidityDays            int            `json:"validityDays"`
+	TrafficLimitBytes       int64          `json:"-"`
+	TrafficLimit            string         `json:"trafficLimitBytes"`
+	ResetStrategy           string         `json:"resetStrategy"`
+	Active                  bool           `json:"active"`
+	IncludedSquads          []SquadProduct `json:"includedSquads"`
+	RolloverMinRemainingBPS int            `json:"rolloverMinRemainingBps"`
+	RolloverMaxTXBMinor     int64          `json:"rolloverMaxTxbMinor,string"`
+	RolloverMax             Money          `json:"rolloverMax"`
+	CreatedAt               time.Time      `json:"createdAt"`
+	UpdatedAt               time.Time      `json:"updatedAt"`
 }
 
 // Purchase represents an active, queued, or historical combo term.
 type Purchase struct {
-	ID                string    `json:"id"`
-	UserID            string    `json:"-"`
-	ComboID           string    `json:"comboId"`
-	ComboName         string    `json:"comboName"`
-	PriceTXBMinor     int64     `json:"-"`
-	Price             Money     `json:"price"`
-	ValidFrom         time.Time `json:"validFrom"`
-	ValidUntil        time.Time `json:"validUntil"`
-	Status            string    `json:"status"`
-	TrafficLimitBytes int64     `json:"-"`
-	TrafficLimit      string    `json:"trafficLimitBytes"`
-	ResetStrategy     string    `json:"resetStrategy"`
-	SquadUUIDs        []string  `json:"squadUuids"`
-	CreatedAt         time.Time `json:"createdAt"`
-	UpdatedAt         time.Time `json:"updatedAt"`
+	ID                      string    `json:"id"`
+	UserID                  string    `json:"-"`
+	ComboID                 string    `json:"comboId"`
+	ComboName               string    `json:"comboName"`
+	PriceTXBMinor           int64     `json:"-"`
+	Price                   Money     `json:"price"`
+	GrossPriceTXBMinor      int64     `json:"-"`
+	GrossPrice              Money     `json:"grossPrice"`
+	CouponDiscountTXBMinor  int64     `json:"-"`
+	CouponDiscount          Money     `json:"couponDiscount"`
+	CouponGrantID           *string   `json:"couponGrantId"`
+	ValidFrom               time.Time `json:"validFrom"`
+	ValidUntil              time.Time `json:"validUntil"`
+	Status                  string    `json:"status"`
+	TrafficLimitBytes       int64     `json:"-"`
+	TrafficLimit            string    `json:"trafficLimitBytes"`
+	ResetStrategy           string    `json:"resetStrategy"`
+	SquadUUIDs              []string  `json:"squadUuids"`
+	RolloverMinRemainingBPS int       `json:"rolloverMinRemainingBps"`
+	RolloverMaxTXBMinor     int64     `json:"rolloverMaxTxbMinor,string"`
+	RolloverMax             Money     `json:"rolloverMax"`
+	CreatedAt               time.Time `json:"createdAt"`
+	UpdatedAt               time.Time `json:"updatedAt"`
+}
+
+// PurchaseRollover is the durable expiry settlement for one paid term.
+type PurchaseRollover struct {
+	PurchaseID          string     `json:"purchaseId"`
+	Status              string     `json:"status"`
+	TrafficLimitBytes   int64      `json:"trafficLimitBytes"`
+	UsedTrafficBytes    *int64     `json:"usedTrafficBytes"`
+	RemainingBytes      *int64     `json:"remainingTrafficBytes"`
+	MinimumRemainingBPS int        `json:"minimumRemainingBps"`
+	MaximumTXBMinor     int64      `json:"-"`
+	NetPaidTXBMinor     int64      `json:"-"`
+	CreditedTXBMinor    int64      `json:"-"`
+	ExceptionCode       string     `json:"exceptionCode"`
+	Attempts            int        `json:"attempts"`
+	CreatedAt           time.Time  `json:"createdAt"`
+	UpdatedAt           time.Time  `json:"updatedAt"`
+	CompletedAt         *time.Time `json:"completedAt"`
 }
 
 // LedgerEntry is an immutable TXB balance mutation.
@@ -105,25 +135,45 @@ type LedgerEntry struct {
 
 // PaymentOrder is a provider checkout attempt.
 type PaymentOrder struct {
-	ID               string     `json:"id"`
-	UserID           string     `json:"-"`
-	Provider         string     `json:"provider"`
-	Status           string     `json:"status"`
-	TXBMinor         int64      `json:"-"`
-	TXB              Money      `json:"txb"`
-	PayableAmount    string     `json:"payableAmount"`
-	PayableCurrency  string     `json:"payableCurrency"`
-	RateSnapshot     string     `json:"rateSnapshot"`
-	ProviderTradeID  *string    `json:"-"`
-	ProviderChargeID *string    `json:"-"`
-	PaymentURL       *string    `json:"paymentUrl"`
-	QRPayload        *string    `json:"qrPayload"`
-	ProviderPayload  string     `json:"-"`
-	ExpiresAt        time.Time  `json:"expiresAt"`
-	PaidAt           *time.Time `json:"paidAt"`
-	RefundedAt       *time.Time `json:"refundedAt"`
-	CreatedAt        time.Time  `json:"createdAt"`
-	UpdatedAt        time.Time  `json:"updatedAt"`
+	ID                   string     `json:"id"`
+	UserID               string     `json:"-"`
+	Provider             string     `json:"provider"`
+	MethodID             string     `json:"methodId"`
+	ProviderRail         string     `json:"providerRail"`
+	Status               string     `json:"status"`
+	TXBMinor             int64      `json:"-"`
+	TXB                  Money      `json:"txb"`
+	PayableAmount        string     `json:"payableAmount"`
+	PayableCurrency      string     `json:"payableCurrency"`
+	RateSnapshot         string     `json:"rateSnapshot"`
+	RateDirection        string     `json:"rateDirection"`
+	ProviderTradeID      *string    `json:"-"`
+	ProviderChargeID     *string    `json:"-"`
+	PaymentURL           *string    `json:"paymentUrl"`
+	QRPayload            *string    `json:"qrPayload"`
+	ReceivingAddress     *string    `json:"receivingAddress"`
+	ActualCryptoAmount   *string    `json:"actualCryptoAmount"`
+	ActualCryptoCurrency *string    `json:"actualCryptoCurrency"`
+	ProviderPayload      string     `json:"-"`
+	ExpiresAt            time.Time  `json:"expiresAt"`
+	PaidAt               *time.Time `json:"paidAt"`
+	RefundedAt           *time.Time `json:"refundedAt"`
+	CancelledAt          *time.Time `json:"cancelledAt"`
+	CancelReason         string     `json:"cancelReason"`
+	ProviderCancelStatus string     `json:"providerCancelStatus"`
+	CreatedAt            time.Time  `json:"createdAt"`
+	UpdatedAt            time.Time  `json:"updatedAt"`
+}
+
+// PaymentMethod is one selectable provider rail exposed to a member.
+type PaymentMethod struct {
+	ID        string `json:"id"`
+	Provider  string `json:"provider"`
+	Rail      string `json:"rail"`
+	Name      string `json:"name"`
+	Currency  string `json:"currency"`
+	Available bool   `json:"available"`
+	Note      string `json:"note"`
 }
 
 // Refund is an immutable record of an administrator-authorized payment reversal.

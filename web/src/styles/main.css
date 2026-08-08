@@ -24,7 +24,7 @@
   --line-strong: #394039;
   --text: #edf2ee;
   --text-muted: #a6ada8;
-  --text-faint: #747c76;
+  --text-faint: #858d87;
   --accent: #a6d9bb;
   --accent-strong: #b9e7c8;
   --accent-ink: #102017;
@@ -70,6 +70,34 @@ select {
 button,
 a {
   -webkit-tap-highlight-color: transparent;
+}
+
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 100;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-control);
+  color: var(--accent-ink);
+  background: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 800;
+  transform: translateY(-160%);
+  transition: transform 160ms var(--ease-out);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+.sr-only {
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
 }
 
 button {
@@ -360,6 +388,10 @@ select:disabled {
   min-width: 0;
 }
 
+.app-main:focus {
+  outline: 0;
+}
+
 .bottom-nav {
   height: calc(68px + env(safe-area-inset-bottom));
   display: grid;
@@ -434,6 +466,10 @@ select:disabled {
 
 .page-toolbar {
   margin: 1rem 0;
+}
+
+.page-toolbar--end {
+  justify-content: flex-end;
 }
 
 .page-toolbar p {
@@ -1998,6 +2034,22 @@ textarea::placeholder {
   margin: 0 -1rem 0.9rem;
   padding: 0 1rem 0.45rem;
   scrollbar-width: none;
+}
+
+.admin-tabs__group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.admin-tabs__label {
+  padding: 0 0.25rem;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 0.59rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .admin-tabs::-webkit-scrollbar {

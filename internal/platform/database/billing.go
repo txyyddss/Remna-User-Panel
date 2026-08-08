@@ -2,26 +2,36 @@ package database
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/txyyddss/Remna-User-Panel/internal/coupons"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 )
 
 // PurchaseInput contains the server-selected catalog IDs for a checkout.
 type PurchaseInput struct {
-	UserID        string
-	ComboID       string
-	AddonSquadIDs []string
+	UserID         string
+	ComboID        string
+	AddonSquadIDs  []string
+	CouponGrantID  string
+	IdempotencyKey string
 }
 
 // CreatePurchase atomically snapshots the catalog, debits TXB, and queues Remnawave synchronization.
 func (s *Store) CreatePurchase(ctx context.Context, input PurchaseInput, now time.Time) (model.Purchase, error) {
+	fingerprint, err := normalizeAndFingerprintPurchase(&input)
+	if err != nil {
+		return model.Purchase{}, err
+	}
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 	now = now.UTC()
@@ -30,6 +40,22 @@ func (s *Store) CreatePurchase(ctx context.Context, input PurchaseInput, now tim
 		return model.Purchase{}, fmt.Errorf("begin purchase: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
+	var existingID, existingFingerprint string
+	loadErr := tx.QueryRowContext(ctx, `SELECT id,request_fingerprint FROM purchases WHERE user_id=? AND idempotency_key=?`, input.UserID, input.IdempotencyKey).Scan(&existingID, &existingFingerprint)
+	if loadErr == nil {
+		if existingFingerprint != fingerprint {
+			return model.Purchase{}, ErrConflict
+		}
+		// End the read transaction before loading the full aggregate (including
+		// purchase_squads) through the normal repository query path.
+		if err := tx.Rollback(); err != nil {
+			return model.Purchase{}, fmt.Errorf("close purchase replay transaction: %w", err)
+		}
+		return s.PurchaseByID(ctx, existingID)
+	}
+	if !errors.Is(loadErr, sql.ErrNoRows) {
+		return model.Purchase{}, fmt.Errorf("load purchase idempotency key: %w", loadErr)
+	}
 
 	combo, err := comboByIDTx(ctx, tx, input.ComboID, true)
 	if err != nil {
@@ -58,7 +84,7 @@ func (s *Store) CreatePurchase(ctx context.Context, input PurchaseInput, now tim
 		addonRows = append(addonRows, product)
 		addonPrice += product.PriceTXBMinor
 	}
-	totalPrice := combo.PriceTXBMinor + addonPrice
+	grossPrice := combo.PriceTXBMinor + addonPrice
 
 	validFrom := now
 	var latestEnd string
@@ -81,11 +107,26 @@ func (s *Store) CreatePurchase(ctx context.Context, input PurchaseInput, now tim
 		status = "activating"
 	}
 
-	newBalance, err := debitBalanceTx(ctx, tx, input.UserID, totalPrice, now)
+	purchaseID, err := ids.New()
 	if err != nil {
 		return model.Purchase{}, err
 	}
-	purchaseID, err := ids.New()
+	discount := coupons.Discount{GrossMinor: grossPrice, NetMinor: grossPrice}
+	if input.CouponGrantID != "" {
+		pricedAddonIDs := make([]string, 0, len(addonRows))
+		for _, addon := range addonRows {
+			pricedAddonIDs = append(pricedAddonIDs, addon.ID)
+		}
+		discount, err = applyPurchaseCouponTx(ctx, tx, coupons.PurchaseContext{
+			UserID: input.UserID, GrantID: input.CouponGrantID, ComboID: combo.ID,
+			AddonSquadIDs: pricedAddonIDs, GrossPriceMinor: grossPrice,
+		}, purchaseID, now)
+		if err != nil {
+			return model.Purchase{}, err
+		}
+	}
+	netPrice := discount.NetMinor
+	newBalance, err := debitBalanceTx(ctx, tx, input.UserID, netPrice, now)
 	if err != nil {
 		return model.Purchase{}, err
 	}
@@ -96,11 +137,21 @@ func (s *Store) CreatePurchase(ctx context.Context, input PurchaseInput, now tim
 	if err != nil {
 		return model.Purchase{}, fmt.Errorf("encode catalog snapshot: %w", err)
 	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO purchases(id,user_id,combo_id,price_txb_minor,valid_from,valid_until,status,traffic_limit_bytes,reset_strategy,catalog_snapshot,created_at,updated_at)
-		VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`, purchaseID, input.UserID, combo.ID, totalPrice, stamp(validFrom), stamp(validUntil), status,
-		combo.TrafficLimitBytes, combo.ResetStrategy, string(snapshotBytes), stamp(now), stamp(now))
+	var couponGrantID any
+	if input.CouponGrantID != "" {
+		couponGrantID = input.CouponGrantID
+	}
+	_, err = tx.ExecContext(ctx, `INSERT INTO purchases(id,user_id,combo_id,price_txb_minor,valid_from,valid_until,status,traffic_limit_bytes,reset_strategy,catalog_snapshot,coupon_grant_id,gross_price_txb_minor,coupon_discount_txb_minor,rollover_min_remaining_bps,rollover_max_txb_minor,idempotency_key,request_fingerprint,created_at,updated_at)
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, purchaseID, input.UserID, combo.ID, netPrice, stamp(validFrom), stamp(validUntil), status,
+		combo.TrafficLimitBytes, combo.ResetStrategy, string(snapshotBytes), couponGrantID, grossPrice, discount.DiscountMinor,
+		combo.RolloverMinRemainingBPS, combo.RolloverMaxTXBMinor, input.IdempotencyKey, fingerprint, stamp(now), stamp(now))
 	if err != nil {
 		return model.Purchase{}, fmt.Errorf("insert purchase: %w", err)
+	}
+	if status == "activating" {
+		if err := applyPendingExtensionsToActivationTx(ctx, tx, purchaseID, now); err != nil {
+			return model.Purchase{}, fmt.Errorf("apply pending subscription extensions: %w", err)
+		}
 	}
 	for _, product := range included {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO purchase_squads(purchase_id,remna_squad_uuid,kind,price_txb_minor) VALUES(?,?,?,?)`, purchaseID, product.RemnaSquadUUID, "included", 0); err != nil {
@@ -112,7 +163,7 @@ func (s *Store) CreatePurchase(ctx context.Context, input PurchaseInput, now tim
 			return model.Purchase{}, fmt.Errorf("snapshot add-on squad: %w", err)
 		}
 	}
-	if _, err := insertLedgerTx(ctx, tx, input.UserID, -totalPrice, newBalance, "purchase_debit", purchaseID, combo.Name, now); err != nil {
+	if _, err := insertLedgerTx(ctx, tx, input.UserID, -netPrice, newBalance, "purchase_debit", purchaseID, combo.Name, now); err != nil {
 		return model.Purchase{}, err
 	}
 	if status == "activating" {
@@ -124,6 +175,35 @@ func (s *Store) CreatePurchase(ctx context.Context, input PurchaseInput, now tim
 		return model.Purchase{}, fmt.Errorf("commit purchase: %w", err)
 	}
 	return s.PurchaseByID(ctx, purchaseID)
+}
+
+func normalizeAndFingerprintPurchase(input *PurchaseInput) (string, error) {
+	if input == nil {
+		return "", errors.New("purchase input is required")
+	}
+	input.UserID = strings.TrimSpace(input.UserID)
+	input.ComboID = strings.TrimSpace(input.ComboID)
+	input.CouponGrantID = strings.TrimSpace(input.CouponGrantID)
+	input.IdempotencyKey = strings.TrimSpace(input.IdempotencyKey)
+	if input.UserID == "" || input.ComboID == "" || input.IdempotencyKey == "" || len(input.IdempotencyKey) > 128 {
+		return "", errors.New("purchase user, combo, and idempotency key are required")
+	}
+	normalizedAddons := make([]string, len(input.AddonSquadIDs))
+	for index := range input.AddonSquadIDs {
+		normalizedAddons[index] = strings.TrimSpace(input.AddonSquadIDs[index])
+	}
+	input.AddonSquadIDs = uniqueSorted(normalizedAddons)
+	payload, err := json.Marshal(struct {
+		Version       int      `json:"version"`
+		ComboID       string   `json:"comboId"`
+		AddonSquadIDs []string `json:"addonSquadIds"`
+		CouponGrantID string   `json:"couponGrantId"`
+	}{Version: 1, ComboID: input.ComboID, AddonSquadIDs: input.AddonSquadIDs, CouponGrantID: input.CouponGrantID})
+	if err != nil {
+		return "", fmt.Errorf("encode purchase request fingerprint: %w", err)
+	}
+	digest := sha256.Sum256(payload)
+	return hex.EncodeToString(digest[:]), nil
 }
 
 func comboByIDTx(ctx context.Context, tx *sql.Tx, id string, activeOnly bool) (model.Combo, error) {
@@ -198,12 +278,9 @@ func (s *Store) AdjustBalance(ctx context.Context, userID string, delta int64, r
 		return model.LedgerEntry{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.ExecContext(ctx, `INSERT INTO balances(user_id,txb_minor,updated_at) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET txb_minor=balances.txb_minor+excluded.txb_minor,updated_at=excluded.updated_at`, userID, delta, stamp(now)); err != nil {
+	balance, err := adjustBalanceTx(ctx, tx, userID, delta, now)
+	if err != nil {
 		return model.LedgerEntry{}, fmt.Errorf("adjust balance: %w", err)
-	}
-	var balance int64
-	if err := tx.QueryRowContext(ctx, `SELECT txb_minor FROM balances WHERE user_id=?`, userID).Scan(&balance); err != nil {
-		return model.LedgerEntry{}, err
 	}
 	entryID, err := insertLedgerTx(ctx, tx, userID, delta, balance, "admin_adjustment", referenceID, note, now)
 	if err != nil {
@@ -361,12 +438,9 @@ func (s *Store) CancelPurchase(ctx context.Context, purchaseID, reason string, n
 	if _, err := tx.ExecContext(ctx, `UPDATE purchases SET status='cancelled',updated_at=? WHERE id=?`, stamp(now), purchase.ID); err != nil {
 		return model.Purchase{}, err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE balances SET txb_minor=txb_minor+?,updated_at=? WHERE user_id=?`, purchase.PriceTXBMinor, stamp(now), purchase.UserID); err != nil {
-		return model.Purchase{}, err
-	}
-	var balance int64
-	if err := tx.QueryRowContext(ctx, `SELECT txb_minor FROM balances WHERE user_id=?`, purchase.UserID).Scan(&balance); err != nil {
-		return model.Purchase{}, err
+	balance, err := adjustBalanceTx(ctx, tx, purchase.UserID, purchase.PriceTXBMinor, now)
+	if err != nil {
+		return model.Purchase{}, fmt.Errorf("refund cancelled purchase: %w", err)
 	}
 	if _, err := insertLedgerTx(ctx, tx, purchase.UserID, purchase.PriceTXBMinor, balance, "admin_entitlement_cancellation", purchase.ID, reason, now); err != nil {
 		return model.Purchase{}, err
@@ -383,19 +457,26 @@ func (s *Store) CancelPurchase(ctx context.Context, purchaseID, reason string, n
 }
 
 const purchaseSelect = `SELECT purchases.id,purchases.user_id,purchases.combo_id,combos.name,purchases.price_txb_minor,purchases.valid_from,purchases.valid_until,
-	purchases.status,purchases.traffic_limit_bytes,purchases.reset_strategy,purchases.created_at,purchases.updated_at FROM purchases JOIN combos ON combos.id=purchases.combo_id`
+	purchases.status,purchases.traffic_limit_bytes,purchases.reset_strategy,purchases.coupon_grant_id,COALESCE(purchases.gross_price_txb_minor,purchases.price_txb_minor),purchases.coupon_discount_txb_minor,
+	purchases.rollover_min_remaining_bps,purchases.rollover_max_txb_minor,purchases.created_at,purchases.updated_at FROM purchases JOIN combos ON combos.id=purchases.combo_id`
 
 func scanPurchase(row rowScanner) (model.Purchase, error) {
 	var purchase model.Purchase
 	var validFrom, validUntil, created, updated string
+	var couponGrantID sql.NullString
 	if err := row.Scan(&purchase.ID, &purchase.UserID, &purchase.ComboID, &purchase.ComboName, &purchase.PriceTXBMinor,
-		&validFrom, &validUntil, &purchase.Status, &purchase.TrafficLimitBytes, &purchase.ResetStrategy, &created, &updated); err != nil {
+		&validFrom, &validUntil, &purchase.Status, &purchase.TrafficLimitBytes, &purchase.ResetStrategy, &couponGrantID, &purchase.GrossPriceTXBMinor,
+		&purchase.CouponDiscountTXBMinor, &purchase.RolloverMinRemainingBPS, &purchase.RolloverMaxTXBMinor, &created, &updated); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.Purchase{}, ErrNotFound
 		}
 		return model.Purchase{}, fmt.Errorf("scan purchase: %w", err)
 	}
 	purchase.Price = model.TXBMoney(purchase.PriceTXBMinor)
+	purchase.GrossPrice = model.TXBMoney(purchase.GrossPriceTXBMinor)
+	purchase.CouponDiscount = model.TXBMoney(purchase.CouponDiscountTXBMinor)
+	purchase.CouponGrantID = nullableString(couponGrantID)
+	purchase.RolloverMax = model.TXBMoney(purchase.RolloverMaxTXBMinor)
 	purchase.TrafficLimit = strconv.FormatInt(purchase.TrafficLimitBytes, 10)
 	var err error
 	if purchase.ValidFrom, err = parseStamp(validFrom); err != nil {
@@ -451,6 +532,8 @@ func (s *Store) ActiveAndQueuedPurchases(ctx context.Context, userID string, now
 
 // CreatePaymentOrder persists an attempt before contacting a provider, so immediate callbacks are safe.
 func (s *Store) CreatePaymentOrder(ctx context.Context, order model.PaymentOrder) (model.PaymentOrder, error) {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	if order.ID == "" {
 		var err error
 		order.ID, err = ids.New()
@@ -462,23 +545,84 @@ func (s *Store) CreatePaymentOrder(ctx context.Context, order model.PaymentOrder
 	if order.Status == "" {
 		order.Status = "creating"
 	}
-	_, err := s.db.ExecContext(ctx, `INSERT INTO payment_orders(id,user_id,provider,status,txb_minor,payable_amount,payable_currency,rate_snapshot,provider_payload,expires_at,created_at,updated_at)
-		VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`, order.ID, order.UserID, order.Provider, order.Status, order.TXBMinor, order.PayableAmount,
-		order.PayableCurrency, order.RateSnapshot, order.ProviderPayload, stamp(order.ExpiresAt), stamp(now), stamp(now))
+	if order.RateDirection == "" {
+		order.RateDirection = "currency_per_txb"
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return model.PaymentOrder{}, fmt.Errorf("begin payment order retention: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, `UPDATE payment_orders SET status='expired',updated_at=? WHERE status IN ('creating','pending') AND cancelled_at IS NULL AND expires_at<=?`, stamp(now), stamp(now)); err != nil {
+		return model.PaymentOrder{}, fmt.Errorf("expire stale payment orders before insert: %w", err)
+	}
+	var count int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM payment_orders`).Scan(&count); err != nil {
+		return model.PaymentOrder{}, fmt.Errorf("count payment orders: %w", err)
+	}
+	pruneCount := count - 199
+	if pruneCount > 0 {
+		rows, err := tx.QueryContext(ctx, `SELECT id FROM payment_orders
+			WHERE status IN ('paid','expired','failed','refunded') OR (cancelled_at IS NOT NULL AND expires_at<=?)
+			ORDER BY created_at,id LIMIT ?`, stamp(now), pruneCount)
+		if err != nil {
+			return model.PaymentOrder{}, fmt.Errorf("select prunable payment orders: %w", err)
+		}
+		idsToDelete := make([]string, 0, pruneCount)
+		for rows.Next() {
+			var id string
+			if err := rows.Scan(&id); err != nil {
+				_ = rows.Close()
+				return model.PaymentOrder{}, fmt.Errorf("scan prunable payment order: %w", err)
+			}
+			idsToDelete = append(idsToDelete, id)
+		}
+		if err := rows.Err(); err != nil {
+			_ = rows.Close()
+			return model.PaymentOrder{}, fmt.Errorf("iterate prunable payment orders: %w", err)
+		}
+		_ = rows.Close()
+		if len(idsToDelete) != pruneCount {
+			return model.PaymentOrder{}, ErrPaymentCapacity
+		}
+		for _, id := range idsToDelete {
+			if _, err := tx.ExecContext(ctx, `DELETE FROM webhook_events WHERE order_id=?`, id); err != nil {
+				return model.PaymentOrder{}, fmt.Errorf("prune payment webhook events: %w", err)
+			}
+			if _, err := tx.ExecContext(ctx, `DELETE FROM refunds WHERE payment_order_id=?`, id); err != nil {
+				return model.PaymentOrder{}, fmt.Errorf("prune payment refunds: %w", err)
+			}
+			if _, err := tx.ExecContext(ctx, `DELETE FROM payment_orders WHERE id=?`, id); err != nil {
+				return model.PaymentOrder{}, fmt.Errorf("prune payment order: %w", err)
+			}
+		}
+	}
+	_, err = tx.ExecContext(ctx, `INSERT INTO payment_orders(id,user_id,provider,method_id,provider_rail,status,txb_minor,payable_amount,payable_currency,rate_snapshot,rate_direction,provider_payload,expires_at,created_at,updated_at)
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, order.ID, order.UserID, order.Provider, order.MethodID, order.ProviderRail, order.Status, order.TXBMinor, order.PayableAmount,
+		order.PayableCurrency, order.RateSnapshot, order.RateDirection, order.ProviderPayload, stamp(order.ExpiresAt), stamp(now), stamp(now))
 	if err != nil {
 		return model.PaymentOrder{}, fmt.Errorf("create payment order: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return model.PaymentOrder{}, fmt.Errorf("commit payment order: %w", err)
 	}
 	return s.PaymentOrderByID(ctx, order.ID)
 }
 
 // UpdatePaymentCheckout stores the provider response without changing the requested TXB amount.
-func (s *Store) UpdatePaymentCheckout(ctx context.Context, orderID string, tradeID, paymentURL, qrPayload *string, payableAmount, payableCurrency, providerPayload string, expiresAt time.Time) (model.PaymentOrder, error) {
-	_, err := s.db.ExecContext(ctx, `UPDATE payment_orders SET status='pending',provider_trade_id=?,payment_url=?,qr_payload=?,payable_amount=?,payable_currency=?,provider_payload=?,expires_at=?,updated_at=? WHERE id=? AND status='creating'`,
-		tradeID, paymentURL, qrPayload, payableAmount, payableCurrency, providerPayload, stamp(expiresAt), stamp(time.Now().UTC()), orderID)
+func (s *Store) UpdatePaymentCheckoutDetails(ctx context.Context, orderID string, tradeID, paymentURL, qrPayload, receivingAddress, actualCryptoAmount, actualCryptoCurrency *string, payableAmount, payableCurrency, providerPayload string, expiresAt time.Time) (model.PaymentOrder, error) {
+	_, err := s.db.ExecContext(ctx, `UPDATE payment_orders SET status='pending',provider_trade_id=?,payment_url=?,qr_payload=?,receiving_address=?,actual_crypto_amount=?,actual_crypto_currency=?,payable_amount=?,payable_currency=?,provider_payload=?,expires_at=?,updated_at=? WHERE id=? AND status='creating'`,
+		tradeID, paymentURL, qrPayload, receivingAddress, actualCryptoAmount, actualCryptoCurrency, payableAmount, payableCurrency, providerPayload, stamp(expiresAt), stamp(time.Now().UTC()), orderID)
 	if err != nil {
 		return model.PaymentOrder{}, fmt.Errorf("update payment checkout: %w", err)
 	}
 	return s.PaymentOrderByID(ctx, orderID)
+}
+
+// UpdatePaymentCheckout preserves the original repository contract for
+// adapters that do not return a separate receiving address.
+func (s *Store) UpdatePaymentCheckout(ctx context.Context, orderID string, tradeID, paymentURL, qrPayload *string, payableAmount, payableCurrency, providerPayload string, expiresAt time.Time) (model.PaymentOrder, error) {
+	return s.UpdatePaymentCheckoutDetails(ctx, orderID, tradeID, paymentURL, qrPayload, nil, nil, nil, payableAmount, payableCurrency, providerPayload, expiresAt)
 }
 
 // FailPaymentOrder records a sanitized provider creation failure.
@@ -489,7 +633,7 @@ func (s *Store) FailPaymentOrder(ctx context.Context, orderID, providerPayload s
 
 // ExpirePaymentOrder records an authoritative provider timeout without affecting balance.
 func (s *Store) ExpirePaymentOrder(ctx context.Context, orderID, provider string, now time.Time) error {
-	result, err := s.db.ExecContext(ctx, `UPDATE payment_orders SET status='expired',updated_at=? WHERE id=? AND provider=? AND status IN ('creating','pending')`, stamp(now), orderID, provider)
+	result, err := s.db.ExecContext(ctx, `UPDATE payment_orders SET status='expired',updated_at=? WHERE id=? AND provider=? AND status IN ('creating','pending') AND cancelled_at IS NULL`, stamp(now), orderID, provider)
 	if err != nil {
 		return fmt.Errorf("expire payment order: %w", err)
 	}
@@ -498,7 +642,7 @@ func (s *Store) ExpirePaymentOrder(ctx context.Context, orderID, provider string
 		if loadErr != nil {
 			return loadErr
 		}
-		if order.Status != "paid" && order.Status != "refunded" && order.Status != "expired" {
+		if order.Status != "paid" && order.Status != "refunded" && order.Status != "expired" && order.Status != "cancelled" {
 			return ErrConflict
 		}
 	}
@@ -507,7 +651,7 @@ func (s *Store) ExpirePaymentOrder(ctx context.Context, orderID, provider string
 
 // ExpireStalePaymentOrders closes locally expired attempts without crediting them.
 func (s *Store) ExpireStalePaymentOrders(ctx context.Context, now time.Time) error {
-	_, err := s.db.ExecContext(ctx, `UPDATE payment_orders SET status='expired',updated_at=? WHERE status IN ('creating','pending') AND expires_at<=?`, stamp(now), stamp(now))
+	_, err := s.db.ExecContext(ctx, `UPDATE payment_orders SET status='expired',updated_at=? WHERE status IN ('creating','pending') AND cancelled_at IS NULL AND expires_at<=?`, stamp(now), stamp(now))
 	if err != nil {
 		return fmt.Errorf("expire stale payment orders: %w", err)
 	}
@@ -553,25 +697,34 @@ func (s *Store) ListPaymentOrders(ctx context.Context, userID string, limit int)
 	return orders, rows.Err()
 }
 
-const paymentSelect = `SELECT id,user_id,provider,status,txb_minor,payable_amount,payable_currency,rate_snapshot,provider_trade_id,provider_charge_id,payment_url,qr_payload,provider_payload,expires_at,paid_at,refunded_at,created_at,updated_at FROM payment_orders`
+const paymentSelect = `SELECT id,user_id,provider,method_id,provider_rail,status,txb_minor,payable_amount,payable_currency,rate_snapshot,rate_direction,provider_trade_id,provider_charge_id,payment_url,qr_payload,receiving_address,actual_crypto_amount,actual_crypto_currency,provider_payload,expires_at,paid_at,refunded_at,cancelled_at,cancel_reason,provider_cancel_status,created_at,updated_at FROM payment_orders`
 
 func scanPaymentOrder(row rowScanner) (model.PaymentOrder, error) {
 	var order model.PaymentOrder
-	var tradeID, chargeID, paymentURL, qr, paid, refunded sql.NullString
+	var tradeID, chargeID, paymentURL, qr, receivingAddress, actualCryptoAmount, actualCryptoCurrency, paid, refunded, cancelled sql.NullString
+	var methodID, providerRail, rateDirection, cancelReason, providerCancelStatus sql.NullString
 	var expires, created, updated string
-	if err := row.Scan(&order.ID, &order.UserID, &order.Provider, &order.Status, &order.TXBMinor, &order.PayableAmount,
-		&order.PayableCurrency, &order.RateSnapshot, &tradeID, &chargeID, &paymentURL, &qr, &order.ProviderPayload,
-		&expires, &paid, &refunded, &created, &updated); err != nil {
+	if err := row.Scan(&order.ID, &order.UserID, &order.Provider, &methodID, &providerRail, &order.Status, &order.TXBMinor, &order.PayableAmount,
+		&order.PayableCurrency, &order.RateSnapshot, &rateDirection, &tradeID, &chargeID, &paymentURL, &qr, &receivingAddress, &actualCryptoAmount, &actualCryptoCurrency, &order.ProviderPayload,
+		&expires, &paid, &refunded, &cancelled, &cancelReason, &providerCancelStatus, &created, &updated); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.PaymentOrder{}, ErrNotFound
 		}
 		return model.PaymentOrder{}, fmt.Errorf("scan payment order: %w", err)
 	}
 	order.TXB = model.TXBMoney(order.TXBMinor)
+	order.MethodID = methodID.String
+	order.ProviderRail = providerRail.String
+	order.RateDirection = rateDirection.String
 	order.ProviderTradeID = nullableString(tradeID)
 	order.ProviderChargeID = nullableString(chargeID)
 	order.PaymentURL = nullableString(paymentURL)
 	order.QRPayload = nullableString(qr)
+	order.ReceivingAddress = nullableString(receivingAddress)
+	order.ActualCryptoAmount = nullableString(actualCryptoAmount)
+	order.ActualCryptoCurrency = nullableString(actualCryptoCurrency)
+	order.CancelReason = cancelReason.String
+	order.ProviderCancelStatus = providerCancelStatus.String
 	var err error
 	if order.ExpiresAt, err = parseStamp(expires); err != nil {
 		return model.PaymentOrder{}, err
@@ -590,11 +743,52 @@ func scanPaymentOrder(row rowScanner) (model.PaymentOrder, error) {
 		}
 		order.RefundedAt = &value
 	}
+	if cancelled.Valid {
+		value, err := parseStamp(cancelled.String)
+		if err != nil {
+			return model.PaymentOrder{}, err
+		}
+		order.CancelledAt = &value
+		if order.Status == "creating" || order.Status == "pending" {
+			order.Status = "cancelled"
+		}
+	}
 	if order.CreatedAt, err = parseStamp(created); err != nil {
 		return model.PaymentOrder{}, err
 	}
 	order.UpdatedAt, err = parseStamp(updated)
 	return order, err
+}
+
+// CancelPaymentOrder marks a user-owned unpaid attempt cancelled. It deliberately
+// leaves the provider status payable so an authoritative late paid callback can
+// still settle and credit the order exactly once.
+func (s *Store) CancelPaymentOrder(ctx context.Context, orderID, userID, reason string, now time.Time) (model.PaymentOrder, bool, error) {
+	result, err := s.db.ExecContext(ctx, `UPDATE payment_orders SET cancelled_at=?,cancel_reason=?,updated_at=?
+		WHERE id=? AND user_id=? AND status IN ('creating','pending') AND paid_at IS NULL AND cancelled_at IS NULL`,
+		stamp(now), reason, stamp(now), orderID, userID)
+	if err != nil {
+		return model.PaymentOrder{}, false, fmt.Errorf("cancel payment order: %w", err)
+	}
+	order, loadErr := s.PaymentOrderForUser(ctx, orderID, userID)
+	if loadErr != nil {
+		return model.PaymentOrder{}, false, loadErr
+	}
+	affected, _ := result.RowsAffected()
+	if affected == 0 && order.Status != "cancelled" && order.Status != "paid" && order.Status != "refunded" {
+		return model.PaymentOrder{}, false, ErrConflict
+	}
+	return order, affected == 1, nil
+}
+
+// SetPaymentProviderCancellation records the redacted result of a best-effort
+// provider cancellation without changing the authoritative settlement state.
+func (s *Store) SetPaymentProviderCancellation(ctx context.Context, orderID, status string, now time.Time) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE payment_orders SET provider_cancel_status=?,updated_at=? WHERE id=?`, status, stamp(now), orderID)
+	if err != nil {
+		return fmt.Errorf("record provider cancellation: %w", err)
+	}
+	return nil
 }
 
 // SettlePayment records one authoritative provider event and credits the exact requested TXB amount once.
@@ -641,18 +835,15 @@ func (s *Store) SettlePayment(ctx context.Context, provider, dedupeKey, payloadH
 		}
 		return order, false, nil
 	}
-	if order.Status != "pending" && order.Status != "creating" && order.Status != "expired" {
+	if order.Status != "pending" && order.Status != "creating" && order.Status != "expired" && order.Status != "cancelled" {
 		return model.PaymentOrder{}, false, ErrConflict
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE payment_orders SET status='paid',provider_trade_id=COALESCE(NULLIF(?,''),provider_trade_id),provider_charge_id=NULLIF(?,''),paid_at=?,updated_at=? WHERE id=?`, tradeID, chargeID, stamp(now), stamp(now), order.ID); err != nil {
 		return model.PaymentOrder{}, false, fmt.Errorf("mark payment paid: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO balances(user_id,txb_minor,updated_at) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET txb_minor=balances.txb_minor+excluded.txb_minor,updated_at=excluded.updated_at`, order.UserID, order.TXBMinor, stamp(now)); err != nil {
-		return model.PaymentOrder{}, false, err
-	}
-	var balance int64
-	if err := tx.QueryRowContext(ctx, `SELECT txb_minor FROM balances WHERE user_id=?`, order.UserID).Scan(&balance); err != nil {
-		return model.PaymentOrder{}, false, err
+	balance, err := adjustBalanceTx(ctx, tx, order.UserID, order.TXBMinor, now)
+	if err != nil {
+		return model.PaymentOrder{}, false, fmt.Errorf("credit payment: %w", err)
 	}
 	if _, err := insertLedgerTx(ctx, tx, order.UserID, order.TXBMinor, balance, "payment_credit", order.ID, provider+" payment", now); err != nil {
 		return model.PaymentOrder{}, false, err
@@ -697,12 +888,9 @@ func (s *Store) RefundPayment(ctx context.Context, actorID *string, orderID, rea
 	if _, err := tx.ExecContext(ctx, `INSERT INTO refunds(id,payment_order_id,actor_user_id,txb_minor,reason,status,created_at) VALUES(?,?,?,?,?,'completed',?)`, refundID, order.ID, actorID, order.TXBMinor, reason, stamp(now)); err != nil {
 		return model.PaymentOrder{}, fmt.Errorf("record refund: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE balances SET txb_minor=txb_minor-?,updated_at=? WHERE user_id=?`, order.TXBMinor, stamp(now), order.UserID); err != nil {
-		return model.PaymentOrder{}, err
-	}
-	var balance int64
-	if err := tx.QueryRowContext(ctx, `SELECT txb_minor FROM balances WHERE user_id=?`, order.UserID).Scan(&balance); err != nil {
-		return model.PaymentOrder{}, err
+	balance, err := adjustBalanceTx(ctx, tx, order.UserID, -order.TXBMinor, now)
+	if err != nil {
+		return model.PaymentOrder{}, fmt.Errorf("reverse payment balance: %w", err)
 	}
 	if _, err := insertLedgerTx(ctx, tx, order.UserID, -order.TXBMinor, balance, "payment_reversal", order.ID, reason, now); err != nil {
 		return model.PaymentOrder{}, err

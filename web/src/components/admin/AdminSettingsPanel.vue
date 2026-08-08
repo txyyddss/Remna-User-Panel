@@ -4,6 +4,7 @@ import { PhCheck, PhFloppyDisk, PhKey } from '@phosphor-icons/vue'
 
 import type { AdminSetting } from '@/api/types'
 import InlineNotice from '@/components/common/InlineNotice.vue'
+import SwitchField from '@/components/common/SwitchField.vue'
 import { useAdminSection } from '@/composables/useAdminSection'
 import AdminSectionState from './AdminSectionState.vue'
 
@@ -23,11 +24,23 @@ watch(items, (next) => {
 }, { immediate: true })
 
 function settingLabel(setting: AdminSetting): string {
-  return setting.key.replaceAll('_', ' ').replace(/\b\w/g, (character) => character.toUpperCase())
+  return setting.key.replace(/[._]/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase())
 }
 
 function isSensitive(setting: AdminSetting): boolean {
   return setting.encrypted
+}
+
+function isBoolean(setting: AdminSetting): boolean {
+  return !setting.encrypted && (
+    setting.value === 'true'
+    || setting.value === 'false'
+    || /(^|[._])(enabled|active|visible|allow|require|disabled)$/.test(setting.key)
+  )
+}
+
+function setBoolean(key: string, value: boolean): void {
+  draft[key] = value ? 'true' : 'false'
 }
 
 async function save(): Promise<void> {
@@ -50,12 +63,20 @@ async function save(): Promise<void> {
       <form class="settings-groups" @submit.prevent="save">
         <fieldset v-for="(settings, category) in grouped" :key="category" class="settings-group">
           <legend>{{ category }}</legend>
-          <label v-for="setting in settings" :key="setting.key" class="settings-field">
+          <div v-for="setting in settings" :key="setting.key" class="settings-field">
             <span class="settings-field__label">
               <span>{{ settingLabel(setting) }}</span>
               <span v-if="setting.configured" class="configured-label"><PhCheck :size="14" /> Configured</span>
             </span>
-            <span class="input-shell">
+            <SwitchField
+              v-if="isBoolean(setting)"
+              :id="`setting-${setting.key}`"
+              :model-value="draft[setting.key] === 'true'"
+              label="Enabled"
+              help="Applied after validation."
+              @update:model-value="setBoolean(setting.key, $event)"
+            />
+            <span v-if="!isBoolean(setting)" class="input-shell">
               <PhKey v-if="isSensitive(setting)" :size="18" />
               <input
                 v-model="draft[setting.key]"
@@ -64,8 +85,8 @@ async function save(): Promise<void> {
                 :autocomplete="isSensitive(setting) ? 'new-password' : 'off'"
               />
             </span>
-            <small>{{ isSensitive(setting) ? 'Stored encrypted and never returned in plaintext.' : 'Applied after validation.' }}</small>
-          </label>
+            <small v-if="!isBoolean(setting)">{{ isSensitive(setting) ? 'Stored encrypted and never returned in plaintext.' : 'Applied after validation.' }}</small>
+          </div>
         </fieldset>
       </form>
     </AdminSectionState>

@@ -1,0 +1,195 @@
+package database
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"math/big"
+	"time"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/model"
+)
+
+// RolloverByPurchase returns the durable settlement state for one term.
+func (s *Store) RolloverByPurchase(ctx context.Context, purchaseID string) (model.PurchaseRollover, error) {
+	return scanRollover(s.db.QueryRowContext(ctx, rolloverSelect+` WHERE purchase_id=?`, purchaseID))
+}
+
+// MarkRolloverProcessing records a successful upstream quiesce. Replays are
+// harmless because no traffic reset occurs in this phase.
+func (s *Store) MarkRolloverProcessing(ctx context.Context, purchaseID string, now time.Time) error {
+	result, err := s.db.ExecContext(ctx, `UPDATE purchase_rollovers SET status='processing',attempts=attempts+1,updated_at=? WHERE purchase_id=? AND status='pending'`, stamp(now), purchaseID)
+	if err != nil {
+		return fmt.Errorf("mark rollover processing: %w", err)
+	}
+	if affected, _ := result.RowsAffected(); affected == 1 {
+		return nil
+	}
+	rollover, loadErr := s.RolloverByPurchase(ctx, purchaseID)
+	if loadErr != nil {
+		return loadErr
+	}
+	if rollover.Status == "processing" || rollover.Status == "credited" || rollover.Status == "zero" || rollover.Status == "exception" {
+		return nil
+	}
+	return ErrConflict
+}
+
+// FinalizeRollover atomically records authoritative traffic inputs, applies one
+// credit, expires the old term, and only then queues the next entitlement.
+func (s *Store) FinalizeRollover(ctx context.Context, purchaseID string, limitBytes, usedBytes int64, exceptionCode string, now time.Time) (model.PurchaseRollover, error) {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return model.PurchaseRollover{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	rollover, err := scanRollover(tx.QueryRowContext(ctx, rolloverSelect+` WHERE purchase_id=?`, purchaseID))
+	if err != nil {
+		return model.PurchaseRollover{}, err
+	}
+	if rollover.Status == "credited" || rollover.Status == "zero" || rollover.Status == "exception" {
+		return rollover, nil
+	}
+	if rollover.Status != "processing" {
+		return model.PurchaseRollover{}, ErrConflict
+	}
+	if limitBytes < 0 || usedBytes < 0 {
+		return model.PurchaseRollover{}, errors.New("rollover traffic inputs must be non-negative")
+	}
+	remaining := limitBytes - usedBytes
+	if remaining < 0 {
+		remaining = 0
+	}
+	credit := int64(0)
+	status := "zero"
+	if exceptionCode != "" {
+		status = "exception"
+	} else if limitBytes > 0 && strictlyAboveBPS(remaining, limitBytes, rollover.MinimumRemainingBPS) {
+		credit = proportionalFloor(rollover.NetPaidTXBMinor, remaining, limitBytes)
+		if credit > rollover.MaximumTXBMinor {
+			credit = rollover.MaximumTXBMinor
+		}
+		if credit > 0 {
+			status = "credited"
+		}
+	}
+	var userID string
+	if err := tx.QueryRowContext(ctx, `SELECT user_id FROM purchases WHERE id=?`, purchaseID).Scan(&userID); err != nil {
+		return model.PurchaseRollover{}, err
+	}
+	if credit > 0 {
+		balance, balanceErr := changeBalanceTx(ctx, tx, userID, credit, now)
+		if balanceErr != nil {
+			return model.PurchaseRollover{}, balanceErr
+		}
+		if _, err := insertLedgerTx(ctx, tx, userID, credit, balance, "rollover_credit", purchaseID, "unused traffic rollover", now); err != nil {
+			return model.PurchaseRollover{}, err
+		}
+	}
+	result, err := tx.ExecContext(ctx, `UPDATE purchase_rollovers SET status=?,traffic_limit_bytes=?,used_traffic_bytes=?,remaining_traffic_bytes=?,credited_txb_minor=?,exception_code=?,updated_at=?,completed_at=? WHERE purchase_id=? AND status='processing'`,
+		status, limitBytes, usedBytes, remaining, credit, exceptionCode, stamp(now), stamp(now), purchaseID)
+	if err != nil {
+		return model.PurchaseRollover{}, err
+	}
+	if affected, rowsErr := result.RowsAffected(); rowsErr != nil {
+		return model.PurchaseRollover{}, rowsErr
+	} else if affected != 1 {
+		return model.PurchaseRollover{}, ErrConflict
+	}
+	result, err = tx.ExecContext(ctx, `UPDATE purchases SET status='expired',updated_at=? WHERE id=? AND status IN ('active','activating')`, stamp(now), purchaseID)
+	if err != nil {
+		return model.PurchaseRollover{}, err
+	}
+	if affected, rowsErr := result.RowsAffected(); rowsErr != nil {
+		return model.PurchaseRollover{}, rowsErr
+	} else if affected != 1 {
+		return model.PurchaseRollover{}, ErrConflict
+	}
+	var nextID string
+	err = tx.QueryRowContext(ctx, `SELECT id FROM purchases WHERE user_id=? AND status='queued' AND valid_from<=? AND valid_until>? ORDER BY valid_from,id LIMIT 1`, userID, stamp(now), stamp(now)).Scan(&nextID)
+	if err == nil {
+		result, err := tx.ExecContext(ctx, `UPDATE purchases SET status='activating',updated_at=? WHERE id=? AND status='queued'`, stamp(now), nextID)
+		if err != nil {
+			return model.PurchaseRollover{}, err
+		}
+		if affected, rowsErr := result.RowsAffected(); rowsErr != nil {
+			return model.PurchaseRollover{}, rowsErr
+		} else if affected != 1 {
+			return model.PurchaseRollover{}, ErrConflict
+		}
+		if err := applyPendingExtensionsToActivationTx(ctx, tx, nextID, now); err != nil {
+			return model.PurchaseRollover{}, err
+		}
+		if err := insertOutboxTx(ctx, tx, "remna_apply_entitlement", nextID, `{"purchaseId":"`+nextID+`"}`, now, now); err != nil {
+			return model.PurchaseRollover{}, err
+		}
+	} else if errors.Is(err, sql.ErrNoRows) {
+		if err := insertOutboxTx(ctx, tx, "remna_sync_user", userID, `{"userId":"`+userID+`"}`, now, now); err != nil {
+			return model.PurchaseRollover{}, err
+		}
+	} else {
+		return model.PurchaseRollover{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return model.PurchaseRollover{}, err
+	}
+	return s.RolloverByPurchase(ctx, purchaseID)
+}
+
+const rolloverSelect = `SELECT purchase_id,status,traffic_limit_bytes,used_traffic_bytes,remaining_traffic_bytes,minimum_remaining_bps,maximum_txb_minor,net_paid_txb_minor,credited_txb_minor,exception_code,attempts,created_at,updated_at,completed_at FROM purchase_rollovers`
+
+func scanRollover(row rowScanner) (model.PurchaseRollover, error) {
+	var value model.PurchaseRollover
+	var used, remaining sql.NullInt64
+	var created, updated string
+	var completed sql.NullString
+	if err := row.Scan(&value.PurchaseID, &value.Status, &value.TrafficLimitBytes, &used, &remaining, &value.MinimumRemainingBPS,
+		&value.MaximumTXBMinor, &value.NetPaidTXBMinor, &value.CreditedTXBMinor, &value.ExceptionCode, &value.Attempts, &created, &updated, &completed); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return model.PurchaseRollover{}, ErrNotFound
+		}
+		return model.PurchaseRollover{}, err
+	}
+	if used.Valid {
+		value.UsedTrafficBytes = &used.Int64
+	}
+	if remaining.Valid {
+		value.RemainingBytes = &remaining.Int64
+	}
+	var err error
+	if value.CreatedAt, err = parseStamp(created); err != nil {
+		return model.PurchaseRollover{}, err
+	}
+	if value.UpdatedAt, err = parseStamp(updated); err != nil {
+		return model.PurchaseRollover{}, err
+	}
+	if completed.Valid {
+		parsed, parseErr := parseStamp(completed.String)
+		if parseErr != nil {
+			return model.PurchaseRollover{}, parseErr
+		}
+		value.CompletedAt = &parsed
+	}
+	return value, nil
+}
+
+func strictlyAboveBPS(remaining, limit int64, threshold int) bool {
+	left := new(big.Int).Mul(big.NewInt(remaining), big.NewInt(10000))
+	right := new(big.Int).Mul(big.NewInt(limit), big.NewInt(int64(threshold)))
+	return left.Cmp(right) > 0
+}
+
+func proportionalFloor(paid, remaining, limit int64) int64 {
+	if paid <= 0 || remaining <= 0 || limit <= 0 {
+		return 0
+	}
+	value := new(big.Int).Mul(big.NewInt(paid), big.NewInt(remaining))
+	value.Quo(value, big.NewInt(limit))
+	if !value.IsInt64() {
+		return paid
+	}
+	return value.Int64()
+}

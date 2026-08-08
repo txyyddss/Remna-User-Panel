@@ -48,7 +48,7 @@ async function saveSquad(payload: SquadProductWrite): Promise<void> {
       <div><h2>Catalog</h2><p>Manage combo terms and imported Remnawave squads.</p></div>
       <button class="button button--primary" type="button" @click="editing = null"><PhPlus :size="18" /> New combo</button>
     </div>
-    <AdminCatalogEditor v-if="editing !== undefined" :combo="editing ?? undefined" :busy="combos.busy.value" @save="save" @cancel="editing = undefined" />
+    <AdminCatalogEditor v-if="editing !== undefined" :combo="editing ?? undefined" :squads="squads.items.value" :busy="combos.busy.value" @save="save" @cancel="editing = undefined" />
     <AdminSectionState :loading="combos.loading.value" :error="combos.error.value" @retry="combos.load()">
       <div class="admin-list">
         <article v-for="combo in combos.items.value" :key="combo.id" class="admin-list-row admin-list-row--catalog">

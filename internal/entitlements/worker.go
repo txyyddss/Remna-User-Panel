@@ -59,15 +59,23 @@ func (w *Worker) Drain(ctx context.Context, limit int) error {
 		if job == nil {
 			return nil
 		}
-		jobErr := w.process(ctx, *job)
-		if jobErr != nil && job.Attempts >= 10 && job.Kind == "remna_apply_entitlement" {
-			_ = w.repository.MarkPurchaseSyncResult(ctx, job.AggregateID, false, w.now().UTC())
-		}
+		jobErr := w.HandleOutbox(ctx, *job)
 		if err := w.repository.CompleteOutboxJob(ctx, job.ID, job.Attempts, jobErr, w.now().UTC()); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// HandleOutbox implements the shared kind-specific dispatcher contract.
+func (w *Worker) HandleOutbox(ctx context.Context, job model.OutboxJob) error {
+	jobErr := w.process(ctx, job)
+	if jobErr != nil && job.Attempts >= 10 && job.Kind == "remna_apply_entitlement" {
+		if markErr := w.repository.MarkPurchaseSyncResult(ctx, job.AggregateID, false, w.now().UTC()); markErr != nil {
+			return errors.Join(jobErr, fmt.Errorf("mark terminal entitlement failure: %w", markErr))
+		}
+	}
+	return jobErr
 }
 
 func (w *Worker) process(ctx context.Context, job model.OutboxJob) error {

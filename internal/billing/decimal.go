@@ -8,6 +8,45 @@ import (
 	"strings"
 )
 
+// ParseTXBMajor converts a human major-unit decimal to integer hundredths. It
+// rejects exponent notation and values with more than two fractional digits.
+func ParseTXBMajor(raw string) (int64, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || strings.HasPrefix(raw, "+") || strings.ContainsAny(raw, "eE") {
+		return 0, errors.New("TXB must be a fixed decimal")
+	}
+	negative := strings.HasPrefix(raw, "-")
+	if negative {
+		raw = strings.TrimPrefix(raw, "-")
+	}
+	parts := strings.Split(raw, ".")
+	if len(parts) > 2 || parts[0] == "" || (len(parts) == 2 && (parts[1] == "" || len(parts[1]) > 2)) {
+		return 0, errors.New("TXB must have at most two fractional digits")
+	}
+	for _, part := range parts {
+		for _, digit := range part {
+			if digit < '0' || digit > '9' {
+				return 0, errors.New("TXB contains an invalid digit")
+			}
+		}
+	}
+	fraction := "00"
+	if len(parts) == 2 {
+		fraction = parts[1] + strings.Repeat("0", 2-len(parts[1]))
+	}
+	minor := new(big.Int)
+	if _, ok := minor.SetString(parts[0]+fraction, 10); !ok {
+		return 0, errors.New("TXB amount is invalid")
+	}
+	if negative {
+		minor.Neg(minor)
+	}
+	if !minor.IsInt64() {
+		return 0, errors.New("TXB amount is out of range")
+	}
+	return minor.Int64(), nil
+}
+
 // Decimal is a non-negative base-10 value represented as integer coefficient and scale.
 type Decimal struct {
 	coefficient *big.Int
@@ -77,6 +116,26 @@ func Payable(txbMinor int64, rate Decimal, providerPrecision int) (string, error
 	numerator := new(big.Int).Mul(big.NewInt(txbMinor), rate.coefficient)
 	numerator.Mul(numerator, pow10(providerPrecision))
 	denominator := new(big.Int).Mul(big.NewInt(100), pow10(rate.scale))
+	quotient, remainder := new(big.Int), new(big.Int)
+	quotient.QuoRem(numerator, denominator, remainder)
+	if remainder.Sign() > 0 {
+		quotient.Add(quotient, big.NewInt(1))
+	}
+	return formatScaled(quotient, providerPrecision), nil
+}
+
+// PayableFromTXBPerCurrency divides the requested TXB by a TXB-per-currency
+// rate and rounds the provider amount upward. This is the authoritative rate
+// direction for newly created payment orders.
+func PayableFromTXBPerCurrency(txbMinor int64, rate Decimal, providerPrecision int) (string, error) {
+	if txbMinor <= 0 || !rate.Positive() {
+		return "", errors.New("positive TXB amount and rate are required")
+	}
+	if providerPrecision < 0 || providerPrecision > 12 {
+		return "", errors.New("provider precision is out of range")
+	}
+	numerator := new(big.Int).Mul(big.NewInt(txbMinor), pow10(rate.scale+providerPrecision))
+	denominator := new(big.Int).Mul(big.NewInt(100), rate.coefficient)
 	quotient, remainder := new(big.Int), new(big.Int)
 	quotient.QuoRem(numerator, denominator, remainder)
 	if remainder.Sign() > 0 {

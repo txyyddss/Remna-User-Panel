@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/billing"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
@@ -25,25 +26,30 @@ type SettingDefinition struct {
 }
 
 var settingDefinitions = map[string]SettingDefinition{
-	"telegram.group_chat_id":     {Required: true, Validate: validateInteger},
-	"telegram.channel_chat_id":   {Required: true, Validate: validateInteger},
-	"telegram.webhook_secret":    {Secret: true, Validate: validateWebhookSecret},
-	"remnawave.base_url":         {Required: true, Validate: validateHTTPSURL},
-	"remnawave.api_token":        {Secret: true, Required: true, Validate: nonempty},
-	"billing.rate.cny_per_txb":   {Required: true, Validate: validatePositiveDecimal},
-	"billing.rate.usd_per_txb":   {Required: true, Validate: validatePositiveDecimal},
-	"billing.rate.xtr_per_txb":   {Required: true, Validate: validatePositiveDecimal},
-	"billing.ezpay.enabled":      {Validate: validateBoolean},
-	"billing.ezpay.base_url":     {Validate: validateHTTPSURL},
-	"billing.ezpay.merchant_id":  {Validate: nonempty},
-	"billing.ezpay.key":          {Secret: true, Validate: nonempty},
-	"billing.ezpay.payment_type": {Validate: validateEZPayType},
-	"billing.bepusdt.enabled":    {Validate: validateBoolean},
-	"billing.bepusdt.base_url":   {Validate: validateHTTPSURL},
-	"billing.bepusdt.api_token":  {Secret: true, Validate: nonempty},
-	"billing.bepusdt.trade_type": {Validate: validateBEPusdtTradeType},
-	"billing.bepusdt.ack":        {Validate: validateAck},
-	"billing.stars.enabled":      {Validate: validateBoolean},
+	"telegram.group_chat_id":    {Required: true, Validate: validateInteger},
+	"telegram.channel_chat_id":  {Required: true, Validate: validateInteger},
+	"telegram.webhook_secret":   {Secret: true, Validate: validateWebhookSecret},
+	"remnawave.base_url":        {Required: true, Validate: validateHTTPSURL},
+	"remnawave.api_token":       {Secret: true, Required: true, Validate: nonempty},
+	"billing.rate.txb_per_cny":  {Required: true, Validate: validatePositiveDecimal},
+	"billing.rate.txb_per_usd":  {Required: true, Validate: validatePositiveDecimal},
+	"billing.rate.txb_per_xtr":  {Required: true, Validate: validatePositiveDecimal},
+	"billing.ezpay.enabled":     {Validate: validateBoolean},
+	"billing.ezpay.base_url":    {Validate: validateHTTPSURL},
+	"billing.ezpay.merchant_id": {Validate: nonempty},
+	"billing.ezpay.key":         {Secret: true, Validate: nonempty},
+	"billing.ezpay.methods":     {Validate: billing.ValidateEZPayMethods},
+	"billing.bepusdt.enabled":   {Validate: validateBoolean},
+	"billing.bepusdt.base_url":  {Validate: validateHTTPSURL},
+	"billing.bepusdt.api_token": {Secret: true, Validate: nonempty},
+	"billing.bepusdt.methods":   {Validate: billing.ValidateBEPusdtMethods},
+	"billing.bepusdt.ack":       {Validate: validateAck},
+	"billing.stars.enabled":     {Validate: validateBoolean},
+	"emby.base_url":             {Secret: true, Validate: validateHTTPSURL},
+	"emby.api_token":            {Secret: true, Validate: nonempty},
+	"emby.setup_price_txb":      {Validate: validateNonnegativeTXB},
+	"activity.timezone":         {Validate: validateTimezone},
+	"activity.daily_reward_txb": {Validate: validateNonnegativeTXB},
 }
 
 // SettingsRepository stores encrypted or plain values without interpreting them.
@@ -151,6 +157,10 @@ func settingCategory(key string) string {
 		return "rates"
 	case strings.HasPrefix(key, "billing."):
 		return "payments"
+	case strings.HasPrefix(key, "emby."):
+		return "emby"
+	case strings.HasPrefix(key, "activity."):
+		return "activity"
 	default:
 		return "application"
 	}
@@ -175,9 +185,9 @@ func (s *SettingsService) Readiness(ctx context.Context, activeComboCount int) [
 		}
 		keys := []string{"base_url"}
 		if provider == "ezpay" {
-			keys = append(keys, "merchant_id", "key")
+			keys = append(keys, "merchant_id", "key", "methods")
 		} else {
-			keys = append(keys, "api_token", "trade_type")
+			keys = append(keys, "api_token", "methods")
 		}
 		for _, suffix := range keys {
 			if value, err := s.Optional(ctx, "billing."+provider+"."+suffix); err != nil || value == "" {
@@ -196,6 +206,21 @@ func validatePositiveDecimal(value string) error {
 	decimal, err := billing.ParseDecimal(value)
 	if err != nil || !decimal.Positive() {
 		return errors.New("must be a positive fixed decimal")
+	}
+	return nil
+}
+
+func validateNonnegativeTXB(value string) error {
+	minor, err := billing.ParseTXBMajor(value)
+	if err != nil || minor < 0 {
+		return errors.New("must be a non-negative TXB amount with at most two decimals")
+	}
+	return nil
+}
+
+func validateTimezone(value string) error {
+	if _, err := time.LoadLocation(strings.TrimSpace(value)); err != nil {
+		return errors.New("must be an IANA timezone")
 	}
 	return nil
 }
@@ -230,13 +255,10 @@ func validateAck(value string) error {
 	return nil
 }
 
+// Kept for compatibility with callers validating one legacy selection. New
+// configuration uses the ordered billing.ezpay.methods list.
 func validateEZPayType(value string) error {
-	switch value {
-	case "alipay", "wxpay", "qqpay", "bank", "jdpay":
-		return nil
-	default:
-		return errors.New("must be alipay, wxpay, qqpay, bank, or jdpay")
-	}
+	return billing.ValidateEZPayMethods(value)
 }
 
 var webhookSecretPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,256}$`)
@@ -246,15 +268,6 @@ func validateWebhookSecret(value string) error {
 		return errors.New("must contain 1-256 URL-safe characters")
 	}
 	return nil
-}
-
-func validateBEPusdtTradeType(value string) error {
-	switch value {
-	case "usdt.trc20", "usdt.erc20", "usdt.polygon", "usdt.bep20", "usdt.aptos", "usdt.solana", "usdt.xlayer", "usdt.arbitrum", "usdt.plasma", "usdt.ton":
-		return nil
-	default:
-		return errors.New("must be a supported USDT trade type")
-	}
 }
 
 func nonempty(value string) error {

@@ -279,6 +279,61 @@ func (c *Client) CreateTransaction(ctx context.Context, input CreateTransactionR
 	return transaction, nil
 }
 
+// CancelTransaction calls BEPusdt's signed cancellation endpoint for a direct
+// transaction. A paid notification may race with this operation and remains
+// authoritative to the caller.
+func (c *Client) CancelTransaction(ctx context.Context, tradeID string) error {
+	tradeID = strings.TrimSpace(tradeID)
+	if tradeID == "" {
+		return errors.New("bepusdt trade id is empty")
+	}
+	encoded, err := json.Marshal(map[string]string{
+		"trade_id":  tradeID,
+		"signature": Sign(map[string]string{"trade_id": tradeID}, c.token),
+	})
+	if err != nil {
+		return fmt.Errorf("bepusdt encode cancellation: %w", err)
+	}
+	target := *c.baseURL
+	target.Path = strings.TrimRight(target.Path, "/") + "/api/v1/order/cancel-transaction"
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, target.String(), bytes.NewReader(encoded))
+	if err != nil {
+		return fmt.Errorf("bepusdt create cancellation request: %w", err)
+	}
+	request.Header.Set("Accept", "application/json")
+	request.Header.Set("Content-Type", "application/json")
+	response, err := c.httpClient.Do(request)
+	if err != nil {
+		return fmt.Errorf("bepusdt cancellation request: %w", err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	body, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes+1))
+	if err != nil {
+		return fmt.Errorf("bepusdt read cancellation response: %w", err)
+	}
+	if len(body) > maxResponseBytes {
+		return fmt.Errorf("bepusdt response exceeds %d bytes", maxResponseBytes)
+	}
+	var envelope struct {
+		StatusCode flexibleInt `json:"status_code"`
+		Message    string      `json:"message"`
+		RequestID  string      `json:"request_id"`
+		Data       struct {
+			TradeID string `json:"trade_id"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		return fmt.Errorf("bepusdt decode cancellation response (http=%d): %w", response.StatusCode, err)
+	}
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices || int(envelope.StatusCode) != http.StatusOK {
+		return &APIError{HTTPStatus: response.StatusCode, StatusCode: int(envelope.StatusCode), Message: envelope.Message, RequestID: envelope.RequestID}
+	}
+	if envelope.Data.TradeID != tradeID {
+		return errors.New("bepusdt cancellation response trade id mismatch")
+	}
+	return nil
+}
+
 // ParseWebhook parses a BEPusdt JSON callback while accepting string or numeric scalar fields.
 // Duplicate keys and nested values are rejected.
 func ParseWebhook(body []byte) (*Webhook, map[string]string, error) {
@@ -314,6 +369,46 @@ func ParseWebhook(body []byte) (*Webhook, map[string]string, error) {
 		return nil, nil, fmt.Errorf("bepusdt webhook actual amount: %w", err)
 	}
 	return webhook, values, nil
+}
+
+// ParseUnsignedWebhook parses the v1.19 direct-transaction notification shape.
+// Authentication is intentionally left to the per-order callback URL capability.
+func ParseUnsignedWebhook(body []byte) (*Webhook, error) {
+	raw, err := decodeUniqueObject(body)
+	if err != nil {
+		return nil, err
+	}
+	values := make(map[string]string, len(raw))
+	for key, value := range raw {
+		scalar, scalarErr := scalarString(value)
+		if scalarErr != nil {
+			return nil, fmt.Errorf("bepusdt webhook field %q: %w", key, scalarErr)
+		}
+		values[key] = scalar
+	}
+	if values["signature"] != "" {
+		return nil, errors.New("signed callback must use signature verification")
+	}
+	status, err := strconv.Atoi(values["status"])
+	if err != nil {
+		return nil, errors.New("bepusdt webhook status is invalid")
+	}
+	webhook := &Webhook{
+		TradeID: values["trade_id"], OrderID: values["order_id"], Amount: values["amount"],
+		ActualAmount: values["actual_amount"], Token: values["token"],
+		BlockTransactionID: values["block_transaction_id"], Status: status,
+		CreatedAt: values["created_at"], ExpiredAt: values["expired_at"],
+	}
+	if webhook.OrderID == "" || webhook.Amount == "" || webhook.ActualAmount == "" || webhook.Token == "" {
+		return nil, errors.New("bepusdt webhook is missing required fields")
+	}
+	if err := validateDecimal(webhook.Amount); err != nil {
+		return nil, fmt.Errorf("bepusdt webhook amount: %w", err)
+	}
+	if err := validateDecimal(webhook.ActualAmount); err != nil {
+		return nil, fmt.Errorf("bepusdt webhook actual amount: %w", err)
+	}
+	return webhook, nil
 }
 
 // VerifyWebhook verifies a parsed webhook's complete scalar field set.

@@ -29,12 +29,18 @@ const entitlement: Purchase = {
   comboId: 'combo-1',
   comboName: 'Everyday',
   price: { currency: 'TXB', minor: '1200', display: '12.00 TXB' },
+  grossPrice: { currency: 'TXB', minor: '1200', display: '12.00 TXB' },
+  couponDiscount: { currency: 'TXB', minor: '0', display: '0.00 TXB' },
+  couponGrantId: null,
   validFrom: '2026-08-07T00:00:00Z',
   validUntil: '2026-09-06T00:00:00Z',
   status: 'cancelled',
   trafficLimitBytes: '107374182400',
   resetStrategy: 'MONTH',
   squadUuids: [],
+  rolloverMinRemainingBps: 0,
+  rolloverMaxTxbMinor: '0',
+  rolloverMax: { currency: 'TXB', minor: '0', display: '0.00 TXB' },
   createdAt: '2026-08-07T00:00:00Z',
   updatedAt: '2026-08-07T00:01:00Z',
 }
@@ -88,5 +94,38 @@ describe('admin API mutations', () => {
     expect(url).toBe('/api/v1/admin/jobs/job%2F1/retry')
     expect(options.method).toBe('POST')
     expect(options.body).toBeUndefined()
+  })
+
+  it('creates and cancels payments with canonical method IDs', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ id: 'payment-1', status: 'pending' }))
+      .mockResolvedValueOnce(jsonResponse({ id: 'payment-1', status: 'cancelled' }))
+
+    await api.createPaymentOrder('bepusdt:usdt.trc20', '15000')
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('/api/v1/payments/orders')
+    expect(options.method).toBe('POST')
+    expect(JSON.parse(String(options.body))).toEqual({ methodId: 'bepusdt:usdt.trc20', txbMinor: '15000' })
+
+    await api.cancelPaymentOrder('payment/1')
+    const [cancelUrl, cancelOptions] = fetchMock.mock.calls[1] as [string, RequestInit]
+    expect(cancelUrl).toBe('/api/v1/payments/orders/payment%2F1/cancel')
+    expect(cancelOptions.method).toBe('POST')
+    expect(cancelOptions.body).toBeUndefined()
+  })
+
+  it('sends the caller-owned purchase idempotency key', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ id: 'purchase-1' }))
+
+    await api.createPurchase('combo-1', ['squad-1'], 'grant-1', 'purchase-attempt-1')
+
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('/api/v1/purchases')
+    expect(new Headers(options.headers).get('Idempotency-Key')).toBe('purchase-attempt-1')
+    expect(JSON.parse(String(options.body))).toEqual({
+      comboId: 'combo-1',
+      addonSquadProductIds: ['squad-1'],
+      couponGrantId: 'grant-1',
+    })
   })
 })

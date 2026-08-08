@@ -182,7 +182,8 @@ export interface paths {
          * @description Prices are loaded from the current catalog and debited atomically from the
          *     TXB ledger. First purchases activate immediately, same-plan renewals extend
          *     from the later of now or current expiry, and plan/add-on changes queue for
-         *     the current term boundary. No proration is performed.
+         *     the current term boundary. No proration is performed. Repeating the same
+         *     caller-owned idempotency key returns the original purchase without another debit.
          */
         post: operations["createPurchase"];
         delete?: never;
@@ -256,9 +257,11 @@ export interface paths {
         put?: never;
         /**
          * Create a balance top-up order
-         * @description The requested TXB minor units are converted using the current fixed-decimal
-         *     dashboard rate. Provider payable amounts are rounded upward to provider
-         *     precision. A successful authoritative callback credits exactly `txbMinor`.
+         * @description The requested TXB minor units are divided by the required `txb_per_cny`,
+         *     `txb_per_usd`, or `txb_per_xtr` fixed-decimal rate and rounded upward at
+         *     provider precision. A successful authoritative callback credits exactly
+         *     `txbMinor`. At most 200 durable orders are retained; only terminal evidence
+         *     is pruned before creation.
          */
         post: operations["createPaymentOrder"];
         delete?: never;
@@ -278,6 +281,537 @@ export interface paths {
         get: operations["getPaymentOrder"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/orders/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a user-owned unpaid payment order
+         * @description Stops client polling, records a local cancellation, and asks BEPusdt to
+         *     cancel the direct transaction when that provider supports it. A later
+         *     authoritative paid event may still settle and credit the order exactly once.
+         */
+        post: operations["cancelPaymentOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/emby/account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get setup choices and the current linked Emby account */
+        get: operations["getEmbyAccount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/emby/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Debit and queue durable Emby provisioning
+         * @description The password is write-only, encrypted for the provisioning saga, and erased after terminal completion.
+         */
+        post: operations["setupEmbyAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/emby/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replace the allowed Emby rating and library preferences
+         * @description The server fetches the current upstream policy and overlays only approved preference fields plus mandatory restrictions.
+         */
+        put: operations["updateEmbyPreferences"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/emby/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Change the linked Emby password synchronously */
+        put: operations["changeEmbyPassword"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get daily check-in, games, draws, and recent results */
+        get: operations["getActivityOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/activity/check-ins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Claim the configured reward once per local calendar day */
+        post: operations["checkInActivity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/activity/bets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Debit a stake and record a cryptographically selected result */
+        post: operations["playActivityGame"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/activity/draws": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pay the configured fee and apply one weighted prize atomically */
+        post: operations["playLuckyDraw"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/coupons/wallet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the current user's coupon grants */
+        get: operations["getCouponWallet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/coupons/redeem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Redeem one canonical coupon code */
+        post: operations["redeemCoupon"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/questionnaires/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the single active questionnaire and durable validation code */
+        get: operations["getActiveQuestionnaire"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/questionnaires/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List this user's questionnaire participations */
+        get: operations["getQuestionnaireHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/questionnaires/{id}/participation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create or retrieve this user's durable validation code */
+        post: operations["participateInQuestionnaire"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/activity-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get local-day and daily-reward settings */
+        get: operations["getAdminActivitySettings"];
+        /** Replace local-day and daily-reward settings */
+        put: operations["updateAdminActivitySettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/activity-games": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all configured betting games */
+        get: operations["listAdminActivityGames"];
+        put?: never;
+        /** Create a betting game */
+        post: operations["createAdminActivityGame"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/activity-games/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace a betting-game definition */
+        put: operations["updateAdminActivityGame"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/lucky-draw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List lucky draws and weighted prizes */
+        get: operations["listAdminLuckyDraws"];
+        put?: never;
+        /** Create a lucky draw and its typed rewards */
+        post: operations["createAdminLuckyDraw"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/lucky-draw/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace a lucky draw and its typed rewards */
+        put: operations["updateAdminLuckyDraw"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/coupons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List active and inactive coupon definitions */
+        get: operations["listAdminCoupons"];
+        put?: never;
+        /** Create a coupon definition */
+        post: operations["createAdminCoupon"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/coupons/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Partially replace a coupon definition */
+        put: operations["updateAdminCoupon"];
+        post?: never;
+        /** Deactivate a coupon without removing history */
+        delete: operations["deactivateAdminCoupon"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/questionnaires": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List questionnaire definitions and settlement state */
+        get: operations["listAdminQuestionnaires"];
+        put?: never;
+        /** Create a Google or Microsoft Forms questionnaire */
+        post: operations["createAdminQuestionnaire"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/questionnaires/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Partially replace a questionnaire definition */
+        put: operations["updateAdminQuestionnaire"];
+        post?: never;
+        /** Close a questionnaire without deleting participants */
+        delete: operations["closeAdminQuestionnaire"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/questionnaires/{id}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make this the single active questionnaire */
+        post: operations["activateAdminQuestionnaire"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/questionnaires/{id}/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload and parse a bounded questionnaire response CSV
+         * @description Accepts one UTF-8 or UTF-8-BOM file, at most 5 MiB, 50000 rows, and 100 columns. Delimiter detection supports comma, semicolon, and tab.
+         */
+        post: operations["uploadQuestionnaireImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/questionnaires/{id}/imports/{importID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get import analysis or durable settlement status */
+        get: operations["getQuestionnaireImport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/questionnaires/{id}/imports/{importID}/analyze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Analyze one selected validation-code column without crediting */
+        post: operations["analyzeQuestionnaireImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/questionnaires/{id}/imports/{importID}/settle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm the analyzed import and queue idempotent settlement */
+        post: operations["settleQuestionnaireImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/emby-accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List safe local Emby provisioning state */
+        get: operations["listAdminEmbyAccounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/emby-accounts/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Requeue a retryable Emby provisioning attempt */
+        post: operations["retryAdminEmbyAccount"];
         delete?: never;
         options?: never;
         head?: never;
@@ -566,6 +1100,81 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/database/tables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List allowlisted application tables and typed columns
+         * @description Excludes `schema_migrations` and SQLite internal tables. Direct edits bypass domain synchronization hooks.
+         */
+        get: operations["listAdminDatabaseTables"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/database/tables/{table}/rows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Page typed rows by declared primary key or rowid */
+        get: operations["listAdminDatabaseRows"];
+        /**
+         * Apply a previously reviewed update through the compatibility route
+         * @description One-step writes are refused. The review hash and typed confirmation must match a live review.
+         */
+        put: operations["updateAdminDatabaseRowCompatibility"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/database/mutations/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Review a typed database mutation and its redacted diff */
+        post: operations["reviewAdminDatabaseMutation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/database/mutations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Apply an exact reviewed mutation after a rescue backup */
+        post: operations["applyAdminDatabaseMutation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/backups": {
         parameters: {
             query?: never;
@@ -578,6 +1187,60 @@ export interface paths {
         put?: never;
         /** Run and verify an online SQLite backup now */
         post: operations["createAdminBackup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/backups/{id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download an authenticated verified SQLite snapshot */
+        get: operations["downloadAdminBackup"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/backups/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify and stage a stored snapshot for restart-time restore
+         * @description Creates a rescue backup, verifies integrity and migration compatibility, stages beside the live database, writes a restore marker, and requests graceful restart.
+         */
+        post: operations["stageAdminRestore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/restores/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get staged restore and rollback status */
+        get: operations["getAdminRestoreStatus"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -694,6 +1357,28 @@ export interface paths {
          *     durable order snapshot before the order is marked expired.
          */
         post: operations["receiveBEPusdtWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/bepusdt/{capability}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Receive a BEPusdt notification authenticated by signature or per-order capability
+         * @description Signed notifications retain normal signature validation. Unsigned v1.19
+         *     notifications are accepted only when the unguessable HMAC capability in
+         *     this callback URL matches the stored order. Capabilities are redacted from logs.
+         */
+        post: operations["receiveBEPusdtCapabilityWebhook"];
         delete?: never;
         options?: never;
         head?: never;
@@ -819,6 +1504,11 @@ export interface components {
             channelJoined: boolean;
             /** Format: date-time */
             policyAcceptedAt: string | null;
+            /**
+             * @description Non-empty only while confirmed linked-user recovery onboarding is required.
+             * @enum {string}
+             */
+            recoveryReason: "" | "remnawave_user_missing";
             createdAt: components["schemas"]["Timestamp"];
             updatedAt: components["schemas"]["Timestamp"];
         };
@@ -858,7 +1548,10 @@ export interface components {
             display: string;
         };
         PaymentMethod: {
+            id: components["schemas"]["PaymentMethodID"];
             provider: components["schemas"]["PaymentProvider"];
+            /** @description Provider-owned rail identifier; empty for Telegram Stars. */
+            rail: string;
             name: string;
             /** @enum {string} */
             currency: "CNY" | "USD" | "USDT" | "XTR";
@@ -893,6 +1586,10 @@ export interface components {
             resetStrategy: components["schemas"]["ResetStrategy"];
             includedSquads: components["schemas"]["SquadProduct"][];
             active: boolean;
+            /** @description Remaining traffic must be strictly greater than this basis-point threshold. */
+            rolloverMinRemainingBps: number;
+            rolloverMaxTxbMinor: string;
+            rolloverMax: components["schemas"]["Money"];
             createdAt: components["schemas"]["Timestamp"];
             updatedAt: components["schemas"]["Timestamp"];
         };
@@ -907,8 +1604,12 @@ export interface components {
             validityDays: number;
             trafficLimitBytes: string;
             resetStrategy: components["schemas"]["ResetStrategy"];
-            squadProductIds: components["schemas"]["ID"][];
+            squadProductIds?: components["schemas"]["ID"][];
+            /** @description Compatibility alias used by the combo picker for included imported squads. */
+            includedSquadIds?: components["schemas"]["ID"][];
             active: boolean;
+            rolloverMinRemainingBps: number;
+            rolloverMaxTxbMinor: string;
         };
         SquadProductWrite: {
             /** Format: uuid */
@@ -921,6 +1622,8 @@ export interface components {
         PurchaseRequest: {
             comboId: components["schemas"]["ID"];
             addonSquadProductIds: components["schemas"]["ID"][];
+            /** @description One explicitly selected eligible wallet grant; discounts never stack. */
+            couponGrantId?: string;
         };
         /** @enum {string} */
         EntitlementStatus: "activating" | "active" | "queued" | "expired" | "cancelled" | "failed";
@@ -940,12 +1643,18 @@ export interface components {
             comboId: components["schemas"]["ID"];
             comboName: string;
             price: components["schemas"]["Money"];
+            grossPrice: components["schemas"]["Money"];
+            couponDiscount: components["schemas"]["Money"];
+            couponGrantId: string | null;
             validFrom: components["schemas"]["Timestamp"];
             validUntil: components["schemas"]["Timestamp"];
             status: components["schemas"]["EntitlementStatus"];
             trafficLimitBytes: string;
             resetStrategy: components["schemas"]["ResetStrategy"];
             squadUuids: string[];
+            rolloverMinRemainingBps: number;
+            rolloverMaxTxbMinor: string;
+            rolloverMax: components["schemas"]["Money"];
             createdAt: components["schemas"]["Timestamp"];
             updatedAt: components["schemas"]["Timestamp"];
         };
@@ -983,7 +1692,7 @@ export interface components {
             fetchedAt: components["schemas"]["Timestamp"];
         };
         /** @enum {string} */
-        LedgerKind: "payment_credit" | "payment_reversal" | "purchase_debit" | "purchase_cancellation" | "admin_adjustment" | "admin_entitlement_cancellation";
+        LedgerKind: "payment_credit" | "payment_reversal" | "purchase_debit" | "purchase_cancellation" | "admin_adjustment" | "admin_entitlement_cancellation" | "activity_bet_stake" | "activity_bet_payout" | "activity_daily_checkin" | "activity_draw_fee" | "activity_draw_reward" | "coupon_balance_add" | "coupon_balance_multiply" | "questionnaire_reward" | "emby_setup_debit" | "emby_setup_refund" | "rollover_credit";
         LedgerEntry: {
             id: components["schemas"]["ID"];
             delta: components["schemas"]["Money"];
@@ -1001,33 +1710,423 @@ export interface components {
             page?: components["schemas"]["PageInfo"];
         };
         /** @enum {string} */
+        PaymentMethodID: "ezpay:alipay" | "ezpay:wxpay" | "ezpay:qqpay" | "ezpay:bank" | "ezpay:jdpay" | "bepusdt:usdt.trc20" | "bepusdt:usdt.erc20" | "bepusdt:usdt.polygon" | "bepusdt:usdt.bep20" | "bepusdt:usdt.aptos" | "bepusdt:usdt.solana" | "bepusdt:usdt.xlayer" | "bepusdt:usdt.arbitrum" | "bepusdt:usdt.plasma" | "bepusdt:usdt.ton" | "stars";
+        /** @description Stable method ID for new orders; legacy pending snapshots may expose an empty value or provider alias. */
+        PaymentOrderMethodID: components["schemas"]["PaymentMethodID"] | ("" | "ezpay" | "bepusdt");
+        /** @enum {string} */
         PaymentProvider: "ezpay" | "bepusdt" | "stars";
         /** @enum {string} */
-        PaymentStatus: "creating" | "pending" | "paid" | "expired" | "failed" | "refunded";
+        PaymentStatus: "creating" | "pending" | "paid" | "expired" | "failed" | "refunded" | "cancelled";
         PaymentOrderRequest: {
-            provider: components["schemas"]["PaymentProvider"];
+            methodId: components["schemas"]["PaymentMethodID"];
             txbMinor: string;
         };
         PaymentOrder: {
             id: components["schemas"]["ID"];
             provider: components["schemas"]["PaymentProvider"];
+            methodId: components["schemas"]["PaymentOrderMethodID"];
+            providerRail: string;
             status: components["schemas"]["PaymentStatus"];
             txb: components["schemas"]["Money"];
             payableAmount: string;
             /** @enum {string} */
             payableCurrency: "CNY" | "USD" | "XTR" | "USDT";
-            /** @description Fixed-decimal rate used when the order was created. */
+            /** @description Immutable fixed-decimal rate used when the order was created. */
             rateSnapshot: string;
+            /**
+             * @description New orders use txb_per_currency; the legacy direction is retained only for immutable pending snapshots.
+             * @enum {string}
+             */
+            rateDirection: "txb_per_currency" | "currency_per_txb";
             /** Format: uri */
             paymentUrl: string | null;
             qrPayload: string | null;
+            receivingAddress: string | null;
+            actualCryptoAmount: string | null;
+            /** @enum {string|null} */
+            actualCryptoCurrency: "USDT" | null;
             expiresAt: components["schemas"]["Timestamp"];
             /** Format: date-time */
             paidAt: string | null;
             /** Format: date-time */
             refundedAt: string | null;
+            /** Format: date-time */
+            cancelledAt: string | null;
+            cancelReason: string;
+            /** @enum {string} */
+            providerCancelStatus: "" | "unsupported" | "requested" | "cancelled" | "failed";
             createdAt: components["schemas"]["Timestamp"];
             updatedAt: components["schemas"]["Timestamp"];
+        };
+        ActivityGame: {
+            id: components["schemas"]["ID"];
+            name: string;
+            icon: string;
+            description: string;
+            enabled: boolean;
+            winChanceBps: number;
+            minimumStakeMinor: string;
+            maximumStakeMinor: string;
+            /** Format: int64 */
+            returnMultiplierBps: number;
+        };
+        ActivityGameWrite: {
+            name: string;
+            icon: string;
+            description: string;
+            enabled: boolean;
+            winChanceBps: number;
+            minimumStakeMinor: string;
+            maximumStakeMinor: string;
+            /** Format: int64 */
+            returnMultiplierBps: number;
+        };
+        ActivityGameList: {
+            items: components["schemas"]["ActivityGame"][];
+        };
+        LuckyDraw: {
+            id: components["schemas"]["ID"];
+            name: string;
+            description: string;
+            feeTxbMinor: string;
+            enabled: boolean;
+        };
+        NoPrizeReward: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "none";
+        };
+        TXBDeltaReward: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "txb_delta";
+            txbDeltaMinor: components["schemas"]["DecimalInteger"];
+        };
+        CouponGrantReward: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "coupon_grant";
+            couponId: components["schemas"]["ID"];
+        };
+        SubscriptionExtensionReward: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "subscription_extension";
+            extensionDays: number;
+        };
+        Reward: components["schemas"]["NoPrizeReward"] | components["schemas"]["TXBDeltaReward"] | components["schemas"]["CouponGrantReward"] | components["schemas"]["SubscriptionExtensionReward"];
+        ActivityResult: {
+            id: components["schemas"]["ID"];
+            /** @enum {string} */
+            kind: "check_in" | "bet" | "draw";
+            /** @enum {string} */
+            outcome: "complete" | "win" | "loss";
+            message: string;
+            reward: components["schemas"]["Reward"];
+            stakeTxbMinor?: string;
+            balanceAfter: components["schemas"]["Money"];
+            createdAt: components["schemas"]["Timestamp"];
+        };
+        ActivityOverview: {
+            balance: components["schemas"]["Money"];
+            /** @example Asia/Shanghai */
+            timeZone: string;
+            checkedInToday: boolean;
+            dailyRewardTxbMinor: string;
+            games: components["schemas"]["ActivityGame"][];
+            draws: components["schemas"]["LuckyDraw"][];
+            recentResults: components["schemas"]["ActivityResult"][];
+        };
+        ActivityBetRequest: {
+            gameId: components["schemas"]["ID"];
+            stakeTxbMinor: string;
+        };
+        ActivityDrawRequest: {
+            drawId: components["schemas"]["ID"];
+        };
+        ActivitySettings: {
+            timezone: string;
+            dailyRewardTxb: string;
+            dailyRewardTxbMinor: string;
+        };
+        ActivitySettingsWrite: {
+            /** @example Asia/Shanghai */
+            timezone: string;
+            dailyRewardTxb: string;
+        };
+        LuckyDrawPrize: {
+            id: components["schemas"]["ID"];
+            name: string;
+            weight: string;
+            /** Format: int64 */
+            stockRemaining?: number | null;
+            reward: components["schemas"]["Reward"];
+        };
+        LuckyDrawPrizeWrite: {
+            id?: string;
+            name: string;
+            weight: string;
+            /** Format: int64 */
+            stockRemaining?: number | null;
+            reward: components["schemas"]["Reward"];
+        };
+        LuckyDrawAdmin: {
+            id: components["schemas"]["ID"];
+            name: string;
+            description: string;
+            enabled: boolean;
+            feeTxbMinor: string;
+            prizes: components["schemas"]["LuckyDrawPrize"][];
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+        };
+        LuckyDrawWrite: {
+            name: string;
+            description: string;
+            enabled: boolean;
+            feeTxbMinor: string;
+            prizes: components["schemas"]["LuckyDrawPrizeWrite"][];
+        };
+        LuckyDrawAdminList: {
+            items: components["schemas"]["LuckyDrawAdmin"][];
+        };
+        /** @enum {string} */
+        CouponKind: "purchase_recurring" | "purchase_once" | "balance_add" | "balance_multiply";
+        /** @enum {string} */
+        CouponDiscountMode: "fixed" | "percent";
+        Coupon: {
+            id: components["schemas"]["ID"];
+            code: string;
+            name: string;
+            kind: components["schemas"]["CouponKind"];
+            discountMode?: components["schemas"]["CouponDiscountMode"];
+            valueMinorOrBps: string;
+            percentCapMinor?: string;
+            eligibleComboIds: components["schemas"]["ID"][];
+            eligibleSquadIds: components["schemas"]["ID"][];
+            /** Format: date-time */
+            expiresAt: string | null;
+            /** Format: int64 */
+            globalUseLimit: number | null;
+            /** Format: int64 */
+            perUserUseLimit: number | null;
+            active: boolean;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+        };
+        /** @description Create requests supply all definition fields; updates may supply only fields to replace. */
+        CouponWrite: {
+            code?: string;
+            name?: string;
+            kind?: components["schemas"]["CouponKind"];
+            discountMode?: components["schemas"]["CouponDiscountMode"];
+            valueMinorOrBps?: string;
+            /** @description Omit to preserve the current cap, send null to clear it, or send a decimal-string TXB amount to replace it. */
+            percentCapMinor?: string | null;
+            eligibleComboIds?: components["schemas"]["ID"][];
+            eligibleSquadIds?: components["schemas"]["ID"][];
+            /** Format: date-time */
+            expiresAt?: string | null;
+            /** Format: int64 */
+            globalUseLimit?: number | null;
+            /** Format: int64 */
+            perUserUseLimit?: number | null;
+            active?: boolean;
+        };
+        CouponList: {
+            items: components["schemas"]["Coupon"][];
+        };
+        CouponGrant: {
+            id: components["schemas"]["ID"];
+            coupon: components["schemas"]["Coupon"];
+            sourceType: string;
+            sourceId: string;
+            /** @enum {string} */
+            status: "active" | "consumed" | "expired";
+            /** Format: int64 */
+            useCount: number;
+            createdAt: components["schemas"]["Timestamp"];
+            /** Format: date-time */
+            consumedAt: string | null;
+        };
+        CouponGrantList: {
+            items: components["schemas"]["CouponGrant"][];
+        };
+        CouponRedeemRequest: {
+            code: string;
+        };
+        CouponRedemption: {
+            id: components["schemas"]["ID"];
+            coupon: components["schemas"]["Coupon"];
+            grant: components["schemas"]["CouponGrant"] | null;
+            balanceDeltaMinor: components["schemas"]["DecimalInteger"];
+            balanceAfterMinor: components["schemas"]["DecimalInteger"];
+            idempotencyKey: string;
+            replayed: boolean;
+            createdAt: components["schemas"]["Timestamp"];
+        };
+        /** @enum {string} */
+        QuestionnaireStatus: "draft" | "active" | "closed" | "settling" | "settled";
+        Questionnaire: {
+            id: components["schemas"]["ID"];
+            title: string;
+            description: string;
+            /** Format: uri */
+            formUrl: string;
+            rewardTxbMinor: string;
+            status: components["schemas"]["QuestionnaireStatus"];
+            /** Format: date-time */
+            closesAt: string | null;
+            participantCount: number;
+            rewardedCount: number;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+        };
+        /** @description Create requests supply all definition fields; updates may replace selected fields. */
+        QuestionnaireWrite: {
+            title?: string;
+            description?: string;
+            /** Format: uri */
+            formUrl?: string;
+            rewardTxbMinor?: string;
+            /**
+             * Format: date-time
+             * @description Omit to preserve the current close time, send null to clear it, or send an RFC3339 timestamp to replace it.
+             */
+            closesAt?: string | null;
+            /** @enum {string} */
+            status?: "draft" | "active" | "closed";
+        };
+        QuestionnaireList: {
+            items: components["schemas"]["Questionnaire"][];
+        };
+        QuestionnaireParticipation: {
+            id: components["schemas"]["ID"];
+            questionnaireId: components["schemas"]["ID"];
+            validationCode: string;
+            /** Format: date-time */
+            awardedAt: string | null;
+            createdAt: components["schemas"]["Timestamp"];
+        };
+        ActiveQuestionnaire: {
+            id: components["schemas"]["ID"];
+            title: string;
+            description: string;
+            /** Format: uri */
+            formUrl: string;
+            rewardTxbMinor: string;
+            /** Format: date-time */
+            closesAt: string | null;
+            participation: components["schemas"]["QuestionnaireParticipation"] | null;
+        };
+        QuestionnaireHistoryItem: {
+            questionnaire: components["schemas"]["Questionnaire"];
+            participation: components["schemas"]["QuestionnaireParticipation"];
+        };
+        QuestionnaireHistoryList: {
+            items: components["schemas"]["QuestionnaireHistoryItem"][];
+        };
+        /** @enum {string} */
+        QuestionnaireImportStatus: "preview" | "queued" | "processing" | "settled" | "failed";
+        QuestionnaireImportAnalysis: {
+            importId: components["schemas"]["ID"];
+            questionnaireId: components["schemas"]["ID"];
+            codeColumn: string;
+            matchedCount: number;
+            duplicateCount: number;
+            unknownCount: number;
+            malformedCount: number;
+            alreadyAwardedCount: number;
+        };
+        QuestionnaireImportPreview: {
+            id: components["schemas"]["ID"];
+            questionnaireId: components["schemas"]["ID"];
+            status: components["schemas"]["QuestionnaireImportStatus"];
+            /** @enum {string} */
+            delimiter: "comma" | "semicolon" | "tab";
+            headers: string[];
+            sampleRows: string[][];
+            dataRowCount: number;
+            malformedRowCount: number;
+            codeColumn?: string;
+            analysis?: components["schemas"]["QuestionnaireImportAnalysis"];
+            idempotencyKey?: string;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+        };
+        QuestionnaireImportAnalyzeRequest: {
+            codeColumn: string;
+        };
+        QuestionnaireSettlementReport: {
+            importId: components["schemas"]["ID"];
+            questionnaireId: components["schemas"]["ID"];
+            matchedCount: number;
+            duplicateCount: number;
+            unknownCount: number;
+            malformedCount: number;
+            alreadyAwardedCount: number;
+            rewardedCount: number;
+            rewardTxbMinor: string;
+            settledAt: components["schemas"]["Timestamp"];
+            replayed: boolean;
+        };
+        QuestionnaireImportState: {
+            preview: components["schemas"]["QuestionnaireImportPreview"];
+            report?: components["schemas"]["QuestionnaireSettlementReport"];
+        };
+        EmbyRating: {
+            name: string;
+            /** Format: int32 */
+            value: number;
+        };
+        EmbyLibrary: {
+            id: string;
+            name: string;
+        };
+        EmbyAccount: {
+            id: components["schemas"]["ID"];
+            username: string;
+            /** @enum {string} */
+            status: "queued" | "provisioning" | "active" | "failed";
+            /** Format: int32 */
+            maxParentalRating: number | null;
+            libraryIds: string[];
+            retryable: boolean;
+            /** @description Redacted operator-safe failure detail; absent when empty. */
+            errorMessage?: string;
+            updatedAt: components["schemas"]["Timestamp"];
+        };
+        EmbyOverview: {
+            configured: boolean;
+            setupPrice: components["schemas"]["Money"];
+            ratings: components["schemas"]["EmbyRating"][];
+            libraries: components["schemas"]["EmbyLibrary"][];
+            account: components["schemas"]["EmbyAccount"] | null;
+        };
+        EmbyPreferencesRequest: {
+            /** Format: int32 */
+            maxParentalRating?: number | null;
+            libraryIds: string[];
+        };
+        EmbySetupRequest: {
+            password: string;
+            /** Format: int32 */
+            maxParentalRating?: number | null;
+            libraryIds: string[];
+        };
+        EmbyPasswordRequest: {
+            password: string;
+        };
+        EmbyAccountList: {
+            items: components["schemas"]["EmbyAccount"][];
         };
         AdminSetting: {
             key: string;
@@ -1036,7 +2135,7 @@ export interface components {
             encrypted: boolean;
             configured: boolean;
             /** @enum {string} */
-            category: "telegram" | "remnawave" | "rates" | "payments" | "application";
+            category: "telegram" | "remnawave" | "rates" | "payments" | "activity" | "emby" | "application";
             updatedAt: components["schemas"]["Timestamp"];
         };
         AdminSettingCreate: {
@@ -1076,12 +2175,18 @@ export interface components {
             comboId: components["schemas"]["ID"];
             comboName: string;
             price: components["schemas"]["Money"];
+            grossPrice: components["schemas"]["Money"];
+            couponDiscount: components["schemas"]["Money"];
+            couponGrantId: string | null;
             validFrom: components["schemas"]["Timestamp"];
             validUntil: components["schemas"]["Timestamp"];
             status: components["schemas"]["EntitlementStatus"];
             trafficLimitBytes: string;
             resetStrategy: components["schemas"]["ResetStrategy"];
             squadUuids: string[];
+            rolloverMinRemainingBps: number;
+            rolloverMaxTxbMinor: string;
+            rolloverMax: components["schemas"]["Money"];
             createdAt: components["schemas"]["Timestamp"];
             updatedAt: components["schemas"]["Timestamp"];
         };
@@ -1093,20 +2198,33 @@ export interface components {
             id: components["schemas"]["ID"];
             userId: components["schemas"]["ID"];
             provider: components["schemas"]["PaymentProvider"];
+            methodId: components["schemas"]["PaymentOrderMethodID"];
+            providerRail: string;
             status: components["schemas"]["PaymentStatus"];
             txb: components["schemas"]["Money"];
             payableAmount: string;
             /** @enum {string} */
             payableCurrency: "CNY" | "USD" | "XTR" | "USDT";
             rateSnapshot: string;
+            /** @enum {string} */
+            rateDirection: "txb_per_currency" | "currency_per_txb";
             /** Format: uri */
             paymentUrl: string | null;
             qrPayload: string | null;
+            receivingAddress: string | null;
+            actualCryptoAmount: string | null;
+            /** @enum {string|null} */
+            actualCryptoCurrency: "USDT" | null;
             expiresAt: components["schemas"]["Timestamp"];
             /** Format: date-time */
             paidAt: string | null;
             /** Format: date-time */
             refundedAt: string | null;
+            /** Format: date-time */
+            cancelledAt: string | null;
+            cancelReason: string;
+            /** @enum {string} */
+            providerCancelStatus: "" | "unsupported" | "requested" | "cancelled" | "failed";
             createdAt: components["schemas"]["Timestamp"];
             updatedAt: components["schemas"]["Timestamp"];
         };
@@ -1127,11 +2245,111 @@ export interface components {
             items: components["schemas"]["Refund"][];
             page?: components["schemas"]["PageInfo"];
         };
+        DatabaseColumn: {
+            name: string;
+            declaredType: string;
+            nullable: boolean;
+            primaryKeyPosition: number;
+            editable: boolean;
+            sensitive: boolean;
+        };
+        DatabaseTable: {
+            name: string;
+            columns: components["schemas"]["DatabaseColumn"][];
+            /** @constant */
+            highRisk: true;
+            supportsRowId: boolean;
+            warning: string;
+        };
+        DatabaseTableList: {
+            items: components["schemas"]["DatabaseTable"][];
+        };
+        DatabaseBlobValue: {
+            blobBase64: string;
+        };
+        /** @description SQLite NULL, boolean, lossless text/decimal string, or base64 blob. INTEGER, REAL, and NUMERIC cells are always returned as strings. */
+        DatabaseValue: null | boolean | string | components["schemas"]["DatabaseBlobValue"];
+        DatabaseKey: {
+            [key: string]: string;
+        };
+        DatabaseValues: {
+            [key: string]: components["schemas"]["DatabaseValue"];
+        };
+        DatabaseRow: {
+            key: components["schemas"]["DatabaseKey"];
+            values: components["schemas"]["DatabaseValues"];
+            recordHash: string;
+        };
+        DatabaseRowPage: {
+            items: components["schemas"]["DatabaseRow"][];
+            nextCursor: string | null;
+        };
+        /** @enum {string} */
+        DatabaseMutationAction: "insert" | "update" | "delete";
+        DatabaseMutationReviewRequest: {
+            action: components["schemas"]["DatabaseMutationAction"];
+            table: string;
+            key?: components["schemas"]["DatabaseKey"];
+            values?: components["schemas"]["DatabaseValues"];
+            recordHash?: string;
+            reason: string;
+        };
+        DatabaseMutationApplyRequest: {
+            action: components["schemas"]["DatabaseMutationAction"];
+            table: string;
+            key?: components["schemas"]["DatabaseKey"];
+            values?: components["schemas"]["DatabaseValues"];
+            recordHash?: string;
+            reason: string;
+            reviewHash: string;
+            confirmation: string;
+        };
+        DatabaseCompatibilityUpdate: {
+            key: components["schemas"]["DatabaseKey"];
+            values: components["schemas"]["DatabaseValues"];
+            recordHash: string;
+            reason: string;
+            reviewHash: string;
+            confirmation: string;
+        };
+        DatabaseMutationReview: {
+            action: components["schemas"]["DatabaseMutationAction"];
+            table: string;
+            key?: components["schemas"]["DatabaseKey"];
+            before?: components["schemas"]["DatabaseValues"];
+            after?: components["schemas"]["DatabaseValues"];
+            changedColumns: string[];
+            reviewHash: string;
+            /** @description Exact phrase the administrator must type, such as `EDIT users`. */
+            requiredConfirmation: string;
+            /** @constant */
+            rescueBackupRequired: true;
+            warning: string;
+        };
+        DatabaseMutationResult: {
+            row?: components["schemas"]["DatabaseRow"];
+            deleted: boolean;
+            rescueBackupId: components["schemas"]["ID"];
+        };
+        RestoreRequest: {
+            reason: string;
+            /** @description Exact `RESTORE <filename>` phrase shown during review. */
+            confirmation: string;
+        };
+        RestoreOperation: {
+            id: components["schemas"]["ID"];
+            backupId: components["schemas"]["ID"];
+            /** @enum {string} */
+            status: "staging" | "restarting" | "complete" | "failed";
+            /** @description Redacted recovery guidance; present only for failed restores. */
+            error?: string;
+            createdAt: components["schemas"]["Timestamp"];
+            updatedAt: components["schemas"]["Timestamp"];
+        };
         BackupRun: {
             id: components["schemas"]["ID"];
             path: string;
-            /** Format: int64 */
-            sizeBytes: number;
+            sizeBytes: string;
             /** @enum {string} */
             status: "running" | "complete" | "failed";
             error: string;
@@ -1223,6 +2441,20 @@ export interface components {
             /** @enum {integer} */
             status: 1 | 2 | 3;
             signature: string;
+            created_at?: string;
+            expired_at?: string;
+        } & {
+            [key: string]: unknown;
+        };
+        BEPusdtUnsignedNotification: {
+            trade_id?: string;
+            order_id: string;
+            amount: components["schemas"]["FlexibleDecimal"];
+            actual_amount: components["schemas"]["FlexibleDecimal"];
+            token: string;
+            block_transaction_id?: string;
+            /** @enum {integer} */
+            status: 1 | 2 | 3;
             created_at?: string;
             expired_at?: string;
         } & {
@@ -1323,10 +2555,18 @@ export interface components {
     };
     parameters: {
         ResourceID: string;
+        ImportID: string;
+        /** @description Exact name from the server-provided allowlisted table catalog. */
+        DatabaseTableName: string;
+        /** @description Caller-owned semantic idempotency reference. */
+        IdempotencyKey: string;
+        /** @description Caller-owned semantic idempotency reference; the server generates one when omitted. */
+        OptionalIdempotencyKey: string;
         SettingKey: string;
         /** @description Opaque cursor returned by the preceding page. */
         Cursor: string;
         PageSize: number;
+        DatabasePageLimit: number;
     };
     requestBodies: never;
     headers: never;
@@ -1360,6 +2600,7 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
+            503: components["responses"]["ServiceUnavailable"];
         };
     };
     getMe: {
@@ -1556,7 +2797,10 @@ export interface operations {
     createPurchase: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Caller-owned semantic idempotency reference. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -1672,7 +2916,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Durable payment order, QR payload, and provider navigation target. */
+            /** @description Durable payment order with separate URL, QR, receiving-address, and actual-crypto fields. */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -1683,7 +2927,16 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
-            409: components["responses"]["Conflict"];
+            /** @description Method unavailable or all 200 retained orders are currently non-prunable. Capacity conflicts are retryable. */
+            409: {
+                headers: {
+                    "Retry-After"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
             422: components["responses"]["Unprocessable"];
             502: components["responses"]["UpstreamFailure"];
         };
@@ -1710,6 +2963,989 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    cancelPaymentOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current order state after the cancellation attempt. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentOrder"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getEmbyAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Server-priced setup state plus choices fetched from Emby. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmbyOverview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            502: components["responses"]["UpstreamFailure"];
+        };
+    };
+    setupEmbyAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmbySetupRequest"];
+            };
+        };
+        responses: {
+            /** @description Setup was debited atomically and queued. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmbyAccount"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    updateEmbyPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmbyPreferencesRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated safe account projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmbyAccount"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["Unprocessable"];
+            502: components["responses"]["UpstreamFailure"];
+        };
+    };
+    changeEmbyPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmbyPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Password changed; plaintext is not returned or retained. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["Unprocessable"];
+            502: components["responses"]["UpstreamFailure"];
+        };
+    };
+    getActivityOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current server-configured Activity state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityOverview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    checkInActivity: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Caller-owned semantic idempotency reference. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description New or replayed daily check-in result. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    playActivityGame: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Caller-owned semantic idempotency reference. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivityBetRequest"];
+            };
+        };
+        responses: {
+            /** @description Immutable bet result with its balance projection. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    playLuckyDraw: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Caller-owned semantic idempotency reference. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivityDrawRequest"];
+            };
+        };
+        responses: {
+            /** @description Immutable draw result and typed reward. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    getCouponWallet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Coupon grants available or retained for history. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CouponGrantList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    redeemCoupon: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Caller-owned semantic idempotency reference. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CouponRedeemRequest"];
+            };
+        };
+        responses: {
+            /** @description Idempotent redemption, wallet grant, or immediate balance effect. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CouponRedemption"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    getActiveQuestionnaire: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active questionnaire, or JSON null when none is active. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActiveQuestionnaire"] | null;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getQuestionnaireHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Questionnaire and validation-code history. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionnaireHistoryList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    participateInQuestionnaire: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Caller-owned semantic idempotency reference. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Existing or newly created participant record. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionnaireParticipation"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getAdminActivitySettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current Activity settings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivitySettings"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    updateAdminActivitySettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivitySettingsWrite"];
+            };
+        };
+        responses: {
+            /** @description Updated Activity settings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivitySettings"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    listAdminActivityGames: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Enabled and disabled games. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityGameList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createAdminActivityGame: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivityGameWrite"];
+            };
+        };
+        responses: {
+            /** @description Created game. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityGame"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    updateAdminActivityGame: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivityGameWrite"];
+            };
+        };
+        responses: {
+            /** @description Updated game. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityGame"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    listAdminLuckyDraws: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Enabled and disabled draw definitions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LuckyDrawAdminList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createAdminLuckyDraw: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LuckyDrawWrite"];
+            };
+        };
+        responses: {
+            /** @description Created draw. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LuckyDrawAdmin"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    updateAdminLuckyDraw: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LuckyDrawWrite"];
+            };
+        };
+        responses: {
+            /** @description Updated draw. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LuckyDrawAdmin"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    listAdminCoupons: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Coupon definitions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CouponList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createAdminCoupon: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CouponWrite"];
+            };
+        };
+        responses: {
+            /** @description Created coupon. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Coupon"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    updateAdminCoupon: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CouponWrite"];
+            };
+        };
+        responses: {
+            /** @description Updated coupon. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Coupon"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    deactivateAdminCoupon: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Coupon deactivated. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listAdminQuestionnaires: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Questionnaire definitions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionnaireList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createAdminQuestionnaire: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuestionnaireWrite"];
+            };
+        };
+        responses: {
+            /** @description Created questionnaire. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Questionnaire"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    updateAdminQuestionnaire: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuestionnaireWrite"];
+            };
+        };
+        responses: {
+            /** @description Updated questionnaire. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Questionnaire"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    closeAdminQuestionnaire: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Questionnaire closed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    activateAdminQuestionnaire: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Activated questionnaire. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Questionnaire"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    uploadQuestionnaireImport: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Caller-owned semantic idempotency reference; the server generates one when omitted. */
+                "Idempotency-Key"?: components["parameters"]["OptionalIdempotencyKey"];
+            };
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Parsed headers and bounded sample. A generated idempotency key is returned in headers when none was supplied. */
+            201: {
+                headers: {
+                    "Idempotency-Key"?: string;
+                    "Idempotency-Key-Generated"?: "true";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionnaireImportPreview"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    getQuestionnaireImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+                importID: components["parameters"]["ImportID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current import state and optional final report. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionnaireImportState"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    analyzeQuestionnaireImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+                importID: components["parameters"]["ImportID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuestionnaireImportAnalyzeRequest"];
+            };
+        };
+        responses: {
+            /** @description Matched, duplicate, unknown, malformed, and already-awarded counts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionnaireImportAnalysis"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    settleQuestionnaireImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+                importID: components["parameters"]["ImportID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Settlement queued; poll the import resource for its report. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionnaireImportPreview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listAdminEmbyAccounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Password-free Emby account projections. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmbyAccountList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    retryAdminEmbyAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Provisioning retry queued. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmbyAccount"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
         };
     };
     listAdminSettings: {
@@ -2217,6 +4453,153 @@ export interface operations {
             403: components["responses"]["Forbidden"];
         };
     };
+    listAdminDatabaseTables: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Schema-aware editable table catalog. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatabaseTableList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listAdminDatabaseRows: {
+        parameters: {
+            query?: {
+                /** @description Opaque cursor returned by the preceding page. */
+                cursor?: components["parameters"]["Cursor"];
+                limit?: components["parameters"]["DatabasePageLimit"];
+            };
+            header?: never;
+            path: {
+                /** @description Exact name from the server-provided allowlisted table catalog. */
+                table: components["parameters"]["DatabaseTableName"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Typed rows with optimistic hashes and a continuation cursor. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatabaseRowPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateAdminDatabaseRowCompatibility: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Exact name from the server-provided allowlisted table catalog. */
+                table: components["parameters"]["DatabaseTableName"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DatabaseCompatibilityUpdate"];
+            };
+        };
+        responses: {
+            /** @description Updated typed row. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatabaseRow"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    reviewAdminDatabaseMutation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DatabaseMutationReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Redacted before/after diff and exact typed confirmation. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatabaseMutationReview"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    applyAdminDatabaseMutation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DatabaseMutationApplyRequest"];
+            };
+        };
+        responses: {
+            /** @description Mutation result and automatic rescue-backup identifier. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatabaseMutationResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+            500: components["responses"]["InternalFailure"];
+        };
+    };
     listAdminBackups: {
         parameters: {
             query?: never;
@@ -2263,6 +4646,93 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["Unprocessable"];
+        };
+    };
+    downloadAdminBackup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Streamed SQLite database snapshot. */
+            200: {
+                headers: {
+                    "Content-Disposition": string;
+                    "Content-Length": string;
+                    "Cache-Control": "no-store";
+                    "X-Content-Type-Options": "nosniff";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.sqlite3": string;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    stageAdminRestore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestoreRequest"];
+            };
+        };
+        responses: {
+            /** @description Restore staged; clients should reconnect, reauthenticate, and poll status. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestoreOperation"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+            500: components["responses"]["InternalFailure"];
+        };
+    };
+    getAdminRestoreStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current safe restore projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestoreOperation"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     listAdminJobs: {
@@ -2370,7 +4840,8 @@ export interface operations {
                 pid: string;
                 trade_no: string;
                 out_trade_no: string;
-                type: string;
+                /** @description Signed rail subtype; it must equal the immutable order snapshot. */
+                type: "alipay" | "wxpay" | "qqpay" | "bank" | "jdpay";
                 name?: string;
                 money: string;
                 trade_status: "TRADE_SUCCESS";
@@ -2425,13 +4896,42 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Configured plain-text acknowledgement; defaults to `ok`. */
+            /** @description Configured plain-text acknowledgement; defaults to `ok` and may be `success`. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/plain": string;
+                    "text/plain": "ok" | "success";
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    receiveBEPusdtCapabilityWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                capability: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BEPusdtNotification"] | components["schemas"]["BEPusdtUnsignedNotification"];
+            };
+        };
+        responses: {
+            /** @description Configured plain-text acknowledgement, either `ok` or `success`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": "ok" | "success";
                 };
             };
             400: components["responses"]["BadRequest"];

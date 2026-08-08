@@ -6,10 +6,12 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 	_ "modernc.org/sqlite"
 )
 
@@ -87,6 +89,166 @@ func TestRemoveExpiredCleansPublishedAndCrashTemporaryFiles(t *testing.T) {
 		if !removed && err != nil {
 			t.Fatalf("%s was removed: %v", name, err)
 		}
+	}
+}
+
+func TestOpenDownloadRejectsAStoredPathOutsideBackupDirectory(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	directory := filepath.Join(t.TempDir(), "backups")
+	if err := os.MkdirAll(directory, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "tx-carpool-outside.db")
+	if err := os.WriteFile(outside, []byte("not a backup"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(filepath.Join(t.TempDir(), "records.db")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	if _, err := db.ExecContext(ctx, `CREATE TABLE backup_runs(id TEXT PRIMARY KEY,path TEXT,size_bytes INTEGER,status TEXT); INSERT INTO backup_runs VALUES('outside',?,12,'complete')`, outside); err != nil {
+		t.Fatal(err)
+	}
+	service := NewService(db, nil, directory, time.Hour)
+	if _, err := service.OpenDownload(ctx, "outside"); err == nil || !strings.Contains(err.Error(), "outside") {
+		t.Fatalf("OpenDownload outside error = %v", err)
+	}
+}
+
+func TestStagedRestoreSwapsPreOpenAndRecordsCompletion(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	root := t.TempDir()
+	databasePath := filepath.Join(root, "tx-carpool.db")
+	db, err := database.Open(ctx, databasePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := database.NewStore(db)
+	if _, err := db.ExecContext(ctx, `INSERT INTO settings(key,value,encrypted,updated_at) VALUES('restore.test','snapshot',0,?)`, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+		t.Fatal(err)
+	}
+	directory := filepath.Join(root, "backups")
+	service := NewService(db, store, directory, 7*24*time.Hour)
+	source, err := service.Run(ctx)
+	if err != nil {
+		t.Fatalf("Run(source): %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `UPDATE settings SET value='live' WHERE key='restore.test'`); err != nil {
+		t.Fatal(err)
+	}
+	versions, err := database.MigrationVersions()
+	if err != nil {
+		t.Fatal(err)
+	}
+	job, err := service.StageRestore(ctx, source.ID, "", "Recover the verified snapshot", "RESTORE "+filepath.Base(source.Path), versions)
+	if err != nil {
+		t.Fatalf("StageRestore(): %v", err)
+	}
+	if job.Status != "ready" || job.RescuePath == "" {
+		t.Fatalf("staged job = %+v", job)
+	}
+	if _, err := os.Stat(markerPath(databasePath)); err != nil {
+		t.Fatalf("restore marker: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close live database: %v", err)
+	}
+	result, err := ApplyPendingRestore(ctx, databasePath, versions)
+	if err != nil || result == nil || result.Status != "complete" {
+		t.Fatalf("ApplyPendingRestore() = %+v, %v", result, err)
+	}
+	restoredDB, err := database.Open(ctx, databasePath)
+	if err != nil {
+		t.Fatalf("open restored database: %v", err)
+	}
+	t.Cleanup(func() { _ = restoredDB.Close() })
+	if _, err := RecordStartupRestore(ctx, restoredDB, databasePath); err != nil {
+		t.Fatalf("RecordStartupRestore(): %v", err)
+	}
+	var value string
+	if err := restoredDB.QueryRowContext(ctx, `SELECT value FROM settings WHERE key='restore.test'`).Scan(&value); err != nil || value != "snapshot" {
+		t.Fatalf("restored value=%q, error=%v", value, err)
+	}
+	var status string
+	if err := restoredDB.QueryRowContext(ctx, `SELECT status FROM restore_jobs WHERE id=?`, job.ID).Scan(&status); err != nil || status != "complete" {
+		t.Fatalf("restore status=%q, error=%v", status, err)
+	}
+	if _, err := os.Stat(resultPath(databasePath)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("recorded result sidecar still exists: %v", err)
+	}
+}
+
+func TestCorruptStagedRestoreLeavesLiveDatabaseAndRecordsFailure(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	root := t.TempDir()
+	databasePath := filepath.Join(root, "tx-carpool.db")
+	db, err := database.Open(ctx, databasePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := database.NewStore(db)
+	if _, err := db.ExecContext(ctx, `INSERT INTO settings(key,value,encrypted,updated_at) VALUES('restore.failure','live',0,?)`, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+		t.Fatal(err)
+	}
+	service := NewService(db, store, filepath.Join(root, "backups"), time.Hour)
+	source, err := service.Run(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	versions, _ := database.MigrationVersions()
+	job, err := service.StageRestore(ctx, source.ID, "", "Test failed restore rollback", "RESTORE "+filepath.Base(source.Path), versions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(job.StagedPath, []byte("corrupt"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ApplyPendingRestore(ctx, databasePath, versions); err == nil {
+		t.Fatal("ApplyPendingRestore() unexpectedly succeeded")
+	}
+	liveDB, err := database.Open(ctx, databasePath)
+	if err != nil {
+		t.Fatalf("open preserved live database: %v", err)
+	}
+	t.Cleanup(func() { _ = liveDB.Close() })
+	if _, err := RecordStartupRestore(ctx, liveDB, databasePath); err != nil {
+		t.Fatalf("record failed restore: %v", err)
+	}
+	var value, status string
+	if err := liveDB.QueryRowContext(ctx, `SELECT value FROM settings WHERE key='restore.failure'`).Scan(&value); err != nil || value != "live" {
+		t.Fatalf("preserved value=%q, error=%v", value, err)
+	}
+	if err := liveDB.QueryRowContext(ctx, `SELECT status FROM restore_jobs WHERE id=?`, job.ID).Scan(&status); err != nil || status != "failed" {
+		t.Fatalf("failed restore status=%q, error=%v", status, err)
+	}
+}
+
+func TestVerifySnapshotRejectsNonPrefixMigrationMarkers(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "non-prefix.db")
+	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, `CREATE TABLE schema_migrations(version TEXT PRIMARY KEY,applied_at TEXT NOT NULL);
+		INSERT INTO schema_migrations(version,applied_at) VALUES('001_initial.sql','2026-08-08T00:00:00Z'),('003_emby.sql','2026-08-08T00:00:01Z')`); err != nil {
+		_ = db.Close()
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	err = verifySnapshot(ctx, path, []string{"001_initial.sql", "002_activity_coupons_questionnaires.sql", "003_emby.sql"})
+	if err == nil || !strings.Contains(err.Error(), "ordered prefix") {
+		t.Fatalf("verifySnapshot() error = %v, want ordered-prefix rejection", err)
 	}
 }
 

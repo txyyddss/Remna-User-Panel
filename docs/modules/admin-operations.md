@@ -1,64 +1,67 @@
 # Administration module
 
-## Authorization and setup
+## Authorization and route groups
 
-The admin module is available only to a valid Telegram session whose Telegram ID exactly equals `ADMIN_TELEGRAM_ID`. The environment variable is the authorization source; request data, usernames, Telegram handles, and mutable database roles cannot grant access. The designated admin may enter setup before ordinary onboarding completes so a greenfield deployment can become ready.
+Administration is available only to a valid Telegram session whose Telegram ID exactly equals `ADMIN_TELEGRAM_ID`. The environment variable is the authorization source; request data, usernames, handles, and mutable database roles cannot grant access. The designated administrator may configure a greenfield deployment before completing ordinary member onboarding.
 
-Admin endpoints are grouped below `/api/v1/admin` and expose domain-safe operations for settings, combos, squad products, users, balance adjustments, entitlements, payments, refunds, backups, synchronization jobs, and audit events. There is no raw SQL console, arbitrary table editor, or endpoint that updates/deletes ledger and audit rows.
+All operations live below `/api/v1/admin`. The Vue router lazy-groups existing URLs into commerce, community, accounts, and system navigation without breaking bookmarks. Domain-specific endpoints remain preferred for settings, catalog, users, balances, entitlements, payments/refunds, Activity, coupons, questionnaires, Emby, backups, outbox jobs, and audits. A separate schema-aware editor exists for exceptional recovery work; it exposes no raw SQL.
 
 ## Settings and secrets
 
-The setting registry defines each known key's category, validator, sensitivity, and readiness impact. Unknown keys are rejected. Sensitive Remnawave and provider values are encrypted using AES-256-GCM with a new random nonce for each write and authenticated context that includes the setting key.
+The fixed registry defines each known key's validator, sensitivity, display category, and readiness impact. Unknown keys are rejected. Sensitive values are encrypted with AES-256-GCM using a random nonce and the setting key as authenticated context. Reads expose an empty value plus configured/encrypted metadata; plaintext and ciphertext are never returned. An empty secret update preserves the existing value.
 
-Reads return the setting key, display category, configured/encrypted state, an empty value for secrets, and update time; the UI renders the mask. Plaintext and ciphertext are never returned. Writing an empty secret keeps an existing value, while replacement requires a new explicit value. Every change appends an audit event with redacted metadata.
+| Setting | Contract |
+| --- | --- |
+| `telegram.group_chat_id`, `telegram.channel_chat_id` | Required nonzero integer chat IDs |
+| `telegram.webhook_secret` | Encrypted, URL-safe; generated at bootstrap |
+| `remnawave.base_url`, `remnawave.api_token` | Required HTTPS origin and encrypted bearer token |
+| `billing.rate.txb_per_cny`, `txb_per_usd`, `txb_per_xtr` | Required positive fixed decimals; legacy inverse rates are not converted |
+| `billing.ezpay.enabled`, `.base_url`, `.merchant_id`, `.key`, `.methods` | Boolean gate, HTTPS origin, merchant ID, encrypted key, ordered five-rail list |
+| `billing.bepusdt.enabled`, `.base_url`, `.api_token`, `.methods`, `.ack` | Boolean gate, HTTPS origin, encrypted token, ordered ten-rail list, `ok`/`success` ack |
+| `billing.stars.enabled` | Boolean Stars gate |
+| `emby.base_url`, `emby.api_token`, `emby.setup_price_txb` | Encrypted HTTPS origin/token and human-major setup price |
+| `activity.timezone`, `activity.daily_reward_txb` | IANA timezone and human-major nonnegative daily reward |
 
-The fixed registry is:
+All TXB setting/editor fields accept human-major decimals with at most two fractional digits. `150` therefore stores or resolves to `15000` minor units when used financially. Admin API domain records continue to serialize money as decimal-string minor units.
 
-| Setting | Purpose | Protection/default |
-| --- | --- | --- |
-| `telegram.group_chat_id` | Required onboarding group | Required, nonzero integer |
-| `telegram.channel_chat_id` | Required onboarding channel | Required, nonzero integer |
-| `telegram.webhook_secret` | Telegram webhook header authentication | Encrypted; generated at bootstrap |
-| `remnawave.base_url` | Remnawave API origin | Required HTTPS URL |
-| `remnawave.api_token` | Remnawave bearer credential | Required, encrypted |
-| `billing.rate.cny_per_txb` | EZPay conversion rate | Required positive fixed decimal |
-| `billing.rate.usd_per_txb` | BEPusdt fiat conversion rate | Required positive fixed decimal |
-| `billing.rate.xtr_per_txb` | Stars conversion rate | Required positive fixed decimal |
-| `billing.ezpay.enabled` | EZPay feature gate | `false` by default |
-| `billing.ezpay.base_url` | EZPay origin | HTTPS URL when enabled |
-| `billing.ezpay.merchant_id` | EZPay merchant identifier | Required when enabled |
-| `billing.ezpay.key` | EZPay signing credential | Encrypted; required when enabled |
-| `billing.ezpay.payment_type` | EZPay channel | `alipay` by default |
-| `billing.bepusdt.enabled` | BEPusdt feature gate | `false` by default |
-| `billing.bepusdt.base_url` | BEPusdt origin | HTTPS URL when enabled |
-| `billing.bepusdt.api_token` | BEPusdt signing credential | Encrypted; required when enabled |
-| `billing.bepusdt.trade_type` | BEPusdt transfer network | Required when enabled |
-| `billing.bepusdt.ack` | Successful callback response body | `ok` by default; `success` supported |
-| `billing.stars.enabled` | Telegram Stars feature gate | `true` by default |
+Readiness checks required settings, enabled-provider completeness, and at least one active combo without calling external providers. Missing new-direction rates keep the corresponding payment method unavailable. Provider connectivity and permissions surface through their normal operations instead of leaking secrets through readiness.
 
-Setup validation checks required presence and local semantics: nonzero Telegram chat IDs, an HTTPS Remnawave URL and token, positive parseable rates, enabled-provider completeness, and at least one active combo. Results contain no credentials. `/readyz` consumes this local projection without calling external providers; webhook/menu setup and normal integration calls surface connectivity or permission failures separately.
+## Domain operations and audit retention
 
-## Domain operations
+- Combo changes affect future purchases only. The editor includes imported-squad selection, safe Markdown preview, and rollover basis-point/cap fields.
+- Squad import reconciles Remnawave identity; local merchandising cannot invent an upstream UUID.
+- Balance adjustment requires a bounded nonzero signed amount and reason and appends one ledger entry plus audit event.
+- Entitlement cancellation and payment refund append durable compensating commands; they never mutate provider state first and hope persistence follows.
+- Activity games/draws, coupons, questionnaires/imports, and Emby retries use their module services so validation, transactions, and idempotency remain centralized.
+- Job retry is allowed only for an eligible failed job and cannot change kind, aggregate, or payload.
+- Every audit insertion transactionally retains the newest 200 events. Sensitive values are redacted before persistence.
 
-- Combo changes affect future purchases only. Archive is soft and cannot erase historical snapshots.
-- Squad import reconciles Remnawave records; local merchandising updates cannot invent an upstream squad UUID.
-- The user list exposes safe identity, balance, and synchronization summaries; the single-user response is the safe identity projection. Balance changes and entitlement or payment history stay behind their dedicated domain endpoints. Subscription bearer URLs are omitted throughout.
-- Balance changes append a signed integer delta with mandatory reason, actor, resulting balance, reference, and audit event.
-- Entitlement cancellation records state and durable revocation; it does not directly edit Remnawave and then hope the database follows.
-- Refund is a once-only command against a paid order and invokes standard debt reconciliation.
-- Backup trigger is single-flight. Job retry is permitted only for a failed retryable job and cannot alter its payload.
-- Audit events are append-only and returned newest-first with a bounded server-side limit. Secret fields are redacted before the event is persisted, not merely at response time.
+## Schema-aware database editor
 
-## Failure behavior
+The editor lists every application table except `schema_migrations` and SQLite internals. Table and column identifiers come only from `sqlite_schema`, must pass a strict identifier allowlist, and are always quoted. Records use a declared primary key or `_rowid_` only when addressable. Cursor values are sealed by the vault; pages are bounded.
 
-All admin failures use the standard request-ID error envelope. Unauthorized and forbidden responses do not reveal whether a target resource exists. Validation returns safe field messages. Provider validation failure leaves the prior setting intact. Concurrent catalog edits use transaction/version conflict behavior rather than last-write corruption.
+Wire values are typed: `null`, boolean, text, decimal-string integer/numeric/real, or `{blobBase64}`. Integers never cross JavaScript as numbers. Sensitive columns are masked; encrypted `settings.value` supports only a write-only replacement that is encrypted with the correct setting-key context. Raw password, token, ciphertext, subscription URL, invite link, provider payload, and questionnaire CSV columns are never rendered.
 
-Commands return the status and durable representation documented in OpenAPI. Subsequent worker failure is visible on the resource/job and retryable after configuration is corrected. Admin HTTP timeouts do not imply rollback of an already committed command, so clients refetch by returned ID before retrying.
+Every insert/update/delete is a two-step command:
 
-## Verification
+1. `POST /database/mutations/review` loads the current row, validates types/nullability, checks its optimistic `recordHash`, and returns a redacted before/after diff, exact `reviewHash`, warning, and required `EDIT <table>` confirmation.
+2. `POST /database/mutations` must reproduce the exact reviewed mutation, reason, record hash, review hash, and confirmation before the review expires. The server creates a verified rescue backup, rechecks the row/hash, performs one transaction, consumes the review, and appends a structured redacted audit.
 
-- Authorization tests cover missing/expired sessions, a non-admin, forged roles, the exact admin ID, and bootstrap before onboarding.
-- Secret tests confirm write-only responses, nonce uniqueness, key-bound authenticated data, masked audit records, and preservation after failed validation.
-- CRUD tests cover future-only catalog edits, archive with historical references, squad reconciliation, bounded list results, and conflict handling.
-- Money/admin tests verify mandatory reasons, one immutable adjustment/refund, debt reconciliation, and no direct ledger mutation route.
-- Backup/job tests cover single-flight commands, failed-only retries, redacted job errors, and complete audit attribution.
+Review tokens are single-use. Concurrent changes produce a conflict and leave the review unconsumed so the administrator can refresh and review again. All tables are marked high risk because direct edits bypass domain synchronization hooks; the UI keeps that warning visible and uses a mobile drawer for record/diff work.
+
+## Backup download and staged restore
+
+Backup download accepts only an opaque stored run ID and streams a verified snapshot as `application/vnd.sqlite3`; browser paths cannot select files. List responses expose a basename and decimal-string size, not an absolute server path.
+
+Restore requires a 4–500 character reason and exact `RESTORE <backup filename>` confirmation. It verifies the stored snapshot's checksum, SQLite integrity, foreign keys, and migration compatibility, creates a rescue backup, copies a staged file beside the live database, writes a durable marker and audit, returns `202`, then requests graceful shutdown.
+
+The next startup processes the marker before opening SQLite, atomically swaps the candidate, verifies the result, and restores the original on failure. After migrations, it records completion/failure in `restore_jobs` and the audit stream. The UI reconnects and requires a fresh authenticated session.
+
+## Failure behavior and verification
+
+All failures use the request-ID envelope. Unauthorized responses do not reveal target existence. Validation gives safe field messages. Provider/setup failure leaves prior settings intact. HTTP timeout never proves a committed command rolled back; clients refetch the returned resource before retrying.
+
+- Authorization tests cover missing/expired sessions, non-admin identity, forged roles, exact administrator ID, and bootstrap setup.
+- Settings tests cover human-major TXB conversion, ordered rail validation, write-only secret rotation, nonce uniqueness, and redacted audits.
+- Database tests cover identifier injection, composite-key/rowid cursors, values beyond JavaScript's safe integer range, null/boolean/blob editing, optimistic conflicts, review replay, rescue backups, encrypted setting replacement, foreign keys, and redacted structured logs.
+- Restore tests cover source-ID confinement, confirmation mismatch, integrity/foreign-key/migration rejection, atomic success, simulated swap failure rollback, status import, and reauthentication after restart.

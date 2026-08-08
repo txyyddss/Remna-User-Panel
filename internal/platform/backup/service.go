@@ -23,17 +23,34 @@ type Repository interface {
 
 // Service owns the SQLite online-backup and retention lifecycle.
 type Service struct {
-	db         *sql.DB
-	repository Repository
-	directory  string
-	retention  time.Duration
-	now        func() time.Time
-	mu         sync.Mutex
+	db          *sql.DB
+	repository  Repository
+	directory   string
+	retention   time.Duration
+	now         func() time.Time
+	mu          sync.Mutex
+	restoreMu   sync.Mutex
+	restart     chan struct{}
+	restartOnce sync.Once
 }
 
 // NewService creates a backup service.
 func NewService(db *sql.DB, repository Repository, directory string, retention time.Duration) *Service {
-	return &Service{db: db, repository: repository, directory: filepath.Clean(directory), retention: retention, now: time.Now}
+	return &Service{
+		db: db, repository: repository, directory: filepath.Clean(directory), retention: retention,
+		now: time.Now, restart: make(chan struct{}),
+	}
+}
+
+// RestartRequested is closed after a restore marker has been durably staged.
+// The application should return HTTP 202 before reacting to the signal, then
+// gracefully stop so the next process startup can apply the restore pre-open.
+func (s *Service) RestartRequested() <-chan struct{} { return s.restart }
+
+// RequestRestart notifies the application that it can gracefully stop. HTTP
+// handlers should call this only after writing the accepted restore response.
+func (s *Service) RequestRestart() {
+	s.restartOnce.Do(func() { close(s.restart) })
 }
 
 // Run creates a temporary VACUUM INTO snapshot, verifies it, and atomically publishes it.

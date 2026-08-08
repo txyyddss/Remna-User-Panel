@@ -1,0 +1,122 @@
+import { computed, onMounted, readonly, shallowRef } from 'vue'
+
+import type { DatabaseMutationInput, DatabaseMutationReview, DatabaseRow, DatabaseTable } from '@/api/features'
+import { featuresApi } from '@/api/features'
+
+export function useAdminDatabase() {
+  const tables = shallowRef<DatabaseTable[]>([])
+  const selectedTableName = shallowRef<string | null>(null)
+  const rows = shallowRef<DatabaseRow[]>([])
+  const nextCursor = shallowRef<string | null>(null)
+  const loading = shallowRef(true)
+  const busy = shallowRef(false)
+  const error = shallowRef<string | null>(null)
+  const review = shallowRef<DatabaseMutationReview | null>(null)
+  const lastRescueBackupId = shallowRef<string | null>(null)
+
+  const selectedTable = computed(() => tables.value.find((table) => table.name === selectedTableName.value) ?? null)
+
+  async function loadTables(): Promise<void> {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await featuresApi.getDatabaseTables()
+      tables.value = response.items
+      if (!selectedTableName.value || !tables.value.some((table) => table.name === selectedTableName.value)) {
+        selectedTableName.value = tables.value[0]?.name ?? null
+      }
+      if (selectedTableName.value) await loadRows(selectedTableName.value)
+    } catch (caught) {
+      error.value = caught instanceof Error ? caught.message : 'Database metadata is unavailable.'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function loadRows(table: string, options: { append?: boolean } = {}): Promise<void> {
+    if (busy.value) return
+    busy.value = true
+    error.value = null
+    try {
+      const response = await featuresApi.getDatabaseRows(table, options.append ? nextCursor.value ?? undefined : undefined)
+      rows.value = options.append ? [...rows.value, ...response.items] : response.items
+      nextCursor.value = response.nextCursor
+    } catch (caught) {
+      error.value = caught instanceof Error ? caught.message : 'Table rows could not be loaded.'
+    } finally {
+      busy.value = false
+    }
+  }
+
+  async function selectTable(name: string): Promise<void> {
+    selectedTableName.value = name
+    rows.value = []
+    nextCursor.value = null
+    review.value = null
+    await loadRows(name)
+  }
+
+  async function reviewMutation(input: DatabaseMutationInput): Promise<boolean> {
+    if (!selectedTable.value || busy.value) return false
+    busy.value = true
+    error.value = null
+    try {
+      review.value = await featuresApi.reviewDatabaseMutation(input)
+      return true
+    } catch (caught) {
+      error.value = caught instanceof Error ? caught.message : 'The mutation could not be reviewed.'
+      return false
+    } finally {
+      busy.value = false
+    }
+  }
+
+  async function applyMutation(input: DatabaseMutationInput, confirmation: string): Promise<boolean> {
+    if (!review.value || busy.value) return false
+    busy.value = true
+    error.value = null
+    try {
+      const response = await featuresApi.applyDatabaseMutation({ ...input, reviewHash: review.value.reviewHash, confirmation })
+      if (response.row) {
+        rows.value = input.action === 'insert'
+          ? [response.row, ...rows.value]
+          : rows.value.map((row) => row.recordHash === input.recordHash ? response.row! : row)
+      } else if (response.deleted) {
+        rows.value = rows.value.filter((row) => row.recordHash !== input.recordHash)
+      }
+      lastRescueBackupId.value = response.rescueBackupId
+      review.value = null
+      return true
+    } catch (caught) {
+      error.value = caught instanceof Error ? caught.message : 'The reviewed mutation was not applied. Refresh if another administrator changed it.'
+      return false
+    } finally {
+      busy.value = false
+    }
+  }
+
+  function clearReview(): void {
+    review.value = null
+  }
+
+  onMounted(() => void loadTables())
+
+  return {
+    tables: readonly(tables),
+    selectedTableName: readonly(selectedTableName),
+    selectedTable,
+    rows: readonly(rows),
+    nextCursor: readonly(nextCursor),
+    loading: readonly(loading),
+    busy: readonly(busy),
+    error: readonly(error),
+    review: readonly(review),
+    lastRescueBackupId: readonly(lastRescueBackupId),
+    loadTables,
+    loadRows,
+    selectTable,
+    reviewMutation,
+    applyMutation,
+    clearReview,
+  }
+}

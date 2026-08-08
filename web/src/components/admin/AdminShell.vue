@@ -3,9 +3,14 @@ import type { Component } from 'vue'
 import {
   PhArchive,
   PhBooks,
+  PhDatabase,
+  PhGameController,
+  PhGift,
   PhCreditCard,
   PhGear,
   PhListMagnifyingGlass,
+  PhListChecks,
+  PhMonitorPlay,
   PhStack,
   PhUserPlus,
   PhUsers,
@@ -17,14 +22,27 @@ import { useSessionStore } from '@/stores/session'
 const route = useRoute()
 const sessionStore = useSessionStore()
 
-const sections: Array<{ value: string; label: string; icon: Component }> = [
-  { value: 'settings', label: 'Settings', icon: PhGear },
-  { value: 'catalog', label: 'Catalog', icon: PhBooks },
-  { value: 'users', label: 'Users', icon: PhUsers },
-  { value: 'entitlements', label: 'Entitlements', icon: PhStack },
-  { value: 'payments', label: 'Payments', icon: PhCreditCard },
-  { value: 'backups', label: 'Backups', icon: PhArchive },
-  { value: 'audit', label: 'Audit', icon: PhListMagnifyingGlass },
+const groups: Array<{ label: string; sections: Array<{ value: string; label: string; icon: Component }> }> = [
+  { label: 'Commerce', sections: [
+    { value: 'catalog', label: 'Catalog', icon: PhBooks },
+    { value: 'coupons', label: 'Coupons', icon: PhGift },
+    { value: 'payments', label: 'Payments', icon: PhCreditCard },
+  ] },
+  { label: 'Community', sections: [
+    { value: 'activity', label: 'Activity', icon: PhGameController },
+    { value: 'questionnaires', label: 'Questionnaires', icon: PhListChecks },
+    { value: 'emby', label: 'Emby', icon: PhMonitorPlay },
+  ] },
+  { label: 'Accounts', sections: [
+    { value: 'users', label: 'Users', icon: PhUsers },
+    { value: 'entitlements', label: 'Entitlements', icon: PhStack },
+  ] },
+  { label: 'System', sections: [
+    { value: 'settings', label: 'Settings', icon: PhGear },
+    { value: 'backups', label: 'Backups', icon: PhArchive },
+    { value: 'database', label: 'Database', icon: PhDatabase },
+    { value: 'audit', label: 'Audit', icon: PhListMagnifyingGlass },
+  ] },
 ]
 </script>
 
@@ -42,16 +60,19 @@ const sections: Array<{ value: string; label: string; icon: Component }> = [
       </div>
     </header>
     <nav class="admin-tabs" aria-label="Admin sections">
-      <RouterLink
-        v-for="section in sections"
-        :key="section.value"
-        :to="`/admin/${section.value}`"
-        class="admin-tab"
-        :class="{ 'admin-tab--active': route.params.section === section.value }"
-      >
-        <component :is="section.icon" :size="18" />
-        {{ section.label }}
-      </RouterLink>
+      <div v-for="group in groups" :key="group.label" class="admin-tabs__group">
+        <span class="admin-tabs__label">{{ group.label }}</span>
+        <RouterLink
+          v-for="section in group.sections"
+          :key="section.value"
+          :to="`/admin/${section.value}`"
+          class="admin-tab"
+          :class="{ 'admin-tab--active': route.params.section === section.value }"
+        >
+          <component :is="section.icon" :size="18" />
+          {{ section.label }}
+        </RouterLink>
+      </div>
     </nav>
     <div class="admin-shell__content">
       <slot />

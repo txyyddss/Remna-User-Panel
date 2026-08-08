@@ -3,7 +3,7 @@ import { PhArrowRight, PhGameController, PhListChecks, PhMonitorPlay } from '@ph
 import { RouterLink } from 'vue-router'
 
 const items = [
-  { to: '/games', label: 'Games', note: 'Community play', icon: PhGameController },
+  { to: '/activity', label: 'Activity', note: 'Daily rewards and transparent games', icon: PhGameController },
   { to: '/questionnaire', label: 'Questionnaire', note: 'Member feedback', icon: PhListChecks },
   { to: '/emby', label: 'Emby', note: 'Shared media', icon: PhMonitorPlay },
 ]
@@ -13,7 +13,7 @@ const items = [
   <section class="section-block more-section">
     <div class="section-heading">
       <h2>Around TX</h2>
-      <span class="section-heading__meta">In progress</span>
+      <span class="section-heading__meta">Member tools</span>
     </div>
     <div class="more-links">
       <RouterLink v-for="item in items" :key="item.to" :to="item.to" class="more-link">

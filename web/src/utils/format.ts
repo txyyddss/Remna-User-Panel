@@ -57,6 +57,25 @@ export function moneyFromTxbInput(value: string): string {
   return (BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'))).toString()
 }
 
+export function signedMoneyFromTxbInput(value: string): string {
+  const normalized = value.trim()
+  if (!/^[+-]?\d+(?:\.\d{0,2})?$/.test(normalized)) return ''
+  const negative = normalized.startsWith('-')
+  const unsigned = normalized.replace(/^[+-]/, '')
+  const minor = moneyFromTxbInput(unsigned)
+  if (minor === '') return ''
+  return negative && minor !== '0' ? `-${minor}` : minor
+}
+
+export function txbInputFromMinor(value: string): string {
+  if (!/^-?\d+$/.test(value)) return ''
+  const negative = value.startsWith('-')
+  const absolute = BigInt(negative ? value.slice(1) : value)
+  const whole = absolute / 100n
+  const fraction = (absolute % 100n).toString().padStart(2, '0')
+  return `${negative ? '-' : ''}${whole}.${fraction}`
+}
+
 export function initials(name: string): string {
   return name
     .split(/\s+/)

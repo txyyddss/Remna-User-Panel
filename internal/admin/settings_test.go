@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/txyyddss/Remna-User-Panel/internal/billing"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/secret"
 )
@@ -138,9 +139,9 @@ func TestSettingsReadiness(t *testing.T) {
 		"telegram.channel_chat_id": "-1002",
 		"remnawave.base_url":       "https://remna.test",
 		"remnawave.api_token":      "secret",
-		"billing.rate.cny_per_txb": "1",
-		"billing.rate.usd_per_txb": "0.1",
-		"billing.rate.xtr_per_txb": "2",
+		"billing.rate.txb_per_cny": "1",
+		"billing.rate.txb_per_usd": "10",
+		"billing.rate.txb_per_xtr": "0.5",
 	}
 	for key, value := range required {
 		if err := service.Put(ctx, "admin", key, value); err != nil {
@@ -159,8 +160,8 @@ func TestSettingsReadiness(t *testing.T) {
 	}
 	issues = service.Readiness(ctx, 1)
 	for _, want := range []string{
-		"missing:billing.ezpay.base_url", "missing:billing.ezpay.merchant_id", "missing:billing.ezpay.key",
-		"missing:billing.bepusdt.base_url", "missing:billing.bepusdt.api_token", "missing:billing.bepusdt.trade_type",
+		"missing:billing.ezpay.base_url", "missing:billing.ezpay.merchant_id", "missing:billing.ezpay.key", "missing:billing.ezpay.methods",
+		"missing:billing.bepusdt.base_url", "missing:billing.bepusdt.api_token", "missing:billing.bepusdt.methods",
 	} {
 		if !containsString(issues, want) {
 			t.Fatalf("Readiness(enabled providers) = %v, missing %q", issues, want)
@@ -182,7 +183,7 @@ func TestSettingValidators(t *testing.T) {
 		{name: "HTTPS URL", validate: validateHTTPSURL, valid: []string{"https://example.test/path"}, invalid: []string{"http://example.test", "https://user@example.test", "/relative", "https:///missing"}},
 		{name: "boolean", validate: validateBoolean, valid: []string{"true", "false"}, invalid: []string{"TRUE", "1", ""}},
 		{name: "ack", validate: validateAck, valid: []string{"ok", "success", "SUCCESS"}, invalid: []string{"true", "done"}},
-		{name: "EZPay type", validate: validateEZPayType, valid: []string{"alipay", "wxpay", "qqpay", "bank", "jdpay"}, invalid: []string{"card", ""}},
+		{name: "EZPay methods", validate: billing.ValidateEZPayMethods, valid: []string{"alipay", "wxpay,alipay", "qqpay,bank,jdpay"}, invalid: []string{"card", "", "alipay,alipay"}},
 		{name: "nonempty", validate: nonempty, valid: []string{"value"}, invalid: []string{""}},
 	}
 	for _, test := range tests {

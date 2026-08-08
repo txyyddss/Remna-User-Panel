@@ -118,6 +118,55 @@ func TestPayableRejectsInvalidInputs(t *testing.T) {
 	}
 }
 
+func TestPayableFromTXBPerCurrencyRoundsUp(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		txbMinor  int64
+		rate      string
+		precision int
+		want      string
+	}{
+		{name: "CNY exact", txbMinor: 15000, rate: "10", precision: 2, want: "15.00"},
+		{name: "CNY fractional cent", txbMinor: 1, rate: "3", precision: 2, want: "0.01"},
+		{name: "USD precision", txbMinor: 2500, rate: "25", precision: 2, want: "1.00"},
+		{name: "Stars integer ceiling", txbMinor: 101, rate: "2", precision: 0, want: "1"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			rate, err := ParseDecimal(test.rate)
+			if err != nil {
+				t.Fatalf("ParseDecimal(): %v", err)
+			}
+			got, err := PayableFromTXBPerCurrency(test.txbMinor, rate, test.precision)
+			if err != nil {
+				t.Fatalf("PayableFromTXBPerCurrency(): %v", err)
+			}
+			if got != test.want {
+				t.Fatalf("PayableFromTXBPerCurrency() = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestParseTXBMajor(t *testing.T) {
+	tests := map[string]int64{"150": 15000, "1.5": 150, "0.01": 1, "-2.25": -225}
+	for raw, want := range tests {
+		t.Run(raw, func(t *testing.T) {
+			got, err := ParseTXBMajor(raw)
+			if err != nil || got != want {
+				t.Fatalf("ParseTXBMajor(%q) = %d, %v; want %d", raw, got, err, want)
+			}
+		})
+	}
+	for _, raw := range []string{"", "1.001", "1e2", "+1", "1."} {
+		if _, err := ParseTXBMajor(raw); err == nil {
+			t.Fatalf("ParseTXBMajor(%q) unexpectedly succeeded", raw)
+		}
+	}
+}
+
 func TestEquivalent(t *testing.T) {
 	t.Parallel()
 

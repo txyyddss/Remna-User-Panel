@@ -22,6 +22,10 @@ var ErrConflict = errors.New("record conflicts with current state")
 // ErrInsufficientBalance indicates that a debit would make an account negative.
 var ErrInsufficientBalance = errors.New("insufficient TXB balance")
 
+// ErrPaymentCapacity indicates that all retained payment slots contain live,
+// non-prunable orders. Callers may retry after an order settles or expires.
+var ErrPaymentCapacity = errors.New("payment order capacity is full")
+
 // Store implements persistent repositories on top of SQLite.
 type Store struct {
 	db      *sql.DB
@@ -75,18 +79,18 @@ func (s *Store) UserByTelegramID(ctx context.Context, telegramID int64) (model.U
 
 const userSelect = `SELECT users.id,users.telegram_id,users.telegram_first_name,users.telegram_last_name,users.telegram_username,
 	users.username,users.role,users.onboarding_state,users.group_joined,users.channel_joined,users.policy_accepted_at,
-	users.remna_user_id,users.remna_subscription_url,users.created_at,users.updated_at FROM users`
+	users.remna_user_id,users.remna_subscription_url,users.recovery_reason,users.created_at,users.updated_at FROM users`
 
 type rowScanner interface{ Scan(dest ...any) error }
 
 func scanUser(row rowScanner) (model.User, error) {
 	var user model.User
-	var username, policy, subscription sql.NullString
+	var username, policy, subscription, recoveryReason sql.NullString
 	var remnaID sql.NullString
 	var groupJoined, channelJoined int
 	var createdAt, updatedAt string
 	if err := row.Scan(&user.ID, &user.TelegramID, &user.TelegramFirstName, &user.TelegramLastName, &user.TelegramUsername,
-		&username, &user.Role, &user.OnboardingState, &groupJoined, &channelJoined, &policy, &remnaID, &subscription, &createdAt, &updatedAt); err != nil {
+		&username, &user.Role, &user.OnboardingState, &groupJoined, &channelJoined, &policy, &remnaID, &subscription, &recoveryReason, &createdAt, &updatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.User{}, ErrNotFound
 		}
@@ -104,6 +108,7 @@ func scanUser(row rowScanner) (model.User, error) {
 	}
 	user.RemnaUserID = nullableString(remnaID)
 	user.RemnaSubscriptionURL = nullableString(subscription)
+	user.RecoveryReason = recoveryReason.String
 	var err error
 	user.CreatedAt, err = parseStamp(createdAt)
 	if err != nil {
@@ -140,13 +145,42 @@ func (s *Store) DeleteExpiredSessions(ctx context.Context, now time.Time) error 
 
 // UpdateMembership persists canonical Telegram membership results.
 func (s *Store) UpdateMembership(ctx context.Context, userID string, groupJoined, channelJoined bool) (model.User, error) {
-	next := "onboarding_state"
-	if groupJoined && channelJoined {
-		next = "'username'"
-	}
-	_, err := s.db.ExecContext(ctx, `UPDATE users SET group_joined=?,channel_joined=?,onboarding_state=CASE WHEN onboarding_state IN ('intro','membership') THEN `+next+` ELSE onboarding_state END,updated_at=? WHERE id=?`, boolInt(groupJoined), boolInt(channelJoined), stamp(time.Now().UTC()), userID)
+	_, err := s.db.ExecContext(ctx, `UPDATE users SET group_joined=?,channel_joined=?,onboarding_state=CASE
+		WHEN onboarding_state IN ('intro','membership') AND ?=1 AND ?=1 THEN CASE WHEN username IS NULL THEN 'username' ELSE 'agreement' END
+		ELSE onboarding_state END,updated_at=? WHERE id=?`, boolInt(groupJoined), boolInt(channelJoined), boolInt(groupJoined), boolInt(channelJoined), stamp(time.Now().UTC()), userID)
 	if err != nil {
 		return model.User{}, fmt.Errorf("update membership: %w", err)
+	}
+	return s.UserByID(ctx, userID)
+}
+
+// BeginRemnawaveRecovery restarts only external membership/agreement checks and
+// preserves local identity, balance, purchases, and feature history.
+func (s *Store) BeginRemnawaveRecovery(ctx context.Context, userID, reason string, now time.Time) (model.User, error) {
+	reason = strings.TrimSpace(reason)
+	if strings.TrimSpace(userID) == "" || reason == "" {
+		return model.User{}, ErrConflict
+	}
+	result, err := s.db.ExecContext(ctx, `UPDATE users SET onboarding_state='membership',group_joined=0,channel_joined=0,
+		policy_accepted_at=NULL,remna_user_id=NULL,remna_subscription_url=NULL,recovery_reason=?,updated_at=?
+		WHERE id=? AND onboarding_state='complete'`, reason, stamp(now), userID)
+	if err != nil {
+		return model.User{}, fmt.Errorf("begin Remnawave recovery: %w", err)
+	}
+	if affected, rowsErr := result.RowsAffected(); rowsErr != nil {
+		return model.User{}, fmt.Errorf("inspect Remnawave recovery: %w", rowsErr)
+	} else if affected != 1 {
+		// Concurrent authentication requests can both confirm the same linked 404.
+		// Once one request establishes recovery, identical retries are successful.
+		user, loadErr := s.UserByID(ctx, userID)
+		if loadErr != nil {
+			return model.User{}, loadErr
+		}
+		if user.OnboardingState == "membership" && user.RecoveryReason == reason && user.RemnaUserID == nil &&
+			user.RemnaSubscriptionURL == nil && !user.GroupJoined && !user.ChannelJoined && user.PolicyAcceptedAt == nil {
+			return user, nil
+		}
+		return model.User{}, ErrConflict
 	}
 	return s.UserByID(ctx, userID)
 }
@@ -182,7 +216,14 @@ func (s *Store) ReserveUsername(ctx context.Context, userID, username string) er
 
 // CompleteOnboarding records agreement acceptance and the Remnawave identity.
 func (s *Store) CompleteOnboarding(ctx context.Context, userID string, remnaUserID, subscriptionURL string, acceptedAt time.Time) (model.User, error) {
-	result, err := s.db.ExecContext(ctx, `UPDATE users SET onboarding_state='complete',policy_accepted_at=?,remna_user_id=?,remna_subscription_url=?,updated_at=? WHERE id=? AND onboarding_state='agreement'`, stamp(acceptedAt), remnaUserID, subscriptionURL, stamp(acceptedAt), userID)
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return model.User{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	result, err := tx.ExecContext(ctx, `UPDATE users SET onboarding_state='complete',policy_accepted_at=?,remna_user_id=?,remna_subscription_url=?,recovery_reason='',updated_at=? WHERE id=? AND onboarding_state='agreement'`, stamp(acceptedAt), remnaUserID, subscriptionURL, stamp(acceptedAt), userID)
 	if err != nil {
 		return model.User{}, fmt.Errorf("complete onboarding: %w", err)
 	}
@@ -192,6 +233,12 @@ func (s *Store) CompleteOnboarding(ctx context.Context, userID string, remnaUser
 	}
 	if affected == 0 {
 		return model.User{}, ErrConflict
+	}
+	if err := insertOutboxTx(ctx, tx, "remna_sync_user", userID, `{"userId":"`+userID+`"}`, acceptedAt, acceptedAt); err != nil {
+		return model.User{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return model.User{}, fmt.Errorf("commit onboarding completion: %w", err)
 	}
 	return s.UserByID(ctx, userID)
 }

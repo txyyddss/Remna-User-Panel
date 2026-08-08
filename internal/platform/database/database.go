@@ -85,3 +85,22 @@ func migrate(ctx context.Context, db *sql.DB) error {
 	}
 	return nil
 }
+
+// MigrationVersions returns the ordered names of every migration embedded in
+// this binary. Restore validation uses this allowlist to reject snapshots that
+// were created by a newer or otherwise incompatible application build.
+func MigrationVersions() ([]string, error) {
+	entries, err := fs.ReadDir(migrations, "migrations")
+	if err != nil {
+		return nil, fmt.Errorf("read migrations: %w", err)
+	}
+	versions := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
+			continue
+		}
+		versions = append(versions, entry.Name())
+	}
+	sort.Strings(versions)
+	return versions, nil
+}

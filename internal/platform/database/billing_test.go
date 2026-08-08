@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"path/filepath"
 	"sort"
 	"sync"
@@ -31,6 +32,7 @@ func TestCreatePurchaseSnapshotsAndRenewsAtCurrentTermEnd(t *testing.T) {
 		UserID:        user.ID,
 		ComboID:       combo.ID,
 		AddonSquadIDs: []string{addon.ID, addon.ID},
+		IdempotencyKey: "purchase-snapshot-first",
 	}, now)
 	if err != nil {
 		t.Fatalf("CreatePurchase(first): %v", err)
@@ -55,6 +57,7 @@ func TestCreatePurchaseSnapshotsAndRenewsAtCurrentTermEnd(t *testing.T) {
 		UserID:        user.ID,
 		ComboID:       combo.ID,
 		AddonSquadIDs: []string{addon.ID},
+		IdempotencyKey: "purchase-snapshot-second",
 	}, now.Add(24*time.Hour))
 	if err != nil {
 		t.Fatalf("CreatePurchase(renewal): %v", err)
@@ -103,7 +106,7 @@ func TestCreatePurchaseInsufficientBalanceIsAtomic(t *testing.T) {
 		t.Fatalf("AdjustBalance(): %v", err)
 	}
 
-	_, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID}, time.Now())
+	_, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID, IdempotencyKey: "purchase-insufficient"}, time.Now())
 	if !errors.Is(err, ErrInsufficientBalance) {
 		t.Fatalf("CreatePurchase() error = %v, want ErrInsufficientBalance", err)
 	}
@@ -123,6 +126,72 @@ func TestCreatePurchaseInsufficientBalanceIsAtomic(t *testing.T) {
 	}
 	if purchaseDebits != 0 {
 		t.Fatalf("purchase debit count = %d, want 0", purchaseDebits)
+	}
+}
+
+func TestCreatePurchaseIdempotencyReplaysAndRejectsFingerprintReuse(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := newTestStore(t)
+	user := createTestUser(t, store, 10004)
+	addon := saveTestSquad(t, store, "idempotent-addon", 300, true)
+	combo := saveTestCombo(t, store, "idempotent-combo", 1_000, 30)
+	otherCombo := saveTestCombo(t, store, "different-combo", 500, 30)
+	if _, err := store.AdjustBalance(ctx, user.ID, 5_000, "idempotency-seed", "seed", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	input := PurchaseInput{UserID: user.ID, ComboID: combo.ID, AddonSquadIDs: []string{" " + addon.ID + " ", addon.ID}, IdempotencyKey: " purchase-attempt "}
+
+	const callers = 12
+	start := make(chan struct{})
+	results := make(chan model.Purchase, callers)
+	errorsCh := make(chan error, callers)
+	for range callers {
+		go func() {
+			<-start
+			purchase, err := store.CreatePurchase(ctx, input, time.Now())
+			results <- purchase
+			errorsCh <- err
+		}()
+	}
+	close(start)
+	var purchaseID string
+	for range callers {
+		purchase := <-results
+		if err := <-errorsCh; err != nil {
+			t.Fatalf("CreatePurchase(retry): %v", err)
+		}
+		if purchaseID == "" {
+			purchaseID = purchase.ID
+		} else if purchase.ID != purchaseID {
+			t.Fatalf("replay purchase ID = %q, want %q", purchase.ID, purchaseID)
+		}
+	}
+	conflict := input
+	conflict.ComboID = otherCombo.ID
+	if _, err := store.CreatePurchase(ctx, conflict, time.Now()); !errors.Is(err, ErrConflict) {
+		t.Fatalf("CreatePurchase(fingerprint conflict) error = %v, want ErrConflict", err)
+	}
+	if _, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID}, time.Now()); err == nil {
+		t.Fatal("CreatePurchase() accepted a missing idempotency key")
+	}
+	var purchases, debits, jobs int
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM purchases WHERE user_id=?`, user.ID).Scan(&purchases); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM ledger_entries WHERE user_id=? AND kind='purchase_debit'`, user.ID).Scan(&debits); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind='remna_apply_entitlement' AND aggregate_id=?`, purchaseID).Scan(&jobs); err != nil {
+		t.Fatal(err)
+	}
+	if purchases != 1 || debits != 1 || jobs != 1 {
+		t.Fatalf("idempotent effects purchases=%d debits=%d jobs=%d, want 1/1/1", purchases, debits, jobs)
+	}
+	balance, err := store.Balance(ctx, user.ID)
+	if err != nil || balance.Minor != "3700" {
+		t.Fatalf("idempotent balance = (%+v, %v), want 3700", balance, err)
 	}
 }
 
@@ -186,6 +255,35 @@ func TestAdjustBalanceConcurrentWritesRemainConsistent(t *testing.T) {
 	}
 }
 
+func TestAdjustBalanceOverflowRollsBack(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := newTestStore(t)
+	user := createTestUser(t, store, 10008)
+	now := time.Date(2026, time.August, 8, 9, 0, 0, 0, time.UTC)
+	if _, err := store.AdjustBalance(ctx, user.ID, math.MaxInt64, "balance-max", "test", now); err != nil {
+		t.Fatalf("AdjustBalance(max): %v", err)
+	}
+	if _, err := store.AdjustBalance(ctx, user.ID, 1, "balance-overflow", "test", now.Add(time.Second)); err == nil {
+		t.Fatal("AdjustBalance(overflow) unexpectedly succeeded")
+	}
+	balance, err := store.Balance(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("Balance(): %v", err)
+	}
+	if balance.Minor != "9223372036854775807" {
+		t.Fatalf("balance = %s, want MaxInt64", balance.Minor)
+	}
+	entries, err := store.ListLedger(ctx, user.ID, 10)
+	if err != nil {
+		t.Fatalf("ListLedger(): %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("ledger count = %d, want 1", len(entries))
+	}
+}
+
 func TestSettlePaymentCreditsExactlyOnce(t *testing.T) {
 	t.Parallel()
 
@@ -235,6 +333,89 @@ func TestSettlePaymentCreditsExactlyOnce(t *testing.T) {
 	assertRowCount(t, store, "webhook_events", 1)
 }
 
+func TestSettlePaymentOverflowRollsBackWebhookAndCredit(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := newTestStore(t)
+	user := createTestUser(t, store, 10009)
+	now := time.Date(2026, time.August, 8, 10, 0, 0, 0, time.UTC)
+	order := createTestPaymentOrder(t, store, user.ID, "ezpay", 1, now)
+	if _, err := store.AdjustBalance(ctx, user.ID, math.MaxInt64, "payment-overflow-max", "test", now); err != nil {
+		t.Fatalf("AdjustBalance(max): %v", err)
+	}
+	if _, _, err := store.SettlePayment(ctx, "ezpay", "overflow-event", "overflow-payload", order.ID, "overflow-trade", "", now.Add(time.Second)); err == nil {
+		t.Fatal("SettlePayment(overflow) unexpectedly succeeded")
+	}
+	current, err := store.PaymentOrderByID(ctx, order.ID)
+	if err != nil {
+		t.Fatalf("PaymentOrderByID(): %v", err)
+	}
+	if current.Status != "pending" {
+		t.Fatalf("order status = %q, want pending", current.Status)
+	}
+	assertRowCount(t, store, "webhook_events", 0)
+	balance, err := store.Balance(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("Balance(): %v", err)
+	}
+	if balance.Minor != "9223372036854775807" {
+		t.Fatalf("balance = %s, want MaxInt64", balance.Minor)
+	}
+	entries, err := store.ListLedger(ctx, user.ID, 10)
+	if err != nil {
+		t.Fatalf("ListLedger(): %v", err)
+	}
+	if got := countLedgerKind(entries, "payment_credit"); got != 0 {
+		t.Fatalf("payment credit count = %d, want 0", got)
+	}
+}
+
+func TestRefundPaymentUnderflowRollsBack(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := newTestStore(t)
+	user := createTestUser(t, store, 10010)
+	now := time.Date(2026, time.August, 8, 11, 0, 0, 0, time.UTC)
+	order := createTestPaymentOrder(t, store, user.ID, "ezpay", 1, now)
+	if _, applied, err := store.SettlePayment(ctx, "ezpay", "underflow-paid", "paid", order.ID, "underflow-trade", "", now); err != nil || !applied {
+		t.Fatalf("SettlePayment() = (applied %t, err %v)", applied, err)
+	}
+	if _, err := store.AdjustBalance(ctx, user.ID, math.MinInt64, "refund-underflow-a", "test", now.Add(time.Second)); err != nil {
+		t.Fatalf("AdjustBalance(MinInt64): %v", err)
+	}
+	if _, err := store.AdjustBalance(ctx, user.ID, -1, "refund-underflow-b", "test", now.Add(2*time.Second)); err != nil {
+		t.Fatalf("AdjustBalance(-1): %v", err)
+	}
+	actorID := user.ID
+	if _, err := store.RefundPayment(ctx, &actorID, order.ID, "underflow", now.Add(3*time.Second)); err == nil {
+		t.Fatal("RefundPayment(underflow) unexpectedly succeeded")
+	}
+	current, err := store.PaymentOrderByID(ctx, order.ID)
+	if err != nil {
+		t.Fatalf("PaymentOrderByID(): %v", err)
+	}
+	if current.Status != "paid" {
+		t.Fatalf("order status = %q, want paid", current.Status)
+	}
+	assertRowCount(t, store, "refunds", 0)
+	balance, err := store.Balance(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("Balance(): %v", err)
+	}
+	if balance.Minor != "-9223372036854775808" {
+		t.Fatalf("balance = %s, want MinInt64", balance.Minor)
+	}
+	entries, err := store.ListLedger(ctx, user.ID, 10)
+	if err != nil {
+		t.Fatalf("ListLedger(): %v", err)
+	}
+	if got := countLedgerKind(entries, "payment_reversal"); got != 0 {
+		t.Fatalf("payment reversal count = %d, want 0", got)
+	}
+}
+
 func TestRefundCancelsQueuedBeforeActiveAndIsIdempotent(t *testing.T) {
 	t.Parallel()
 
@@ -250,11 +431,11 @@ func TestRefundCancelsQueuedBeforeActiveAndIsIdempotent(t *testing.T) {
 	if _, err := store.AdjustBalance(ctx, user.ID, 5_000, "preexisting-credit", "test credit", base); err != nil {
 		t.Fatalf("AdjustBalance(): %v", err)
 	}
-	active, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID}, base.Add(time.Minute))
+	active, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID, IdempotencyKey: "purchase-cancel-active"}, base.Add(time.Minute))
 	if err != nil {
 		t.Fatalf("CreatePurchase(active): %v", err)
 	}
-	queued, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID}, base.Add(2*time.Minute))
+	queued, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID, IdempotencyKey: "purchase-cancel-queued"}, base.Add(2*time.Minute))
 	if err != nil {
 		t.Fatalf("CreatePurchase(queued): %v", err)
 	}

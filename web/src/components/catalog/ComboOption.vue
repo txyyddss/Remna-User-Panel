@@ -4,6 +4,7 @@ import { PhCheck, PhClock, PhGauge, PhStack } from '@phosphor-icons/vue'
 import type { Combo } from '@/api/types'
 import { formatBytes, formatMoney } from '@/utils/format'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import MarkdownContent from '@/components/common/MarkdownContent.vue'
 
 defineProps<{
   combo: Combo
@@ -28,7 +29,7 @@ defineEmits<{ select: [id: string] }>()
       </span>
       <span v-if="selected" class="selection-mark"><PhCheck :size="17" weight="bold" /></span>
     </span>
-    <span class="combo-option__description">{{ combo.description }}</span>
+    <MarkdownContent class="combo-option__description" :source="combo.description" compact />
     <span class="combo-option__metrics">
       <span><PhGauge :size="17" />{{ formatBytes(combo.trafficLimitBytes) }}</span>
       <span><PhClock :size="17" />{{ combo.validityDays }} days</span>

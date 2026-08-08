@@ -4,6 +4,7 @@ import { PhPlus } from '@phosphor-icons/vue'
 
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
+import CouponWalletPanel from '@/components/coupons/CouponWalletPanel.vue'
 import { useBalance } from '@/composables/useBalance'
 import { formatMoney } from '@/utils/format'
 import BalancePaymentSheet from './BalancePaymentSheet.vue'
@@ -39,6 +40,7 @@ function handlePaid(): void {
         </button>
       </section>
       <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
+      <CouponWalletPanel />
       <LedgerList :entries="ledger" />
       <BalancePaymentSheet v-model:open="paymentOpen" :methods="methods" @paid="handlePaid" />
     </template>

@@ -11,15 +11,17 @@ Bootstrap environment is intentionally narrow: `ADMIN_TELEGRAM_ID`, `TELEGRAM_BO
 - The database lives at `${DATA_DIR}/tx-carpool.db`; backups live below `${DATA_DIR}/backups`.
 - Every connection enables foreign keys, WAL, and a busy timeout. The pool is bounded to avoid SQLite write starvation.
 - Embedded migrations run in order before HTTP readiness. A migration failure aborts startup without partially advertising readiness.
-- Business transactions write durable state and their required outbox job together. Workers claim jobs with bounded leases/transactions, increment attempts, and preserve the last operator-safe error.
-- `ledger_entries`, `webhook_events`, `audit_events`, and refund records are append-only. The platform never offers raw SQL over HTTP.
+- Business transactions write durable state and their required outbox job together. The dispatcher routes each claimed job to the handler registered for its exact kind; Remnawave, rollover, Emby, and questionnaire workers can never claim one another's work. Workers use bounded leases/transactions, increment attempts, and preserve the last operator-safe error.
+- `ledger_entries`, `webhook_events`, and refund records are append-only. Audit insertion transactionally retains the newest 200 audit events. The platform never offers raw SQL over HTTP.
 - The embedded filesystem contains the Vite production output. Unknown non-API paths fall back to the SPA entry point; API and operational misses return normal HTTP errors and never the SPA.
 
 ## Scheduler and backup behavior
 
 One application-owned scheduler starts after migrations and stops when the root context is cancelled. It handles queued entitlement transitions, expired access, retryable Remnawave work, Stars reconciliation, and the daily backup trigger. Work is idempotent so a crash between provider success and job acknowledgement can be replayed safely.
 
-The backup task uses SQLite's online-safe mechanism, writes a temporary file, verifies that file by opening/checking it, then atomically renames it. Only verified snapshots receive final backup filenames. Files older than seven days are removed during retention scans, and a failed run never publishes its temporary file. Admin-triggered and scheduled runs share the same single-flight guard.
+The backup task uses SQLite's online-safe mechanism, writes a temporary file, verifies that file by opening/checking it, then atomically renames it. Only verified snapshots receive final backup filenames. Files older than seven days are removed during retention scans, and a failed run never publishes its temporary file. Admin-triggered and scheduled runs share the same single-flight guard. Authenticated administrators may stream a stored backup by opaque run ID; filesystem paths are never accepted from the request.
+
+A restore accepts only a verified stored snapshot. It creates a rescue backup, checks SQLite integrity and migration compatibility, stages the candidate beside the live database, writes a durable restore marker, returns `202`, and triggers graceful shutdown. On the next startup, the marker is processed before opening the application database: the files are swapped atomically, the replacement is opened and verified, and failure restores the rescue copy. Restore status is recorded for the reconnecting administrator, who must reauthenticate after restart.
 
 ## Failure behavior
 
@@ -35,5 +37,5 @@ The backup task uses SQLite's online-safe mechanism, writes a temporary file, ve
 - Migration tests cover a fresh database and reopening an existing schema with foreign keys/WAL enabled.
 - Secret tests cover random nonces, authentication failure, invalid base64 master keys, masking, and no plaintext response.
 - Scheduler tests use a controllable clock and cover cancellation, duplicate ticks, crash/retry, and bounded backoff.
-- Backup tests cover atomic completion, verification failure, single-flight behavior, and retention boundaries.
+- Backup tests cover atomic completion, authenticated download, rescue creation, marker validation, staged restore success/failure rollback, single-flight behavior, and retention boundaries.
 - HTTP tests cover SPA fallback, API 404 behavior, health/readiness transitions, request IDs, secure headers, and graceful cancellation.
