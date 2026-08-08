@@ -276,6 +276,9 @@ func (s *Server) createPaymentOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	order, err := s.deps.Billing.CreateOrder(r.Context(), user, strings.ToLower(request.MethodID), amount)
 	if err != nil {
+		if s.deps.Logger != nil {
+			s.deps.Logger.Warn("payment provider order creation failed", "request_id", middlewareRequestID(r), "method_id", strings.ToLower(request.MethodID), "amount_minor", amount, "error", err)
+		}
 		if errors.Is(err, billing.ErrInvalidOrder) {
 			s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_PAYMENT_ORDER", "The provider or TXB amount is invalid.")
 		} else if errors.Is(err, billing.ErrProviderDisabled) {
