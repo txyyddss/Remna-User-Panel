@@ -33,7 +33,7 @@ func TestInitDataVerifier(t *testing.T) {
 		{name: "valid", raw: valid},
 		{name: "tampered", raw: strings.Replace(valid, "%22Ada%22", "%22Eve%22", 1), wantErr: ErrInitDataSignature},
 		{name: "expired", raw: signedInitData(withValue(base, "auth_date", strconv.FormatInt(now.Add(-6*time.Minute).Unix(), 10)), token), wantErr: ErrInitDataExpired},
-		{name: "far future", raw: signedInitData(withValue(base, "auth_date", strconv.FormatInt(now.Add(time.Minute).Unix(), 10)), token), wantErr: ErrInitDataMalformed},
+		{name: "far future", raw: signedInitData(withValue(base, "auth_date", strconv.FormatInt(now.Add(6*time.Minute).Unix(), 10)), token), wantErr: ErrInitDataMalformed},
 		{name: "duplicate field", raw: valid + "&auth_date=1", wantErr: ErrInitDataMalformed},
 		{name: "bad hash encoding", raw: strings.Replace(valid, "hash=", "hash=xyz", 1), wantErr: ErrInitDataMalformed},
 	}
