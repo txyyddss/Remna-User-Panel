@@ -124,13 +124,13 @@ func (s *Store) EnqueueDueEntitlementTransitions(ctx context.Context, now time.T
 	for rows.Next() {
 		var item expiredItem
 		if err := rows.Scan(&item.purchaseID, &item.userID); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return err
 		}
 		expired = append(expired, item)
 	}
 	if err := rows.Err(); err != nil {
-		rows.Close()
+		_ = rows.Close()
 		return err
 	}
 	rows.Close()
@@ -211,7 +211,7 @@ func (s *Store) ClaimOutboxJob(ctx context.Context, now time.Time) (*model.Outbo
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	job, err := scanOutbox(tx.QueryRowContext(ctx, outboxSelect+` WHERE status='pending' AND available_at<=? ORDER BY available_at,created_at LIMIT 1`, stamp(now)))
 	if errors.Is(err, ErrNotFound) {
 		return nil, nil

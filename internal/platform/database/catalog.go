@@ -329,7 +329,7 @@ func (s *Store) comboSquads(ctx context.Context, comboID string) ([]model.SquadP
 	if err != nil {
 		return nil, fmt.Errorf("list combo squads: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	products := make([]model.SquadProduct, 0)
 	for rows.Next() {
 		product, err := scanSquad(rows)
