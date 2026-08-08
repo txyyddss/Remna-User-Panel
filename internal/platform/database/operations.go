@@ -99,7 +99,7 @@ func (s *Store) EnqueueOutbox(ctx context.Context, kind, aggregateID, payload st
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	if err := insertOutboxTx(ctx, tx, kind, aggregateID, payload, availableAt, time.Now().UTC()); err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func (s *Store) EnqueueDueEntitlementTransitions(ctx context.Context, now time.T
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	type expiredItem struct{ purchaseID, userID string }
 	rows, err := tx.QueryContext(ctx, `SELECT id,user_id FROM purchases WHERE status IN ('active','queued','activating') AND valid_until<=?`, stamp(now))
 	if err != nil {
@@ -183,7 +183,7 @@ func (s *Store) ExpirePurchase(ctx context.Context, purchaseID string, now time.
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	var userID, status string
 	if err := tx.QueryRowContext(ctx, `SELECT user_id,status FROM purchases WHERE id=?`, purchaseID).Scan(&userID, &status); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

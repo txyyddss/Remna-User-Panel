@@ -212,7 +212,7 @@ func (s *Store) ListSquadProducts(ctx context.Context, visibleOnly bool) ([]mode
 	if err != nil {
 		return nil, fmt.Errorf("list squad products: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	products := make([]model.SquadProduct, 0)
 	for rows.Next() {
 		product, err := scanSquad(rows)
@@ -278,7 +278,7 @@ func (s *Store) ListCombos(ctx context.Context, activeOnly bool) ([]model.Combo,
 	if err != nil {
 		return nil, fmt.Errorf("list combos: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	combos := make([]model.Combo, 0)
 	for rows.Next() {
 		combo, err := scanCombo(rows)

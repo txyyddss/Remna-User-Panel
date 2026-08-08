@@ -767,7 +767,7 @@ func (s *Store) ListRefunds(ctx context.Context, limit int) ([]model.Refund, err
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	refunds := make([]model.Refund, 0)
 	for rows.Next() {
 		var refund model.Refund
