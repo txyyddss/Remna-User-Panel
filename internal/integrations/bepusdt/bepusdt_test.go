@@ -30,7 +30,7 @@ func TestCreateTransaction(t *testing.T) {
 		if request.Method != http.MethodPost || request.URL.Path != "/api/v1/order/create-transaction" {
 			t.Errorf("request = %s %s", request.Method, request.URL.Path)
 		}
-		defer func() { _ = request.Body.Close() }()
+		defer request.Body.Close()
 		var raw map[string]json.RawMessage
 		if err := json.NewDecoder(request.Body).Decode(&raw); err != nil {
 			t.Errorf("decode request: %v", err)

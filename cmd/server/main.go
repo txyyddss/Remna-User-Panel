@@ -52,11 +52,7 @@ func serve() error {
 	if err != nil {
 		return fmt.Errorf("build application: %w", err)
 	}
-	defer func() {
-		if err := application.Close(); err != nil {
-			slog.Error("close application", "error", err)
-		}
-	}()
+	defer application.Close()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -79,7 +75,7 @@ func healthcheck(args []string) error {
 	if err != nil {
 		return fmt.Errorf("perform healthcheck: %w", err)
 	}
-	defer func() { _ = response.Body.Close() }()
+	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
 		return fmt.Errorf("healthcheck returned %s", response.Status)
 	}

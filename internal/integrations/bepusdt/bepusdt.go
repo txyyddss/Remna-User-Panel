@@ -224,7 +224,7 @@ func (c *Client) CreateTransaction(ctx context.Context, input CreateTransactionR
 	if err != nil {
 		return nil, fmt.Errorf("bepusdt request: %w", err)
 	}
-	defer func() { _ = response.Body.Close() }()
+	defer response.Body.Close()
 	responseBody, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes+1))
 	if err != nil {
 		return nil, fmt.Errorf("bepusdt read response: %w", err)

@@ -407,10 +407,9 @@ func createTestPaymentOrder(t *testing.T, store *Store, userID, provider string,
 	t.Helper()
 
 	currency := "CNY"
-	switch provider {
-	case "bepusdt":
+	if provider == "bepusdt" {
 		currency = "USD"
-	case "stars":
+	} else if provider == "stars" {
 		currency = "XTR"
 	}
 	order, err := store.CreatePaymentOrder(context.Background(), model.PaymentOrder{

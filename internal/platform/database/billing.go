@@ -29,9 +29,7 @@ func (s *Store) CreatePurchase(ctx context.Context, input PurchaseInput, now tim
 	if err != nil {
 		return model.Purchase{}, fmt.Errorf("begin purchase: %w", err)
 	}
-	defer func() {
-		_ = tx.Rollback()
-	}()
+	defer tx.Rollback()
 
 	combo, err := comboByIDTx(ctx, tx, input.ComboID, true)
 	if err != nil {
@@ -43,8 +41,10 @@ func (s *Store) CreatePurchase(ctx context.Context, input PurchaseInput, now tim
 	}
 	combo.IncludedSquads = included
 	includedUUIDs := make(map[string]struct{}, len(included))
+	squadUUIDs := make([]string, 0, len(included)+len(input.AddonSquadIDs))
 	for _, product := range included {
 		includedUUIDs[product.RemnaSquadUUID] = struct{}{}
+		squadUUIDs = append(squadUUIDs, product.RemnaSquadUUID)
 	}
 	addonPrice := int64(0)
 	addonRows := make([]model.SquadProduct, 0, len(input.AddonSquadIDs))
@@ -57,9 +57,11 @@ func (s *Store) CreatePurchase(ctx context.Context, input PurchaseInput, now tim
 			continue
 		}
 		includedUUIDs[product.RemnaSquadUUID] = struct{}{}
+		squadUUIDs = append(squadUUIDs, product.RemnaSquadUUID)
 		addonRows = append(addonRows, product)
 		addonPrice += product.PriceTXBMinor
 	}
+	squadUUIDs = uniqueSorted(squadUUIDs)
 	totalPrice := combo.PriceTXBMinor + addonPrice
 
 	validFrom := now
@@ -141,7 +143,7 @@ func comboSquadsTx(ctx context.Context, tx *sql.Tx, comboID string) ([]model.Squ
 	if err != nil {
 		return nil, fmt.Errorf("list combo squads: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
+	defer rows.Close()
 	products := make([]model.SquadProduct, 0)
 	for rows.Next() {
 		product, err := scanSquad(rows)
@@ -199,9 +201,7 @@ func (s *Store) AdjustBalance(ctx context.Context, userID string, delta int64, r
 	if err != nil {
 		return model.LedgerEntry{}, err
 	}
-	defer func() {
-		_ = tx.Rollback()
-	}()
+	defer tx.Rollback()
 	if _, err := tx.ExecContext(ctx, `INSERT INTO balances(user_id,txb_minor,updated_at) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET txb_minor=balances.txb_minor+excluded.txb_minor,updated_at=excluded.updated_at`, userID, delta, stamp(now)); err != nil {
 		return model.LedgerEntry{}, fmt.Errorf("adjust balance: %w", err)
 	}
@@ -245,7 +245,7 @@ func (s *Store) ListLedger(ctx context.Context, userID string, limit int) ([]mod
 	if err != nil {
 		return nil, fmt.Errorf("list ledger: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
+	defer rows.Close()
 	entries := make([]model.LedgerEntry, 0)
 	for rows.Next() {
 		entry, err := scanLedger(rows)
@@ -291,7 +291,7 @@ func (s *Store) ListPurchases(ctx context.Context, userID string) ([]model.Purch
 	if err != nil {
 		return nil, fmt.Errorf("list purchases: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
+	defer rows.Close()
 	purchases := make([]model.Purchase, 0)
 	for rows.Next() {
 		purchase, err := scanPurchase(rows)
@@ -321,7 +321,7 @@ func (s *Store) ListAllPurchases(ctx context.Context, limit int) ([]model.Purcha
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = rows.Close() }()
+	defer rows.Close()
 	purchases := make([]model.Purchase, 0)
 	for rows.Next() {
 		purchase, err := scanPurchase(rows)
@@ -715,7 +715,6 @@ func (s *Store) RefundPayment(ctx context.Context, actorID *string, orderID, rea
 	if err != nil {
 		return model.PaymentOrder{}, err
 	}
-	defer func() { _ = rows.Close() }()
 	type cancellation struct {
 		id, status string
 		price      int64
@@ -724,22 +723,16 @@ func (s *Store) RefundPayment(ctx context.Context, actorID *string, orderID, rea
 	for rows.Next() {
 		var item cancellation
 		if err := rows.Scan(&item.id, &item.price, &item.status); err != nil {
-			if closeErr := rows.Close(); closeErr != nil {
-				return model.PaymentOrder{}, fmt.Errorf("close rows: %w", closeErr)
-			}
+			rows.Close()
 			return model.PaymentOrder{}, err
 		}
 		cancellations = append(cancellations, item)
 	}
 	if err := rows.Err(); err != nil {
-		if closeErr := rows.Close(); closeErr != nil {
-			return model.PaymentOrder{}, fmt.Errorf("close rows: %w", closeErr)
-		}
+		rows.Close()
 		return model.PaymentOrder{}, err
 	}
-	if closeErr := rows.Close(); closeErr != nil {
-		return model.PaymentOrder{}, fmt.Errorf("close rows: %w", closeErr)
-	}
+	rows.Close()
 	for _, item := range cancellations {
 		if balance >= 0 {
 			break
@@ -778,7 +771,7 @@ func (s *Store) ListRefunds(ctx context.Context, limit int) ([]model.Refund, err
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = rows.Close() }()
+	defer rows.Close()
 	refunds := make([]model.Refund, 0)
 	for rows.Next() {
 		var refund model.Refund

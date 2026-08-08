@@ -258,7 +258,7 @@ func (a paymentAdapter) RefundProvider(ctx context.Context, order model.PaymentO
 		return nil
 	}
 	if order.ProviderTradeID == nil || *order.ProviderTradeID == "" {
-		return errors.New("stars payment has no Telegram charge id")
+		return errors.New("Stars payment has no Telegram charge id")
 	}
 	user, err := a.users.UserByID(ctx, order.UserID)
 	if err != nil {

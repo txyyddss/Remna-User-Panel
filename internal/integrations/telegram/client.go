@@ -374,7 +374,7 @@ func (c *Client) call(ctx context.Context, method string, payload, result any) e
 		}
 		return fmt.Errorf("telegram %s request: %w", method, err)
 	}
-	defer func() { _ = response.Body.Close() }()
+	defer response.Body.Close()
 	responseBody, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes+1))
 	if err != nil {
 		return fmt.Errorf("telegram %s read response: %w", method, err)
