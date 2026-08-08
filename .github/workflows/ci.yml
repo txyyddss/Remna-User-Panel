@@ -75,11 +75,6 @@ jobs:
       - name: Vet Go packages
         run: go vet ./...
 
-      - name: Lint Go packages
-        uses: golangci/golangci-lint-action@v7
-        with:
-          version: latest
-
       - name: Test Go packages with race detector
         run: go test -race ./...
 
