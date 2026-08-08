@@ -317,7 +317,7 @@ func (s *Store) ListAllPurchases(ctx context.Context, limit int) ([]model.Purcha
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	purchases := make([]model.Purchase, 0)
 	for rows.Next() {
 		purchase, err := scanPurchase(rows)
@@ -416,7 +416,7 @@ func (s *Store) purchaseSquads(ctx context.Context, purchaseID string) ([]string
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	result := make([]string, 0)
 	for rows.Next() {
 		var value string
@@ -541,7 +541,7 @@ func (s *Store) ListPaymentOrders(ctx context.Context, userID string, limit int)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	orders := make([]model.PaymentOrder, 0)
 	for rows.Next() {
 		order, err := scanPaymentOrder(rows)
@@ -605,7 +605,7 @@ func (s *Store) SettlePayment(ctx context.Context, provider, dedupeKey, payloadH
 	if err != nil {
 		return model.PaymentOrder{}, false, err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	var existingOrderID string
 	err = tx.QueryRowContext(ctx, `SELECT order_id FROM webhook_events WHERE provider=? AND dedupe_key=?`, provider, dedupeKey).Scan(&existingOrderID)
 	if err == nil {
@@ -679,7 +679,7 @@ func (s *Store) RefundPayment(ctx context.Context, actorID *string, orderID, rea
 	if err != nil {
 		return model.PaymentOrder{}, err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	order, err := paymentOrderTx(ctx, tx, orderID)
 	if err != nil {
 		return model.PaymentOrder{}, err

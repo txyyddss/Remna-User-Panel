@@ -424,7 +424,7 @@ func (c *Client) do(ctx context.Context, method, endpoint string, query url.Valu
 	if err != nil {
 		return fmt.Errorf("remnawave request: %w", err)
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	responseBody, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes+1))
 	if err != nil {
 		return fmt.Errorf("remnawave read response: %w", err)

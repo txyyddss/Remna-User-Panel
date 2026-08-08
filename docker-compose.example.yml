@@ -1,0 +1,16 @@
+services:
+  tx-carpool:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tx-carpool:local
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    volumes:
+      - tx-carpool-data:/data
+
+volumes:
+  tx-carpool-data:

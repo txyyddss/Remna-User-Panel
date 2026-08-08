@@ -58,7 +58,7 @@ func (s *Store) SaveCombo(ctx context.Context, input ComboInput) (model.Combo, e
 	if err != nil {
 		return model.Combo{}, fmt.Errorf("begin save combo: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	var result sql.Result
 	if creating {
 		result, err = tx.ExecContext(ctx, `INSERT INTO combos(id,name,description,price_txb_minor,validity_days,traffic_limit_bytes,reset_strategy,active,created_at,updated_at)
