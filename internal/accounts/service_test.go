@@ -90,7 +90,7 @@ func TestAuthenticateRechecksLinkedRemnawaveUser(t *testing.T) {
 	}{
 		{name: "linked user still exists", linked: accountsFindResponse{exists: true}, wantSession: true},
 		{name: "confirmed missing starts recovery", linked: accountsFindResponse{}, wantRecovery: true, wantSession: true},
-		{name: "temporary failure blocks authentication", linked: accountsFindResponse{err: upstreamFailure}, wantUpstream: true},
+		{name: "temporary failure falls back to local authentication", linked: accountsFindResponse{err: upstreamFailure}, wantUpstream: true, wantSession: true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -101,11 +101,8 @@ func TestAuthenticateRechecksLinkedRemnawaveUser(t *testing.T) {
 			}}
 			remote := &accountsRemnawave{linkedResponse: test.linked}
 			_, token, _, err := newAccountsServiceForTest(repository, &accountsValidator{profile: profile}, &accountsTelegram{}, remote, &accountsSettings{}, 99).Authenticate(context.Background(), "signed")
-			if test.wantUpstream {
-				if !errors.Is(err, ErrUpstreamUnavailable) || token != "" || repository.sessionUserID != "" {
-					t.Fatalf("Authenticate() = token %q, err %v, stored session %q", token, err, repository.sessionUserID)
-				}
-				return
+			if test.wantUpstream && (err != nil || token == "" || repository.sessionUserID == "") {
+				t.Fatalf("Authenticate() did not fall back to local session: token %q, err %v, stored session %q", token, err, repository.sessionUserID)
 			}
 			if err != nil || (token != "") != test.wantSession {
 				t.Fatalf("Authenticate() = token %q, err %v", token, err)

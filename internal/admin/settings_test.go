@@ -39,6 +39,16 @@ func TestSettingsServiceStoresAndDecryptsSecrets(t *testing.T) {
 	if err != nil || decrypted != "bearer-secret" {
 		t.Fatalf("Plaintext(secret) = (%q, %v)", decrypted, err)
 	}
+	if err := service.Put(ctx, "admin-1", "remnawave.api_token", "  replacement-token  "); err != nil {
+		t.Fatalf("Put(secret replacement): %v", err)
+	}
+	if repository.settings["remnawave.api_token"].Value == encrypted.Value {
+		t.Fatal("secret replacement did not update the encrypted database value")
+	}
+	decrypted, err = service.Plaintext(ctx, "remnawave.api_token")
+	if err != nil || decrypted != "replacement-token" {
+		t.Fatalf("Plaintext(replaced secret) = (%q, %v)", decrypted, err)
+	}
 	plainValue, err := service.Plaintext(ctx, "telegram.group_chat_id")
 	if err != nil || plainValue != "-1001" {
 		t.Fatalf("Plaintext(plain) = (%q, %v)", plainValue, err)

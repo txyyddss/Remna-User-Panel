@@ -1,0 +1,21 @@
+{
+  "schema": "1.0",
+  "type": "whmcs-gateways",
+  "name": "epusdt",
+  "license": "MIT",
+  "category": "payments",
+  "description": {
+    "name": "BEpusdt",
+    "tagline": "加密货币支付网关 - USDT/USDC/ETH 多币种支持",
+    "long": "一款更好用的个人加密货币收款网关，支持 USDT、USDC、ETH 等多币种，覆盖 TRC20、ERC20、BEP20 等多条公链。"
+  },
+  "support": {
+    "docs_url": "https://github.com/v03413/whcms-gateway-bepusdt"
+  },
+  "authors": [
+    {
+      "name": "Your Name",
+      "homepage": "https://github.com/v03413/BEpusdt"
+    }
+  ]
+}

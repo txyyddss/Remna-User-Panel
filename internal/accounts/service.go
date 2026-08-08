@@ -130,17 +130,17 @@ func (s *Service) Authenticate(ctx context.Context, raw string) (model.User, str
 	if user.OnboardingState == "complete" && user.RemnaUserID != nil {
 		if verifier, ok := s.remnawave.(linkedUserVerifier); ok {
 			_, exists, verifyErr := verifier.FindUserByID(ctx, *user.RemnaUserID)
-			if verifyErr != nil {
-				return model.User{}, "", time.Time{}, fmt.Errorf("%w: %v", ErrUpstreamUnavailable, verifyErr)
-			}
-			if !exists {
+			// Telegram initData is the authentication boundary. A temporary
+			// Remnawave outage must not turn a valid Telegram launch into an
+			// authentication failure; the local account can still use the app
+			// and remote-backed operations will report their own availability.
+			if verifyErr == nil && !exists {
 				repository, supported := s.repository.(recoveryRepository)
-				if !supported {
-					return model.User{}, "", time.Time{}, errors.New("Remnawave recovery is unavailable")
-				}
-				user, err = repository.BeginRemnawaveRecovery(ctx, user.ID, "remnawave_user_missing", s.now().UTC())
-				if err != nil {
-					return model.User{}, "", time.Time{}, err
+				if supported {
+					user, err = repository.BeginRemnawaveRecovery(ctx, user.ID, "remnawave_user_missing", s.now().UTC())
+					if err != nil {
+						return model.User{}, "", time.Time{}, err
+					}
 				}
 			}
 		}

@@ -111,7 +111,9 @@ func (s *SettingsService) Put(ctx context.Context, actorID, key, value string) e
 		}
 	}
 	stored := value
-	if definition.Secret {
+	// A non-blank secret is an explicit replacement. Encrypt it freshly so
+	// the write-only value from the settings UI can never be persisted as-is.
+	if definition.Secret && value != "" {
 		var err error
 		stored, err = s.vault.Encrypt(key, value)
 		if err != nil {
