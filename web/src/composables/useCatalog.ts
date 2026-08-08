@@ -1,4 +1,4 @@
-import { computed, onMounted, readonly, shallowRef, watch } from 'vue'
+import { computed, getCurrentInstance, onMounted, readonly, shallowRef, watch } from 'vue'
 
 import { api, ApiError } from '@/api/client'
 import { featuresApi } from '@/api/features'
@@ -136,7 +136,7 @@ export function useCatalog() {
     }
   }
 
-  onMounted(() => void load())
+  if (getCurrentInstance()) onMounted(() => void load())
 
   return {
     catalog: readonly(catalog),

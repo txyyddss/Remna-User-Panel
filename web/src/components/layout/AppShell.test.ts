@@ -40,6 +40,11 @@ describe('AppShell accessibility', () => {
       routes: [
         { path: '/home', component: { template: '<div />' } },
         { path: '/catalog', component: { template: '<div />' } },
+        { path: '/balance', component: { template: '<div />' } },
+        { path: '/activity', component: { template: '<div />' } },
+        { path: '/questionnaire', component: { template: '<div />' } },
+        { path: '/emby', component: { template: '<div />' } },
+        { path: '/admin/settings', component: { template: '<div />' } },
       ],
     })
     await router.push('/home')
