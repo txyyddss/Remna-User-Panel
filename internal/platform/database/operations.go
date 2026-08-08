@@ -158,7 +158,7 @@ func (s *Store) EnqueueDueEntitlementTransitions(ctx context.Context, now time.T
 		_ = rows.Close()
 		return err
 	}
-	rows.Close()
+	_ = rows.Close()
 	for _, purchaseID := range queued {
 		if _, err := tx.ExecContext(ctx, `UPDATE purchases SET status='activating',updated_at=? WHERE id=? AND status='queued'`, stamp(now), purchaseID); err != nil {
 			return err
@@ -280,7 +280,7 @@ func (s *Store) ListOutboxJobs(ctx context.Context, limit int) ([]model.OutboxJo
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	jobs := make([]model.OutboxJob, 0)
 	for rows.Next() {
 		job, err := scanOutbox(rows)
@@ -413,7 +413,7 @@ func (s *Store) ListAuditEvents(ctx context.Context, limit int) ([]model.AuditEv
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	events := make([]model.AuditEvent, 0)
 	for rows.Next() {
 		var event model.AuditEvent
