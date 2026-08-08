@@ -43,10 +43,8 @@ func (s *Store) CreatePurchase(ctx context.Context, input PurchaseInput, now tim
 	}
 	combo.IncludedSquads = included
 	includedUUIDs := make(map[string]struct{}, len(included))
-	squadUUIDs := make([]string, 0, len(included)+len(input.AddonSquadIDs))
 	for _, product := range included {
 		includedUUIDs[product.RemnaSquadUUID] = struct{}{}
-		squadUUIDs = append(squadUUIDs, product.RemnaSquadUUID)
 	}
 	addonPrice := int64(0)
 	addonRows := make([]model.SquadProduct, 0, len(input.AddonSquadIDs))
@@ -59,7 +57,6 @@ func (s *Store) CreatePurchase(ctx context.Context, input PurchaseInput, now tim
 			continue
 		}
 		includedUUIDs[product.RemnaSquadUUID] = struct{}{}
-		squadUUIDs = append(squadUUIDs, product.RemnaSquadUUID)
 		addonRows = append(addonRows, product)
 		addonPrice += product.PriceTXBMinor
 	}
@@ -727,16 +724,22 @@ func (s *Store) RefundPayment(ctx context.Context, actorID *string, orderID, rea
 	for rows.Next() {
 		var item cancellation
 		if err := rows.Scan(&item.id, &item.price, &item.status); err != nil {
-			rows.Close()
+			if closeErr := rows.Close(); closeErr != nil {
+				return model.PaymentOrder{}, fmt.Errorf("close rows: %w", closeErr)
+			}
 			return model.PaymentOrder{}, err
 		}
 		cancellations = append(cancellations, item)
 	}
 	if err := rows.Err(); err != nil {
-		rows.Close()
+		if closeErr := rows.Close(); closeErr != nil {
+			return model.PaymentOrder{}, fmt.Errorf("close rows: %w", closeErr)
+		}
 		return model.PaymentOrder{}, err
 	}
-	rows.Close()
+	if closeErr := rows.Close(); closeErr != nil {
+		return model.PaymentOrder{}, fmt.Errorf("close rows: %w", closeErr)
+	}
 	for _, item := range cancellations {
 		if balance >= 0 {
 			break
@@ -775,7 +778,7 @@ func (s *Store) ListRefunds(ctx context.Context, limit int) ([]model.Refund, err
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	refunds := make([]model.Refund, 0)
 	for rows.Next() {
 		var refund model.Refund
