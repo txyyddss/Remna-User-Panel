@@ -1,0 +1,62 @@
+BadRequest:
+  description: Request validation failed.
+  content:
+    application/json:
+      schema:
+        $ref: '../openapi.yaml#/components/schemas/ApiError'
+
+Unauthorized:
+  description: Missing, invalid, or expired authentication or provider signature.
+  content:
+    application/json:
+      schema:
+        $ref: '../openapi.yaml#/components/schemas/ApiError'
+
+Forbidden:
+  description: The authenticated identity cannot perform this operation.
+  content:
+    application/json:
+      schema:
+        $ref: '../openapi.yaml#/components/schemas/ApiError'
+
+NotFound:
+  description: Resource not found or not visible to the caller.
+  content:
+    application/json:
+      schema:
+        $ref: '../openapi.yaml#/components/schemas/ApiError'
+
+Conflict:
+  description: Request conflicts with current persisted state.
+  content:
+    application/json:
+      schema:
+        $ref: '../openapi.yaml#/components/schemas/ApiError'
+
+Unprocessable:
+  description: The JSON shape was valid, but one or more domain values failed validation.
+  content:
+    application/json:
+      schema:
+        $ref: '../openapi.yaml#/components/schemas/ApiError'
+
+InternalFailure:
+  description: A required local operation failed unexpectedly.
+  content:
+    application/json:
+      schema:
+        $ref: '../openapi.yaml#/components/schemas/ApiError'
+
+UpstreamFailure:
+  description: A required provider could not complete the synchronous portion of the request.
+  content:
+    application/json:
+      schema:
+        $ref: '../openapi.yaml#/components/schemas/ApiError'
+
+ServiceUnavailable:
+  description: A required service or deployment setting is temporarily unavailable.
+  content:
+    application/json:
+      schema:
+        $ref: '../openapi.yaml#/components/schemas/ApiError'

@@ -1,0 +1,42 @@
+post:
+  tags: [Billing]
+  operationId: createPaymentOrder
+  summary: Create a balance top-up order
+  description: |
+    The requested TXB minor units are divided by the required `txb_per_cny`,
+    `txb_per_usd`, or `txb_per_xtr` fixed-decimal rate and rounded upward at
+    provider precision. A successful authoritative callback credits exactly
+    `txbMinor`. At most 200 durable orders are retained; only terminal evidence
+    is pruned before creation.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/PaymentOrderRequest'
+  responses:
+    '201':
+      description: Durable payment order with separate URL, QR, receiving-address, and actual-crypto fields.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/PaymentOrder'
+    '400':
+      $ref: '../openapi.yaml#/components/responses/BadRequest'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '409':
+      description: Method unavailable or all 200 retained orders are currently non-prunable. Capacity conflicts are retryable.
+      headers:
+        Retry-After:
+          schema:
+            type: string
+            pattern: '^\d+$'
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/ApiError'
+    '422':
+      $ref: '../openapi.yaml#/components/responses/Unprocessable'
+    '502':
+      $ref: '../openapi.yaml#/components/responses/UpstreamFailure'

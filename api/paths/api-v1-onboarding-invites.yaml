@@ -1,0 +1,20 @@
+post:
+  tags: [Onboarding]
+  operationId: createOnboardingInvites
+  summary: Create identity-bound group and channel join-request links
+  description: |
+    Creates 30-minute join-request links whose names contain the Telegram
+    user ID and a 96-bit HMAC over user, chat, and expiry. No invite is
+    persisted. Only the signed identity may be approved and the link is
+    revoked immediately after approval.
+  responses:
+    '200':
+      description: Active one-time join-request links.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/OnboardingInvites'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '503':
+      $ref: '../openapi.yaml#/components/responses/ServiceUnavailable'

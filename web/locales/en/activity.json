@@ -1,0 +1,71 @@
+{
+  "activity": {
+    "stakeRange": "{minimum} to {maximum} TXB",
+    "eyebrow": "Community activity",
+    "title": "Play with clear odds.",
+    "copy": "Every fee, chance, and return is shown before you confirm.",
+    "balance": "Balance {amount}",
+    "unavailable": "Activity is unavailable.",
+    "resultRecorded": "Result recorded",
+    "groupRewardTitle": "Group message reward",
+    "groupRewardDisabled": "Group message rewards are not active right now.",
+    "groupRewardProgress": "{count} of {threshold} messages",
+    "groupRewardClaimed": "Today's group-message reward is claimed.",
+    "groupRewardHint": "Send messages in the group while your subscription is active.",
+    "dailyCheckIn": "Daily check-in",
+    "todayComplete": "Today is complete.",
+    "claimToday": "Claim {amount} TXB once today.",
+    "claimRangeToday": "Claim a random {minimum} to {maximum} TXB once today.",
+    "resetsAt": "Resets at midnight in {timezone}.",
+    "checkedIn": "Checked in",
+    "checkingIn": "Checking in",
+    "checkIn": "Check in",
+    "betGames": "Bet games",
+    "betCopy": "Odds and total return are shown before you confirm. One result per tap.",
+    "stake": "Stake",
+    "totalReturn": "{multiplier}× total return",
+    "lossReturn": "A loss returns 0 TXB.",
+    "resolving": "Resolving securely",
+    "confirmBet": "Confirm bet",
+    "noBetGames": "No bet games",
+    "publishGames": "An administrator can publish games when they are ready.",
+    "luckyDraws": "Lucky draws",
+    "drawCopy": "Each draw shows its fee before one secure result.",
+    "drawSafety": "Fee and worst-case balance coverage are checked first.",
+    "drawing": "Drawing securely",
+    "drawFor": "Draw for {amount} TXB",
+    "noDraws": "No lucky draws",
+    "publishDraw": "An administrator can publish a draw when it is ready.",
+    "weightedPrize": "One weighted prize is selected and recorded.",
+    "balanceAfter": "Balance after result",
+    "resultDescription": {
+      "checkInRewarded": "Your daily check-in reward has been added.",
+      "checkInRecorded": "Today's check-in was already recorded.",
+      "betWin": "Your win and updated balance are recorded.",
+      "betLoss": "This play had no return; your updated balance is recorded.",
+      "drawComplete": "Your draw result and reward are recorded."
+    },
+    "result": {
+      "win": {
+        "title": "You won"
+      },
+      "loss": {
+        "title": "Result recorded"
+      },
+      "complete": {
+        "title": "Complete"
+      }
+    }
+  },
+  "adminActivity": {
+    "dailyCheckIn": "Daily check-in",
+    "dailyCheckInHint": "One reward per configured local calendar day.",
+    "calendarTimezone": "Calendar timezone",
+    "timezoneHint": "Use an IANA timezone name.",
+    "dailyReward": "Daily reward",
+    "groupMessageThreshold": "Messages per reward",
+    "groupMessageThresholdHint": "Set to 0 to disable group-message rewards.",
+    "groupMessageReward": "Group-message reward",
+    "saveSettings": "Save activity settings"
+  }
+}

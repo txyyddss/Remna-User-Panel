@@ -3,19 +3,13 @@ package accounts
 
 import (
 	"context"
-	"crypto/hmac"
 	"crypto/sha256"
-	"encoding/base64"
 	"errors"
 	"fmt"
-	"regexp"
-	"strconv"
-	"strings"
-	"time"
-
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
-	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
+	"regexp"
+	"time"
 )
 
 var usernamePattern = regexp.MustCompile(`^[a-z]{3,9}$`)
@@ -46,12 +40,11 @@ type TelegramClient interface {
 	RevokeInviteLink(ctx context.Context, chatID, inviteLink string) error
 }
 
-// RemoteUser is the minimum Remnawave identity persisted locally.
+// RemoteUser is the minimum Remnawave identity used during onboarding.
 type RemoteUser struct {
-	ID              string
-	Username        string
-	TelegramID      *int64
-	SubscriptionURL string
+	ID         string
+	Username   string
+	TelegramID *int64
 }
 
 // RemoteCreateUser is the immutable v1 onboarding contract.
@@ -97,7 +90,7 @@ type Repository interface {
 	UpdateMembership(context.Context, string, bool, bool) (model.User, error)
 	ReserveUsername(context.Context, string, string) error
 	CurrentAgreementContract(context.Context) (int, []string, error)
-	CompleteOnboardingRevision(context.Context, string, string, string, int, []string, time.Time) (model.User, error)
+	CompleteOnboardingRevision(context.Context, string, string, int, []string, time.Time) (model.User, error)
 }
 
 // Service coordinates authentication and onboarding state.
@@ -168,227 +161,4 @@ func (s *Service) UserBySession(ctx context.Context, token string) (model.User, 
 		return model.User{}, fmt.Errorf("%w: %v", ErrInvalidAuthentication, err)
 	}
 	return user, nil
-}
-
-// CreateInvites creates short-lived, identity-bound links for both required chats.
-func (s *Service) CreateInvites(ctx context.Context, user model.User) (map[string]string, time.Time, error) {
-	if user.OnboardingState == "intro" {
-		if err := s.repository.AdvanceToMembership(ctx, user.ID); err != nil {
-			return nil, time.Time{}, err
-		}
-	}
-	expiresAt := s.now().UTC().Add(30 * time.Minute)
-	result := make(map[string]string, 2)
-	type createdInvite struct{ chatID, link string }
-	created := make([]createdInvite, 0, 2)
-	complete := false
-	defer func() {
-		if complete {
-			return
-		}
-		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		for _, invite := range created {
-			_ = s.telegram.RevokeInviteLink(cleanupCtx, invite.chatID, invite.link)
-		}
-	}()
-	for _, kind := range []string{"group", "channel"} {
-		chatIDValue, err := s.settings.Plaintext(ctx, "telegram."+kind+"_chat_id")
-		if err != nil {
-			return nil, time.Time{}, fmt.Errorf("load %s chat: %w", kind, err)
-		}
-		chatID, err := strconv.ParseInt(chatIDValue, 10, 64)
-		if err != nil || chatID == 0 {
-			return nil, time.Time{}, fmt.Errorf("invalid %s chat id", kind)
-		}
-		inviteName, err := s.signedInviteName(ctx, user.TelegramID, chatID, expiresAt)
-		if err != nil {
-			return nil, time.Time{}, err
-		}
-		link, err := s.telegram.CreateJoinRequestInvite(ctx, chatIDValue, inviteName, expiresAt)
-		if err != nil {
-			return nil, time.Time{}, fmt.Errorf("create %s invite: %w", kind, err)
-		}
-		created = append(created, createdInvite{chatID: chatIDValue, link: link})
-		result[kind] = link
-	}
-	complete = true
-	return result, expiresAt, nil
-}
-
-// CheckMembership asks Telegram for canonical state rather than trusting the browser.
-func (s *Service) CheckMembership(ctx context.Context, user model.User) (model.User, error) {
-	joined := make(map[string]bool, 2)
-	for _, kind := range []string{"group", "channel"} {
-		chatID, err := s.settings.Plaintext(ctx, "telegram."+kind+"_chat_id")
-		if err != nil {
-			return model.User{}, err
-		}
-		joined[kind], err = s.telegram.GetMembership(ctx, chatID, user.TelegramID)
-		if err != nil {
-			return model.User{}, fmt.Errorf("check %s membership: %w", kind, err)
-		}
-	}
-	return s.repository.UpdateMembership(ctx, user.ID, joined["group"], joined["channel"])
-}
-
-// RefreshMembershipByTelegramID updates onboarding state after a Telegram membership event.
-func (s *Service) RefreshMembershipByTelegramID(ctx context.Context, telegramID int64) (model.User, error) {
-	user, err := s.repository.UserByTelegramID(ctx, telegramID)
-	if err != nil {
-		return model.User{}, err
-	}
-	return s.CheckMembership(ctx, user)
-}
-
-// HandleSignedJoinRequest verifies signature, identity, chat, and expiry before
-// approval and immediate invite revocation. No invite link is stored locally.
-func (s *Service) HandleSignedJoinRequest(ctx context.Context, telegramID, chatID int64, inviteLink, inviteName string, expiresAt time.Time) error {
-	if strings.TrimSpace(inviteLink) == "" || len(inviteName) > 32 || !s.now().UTC().Before(expiresAt.UTC()) {
-		return ErrInvalidAuthentication
-	}
-	parts := strings.Split(inviteName, ".")
-	if len(parts) != 2 {
-		return ErrInvalidAuthentication
-	}
-	signedTelegramID, err := strconv.ParseInt(parts[0], 36, 64)
-	if err != nil || signedTelegramID != telegramID {
-		return ErrInvalidAuthentication
-	}
-	expected, err := s.inviteSignature(ctx, signedTelegramID, chatID, expiresAt)
-	if err != nil || !hmac.Equal([]byte(parts[1]), []byte(expected)) {
-		return ErrInvalidAuthentication
-	}
-	chatIDValue := strconv.FormatInt(chatID, 10)
-	if err := s.telegram.ApproveJoinRequest(ctx, chatIDValue, telegramID); err != nil {
-		present, membershipErr := s.telegram.GetMembership(ctx, chatIDValue, telegramID)
-		if membershipErr != nil || !present {
-			return err
-		}
-	}
-	if err := s.telegram.RevokeInviteLink(ctx, chatIDValue, inviteLink); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (s *Service) signedInviteName(ctx context.Context, telegramID, chatID int64, expiresAt time.Time) (string, error) {
-	signature, err := s.inviteSignature(ctx, telegramID, chatID, expiresAt)
-	if err != nil {
-		return "", err
-	}
-	name := strconv.FormatInt(telegramID, 36) + "." + signature
-	if len(name) > 32 {
-		return "", errors.New("Telegram invite identity exceeds name limit")
-	}
-	return name, nil
-}
-
-func (s *Service) inviteSignature(ctx context.Context, telegramID, chatID int64, expiresAt time.Time) (string, error) {
-	secret, err := s.settings.Plaintext(ctx, "telegram.webhook_secret")
-	if err != nil || strings.TrimSpace(secret) == "" {
-		return "", errors.New("Telegram invite signing secret is unavailable")
-	}
-	mac := hmac.New(sha256.New, []byte(secret))
-	_, _ = fmt.Fprintf(mac, "%d|%d|%d", telegramID, chatID, expiresAt.UTC().Unix())
-	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil)[:12]), nil
-}
-
-// ReserveUsername applies local syntax and uniqueness plus an upstream preflight.
-func (s *Service) ReserveUsername(ctx context.Context, user model.User, username string) (model.User, error) {
-	username = strings.TrimSpace(username)
-	if !usernamePattern.MatchString(username) {
-		return model.User{}, fmt.Errorf("username must match %s", usernamePattern.String())
-	}
-	if !user.GroupJoined || !user.ChannelJoined {
-		return model.User{}, ErrMembershipRequired
-	}
-	if _, exists, err := s.remnawave.FindUserByUsername(ctx, username); err != nil {
-		return model.User{}, fmt.Errorf("preflight Remnawave username: %w", err)
-	} else if exists {
-		return model.User{}, ErrUsernameUnavailable
-	}
-	if err := s.repository.ReserveUsername(ctx, user.ID, username); err != nil {
-		if errors.Is(err, database.ErrConflict) {
-			return model.User{}, ErrUsernameUnavailable
-		}
-		return model.User{}, err
-	}
-	return s.repository.UserByID(ctx, user.ID)
-}
-
-// AcceptAgreementRevision rejects stale revisions and requires every currently
-// published agreement ID before reconciling the permanent Remnawave identity.
-func (s *Service) AcceptAgreementRevision(ctx context.Context, user model.User, revision int, agreementIDs []string) (model.User, error) {
-	if user.Username == nil || user.OnboardingState != "agreement" || revision <= 0 {
-		return model.User{}, database.ErrConflict
-	}
-	currentRevision, requiredIDs, err := s.repository.CurrentAgreementContract(ctx)
-	if err != nil {
-		return model.User{}, err
-	}
-	if revision != currentRevision || !sameStringSet(requiredIDs, agreementIDs) {
-		return model.User{}, database.ErrConflict
-	}
-	remote, err := s.reconcileAgreementUser(ctx, user)
-	if err != nil {
-		return model.User{}, err
-	}
-	return s.repository.CompleteOnboardingRevision(ctx, user.ID, remote.ID, remote.SubscriptionURL, revision, agreementIDs, s.now().UTC())
-}
-
-func (s *Service) reconcileAgreementUser(ctx context.Context, user model.User) (RemoteUser, error) {
-	remote, exists, err := s.remnawave.FindUserByUsername(ctx, *user.Username)
-	if err != nil {
-		return RemoteUser{}, fmt.Errorf("reconcile Remnawave user: %w", err)
-	}
-	if exists && (remote.TelegramID == nil || *remote.TelegramID != user.TelegramID) {
-		return RemoteUser{}, ErrUsernameUnavailable
-	}
-	if !exists {
-		byTelegram, telegramExists, telegramErr := s.remnawave.FindUserByTelegramID(ctx, user.TelegramID)
-		if telegramErr != nil {
-			return RemoteUser{}, fmt.Errorf("reconcile Remnawave Telegram identity: %w", telegramErr)
-		}
-		if telegramExists {
-			if byTelegram.Username != *user.Username {
-				return RemoteUser{}, ErrUsernameUnavailable
-			}
-			remote, exists = byTelegram, true
-		}
-	}
-	if !exists {
-		remote, err = s.remnawave.CreateUser(ctx, RemoteCreateUser{
-			Username: *user.Username, TelegramID: user.TelegramID, Status: "ACTIVE",
-			ExpireAt: time.Date(2099, 12, 31, 23, 59, 59, 0, time.UTC), TrafficLimitBytes: 0,
-			TrafficLimitStrategy: "NO_RESET", ActiveInternalSquads: []string{},
-		})
-		if err != nil && s.remnawave.IsDuplicateError(err) {
-			remote, exists, err = s.remnawave.FindUserByUsername(ctx, *user.Username)
-			if err == nil && (!exists || remote.TelegramID == nil || *remote.TelegramID != user.TelegramID) {
-				err = ErrUsernameUnavailable
-			}
-		}
-		if err != nil {
-			return RemoteUser{}, fmt.Errorf("create Remnawave user: %w", err)
-		}
-	}
-	return remote, nil
-}
-
-func sameStringSet(expected, provided []string) bool {
-	if len(expected) != len(provided) {
-		return false
-	}
-	seen := make(map[string]struct{}, len(expected))
-	for _, value := range expected {
-		seen[value] = struct{}{}
-	}
-	for _, value := range provided {
-		if _, exists := seen[value]; !exists {
-			return false
-		}
-		delete(seen, value)
-	}
-	return len(seen) == 0
 }

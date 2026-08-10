@@ -1,0 +1,246 @@
+OnboardingDraftWrite:
+  type: object
+  additionalProperties: false
+  required: [draftRevision, content]
+  properties:
+    draftRevision: { type: integer, minimum: 1 }
+    content: { $ref: '../../openapi.yaml#/components/schemas/LocalizedOnboardingContent' }
+
+OnboardingPublishRequest:
+  type: object
+  additionalProperties: false
+  required: [draftRevision]
+  properties:
+    draftRevision: { type: integer, minimum: 1 }
+
+Money:
+  type: object
+  additionalProperties: false
+  required: [currency, minor, display]
+  description: Integer minor units. TXB, CNY, and USD use scale 2; XTR uses scale 0.
+  properties:
+    currency:
+      type: string
+      enum: [TXB, CNY, USD, XTR]
+    minor:
+      $ref: '../../openapi.yaml#/components/schemas/DecimalInteger'
+    display:
+      type: string
+      description: Server-formatted display value; never parse this for calculations.
+
+PaymentMethod:
+  type: object
+  additionalProperties: false
+  required: [id, provider, rail, name, currency, available, note]
+  properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/PaymentMethodID'
+    provider:
+      $ref: '../../openapi.yaml#/components/schemas/PaymentProvider'
+    rail:
+      type: string
+      description: Provider-owned rail identifier; empty for Telegram Stars.
+    name:
+      type: string
+    currency:
+      type: string
+      enum: [CNY, USD, USDT, XTR]
+    available:
+      type: boolean
+    note:
+      type: string
+
+BalanceResponse:
+  type: object
+  additionalProperties: false
+  required: [balance, paymentMethods]
+  properties:
+    balance:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    paymentMethods:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/PaymentMethod'
+
+ResetStrategy:
+  type: string
+  enum: [DAY, WEEK, MONTH]
+
+SquadProduct:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - remnaSquadUuid
+    - name
+    - description
+    - price
+    - visible
+    - upstreamPresent
+    - createdAt
+    - updatedAt
+  properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    remnaSquadUuid:
+      type: string
+      format: uuid
+    name:
+      type: string
+    description:
+      type: string
+    price:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    visible:
+      type: boolean
+    upstreamPresent:
+      type: boolean
+    createdAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+    updatedAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+
+Combo:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - name
+    - description
+    - price
+    - validityDays
+    - trafficLimitBytes
+    - resetStrategy
+    - active
+    - includedSquads
+    - rolloverMinRemainingBps
+    - rolloverMaxTxbMinor
+    - rolloverMax
+    - createdAt
+    - updatedAt
+  properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    name:
+      type: string
+    description:
+      type: string
+    price:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    validityDays:
+      type: integer
+      minimum: 1
+      maximum: 3650
+    trafficLimitBytes:
+      type: string
+      pattern: '^\d+$'
+    resetStrategy:
+      $ref: '../../openapi.yaml#/components/schemas/ResetStrategy'
+    includedSquads:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/SquadProduct'
+    active:
+      type: boolean
+    rolloverMinRemainingBps:
+      type: integer
+      minimum: 0
+      maximum: 10000
+      description: Remaining traffic must be strictly greater than this basis-point threshold.
+    rolloverMaxTxbMinor:
+      type: string
+      pattern: '^\d+$'
+    rolloverMax:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    createdAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+    updatedAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+
+Catalog:
+  type: object
+  additionalProperties: false
+  required: [combos, addons]
+  properties:
+    combos:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/Combo'
+    addons:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/SquadProduct'
+
+ComboWrite:
+  type: object
+  additionalProperties: false
+  required:
+    - name
+    - description
+    - priceTxbMinor
+    - validityDays
+    - trafficLimitBytes
+    - resetStrategy
+    - active
+    - rolloverMinRemainingBps
+    - rolloverMaxTxbMinor
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 80
+    description:
+      type: string
+      maxLength: 1000
+    priceTxbMinor:
+      type: string
+      pattern: '^\d+$'
+    validityDays:
+      type: integer
+      minimum: 1
+      maximum: 3650
+    trafficLimitBytes:
+      type: string
+      pattern: '^[1-9]\d*$'
+    resetStrategy:
+      $ref: '../../openapi.yaml#/components/schemas/ResetStrategy'
+    squadProductIds:
+      type: array
+      uniqueItems: true
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/ID'
+    includedSquadIds:
+      type: array
+      uniqueItems: true
+      description: Compatibility alias used by the combo picker for included live Remnawave squads.
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/ID'
+    active:
+      type: boolean
+    rolloverMinRemainingBps:
+      type: integer
+      minimum: 0
+      maximum: 10000
+    rolloverMaxTxbMinor:
+      type: string
+      pattern: '^\d+$'
+
+SquadProductWrite:
+  type: object
+  additionalProperties: false
+  required: [remnaSquadUuid, name, description, priceTxbMinor, visible]
+  properties:
+    remnaSquadUuid:
+      type: string
+      format: uuid
+    name:
+      type: string
+      minLength: 1
+    description:
+      type: string
+      maxLength: 1000
+    priceTxbMinor:
+      type: string
+      pattern: '^\d+$'
+    visible:
+      type: boolean

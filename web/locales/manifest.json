@@ -1,0 +1,16 @@
+{
+  "locales": ["en", "zh-CN"],
+  "domains": [
+    "core",
+    "activity",
+    "commerce",
+    "community",
+    "member",
+    "admin-core",
+    "admin-data",
+    "admin-activity",
+    "admin-community",
+    "admin-catalog",
+    "admin-operations"
+  ]
+}

@@ -126,7 +126,7 @@ func (s *Store) CurrentAgreementContract(ctx context.Context) (int, []string, er
 	return bundle.PublishedRevision, ids, err
 }
 
-func (s *Store) CompleteOnboardingRevision(ctx context.Context, userID, remnaUserID, subscriptionURL string, revision int, agreementIDs []string, acceptedAt time.Time) (model.User, error) {
+func (s *Store) CompleteOnboardingRevision(ctx context.Context, userID, remnaUserID string, revision int, agreementIDs []string, acceptedAt time.Time) (model.User, error) {
 	provided := append([]string(nil), agreementIDs...)
 	slices.Sort(provided)
 	s.writeMu.Lock()
@@ -148,7 +148,7 @@ func (s *Store) CompleteOnboardingRevision(ctx context.Context, userID, remnaUse
 	if revision != bundle.PublishedRevision || !slices.Equal(provided, requiredIDs) {
 		return model.User{}, ErrConflict
 	}
-	result, err := tx.ExecContext(ctx, `UPDATE users SET onboarding_state='complete',policy_accepted_at=?,accepted_agreement_revision=?,remna_user_id=?,remna_subscription_url=?,recovery_reason='',updated_at=? WHERE id=? AND onboarding_state='agreement'`, stamp(acceptedAt), revision, remnaUserID, subscriptionURL, stamp(acceptedAt), userID)
+	result, err := tx.ExecContext(ctx, `UPDATE users SET onboarding_state='complete',policy_accepted_at=?,accepted_agreement_revision=?,remna_user_id=?,recovery_reason='',updated_at=? WHERE id=? AND onboarding_state='agreement'`, stamp(acceptedAt), revision, remnaUserID, stamp(acceptedAt), userID)
 	if err != nil {
 		return model.User{}, err
 	}

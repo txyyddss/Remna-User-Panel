@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { PhCheck, PhClock, PhGauge, PhStack } from '@phosphor-icons/vue'
-
 import type { Combo } from '@/api/types'
-import { formatBytes, formatMoney } from '@/utils/format'
-import StatusBadge from '@/components/common/StatusBadge.vue'
 import MarkdownContent from '@/components/common/MarkdownContent.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
+import { formatBytes, formatMoney } from '@/utils/format'
 
 defineProps<{
   combo: Combo
@@ -15,10 +13,11 @@ defineEmits<{ select: [id: string] }>()
 </script>
 
 <template>
-  <button
+  <UButton
     class="combo-option"
     :class="{ 'combo-option--selected': selected }"
-    type="button"
+    color="neutral"
+    variant="ghost"
     :aria-pressed="selected"
     @click="$emit('select', combo.id)"
   >
@@ -27,17 +26,17 @@ defineEmits<{ select: [id: string] }>()
         <StatusBadge v-if="selected" tone="success" :label="$t('catalog.selectedBadge')" />
         <strong>{{ combo.name }}</strong>
       </span>
-      <span v-if="selected" class="selection-mark"><PhCheck :size="17" weight="bold" /></span>
+      <span v-if="selected" class="selection-mark"><UIcon name="i-ph-check-bold" /></span>
     </span>
     <MarkdownContent class="combo-option__description" :source="combo.description" compact />
     <span class="combo-option__metrics">
-      <span><PhGauge :size="17" />{{ formatBytes(combo.trafficLimitBytes) }}</span>
-      <span><PhClock :size="17" />{{ $t('catalog.days', { count: combo.validityDays }) }}</span>
-      <span><PhStack :size="17" />{{ $t('catalog.squads', { count: combo.includedSquads.length }) }}</span>
+      <span><UIcon name="i-ph-gauge" />{{ formatBytes(combo.trafficLimitBytes) }}</span>
+      <span><UIcon name="i-ph-clock" />{{ $t('catalog.days', { count: combo.validityDays }) }}</span>
+      <span><UIcon name="i-ph-stack" />{{ $t('catalog.squads', { count: combo.includedSquads.length }) }}</span>
     </span>
     <span class="combo-option__price">
       <strong>{{ formatMoney(combo.price) }}</strong>
       <small>{{ $t('catalog.perTerm') }}</small>
     </span>
-  </button>
+  </UButton>
 </template>

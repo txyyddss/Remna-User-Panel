@@ -2,6 +2,7 @@ import { onMounted, readonly, shallowRef } from 'vue'
 
 import type { EmbyAccount, EmbyOverview } from '@/api/features'
 import { featuresApi } from '@/api/features'
+import { localizedError, t } from '@/i18n'
 import { notifyHaptic } from '@/utils/telegram'
 
 export function useEmby() {
@@ -17,13 +18,13 @@ export function useEmby() {
     try {
       overview.value = await featuresApi.getEmby()
     } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : 'Emby account details are unavailable.'
+      error.value = localizedError(caught, 'errors.embyUnavailable')
     } finally {
       loading.value = false
     }
   }
 
-  async function perform(kind: NonNullable<typeof busy.value>, action: () => Promise<EmbyAccount | void>, success: string): Promise<boolean> {
+  async function perform(kind: NonNullable<typeof busy.value>, action: () => Promise<EmbyAccount | void>, successKey: string): Promise<boolean> {
     if (busy.value) return false
     busy.value = kind
     error.value = null
@@ -31,11 +32,11 @@ export function useEmby() {
     try {
       const account = await action()
       if (account && overview.value) overview.value = { ...overview.value, account }
-      message.value = success
+      message.value = t(successKey)
       notifyHaptic('success')
       return true
     } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : 'The Emby update could not be completed.'
+      error.value = localizedError(caught, 'errors.embyUpdate')
       notifyHaptic('error')
       return false
     } finally {
@@ -44,15 +45,15 @@ export function useEmby() {
   }
 
   function setup(payload: { password: string; maxParentalRating: number | null; disabledLibraryIds: string[] }): Promise<boolean> {
-    return perform('setup', () => featuresApi.setupEmby(payload), 'Provisioning started. You can leave this page safely.')
+    return perform('setup', () => featuresApi.setupEmby(payload), 'emby.provisioningStarted')
   }
 
   function updatePreferences(payload: { maxParentalRating: number | null; disabledLibraryIds: string[] }): Promise<boolean> {
-    return perform('preferences', () => featuresApi.updateEmbyPreferences(payload), 'Emby preferences updated.')
+    return perform('preferences', () => featuresApi.updateEmbyPreferences(payload), 'emby.preferencesUpdated')
   }
 
   function changePassword(password: string): Promise<boolean> {
-    return perform('password', () => featuresApi.changeEmbyPassword(password), 'Emby password changed.')
+    return perform('password', () => featuresApi.changeEmbyPassword(password), 'emby.passwordChanged')
   }
 
   onMounted(() => void load())

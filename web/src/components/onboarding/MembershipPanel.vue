@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { PhArrowClockwise, PhArrowUpRight, PhBroadcast, PhCheck, PhUsersThree } from '@phosphor-icons/vue'
-
 import type { InviteLink } from '@/api/types'
 
 defineProps<{
   invites: readonly InviteLink[]
   loading: boolean
+  showAction?: boolean
 }>()
 
 defineEmits<{
@@ -14,8 +13,8 @@ defineEmits<{
   refresh: []
 }>()
 
-function iconFor(kind: InviteLink['kind']) {
-  return kind === 'group' ? PhUsersThree : PhBroadcast
+function iconFor(kind: InviteLink['kind']): string {
+  return kind === 'group' ? 'i-ph-users-three' : 'i-ph-broadcast'
 }
 </script>
 
@@ -28,30 +27,39 @@ function iconFor(kind: InviteLink['kind']) {
     </header>
 
     <div v-if="invites.length" class="invite-list">
-      <button
+      <UButton
         v-for="invite in invites"
         :key="invite.kind"
         class="invite-row"
-        type="button"
+        color="neutral"
+        variant="ghost"
         @click="$emit('openInvite', invite)"
       >
-        <span class="invite-row__icon"><component :is="iconFor(invite.kind)" :size="22" /></span>
+        <span class="invite-row__icon"><UIcon :name="iconFor(invite.kind)" /></span>
         <span class="invite-row__copy">
           <strong>{{ invite.label }}</strong>
-          <small>{{ invite.joined ? 'Membership verified' : 'Invite expires in 30 minutes' }}</small>
+          <small>{{ invite.joined ? $t('onboarding.membershipVerified') : $t('onboarding.inviteExpiry') }}</small>
         </span>
-        <PhCheck v-if="invite.joined" :size="20" weight="bold" class="invite-row__check" />
-        <PhArrowUpRight v-else :size="20" />
-      </button>
+        <UIcon :name="invite.joined ? 'i-ph-check-bold' : 'i-ph-arrow-up-right'" class="invite-row__check" />
+      </UButton>
     </div>
-    <button v-else class="button button--secondary" type="button" :disabled="loading" @click="$emit('refresh')">
-      <PhArrowClockwise :size="19" />
-      Generate secure invites
-    </button>
+    <UButton
+      v-else
+      color="neutral"
+      variant="outline"
+      icon="i-ph-arrow-clockwise"
+      :disabled="loading"
+      :label="$t('onboarding.generateInvites')"
+      @click="$emit('refresh')"
+    />
 
-    <button class="button button--primary button--wide" type="button" :disabled="loading" @click="$emit('check')">
-      <span>{{ loading ? 'Checking membership' : 'Already joined' }}</span>
-      <PhArrowClockwise :size="19" :class="{ 'icon-spin': loading }" />
-    </button>
+    <UButton
+      v-if="showAction !== false"
+      block
+      icon="i-ph-arrow-clockwise"
+      :loading="loading"
+      :label="loading ? $t('onboarding.checkingMembership') : $t('onboarding.alreadyJoined')"
+      @click="$emit('check')"
+    />
   </section>
 </template>

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
-import { PhFloppyDisk, PhKey, PhUserCircle } from '@phosphor-icons/vue'
+import { computed, reactive, watch } from 'vue'
 
 import type { EmbyAccount, EmbyLibrary, EmbyRating } from '@/api/features'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import { useI18n } from '@/i18n'
 import EmbyLibraryPicker from './EmbyLibraryPicker.vue'
 
 const props = defineProps<{
@@ -16,8 +16,14 @@ const emit = defineEmits<{
   save: [payload: { maxParentalRating: number | null; disabledLibraryIds: string[] }]
   changePassword: [password: string]
 }>()
+const { t } = useI18n()
 
 const draft = reactive({ maxParentalRating: null as number | null, disabledLibraryIds: [] as string[], password: '' })
+const ratingItems = computed(() => [
+  { label: t('emby.noRating'), value: null },
+  ...props.ratings.map((rating) => ({ label: rating.name, value: rating.value })),
+])
+
 watch(() => props.account, (account) => {
   draft.maxParentalRating = account.maxParentalRating
   draft.disabledLibraryIds = [...account.disabledLibraryIds]
@@ -40,21 +46,25 @@ function savePassword(): void {
 <template>
   <div class="emby-account-grid">
     <section class="section-block emby-account-summary">
-      <span class="feature-icon"><PhUserCircle :size="24" /></span>
+      <span class="feature-icon"><UIcon name="i-ph-user-circle" /></span>
       <div><h2>{{ account.username }}</h2><p>{{ $t('emby.usernameHint') }}</p></div>
-      <StatusBadge :tone="account.status === 'active' ? 'success' : account.status === 'failed' ? 'danger' : 'warning'" :label="account.status.replace('_', ' ')" />
-      <p v-if="account.errorMessage" class="field-error">{{ account.errorMessage }}</p>
+      <StatusBadge :tone="account.status === 'active' ? 'success' : account.status === 'failed' ? 'danger' : 'warning'" :label="$t(`emby.status.${account.status}`)" />
+      <p v-if="account.errorMessage" class="field-error">{{ $t('emby.provisioningFailed') }}</p>
     </section>
     <form class="section-block emby-form" @submit.prevent="emit('save', { maxParentalRating: draft.maxParentalRating, disabledLibraryIds: [...draft.disabledLibraryIds] })">
       <div class="section-heading section-heading--stacked"><h2>{{ $t('emby.preferences') }}</h2><p>{{ $t('emby.preferencesHint') }}</p></div>
-      <label><span class="field-label">{{ $t('emby.rating') }}</span><select v-model="draft.maxParentalRating" class="compact-select" :disabled="account.status !== 'active'"><option :value="null">{{ $t('emby.noRating') }}</option><option v-for="rating in ratings" :key="rating.value" :value="rating.value">{{ rating.name }}</option></select></label>
+      <UFormField name="rating" :label="$t('emby.rating')">
+        <USelect v-model="draft.maxParentalRating" :items="ratingItems" value-key="value" :disabled="account.status !== 'active'" />
+      </UFormField>
       <EmbyLibraryPicker :libraries="libraries" :selected-ids="draft.disabledLibraryIds" :disabled="Boolean(busy) || account.status !== 'active'" @toggle="toggleLibrary" />
-      <button class="button button--primary" type="submit" :disabled="Boolean(busy) || account.status !== 'active'"><PhFloppyDisk :size="18" />{{ busy === 'preferences' ? $t('common.saving') : $t('emby.savePreferences') }}</button>
+      <UButton type="submit" icon="i-ph-floppy-disk" :disabled="Boolean(busy) || account.status !== 'active'" :loading="busy === 'preferences'" :label="busy === 'preferences' ? $t('common.saving') : $t('emby.savePreferences')" />
     </form>
     <form class="section-block emby-form" autocomplete="off" @submit.prevent="savePassword">
       <div class="section-heading section-heading--stacked"><h2>{{ $t('emby.changePassword') }}</h2><p>{{ $t('emby.changePasswordHint') }}</p></div>
-      <label><span class="field-label">{{ $t('emby.newPassword') }}</span><span class="input-shell"><PhKey :size="18" /><input v-model="draft.password" type="password" minlength="8" required autocomplete="new-password" /></span></label>
-      <button class="button button--secondary" type="submit" :disabled="Boolean(busy) || account.status !== 'active' || draft.password.length < 8">{{ busy === 'password' ? $t('emby.changingPassword') : $t('emby.changePassword') }}</button>
+      <UFormField name="password" :label="$t('emby.newPassword')" required>
+        <UInput v-model="draft.password" icon="i-ph-key" type="password" :minlength="8" required autocomplete="new-password" />
+      </UFormField>
+      <UButton type="submit" color="neutral" variant="outline" :disabled="Boolean(busy) || account.status !== 'active' || draft.password.length < 8" :loading="busy === 'password'" :label="busy === 'password' ? $t('emby.changingPassword') : $t('emby.changePassword')" />
     </form>
   </div>
 </template>
@@ -66,5 +76,4 @@ function savePassword(): void {
 .emby-account-summary h2 { font-size: 1.15rem; }
 .emby-account-summary p { margin-top: 0.25rem; color: var(--text-muted); font-size: 0.72rem; }
 .emby-account-summary > .field-error { grid-column: 1 / -1; }
-.emby-form > label { display: grid; gap: 0.4rem; }
 </style>

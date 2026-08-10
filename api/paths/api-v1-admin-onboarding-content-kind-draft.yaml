@@ -1,0 +1,21 @@
+put:
+  tags: [Admin, Onboarding]
+  operationId: saveAdminOnboardingDraft
+  summary: Save a complete English and Simplified Chinese draft
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/OnboardingContentKind'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema: { $ref: '../openapi.yaml#/components/schemas/OnboardingDraftWrite' }
+  responses:
+    '200':
+      description: Saved draft with incremented optimistic revision.
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/OnboardingBundle' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }
+    '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }

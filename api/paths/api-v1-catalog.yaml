@@ -1,0 +1,17 @@
+get:
+  tags: [Catalog]
+  operationId: getCatalog
+  summary: List purchasable combos and add-on squads
+  responses:
+    '200':
+      description: Current visible catalog. The server will recalculate all prices at purchase time.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/Catalog'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '409':
+      $ref: '../openapi.yaml#/components/responses/Conflict'
+    '500':
+      $ref: '../openapi.yaml#/components/responses/InternalFailure'

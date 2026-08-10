@@ -79,18 +79,18 @@ func (s *Store) UserByTelegramID(ctx context.Context, telegramID int64) (model.U
 
 const userSelect = `SELECT users.id,users.telegram_id,users.telegram_first_name,users.telegram_last_name,users.telegram_username,
 	users.username,users.role,users.onboarding_state,users.group_joined,users.channel_joined,users.policy_accepted_at,
-	users.accepted_agreement_revision,users.remna_user_id,users.remna_subscription_url,users.recovery_reason,users.created_at,users.updated_at FROM users`
+	users.accepted_agreement_revision,users.remna_user_id,users.recovery_reason,users.created_at,users.updated_at FROM users`
 
 type rowScanner interface{ Scan(dest ...any) error }
 
 func scanUser(row rowScanner) (model.User, error) {
 	var user model.User
-	var username, policy, subscription, recoveryReason sql.NullString
+	var username, policy, recoveryReason sql.NullString
 	var remnaID sql.NullString
 	var groupJoined, channelJoined int
 	var createdAt, updatedAt string
 	if err := row.Scan(&user.ID, &user.TelegramID, &user.TelegramFirstName, &user.TelegramLastName, &user.TelegramUsername,
-		&username, &user.Role, &user.OnboardingState, &groupJoined, &channelJoined, &policy, &user.AgreementRevision, &remnaID, &subscription, &recoveryReason, &createdAt, &updatedAt); err != nil {
+		&username, &user.Role, &user.OnboardingState, &groupJoined, &channelJoined, &policy, &user.AgreementRevision, &remnaID, &recoveryReason, &createdAt, &updatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.User{}, ErrNotFound
 		}
@@ -107,7 +107,6 @@ func scanUser(row rowScanner) (model.User, error) {
 		user.PolicyAcceptedAt = &parsed
 	}
 	user.RemnaUserID = nullableString(remnaID)
-	user.RemnaSubscriptionURL = nullableString(subscription)
 	user.RecoveryReason = recoveryReason.String
 	var err error
 	user.CreatedAt, err = parseStamp(createdAt)
@@ -177,7 +176,7 @@ func (s *Store) BeginRemnawaveRecovery(ctx context.Context, userID, reason strin
 			return model.User{}, loadErr
 		}
 		if user.OnboardingState == "membership" && user.RecoveryReason == reason && user.RemnaUserID == nil &&
-			user.RemnaSubscriptionURL == nil && !user.GroupJoined && !user.ChannelJoined && user.PolicyAcceptedAt == nil {
+			!user.GroupJoined && !user.ChannelJoined && user.PolicyAcceptedAt == nil {
 			return user, nil
 		}
 		return model.User{}, ErrConflict
@@ -210,14 +209,6 @@ func (s *Store) ReserveUsername(ctx context.Context, userID, username string) er
 	}
 	if affected == 0 {
 		return ErrConflict
-	}
-	return nil
-}
-
-// UpdateSubscriptionURL replaces the cached bearer URL after revocation.
-func (s *Store) UpdateSubscriptionURL(ctx context.Context, userID, subscriptionURL string) error {
-	if _, err := s.db.ExecContext(ctx, `UPDATE users SET remna_subscription_url=?,updated_at=? WHERE id=?`, subscriptionURL, stamp(time.Now().UTC()), userID); err != nil {
-		return fmt.Errorf("update subscription URL: %w", err)
 	}
 	return nil
 }

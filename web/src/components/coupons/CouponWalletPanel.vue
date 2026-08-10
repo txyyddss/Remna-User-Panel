@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { shallowRef } from 'vue'
-import { PhArrowRight, PhTicket } from '@phosphor-icons/vue'
 
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import { useCoupons } from '@/composables/useCoupons'
@@ -16,13 +15,47 @@ async function submit(): Promise<void> {
 
 <template>
   <section class="section-block coupon-wallet">
-    <div class="section-heading section-heading--stacked"><h2>Coupon wallet</h2><p>Redeem a code now, then choose one eligible grant during checkout.</p></div>
-    <form class="coupon-redeem" @submit.prevent="submit"><label class="sr-only" for="coupon-code">Coupon code</label><span class="input-shell"><PhTicket :size="19" /><input id="coupon-code" v-model.trim="code" placeholder="ENTER-CODE" autocomplete="off" /></span><button class="button button--secondary" type="submit" :disabled="redeeming || !code"><PhArrowRight :size="18" />{{ redeeming ? 'Redeeming' : 'Redeem' }}</button></form>
+    <div class="section-heading section-heading--stacked">
+      <h2>{{ $t('coupons.wallet') }}</h2>
+      <p>{{ $t('coupons.walletHint') }}</p>
+    </div>
+    <form class="coupon-redeem" @submit.prevent="submit">
+      <span id="coupon-code-label" class="sr-only">{{ $t('coupons.code') }}</span>
+      <UInput
+        id="coupon-code"
+        v-model.trim="code"
+        icon="i-ph-ticket"
+        :placeholder="$t('coupons.codePlaceholder')"
+        autocomplete="off"
+        aria-labelledby="coupon-code-label"
+      />
+      <UButton
+        type="submit"
+        color="neutral"
+        variant="outline"
+        trailing-icon="i-ph-arrow-right"
+        :disabled="redeeming || !code"
+        :loading="redeeming"
+        :label="redeeming ? $t('coupons.redeeming') : $t('coupons.redeem')"
+      />
+    </form>
     <InlineNotice v-if="message" tone="success">{{ message }}</InlineNotice>
     <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
-    <p v-if="loading" class="field-hint">Loading coupons</p>
-    <div v-else-if="grants.length" class="coupon-list"><article v-for="grant in grants" :key="grant.id"><span class="feature-icon feature-icon--small"><PhTicket :size="18" /></span><div><strong>{{ grant.coupon.name }}</strong><small>{{ grant.coupon.code }} · {{ grant.coupon.kind.replaceAll('_', ' ') }} · {{ grant.coupon.expiresAt ? `expires ${formatDate(grant.coupon.expiresAt)}` : 'no expiry' }}</small></div><span>{{ grant.coupon.perUserUseLimit === null ? '∞' : Math.max(0, grant.coupon.perUserUseLimit - grant.useCount) }} uses</span></article></div>
-    <div v-else class="empty-inline"><div><h3>No saved coupons</h3><p>Codes and lucky-draw coupon prizes appear here.</p></div></div>
+    <USkeleton v-if="loading" class="h-10" />
+    <div v-else-if="grants.length" v-auto-animate class="coupon-list">
+      <article v-for="grant in grants" :key="grant.id">
+        <span class="feature-icon feature-icon--small"><UIcon name="i-ph-ticket" /></span>
+        <div>
+          <strong>{{ grant.coupon.name }}</strong>
+          <small>
+            {{ grant.coupon.code }} · {{ $t(`coupons.kind.${grant.coupon.kind}`) }} ·
+            {{ grant.coupon.expiresAt ? $t('coupons.expires', { date: formatDate(grant.coupon.expiresAt) }) : $t('coupons.noExpiry') }}
+          </small>
+        </div>
+        <span>{{ $t('coupons.uses', { count: grant.coupon.perUserUseLimit === null ? '∞' : Math.max(0, grant.coupon.perUserUseLimit - grant.useCount) }) }}</span>
+      </article>
+    </div>
+    <div v-else class="empty-inline"><div><h3>{{ $t('coupons.empty') }}</h3><p>{{ $t('coupons.emptyHint') }}</p></div></div>
   </section>
 </template>
 

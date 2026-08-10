@@ -2,6 +2,7 @@ import { computed, onMounted, readonly, shallowRef } from 'vue'
 
 import type { DatabaseMutationInput, DatabaseMutationReview, DatabaseQueryInput, DatabaseRow, DatabaseTable } from '@/api/features'
 import { featuresApi } from '@/api/features'
+import { localizedError } from '@/i18n'
 
 export function useAdminDatabase() {
   const tables = shallowRef<DatabaseTable[]>([])
@@ -28,7 +29,7 @@ export function useAdminDatabase() {
       }
       if (selectedTableName.value) await queryRows(selectedTableName.value, activeQuery.value)
     } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : 'Database metadata is unavailable.'
+      error.value = localizedError(caught, 'errors.databaseMetadata')
     } finally {
       loading.value = false
     }
@@ -49,7 +50,7 @@ export function useAdminDatabase() {
       rows.value = options.append ? [...rows.value, ...response.items] : response.items
       nextCursor.value = response.nextCursor
     } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : 'Table rows could not be loaded.'
+      error.value = localizedError(caught, 'errors.databaseRows')
     } finally {
       busy.value = false
     }
@@ -72,7 +73,7 @@ export function useAdminDatabase() {
       review.value = await featuresApi.reviewDatabaseMutation(input)
       return true
     } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : 'The mutation could not be reviewed.'
+      error.value = localizedError(caught, 'errors.mutationReview')
       return false
     } finally {
       busy.value = false
@@ -96,7 +97,7 @@ export function useAdminDatabase() {
       review.value = null
       return true
     } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : 'The reviewed mutation was not applied. Refresh if another administrator changed it.'
+      error.value = localizedError(caught, 'errors.mutationApply')
       return false
     } finally {
       busy.value = false

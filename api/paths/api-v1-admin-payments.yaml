@@ -1,0 +1,15 @@
+get:
+  tags: [Admin]
+  operationId: listAdminPayments
+  summary: List payment orders and authoritative states
+  responses:
+    '200':
+      description: Payment page.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/PaymentPage'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../openapi.yaml#/components/responses/Forbidden'

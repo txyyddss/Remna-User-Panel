@@ -1,0 +1,50 @@
+get:
+  tags: [Admin]
+  operationId: listAdminCombos
+  summary: List all combos, including inactive records
+  responses:
+    '200':
+      description: Administrative combo list.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [items]
+            properties:
+              items:
+                type: array
+                items:
+                  $ref: '../openapi.yaml#/components/schemas/Combo'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../openapi.yaml#/components/responses/Forbidden'
+post:
+  tags: [Admin]
+  operationId: createAdminCombo
+  summary: Create a validated combo
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/ComboWrite'
+  responses:
+    '201':
+      description: Created combo.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/Combo'
+    '400':
+      $ref: '../openapi.yaml#/components/responses/BadRequest'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../openapi.yaml#/components/responses/Forbidden'
+    '404':
+      $ref: '../openapi.yaml#/components/responses/NotFound'
+    '409':
+      $ref: '../openapi.yaml#/components/responses/Conflict'
+    '422':
+      $ref: '../openapi.yaml#/components/responses/Unprocessable'

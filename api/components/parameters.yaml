@@ -1,0 +1,110 @@
+ResourceID:
+  name: id
+  in: path
+  required: true
+  schema:
+    type: string
+    minLength: 1
+
+ImportID:
+  name: importID
+  in: path
+  required: true
+  schema:
+    type: string
+    minLength: 1
+
+DatabaseTableName:
+  name: table
+  in: path
+  required: true
+  description: Exact name from the server-provided allowlisted table catalog.
+  schema:
+    type: string
+    pattern: '^[A-Za-z_][A-Za-z0-9_]*$'
+
+IdempotencyKey:
+  name: Idempotency-Key
+  in: header
+  required: true
+  description: Caller-owned semantic idempotency reference.
+  schema:
+    type: string
+    minLength: 1
+    maxLength: 128
+
+OptionalIdempotencyKey:
+  name: Idempotency-Key
+  in: header
+  required: false
+  description: Caller-owned semantic idempotency reference; the server generates one when omitted.
+  schema:
+    type: string
+    minLength: 1
+    maxLength: 128
+
+SettingKey:
+  name: key
+  in: path
+  required: true
+  schema:
+    type: string
+    pattern: '^[a-z][a-z0-9_.-]{1,63}$'
+
+Cursor:
+  name: cursor
+  in: query
+  description: Opaque cursor returned by the preceding page.
+  schema:
+    type: string
+
+PageSize:
+  name: size
+  in: query
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 100
+    default: 25
+
+DatabasePageLimit:
+  name: limit
+  in: query
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 200
+    default: 50
+
+OnboardingContentKind:
+  name: kind
+  in: path
+  required: true
+  schema:
+    type: string
+    enum: [welcome, agreements]
+
+StatisticsFrom:
+  name: from
+  in: query
+  schema: { type: string, format: date }
+
+StatisticsTo:
+  name: to
+  in: query
+  schema: { type: string, format: date }
+
+StatisticsBucket:
+  name: bucket
+  in: query
+  schema:
+    type: string
+    enum: [daily, weekly]
+    default: daily
+
+StatisticsTimeZone:
+  name: timeZone
+  in: query
+  schema:
+    type: string
+    default: Asia/Shanghai

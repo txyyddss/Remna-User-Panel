@@ -1,0 +1,58 @@
+get:
+  tags: [Catalog]
+  operationId: listPurchases
+  summary: List the current user's purchase history
+  responses:
+    '200':
+      description: Purchases newest first.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [items]
+            properties:
+              items:
+                type: array
+                items:
+                  $ref: '../openapi.yaml#/components/schemas/Purchase'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '500':
+      $ref: '../openapi.yaml#/components/responses/InternalFailure'
+post:
+  tags: [Catalog]
+  operationId: createPurchase
+  summary: Purchase or renew a combo with optional squads
+  description: |
+    Prices are loaded from the current catalog and debited atomically from the
+    TXB ledger. First purchases activate immediately, same-plan renewals extend
+    from the later of now or current expiry, and plan/add-on changes queue for
+    the current term boundary. No proration is performed. Repeating the same
+    caller-owned idempotency key returns the original purchase without another debit.
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/IdempotencyKey'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/PurchaseRequest'
+  responses:
+    '201':
+      description: Purchase was created and its Remnawave operation was queued.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/Purchase'
+    '400':
+      $ref: '../openapi.yaml#/components/responses/BadRequest'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '404':
+      $ref: '../openapi.yaml#/components/responses/NotFound'
+    '409':
+      description: Insufficient balance, outstanding debt, stale catalog choice, or incompatible queued change.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/ApiError'

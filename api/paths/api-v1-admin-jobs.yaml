@@ -1,0 +1,15 @@
+get:
+  tags: [Admin]
+  operationId: listAdminJobs
+  summary: List persistent outbox and scheduler jobs
+  responses:
+    '200':
+      description: Job page. Secret payload fields are redacted.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/JobPage'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../openapi.yaml#/components/responses/Forbidden'

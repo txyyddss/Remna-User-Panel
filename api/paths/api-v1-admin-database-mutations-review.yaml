@@ -1,0 +1,23 @@
+post:
+  tags: [Admin, Database Administration]
+  operationId: reviewAdminDatabaseMutation
+  summary: Review a typed database mutation and its redacted diff
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/DatabaseMutationReviewRequest'
+  responses:
+    '200':
+      description: Redacted before/after diff and exact typed confirmation.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/DatabaseMutationReview'
+    '400': { $ref: '../openapi.yaml#/components/responses/BadRequest' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }
+    '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }

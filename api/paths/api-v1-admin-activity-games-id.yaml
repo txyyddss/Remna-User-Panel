@@ -1,0 +1,36 @@
+put:
+  tags: [Admin, Activity]
+  operationId: updateAdminActivityGame
+  summary: Replace a betting-game definition
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/ActivityGameWrite'
+  responses:
+    '200':
+      description: Updated game.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/ActivityGame'
+    '400': { $ref: '../openapi.yaml#/components/responses/BadRequest' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }
+    '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }
+delete:
+  tags: [Admin, Activity]
+  operationId: deleteAdminActivityGame
+  summary: Hard-delete a betting game and feature-linked records
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+  responses:
+    '204': { description: Game data removed; settled balance outcomes are unchanged. }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }

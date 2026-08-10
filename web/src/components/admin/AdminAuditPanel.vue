@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { shallowRef } from 'vue'
-import { PhFunnel, PhShieldCheck } from '@phosphor-icons/vue'
 
 import type { AuditEvent } from '@/api/types'
 import { useAdminSection } from '@/composables/useAdminSection'
@@ -25,13 +24,19 @@ function applyFilter(): void {
   <section class="admin-panel">
     <div class="admin-panel__heading">
       <div><h2>{{ t('adminAudit.title') }}</h2><p>{{ t('adminAudit.copy') }}</p></div>
-      <form class="admin-search" @submit.prevent="applyFilter"><PhFunnel :size="18" /><input v-model.trim="action" :placeholder="t('adminAudit.filter')" :aria-label="t('adminAudit.filterLabel')" /></form>
+      <form class="admin-search" @submit.prevent="applyFilter">
+        <UInput v-model.trim="action" icon="i-ph-funnel" :placeholder="t('adminAudit.filter')" :aria-label="t('adminAudit.filterLabel')" />
+      </form>
     </div>
     <AdminSectionState :loading="loading" :error="error" @retry="load()">
-      <div class="timeline-list">
+      <div v-auto-animate class="timeline-list">
         <article v-for="event in items" :key="event.id" class="timeline-row">
-          <span class="timeline-row__icon"><PhShieldCheck :size="18" /></span>
-          <div><strong>{{ event.action }}</strong><p>{{ detailText(event.detail) }}</p><small>{{ event.actorUserId ?? t('adminAudit.system') }} / {{ event.targetType }} {{ event.targetId }} / {{ formatDateTime(event.createdAt) }}</small></div>
+          <span class="timeline-row__icon"><UIcon name="i-ph-shield-check" /></span>
+          <div>
+            <strong>{{ event.action }}</strong>
+            <p>{{ detailText(event.detail) }}</p>
+            <small>{{ t('adminAudit.meta', { actor: event.actorUserId ?? t('adminAudit.system'), target: `${event.targetType} ${event.targetId}`, date: formatDateTime(event.createdAt) }) }}</small>
+          </div>
         </article>
         <div v-if="!items.length" class="empty-inline"><div><h3>{{ t('adminAudit.none') }}</h3><p>{{ t('adminAudit.noneHint') }}</p></div></div>
       </div>

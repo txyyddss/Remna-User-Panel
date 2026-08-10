@@ -1,0 +1,121 @@
+package admin
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
+	"strings"
+)
+
+// AdjustBalance appends an audited immutable ledger entry.
+func (s *Service) AdjustBalance(ctx context.Context, actorID, userID string, delta int64, reason string) (model.LedgerEntry, error) {
+	if delta == 0 || delta < -1_000_000_000_000 || delta > 1_000_000_000_000 || strings.TrimSpace(reason) == "" {
+		return model.LedgerEntry{}, errors.New("non-zero delta and reason are required")
+	}
+	referenceID := fmt.Sprintf("telegram-deduct:%x", sha256.Sum256([]byte(reason)))
+	entry, err := s.repository.AdjustBalance(ctx, userID, delta, referenceID, reason, s.now().UTC())
+	if err != nil {
+		return model.LedgerEntry{}, err
+	}
+	if err := s.audit(ctx, actorID, "balance.adjust", "user", userID, map[string]any{"deltaMinor": delta, "reason": reason, "ledgerEntryId": entry.ID}); err != nil {
+		return model.LedgerEntry{}, err
+	}
+	return entry, nil
+}
+
+// DeductBalance appends an audited exact debit that cannot create debt.
+func (s *Service) DeductBalance(ctx context.Context, actorID, userID string, amount int64, reason string) (model.LedgerEntry, error) {
+	if amount <= 0 || amount > 1_000_000_000_000 || strings.TrimSpace(reason) == "" {
+		return model.LedgerEntry{}, errors.New("positive amount and reason are required")
+	}
+	referenceID, err := ids.New()
+	if err != nil {
+		return model.LedgerEntry{}, err
+	}
+	entry, err := s.repository.DeductBalance(ctx, userID, amount, referenceID, reason, s.now().UTC())
+	if err != nil {
+		return model.LedgerEntry{}, err
+	}
+	if err := s.audit(ctx, actorID, "telegram.balance_deduct", "user", userID, map[string]any{"amountMinor": amount, "reason": reason, "ledgerEntryId": entry.ID}); err != nil {
+		return model.LedgerEntry{}, err
+	}
+	return entry, nil
+}
+
+// Refund reverses one settled payment and applies the debt policy transactionally.
+func (s *Service) Refund(ctx context.Context, actorID, orderID, reason string) (model.PaymentOrder, error) {
+	if strings.TrimSpace(reason) == "" {
+		return model.PaymentOrder{}, errors.New("refund reason is required")
+	}
+	order, err := s.repository.PaymentOrderByID(ctx, orderID)
+	if err != nil {
+		return model.PaymentOrder{}, err
+	}
+	// Persist the administrator's intent before any irreversible provider call.
+	// Telegram's refunded-payment webhook and reconciliation loop complete a
+	// local reversal if the process stops after a successful Stars refund.
+	if err := s.audit(ctx, actorID, "payment.refund", "payment", orderID, map[string]any{"reason": reason, "phase": "requested"}); err != nil {
+		return model.PaymentOrder{}, err
+	}
+	if order.Status != "refunded" && s.refunder != nil {
+		if err := s.refunder.RefundProvider(ctx, order); err != nil {
+			return model.PaymentOrder{}, fmt.Errorf("refund provider payment: %w", err)
+		}
+	}
+	order, err = s.repository.RefundPayment(ctx, &actorID, orderID, reason, s.now().UTC())
+	if err != nil {
+		return model.PaymentOrder{}, err
+	}
+	return order, nil
+}
+
+// CancelEntitlement applies a compensating credit and revokes active upstream access.
+func (s *Service) CancelEntitlement(ctx context.Context, actorID, purchaseID, reason string) (model.Purchase, error) {
+	if strings.TrimSpace(reason) == "" {
+		return model.Purchase{}, errors.New("cancellation reason is required")
+	}
+	purchase, err := s.repository.CancelPurchase(ctx, purchaseID, reason, s.now().UTC())
+	if err != nil {
+		return model.Purchase{}, err
+	}
+	if err := s.audit(ctx, actorID, "entitlement.cancel", "purchase", purchaseID, map[string]any{"reason": reason}); err != nil {
+		return model.Purchase{}, err
+	}
+	return purchase, nil
+}
+
+// RunBackup executes a verified online backup and audits the request.
+func (s *Service) RunBackup(ctx context.Context, actorID string) (model.BackupRun, error) {
+	run, err := s.backups.Run(ctx)
+	if err != nil {
+		return run, err
+	}
+	if err := s.audit(ctx, actorID, "backup.create", "backup", run.ID, nil); err != nil {
+		return model.BackupRun{}, err
+	}
+	return run, nil
+}
+
+// RetryJob makes a failed synchronization eligible again.
+func (s *Service) RetryJob(ctx context.Context, actorID, jobID string) error {
+	if err := s.repository.RetryOutboxJob(ctx, jobID, s.now().UTC()); err != nil {
+		return err
+	}
+	return s.audit(ctx, actorID, "job.retry", "job", jobID, nil)
+}
+
+func (s *Service) audit(ctx context.Context, actorID, action, targetType, targetID string, detail any) error {
+	payload := "{}"
+	if detail != nil {
+		encoded, err := json.Marshal(detail)
+		if err != nil {
+			return fmt.Errorf("encode audit detail: %w", err)
+		}
+		payload = string(encoded)
+	}
+	return s.repository.AppendAudit(ctx, &actorID, action, targetType, targetID, payload, s.now().UTC())
+}

@@ -1,0 +1,19 @@
+get:
+  tags: [Admin, Activity]
+  operationId: getAdminActivityGameStatistics
+  summary: Get participation, stake, payout, house-net, and win/loss statistics
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+    - $ref: '../openapi.yaml#/components/parameters/StatisticsFrom'
+    - $ref: '../openapi.yaml#/components/parameters/StatisticsTo'
+    - $ref: '../openapi.yaml#/components/parameters/StatisticsBucket'
+    - $ref: '../openapi.yaml#/components/parameters/StatisticsTimeZone'
+  responses:
+    '200':
+      description: Accessible daily or weekly series and distribution.
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/AdminStatistics' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }

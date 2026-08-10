@@ -1,0 +1,24 @@
+post:
+  tags: [Admin, Database Administration]
+  operationId: applyAdminDatabaseMutation
+  summary: Apply an exact reviewed mutation after a rescue backup
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/DatabaseMutationApplyRequest'
+  responses:
+    '200':
+      description: Mutation result and automatic rescue-backup identifier.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/DatabaseMutationResult'
+    '400': { $ref: '../openapi.yaml#/components/responses/BadRequest' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }
+    '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }
+    '500': { $ref: '../openapi.yaml#/components/responses/InternalFailure' }

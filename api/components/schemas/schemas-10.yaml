@@ -1,0 +1,249 @@
+PaymentPage:
+  type: object
+  additionalProperties: false
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/AdminPaymentOrder'
+    page:
+      $ref: '../../openapi.yaml#/components/schemas/PageInfo'
+
+AdminPaymentOrder:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - userId
+    - provider
+    - methodId
+    - providerRail
+    - status
+    - txb
+    - payableAmount
+    - payableCurrency
+    - rateSnapshot
+    - rateDirection
+    - paymentUrl
+    - qrPayload
+    - receivingAddress
+    - actualCryptoAmount
+    - actualCryptoCurrency
+    - expiresAt
+    - paidAt
+    - refundedAt
+    - cancelledAt
+    - cancelReason
+    - providerCancelStatus
+    - createdAt
+    - updatedAt
+  properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    userId:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    provider:
+      $ref: '../../openapi.yaml#/components/schemas/PaymentProvider'
+    methodId:
+      $ref: '../../openapi.yaml#/components/schemas/PaymentOrderMethodID'
+    providerRail:
+      type: string
+    status:
+      $ref: '../../openapi.yaml#/components/schemas/PaymentStatus'
+    txb:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    payableAmount:
+      type: string
+      pattern: '^\d+(\.\d+)?$'
+    payableCurrency:
+      type: string
+      enum: [CNY, USD, XTR, USDT]
+    rateSnapshot:
+      type: string
+      pattern: '^\d+(\.\d+)?$'
+    rateDirection:
+      type: string
+      enum: [txb_per_currency, currency_per_txb]
+    paymentUrl:
+      type: [string, 'null']
+      format: uri
+    qrPayload:
+      type: [string, 'null']
+    receivingAddress:
+      type: [string, 'null']
+    actualCryptoAmount:
+      type: [string, 'null']
+      pattern: '^\d+(\.\d+)?$'
+    actualCryptoCurrency:
+      type: [string, 'null']
+      enum: [USDT, null]
+    expiresAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+    paidAt:
+      type: [string, 'null']
+      format: date-time
+    refundedAt:
+      type: [string, 'null']
+      format: date-time
+    cancelledAt:
+      type: [string, 'null']
+      format: date-time
+    cancelReason:
+      type: string
+    providerCancelStatus:
+      type: string
+      enum: ['', unsupported, requested, cancelled, failed]
+    createdAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+    updatedAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+
+RefundRequest:
+  type: object
+  additionalProperties: false
+  required: [reason]
+  properties:
+    reason:
+      type: string
+      minLength: 3
+      maxLength: 500
+
+Refund:
+  type: object
+  additionalProperties: false
+  required: [id, paymentOrderId, actorUserId, txb, reason, status, createdAt]
+  properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    paymentOrderId:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    actorUserId:
+      type: [string, 'null']
+    txb:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    reason:
+      type: string
+    status:
+      type: string
+      enum: [completed]
+    createdAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+
+RefundPage:
+  type: object
+  additionalProperties: false
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/Refund'
+    page:
+      $ref: '../../openapi.yaml#/components/schemas/PageInfo'
+
+DatabaseColumn:
+  type: object
+  additionalProperties: false
+  required: [name, declaredType, nullable, primaryKeyPosition, editable, sensitive]
+  properties:
+    name:
+      type: string
+    declaredType:
+      type: string
+    nullable:
+      type: boolean
+    primaryKeyPosition:
+      type: integer
+      minimum: 0
+    editable:
+      type: boolean
+    sensitive:
+      type: boolean
+
+DatabaseTable:
+  type: object
+  additionalProperties: false
+  required: [name, columns, highRisk, supportsRowId, warning]
+  properties:
+    name:
+      type: string
+      pattern: '^[A-Za-z_][A-Za-z0-9_]*$'
+    columns:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/DatabaseColumn'
+    highRisk:
+      type: boolean
+      const: true
+    supportsRowId:
+      type: boolean
+    warning:
+      type: string
+
+DatabaseTableList:
+  type: object
+  additionalProperties: false
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/DatabaseTable'
+
+DatabaseBlobValue:
+  type: object
+  additionalProperties: false
+  required: [blobBase64]
+  properties:
+    blobBase64:
+      type: string
+      contentEncoding: base64
+
+DatabaseValue:
+  description: SQLite NULL, boolean, lossless text/decimal string, or base64 blob. INTEGER, REAL, and NUMERIC cells are always returned as strings.
+  oneOf:
+    - type: 'null'
+    - type: boolean
+    - type: string
+    - $ref: '../../openapi.yaml#/components/schemas/DatabaseBlobValue'
+
+DatabaseKey:
+  type: object
+  additionalProperties:
+    type: string
+  minProperties: 1
+
+DatabaseValues:
+  type: object
+  additionalProperties:
+    $ref: '../../openapi.yaml#/components/schemas/DatabaseValue'
+
+DatabaseRow:
+  type: object
+  additionalProperties: false
+  required: [key, values, recordHash]
+  properties:
+    key:
+      $ref: '../../openapi.yaml#/components/schemas/DatabaseKey'
+    values:
+      $ref: '../../openapi.yaml#/components/schemas/DatabaseValues'
+    recordHash:
+      type: string
+      minLength: 32
+
+DatabaseRowPage:
+  type: object
+  additionalProperties: false
+  required: [items, nextCursor]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/DatabaseRow'
+    nextCursor:
+      type: [string, 'null']
+
+DatabaseFilterOperator:
+  type: string
+  enum: [eq, ne, contains, starts_with, gt, gte, lt, lte, is_null, not_null]

@@ -47,7 +47,7 @@ func TestPaymentRetentionPrunesTerminalAndProtectsLiveOrders(t *testing.T) {
 		order, err := store.CreatePaymentOrder(ctx, model.PaymentOrder{
 			UserID: user.ID, Provider: "stars", Status: "pending", TXBMinor: 100,
 			PayableAmount: "1", PayableCurrency: "XTR", RateSnapshot: "1",
-			ProviderPayload: `{}`, ExpiresAt: base.Add(time.Hour),
+			ExpiresAt: base.Add(time.Hour),
 		})
 		if err != nil {
 			t.Fatalf("CreatePaymentOrder(%d): %v", index, err)
@@ -57,7 +57,7 @@ func TestPaymentRetentionPrunesTerminalAndProtectsLiveOrders(t *testing.T) {
 	_, err := store.CreatePaymentOrder(ctx, model.PaymentOrder{
 		UserID: user.ID, Provider: "stars", Status: "pending", TXBMinor: 100,
 		PayableAmount: "1", PayableCurrency: "XTR", RateSnapshot: "1",
-		ProviderPayload: `{}`, ExpiresAt: base.Add(time.Hour),
+		ExpiresAt: base.Add(time.Hour),
 	})
 	if !errors.Is(err, ErrPaymentCapacity) {
 		t.Fatalf("live capacity error = %v, want ErrPaymentCapacity", err)
@@ -68,7 +68,7 @@ func TestPaymentRetentionPrunesTerminalAndProtectsLiveOrders(t *testing.T) {
 	newOrder, err := store.CreatePaymentOrder(ctx, model.PaymentOrder{
 		UserID: user.ID, Provider: "stars", Status: "pending", TXBMinor: 100,
 		PayableAmount: "1", PayableCurrency: "XTR", RateSnapshot: "1",
-		ProviderPayload: `{}`, ExpiresAt: base.Add(time.Hour),
+		ExpiresAt: base.Add(time.Hour),
 	})
 	if err != nil {
 		t.Fatalf("CreatePaymentOrder(after terminal): %v", err)
@@ -140,7 +140,7 @@ func TestPaymentRetentionProtectsCancelledOrdersUntilProviderExpiry(t *testing.T
 		order, err := store.CreatePaymentOrder(ctx, model.PaymentOrder{
 			UserID: user.ID, Provider: "stars", Status: "pending", TXBMinor: 100,
 			PayableAmount: "1", PayableCurrency: "XTR", RateSnapshot: "1",
-			ProviderPayload: `{}`, ExpiresAt: now.Add(time.Hour),
+			ExpiresAt: now.Add(time.Hour),
 		})
 		if err != nil {
 			t.Fatalf("CreatePaymentOrder(%d): %v", index, err)
@@ -153,7 +153,7 @@ func TestPaymentRetentionProtectsCancelledOrdersUntilProviderExpiry(t *testing.T
 	_, err := store.CreatePaymentOrder(ctx, model.PaymentOrder{
 		UserID: user.ID, Provider: "stars", Status: "pending", TXBMinor: 100,
 		PayableAmount: "1", PayableCurrency: "XTR", RateSnapshot: "1",
-		ProviderPayload: `{}`, ExpiresAt: now.Add(time.Hour),
+		ExpiresAt: now.Add(time.Hour),
 	})
 	if !errors.Is(err, ErrPaymentCapacity) {
 		t.Fatalf("unexpired cancelled capacity error = %v, want ErrPaymentCapacity", err)
@@ -164,7 +164,7 @@ func TestPaymentRetentionProtectsCancelledOrdersUntilProviderExpiry(t *testing.T
 	if _, err := store.CreatePaymentOrder(ctx, model.PaymentOrder{
 		UserID: user.ID, Provider: "stars", Status: "pending", TXBMinor: 100,
 		PayableAmount: "1", PayableCurrency: "XTR", RateSnapshot: "1",
-		ProviderPayload: `{}`, ExpiresAt: now.Add(time.Hour),
+		ExpiresAt: now.Add(time.Hour),
 	}); err != nil {
 		t.Fatalf("CreatePaymentOrder(after provider expiry): %v", err)
 	}

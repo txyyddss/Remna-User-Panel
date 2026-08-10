@@ -1,0 +1,17 @@
+post:
+  tags: [Admin, Questionnaires]
+  operationId: activateAdminQuestionnaire
+  summary: Make this the single active questionnaire
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+  responses:
+    '200':
+      description: Activated questionnaire.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/Questionnaire'
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }

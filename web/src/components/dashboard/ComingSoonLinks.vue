@@ -1,25 +1,24 @@
 <script setup lang="ts">
-import { PhArrowRight, PhGameController, PhListChecks, PhMonitorPlay } from '@phosphor-icons/vue'
 import { RouterLink } from 'vue-router'
 
 const items = [
-  { to: '/activity', label: 'Activity', note: 'Daily rewards and transparent games', icon: PhGameController },
-  { to: '/questionnaire', label: 'Questionnaire', note: 'Member feedback', icon: PhListChecks },
-  { to: '/emby', label: 'Emby', note: 'Shared media', icon: PhMonitorPlay },
+  { to: '/activity', labelKey: 'nav.activity', noteKey: 'dashboard.activityNote', icon: 'i-ph-game-controller' },
+  { to: '/questionnaire', labelKey: 'nav.questionnaire', noteKey: 'dashboard.questionnaireNote', icon: 'i-ph-list-checks' },
+  { to: '/emby', labelKey: 'nav.emby', noteKey: 'dashboard.embyNote', icon: 'i-ph-monitor-play' },
 ]
 </script>
 
 <template>
   <section class="section-block more-section">
     <div class="section-heading">
-      <h2>Around TX</h2>
-      <span class="section-heading__meta">Member tools</span>
+      <h2>{{ $t('dashboard.aroundTx') }}</h2>
+      <span class="section-heading__meta">{{ $t('dashboard.memberTools') }}</span>
     </div>
     <div class="more-links">
       <RouterLink v-for="item in items" :key="item.to" :to="item.to" class="more-link">
-        <span class="feature-icon feature-icon--small"><component :is="item.icon" :size="20" /></span>
-        <span><strong>{{ item.label }}</strong><small>{{ item.note }}</small></span>
-        <PhArrowRight :size="18" />
+        <span class="feature-icon feature-icon--small"><UIcon :name="item.icon" /></span>
+        <span><strong>{{ $t(item.labelKey) }}</strong><small>{{ $t(item.noteKey) }}</small></span>
+        <UIcon name="i-ph-arrow-right" />
       </RouterLink>
     </div>
   </section>

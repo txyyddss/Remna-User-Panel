@@ -1,6 +1,7 @@
 import { computed, onMounted, readonly, shallowRef } from 'vue'
 
 import { api } from '@/api/client'
+import { localizedError } from '@/i18n'
 import type { Dashboard } from '@/api/types'
 import { notifyHaptic } from '@/utils/telegram'
 
@@ -27,7 +28,7 @@ export function useDashboard() {
     try {
       dashboard.value = await api.getDashboard()
     } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : 'Dashboard data is unavailable.'
+      error.value = localizedError(caught, 'errors.dashboardUnavailable')
     } finally {
       loading.value = false
       refreshing.value = false
@@ -48,7 +49,7 @@ export function useDashboard() {
       notifyHaptic('success')
       return true
     } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : 'The subscription link could not be revoked.'
+      error.value = localizedError(caught, 'errors.subscriptionRevoke')
       notifyHaptic('error')
       return false
     } finally {

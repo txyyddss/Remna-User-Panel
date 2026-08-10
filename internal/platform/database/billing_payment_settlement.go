@@ -1,0 +1,124 @@
+package database
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
+	"time"
+)
+
+// CancelPaymentOrder marks a user-owned unpaid attempt cancelled. It deliberately
+// leaves the provider status payable so an authoritative late paid callback can
+// still settle and credit the order exactly once.
+func (s *Store) CancelPaymentOrder(ctx context.Context, orderID, userID, reason string, now time.Time) (model.PaymentOrder, bool, error) {
+	result, err := s.db.ExecContext(ctx, `UPDATE payment_orders SET cancelled_at=?,cancel_reason=?,provider_payload='{}',payment_url=NULL,
+		qr_payload=CASE WHEN receiving_address IS NOT NULL THEN NULL ELSE qr_payload END,updated_at=?
+		WHERE id=? AND user_id=? AND status IN ('creating','pending') AND paid_at IS NULL AND cancelled_at IS NULL`,
+		stamp(now), reason, stamp(now), orderID, userID)
+	if err != nil {
+		return model.PaymentOrder{}, false, fmt.Errorf("cancel payment order: %w", err)
+	}
+	order, loadErr := s.PaymentOrderForUser(ctx, orderID, userID)
+	if loadErr != nil {
+		return model.PaymentOrder{}, false, loadErr
+	}
+	affected, _ := result.RowsAffected()
+	if affected == 0 && order.Status != "cancelled" && order.Status != "paid" && order.Status != "refunded" {
+		return model.PaymentOrder{}, false, ErrConflict
+	}
+	return order, affected == 1, nil
+}
+
+// SetPaymentProviderCancellation records the redacted result of a best-effort
+// provider cancellation without changing the authoritative settlement state.
+func (s *Store) SetPaymentProviderCancellation(ctx context.Context, orderID, status string, now time.Time) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE payment_orders SET provider_cancel_status=?,updated_at=? WHERE id=?`, status, stamp(now), orderID)
+	if err != nil {
+		return fmt.Errorf("record provider cancellation: %w", err)
+	}
+	return nil
+}
+
+// SettlePayment records one authoritative provider event and credits the exact requested TXB amount once.
+func (s *Store) SettlePayment(ctx context.Context, provider, dedupeKey, payloadHash, orderID, tradeID, chargeID string, now time.Time) (model.PaymentOrder, bool, error) {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return model.PaymentOrder{}, false, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	var existingOrderID string
+	err = tx.QueryRowContext(ctx, `SELECT order_id FROM webhook_events WHERE provider=? AND dedupe_key=?`, provider, dedupeKey).Scan(&existingOrderID)
+	if err == nil {
+		if existingOrderID != orderID {
+			return model.PaymentOrder{}, false, ErrConflict
+		}
+		order, loadErr := paymentOrderTx(ctx, tx, orderID)
+		if loadErr == nil && order.ProviderTradeID != nil && tradeID != "" && *order.ProviderTradeID != tradeID {
+			return model.PaymentOrder{}, false, ErrConflict
+		}
+		return order, false, loadErr
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return model.PaymentOrder{}, false, err
+	}
+	eventID, err := ids.New()
+	if err != nil {
+		return model.PaymentOrder{}, false, err
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO webhook_events(id,provider,dedupe_key,order_id,payload_hash,received_at) VALUES(?,?,?,?,?,?)`, eventID, provider, dedupeKey, orderID, payloadHash, stamp(now)); err != nil {
+		return model.PaymentOrder{}, false, err
+	}
+	order, err := paymentOrderTx(ctx, tx, orderID)
+	if err != nil {
+		return model.PaymentOrder{}, false, err
+	}
+	if order.Provider != provider {
+		return model.PaymentOrder{}, false, ErrConflict
+	}
+	if order.ProviderTradeID != nil && tradeID != "" && *order.ProviderTradeID != tradeID {
+		return model.PaymentOrder{}, false, ErrConflict
+	}
+	if order.ProviderChargeID != nil && chargeID != "" && *order.ProviderChargeID != chargeID {
+		return model.PaymentOrder{}, false, ErrConflict
+	}
+	if order.Status == "paid" || order.Status == "refunded" {
+		return order, false, nil
+	}
+	if order.Status != "pending" && order.Status != "creating" && order.Status != "expired" && order.Status != "cancelled" {
+		return model.PaymentOrder{}, false, ErrConflict
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE payment_orders SET status='paid',provider_trade_id=COALESCE(NULLIF(?,''),provider_trade_id),provider_charge_id=NULLIF(?,''),
+		provider_payload='{}',payment_url=NULL,qr_payload=NULL,paid_at=?,updated_at=? WHERE id=?`, tradeID, chargeID, stamp(now), stamp(now), order.ID); err != nil {
+		if isUniqueConstraint(err) {
+			return model.PaymentOrder{}, false, ErrConflict
+		}
+		return model.PaymentOrder{}, false, fmt.Errorf("mark payment paid: %w", err)
+	}
+	balance, err := adjustBalanceTx(ctx, tx, order.UserID, order.TXBMinor, now)
+	if err != nil {
+		return model.PaymentOrder{}, false, fmt.Errorf("credit payment: %w", err)
+	}
+	if _, err := insertLedgerTx(ctx, tx, order.UserID, order.TXBMinor, balance, "payment_credit", order.ID, provider+" payment", now); err != nil {
+		return model.PaymentOrder{}, false, err
+	}
+	// The terminal order state plus provider trade/charge identifiers are the
+	// durable replay guard. The webhook row is only a transient concurrency
+	// claim and is removed in the same successful settlement transaction.
+	if _, err := tx.ExecContext(ctx, `DELETE FROM webhook_events WHERE id=?`, eventID); err != nil {
+		return model.PaymentOrder{}, false, err
+	}
+	if err := tx.Commit(); err != nil {
+		return model.PaymentOrder{}, false, err
+	}
+	settled, err := s.PaymentOrderByID(ctx, order.ID)
+	return settled, true, err
+}
+
+func paymentOrderTx(ctx context.Context, tx *sql.Tx, id string) (model.PaymentOrder, error) {
+	return scanPaymentOrder(tx.QueryRowContext(ctx, paymentSelect+` WHERE id=?`, id))
+}

@@ -1,0 +1,40 @@
+{
+  "coupons": {
+    "wallet": "优惠券钱包",
+    "walletHint": "兑换代码或使用已有优惠券。",
+    "code": "优惠码",
+    "codePlaceholder": "输入代码",
+    "redeeming": "正在兑换",
+    "redeem": "兑换",
+    "addedToWallet": "{name} 已加入你的优惠券钱包。",
+    "appliedToBalance": "{name} 已应用到你的余额。",
+    "kind": {
+      "purchase_recurring": "循环购买",
+      "purchase_once": "单次购买",
+      "balance_add": "余额充值",
+      "balance_multiply": "余额倍增"
+    },
+    "expires": "{date} 过期",
+    "noExpiry": "长期有效",
+    "uses": "剩余 {count} 次",
+    "empty": "暂无优惠券",
+    "emptyHint": "兑换或获赠的优惠券会显示在这里。"
+  },
+  "questionnaire": {
+    "eyebrow": "成员调研",
+    "title": "问卷",
+    "copy": "分享反馈并保管好你的验证代码。",
+    "none": "暂无进行中的问卷",
+    "noneHint": "下一份问卷会显示在这里。",
+    "reward": "奖励 {amount} TXB",
+    "validationCode": "验证码",
+    "codeCopied": "代码已复制",
+    "copyCode": "复制代码",
+    "codeHint": "在问卷表单中使用此代码。",
+    "closes": "{date} 结束",
+    "noClose": "无结束日期",
+    "preparing": "正在准备代码",
+    "openAgain": "打开问卷",
+    "getCode": "获取代码"
+  }
+}

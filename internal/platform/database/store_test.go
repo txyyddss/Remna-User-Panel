@@ -2,10 +2,35 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
 	"time"
 )
+
+func TestMigrationClearsLegacySubscriptionCache(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := newTestStore(t)
+	user := createTestUser(t, store, 20000)
+	if _, err := store.DB().ExecContext(ctx, `UPDATE users SET remna_subscription_url=? WHERE id=?`, "https://subscription.example/bearer", user.ID); err != nil {
+		t.Fatalf("seed legacy subscription URL: %v", err)
+	}
+	if _, err := store.DB().ExecContext(ctx, `DELETE FROM schema_migrations WHERE version=?`, "010_clear_subscription_cache.sql"); err != nil {
+		t.Fatalf("reset scrub migration: %v", err)
+	}
+	if err := migrate(ctx, store.DB()); err != nil {
+		t.Fatalf("migrate(): %v", err)
+	}
+	var cached sql.NullString
+	if err := store.DB().QueryRowContext(ctx, `SELECT remna_subscription_url FROM users WHERE id=?`, user.ID).Scan(&cached); err != nil {
+		t.Fatalf("read scrubbed subscription URL: %v", err)
+	}
+	if cached.Valid {
+		t.Fatalf("legacy subscription URL still persisted: %q", cached.String)
+	}
+}
 
 func TestReserveUsernameIsImmutableAndRetryable(t *testing.T) {
 	t.Parallel()
@@ -145,11 +170,14 @@ func TestCatalogUpdatesCannotCreateUnknownRecords(t *testing.T) {
 	if err := store.RefreshImportedSquads(ctx, []ImportedSquad{{UUID: "remote-1", Name: "Remote"}}); err != nil {
 		t.Fatalf("RefreshImportedSquads(): %v", err)
 	}
-	product, err := store.SquadProductByRemnaUUID(ctx, "remote-1")
-	if err != nil {
-		t.Fatalf("SquadProductByRemnaUUID(): %v", err)
+	if _, err := store.SquadProductByRemnaUUID(ctx, "remote-1"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("SquadProductByRemnaUUID(unedited upstream) = %v, want ErrNotFound", err)
 	}
-	productInput := SquadProductInput{ID: product.ID, RemnaSquadUUID: product.RemnaSquadUUID, Name: "Merchandised", Description: "Local copy", PriceTXBMinor: 25, Visible: true}
+	productInput := SquadProductInput{ID: "remote-1", RemnaSquadUUID: "remote-1", Name: "Merchandised", Description: "Local copy", PriceTXBMinor: 25, Visible: true, UpstreamPresent: true}
+	product, err := store.SaveSquadProduct(ctx, productInput)
+	if err != nil {
+		t.Fatalf("SaveSquadProduct(imported create): %v", err)
+	}
 	if updated, err := store.SaveSquadProduct(ctx, productInput); err != nil || updated.Name != "Merchandised" || !updated.UpstreamPresent {
 		t.Fatalf("SaveSquadProduct(imported update) = (%+v, %v)", updated, err)
 	}
@@ -159,29 +187,20 @@ func TestCatalogUpdatesCannotCreateUnknownRecords(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SaveCombo(imported squad): %v", err)
 	}
-	user := createTestUser(t, store, 20004)
-	if _, err := store.AdjustBalance(ctx, user.ID, 500, "catalog-safety", "test credit", time.Now()); err != nil {
-		t.Fatalf("AdjustBalance(): %v", err)
-	}
 	if err := store.RefreshImportedSquads(ctx, nil); err != nil {
 		t.Fatalf("RefreshImportedSquads(empty): %v", err)
 	}
-	if combos, err := store.ListCombos(ctx, true); err != nil || len(combos) != 1 || combos[0].ID == squadCombo.ID {
-		// The original no-squad combo remains available; the combo depending on
-		// the disappeared upstream squad must be hidden.
-		t.Fatalf("ListCombos(after upstream disappearance) = (%+v, %v)", combos, err)
+	if combos, err := store.ListCombos(ctx, true); err != nil || len(combos) != 2 {
+		t.Fatalf("ListCombos(after compatibility refresh) = (%+v, %v)", combos, err)
 	}
-	if _, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: squadCombo.ID, IdempotencyKey: "missing-squad"}, time.Now()); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("CreatePurchase(disappeared squad) = %v, want ErrNotFound", err)
-	}
-	if balance, err := store.Balance(ctx, user.ID); err != nil || balance.Minor != "500" {
-		t.Fatalf("Balance(after rejected purchase) = (%+v, %v)", balance, err)
+	if loaded, err := store.ComboByID(ctx, squadCombo.ID, true); err != nil || len(loaded.IncludedSquads) != 1 {
+		t.Fatalf("ComboByID(sparse squad identity) = (%+v, %v)", loaded, err)
 	}
 
 	comboInput.ID = ""
-	comboInput.SquadProductIDs = []string{"missing-squad"}
-	if _, err := store.SaveCombo(ctx, comboInput); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("SaveCombo(missing squad) = %v, want ErrNotFound", err)
+	comboInput.SquadProductIDs = []string{"sparse-upstream-squad"}
+	if _, err := store.SaveCombo(ctx, comboInput); err != nil {
+		t.Fatalf("SaveCombo(sparse upstream identity): %v", err)
 	}
 }
 

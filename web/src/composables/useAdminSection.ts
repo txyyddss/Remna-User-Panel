@@ -3,6 +3,7 @@ import { onMounted, readonly, shallowRef } from 'vue'
 import { api } from '@/api/client'
 import type { AdminResource, Paginated } from '@/api/types'
 import { notifyHaptic } from '@/utils/telegram'
+import { localizedError } from '@/i18n'
 
 function extractItems<T>(payload: Paginated<T> | T[] | { items: T[] }): T[] {
   if (Array.isArray(payload)) return payload
@@ -22,7 +23,7 @@ export function useAdminSection<T>(resource: AdminResource, options: { immediate
       const payload = await api.getAdminResource<Paginated<T> | T[] | { items: T[] }>(resource, query)
       items.value = extractItems(payload)
     } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : 'Admin data could not be loaded.'
+      error.value = localizedError(caught, 'errors.adminLoad')
     } finally {
       loading.value = false
     }
@@ -37,7 +38,7 @@ export function useAdminSection<T>(resource: AdminResource, options: { immediate
       notifyHaptic('success')
       return true
     } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : 'The admin action could not be completed.'
+      error.value = localizedError(caught, 'errors.adminAction')
       notifyHaptic('error')
       return false
     } finally {

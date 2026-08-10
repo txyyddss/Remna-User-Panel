@@ -1,0 +1,39 @@
+post:
+  tags: [Authentication]
+  operationId: authenticateTelegram
+  summary: Exchange Telegram Mini App init data for a session
+  description: |
+    Validates the raw query string according to Telegram's Mini App algorithm,
+    rejects `auth_date` older than five minutes, upserts the Telegram identity,
+    and sets a seven-day Secure, HttpOnly, SameSite session cookie plus a
+    JavaScript-readable request-signing companion cookie. Data from
+    `initDataUnsafe` is never accepted.
+  security: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/TelegramAuthRequest'
+  responses:
+    '200':
+      description: Authenticated; the session and request-signing cookies are set.
+      headers:
+        Set-Cookie:
+          description: |
+            Two same-origin cookies are emitted as separate Set-Cookie fields:
+            `txc_session` is opaque, Secure, and HttpOnly; `txc_request_key`
+            is Secure and JavaScript-readable so the Mini App can sign each
+            authenticated request. Both cookies share the session expiry.
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/AuthState'
+    '400':
+      $ref: '../openapi.yaml#/components/responses/BadRequest'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '503':
+      $ref: '../openapi.yaml#/components/responses/ServiceUnavailable'

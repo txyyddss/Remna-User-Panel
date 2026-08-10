@@ -1,0 +1,52 @@
+@media (min-width: 1180px) {
+  .app-frame {
+    grid-template-columns: 250px minmax(0, 1fr);
+  }
+
+  .side-rail {
+    width: 250px;
+    padding: 1.2rem;
+  }
+
+  .content-grid--dashboard {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .content-grid--dashboard > :nth-child(1),
+  .content-grid--dashboard > :nth-child(2) {
+    grid-column: span 3;
+  }
+
+  .content-grid--dashboard > :nth-child(3) {
+    grid-column: span 4;
+  }
+
+  .content-grid--dashboard > :nth-child(4) {
+    grid-column: span 2;
+  }
+}
+
+@keyframes dialog-in {
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 14px)) scale(0.985); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .mobile-header,
+  .bottom-nav,
+  .catalog-action,
+  .dialog-overlay {
+    backdrop-filter: none;
+  }
+}

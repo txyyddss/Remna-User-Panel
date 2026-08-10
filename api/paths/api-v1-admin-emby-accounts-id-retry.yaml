@@ -1,0 +1,16 @@
+post:
+  tags: [Admin, Emby]
+  operationId: retryAdminEmbyAccount
+  summary: Requeue a retryable Emby provisioning attempt
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+  responses:
+    '202':
+      description: Provisioning retry queued.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/EmbyAccount'
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }

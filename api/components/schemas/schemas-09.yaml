@@ -1,0 +1,251 @@
+EmbyOverview:
+  type: object
+  additionalProperties: false
+  required: [configured, setupPrice, ratings, libraries, account]
+  properties:
+    configured:
+      type: boolean
+    setupPrice:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    ratings:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/EmbyRating'
+    libraries:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/EmbyLibrary'
+    account:
+      oneOf:
+        - $ref: '../../openapi.yaml#/components/schemas/EmbyAccount'
+        - type: 'null'
+
+EmbyPreferencesRequest:
+  type: object
+  additionalProperties: false
+  required: [disabledLibraryIds]
+  properties:
+    maxParentalRating:
+      type: [integer, 'null']
+      format: int32
+    disabledLibraryIds:
+      type: array
+      uniqueItems: true
+      items:
+        type: string
+
+EmbySetupRequest:
+  type: object
+  additionalProperties: false
+  required: [password, disabledLibraryIds]
+  properties:
+    password:
+      type: string
+      minLength: 1
+      writeOnly: true
+    maxParentalRating:
+      type: [integer, 'null']
+      format: int32
+    disabledLibraryIds:
+      type: array
+      uniqueItems: true
+      items:
+        type: string
+
+EmbyPasswordRequest:
+  type: object
+  additionalProperties: false
+  required: [password]
+  properties:
+    password:
+      type: string
+      minLength: 1
+      writeOnly: true
+
+EmbyAccountList:
+  type: object
+  additionalProperties: false
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/EmbyAccount'
+
+AdminSetting:
+  type: object
+  additionalProperties: false
+  required: [key, value, encrypted, configured, category, updatedAt]
+  properties:
+    key:
+      type: string
+    value:
+      type: string
+      description: Empty for encrypted settings; plaintext and ciphertext are never returned.
+    encrypted:
+      type: boolean
+    configured:
+      type: boolean
+    category:
+      type: string
+      enum: [telegram, remnawave, rates, payments, activity, emby, application]
+    updatedAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+
+AdminSettingCreate:
+  type: object
+  additionalProperties: false
+  required: [key, value]
+  properties:
+    key:
+      type: string
+      pattern: '^[a-z][a-z0-9_.-]{1,63}$'
+    value:
+      type: string
+      writeOnly: true
+
+AdminSettingUpdate:
+  type: object
+  additionalProperties: false
+  required: [value]
+  properties:
+    value:
+      type: string
+      writeOnly: true
+
+AdminUserSummary:
+  type: object
+  additionalProperties: false
+  required: [user, balance, createdAt, synchronization]
+  properties:
+    user:
+      $ref: '../../openapi.yaml#/components/schemas/User'
+    balance:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    createdAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+    synchronization:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [synchronized, not_provisioned]
+
+AdminUserPage:
+  type: object
+  additionalProperties: false
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/AdminUserSummary'
+    page:
+      $ref: '../../openapi.yaml#/components/schemas/PageInfo'
+
+BalanceAdjustmentRequest:
+  type: object
+  additionalProperties: false
+  required: [deltaTxbMinor, reason]
+  properties:
+    deltaTxbMinor:
+      type: string
+      pattern: '^-?[1-9]\d*$'
+    reason:
+      type: string
+      minLength: 3
+      maxLength: 500
+
+ReasonRequest:
+  type: object
+  additionalProperties: false
+  required: [reason]
+  properties:
+    reason:
+      type: string
+      minLength: 3
+      maxLength: 500
+
+EntitlementPage:
+  type: object
+  additionalProperties: false
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/AdminEntitlement'
+    page:
+      $ref: '../../openapi.yaml#/components/schemas/PageInfo'
+
+AdminEntitlement:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - userId
+    - comboId
+    - comboName
+    - price
+    - grossPrice
+    - couponDiscount
+    - couponGrantId
+    - validFrom
+    - validUntil
+    - status
+    - trafficLimitBytes
+    - resetStrategy
+    - squadUuids
+    - rolloverMinRemainingBps
+    - rolloverMaxTxbMinor
+    - rolloverMax
+    - createdAt
+    - updatedAt
+  properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    userId:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    comboId:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    comboName:
+      type: string
+    price:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    grossPrice:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    couponDiscount:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    couponGrantId:
+      type: [string, 'null']
+    validFrom:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+    validUntil:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+    status:
+      $ref: '../../openapi.yaml#/components/schemas/EntitlementStatus'
+    trafficLimitBytes:
+      type: string
+      pattern: '^\d+$'
+    resetStrategy:
+      $ref: '../../openapi.yaml#/components/schemas/ResetStrategy'
+    squadUuids:
+      type: array
+      items:
+        type: string
+        format: uuid
+    rolloverMinRemainingBps:
+      type: integer
+      minimum: 0
+      maximum: 10000
+    rolloverMaxTxbMinor:
+      type: string
+      pattern: '^\d+$'
+    rolloverMax:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    createdAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+    updatedAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'

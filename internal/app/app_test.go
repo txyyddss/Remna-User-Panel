@@ -2,7 +2,9 @@ package app
 
 import (
 	"testing"
+	"time"
 
+	"github.com/txyyddss/Remna-User-Panel/internal/integrations/bepusdt"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
 )
 
@@ -36,5 +38,32 @@ func TestNormalizeStarTransactionDirections(t *testing.T) {
 				t.Fatalf("incoming dedupe key = %q", event.DedupeKey)
 			}
 		})
+	}
+}
+
+func TestMapBEPusdtCheckoutKeepsOnlySettlementFields(t *testing.T) {
+	t.Parallel()
+
+	createdAt := time.Date(2026, time.August, 10, 14, 0, 0, 0, time.UTC)
+	checkout := mapBEPusdtCheckout(&bepusdt.Transaction{
+		Fiat: "USD", TradeID: "trade-1", OrderID: "order-1", Amount: "1.00", ActualAmount: "0.95",
+		Status: 1, Token: "TReceiveAddress", ExpirationTime: 1200, PaymentURL: "https://pay.example/order-1",
+	}, "1.00", createdAt)
+
+	if checkout.TradeID == nil || *checkout.TradeID != "trade-1" ||
+		checkout.PaymentURL == nil || *checkout.PaymentURL != "https://pay.example/order-1" ||
+		checkout.ReceivingAddress == nil || *checkout.ReceivingAddress != "TReceiveAddress" {
+		t.Fatalf("checkout identity/display fields = %+v", checkout)
+	}
+	if checkout.ActualCryptoAmount == nil || *checkout.ActualCryptoAmount != "0.95" ||
+		checkout.ActualCryptoCurrency == nil || *checkout.ActualCryptoCurrency != "USDT" ||
+		checkout.PayableAmount != "1.00" || checkout.PayableCurrency != "USD" {
+		t.Fatalf("checkout settlement fields = %+v", checkout)
+	}
+	if checkout.QRPayload != nil {
+		t.Fatalf("checkout QR payload = %q, want nil separate from receiving address", *checkout.QRPayload)
+	}
+	if want := createdAt.Add(20 * time.Minute); !checkout.ExpiresAt.Equal(want) {
+		t.Fatalf("checkout expiry = %s, want %s", checkout.ExpiresAt, want)
 	}
 }

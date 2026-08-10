@@ -22,6 +22,8 @@ func TestDecodeJSONAcceptsOneStrictDocument(t *testing.T) {
 		{name: "valid object", body: `{"name":"Ada"}`},
 		{name: "empty body", body: ``, wantErr: true},
 		{name: "unknown field", body: `{"name":"Ada","role":"admin"}`, wantErr: true},
+		{name: "printable password", body: `{"name":" 密碼 päss 🧩 "}`},
+		{name: "control character", body: `{"name":"Ada\u0000Lovelace"}`, wantErr: true},
 		{name: "second document", body: `{"name":"Ada"} {"name":"Grace"}`, wantErr: true},
 		{name: "trailing invalid bytes", body: `{"name":"Ada"} trailing`, wantErr: true},
 	}

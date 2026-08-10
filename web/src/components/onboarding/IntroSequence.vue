@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import { PhArrowRight } from '@phosphor-icons/vue'
 
-import { useIntroSequence } from '@/composables/useIntroSequence'
 import type { OnboardingWelcomeMessage } from '@/api/features'
+import { useIntroSequence } from '@/composables/useIntroSequence'
 
 const emit = defineEmits<{ complete: [] }>()
 const props = defineProps<{ messages: readonly OnboardingWelcomeMessage[] }>()
@@ -17,17 +16,19 @@ onMounted(start)
 
 <template>
   <section class="intro-sequence">
-    <button class="text-button intro-sequence__skip" type="button" @click="skip">
-      {{ $t('common.skip') }}
-      <PhArrowRight :size="17" />
-    </button>
+    <UButton
+      class="intro-sequence__skip"
+      color="neutral"
+      variant="ghost"
+      trailing-icon="i-ph-arrow-right"
+      :label="$t('common.skip')"
+      @click="skip"
+    />
     <div class="intro-sequence__center">
       <Transition name="intro-copy" mode="out-in">
         <h1 :key="index">{{ message }}</h1>
       </Transition>
     </div>
-    <div class="intro-sequence__progress" aria-hidden="true">
-      <span :style="{ transform: `scaleX(${progress / 100})` }" />
-    </div>
+    <UProgress class="intro-sequence__progress" :model-value="progress" :max="100" aria-hidden="true" />
   </section>
 </template>

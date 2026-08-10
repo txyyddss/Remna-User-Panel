@@ -1,0 +1,74 @@
+get:
+  tags: [Webhooks]
+  operationId: receiveEZPayWebhook
+  summary: Receive the signed EZPay asynchronous notification
+  description: Only a valid signature, `TRADE_SUCCESS`, known order/provider trade, and exact payable amount can credit TXB. Replayed notifications are acknowledged without a second credit.
+  security: []
+  parameters:
+    - name: pid
+      in: query
+      required: true
+      schema: { type: string }
+    - name: trade_no
+      in: query
+      required: true
+      schema: { type: string }
+    - name: out_trade_no
+      in: query
+      required: true
+      schema: { type: string }
+    - name: type
+      in: query
+      required: true
+      description: Signed rail subtype; it must equal the immutable order snapshot.
+      schema:
+        type: string
+        enum: [alipay, wxpay, qqpay, bank, jdpay]
+    - name: name
+      in: query
+      required: false
+      schema: { type: string }
+    - name: money
+      in: query
+      required: true
+      schema:
+        type: string
+        pattern: '^\d+(\.\d{1,2})?$'
+    - name: trade_status
+      in: query
+      required: true
+      schema:
+        type: string
+        enum: [TRADE_SUCCESS]
+    - name: sign
+      in: query
+      required: true
+      schema: { type: string }
+    - name: sign_type
+      in: query
+      required: true
+      schema:
+        type: string
+        enum: [MD5]
+  responses:
+    '200':
+      description: Plain-text `success` for a valid notification, including an idempotent replay.
+      content:
+        text/plain:
+          schema:
+            type: string
+            const: success
+    '400':
+      description: Signature or notification validation failed.
+      content:
+        text/plain:
+          schema:
+            type: string
+            const: fail
+    '409':
+      description: The signed payment did not match durable order state.
+      content:
+        text/plain:
+          schema:
+            type: string
+            const: fail

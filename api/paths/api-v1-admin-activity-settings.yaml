@@ -1,0 +1,34 @@
+get:
+  tags: [Admin, Activity]
+  operationId: getAdminActivitySettings
+  summary: Get local-day and daily-reward settings
+  responses:
+    '200':
+      description: Current Activity settings.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/ActivitySettings'
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+put:
+  tags: [Admin, Activity]
+  operationId: updateAdminActivitySettings
+  summary: Replace local-day and daily-reward settings
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/ActivitySettingsWrite'
+  responses:
+    '200':
+      description: Updated Activity settings.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/ActivitySettings'
+    '400': { $ref: '../openapi.yaml#/components/responses/BadRequest' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }

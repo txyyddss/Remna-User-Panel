@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { PhArrowClockwise } from '@phosphor-icons/vue'
-
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { useActivity } from '@/composables/useActivity'
@@ -28,7 +26,7 @@ const { overview, result, loading, busy, error, load, checkIn, placeBet, draw, c
     <template v-else-if="overview">
       <div class="page-toolbar">
         <p>{{ $t('activity.balance', { amount: formatMoney(overview.balance) }) }}</p>
-        <button class="text-button" type="button" :aria-label="$t('common.refresh')" @click="load({ quiet: true })"><PhArrowClockwise :size="17" /> {{ $t('common.refresh') }}</button>
+        <UButton class="text-button" color="neutral" variant="ghost" icon="i-ph-arrow-clockwise" :label="$t('common.refresh')" @click="load({ quiet: true })" />
       </div>
       <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
       <div class="activity-layout">
@@ -48,7 +46,7 @@ const { overview, result, loading, busy, error, load, checkIn, placeBet, draw, c
     </template>
     <div v-else class="error-state">
       <h1>{{ $t('errors.activityUnavailable') }}</h1><p>{{ error }}</p>
-      <button class="button button--primary" type="button" @click="load()">{{ $t('common.tryAgain') }}</button>
+      <UButton :label="$t('common.tryAgain')" @click="load()" />
     </div>
   </div>
 </template>

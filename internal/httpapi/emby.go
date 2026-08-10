@@ -99,18 +99,31 @@ func (s *Server) embyAccount(w http.ResponseWriter, r *http.Request) {
 }
 
 func decodeEmbyPreferences(w http.ResponseWriter, r *http.Request, withPassword bool) (emby.Preferences, string, error) {
+	type preferencesRequest struct {
+		MaxParentalRating  *int32    `json:"maxParentalRating"`
+		DisabledLibraryIDs *[]string `json:"disabledLibraryIds"`
+	}
+	if !withPassword {
+		var request preferencesRequest
+		if err := decodeJSON(w, r, &request); err != nil {
+			return emby.Preferences{}, "", err
+		}
+		if request.DisabledLibraryIDs == nil {
+			return emby.Preferences{}, "", emby.ErrInvalidSetup
+		}
+		return emby.Preferences{MaxParentalRating: request.MaxParentalRating, DisabledLibraryIDs: *request.DisabledLibraryIDs}, "", nil
+	}
 	request := struct {
-		Password           string   `json:"password"`
-		MaxParentalRating  *int32   `json:"maxParentalRating"`
-		DisabledLibraryIDs []string `json:"disabledLibraryIds"`
+		Password string `json:"password"`
+		preferencesRequest
 	}{}
 	if err := decodeJSON(w, r, &request); err != nil {
 		return emby.Preferences{}, "", err
 	}
-	if withPassword && request.Password == "" {
+	if request.Password == "" || request.DisabledLibraryIDs == nil {
 		return emby.Preferences{}, "", emby.ErrInvalidSetup
 	}
-	return emby.Preferences{MaxParentalRating: request.MaxParentalRating, DisabledLibraryIDs: request.DisabledLibraryIDs}, request.Password, nil
+	return emby.Preferences{MaxParentalRating: request.MaxParentalRating, DisabledLibraryIDs: *request.DisabledLibraryIDs}, request.Password, nil
 }
 
 func (s *Server) setupEmby(w http.ResponseWriter, r *http.Request) {

@@ -23,7 +23,7 @@ func TestCreateAndUpdateUserWireContract(t *testing.T) {
 		}
 		requests <- remnaRequest{method: request.Method, path: request.URL.Path, authorization: request.Header.Get("Authorization"), body: body}
 		writer.Header().Set("Content-Type", "application/json")
-		_, _ = writer.Write([]byte(`{"response":{"id":9,"shortUuid":"short","username":"ada","status":"ACTIVE","trafficLimitBytes":0,"trafficLimitStrategy":"NO_RESET","expireAt":"2099-12-31T23:59:59Z","telegramId":42,"subscriptionUrl":"https://secret.example/sub"}}`))
+		_, _ = writer.Write([]byte(`{"response":` + userJSON(9, "ada", 42) + `}`))
 	}))
 	defer server.Close()
 	client, err := NewClient(server.URL, bearer, WithHTTPClient(server.Client()))
@@ -83,7 +83,7 @@ func TestClientEndpointMapping(t *testing.T) {
 		call     func(*Client) error
 	}{
 		{
-			name: "get by username", method: http.MethodGet, path: "/api/users/by-username/ada", response: `{"response":{"id":9,"username":"ada"}}`,
+			name: "get by username", method: http.MethodGet, path: "/api/users/by-username/ada", response: `{"response":` + userJSON(9, "ada", 42) + `}`,
 			call: func(client *Client) error {
 				_, err := client.GetUserByUsername(context.Background(), "ada")
 				return err
@@ -97,14 +97,14 @@ func TestClientEndpointMapping(t *testing.T) {
 			},
 		},
 		{
-			name: "revoke", method: http.MethodPost, path: "/api/users/9/actions/revoke", response: `{"response":{"id":9,"username":"ada"}}`,
+			name: "revoke", method: http.MethodPost, path: "/api/users/9/actions/revoke", response: `{"response":` + userJSON(9, "ada", 42) + `}`,
 			call: func(client *Client) error {
 				_, err := client.RevokeSubscription(context.Background(), 9, false)
 				return err
 			},
 		},
 		{
-			name: "reset", method: http.MethodPost, path: "/api/users/9/actions/reset-traffic", response: `{"response":{"id":9,"username":"ada"}}`,
+			name: "reset", method: http.MethodPost, path: "/api/users/9/actions/reset-traffic", response: `{"response":` + userJSON(9, "ada", 42) + `}`,
 			call: func(client *Client) error { _, err := client.ResetTraffic(context.Background(), 9); return err },
 		},
 		{
@@ -253,7 +253,7 @@ func TestFindUserByTelegramID(t *testing.T) {
 		if request.URL.Path != "/api/users" || request.URL.Query().Get("size") != "1000" {
 			t.Errorf("request URL = %s", request.URL.String())
 		}
-		_, _ = writer.Write([]byte(`{"response":{"total":2,"users":[{"id":1,"username":"one","telegramId":11},{"id":2,"username":"two","telegramId":42}]}}`))
+		_, _ = writer.Write([]byte(`{"response":{"total":2,"users":[` + userJSON(1, "one", 11) + `,` + userJSON(2, "two", 42) + `]}}`))
 	}))
 	defer server.Close()
 	client, err := NewClient(server.URL, "token", WithHTTPClient(server.Client()))

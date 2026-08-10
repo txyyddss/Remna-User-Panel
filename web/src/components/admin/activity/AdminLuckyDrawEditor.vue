@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { reactive, shallowRef, watch } from 'vue'
-import { PhPlus, PhTrash } from '@phosphor-icons/vue'
+import { computed, reactive, shallowRef, watch } from 'vue'
 
 import type { CouponDefinition, LuckyDrawAdmin, LuckyDrawPrize, LuckyDrawWrite, Reward } from '@/api/features'
 import SwitchField from '@/components/common/SwitchField.vue'
@@ -25,6 +24,13 @@ const emit = defineEmits<{ save: [value: LuckyDrawWrite]; cancel: [] }>()
 const draft = reactive({ name: '', description: '', fee: '0.00', enabled: true, prizes: [] as PrizeDraft[] })
 const validationError = shallowRef<string | null>(null)
 const { t } = useI18n()
+const rewardItems = computed(() => [
+  { value: 'none', label: t('adminLuckyDraw.noPrize') },
+  { value: 'txb_delta', label: t('adminLuckyDraw.txbChange') },
+  { value: 'coupon_grant', label: t('adminLuckyDraw.couponGrant') },
+  { value: 'subscription_extension', label: t('adminLuckyDraw.extension') },
+])
+const couponItems = computed(() => props.coupons.map((coupon) => ({ value: coupon.id, label: `${coupon.code} · ${coupon.name}` })))
 
 function blankPrize(): PrizeDraft {
   return { id: '', name: t('adminLuckyDraw.noPrize'), weight: '1', stockRemaining: '', kind: 'none', txbDelta: '1.00', couponId: '', extensionDays: 1 }
@@ -97,37 +103,40 @@ function save(): void {
     <div class="catalog-editor__heading">
       <div><h3>{{ draw ? t('adminLuckyDraw.edit') : t('adminLuckyDraw.new') }}</h3><p>{{ t('adminLuckyDraw.copy') }}</p></div>
     </div>
-    <label><span>{{ t('adminLuckyDraw.name') }}</span><input v-model.trim="draft.name" required maxlength="80" /></label>
+    <UFormField name="draw-name" :label="t('adminLuckyDraw.name')" required><UInput v-model.trim="draft.name" class="w-full" :maxlength="80" /></UFormField>
     <TxbAmountField id="lucky-draw-fee" v-model="draft.fee" :label="t('adminLuckyDraw.fee')" min-minor="0" required />
-    <label class="catalog-editor__wide"><span>{{ t('adminLuckyDraw.description') }}</span><textarea v-model.trim="draft.description" rows="2" maxlength="300" /></label>
+    <UFormField class="catalog-editor__wide" name="draw-description" :label="t('adminLuckyDraw.description')"><UTextarea v-model.trim="draft.description" class="w-full" :rows="2" :maxlength="300" /></UFormField>
     <SwitchField id="lucky-draw-enabled" v-model="draft.enabled" :label="t('adminLuckyDraw.available')" :help="t('adminLuckyDraw.availableHint')" />
 
     <section class="prize-list catalog-editor__wide" aria-labelledby="prize-list-title">
-      <div class="prize-list__heading"><div><h4 id="prize-list-title">{{ t('adminLuckyDraw.weightedPrizes') }}</h4><p>{{ t('adminLuckyDraw.prizeHint') }}</p></div><button class="button button--secondary" type="button" @click="draft.prizes.push(blankPrize())"><PhPlus :size="17" />{{ t('adminLuckyDraw.addPrize') }}</button></div>
-      <article v-for="(prize, index) in draft.prizes" :key="`${prize.id}-${index}`" class="prize-row">
-        <label><span>{{ t('adminLuckyDraw.prizeName') }}</span><input v-model.trim="prize.name" required maxlength="80" /></label>
-        <label><span>{{ t('adminLuckyDraw.weight') }}</span><input v-model.trim="prize.weight" inputmode="numeric" pattern="[0-9]+" required /></label>
-        <label><span>{{ t('adminLuckyDraw.stock') }}</span><input v-model.trim="prize.stockRemaining" inputmode="numeric" pattern="[0-9]*" :placeholder="t('adminLuckyDraw.unlimited')" /></label>
-        <label><span>{{ t('adminLuckyDraw.reward') }}</span><select v-model="prize.kind"><option value="none">{{ t('adminLuckyDraw.noPrize') }}</option><option value="txb_delta">{{ t('adminLuckyDraw.txbChange') }}</option><option value="coupon_grant">{{ t('adminLuckyDraw.couponGrant') }}</option><option value="subscription_extension">{{ t('adminLuckyDraw.extension') }}</option></select></label>
-        <label v-if="prize.kind === 'txb_delta'"><span>{{ t('adminLuckyDraw.signedChange') }}</span><input v-model.trim="prize.txbDelta" inputmode="decimal" :placeholder="t('adminLuckyDraw.signedPlaceholder')" required /></label>
-        <label v-else-if="prize.kind === 'coupon_grant'"><span>{{ t('adminLuckyDraw.coupon') }}</span><select v-model="prize.couponId" required><option value="" disabled>{{ t('adminLuckyDraw.selectCoupon') }}</option><option v-for="coupon in coupons" :key="coupon.id" :value="coupon.id">{{ coupon.code }} — {{ coupon.name }}</option></select></label>
-        <label v-else-if="prize.kind === 'subscription_extension'"><span>{{ t('adminLuckyDraw.extensionDays') }}</span><input v-model.number="prize.extensionDays" type="number" min="1" max="3650" step="1" required /></label>
-        <button class="icon-button icon-button--danger" type="button" :disabled="draft.prizes.length === 1" :aria-label="t('adminLuckyDraw.removePrize', { name: prize.name || t('adminLuckyDraw.prizeNumber', { index: index + 1 }) })" @click="draft.prizes.splice(index, 1)"><PhTrash :size="18" /></button>
-      </article>
+      <div class="prize-list__heading"><div><h4 id="prize-list-title">{{ t('adminLuckyDraw.weightedPrizes') }}</h4><p>{{ t('adminLuckyDraw.prizeHint') }}</p></div><UButton color="neutral" variant="outline" icon="i-ph-plus" :label="t('adminLuckyDraw.addPrize')" @click="draft.prizes.push(blankPrize())" /></div>
+      <div v-auto-animate class="prize-list__items">
+        <article v-for="(prize, index) in draft.prizes" :key="`${prize.id}-${index}`" class="prize-row">
+          <UFormField :name="`prize-name-${index}`" :label="t('adminLuckyDraw.prizeName')" required><UInput v-model.trim="prize.name" class="w-full" :maxlength="80" /></UFormField>
+          <UFormField :name="`prize-weight-${index}`" :label="t('adminLuckyDraw.weight')" required><UInput v-model.trim="prize.weight" class="w-full" inputmode="numeric" pattern="[0-9]+" /></UFormField>
+          <UFormField :name="`prize-stock-${index}`" :label="t('adminLuckyDraw.stock')"><UInput v-model.trim="prize.stockRemaining" class="w-full" inputmode="numeric" pattern="[0-9]*" :placeholder="t('adminLuckyDraw.unlimited')" /></UFormField>
+          <UFormField :name="`prize-reward-${index}`" :label="t('adminLuckyDraw.reward')"><USelect v-model="prize.kind" class="w-full" :items="rewardItems" /></UFormField>
+          <UFormField v-if="prize.kind === 'txb_delta'" :name="`prize-change-${index}`" :label="t('adminLuckyDraw.signedChange')" required><UInput v-model.trim="prize.txbDelta" class="w-full" inputmode="decimal" :placeholder="t('adminLuckyDraw.signedPlaceholder')" /></UFormField>
+          <UFormField v-else-if="prize.kind === 'coupon_grant'" :name="`prize-coupon-${index}`" :label="t('adminLuckyDraw.coupon')" required><USelect v-model="prize.couponId" class="w-full" :items="couponItems" :placeholder="t('adminLuckyDraw.selectCoupon')" /></UFormField>
+          <UFormField v-else-if="prize.kind === 'subscription_extension'" :name="`prize-days-${index}`" :label="t('adminLuckyDraw.extensionDays')" required><UInput v-model.number="prize.extensionDays" class="w-full" type="number" :min="1" :max="3650" :step="1" /></UFormField>
+          <UButton class="prize-row__remove" color="error" variant="ghost" square icon="i-ph-trash" :disabled="draft.prizes.length === 1" :aria-label="t('adminLuckyDraw.removePrize', { name: prize.name || t('adminLuckyDraw.prizeNumber', { index: index + 1 }) })" @click="draft.prizes.splice(index, 1)" />
+        </article>
+      </div>
     </section>
 
     <p v-if="validationError" class="field-error catalog-editor__wide" role="alert">{{ validationError }}</p>
 
-    <div class="button-row catalog-editor__wide"><button class="button button--secondary" type="button" @click="emit('cancel')">{{ t('common.cancel') }}</button><button class="button button--primary" type="submit" :disabled="busy">{{ busy ? t('common.saving') : t('adminLuckyDraw.save') }}</button></div>
+    <div class="button-row catalog-editor__wide"><UButton color="neutral" variant="outline" :label="t('common.cancel')" @click="emit('cancel')" /><UButton type="submit" :loading="busy" :disabled="busy" :label="busy ? t('common.saving') : t('adminLuckyDraw.save')" /></div>
   </form>
 </template>
 
 <style scoped>
 .catalog-editor__heading p, .prize-list p { margin: 0.25rem 0 0; color: var(--text-muted); font-size: 0.76rem; }
 .prize-list { display: grid; gap: 0.7rem; }
+.prize-list__items { display: grid; gap: 0.7rem; }
 .prize-list__heading { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; }
 .prize-list h4 { margin: 0; }
 .prize-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.55rem; padding: 0.7rem; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface); }
-.prize-row > .icon-button { align-self: end; justify-self: end; }
+.prize-row__remove { align-self: end; justify-self: end; }
 @media (min-width: 820px) { .prize-row { grid-template-columns: repeat(3, minmax(0, 1fr)) auto; } }
 </style>

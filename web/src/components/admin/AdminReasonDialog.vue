@@ -1,14 +1,4 @@
 <script setup lang="ts">
-import {
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogOverlay,
-  DialogPortal,
-  DialogRoot,
-  DialogTitle,
-} from 'reka-ui'
-import { PhArrowRight, PhX } from '@phosphor-icons/vue'
 import { useI18n } from '@/i18n'
 
 const open = defineModel<boolean>('open', { required: true })
@@ -27,22 +17,15 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <DialogRoot v-model:open="open">
-    <DialogPortal to="#overlays">
-      <DialogOverlay class="dialog-overlay" />
-      <DialogContent class="dialog-content dialog-content--compact">
-        <header class="dialog-header">
-          <div><DialogTitle class="dialog-title">{{ title }}</DialogTitle><DialogDescription class="dialog-description">{{ description }}</DialogDescription></div>
-          <DialogClose class="icon-button" :aria-label="t('common.close')"><PhX :size="19" /></DialogClose>
-        </header>
-        <label class="form-stack">
-          <span class="field-label">{{ t('adminReason.reason') }}</span>
-          <textarea v-model.trim="reason" rows="3" minlength="4" maxlength="300" :placeholder="t('adminReason.placeholder')" />
-        </label>
-        <button class="button button--wide" :class="danger ? 'button--danger' : 'button--primary'" type="button" :disabled="reason.length < 4 || busy" @click="$emit('confirm')">
-          {{ busy ? t('adminReason.working') : confirmLabel }} <PhArrowRight :size="18" />
-        </button>
-      </DialogContent>
-    </DialogPortal>
-  </DialogRoot>
+  <UModal v-model:open="open" :title="title" :description="description" :dismissible="!busy" :ui="{ footer: 'justify-end' }">
+    <template #body>
+      <UFormField name="reason" :label="t('adminReason.reason')" required>
+        <UTextarea v-model.trim="reason" :rows="3" :minlength="4" :maxlength="300" :placeholder="t('adminReason.placeholder')" />
+      </UFormField>
+    </template>
+    <template #footer="{ close }">
+      <UButton color="neutral" variant="outline" :label="t('common.cancel')" :disabled="busy" @click="close" />
+      <UButton :color="danger ? 'error' : 'primary'" trailing-icon="i-ph-arrow-right" :disabled="reason.length < 4 || busy" :loading="busy" :label="busy ? t('adminReason.working') : confirmLabel" @click="$emit('confirm')" />
+    </template>
+  </UModal>
 </template>

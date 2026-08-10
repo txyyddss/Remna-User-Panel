@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { reactive, shallowRef, watch } from 'vue'
-import { CheckboxIndicator, CheckboxRoot } from 'reka-ui'
-import { PhCheck, PhFloppyDisk, PhNetwork, PhX } from '@phosphor-icons/vue'
 
 import { api } from '@/api/client'
 import type { RemnaNode, SquadProduct, SquadProductWrite } from '@/api/types'
@@ -40,7 +38,7 @@ async function loadNodes(): Promise<void> {
   try {
     nodes.value = (await api.getAdminSquadNodes(props.squad.id)).items
     selectedNodeUuids.value = nodes.value.filter((node) => node.accessible).map((node) => node.uuid)
-  } catch (caught) {
+  } catch {
     nodesError.value = t('adminSquad.loadError')
   } finally {
     nodesBusy.value = false
@@ -69,7 +67,7 @@ async function saveNodes(): Promise<void> {
   try {
     nodes.value = (await api.updateAdminSquadNodes(props.squad.id, selectedNodeUuids.value)).items
     selectedNodeUuids.value = nodes.value.filter((node) => node.accessible).map((node) => node.uuid)
-  } catch (caught) {
+  } catch {
     nodesError.value = t('adminSquad.saveError')
   } finally {
     nodesBusy.value = false
@@ -96,28 +94,24 @@ function submit(): void {
         <h3>{{ t('adminSquad.edit', { name: squad.name }) }}</h3>
         <p>{{ t('adminSquad.identityHint') }}</p>
       </div>
-      <button class="icon-button" type="button" :aria-label="t('adminSquad.close')" @click="$emit('cancel')">
-        <PhX :size="19" />
-      </button>
+      <UButton color="neutral" variant="ghost" square icon="i-ph-x" :aria-label="t('adminSquad.close')" @click="emit('cancel')" />
     </div>
     <MarkdownEditorField v-model="draft.description" class="catalog-editor__wide" :label="t('adminSquad.description')" :placeholder="t('adminSquad.descriptionPlaceholder')" :maxlength="1000" />
     <TxbAmountField id="squad-price" v-model="draft.priceTxb" :label="t('adminSquad.price')" min-minor="0" required />
     <SwitchField id="squad-visible" v-model="draft.visible" :label="t('adminSquad.visible')" :help="t('adminSquad.visibleHint')" />
     <section class="node-assignment catalog-editor__wide">
-      <div class="node-assignment__heading"><div><h4><PhNetwork :size="18" /> {{ t('adminSquad.nodes') }}</h4><p>{{ t('adminSquad.nodeHint') }}</p></div><button class="button button--secondary" type="button" :disabled="nodesBusy" @click="saveNodes">{{ nodesBusy ? t('adminSquad.verifying') : t('adminSquad.saveNodes') }}</button></div>
+      <div class="node-assignment__heading"><div><h4><UIcon name="i-ph-network" /> {{ t('adminSquad.nodes') }}</h4><p>{{ t('adminSquad.nodeHint') }}</p></div><UButton color="neutral" variant="outline" :loading="nodesBusy" :disabled="nodesBusy" :label="nodesBusy ? t('adminSquad.verifying') : t('adminSquad.saveNodes')" @click="saveNodes" /></div>
       <InlineNotice v-if="nodesError" tone="warning">{{ nodesError }}</InlineNotice>
-      <div class="node-list">
-        <label v-for="node in nodes" :key="node.uuid" class="node-row">
+      <div v-auto-animate class="node-list">
+        <div v-for="node in nodes" :key="node.uuid" class="node-row">
           <CountryFlag :code="node.countryCode" />
           <span><strong>{{ node.name }}</strong><small>{{ t('adminSquad.nodeTraffic', { country: node.countryCode || t('adminSquad.isoUnavailable'), multiplier: node.consumptionMultiplier.toFixed(2) }) }}</small></span>
-          <CheckboxRoot class="checkbox-control" :model-value="selectedNodeUuids.includes(node.uuid)" :disabled="nodesBusy" @update:model-value="toggleNode(node.uuid)"><CheckboxIndicator class="checkbox-indicator"><PhCheck :size="16" weight="bold" /></CheckboxIndicator></CheckboxRoot>
-        </label>
+          <UCheckbox :model-value="selectedNodeUuids.includes(node.uuid)" :disabled="nodesBusy" :aria-label="node.name" @update:model-value="toggleNode(node.uuid)" />
+        </div>
         <p v-if="!nodesBusy && !nodes.length" class="field-hint">{{ t('adminSquad.noNodes') }}</p>
       </div>
     </section>
-    <button class="button button--primary catalog-editor__wide" type="submit" :disabled="busy">
-      <PhFloppyDisk :size="18" /> {{ busy ? t('common.saving') : t('adminSquad.saveSquad') }}
-    </button>
+    <UButton class="catalog-editor__wide" type="submit" icon="i-ph-floppy-disk" :loading="busy" :disabled="busy" :label="busy ? t('common.saving') : t('adminSquad.saveSquad')" />
   </form>
 </template>
 

@@ -2,6 +2,7 @@ import { effectScope } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { FeaturePaymentOrder } from '@/api/features'
+import { setLocale, t } from '@/i18n'
 
 const { createPaymentOrder, getPaymentOrder, cancelPaymentOrder } = vi.hoisted(() => ({
   createPaymentOrder: vi.fn(),
@@ -49,6 +50,7 @@ describe('payment order polling', () => {
   afterEach(() => {
     vi.useRealTimers()
     vi.clearAllMocks()
+    setLocale('en')
   })
 
   it('recognizes authoritative terminal provider states', () => {
@@ -113,6 +115,37 @@ describe('payment order polling', () => {
     expect(addressPayment.stage.value).toBe('pending')
     expect(addressPayment.order.value?.receivingAddress).toBe('TExampleAddress')
     secondScope.stop()
+  })
+
+  it('uses localized copy when a provider omits every payment target', async () => {
+    setLocale('zh-CN')
+    createPaymentOrder.mockResolvedValue({ ...pendingOrder, paymentUrl: null, qrPayload: null, receivingAddress: null })
+    const scope = effectScope()
+    const payment = scope.run(() => usePaymentOrder({ onPaid: vi.fn() }))!
+
+    payment.chooseMethod('ezpay:alipay')
+    await payment.createOrder()
+
+    expect(payment.stage.value).toBe('configure')
+    expect(payment.error.value).toBe(t('payment.targetMissing'))
+    scope.stop()
+  })
+
+  it('localizes authoritative terminal provider states', async () => {
+    vi.useFakeTimers()
+    setLocale('zh-CN')
+    createPaymentOrder.mockResolvedValue(pendingOrder)
+    getPaymentOrder.mockResolvedValue({ ...pendingOrder, status: 'refunded' })
+    const scope = effectScope()
+    const payment = scope.run(() => usePaymentOrder({ onPaid: vi.fn() }))!
+
+    payment.chooseMethod('ezpay:alipay')
+    await payment.createOrder()
+    await vi.advanceTimersByTimeAsync(2000)
+
+    expect(payment.stage.value).toBe('configure')
+    expect(payment.error.value).toBe(t('payment.terminalStatus', { status: t('payment.status.refunded') }))
+    scope.stop()
   })
 
   it('honors a paid response that wins the cancellation race', async () => {

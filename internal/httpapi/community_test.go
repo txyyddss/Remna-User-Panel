@@ -243,8 +243,54 @@ func TestQuestionnaireClosesAtRequestAndResponseMapping(t *testing.T) {
 	if err != nil || clearedInput.ClosesAt != nil {
 		t.Fatalf("cleared closesAt merge = (%+v, %v)", clearedInput.ClosesAt, err)
 	}
-	response := mapQuestionnaire(questionnaires.Questionnaire{QuestionnaireInput: questionnaires.QuestionnaireInput{ID: "questionnaire-1", ClosesAt: &closesAt}})
+	response := mapQuestionnaire(questionnaires.Questionnaire{
+		QuestionnaireInput: questionnaires.QuestionnaireInput{ID: "questionnaire-1", ClosesAt: &closesAt},
+		ParticipantCount:   7,
+		RewardedCount:      3,
+	})
 	if response.ClosesAt == nil || !response.ClosesAt.Equal(closesAt) {
 		t.Fatalf("response closesAt = %v", response.ClosesAt)
+	}
+	if response.ParticipantCount != 7 || response.RewardedCount != 3 {
+		t.Fatalf("response counters = (%d, %d), want (7, 3)", response.ParticipantCount, response.RewardedCount)
+	}
+}
+
+func TestDecodeEmbyPreferencesRequiresDisabledLibraryIDs(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		body         string
+		withPassword bool
+		wantPassword string
+		wantErr      bool
+	}{
+		{name: "setup requires libraries", body: `{"password":"secret"}`, withPassword: true, wantErr: true},
+		{name: "preferences require libraries", body: `{"maxParentalRating":12}`, wantErr: true},
+		{name: "null libraries are rejected", body: `{"disabledLibraryIds":null}`, wantErr: true},
+		{name: "preferences reject setup password", body: `{"password":"secret","disabledLibraryIds":[]}`, wantErr: true},
+		{name: "empty preferences list is present", body: `{"maxParentalRating":12,"disabledLibraryIds":[]}`},
+		{name: "setup accepts a present list", body: `{"password":"secret","maxParentalRating":12,"disabledLibraryIds":["library-1"]}`, withPassword: true, wantPassword: "secret"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(test.body))
+			response := httptest.NewRecorder()
+			preferences, password, err := decodeEmbyPreferences(response, request, test.withPassword)
+			if test.wantErr && err == nil {
+				t.Fatal("decodeEmbyPreferences() unexpectedly succeeded")
+			}
+			if !test.wantErr && err != nil {
+				t.Fatalf("decodeEmbyPreferences(): %v", err)
+			}
+			if !test.wantErr && preferences.DisabledLibraryIDs == nil {
+				t.Fatal("disabledLibraryIds lost presence")
+			}
+			if password != test.wantPassword {
+				t.Fatalf("password = %q, want %q", password, test.wantPassword)
+			}
+		})
 	}
 }

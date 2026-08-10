@@ -1,0 +1,199 @@
+package database
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"strconv"
+	"time"
+)
+
+// PurchaseByID returns transaction facts combined with the combo's current
+// live configuration, as required by the mutable-catalog contract.
+func (s *Store) PurchaseByID(ctx context.Context, id string) (model.Purchase, error) {
+	purchase, err := scanPurchase(s.db.QueryRowContext(ctx, purchaseSelect+` WHERE purchases.id=?`, id))
+	if err != nil {
+		return model.Purchase{}, err
+	}
+	purchase.SquadUUIDs, err = s.purchaseSquads(ctx, purchase.ID)
+	return purchase, err
+}
+
+// ListPurchases returns a user's purchase history.
+func (s *Store) ListPurchases(ctx context.Context, userID string) ([]model.Purchase, error) {
+	rows, err := s.db.QueryContext(ctx, purchaseSelect+` WHERE purchases.user_id=? ORDER BY purchases.valid_from DESC,purchases.created_at DESC`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list purchases: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	purchases := make([]model.Purchase, 0)
+	for rows.Next() {
+		purchase, err := scanPurchase(rows)
+		if err != nil {
+			return nil, err
+		}
+		purchases = append(purchases, purchase)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	for index := range purchases {
+		purchases[index].SquadUUIDs, err = s.purchaseSquads(ctx, purchases[index].ID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return purchases, nil
+}
+
+// ListAllPurchases returns recent entitlement records for the administrative view.
+func (s *Store) ListAllPurchases(ctx context.Context, limit int) ([]model.Purchase, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 100
+	}
+	rows, err := s.db.QueryContext(ctx, purchaseSelect+` ORDER BY purchases.created_at DESC LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	purchases := make([]model.Purchase, 0)
+	for rows.Next() {
+		purchase, err := scanPurchase(rows)
+		if err != nil {
+			return nil, err
+		}
+		purchases = append(purchases, purchase)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	for index := range purchases {
+		purchases[index].SquadUUIDs, err = s.purchaseSquads(ctx, purchases[index].ID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return purchases, nil
+}
+
+// CancelPurchase credits its snapshotted price and schedules entitlement replacement when needed.
+func (s *Store) CancelPurchase(ctx context.Context, purchaseID, reason string, now time.Time) (model.Purchase, error) {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return model.Purchase{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	purchase, err := scanPurchase(tx.QueryRowContext(ctx, purchaseSelect+` WHERE purchases.id=?`, purchaseID))
+	if err != nil {
+		return model.Purchase{}, err
+	}
+	if purchase.Status == "cancelled" {
+		return purchase, nil
+	}
+	if purchase.Status == "expired" || purchase.Status == "failed" {
+		return model.Purchase{}, ErrConflict
+	}
+	previousStatus := purchase.Status
+	if _, err := tx.ExecContext(ctx, `UPDATE purchases SET status='cancelled',updated_at=? WHERE id=?`, stamp(now), purchase.ID); err != nil {
+		return model.Purchase{}, err
+	}
+	balance, err := adjustBalanceTx(ctx, tx, purchase.UserID, purchase.PriceTXBMinor, now)
+	if err != nil {
+		return model.Purchase{}, fmt.Errorf("refund cancelled purchase: %w", err)
+	}
+	if _, err := insertLedgerTx(ctx, tx, purchase.UserID, purchase.PriceTXBMinor, balance, "admin_entitlement_cancellation", purchase.ID, reason, now); err != nil {
+		return model.Purchase{}, err
+	}
+	if previousStatus != "queued" {
+		if err := insertOutboxTx(ctx, tx, "remna_sync_user", `{"userId":"`+purchase.UserID+`"}`, now, now); err != nil {
+			return model.Purchase{}, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return model.Purchase{}, err
+	}
+	return s.PurchaseByID(ctx, purchase.ID)
+}
+
+const purchaseSelect = `SELECT purchases.id,purchases.user_id,purchases.combo_id,combos.name,purchases.charged_txb_minor,purchases.valid_from,purchases.valid_until,
+	purchases.status,combos.traffic_limit_bytes,combos.reset_strategy,purchases.coupon_grant_id,COALESCE(purchases.gross_price_txb_minor,purchases.charged_txb_minor),purchases.coupon_discount_txb_minor,
+	combos.rollover_min_remaining_bps,combos.rollover_max_txb_minor,purchases.created_at,purchases.updated_at FROM purchases JOIN combos ON combos.id=purchases.combo_id`
+
+func scanPurchase(row rowScanner) (model.Purchase, error) {
+	var purchase model.Purchase
+	var validFrom, validUntil, created, updated string
+	var couponGrantID sql.NullString
+	if err := row.Scan(&purchase.ID, &purchase.UserID, &purchase.ComboID, &purchase.ComboName, &purchase.PriceTXBMinor,
+		&validFrom, &validUntil, &purchase.Status, &purchase.TrafficLimitBytes, &purchase.ResetStrategy, &couponGrantID, &purchase.GrossPriceTXBMinor,
+		&purchase.CouponDiscountTXBMinor, &purchase.RolloverMinRemainingBPS, &purchase.RolloverMaxTXBMinor, &created, &updated); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return model.Purchase{}, ErrNotFound
+		}
+		return model.Purchase{}, fmt.Errorf("scan purchase: %w", err)
+	}
+	purchase.Price = model.TXBMoney(purchase.PriceTXBMinor)
+	purchase.GrossPrice = model.TXBMoney(purchase.GrossPriceTXBMinor)
+	purchase.CouponDiscount = model.TXBMoney(purchase.CouponDiscountTXBMinor)
+	purchase.CouponGrantID = nullableString(couponGrantID)
+	purchase.RolloverMax = model.TXBMoney(purchase.RolloverMaxTXBMinor)
+	purchase.TrafficLimit = strconv.FormatInt(purchase.TrafficLimitBytes, 10)
+	var err error
+	if purchase.ValidFrom, err = parseStamp(validFrom); err != nil {
+		return model.Purchase{}, err
+	}
+	if purchase.ValidUntil, err = parseStamp(validUntil); err != nil {
+		return model.Purchase{}, err
+	}
+	if purchase.CreatedAt, err = parseStamp(created); err != nil {
+		return model.Purchase{}, err
+	}
+	purchase.UpdatedAt, err = parseStamp(updated)
+	return purchase, err
+}
+
+func (s *Store) purchaseSquads(ctx context.Context, purchaseID string) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT value AS remna_squad_uuid
+		FROM purchases JOIN combos ON combos.id=purchases.combo_id, json_each(combos.included_squad_uuids)
+		WHERE purchases.id=?
+		UNION
+		SELECT remna_squad_uuid FROM purchase_addons WHERE purchase_id=?
+		ORDER BY remna_squad_uuid`, purchaseID, purchaseID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	result := make([]string, 0)
+	for rows.Next() {
+		var value string
+		if err := rows.Scan(&value); err != nil {
+			return nil, err
+		}
+		result = append(result, value)
+	}
+	return result, rows.Err()
+}
+
+// ActiveAndQueuedPurchases returns the current home-screen entitlement summary.
+func (s *Store) ActiveAndQueuedPurchases(ctx context.Context, userID string, now time.Time) (*model.Purchase, *model.Purchase, error) {
+	purchases, err := s.ListPurchases(ctx, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	var active, queued *model.Purchase
+	for index := range purchases {
+		purchase := purchases[index]
+		if (purchase.Status == "active" || purchase.Status == "activating") && !purchase.ValidUntil.Before(now) && active == nil {
+			copy := purchase
+			active = &copy
+		}
+		if purchase.Status == "queued" && queued == nil {
+			copy := purchase
+			queued = &copy
+		}
+	}
+	return active, queued, nil
+}

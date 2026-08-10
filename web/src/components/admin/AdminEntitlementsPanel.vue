@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, shallowRef } from 'vue'
-import { PhProhibit, PhStack } from '@phosphor-icons/vue'
 
 import type { AdminEntitlement } from '@/api/types'
 import StatusBadge from '@/components/common/StatusBadge.vue'
@@ -16,12 +15,21 @@ const reason = shallowRef('')
 const statusFilter = shallowRef<'all' | AdminEntitlement['status']>('all')
 const { t } = useI18n()
 
+const statusItems = computed(() => [
+  { value: 'all', label: t('adminEntitlements.all') },
+  { value: 'activating', label: t('adminEntitlements.activating') },
+  { value: 'active', label: t('common.active') },
+  { value: 'queued', label: t('common.queued') },
+  { value: 'expired', label: t('adminEntitlements.expired') },
+  { value: 'cancelled', label: t('adminEntitlements.cancelled') },
+  { value: 'failed', label: t('adminPayments.failed') },
+])
 const filtered = computed(() => statusFilter.value === 'all'
   ? entitlements.items.value
   : entitlements.items.value.filter((item) => item.status === statusFilter.value))
 
-function canCancel(entitlement: AdminEntitlement): boolean {
-  return entitlement.status === 'activating' || entitlement.status === 'active' || entitlement.status === 'queued'
+function canCancel(item: AdminEntitlement): boolean {
+  return item.status === 'activating' || item.status === 'active' || item.status === 'queued'
 }
 
 function tone(status: AdminEntitlement['status']): 'neutral' | 'success' | 'warning' | 'danger' {
@@ -31,77 +39,44 @@ function tone(status: AdminEntitlement['status']): 'neutral' | 'success' | 'warn
   return 'neutral'
 }
 
+function statusLabel(status: AdminEntitlement['status']): string {
+  if (status === 'active') return t('common.active')
+  if (status === 'queued') return t('common.queued')
+  if (status === 'failed') return t('adminPayments.failed')
+  return t(`adminEntitlements.${status}`)
+}
+
 async function cancelEntitlement(): Promise<void> {
   if (!selected.value) return
   const id = selected.value.id
   const { api } = await import('@/api/client')
   const success = await entitlements.perform(() => api.cancelAdminEntitlement(id, reason.value))
-  if (success) {
-    selected.value = null
-    reason.value = ''
-  }
+  if (success) { selected.value = null; reason.value = '' }
 }
 
 function setCancelOpen(open: boolean): void {
-  if (open) return
-  selected.value = null
-  reason.value = ''
+  if (!open) { selected.value = null; reason.value = '' }
 }
 </script>
 
 <template>
   <section class="admin-panel">
     <div class="admin-panel__heading">
-      <div>
-        <h2>{{ t('adminEntitlements.title') }}</h2>
-        <p>{{ t('adminEntitlements.copy') }}</p>
-      </div>
-      <select v-model="statusFilter" class="compact-select" :aria-label="t('adminEntitlements.filter')">
-        <option value="all">{{ t('adminEntitlements.all') }}</option>
-        <option value="activating">{{ t('adminEntitlements.activating') }}</option>
-        <option value="active">{{ t('common.active') }}</option>
-        <option value="queued">{{ t('common.queued') }}</option>
-        <option value="expired">{{ t('adminEntitlements.expired') }}</option>
-        <option value="cancelled">{{ t('adminEntitlements.cancelled') }}</option>
-        <option value="failed">{{ t('adminPayments.failed') }}</option>
-      </select>
+      <div><h2>{{ t('adminEntitlements.title') }}</h2><p>{{ t('adminEntitlements.copy') }}</p></div>
+      <USelect v-model="statusFilter" :items="statusItems" value-key="value" :aria-label="t('adminEntitlements.filter')" />
     </div>
-
     <AdminSectionState :loading="entitlements.loading.value" :error="entitlements.error.value" @retry="entitlements.load()">
-      <div class="admin-list">
+      <div v-auto-animate class="admin-list">
         <article v-for="entitlement in filtered" :key="entitlement.id" class="admin-list-row admin-list-row--entitlement">
-          <span class="feature-icon feature-icon--small"><PhStack :size="19" /></span>
-          <div>
-            <strong>{{ entitlement.comboName }}</strong>
-            <small>{{ t('adminEntitlements.summary', { user: entitlement.userId, from: formatDate(entitlement.validFrom), to: formatDate(entitlement.validUntil) }) }}</small>
-          </div>
+          <span class="feature-icon feature-icon--small"><UIcon name="i-ph-stack" /></span>
+          <div><strong>{{ entitlement.comboName }}</strong><small>{{ t('adminEntitlements.summary', { user: entitlement.userId, from: formatDate(entitlement.validFrom), to: formatDate(entitlement.validUntil) }) }}</small></div>
           <strong>{{ formatMoney(entitlement.price) }}</strong>
-          <StatusBadge :tone="tone(entitlement.status)" :label="entitlement.status" />
-          <button
-            v-if="canCancel(entitlement)"
-            class="button button--ghost-danger button--small"
-            type="button"
-            @click="selected = entitlement"
-          >
-            <PhProhibit :size="17" /> {{ t('common.cancel') }}
-          </button>
+          <StatusBadge :tone="tone(entitlement.status)" :label="statusLabel(entitlement.status)" />
+          <UButton v-if="canCancel(entitlement)" size="sm" color="error" variant="ghost" icon="i-ph-prohibit" :label="t('common.cancel')" @click="selected = entitlement" />
         </article>
-        <div v-if="!filtered.length" class="empty-inline">
-          <div><h3>{{ t('adminEntitlements.none') }}</h3><p>{{ t('adminEntitlements.noneHint') }}</p></div>
-        </div>
+        <div v-if="!filtered.length" class="empty-inline"><div><h3>{{ t('adminEntitlements.none') }}</h3><p>{{ t('adminEntitlements.noneHint') }}</p></div></div>
       </div>
     </AdminSectionState>
-
-    <AdminReasonDialog
-      :open="selected !== null"
-      v-model:reason="reason"
-      :title="t('adminEntitlements.cancelTitle')"
-      :description="t('adminEntitlements.cancelDescription')"
-      :confirm-label="t('adminEntitlements.cancelEntitlement')"
-      :busy="entitlements.busy.value"
-      danger
-      @update:open="setCancelOpen"
-      @confirm="cancelEntitlement"
-    />
+    <AdminReasonDialog :open="selected !== null" v-model:reason="reason" :title="t('adminEntitlements.cancelTitle')" :description="t('adminEntitlements.cancelDescription')" :confirm-label="t('adminEntitlements.cancelEntitlement')" :busy="entitlements.busy.value" danger @update:open="setCancelOpen" @confirm="cancelEntitlement" />
   </section>
 </template>

@@ -1,0 +1,15 @@
+get:
+  tags: [Admin]
+  operationId: listAdminRefunds
+  summary: List immutable refund records
+  responses:
+    '200':
+      description: Refund page.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/RefundPage'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../openapi.yaml#/components/responses/Forbidden'

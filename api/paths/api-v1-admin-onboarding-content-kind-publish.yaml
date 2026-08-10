@@ -1,0 +1,21 @@
+post:
+  tags: [Admin, Onboarding]
+  operationId: publishAdminOnboarding
+  summary: Publish the current validated draft
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/OnboardingContentKind'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema: { $ref: '../openapi.yaml#/components/schemas/OnboardingPublishRequest' }
+  responses:
+    '200':
+      description: Published bundle; changed agreements require renewed consent for every user.
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/OnboardingBundle' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }
+    '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }

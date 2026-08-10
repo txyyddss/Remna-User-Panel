@@ -34,6 +34,6 @@ const { overview, loading, busy, error, message, load, setup, updatePreferences,
         @setup="setup"
       />
     </template>
-    <div v-else class="error-state"><h1>{{ $t('emby.unavailable') }}</h1><p>{{ error }}</p><button class="button button--primary" type="button" @click="load">{{ $t('common.tryAgain') }}</button></div>
+    <div v-else class="error-state"><h1>{{ $t('emby.unavailable') }}</h1><p>{{ error }}</p><UButton :label="$t('common.tryAgain')" @click="load" /></div>
   </div>
 </template>

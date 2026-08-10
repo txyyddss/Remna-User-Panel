@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { PhArrowRight, PhAt } from '@phosphor-icons/vue'
-
 const username = defineModel<string>({ required: true })
 
 defineProps<{
   valid: boolean
   hint: string
   loading: boolean
+  showAction?: boolean
 }>()
 
 defineEmits<{ submit: [] }>()
@@ -21,29 +20,31 @@ defineEmits<{ submit: [] }>()
     </header>
 
     <form class="form-stack" @submit.prevent="$emit('submit')">
-      <label class="field-label" for="carpool-username">{{ $t('onboarding.username') }}</label>
-      <div class="input-shell" :class="{ 'input-shell--valid': valid }">
-        <PhAt :size="20" aria-hidden="true" />
-        <input
+      <UFormField name="username" :label="$t('onboarding.username')" :description="hint">
+        <UInput
           id="carpool-username"
           v-model.trim="username"
+          icon="i-ph-at"
           name="username"
           type="text"
           inputmode="text"
           autocomplete="off"
           autocapitalize="none"
-          spellcheck="false"
-          maxlength="9"
-          placeholder="river"
-          aria-describedby="username-hint"
+          :spellcheck="false"
+          :maxlength="9"
+          :placeholder="$t('onboarding.usernamePlaceholder')"
         />
-      </div>
-      <p id="username-hint" class="field-hint" :class="{ 'field-hint--valid': valid }">{{ hint }}</p>
+      </UFormField>
 
-      <button class="button button--primary button--wide" type="submit" :disabled="!valid || loading">
-        {{ loading ? 'Checking availability' : 'Reserve username' }}
-        <PhArrowRight :size="19" />
-      </button>
+      <UButton
+        v-if="showAction !== false"
+        block
+        type="submit"
+        trailing-icon="i-ph-arrow-right"
+        :disabled="!valid || loading"
+        :loading="loading"
+        :label="loading ? $t('onboarding.checkingAvailability') : $t('onboarding.reserveUsername')"
+      />
     </form>
   </section>
 </template>

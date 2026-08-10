@@ -1,0 +1,251 @@
+Coupon:
+  type: object
+  additionalProperties: false
+  required: [id, code, name, kind, valueMinorOrBps, eligibleComboIds, eligibleSquadIds, expiresAt, globalUseLimit, perUserUseLimit, active, usageCount, createdAt, updatedAt]
+  properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    code:
+      type: string
+      pattern: '^[A-Z0-9][A-Z0-9_-]{3,63}$'
+    name:
+      type: string
+    kind:
+      $ref: '../../openapi.yaml#/components/schemas/CouponKind'
+    discountMode:
+      $ref: '../../openapi.yaml#/components/schemas/CouponDiscountMode'
+    valueMinorOrBps:
+      type: string
+      pattern: '^\d+$'
+    percentCapMinor:
+      type: string
+      pattern: '^\d+$'
+    eligibleComboIds:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/ID'
+    eligibleSquadIds:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/ID'
+    expiresAt:
+      type: [string, 'null']
+      format: date-time
+    globalUseLimit:
+      type: [integer, 'null']
+      format: int64
+      minimum: 1
+    perUserUseLimit:
+      type: [integer, 'null']
+      format: int64
+      minimum: 1
+    active:
+      type: boolean
+    usageCount:
+      type: integer
+      format: int64
+      minimum: 0
+    createdAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+    updatedAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+
+CouponWrite:
+  type: object
+  additionalProperties: false
+  description: Create requests supply all definition fields; updates may supply only fields to replace.
+  properties:
+    code:
+      type: string
+      pattern: '^[A-Za-z0-9][A-Za-z0-9_-]{3,63}$'
+    name:
+      type: string
+    kind:
+      $ref: '../../openapi.yaml#/components/schemas/CouponKind'
+    discountMode:
+      $ref: '../../openapi.yaml#/components/schemas/CouponDiscountMode'
+    valueMinorOrBps:
+      type: string
+      pattern: '^\d+$'
+    percentCapMinor:
+      type: [string, 'null']
+      pattern: '^\d+$'
+      description: Omit to preserve the current cap, send null to clear it, or send a decimal-string TXB amount to replace it.
+    eligibleComboIds:
+      type: array
+      uniqueItems: true
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/ID'
+    eligibleSquadIds:
+      type: array
+      uniqueItems: true
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/ID'
+    expiresAt:
+      type: [string, 'null']
+      format: date-time
+    globalUseLimit:
+      type: [integer, 'null']
+      format: int64
+      minimum: 1
+    perUserUseLimit:
+      type: [integer, 'null']
+      format: int64
+      minimum: 1
+    active:
+      type: boolean
+
+CouponList:
+  type: object
+  additionalProperties: false
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/Coupon'
+
+CouponGrant:
+  type: object
+  additionalProperties: false
+  required: [id, coupon, sourceType, sourceId, status, useCount, createdAt, consumedAt]
+  properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    coupon:
+      $ref: '../../openapi.yaml#/components/schemas/Coupon'
+    sourceType:
+      type: string
+    sourceId:
+      type: string
+    status:
+      type: string
+      enum: [active, consumed, expired]
+    useCount:
+      type: integer
+      format: int64
+      minimum: 0
+    createdAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+    consumedAt:
+      type: [string, 'null']
+      format: date-time
+
+CouponGrantList:
+  type: object
+  additionalProperties: false
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/CouponGrant'
+
+CouponRedeemRequest:
+  type: object
+  additionalProperties: false
+  required: [code]
+  properties:
+    code:
+      type: string
+      minLength: 4
+      maxLength: 64
+
+CouponRedemption:
+  type: object
+  additionalProperties: false
+  required: [id, coupon, grant, balanceDeltaMinor, balanceAfterMinor, idempotencyKey, replayed, createdAt]
+  properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    coupon:
+      $ref: '../../openapi.yaml#/components/schemas/Coupon'
+    grant:
+      oneOf:
+        - $ref: '../../openapi.yaml#/components/schemas/CouponGrant'
+        - type: 'null'
+    balanceDeltaMinor:
+      $ref: '../../openapi.yaml#/components/schemas/DecimalInteger'
+    balanceAfterMinor:
+      $ref: '../../openapi.yaml#/components/schemas/DecimalInteger'
+    idempotencyKey:
+      type: string
+    replayed:
+      type: boolean
+    createdAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+
+QuestionnaireStatus:
+  type: string
+  enum: [draft, active, closed, settling, settled]
+
+Questionnaire:
+  type: object
+  additionalProperties: false
+  required: [id, title, description, formUrl, rewardTxbMinor, status, closesAt, participantCount, rewardedCount, createdAt, updatedAt]
+  properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    title:
+      type: string
+    description:
+      type: string
+    formUrl:
+      type: string
+      format: uri
+      pattern: '^https://'
+    rewardTxbMinor:
+      type: string
+      pattern: '^\d+$'
+    status:
+      $ref: '../../openapi.yaml#/components/schemas/QuestionnaireStatus'
+    closesAt:
+      type: [string, 'null']
+      format: date-time
+    participantCount:
+      type: integer
+      minimum: 0
+    rewardedCount:
+      type: integer
+      minimum: 0
+    createdAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+    updatedAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+
+QuestionnaireWrite:
+  type: object
+  additionalProperties: false
+  description: Create requests supply all definition fields; updates may replace selected fields.
+  properties:
+    title:
+      type: string
+      minLength: 1
+      maxLength: 120
+    description:
+      type: string
+      maxLength: 4000
+    formUrl:
+      type: string
+      format: uri
+      pattern: '^https://'
+    rewardTxbMinor:
+      type: string
+      pattern: '^\d+$'
+    closesAt:
+      type: [string, 'null']
+      format: date-time
+      description: Omit to preserve the current close time, send null to clear it, or send an RFC3339 timestamp to replace it.
+    status:
+      type: string
+      enum: [draft, active, closed]
+
+QuestionnaireList:
+  type: object
+  additionalProperties: false
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/Questionnaire'

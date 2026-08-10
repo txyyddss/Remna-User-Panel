@@ -1,0 +1,256 @@
+RemnaNode:
+  type: object
+  additionalProperties: false
+  required: [uuid, name, countryCode, consumptionMultiplier, activeInboundUuids, accessible]
+  properties:
+    uuid: { type: string, format: uuid }
+    name: { type: string }
+    countryCode:
+      type: string
+      pattern: '^[A-Z]{2}$'
+    consumptionMultiplier:
+      type: number
+      minimum: 0
+    activeInboundUuids:
+      type: array
+      uniqueItems: true
+      items: { type: string, format: uuid }
+    accessible: { type: boolean }
+
+RemnaNodeList:
+  type: object
+  additionalProperties: false
+  required: [items]
+  properties:
+    items:
+      type: array
+      items: { $ref: '../../openapi.yaml#/components/schemas/RemnaNode' }
+
+SquadNodeWrite:
+  type: object
+  additionalProperties: false
+  required: [nodeUuids]
+  properties:
+    nodeUuids:
+      type: array
+      maxItems: 500
+      uniqueItems: true
+      items: { type: string, format: uuid }
+
+PurchaseRequest:
+  type: object
+  additionalProperties: false
+  required: [comboId, addonSquadProductIds]
+  properties:
+    comboId:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    addonSquadProductIds:
+      type: array
+      uniqueItems: true
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/ID'
+    couponGrantId:
+      type: string
+      minLength: 1
+      description: One explicitly selected eligible wallet grant; discounts never stack.
+
+PurchaseQuote:
+  type: object
+  additionalProperties: false
+  required: [comboId, comboName, grossPrice, discount, netPrice, effectiveAt, expiresAt, queued, addonSquadUuids]
+  properties:
+    comboId: { $ref: '../../openapi.yaml#/components/schemas/ID' }
+    comboName: { type: string }
+    grossPrice: { $ref: '../../openapi.yaml#/components/schemas/Money' }
+    discount: { $ref: '../../openapi.yaml#/components/schemas/Money' }
+    netPrice: { $ref: '../../openapi.yaml#/components/schemas/Money' }
+    effectiveAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+    expiresAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+    queued: { type: boolean }
+    addonSquadUuids:
+      type: array
+      uniqueItems: true
+      items: { type: string, format: uuid }
+
+EntitlementStatus:
+  type: string
+  enum: [activating, active, queued, expired, cancelled, failed]
+
+Entitlement:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - comboId
+    - comboName
+    - squadIds
+    - status
+    - startsAt
+    - endsAt
+    - trafficLimitBytes
+    - resetStrategy
+  properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    comboId:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    comboName:
+      type: string
+    squadIds:
+      type: array
+      items:
+        type: string
+    status:
+      $ref: '../../openapi.yaml#/components/schemas/EntitlementStatus'
+    startsAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+    endsAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+    trafficLimitBytes:
+      type: string
+      pattern: '^\d+$'
+    resetStrategy:
+      $ref: '../../openapi.yaml#/components/schemas/ResetStrategy'
+
+Purchase:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - comboId
+    - comboName
+    - price
+    - grossPrice
+    - couponDiscount
+    - couponGrantId
+    - validFrom
+    - validUntil
+    - status
+    - trafficLimitBytes
+    - resetStrategy
+    - squadUuids
+    - rolloverMinRemainingBps
+    - rolloverMaxTxbMinor
+    - rolloverMax
+    - createdAt
+    - updatedAt
+  properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    comboId:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    comboName:
+      type: string
+    price:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    grossPrice:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    couponDiscount:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    couponGrantId:
+      type: [string, 'null']
+    validFrom:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+    validUntil:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+    status:
+      $ref: '../../openapi.yaml#/components/schemas/EntitlementStatus'
+    trafficLimitBytes:
+      type: string
+      pattern: '^\d+$'
+    resetStrategy:
+      $ref: '../../openapi.yaml#/components/schemas/ResetStrategy'
+    squadUuids:
+      type: array
+      items:
+        type: string
+        format: uuid
+    rolloverMinRemainingBps:
+      type: integer
+      minimum: 0
+      maximum: 10000
+    rolloverMaxTxbMinor:
+      type: string
+      pattern: '^\d+$'
+    rolloverMax:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    createdAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+    updatedAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+
+SubscriptionRotation:
+  type: object
+  additionalProperties: false
+  required: [subscriptionUrl]
+  description: The URL is a bearer credential and must not be logged, cached outside the authenticated UI, or exposed through admin list endpoints.
+  properties:
+    subscriptionUrl:
+      type: string
+      format: uri
+
+TopNode:
+  type: object
+  additionalProperties: false
+  required: [uuid, name, countryCode, totalBytes]
+  properties:
+    uuid:
+      type: string
+    name:
+      type: string
+    countryCode:
+      type: string
+    totalBytes:
+      type: string
+      pattern: '^\d+$'
+
+Statistics:
+  type: object
+  additionalProperties: false
+  required:
+    - usedTrafficBytes
+    - lifetimeTrafficBytes
+    - trafficLimitBytes
+    - onlineAt
+    - categories
+    - sparklineData
+    - topNodes
+  properties:
+    usedTrafficBytes:
+      type: string
+      pattern: '^\d+$'
+    lifetimeTrafficBytes:
+      type: string
+      pattern: '^\d+$'
+    trafficLimitBytes:
+      type: string
+      pattern: '^\d+$'
+    onlineAt:
+      type: [string, 'null']
+      format: date-time
+    categories:
+      type: array
+      items:
+        type: string
+    sparklineData:
+      type: array
+      items:
+        type: string
+        pattern: '^\d+$'
+    topNodes:
+      type: array
+      maxItems: 10
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/TopNode'
+
+StatisticPoint:
+  type: object
+  additionalProperties: false
+  required: [periodStart, count, uniqueUsers, inputTxbMinor, outputTxbMinor, netTxbMinor]
+  properties:
+    periodStart: { type: string, format: date }
+    count: { type: integer, format: int64, minimum: 0 }
+    uniqueUsers: { type: integer, format: int64, minimum: 0 }
+    inputTxbMinor: { $ref: '../../openapi.yaml#/components/schemas/DecimalInteger' }
+    outputTxbMinor: { $ref: '../../openapi.yaml#/components/schemas/DecimalInteger' }
+    netTxbMinor: { $ref: '../../openapi.yaml#/components/schemas/DecimalInteger' }

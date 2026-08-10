@@ -1,0 +1,15 @@
+get:
+  tags: [Billing]
+  operationId: getBalance
+  summary: Get current TXB balance
+  responses:
+    '200':
+      description: Current ledger-derived balance and enabled-provider availability.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/BalanceResponse'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '500':
+      $ref: '../openapi.yaml#/components/responses/InternalFailure'

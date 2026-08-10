@@ -1,0 +1,48 @@
+get:
+  tags: [Admin]
+  operationId: listAdminSquadProducts
+  summary: List imported Remnawave squad products
+  responses:
+    '200':
+      description: Squad products, including hidden or unavailable records.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [items]
+            properties:
+              items:
+                type: array
+                items:
+                  $ref: '../openapi.yaml#/components/schemas/SquadProduct'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../openapi.yaml#/components/responses/Forbidden'
+post:
+  tags: [Admin]
+  operationId: createAdminSquadProduct
+  summary: Create a local product for an existing Remnawave squad
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/SquadProductWrite'
+  responses:
+    '201':
+      description: Created squad product.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/SquadProduct'
+    '400':
+      $ref: '../openapi.yaml#/components/responses/BadRequest'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../openapi.yaml#/components/responses/Forbidden'
+    '404':
+      $ref: '../openapi.yaml#/components/responses/NotFound'
+    '422':
+      $ref: '../openapi.yaml#/components/responses/Unprocessable'

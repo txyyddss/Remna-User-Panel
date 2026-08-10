@@ -33,6 +33,9 @@ jobs:
         run: npm run generate:api
       - name: Require committed generated contract
         run: git diff --exit-code -- web/src/api/generated.ts
+      - name: Enforce repository structure and localization
+        working-directory: web
+        run: npm run audit:structure
       - name: Lint frontend
         working-directory: web
         run: npm run lint

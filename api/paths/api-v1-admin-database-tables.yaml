@@ -1,0 +1,14 @@
+get:
+  tags: [Admin, Database Administration]
+  operationId: listAdminDatabaseTables
+  summary: List allowlisted application tables and typed columns
+  description: Excludes `schema_migrations` and SQLite internal tables. Direct edits bypass domain synchronization hooks.
+  responses:
+    '200':
+      description: Schema-aware editable table catalog.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/DatabaseTableList'
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }

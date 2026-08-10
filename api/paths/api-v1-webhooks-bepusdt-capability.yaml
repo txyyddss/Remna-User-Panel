@@ -1,0 +1,35 @@
+post:
+  tags: [Webhooks]
+  operationId: receiveBEPusdtCapabilityWebhook
+  summary: Receive a BEPusdt notification authenticated by signature or per-order capability
+  description: |
+    Signed notifications retain normal signature validation. Unsigned v1.19
+    notifications are accepted only when the unguessable HMAC capability in
+    this callback URL matches the stored order. Capabilities are redacted from logs.
+  security: []
+  parameters:
+    - name: capability
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 32
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          oneOf:
+            - $ref: '../openapi.yaml#/components/schemas/BEPusdtNotification'
+            - $ref: '../openapi.yaml#/components/schemas/BEPusdtUnsignedNotification'
+  responses:
+    '200':
+      description: Configured plain-text acknowledgement, either `ok` or `success`.
+      content:
+        text/plain:
+          schema:
+            type: string
+            enum: [ok, success]
+    '400': { $ref: '../openapi.yaml#/components/responses/BadRequest' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }

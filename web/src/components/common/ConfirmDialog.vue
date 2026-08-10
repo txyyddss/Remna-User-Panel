@@ -1,14 +1,5 @@
 <script setup lang="ts">
-import {
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogOverlay,
-  DialogPortal,
-  DialogRoot,
-  DialogTitle,
-} from 'reka-ui'
-import { PhWarning } from '@phosphor-icons/vue'
+import { useI18n } from '@/i18n'
 
 const open = defineModel<boolean>('open', { required: true })
 
@@ -24,29 +15,40 @@ withDefaults(defineProps<{
 })
 
 defineEmits<{ confirm: [] }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
-  <DialogRoot v-model:open="open">
-    <DialogPortal to="#overlays">
-      <DialogOverlay class="dialog-overlay" />
-      <DialogContent class="dialog-content dialog-content--compact">
-        <span class="dialog-icon" :class="{ 'dialog-icon--danger': danger }"><PhWarning :size="24" weight="fill" /></span>
-        <DialogTitle class="dialog-title">{{ title }}</DialogTitle>
-        <DialogDescription class="dialog-description">{{ description }}</DialogDescription>
-        <div class="dialog-actions">
-          <DialogClose class="button button--secondary" :disabled="busy">Cancel</DialogClose>
-          <button
-            class="button"
-            :class="danger ? 'button--danger' : 'button--primary'"
-            type="button"
-            :disabled="busy"
-            @click="$emit('confirm')"
-          >
-            {{ busy ? 'Working' : confirmLabel }}
-          </button>
-        </div>
-      </DialogContent>
-    </DialogPortal>
-  </DialogRoot>
+  <UModal
+    v-model:open="open"
+    :title="title"
+    :description="description"
+    :dismissible="!busy"
+    :ui="{ footer: 'justify-end' }"
+  >
+    <template #body>
+      <UIcon
+        name="i-ph-warning-fill"
+        class="dialog-icon"
+        :class="{ 'dialog-icon--danger': danger }"
+        aria-hidden="true"
+      />
+    </template>
+    <template #footer="{ close }">
+      <UButton
+        :label="t('common.cancel')"
+        color="neutral"
+        variant="outline"
+        :disabled="busy"
+        @click="close"
+      />
+      <UButton
+        :label="busy ? t('common.working') : confirmLabel"
+        :color="danger ? 'error' : 'primary'"
+        :loading="busy"
+        @click="$emit('confirm')"
+      />
+    </template>
+  </UModal>
 </template>

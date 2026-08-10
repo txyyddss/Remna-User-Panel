@@ -1,0 +1,29 @@
+post:
+  tags: [Onboarding]
+  operationId: acceptSharingAgreement
+  summary: Accept the no-sharing agreement and provision Remnawave
+  description: |
+    Records acceptance and ensures an ACTIVE Remnawave user with a 2099
+    upstream expiry, zero traffic, NO_RESET, and no squads. Recoverable partial
+    failures remain resumable and are reconciled by username and Telegram ID.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/AgreementRequest'
+  responses:
+    '200':
+      description: Agreement accepted and onboarding complete.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/AuthState'
+    '400':
+      $ref: '../openapi.yaml#/components/responses/BadRequest'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '409':
+      $ref: '../openapi.yaml#/components/responses/Conflict'
+    '502':
+      $ref: '../openapi.yaml#/components/responses/UpstreamFailure'

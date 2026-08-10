@@ -1,0 +1,142 @@
+.section-block,
+.ledger-section,
+.combo-section,
+.squad-selector,
+.admin-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+}
+
+.section-block,
+.ledger-section,
+.combo-section,
+.squad-selector {
+  padding: 1.1rem;
+}
+
+.content-grid {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.content-grid--dashboard {
+  grid-template-columns: 1fr;
+}
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid #36453c;
+  border-radius: var(--radius-control);
+  color: #cbe1d2;
+  background: #17251c;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.notice strong {
+  display: block;
+  margin-bottom: 0.15rem;
+  color: var(--text);
+}
+
+.notice p {
+  margin: 0;
+}
+
+.notice--warning {
+  color: #dfcfab;
+  border-color: #4d422b;
+  background: var(--warning-soft);
+}
+
+.notice--success {
+  color: #c8e7d3;
+}
+
+.status-badge {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.28rem 0.55rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--text-muted);
+  background: var(--surface-raised);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status-badge--success {
+  color: var(--accent);
+  border-color: #355242;
+  background: #192b20;
+}
+
+.status-badge--warning {
+  color: var(--warning);
+  border-color: #55482c;
+  background: var(--warning-soft);
+}
+
+.status-badge--danger {
+  color: var(--danger);
+  border-color: #583230;
+  background: var(--danger-soft);
+}
+
+.skeleton-block {
+  width: 100%;
+  min-height: 2rem;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid #252a26;
+  border-radius: var(--radius-panel);
+  background: #141714;
+}
+
+.skeleton-block::after {
+  content: "";
+  width: 100%;
+  position: absolute;
+  inset: 0;
+  background: var(--surface-raised);
+  animation: skeleton-pulse 1.2s ease-in-out infinite alternate;
+}
+
+.error-state {
+  min-height: 50dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2rem 0;
+}
+
+.error-state .button {
+  margin-top: 1.5rem;
+}
+
+.error-state--compact {
+  min-height: 17rem;
+  padding: 1rem;
+}
+
+.empty-inline {
+  min-height: 7rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-control);
+  color: var(--text-muted);
+}

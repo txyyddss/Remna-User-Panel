@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { PhArrowClockwise } from '@phosphor-icons/vue'
-
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { useI18n } from '@/i18n'
 
@@ -22,9 +20,7 @@ const { t } = useI18n()
   <div v-else-if="error" class="error-state error-state--compact">
     <h2>{{ t('adminSection.unavailable') }}</h2>
     <p>{{ error }}</p>
-    <button class="button button--secondary" type="button" @click="$emit('retry')">
-      <PhArrowClockwise :size="18" /> {{ t('adminSection.retry') }}
-    </button>
+    <UButton color="neutral" variant="outline" icon="i-ph-arrow-clockwise" :label="t('adminSection.retry')" @click="$emit('retry')" />
   </div>
   <slot v-else />
 </template>

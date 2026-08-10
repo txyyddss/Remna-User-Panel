@@ -2,6 +2,7 @@ import { onMounted, readonly, shallowRef } from 'vue'
 
 import type { ActiveQuestionnaire, QuestionnaireParticipation } from '@/api/features'
 import { featuresApi } from '@/api/features'
+import { localizedError } from '@/i18n'
 import { notifyHaptic, openExternalLink } from '@/utils/telegram'
 
 export function useQuestionnaires() {
@@ -19,7 +20,7 @@ export function useQuestionnaires() {
       questionnaire.value = await featuresApi.getActiveQuestionnaire()
       participation.value = questionnaire.value?.participation ?? null
     } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : 'The questionnaire is unavailable.'
+      error.value = localizedError(caught, 'errors.questionnaireUnavailable')
     } finally {
       loading.value = false
     }
@@ -39,7 +40,7 @@ export function useQuestionnaires() {
       }
       openExternalLink(questionnaire.value.formUrl)
     } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : 'The questionnaire could not be opened.'
+      error.value = localizedError(caught, 'errors.questionnaireOpen')
       notifyHaptic('error')
     } finally {
       joining.value = false

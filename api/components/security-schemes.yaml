@@ -1,0 +1,23 @@
+cookieSession:
+  type: apiKey
+  in: cookie
+  name: txc_session
+  description: Opaque seven-day session created only by validated Telegram Mini App init data.
+
+requestTimestamp:
+  type: apiKey
+  in: header
+  name: X-TXC-Timestamp
+  description: Unix seconds covered by the request HMAC and accepted within five minutes of server time.
+
+requestNonce:
+  type: apiKey
+  in: header
+  name: X-TXC-Nonce
+  description: Fresh 22-to-64-character unpadded base64url nonce covered by the request HMAC.
+
+requestSignature:
+  type: apiKey
+  in: header
+  name: X-TXC-Signature
+  description: Lowercase hexadecimal HMAC-SHA256 over method, escaped path and raw query, timestamp, nonce, and exact body digest.

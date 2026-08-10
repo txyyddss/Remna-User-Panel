@@ -1,6 +1,6 @@
 import type {
   AdminResource,
-  ApiErrorBody,
+  BackupRecord,
   Catalog,
   Dashboard,
   InviteLink,
@@ -17,6 +17,9 @@ import type {
 } from './types'
 import type { components } from './generated'
 import type { FeaturePaymentMethod, FeaturePaymentOrder } from './features'
+import { request, type QueryValue } from './http'
+
+export { ApiError } from './http'
 
 type TelegramAuthRequest = components['schemas']['TelegramAuthRequest']
 type PurchaseRequest = components['schemas']['PurchaseRequest']
@@ -24,71 +27,6 @@ type BalanceAdjustmentRequest = components['schemas']['BalanceAdjustmentRequest'
 type ReasonRequest = components['schemas']['ReasonRequest']
 type RefundRequest = components['schemas']['RefundRequest']
 type GeneratedSquadProductWrite = components['schemas']['SquadProductWrite']
-
-type QueryValue = string | number | boolean | undefined
-
-interface RequestOptions extends Omit<RequestInit, 'body'> {
-  body?: unknown
-  query?: Record<string, QueryValue>
-}
-
-export class ApiError extends Error {
-  readonly status: number
-  readonly code: string
-  readonly details?: Record<string, string>
-  readonly requestId?: string
-
-  constructor(status: number, body: ApiErrorBody) {
-    super(body.message)
-    this.name = 'ApiError'
-    this.status = status
-    this.code = body.code
-    this.details = body.details
-    this.requestId = body.requestId
-  }
-}
-
-function createUrl(path: string, query?: Record<string, QueryValue>): string {
-  if (!query) return path
-  const params = new URLSearchParams()
-  for (const [key, value] of Object.entries(query)) {
-    if (value !== undefined) params.set(key, String(value))
-  }
-  const encoded = params.toString()
-  return encoded ? `${path}?${encoded}` : path
-}
-
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const headers = new Headers(options.headers)
-  headers.set('Accept', 'application/json')
-  if (options.body !== undefined) headers.set('Content-Type', 'application/json')
-
-  const response = await fetch(createUrl(path, options.query), {
-    ...options,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-    credentials: 'include',
-    headers,
-  })
-
-  if (response.status === 204) return undefined as T
-
-  const contentType = response.headers.get('content-type') ?? ''
-  const payload = contentType.includes('application/json')
-    ? await response.json() as unknown
-    : await response.text()
-
-  if (!response.ok) {
-    const body = typeof payload === 'object' && payload !== null
-      ? payload as ApiErrorBody
-      : { code: 'HTTP_ERROR', message: String(payload || response.statusText) }
-    throw new ApiError(response.status, body)
-  }
-
-  if (typeof payload === 'object' && payload !== null && 'data' in payload) {
-    return (payload as { data: T }).data
-  }
-  return payload as T
-}
 
 export const api = {
   authTelegram: (initData: string) => request<Session>('/api/v1/auth/telegram', {
@@ -99,8 +37,8 @@ export const api = {
   createInvites: async () => {
     const response = await request<{ group: Pick<InviteLink, 'url' | 'expiresAt'>; channel: Pick<InviteLink, 'url' | 'expiresAt'> }>('/api/v1/onboarding/invites', { method: 'POST' })
     return { invites: [
-      { ...response.group, kind: 'group' as const, label: 'TX private group', joined: false },
-      { ...response.channel, kind: 'channel' as const, label: 'TX updates channel', joined: false },
+      { ...response.group, kind: 'group' as const, joined: false },
+      { ...response.channel, kind: 'channel' as const, joined: false },
     ] }
   },
   checkMembership: async () => {
@@ -177,6 +115,7 @@ export const api = {
     method: 'POST',
   }),
   deleteAdminJob: (jobId: string) => request<void>(`/api/v1/admin/jobs/${encodeURIComponent(jobId)}`, { method: 'DELETE' }),
+  createAdminBackup: () => request<BackupRecord>('/api/v1/admin/backups', { method: 'POST' }),
   adjustBalance: (userId: string, amountMinor: string, reason: string) => request<LedgerEntry>(`/api/v1/admin/users/${encodeURIComponent(userId)}/balance-adjustments`, {
     method: 'POST',
     body: { deltaTxbMinor: amountMinor, reason } satisfies BalanceAdjustmentRequest,

@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import { PhArrowRight, PhPlus } from '@phosphor-icons/vue'
-import { RouterLink } from 'vue-router'
-
 import type { Money } from '@/api/types'
 import { formatMoney } from '@/utils/format'
 
@@ -19,14 +16,20 @@ defineProps<{
       <h1>{{ formatMoney(balance) }}</h1>
     </div>
     <div class="balance-hero__actions">
-      <RouterLink class="button button--light" to="/balance">
-        <PhPlus :size="19" weight="bold" />
-        {{ $t('billing.addBalance') }}
-      </RouterLink>
-      <RouterLink class="text-button text-button--on-accent" to="/catalog">
-        {{ $t('catalog.browsePlans') }}
-        <PhArrowRight :size="18" />
-      </RouterLink>
+      <UButton
+        class="button button--light"
+        to="/balance"
+        icon="i-ph-plus-bold"
+        :label="$t('billing.addBalance')"
+      />
+      <UButton
+        class="text-button text-button--on-accent"
+        to="/catalog"
+        color="neutral"
+        variant="link"
+        trailing-icon="i-ph-arrow-right"
+        :label="$t('catalog.browsePlans')"
+      />
     </div>
   </section>
 </template>

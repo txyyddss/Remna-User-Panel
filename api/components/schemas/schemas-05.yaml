@@ -1,0 +1,255 @@
+PaymentOrder:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - provider
+    - methodId
+    - providerRail
+    - status
+    - txb
+    - payableAmount
+    - payableCurrency
+    - rateSnapshot
+    - rateDirection
+    - paymentUrl
+    - qrPayload
+    - receivingAddress
+    - actualCryptoAmount
+    - actualCryptoCurrency
+    - expiresAt
+    - paidAt
+    - refundedAt
+    - cancelledAt
+    - cancelReason
+    - providerCancelStatus
+    - createdAt
+    - updatedAt
+  properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    provider:
+      $ref: '../../openapi.yaml#/components/schemas/PaymentProvider'
+    methodId:
+      $ref: '../../openapi.yaml#/components/schemas/PaymentOrderMethodID'
+    providerRail:
+      type: string
+    status:
+      $ref: '../../openapi.yaml#/components/schemas/PaymentStatus'
+    txb:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    payableAmount:
+      type: string
+      pattern: '^\d+(\.\d+)?$'
+    payableCurrency:
+      type: string
+      enum: [CNY, USD, XTR, USDT]
+    rateSnapshot:
+      type: string
+      pattern: '^\d+(\.\d+)?$'
+      description: Immutable fixed-decimal rate used when the order was created.
+    rateDirection:
+      type: string
+      enum: [txb_per_currency, currency_per_txb]
+      description: New orders use txb_per_currency; the legacy direction is retained only for immutable pending snapshots.
+    paymentUrl:
+      type: [string, 'null']
+      format: uri
+    qrPayload:
+      type: [string, 'null']
+    receivingAddress:
+      type: [string, 'null']
+    actualCryptoAmount:
+      type: [string, 'null']
+      pattern: '^\d+(\.\d+)?$'
+    actualCryptoCurrency:
+      type: [string, 'null']
+      enum: [USDT, null]
+    expiresAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+    paidAt:
+      type: [string, 'null']
+      format: date-time
+    refundedAt:
+      type: [string, 'null']
+      format: date-time
+    cancelledAt:
+      type: [string, 'null']
+      format: date-time
+    cancelReason:
+      type: string
+    providerCancelStatus:
+      type: string
+      enum: ['', unsupported, requested, cancelled, failed]
+    createdAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+    updatedAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+
+ActivityGame:
+  type: object
+  additionalProperties: false
+  required: [id, name, icon, description, enabled, winChanceBps, minimumStakeMinor, maximumStakeMinor, returnMultiplierBps]
+  properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    name:
+      type: string
+    icon:
+      type: string
+    description:
+      type: string
+    enabled:
+      type: boolean
+    winChanceBps:
+      type: integer
+      minimum: 0
+      maximum: 10000
+    minimumStakeMinor:
+      type: string
+      pattern: '^[1-9]\d*$'
+    maximumStakeMinor:
+      type: string
+      pattern: '^[1-9]\d*$'
+    returnMultiplierBps:
+      type: integer
+      format: int64
+      minimum: 0
+
+ActivityGameWrite:
+  type: object
+  additionalProperties: false
+  required: [name, icon, description, enabled, winChanceBps, minimumStakeMinor, maximumStakeMinor, returnMultiplierBps]
+  properties:
+    name:
+      type: string
+      minLength: 1
+    icon:
+      type: string
+    description:
+      type: string
+    enabled:
+      type: boolean
+    winChanceBps:
+      type: integer
+      minimum: 0
+      maximum: 10000
+    minimumStakeMinor:
+      type: string
+      pattern: '^[1-9]\d*$'
+    maximumStakeMinor:
+      type: string
+      pattern: '^[1-9]\d*$'
+    returnMultiplierBps:
+      type: integer
+      format: int64
+      minimum: 0
+
+ActivityGameList:
+  type: object
+  additionalProperties: false
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/ActivityGame'
+
+LuckyDraw:
+  type: object
+  additionalProperties: false
+  required: [id, name, description, feeTxbMinor, enabled]
+  properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    name:
+      type: string
+    description:
+      type: string
+    feeTxbMinor:
+      type: string
+      pattern: '^\d+$'
+    enabled:
+      type: boolean
+
+NoPrizeReward:
+  type: object
+  additionalProperties: false
+  required: [kind]
+  properties:
+    kind:
+      type: string
+      const: none
+
+TXBDeltaReward:
+  type: object
+  additionalProperties: false
+  required: [kind, txbDeltaMinor]
+  properties:
+    kind:
+      type: string
+      const: txb_delta
+    txbDeltaMinor:
+      $ref: '../../openapi.yaml#/components/schemas/DecimalInteger'
+
+CouponGrantReward:
+  type: object
+  additionalProperties: false
+  required: [kind, couponId]
+  properties:
+    kind:
+      type: string
+      const: coupon_grant
+    couponId:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+
+SubscriptionExtensionReward:
+  type: object
+  additionalProperties: false
+  required: [kind, extensionDays]
+  properties:
+    kind:
+      type: string
+      const: subscription_extension
+    extensionDays:
+      type: integer
+      minimum: 1
+
+Reward:
+  oneOf:
+    - $ref: '../../openapi.yaml#/components/schemas/NoPrizeReward'
+    - $ref: '../../openapi.yaml#/components/schemas/TXBDeltaReward'
+    - $ref: '../../openapi.yaml#/components/schemas/CouponGrantReward'
+    - $ref: '../../openapi.yaml#/components/schemas/SubscriptionExtensionReward'
+  discriminator:
+    propertyName: kind
+    mapping:
+      none: '../../openapi.yaml#/components/schemas/NoPrizeReward'
+      txb_delta: '../../openapi.yaml#/components/schemas/TXBDeltaReward'
+      coupon_grant: '../../openapi.yaml#/components/schemas/CouponGrantReward'
+      subscription_extension: '../../openapi.yaml#/components/schemas/SubscriptionExtensionReward'
+
+ActivityResult:
+  type: object
+  additionalProperties: false
+  required: [id, kind, outcome, message, reward, balanceAfter, createdAt]
+  properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    kind:
+      type: string
+      enum: [check_in, bet, draw]
+    outcome:
+      type: string
+      enum: [complete, win, loss]
+    message:
+      type: string
+    reward:
+      $ref: '../../openapi.yaml#/components/schemas/Reward'
+    stakeTxbMinor:
+      type: string
+      pattern: '^[1-9]\d*$'
+    balanceAfter:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    createdAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'

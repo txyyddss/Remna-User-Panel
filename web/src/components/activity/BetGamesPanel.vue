@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue'
-import { PhTrendUp } from '@phosphor-icons/vue'
 
 import type { BetGame } from '@/api/features'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
@@ -46,21 +45,25 @@ function submit(): void {
       <h2>{{ $t('activity.betGames') }}</h2>
       <p>{{ $t('activity.betCopy') }}</p>
     </div>
-    <div v-if="games.length" class="bet-grid">
-      <button
+    <div v-if="games.length" v-auto-animate class="bet-grid">
+      <UButton
         v-for="game in games"
         :key="game.id"
         class="bet-option"
         :class="{ 'bet-option--selected': game.id === selectedId }"
-        type="button"
+        color="neutral"
+        variant="ghost"
         :disabled="!game.enabled || busy"
         :aria-pressed="game.id === selectedId"
         @click="selectedId = game.id"
       >
-        <span class="bet-option__icon"><component :is="gameIcon(game.icon)" :size="21" /></span>
-        <span><strong>{{ game.name }}</strong><small>{{ game.description || `${txbInputFromMinor(game.minimumStakeMinor)} to ${txbInputFromMinor(game.maximumStakeMinor)} TXB` }}</small></span>
+        <span class="bet-option__icon"><UIcon :name="gameIcon(game.icon)" /></span>
+        <span>
+          <strong>{{ game.name }}</strong>
+          <small>{{ game.description || $t('activity.stakeRange', { minimum: txbInputFromMinor(game.minimumStakeMinor), maximum: txbInputFromMinor(game.maximumStakeMinor) }) }}</small>
+        </span>
         <span class="bet-option__odds">{{ (game.winChanceBps / 100).toFixed(2) }}%</span>
-      </button>
+      </UButton>
     </div>
     <div v-if="selected" class="bet-form">
       <TxbAmountField
@@ -73,12 +76,10 @@ function submit(): void {
         required
       />
       <div class="bet-disclosure">
-        <PhTrendUp :size="19" />
+        <UIcon name="i-ph-trend-up" />
         <span><strong>{{ $t('activity.totalReturn', { multiplier: (selected.returnMultiplierBps / 10000).toFixed(2) }) }}</strong><small>{{ $t('activity.lossReturn') }}</small></span>
       </div>
-      <button class="button button--primary" type="button" :disabled="!canBet || busy" @click="submit">
-        {{ busy ? $t('activity.resolving') : $t('activity.confirmBet') }}
-      </button>
+      <UButton :disabled="!canBet || busy" :loading="busy" :label="busy ? $t('activity.resolving') : $t('activity.confirmBet')" @click="submit" />
     </div>
     <div v-else class="empty-inline"><div><h3>{{ $t('activity.noBetGames') }}</h3><p>{{ $t('activity.publishGames') }}</p></div></div>
   </section>
@@ -98,8 +99,5 @@ function submit(): void {
 .bet-disclosure strong, .bet-disclosure small { display: block; }
 .bet-disclosure strong { font-size: 0.76rem; }
 .bet-disclosure small { margin-top: 0.2rem; color: var(--text-muted); font-size: 0.65rem; }
-
-@media (min-width: 720px) {
-  .bet-form { grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.8fr) auto; align-items: end; }
-}
+@media (min-width: 720px) { .bet-form { grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.8fr) auto; align-items: end; } }
 </style>

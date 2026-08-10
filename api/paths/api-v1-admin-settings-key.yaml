@@ -1,0 +1,26 @@
+put:
+  tags: [Admin]
+  operationId: updateAdminSetting
+  summary: Validate and replace one dashboard setting
+  description: The setting registry decides whether a value is encrypted with AES-256-GCM. Clients cannot downgrade secret storage to plaintext.
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/SettingKey'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/AdminSettingUpdate'
+  responses:
+    '204':
+      description: Setting replaced; secret values remain write-only.
+    '400':
+      $ref: '../openapi.yaml#/components/responses/BadRequest'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../openapi.yaml#/components/responses/Forbidden'
+    '404':
+      $ref: '../openapi.yaml#/components/responses/NotFound'
+    '422':
+      $ref: '../openapi.yaml#/components/responses/Unprocessable'

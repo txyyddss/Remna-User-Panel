@@ -1,0 +1,125 @@
+package database
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"strings"
+	"time"
+)
+
+// SaveSquadProduct upserts only non-default local merchandising. Restoring all
+// defaults removes the row so unedited upstream squads consume no local space.
+func (s *Store) SaveSquadProduct(ctx context.Context, input SquadProductInput) (model.SquadProduct, error) {
+	uuid := strings.TrimSpace(input.RemnaSquadUUID)
+	if uuid == "" || !input.UpstreamPresent {
+		return model.SquadProduct{}, ErrNotFound
+	}
+	now := time.Now().UTC()
+	if strings.TrimSpace(input.Description) == "" && input.PriceTXBMinor == 0 && !input.Visible {
+		if _, err := s.db.ExecContext(ctx, `DELETE FROM squad_product_overrides WHERE remna_squad_uuid=?`, uuid); err != nil {
+			return model.SquadProduct{}, fmt.Errorf("remove default squad override: %w", err)
+		}
+		return virtualSquad(input, now), nil
+	}
+	_, err := s.db.ExecContext(ctx, `INSERT INTO squad_product_overrides(remna_squad_uuid,description,price_txb_minor,visible,created_at,updated_at)
+		VALUES(?,?,?,?,?,?) ON CONFLICT(remna_squad_uuid) DO UPDATE SET description=excluded.description,price_txb_minor=excluded.price_txb_minor,visible=excluded.visible,updated_at=excluded.updated_at`,
+		uuid, strings.TrimSpace(input.Description), input.PriceTXBMinor, boolInt(input.Visible), stamp(now), stamp(now))
+	if err != nil {
+		return model.SquadProduct{}, fmt.Errorf("save squad override: %w", err)
+	}
+	product, err := s.SquadProductByRemnaUUID(ctx, uuid)
+	if err != nil {
+		return model.SquadProduct{}, err
+	}
+	product.Name = input.Name
+	return product, nil
+}
+
+func virtualSquad(input SquadProductInput, now time.Time) model.SquadProduct {
+	return model.SquadProduct{ID: input.RemnaSquadUUID, RemnaSquadUUID: input.RemnaSquadUUID, Name: input.Name,
+		Description: strings.TrimSpace(input.Description), PriceTXBMinor: input.PriceTXBMinor, Price: model.TXBMoney(input.PriceTXBMinor),
+		Visible: input.Visible, UpstreamPresent: true, CreatedAt: now, UpdatedAt: now}
+}
+
+// SquadProductByRemnaUUID resolves a persisted local override.
+func (s *Store) SquadProductByRemnaUUID(ctx context.Context, uuid string) (model.SquadProduct, error) {
+	return scanSquad(s.db.QueryRowContext(ctx, squadSelect+` WHERE remna_squad_uuid=?`, uuid))
+}
+
+// SquadProductByID treats the public product ID as the upstream UUID.
+func (s *Store) SquadProductByID(ctx context.Context, id string) (model.SquadProduct, error) {
+	return s.SquadProductByRemnaUUID(ctx, id)
+}
+
+// ImportSquad returns the live upstream identity overlaid with local data. It
+// deliberately performs no persistence.
+func (s *Store) ImportSquad(ctx context.Context, remnaSquadUUID, name string) (model.SquadProduct, error) {
+	product, err := s.SquadProductByRemnaUUID(ctx, remnaSquadUUID)
+	if errors.Is(err, ErrNotFound) {
+		return virtualSquad(SquadProductInput{RemnaSquadUUID: remnaSquadUUID, Name: name, UpstreamPresent: true}, time.Now().UTC()), nil
+	}
+	if err != nil {
+		return model.SquadProduct{}, err
+	}
+	product.Name = name
+	return product, nil
+}
+
+// MarkAllSquadsMissing is retained for compatibility and intentionally does
+// nothing because presence is now read directly from Remnawave.
+func (s *Store) MarkAllSquadsMissing(context.Context) error { return nil }
+
+// RefreshImportedSquads is retained for compatibility and intentionally does
+// not store upstream-owned identities.
+func (s *Store) RefreshImportedSquads(context.Context, []ImportedSquad) error { return nil }
+
+// ListSquadProducts loads only local overrides.
+func (s *Store) ListSquadProducts(ctx context.Context, visibleOnly bool) ([]model.SquadProduct, error) {
+	query := squadSelect
+	if visibleOnly {
+		query += ` WHERE visible=1`
+	}
+	query += ` ORDER BY remna_squad_uuid`
+	rows, err := s.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("list squad overrides: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	products := make([]model.SquadProduct, 0)
+	for rows.Next() {
+		product, scanErr := scanSquad(rows)
+		if scanErr != nil {
+			return nil, scanErr
+		}
+		products = append(products, product)
+	}
+	return products, rows.Err()
+}
+
+const squadSelect = `SELECT remna_squad_uuid,description,price_txb_minor,visible,created_at,updated_at FROM squad_product_overrides`
+
+func scanSquad(row rowScanner) (model.SquadProduct, error) {
+	var product model.SquadProduct
+	var visible int
+	var created, updated string
+	if err := row.Scan(&product.RemnaSquadUUID, &product.Description, &product.PriceTXBMinor, &visible, &created, &updated); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return model.SquadProduct{}, ErrNotFound
+		}
+		return model.SquadProduct{}, fmt.Errorf("scan squad override: %w", err)
+	}
+	product.ID = product.RemnaSquadUUID
+	product.Visible = visible == 1
+	product.UpstreamPresent = true
+	product.Price = model.TXBMoney(product.PriceTXBMinor)
+	var err error
+	product.CreatedAt, err = parseStamp(created)
+	if err != nil {
+		return model.SquadProduct{}, err
+	}
+	product.UpdatedAt, err = parseStamp(updated)
+	return product, err
+}

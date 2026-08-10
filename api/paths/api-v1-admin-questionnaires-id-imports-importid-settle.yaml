@@ -1,0 +1,18 @@
+post:
+  tags: [Admin, Questionnaires]
+  operationId: settleQuestionnaireImport
+  summary: Confirm the analyzed import and queue idempotent settlement
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+    - $ref: '../openapi.yaml#/components/parameters/ImportID'
+  responses:
+    '202':
+      description: Settlement queued; poll the import resource for its report.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/QuestionnaireImportPreview'
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }

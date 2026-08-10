@@ -1,0 +1,18 @@
+# Upstream queue
+
+This package owns the in-memory admission queues for synchronous provider API
+calls. Each provider gets a separate bounded FIFO and one context-owned worker,
+so slow Remnawave traffic cannot block Emby traffic (or vice versa).
+
+`Do` and `Execute` wait for capacity, provider pacing, and the final result. The
+caller's context cancels all three phases. Application shutdown also cancels the
+active call and stops accepting new work without closing a channel that may
+still have concurrent senders.
+
+This queue is intentionally not durable. Database outbox jobs remain the source
+of truth for retryable mutations; an outbox handler enters this queue immediately
+before invoking its provider adapter.
+
+- `queue.go` owns bounded FIFO admission, provider pacing, lifecycle transitions, shutdown, and cancellation merging.
+- `result.go` exposes typed `Do` and error-only `Execute` helpers with panic containment and caller cancellation.
+- `queue_test.go` verifies validation, results, panic recovery, backpressure, pacing, active-call cancellation, and shutdown state.

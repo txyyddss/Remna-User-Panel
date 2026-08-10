@@ -1,0 +1,219 @@
+GroupMessageRewardStatus:
+  type: object
+  additionalProperties: false
+  required: [enabled, localDate, messageCount, threshold, rewardMinor, rewarded]
+  properties:
+    enabled:
+      type: boolean
+    localDate:
+      type: string
+      format: date
+    messageCount:
+      type: integer
+      minimum: 0
+    threshold:
+      type: integer
+      minimum: 0
+    rewardMinor:
+      type: string
+      pattern: '^\\d+$'
+    rewarded:
+      type: boolean
+    rewardedAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+
+ActivityOverview:
+  type: object
+  additionalProperties: false
+  required: [balance, timeZone, checkedInToday, dailyRewardMinTxbMinor, dailyRewardMaxTxbMinor, games, draws, recentResults, groupMessageReward]
+  properties:
+    balance:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    timeZone:
+      type: string
+      examples: [Asia/Shanghai]
+    checkedInToday:
+      type: boolean
+    dailyRewardMinTxbMinor:
+      type: string
+      pattern: '^\d+$'
+    dailyRewardMaxTxbMinor:
+      type: string
+      pattern: '^\d+$'
+    games:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/ActivityGame'
+    draws:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/LuckyDraw'
+    recentResults:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/ActivityResult'
+    groupMessageReward:
+      $ref: '../../openapi.yaml#/components/schemas/GroupMessageRewardStatus'
+
+ActivityBetRequest:
+  type: object
+  additionalProperties: false
+  required: [gameId, stakeTxbMinor]
+  properties:
+    gameId:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    stakeTxbMinor:
+      type: string
+      pattern: '^[1-9]\d*$'
+
+ActivityDrawRequest:
+  type: object
+  additionalProperties: false
+  required: [drawId]
+  properties:
+    drawId:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+
+ActivitySettings:
+  type: object
+  additionalProperties: false
+  required: [timezone, dailyRewardMinTxb, dailyRewardMinTxbMinor, dailyRewardMaxTxb, dailyRewardMaxTxbMinor, groupMessageThreshold, groupMessageRewardTxb, groupMessageRewardTxbMinor]
+  properties:
+    timezone:
+      type: string
+    dailyRewardMinTxb:
+      type: string
+      pattern: '^\d+\.\d{2}$'
+    dailyRewardMinTxbMinor:
+      type: string
+      pattern: '^\d+$'
+    dailyRewardMaxTxb:
+      type: string
+      pattern: '^\d+\.\d{2}$'
+    dailyRewardMaxTxbMinor:
+      type: string
+      pattern: '^\d+$'
+    groupMessageThreshold:
+      type: integer
+      minimum: 0
+    groupMessageRewardTxb:
+      type: string
+      pattern: '^\d+\.\d{2}$'
+    groupMessageRewardTxbMinor:
+      type: string
+      pattern: '^\d+$'
+
+ActivitySettingsWrite:
+  type: object
+  additionalProperties: false
+  required: [timezone, groupMessageThreshold]
+  properties:
+    timezone:
+      type: string
+      examples: [Asia/Shanghai]
+    groupMessageThreshold:
+      type: integer
+      minimum: 0
+
+LuckyDrawPrize:
+  type: object
+  additionalProperties: false
+  required: [id, name, weight, reward]
+  properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    name:
+      type: string
+    weight:
+      type: string
+      pattern: '^[1-9]\d*$'
+    stockRemaining:
+      type: [integer, 'null']
+      format: int64
+      minimum: 0
+    reward:
+      $ref: '../../openapi.yaml#/components/schemas/Reward'
+
+LuckyDrawPrizeWrite:
+  type: object
+  additionalProperties: false
+  required: [name, weight, reward]
+  properties:
+    id:
+      type: string
+    name:
+      type: string
+      minLength: 1
+    weight:
+      type: string
+      pattern: '^[1-9]\d*$'
+    stockRemaining:
+      type: [integer, 'null']
+      format: int64
+      minimum: 0
+    reward:
+      $ref: '../../openapi.yaml#/components/schemas/Reward'
+
+LuckyDrawAdmin:
+  type: object
+  additionalProperties: false
+  required: [id, name, description, enabled, feeTxbMinor, prizes, createdAt, updatedAt]
+  properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    name:
+      type: string
+    description:
+      type: string
+    enabled:
+      type: boolean
+    feeTxbMinor:
+      type: string
+      pattern: '^\d+$'
+    prizes:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/LuckyDrawPrize'
+    createdAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+    updatedAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+
+LuckyDrawWrite:
+  type: object
+  additionalProperties: false
+  required: [name, description, enabled, feeTxbMinor, prizes]
+  properties:
+    name:
+      type: string
+      minLength: 1
+    description:
+      type: string
+    enabled:
+      type: boolean
+    feeTxbMinor:
+      type: string
+      pattern: '^\d+$'
+    prizes:
+      type: array
+      minItems: 1
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/LuckyDrawPrizeWrite'
+
+LuckyDrawAdminList:
+  type: object
+  additionalProperties: false
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/LuckyDrawAdmin'
+
+CouponKind:
+  type: string
+  enum: [purchase_recurring, purchase_once, balance_add, balance_multiply]
+
+CouponDiscountMode:
+  type: string
+  enum: [fixed, percent]

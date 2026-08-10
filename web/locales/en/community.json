@@ -1,0 +1,40 @@
+{
+  "coupons": {
+    "wallet": "Coupon wallet",
+    "walletHint": "Redeem a code or use an available grant.",
+    "code": "Coupon code",
+    "codePlaceholder": "Enter code",
+    "redeeming": "Redeeming",
+    "redeem": "Redeem",
+    "addedToWallet": "{name} was added to your coupon wallet.",
+    "appliedToBalance": "{name} was applied to your balance.",
+    "kind": {
+      "purchase_recurring": "Recurring purchase",
+      "purchase_once": "One-time purchase",
+      "balance_add": "Balance credit",
+      "balance_multiply": "Balance multiplier"
+    },
+    "expires": "Expires {date}",
+    "noExpiry": "No expiry",
+    "uses": "{count} uses left",
+    "empty": "No coupons yet",
+    "emptyHint": "Redeemed and awarded coupons appear here."
+  },
+  "questionnaire": {
+    "eyebrow": "Member research",
+    "title": "Questionnaire",
+    "copy": "Share feedback and keep your private validation code.",
+    "none": "No active questionnaire",
+    "noneHint": "The next questionnaire will appear here.",
+    "reward": "Reward {amount} TXB",
+    "validationCode": "Validation code",
+    "codeCopied": "Code copied",
+    "copyCode": "Copy code",
+    "codeHint": "Use this code in the questionnaire form.",
+    "closes": "Closes {date}",
+    "noClose": "No closing date",
+    "preparing": "Preparing code",
+    "openAgain": "Open questionnaire",
+    "getCode": "Get code"
+  }
+}

@@ -56,7 +56,10 @@ func NewClient(rawBaseURL, token string, options ...Option) (*Client, error) {
 	if token == "" {
 		return nil, errors.New("Emby API token is empty")
 	}
-	client := &Client{baseURL: baseURL, token: token, httpClient: &http.Client{Timeout: 15 * time.Second}}
+	client := &Client{baseURL: baseURL, token: token, httpClient: &http.Client{
+		Timeout:       15 * time.Second,
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse },
+	}}
 	for _, option := range options {
 		option(client)
 	}
@@ -70,8 +73,12 @@ func (c *Client) ListUsers(ctx context.Context) ([]domain.RemoteUser, error) {
 		return nil, err
 	}
 	users := make([]domain.RemoteUser, 0, len(response))
-	for _, user := range response {
-		users = append(users, mapUser(user))
+	for _, item := range response {
+		user := mapUser(item)
+		if err := validateID(user.ID); err != nil {
+			return nil, errors.New("Emby user list response contains an invalid Id")
+		}
+		users = append(users, user)
 	}
 	return users, nil
 }
@@ -104,7 +111,7 @@ func (c *Client) CreateUser(ctx context.Context, name string) (domain.RemoteUser
 		return domain.RemoteUser{}, err
 	}
 	user := mapUser(response)
-	if user.ID == "" || user.Name != name {
+	if validateID(user.ID) != nil || user.Name != name {
 		return domain.RemoteUser{}, errors.New("Emby create response has an unexpected identity")
 	}
 	return user, nil
@@ -123,8 +130,8 @@ func (c *Client) GetUser(ctx context.Context, id string) (domain.RemoteUser, err
 		return domain.RemoteUser{}, errors.New("Emby user response is missing Policy")
 	}
 	user := mapUser(response)
-	if user.ID == "" {
-		return domain.RemoteUser{}, errors.New("Emby user response is missing Id")
+	if user.ID != id {
+		return domain.RemoteUser{}, errors.New("Emby user response identity does not match request")
 	}
 	return user, nil
 }
@@ -283,27 +290,6 @@ func decodeAPIError(status int, _ []byte) error {
 	// Do not retain provider error bodies: a password validation response could
 	// echo secret material and later be persisted in outbox/account diagnostics.
 	return &APIError{HTTPStatus: status, Message: http.StatusText(status)}
-}
-
-func parseBaseURL(raw string) (*url.URL, error) {
-	parsed, err := url.Parse(strings.TrimSpace(raw))
-	if err != nil {
-		return nil, err
-	}
-	if parsed.Scheme != "https" && parsed.Scheme != "http" {
-		return nil, errors.New("URL must use http or https")
-	}
-	if parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
-		return nil, errors.New("URL must be absolute and contain no credentials, query, or fragment")
-	}
-	return parsed, nil
-}
-
-func validateID(id string) error {
-	if strings.TrimSpace(id) == "" || strings.ContainsAny(id, `/\\?#`) {
-		return errors.New("invalid Emby user Id")
-	}
-	return nil
 }
 
 var _ domain.Remote = (*Client)(nil)

@@ -1,0 +1,46 @@
+put:
+  tags: [Admin]
+  operationId: updateAdminCombo
+  summary: Replace a live combo definition
+  description: The stable combo ID remains authoritative for active, queued, and historical purchases; affected users are queued for deduplicated synchronization.
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/ComboWrite'
+  responses:
+    '200':
+      description: Updated combo.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/Combo'
+    '400':
+      $ref: '../openapi.yaml#/components/responses/BadRequest'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../openapi.yaml#/components/responses/Forbidden'
+    '404':
+      $ref: '../openapi.yaml#/components/responses/NotFound'
+    '422':
+      $ref: '../openapi.yaml#/components/responses/Unprocessable'
+delete:
+  tags: [Admin]
+  operationId: archiveAdminCombo
+  summary: Archive a combo from future sales
+  description: Combos referenced by purchases are always hidden rather than hard-deleted.
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+  responses:
+    '204':
+      description: Combo archived.
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../openapi.yaml#/components/responses/Forbidden'
+    '404':
+      $ref: '../openapi.yaml#/components/responses/NotFound'

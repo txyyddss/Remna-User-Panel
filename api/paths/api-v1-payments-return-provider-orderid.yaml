@@ -1,0 +1,26 @@
+get:
+  tags: [Billing]
+  operationId: returnFromPaymentProviderWithOrder
+  summary: Navigate back to a specific Mini App payment order
+  description: Compatibility return route for providers that preserve path parameters more reliably than query parameters. It never credits balance.
+  security: []
+  parameters:
+    - name: provider
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [ezpay, bepusdt]
+    - name: orderID
+      in: path
+      required: true
+      schema:
+        $ref: '../openapi.yaml#/components/schemas/ID'
+  responses:
+    '303':
+      description: Redirect to the same-origin payment result route.
+      headers:
+        Location:
+          required: true
+          schema:
+            type: string

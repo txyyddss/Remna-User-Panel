@@ -1,36 +1,40 @@
 <script setup lang="ts">
-import { CheckboxIndicator, CheckboxRoot } from 'reka-ui'
-import { PhArrowRight, PhCheck, PhShieldWarning } from '@phosphor-icons/vue'
-
 import type { OnboardingAgreement } from '@/api/features'
 import { agreementIcon } from './agreementIcons'
 
-defineProps<{ agreements: readonly OnboardingAgreement[]; selectedIds: readonly string[]; allAccepted: boolean; loading: boolean }>()
+defineProps<{ agreements: readonly OnboardingAgreement[]; selectedIds: readonly string[]; allAccepted: boolean; loading: boolean; showAction?: boolean }>()
 defineEmits<{ submit: []; toggle: [id: string] }>()
 </script>
 
 <template>
   <section class="onboarding-panel">
     <header class="onboarding-panel__header">
-      <span class="feature-icon feature-icon--warning"><PhShieldWarning :size="25" weight="fill" /></span>
+      <span class="feature-icon feature-icon--warning"><UIcon name="i-ph-shield-warning-fill" /></span>
       <h1>{{ $t('onboarding.agreementTitle') }}</h1>
       <p>{{ $t('onboarding.agreementCopy') }}</p>
     </header>
 
     <div class="agreement-list">
       <label v-for="agreement in agreements" :key="agreement.id" class="agreement-callout agreement-callout--selectable">
-        <component :is="agreementIcon(agreement.icon)" :size="23" aria-hidden="true" />
+        <UIcon :name="agreementIcon(agreement.icon)" aria-hidden="true" />
         <span><strong>{{ agreement.title }}</strong><small>{{ agreement.body }}</small></span>
-        <CheckboxRoot class="checkbox-control" :model-value="selectedIds.includes(agreement.id)" @update:model-value="$emit('toggle', agreement.id)">
-          <CheckboxIndicator class="checkbox-indicator"><PhCheck :size="16" weight="bold" /></CheckboxIndicator>
-        </CheckboxRoot>
+        <UCheckbox
+          :model-value="selectedIds.includes(agreement.id)"
+          :aria-label="agreement.title"
+          @update:model-value="$emit('toggle', agreement.id)"
+        />
       </label>
     </div>
 
-    <button class="button button--primary button--wide" type="button" :disabled="!allAccepted || loading" @click="$emit('submit')">
-      {{ loading ? $t('onboarding.finishing') : $t('onboarding.finish') }}
-      <PhArrowRight :size="19" />
-    </button>
+    <UButton
+      v-if="showAction !== false"
+      block
+      trailing-icon="i-ph-arrow-right"
+      :disabled="!allAccepted || loading"
+      :loading="loading"
+      :label="loading ? $t('onboarding.finishing') : $t('onboarding.finish')"
+      @click="$emit('submit')"
+    />
   </section>
 </template>
 

@@ -1,0 +1,43 @@
+get:
+  tags: [Admin]
+  operationId: listAdminSettings
+  summary: List dashboard configuration
+  description: Sensitive values return an empty `value` plus `encrypted` and `configured`; plaintext and ciphertext are never returned.
+  responses:
+    '200':
+      description: Setting definitions and safe display values.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [items]
+            properties:
+              items:
+                type: array
+                items:
+                  $ref: '../openapi.yaml#/components/schemas/AdminSetting'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../openapi.yaml#/components/responses/Forbidden'
+post:
+  tags: [Admin]
+  operationId: createAdminSetting
+  summary: Validate and write a known dashboard setting
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/AdminSettingCreate'
+  responses:
+    '204':
+      description: Setting stored; secret values remain write-only.
+    '400':
+      $ref: '../openapi.yaml#/components/responses/BadRequest'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../openapi.yaml#/components/responses/Forbidden'
+    '422':
+      $ref: '../openapi.yaml#/components/responses/Unprocessable'

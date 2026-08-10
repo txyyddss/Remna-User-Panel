@@ -3,15 +3,12 @@ package app
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/accounts"
@@ -25,11 +22,11 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/httpapi"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/backup"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/config"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/databaseadmin"
-	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/outbox"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/secret"
 	"github.com/txyyddss/Remna-User-Panel/internal/questionnaires"
@@ -48,6 +45,7 @@ type Application struct {
 	telegram   *telegram.Client
 	settings   *admin.SettingsService
 	billing    *billing.Service
+	upstreams  *providerQueues
 }
 
 // New opens persistence, constructs integrations, and builds the HTTP router.
@@ -84,6 +82,10 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	if err := ensureBootstrapSettings(ctx, store, vault); err != nil {
 		return cleanup(err)
 	}
+	upstreams, err := newProviderQueues()
+	if err != nil {
+		return cleanup(err)
+	}
 	verifier, err := telegram.NewInitDataVerifier(cfg.TelegramBotToken, cfg.InitDataMaxAge)
 	if err != nil {
 		return cleanup(err)
@@ -92,7 +94,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	if err != nil {
 		return cleanup(err)
 	}
-	remna := remnaAdapter{settings: settings}
+	remna := newRemnaAdapter(settings, upstreams.remnawave)
 	telegramBridge := telegramAdapter{client: telegramClient}
 	paymentBridge := paymentAdapter{settings: settings, telegram: telegramClient, users: store}
 	backupService := backup.NewService(db, store, filepath.Join(cfg.DataDir, "backups"), cfg.BackupRetention)
@@ -105,7 +107,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	couponService := coupons.NewService(store, nil)
 	questionnaireService := questionnaires.NewService(store, questionnaires.CryptoCodeGenerator{}, nil)
 	embyPrice := embySetupPrice(settings)
-	embyService := emby.NewService(store, embyAdapter{settings: settings}, embyPrice, emby.NewSecretBox(vault))
+	embyService := emby.NewService(store, newEmbyAdapter(settings, upstreams.emby), embyPrice, emby.NewSecretBox(vault))
 	adminService := admin.NewService(store, settings, remna, backupService, paymentBridge)
 	entitlementWorker := entitlements.NewWorker(store, remna)
 	rolloverWorker := rollover.NewService(store, remna)
@@ -119,7 +121,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		return cleanup(fmt.Errorf("register rollover outbox handler: %w", err))
 	}
 	if err := outboxWorker.Register(emby.ProvisionOutboxKind, outbox.HandlerFunc(func(ctx context.Context, job model.OutboxJob) error {
-		accountID, err := outbox.TargetID(job, "accountId")
+		accountID, err := jobpayload.TargetID(job, "accountId")
 		if err != nil {
 			return err
 		}
@@ -128,7 +130,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		return cleanup(fmt.Errorf("register Emby outbox handler: %w", err))
 	}
 	if err := outboxWorker.Register("questionnaire_settlement", outbox.HandlerFunc(func(ctx context.Context, job model.OutboxJob) error {
-		importID, err := outbox.TargetID(job, "importId")
+		importID, err := jobpayload.TargetID(job, "importId")
 		if err != nil {
 			return err
 		}
@@ -147,7 +149,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		Admin: adminService, Settings: settings, DatabaseAdmin: databaseAdminHTTP,
 		Store: store, Telegram: telegramClient, Webhooks: paymentBridge, PublicURL: cfg.PublicBaseURL, Static: static,
 		Logger: logger, SessionTTL: cfg.SessionTTL, SecureCookies: cfg.PublicBaseURL.Scheme == "https",
-		AdminTelegramID: cfg.AdminTelegramID,
+		AdminTelegramID: cfg.AdminTelegramID, RequestSigningKey: cfg.MasterKey,
 	})
 	if err != nil {
 		return cleanup(err)
@@ -156,236 +158,8 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		Addr: ":" + cfg.Port, Handler: api.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second,
 		WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 1 << 20,
 	}
-	return &Application{config: cfg, logger: logger, httpServer: httpServer, store: store, outbox: outboxWorker,
-		backups: backupService, telegram: telegramClient, settings: settings, billing: billingService}, nil
-}
-
-// Run serves HTTP and the single scheduler until cancellation or a fatal listener error.
-func (a *Application) Run(ctx context.Context) error {
-	runCtx, cancelRun := context.WithCancel(ctx)
-	defer cancelRun()
-	errCh := make(chan error, 1)
-	go func() {
-		a.logger.Info("TX Carpool listening", "address", a.httpServer.Addr)
-		if err := a.httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			errCh <- err
-		}
-	}()
-	schedulerDone := make(chan struct{})
-	go func() {
-		defer close(schedulerDone)
-		a.runScheduler(runCtx)
-	}()
-	shutdown := func() error {
-		cancelRun()
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), a.config.ShutdownTimeout)
-		defer cancel()
-		serverErr := a.httpServer.Shutdown(shutdownCtx)
-		select {
-		case <-schedulerDone:
-			return serverErr
-		case <-shutdownCtx.Done():
-			return errors.Join(serverErr, shutdownCtx.Err())
-		}
-	}
-	select {
-	case <-ctx.Done():
-		return shutdown()
-	case <-a.backups.RestartRequested():
-		a.logger.Info("verified database restore staged; shutting down for pre-open swap")
-		return shutdown()
-	case err := <-errCh:
-		cancelRun()
-		return err
-	}
-}
-
-// Close checkpoints the authoritative on-disk database before releasing the
-// SQLite pool after the HTTP server has stopped.
-func (a *Application) Close() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	checkpointErr := database.Checkpoint(ctx, a.store.DB(), true)
-	return errors.Join(checkpointErr, a.store.DB().Close())
-}
-
-func ensureBootstrapSettings(ctx context.Context, store *database.Store, vault *secret.Vault) error {
-	if _, err := store.GetSetting(ctx, "telegram.webhook_secret"); errors.Is(err, database.ErrNotFound) {
-		value, tokenErr := ids.Token(32)
-		if tokenErr != nil {
-			return tokenErr
-		}
-		encrypted, encryptErr := vault.Encrypt("telegram.webhook_secret", value)
-		if encryptErr != nil {
-			return encryptErr
-		}
-		if err := store.PutSetting(ctx, "telegram.webhook_secret", encrypted, true, nil); err != nil {
-			return err
-		}
-	} else if err != nil {
-		return err
-	}
-	defaults := map[string]string{
-		"billing.ezpay.enabled": "false", "billing.ezpay.methods": "alipay,wxpay,qqpay,bank,jdpay",
-		"billing.bepusdt.enabled": "false", "billing.bepusdt.methods": "usdt.trc20,usdt.erc20,usdt.polygon,usdt.bep20,usdt.aptos,usdt.solana,usdt.xlayer,usdt.arbitrum,usdt.plasma,usdt.ton",
-		"billing.bepusdt.ack": "ok", "billing.stars.enabled": "true",
-		"activity.timezone": "Asia/Shanghai", "activity.daily_reward_min_txb": "0", "activity.daily_reward_max_txb": "0",
-		"activity.group_message_threshold": "0", "activity.group_message_reward_txb": "0",
-	}
-	for key, value := range defaults {
-		if _, err := store.GetSetting(ctx, key); errors.Is(err, database.ErrNotFound) {
-			if err := store.PutSetting(ctx, key, value, false, nil); err != nil {
-				return err
-			}
-		} else if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (a *Application) runScheduler(ctx context.Context) {
-	outboxTicker := time.NewTicker(5 * time.Second)
-	transitionTicker := time.NewTicker(30 * time.Second)
-	maintenanceTicker := time.NewTicker(10 * time.Minute)
-	starsTicker := time.NewTicker(5 * time.Minute)
-	backupTimer := time.NewTimer(time.Until(a.nextBackup(time.Now())))
-	defer outboxTicker.Stop()
-	defer transitionTicker.Stop()
-	defer maintenanceTicker.Stop()
-	defer starsTicker.Stop()
-	defer backupTimer.Stop()
-	a.configureTelegram(ctx)
-	startupNow := time.Now().UTC()
-	if err := a.store.RecoverOutbox(ctx, startupNow, startupNow); err != nil {
-		a.logger.Error("startup outbox recovery failed", "error", err)
-	}
-	if err := a.store.EnqueueDueEntitlementTransitions(ctx, startupNow); err != nil {
-		a.logger.Error("startup entitlement transition scan failed", "error", err)
-	}
-	if err := a.outbox.Drain(ctx, 50); err != nil && !errors.Is(err, context.Canceled) {
-		a.logger.Error("startup outbox drain failed", "error", err)
-	}
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-outboxTicker.C:
-			if err := a.outbox.Drain(ctx, 20); err != nil && !errors.Is(err, context.Canceled) {
-				a.logger.Error("outbox drain failed", "error", err)
-			}
-		case now := <-transitionTicker.C:
-			if err := a.store.RecoverOutbox(ctx, now.UTC().Add(-2*time.Minute), now.UTC()); err != nil {
-				a.logger.Error("outbox lease recovery failed", "error", err)
-			}
-			if err := a.store.EnqueueDueEntitlementTransitions(ctx, now.UTC()); err != nil {
-				a.logger.Error("entitlement transition scan failed", "error", err)
-			}
-			if err := a.store.ExpireStalePaymentOrders(ctx, now.UTC()); err != nil {
-				a.logger.Error("payment expiry scan failed", "error", err)
-			}
-		case <-maintenanceTicker.C:
-			a.configureTelegram(ctx)
-			if err := a.store.DeleteExpiredSessions(ctx, time.Now().UTC()); err != nil {
-				a.logger.Error("session cleanup failed", "error", err)
-			}
-			if err := a.backups.RemoveExpired(); err != nil {
-				a.logger.Error("backup retention failed", "error", err)
-			}
-		case <-starsTicker.C:
-			a.reconcileStars(ctx)
-		case <-backupTimer.C:
-			backupCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
-			if _, err := a.backups.Run(backupCtx); err != nil && !errors.Is(err, context.Canceled) {
-				a.logger.Error("scheduled backup failed", "error", err)
-			}
-			cancel()
-			backupTimer.Reset(time.Until(a.nextBackup(time.Now())))
-		}
-	}
-}
-
-func (a *Application) configureTelegram(ctx context.Context) {
-	secret, err := a.settings.Plaintext(ctx, "telegram.webhook_secret")
-	if err != nil {
-		a.logger.Error("load Telegram webhook secret", "error", err)
-		return
-	}
-	setupCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
-	defer cancel()
-	webhookURL := *a.config.PublicBaseURL
-	webhookURL.Path = strings.TrimRight(webhookURL.Path, "/") + "/api/v1/webhooks/telegram"
-	if err := a.telegram.SetWebhook(setupCtx, telegram.WebhookConfig{URL: webhookURL.String(), SecretToken: secret,
-		AllowedUpdates: telegram.DefaultAllowedUpdates(), MaxConnections: 20}); err != nil {
-		a.logger.Error("configure Telegram webhook", "error", err)
-		return
-	}
-	if err := a.telegram.SetChatMenuButton(setupCtx, "Open TX Carpool", a.config.PublicBaseURL.String()); err != nil {
-		a.logger.Error("configure Telegram menu", "error", err)
-	}
-}
-
-func (a *Application) reconcileStars(ctx context.Context) {
-	transactions, err := a.telegram.GetStarTransactions(ctx, 0, 100)
-	if err != nil {
-		a.logger.Error("Stars reconciliation failed", "error", err)
-		return
-	}
-	for _, transaction := range transactions {
-		event, refund, ok := normalizeStarTransaction(transaction)
-		if !ok {
-			continue
-		}
-		if !refund {
-			if _, _, err := a.billing.Settle(ctx, event); err != nil && !errors.Is(err, database.ErrConflict) && !errors.Is(err, database.ErrNotFound) {
-				a.logger.Error("reconcile Stars credit", "transaction_id", transaction.ID, "error", err)
-			}
-			continue
-		}
-		if _, err := a.billing.ValidateEvent(ctx, event); err == nil {
-			if _, err := a.store.RefundPayment(ctx, nil, event.OrderID, "Telegram Stars reconciliation refund", time.Now().UTC()); err != nil && !errors.Is(err, database.ErrConflict) {
-				a.logger.Error("reconcile Stars refund", "transaction_id", transaction.ID, "error", err)
-			}
-		} else if !errors.Is(err, database.ErrConflict) && !errors.Is(err, database.ErrNotFound) {
-			a.logger.Error("reconcile Stars refund", "transaction_id", transaction.ID, "error", err)
-		}
-	}
-}
-
-func normalizeStarTransaction(transaction telegram.StarTransaction) (billing.ProviderEvent, bool, bool) {
-	if transaction.NanostarAmount != 0 || transaction.ID == "" {
-		return billing.ProviderEvent{}, false, false
-	}
-	amount := transaction.Amount
-	if amount < 0 {
-		amount = -amount
-	}
-	if amount == 0 {
-		return billing.ProviderEvent{}, false, false
-	}
-	partner := transaction.Source
-	refund := false
-	if partner == nil {
-		partner = transaction.Receiver
-		refund = partner != nil
-	}
-	if partner == nil || partner.Type != "user" || partner.TransactionType != "invoice_payment" || partner.InvoicePayload == "" || partner.User.ID <= 0 {
-		return billing.ProviderEvent{}, false, false
-	}
-	telegramID := partner.User.ID
-	event := billing.ProviderEvent{Provider: "stars", OrderID: partner.InvoicePayload, TradeID: transaction.ID,
-		PayableAmount: strconv.FormatInt(amount, 10), PayableCurrency: "XTR", TelegramID: &telegramID}
-	if !refund {
-		event.DedupeKey = transaction.ID
-	}
-	return event, refund, true
-}
-
-func (a *Application) nextBackup(now time.Time) time.Time {
-	local := now.In(a.config.Timezone)
-	next := time.Date(local.Year(), local.Month(), local.Day(), a.config.BackupHour, 0, 0, 0, a.config.Timezone)
-	if !next.After(local) {
-		next = next.AddDate(0, 0, 1)
-	}
-	return next
+	return &Application{
+		config: cfg, logger: logger, httpServer: httpServer, store: store, outbox: outboxWorker,
+		backups: backupService, telegram: telegramClient, settings: settings, billing: billingService, upstreams: upstreams,
+	}, nil
 }

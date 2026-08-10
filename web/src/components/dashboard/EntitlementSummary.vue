@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import { PhArrowRight, PhCalendarBlank, PhGauge, PhStack } from '@phosphor-icons/vue'
-import { RouterLink } from 'vue-router'
-
 import type { Purchase } from '@/api/types'
-import { formatBytes, formatDate } from '@/utils/format'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import { formatBytes, formatDate } from '@/utils/format'
 
 defineProps<{
   active?: Purchase | null
@@ -21,7 +18,7 @@ defineProps<{
 
     <div v-if="active" class="entitlement-panel">
       <div class="entitlement-panel__primary">
-        <span class="feature-icon"><PhStack :size="24" /></span>
+        <span class="feature-icon"><UIcon name="i-ph-stack" /></span>
         <div>
           <h3>{{ active.comboName }}</h3>
           <p>{{ $t('dashboard.squadsIncluded', { count: active.squadUuids.length }) }}</p>
@@ -29,11 +26,11 @@ defineProps<{
       </div>
       <dl class="metric-pair">
         <div>
-          <dt><PhGauge :size="17" /> {{ $t('dashboard.traffic') }}</dt>
+          <dt><UIcon name="i-ph-gauge" /> {{ $t('dashboard.traffic') }}</dt>
           <dd>{{ formatBytes(active.trafficLimitBytes) }}</dd>
         </div>
         <div>
-          <dt><PhCalendarBlank :size="17" /> {{ $t('dashboard.renews') }}</dt>
+          <dt><UIcon name="i-ph-calendar-blank" /> {{ $t('dashboard.renews') }}</dt>
           <dd>{{ formatDate(active.validUntil) }}</dd>
         </div>
       </dl>
@@ -50,10 +47,13 @@ defineProps<{
         <h3>{{ $t('dashboard.noActiveCombo') }}</h3>
         <p>{{ $t('dashboard.choosePlan') }}</p>
       </div>
-      <RouterLink class="button button--secondary" to="/catalog">
-        {{ $t('catalog.viewCombos') }}
-        <PhArrowRight :size="18" />
-      </RouterLink>
+      <UButton
+        to="/catalog"
+        color="neutral"
+        variant="outline"
+        trailing-icon="i-ph-arrow-right"
+        :label="$t('catalog.viewCombos')"
+      />
     </div>
   </section>
 </template>

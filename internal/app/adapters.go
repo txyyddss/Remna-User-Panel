@@ -4,23 +4,17 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"net/url"
 	"strconv"
 	"time"
 
-	"github.com/txyyddss/Remna-User-Panel/internal/accounts"
 	"github.com/txyyddss/Remna-User-Panel/internal/admin"
 	"github.com/txyyddss/Remna-User-Panel/internal/billing"
-	"github.com/txyyddss/Remna-User-Panel/internal/catalog"
-	"github.com/txyyddss/Remna-User-Panel/internal/entitlements"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/bepusdt"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/ezpay"
-	"github.com/txyyddss/Remna-User-Panel/internal/integrations/remnawave"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
-	"github.com/txyyddss/Remna-User-Panel/internal/rollover"
 )
 
 type initDataAdapter struct{ verifier *telegram.InitDataVerifier }
@@ -59,285 +53,6 @@ func (a telegramAdapter) RevokeInviteLink(ctx context.Context, chatID, inviteLin
 	_, err := a.client.RevokeInviteLink(ctx, chatID, inviteLink)
 	return err
 }
-
-type remnaAdapter struct{ settings *admin.SettingsService }
-
-func (a remnaAdapter) client(ctx context.Context) (*remnawave.Client, error) {
-	baseURL, err := a.settings.Plaintext(ctx, "remnawave.base_url")
-	if err != nil {
-		return nil, err
-	}
-	token, err := a.settings.Plaintext(ctx, "remnawave.api_token")
-	if err != nil {
-		return nil, err
-	}
-	return remnawave.NewClient(baseURL, token)
-}
-
-func (a remnaAdapter) FindUserByUsername(ctx context.Context, username string) (accounts.RemoteUser, bool, error) {
-	client, err := a.client(ctx)
-	if err != nil {
-		return accounts.RemoteUser{}, false, err
-	}
-	user, exists, err := client.FindUserByUsername(ctx, username)
-	if err != nil || !exists {
-		return accounts.RemoteUser{}, exists, err
-	}
-	return mapRemoteUser(*user), true, nil
-}
-
-func (a remnaAdapter) FindUserByTelegramID(ctx context.Context, telegramID int64) (accounts.RemoteUser, bool, error) {
-	client, err := a.client(ctx)
-	if err != nil {
-		return accounts.RemoteUser{}, false, err
-	}
-	user, err := client.FindUserByTelegramID(ctx, telegramID)
-	if err != nil {
-		return accounts.RemoteUser{}, false, err
-	}
-	if user == nil {
-		return accounts.RemoteUser{}, false, nil
-	}
-	return mapRemoteUser(*user), true, nil
-}
-
-func (a remnaAdapter) FindUserByID(ctx context.Context, remoteID string) (accounts.RemoteUser, bool, error) {
-	client, userID, err := a.clientAndID(ctx, remoteID)
-	if err != nil {
-		return accounts.RemoteUser{}, false, err
-	}
-	user, err := client.GetUserByID(ctx, userID)
-	if remnawave.IsNotFound(err) {
-		return accounts.RemoteUser{}, false, nil
-	}
-	if err != nil {
-		return accounts.RemoteUser{}, false, err
-	}
-	return mapRemoteUser(*user), true, nil
-}
-
-func (a remnaAdapter) CreateUser(ctx context.Context, input accounts.RemoteCreateUser) (accounts.RemoteUser, error) {
-	client, err := a.client(ctx)
-	if err != nil {
-		return accounts.RemoteUser{}, err
-	}
-	user, err := client.CreateUser(ctx, remnawave.CreateUserRequest{
-		Username: input.Username, Status: remnawave.UserStatus(input.Status), TrafficLimitBytes: input.TrafficLimitBytes,
-		TrafficLimitStrategy: remnawave.TrafficLimitStrategy(input.TrafficLimitStrategy), ExpireAt: input.ExpireAt,
-		TelegramID: input.TelegramID, ActiveInternalSquads: input.ActiveInternalSquads, ExternalSquadUUID: nil,
-	})
-	if err != nil {
-		return accounts.RemoteUser{}, err
-	}
-	return mapRemoteUser(*user), nil
-}
-
-func (a remnaAdapter) IsDuplicateError(err error) bool { return remnawave.IsErrorCode(err, "A019") }
-
-func mapRemoteUser(user remnawave.User) accounts.RemoteUser {
-	return accounts.RemoteUser{ID: strconv.FormatInt(user.ID, 10), Username: user.Username, TelegramID: user.TelegramID, SubscriptionURL: user.SubscriptionURL}
-}
-
-func (a remnaAdapter) Dashboard(ctx context.Context, remoteID string) (catalog.RemoteDashboard, error) {
-	client, userID, err := a.clientAndID(ctx, remoteID)
-	if err != nil {
-		return catalog.RemoteDashboard{}, err
-	}
-	user, err := client.GetUserByID(ctx, userID)
-	if err != nil {
-		return catalog.RemoteDashboard{}, err
-	}
-	stats, err := client.GetUserStats(ctx, userID, time.Now().UTC().AddDate(0, -1, 0), time.Now().UTC(), 5)
-	if err != nil {
-		return catalog.RemoteDashboard{}, err
-	}
-	mapped := model.Statistics{
-		UsedTrafficBytes:     strconv.FormatInt(user.UserTraffic.UsedTrafficBytes, 10),
-		LifetimeTrafficBytes: strconv.FormatInt(user.UserTraffic.LifetimeUsedTrafficBytes, 10),
-		TrafficLimitBytes:    strconv.FormatInt(user.TrafficLimitBytes, 10), OnlineAt: user.UserTraffic.OnlineAt,
-		Categories: stats.Categories, SparklineData: make([]string, 0, len(stats.SparklineData)), TopNodes: make([]model.TopNode, 0, len(stats.TopNodes)),
-	}
-	for _, sample := range stats.SparklineData {
-		mapped.SparklineData = append(mapped.SparklineData, strconv.FormatInt(sample, 10))
-	}
-	for _, node := range stats.TopNodes {
-		mapped.TopNodes = append(mapped.TopNodes, model.TopNode{UUID: node.UUID, Name: node.Name, CountryCode: node.CountryCode, TotalBytes: strconv.FormatInt(node.Total, 10)})
-	}
-	return catalog.RemoteDashboard{Statistics: mapped, SubscriptionURL: user.SubscriptionURL}, nil
-}
-
-func (a remnaAdapter) RevokeSubscription(ctx context.Context, remoteID string) (string, error) {
-	client, userID, err := a.clientAndID(ctx, remoteID)
-	if err != nil {
-		return "", err
-	}
-	user, err := client.RevokeSubscription(ctx, userID, false)
-	if err != nil {
-		return "", err
-	}
-	return user.SubscriptionURL, nil
-}
-
-func (a remnaAdapter) ApplyEntitlement(ctx context.Context, remoteID string, trafficLimitBytes int64, resetStrategy string, squadUUIDs []string) error {
-	client, userID, err := a.clientAndID(ctx, remoteID)
-	if err != nil {
-		return err
-	}
-	status := remnawave.UserStatusActive
-	strategy := remnawave.TrafficLimitStrategy(resetStrategy)
-	expires := time.Date(2099, 12, 31, 23, 59, 59, 0, time.UTC)
-	_, err = client.UpdateUser(ctx, remnawave.UpdateUserRequest{ID: userID, Status: &status, TrafficLimitBytes: &trafficLimitBytes,
-		TrafficLimitStrategy: &strategy, ExpireAt: &expires, ActiveInternalSquads: &squadUUIDs, ClearExternalSquad: true})
-	return err
-}
-
-func (a remnaAdapter) ResetTraffic(ctx context.Context, remoteID string) error {
-	client, userID, err := a.clientAndID(ctx, remoteID)
-	if err != nil {
-		return err
-	}
-	_, err = client.ResetTraffic(ctx, userID)
-	return err
-}
-
-func (a remnaAdapter) RemoveEntitlement(ctx context.Context, remoteID string) error {
-	client, userID, err := a.clientAndID(ctx, remoteID)
-	if err != nil {
-		return err
-	}
-	status := remnawave.UserStatusActive
-	limit := int64(0)
-	strategy := remnawave.TrafficNoReset
-	expires := time.Date(2099, 12, 31, 23, 59, 59, 0, time.UTC)
-	squads := []string{}
-	_, err = client.UpdateUser(ctx, remnawave.UpdateUserRequest{ID: userID, Status: &status, TrafficLimitBytes: &limit,
-		TrafficLimitStrategy: &strategy, ExpireAt: &expires, ActiveInternalSquads: &squads, ClearExternalSquad: true})
-	return err
-}
-
-func (a remnaAdapter) QuiesceForRollover(ctx context.Context, remoteID string) error {
-	client, userID, err := a.clientAndID(ctx, remoteID)
-	if err != nil {
-		return err
-	}
-	status := remnawave.UserStatusDisabled
-	_, err = client.UpdateUser(ctx, remnawave.UpdateUserRequest{ID: userID, Status: &status})
-	if remnawave.IsNotFound(err) {
-		return rollover.ErrRemoteUserMissing
-	}
-	return err
-}
-
-func (a remnaAdapter) TrafficForRollover(ctx context.Context, remoteID string) (int64, int64, error) {
-	client, userID, err := a.clientAndID(ctx, remoteID)
-	if err != nil {
-		return 0, 0, err
-	}
-	user, err := client.GetUserByID(ctx, userID)
-	if remnawave.IsNotFound(err) {
-		return 0, 0, rollover.ErrRemoteUserMissing
-	}
-	if err != nil {
-		return 0, 0, err
-	}
-	return user.TrafficLimitBytes, user.UserTraffic.UsedTrafficBytes, nil
-}
-
-func (a remnaAdapter) ListInternalSquads(ctx context.Context) ([]admin.UpstreamSquad, error) {
-	client, err := a.client(ctx)
-	if err != nil {
-		return nil, err
-	}
-	squads, err := client.ListInternalSquads(ctx)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]admin.UpstreamSquad, 0, len(squads))
-	for _, squad := range squads {
-		result = append(result, admin.UpstreamSquad{UUID: squad.UUID, Name: squad.Name})
-	}
-	return result, nil
-}
-
-func (a remnaAdapter) ListCatalogSquads(ctx context.Context) ([]catalog.RemoteSquad, error) {
-	client, err := a.client(ctx)
-	if err != nil {
-		return nil, err
-	}
-	squads, err := client.ListInternalSquads(ctx)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]catalog.RemoteSquad, 0, len(squads))
-	for _, squad := range squads {
-		result = append(result, catalog.RemoteSquad{UUID: squad.UUID, Name: squad.Name})
-	}
-	return result, nil
-}
-
-func (a remnaAdapter) ListNodes(ctx context.Context) ([]admin.UpstreamNode, error) {
-	client, err := a.client(ctx)
-	if err != nil {
-		return nil, err
-	}
-	nodes, err := client.ListNodes(ctx)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]admin.UpstreamNode, 0, len(nodes))
-	for _, node := range nodes {
-		inbounds := make([]string, 0, len(node.ConfigProfile.ActiveInbounds))
-		for _, inbound := range node.ConfigProfile.ActiveInbounds {
-			inbounds = append(inbounds, inbound.UUID)
-		}
-		result = append(result, admin.UpstreamNode{UUID: node.UUID, Name: node.Name, CountryCode: node.CountryCode,
-			ConsumptionMultiplier: node.ConsumptionMultiplier, ActiveInboundUUIDs: inbounds, Disabled: node.IsDisabled})
-	}
-	return result, nil
-}
-
-func (a remnaAdapter) AccessibleNodeUUIDs(ctx context.Context, squadUUID string) ([]string, error) {
-	client, err := a.client(ctx)
-	if err != nil {
-		return nil, err
-	}
-	nodes, err := client.InternalSquadAccessibleNodes(ctx, squadUUID)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]string, 0, len(nodes))
-	for _, node := range nodes {
-		result = append(result, node.UUID)
-	}
-	return result, nil
-}
-
-func (a remnaAdapter) UpdateInternalSquadInbounds(ctx context.Context, squadUUID string, inbounds []string) error {
-	client, err := a.client(ctx)
-	if err != nil {
-		return err
-	}
-	_, err = client.UpdateInternalSquadInbounds(ctx, squadUUID, inbounds)
-	return err
-}
-
-func (a remnaAdapter) clientAndID(ctx context.Context, remoteID string) (*remnawave.Client, int64, error) {
-	client, err := a.client(ctx)
-	if err != nil {
-		return nil, 0, err
-	}
-	userID, err := strconv.ParseInt(remoteID, 10, 64)
-	if err != nil || userID <= 0 {
-		return nil, 0, errors.New("invalid Remnawave user id")
-	}
-	return client, userID, nil
-}
-
-var _ accounts.RemnawaveClient = remnaAdapter{}
-var _ catalog.RemnawaveClient = remnaAdapter{}
-var _ entitlements.RemnawaveClient = remnaAdapter{}
-var _ rollover.Remote = remnaAdapter{}
-var _ admin.SquadImporter = remnaAdapter{}
 
 type paymentAdapter struct {
 	settings *admin.SettingsService
@@ -385,7 +100,7 @@ func (a paymentAdapter) createEZPay(ctx context.Context, request billing.Provide
 		return billing.ProviderCheckout{}, err
 	}
 	return billing.ProviderCheckout{PaymentURL: &checkoutURL, PayableAmount: request.PayableAmount,
-		PayableCurrency: "CNY", ProviderPayload: `{}`, ExpiresAt: time.Now().UTC().Add(30 * time.Minute)}, nil
+		PayableCurrency: "CNY", ExpiresAt: time.Now().UTC().Add(30 * time.Minute)}, nil
 }
 
 func (a paymentAdapter) createBEPusdt(ctx context.Context, request billing.ProviderCreateRequest) (billing.ProviderCheckout, error) {
@@ -398,13 +113,16 @@ func (a paymentAdapter) createBEPusdt(ctx context.Context, request billing.Provi
 	if err != nil {
 		return billing.ProviderCheckout{}, err
 	}
-	payload, _ := json.Marshal(transaction)
+	return mapBEPusdtCheckout(transaction, request.PayableAmount, time.Now().UTC()), nil
+}
+
+func mapBEPusdtCheckout(transaction *bepusdt.Transaction, payableAmount string, createdAt time.Time) billing.ProviderCheckout {
 	tradeID, paymentURL, address := transaction.TradeID, transaction.PaymentURL, transaction.Token
 	actualAmount, actualCurrency := transaction.ActualAmount, "USDT"
-	expiresAt := transaction.ExpiresAt(time.Now().UTC())
+	expiresAt := transaction.ExpiresAt(createdAt)
 	return billing.ProviderCheckout{TradeID: &tradeID, PaymentURL: &paymentURL, ReceivingAddress: &address,
-		ActualCryptoAmount: &actualAmount, ActualCryptoCurrency: &actualCurrency, PayableAmount: request.PayableAmount,
-		PayableCurrency: "USD", ProviderPayload: string(payload), ExpiresAt: expiresAt}, nil
+		ActualCryptoAmount: &actualAmount, ActualCryptoCurrency: &actualCurrency, PayableAmount: payableAmount,
+		PayableCurrency: "USD", ExpiresAt: expiresAt}
 }
 
 func (a paymentAdapter) Cancel(ctx context.Context, order model.PaymentOrder) error {
@@ -429,7 +147,7 @@ func (a paymentAdapter) createStars(ctx context.Context, request billing.Provide
 		return billing.ProviderCheckout{}, err
 	}
 	return billing.ProviderCheckout{PaymentURL: &link, PayableAmount: request.PayableAmount,
-		PayableCurrency: "XTR", ProviderPayload: `{}`, ExpiresAt: time.Now().UTC().Add(30 * time.Minute)}, nil
+		PayableCurrency: "XTR", ExpiresAt: time.Now().UTC().Add(30 * time.Minute)}, nil
 }
 
 func (a paymentAdapter) ezpayClient(ctx context.Context) (*ezpay.Client, error) {

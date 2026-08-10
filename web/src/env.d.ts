@@ -15,12 +15,19 @@ interface TelegramWebApp {
   initData: string
   initDataUnsafe: { user?: TelegramWebAppUser }
   colorScheme: 'light' | 'dark'
+  themeParams?: Record<string, string | undefined>
+  safeAreaInset?: TelegramInsets
+  contentSafeAreaInset?: TelegramInsets
+  viewportHeight?: number
+  viewportStableHeight?: number
   ready(): void
   expand(): void
   close(): void
   openLink(url: string): void
   openTelegramLink(url: string): void
   openInvoice(url: string, callback?: (status: string) => void): void
+  onEvent?(eventType: string, callback: (...args: unknown[]) => void): void
+  offEvent?(eventType: string, callback: (...args: unknown[]) => void): void
   BackButton?: {
     isVisible: boolean
     show(): void
@@ -32,6 +39,13 @@ interface TelegramWebApp {
     impactOccurred(style: 'light' | 'medium' | 'heavy'): void
     notificationOccurred(type: 'error' | 'success' | 'warning'): void
   }
+}
+
+interface TelegramInsets {
+  top: number
+  right: number
+  bottom: number
+  left: number
 }
 
 interface Window {

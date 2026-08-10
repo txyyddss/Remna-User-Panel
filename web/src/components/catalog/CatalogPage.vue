@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { PhArrowRight, PhCheckCircle } from '@phosphor-icons/vue'
-
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { useCatalog } from '@/composables/useCatalog'
@@ -62,7 +60,7 @@ const {
           <h2>{{ $t('catalog.coreCombos') }}</h2>
           <span v-if="balance" class="section-heading__meta">{{ $t('activity.balance', { amount: formatMoney(balance) }) }}</span>
         </div>
-        <div v-if="visibleCombos.length" class="combo-grid">
+        <div v-if="visibleCombos.length" v-auto-animate class="combo-grid">
           <ComboOption
             v-for="combo in visibleCombos"
             :key="combo.id"
@@ -76,7 +74,7 @@ const {
             <h3>{{ $t('catalog.noCombos') }}</h3>
             <p>{{ $t('catalog.noCombosHint') }}</p>
           </div>
-          <button class="button button--secondary" type="button" @click="load">{{ $t('common.refresh') }}</button>
+          <UButton color="neutral" variant="outline" :label="$t('common.refresh')" @click="load" />
         </div>
       </section>
 
@@ -84,13 +82,15 @@ const {
 
       <div class="catalog-action">
         <span v-if="selectedCombo">
-          <PhCheckCircle :size="20" weight="fill" />
+          <UIcon name="i-ph-check-circle-fill" />
           {{ $t('catalog.selected', { name: selectedCombo.name }) }}
         </span>
-        <button class="button button--primary" type="button" :disabled="!selectedCombo" @click="reviewPurchase">
-          {{ $t('catalog.reviewPurchase') }}
-          <PhArrowRight :size="19" />
-        </button>
+        <UButton
+          :disabled="!selectedCombo"
+          trailing-icon="i-ph-arrow-right"
+          :label="$t('catalog.reviewPurchase')"
+          @click="reviewPurchase"
+        />
       </div>
 
       <CatalogCheckout
@@ -112,7 +112,7 @@ const {
     <div v-else class="error-state">
       <h1>{{ $t('catalog.unavailable') }}</h1>
       <p>{{ error }}</p>
-      <button class="button button--primary" type="button" @click="load">{{ $t('common.tryAgain') }}</button>
+      <UButton :label="$t('common.tryAgain')" @click="load" />
     </div>
   </div>
 </template>

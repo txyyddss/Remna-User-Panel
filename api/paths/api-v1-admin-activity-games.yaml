@@ -1,0 +1,34 @@
+get:
+  tags: [Admin, Activity]
+  operationId: listAdminActivityGames
+  summary: List all configured betting games
+  responses:
+    '200':
+      description: Enabled and disabled games.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/ActivityGameList'
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+post:
+  tags: [Admin, Activity]
+  operationId: createAdminActivityGame
+  summary: Create a betting game
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/ActivityGameWrite'
+  responses:
+    '201':
+      description: Created game.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/ActivityGame'
+    '400': { $ref: '../openapi.yaml#/components/responses/BadRequest' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }

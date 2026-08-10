@@ -13,7 +13,7 @@ import (
 // DeleteActivityGame removes feature rows and their ledger evidence without
 // reversing any already-settled balance effects.
 func (s *Store) DeleteActivityGame(ctx context.Context, actorID, gameID string, now time.Time) error {
-	return s.deleteFeature(ctx, actorID, "activity_game.delete", "activity_game", gameID, func(tx *sql.Tx) error {
+	return s.deleteFeature(ctx, actorID, "activity_game.delete", "activity_game", gameID, now, func(tx *sql.Tx) error {
 		if err := requireRowTx(ctx, tx, `SELECT 1 FROM activity_games WHERE id=?`, gameID); err != nil {
 			return err
 		}
@@ -31,7 +31,7 @@ func (s *Store) DeleteActivityGame(ctx context.Context, actorID, gameID string, 
 // DeleteLuckyDraw preserves coupon grants and extension credits but removes the
 // draw configuration, outcomes, prizes, snapshots, and feature ledger rows.
 func (s *Store) DeleteLuckyDraw(ctx context.Context, actorID, drawID string, now time.Time) error {
-	return s.deleteFeature(ctx, actorID, "lucky_draw.delete", "lucky_draw", drawID, func(tx *sql.Tx) error {
+	return s.deleteFeature(ctx, actorID, "lucky_draw.delete", "lucky_draw", drawID, now, func(tx *sql.Tx) error {
 		if err := requireRowTx(ctx, tx, `SELECT 1 FROM activity_lucky_draws WHERE id=?`, drawID); err != nil {
 			return err
 		}
@@ -49,7 +49,7 @@ func (s *Store) DeleteLuckyDraw(ctx context.Context, actorID, drawID string, now
 // DeleteQuestionnaire rejects processing imports/jobs, removes non-processing
 // settlement jobs, imports and participants, and leaves awarded balances intact.
 func (s *Store) DeleteQuestionnaire(ctx context.Context, actorID, questionnaireID string, now time.Time) error {
-	return s.deleteFeature(ctx, actorID, "questionnaire.delete", "questionnaire", questionnaireID, func(tx *sql.Tx) error {
+	return s.deleteFeature(ctx, actorID, "questionnaire.delete", "questionnaire", questionnaireID, now, func(tx *sql.Tx) error {
 		if err := requireRowTx(ctx, tx, `SELECT 1 FROM questionnaires WHERE id=?`, questionnaireID); err != nil {
 			return err
 		}
@@ -73,7 +73,7 @@ func (s *Store) DeleteQuestionnaire(ctx context.Context, actorID, questionnaireI
 	})
 }
 
-func (s *Store) deleteFeature(ctx context.Context, actorID, action, targetType, targetID string, mutate func(*sql.Tx) error) error {
+func (s *Store) deleteFeature(ctx context.Context, actorID, action, targetType, targetID string, now time.Time, mutate func(*sql.Tx) error) error {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 	tx, err := s.db.BeginTx(ctx, nil)

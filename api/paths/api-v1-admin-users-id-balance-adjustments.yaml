@@ -1,0 +1,30 @@
+post:
+  tags: [Admin]
+  operationId: adjustAdminUserBalance
+  summary: Append an audited manual TXB adjustment
+  description: Never edits or deletes an existing ledger row. A non-empty reason is required.
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/BalanceAdjustmentRequest'
+  responses:
+    '201':
+      description: Appended ledger entry.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/LedgerEntry'
+    '400':
+      $ref: '../openapi.yaml#/components/responses/BadRequest'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../openapi.yaml#/components/responses/Forbidden'
+    '404':
+      $ref: '../openapi.yaml#/components/responses/NotFound'
+    '422':
+      $ref: '../openapi.yaml#/components/responses/Unprocessable'

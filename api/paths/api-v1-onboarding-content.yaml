@@ -1,0 +1,18 @@
+get:
+  tags: [Onboarding]
+  operationId: getPublishedOnboardingContent
+  summary: Get localized published welcome and agreement content
+  parameters:
+    - name: locale
+      in: query
+      schema:
+        type: string
+        enum: [en, zh-CN]
+  responses:
+    '200':
+      description: Published localized content with computed welcome timings and the current agreement revision.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/PublishedOnboarding'
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }

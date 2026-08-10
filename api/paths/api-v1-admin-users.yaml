@@ -1,0 +1,15 @@
+get:
+  tags: [Admin]
+  operationId: listAdminUsers
+  summary: List users through safe projections
+  responses:
+    '200':
+      description: User page. Subscription bearer URLs are omitted from list results.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/AdminUserPage'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../openapi.yaml#/components/responses/Forbidden'

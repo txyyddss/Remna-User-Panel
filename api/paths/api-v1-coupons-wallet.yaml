@@ -1,0 +1,15 @@
+get:
+  tags: [Coupons]
+  operationId: getCouponWallet
+  summary: List the current user's coupon grants
+  responses:
+    '200':
+      description: Coupon grants available or retained for history.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/CouponGrantList'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '409':
+      $ref: '../openapi.yaml#/components/responses/Conflict'

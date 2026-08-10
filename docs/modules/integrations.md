@@ -2,7 +2,7 @@
 
 ## Boundary rule
 
-Each integration package translates a documented external protocol into a small application-facing interface. Domain services own interfaces and business decisions; adapters own URLs, authentication, signing, transport timeouts, response decoding, and provider-specific errors. Every method that can block accepts `context.Context`. HTTP clients have explicit timeouts and bounded response bodies.
+Each integration package translates a documented external protocol into a small application-facing interface. Domain services own interfaces and business decisions; adapters own URLs, authentication, signing, transport timeouts, response decoding, and provider-specific errors. Every method that can block accepts `context.Context`. HTTP clients have explicit timeouts and bounded response bodies. Application adapters submit every Remnawave and Emby call to a bounded, paced, context-owned FIFO queue before constructing or invoking the provider client; cancellation and shutdown release blocked callers.
 
 ## Telegram
 
@@ -14,7 +14,7 @@ The adapter exposes raw Telegram IDs as integers internally but API boundaries s
 
 The Remnawave adapter follows the bundled v3.2.1 contract at `reference/Upstream/Remnawave/api.json`. Its bearer-authenticated surface includes the contracted node list, squad-accessible-node lookup, and internal-squad patch calls in addition to user, subscription, statistics, and squad operations. Node selection is never cached locally: the backend validates selected node UUIDs, unions active inbound UUIDs, patches the squad, then re-fetches accessible nodes so shared-inbound accessibility is reflected exactly. Country codes and `consumptionMultiplier` remain upstream projections.
 
-Initial users use `2099-12-31T23:59:59Z`, `trafficLimitBytes=0`, `NO_RESET`, no external squad, and an empty internal-squad list. Error code `A019` has a typed duplicate-name meaning. Subscription URLs are bearer secrets: response structs may carry them to the authenticated dashboard, but log attributes, tracing, cache diagnostics, and admin list projections must omit them.
+Initial users use `2099-12-31T23:59:59Z`, `trafficLimitBytes=0`, `NO_RESET`, no external squad, and an empty internal-squad list. User responses must contain the v3.2.1-required identity, status, limit/strategy, traffic, subscription URL, squad, and protocol-secret fields; critical identities and URLs receive semantic validation before mapping, while protocol secrets are validated then discarded. Error code `A019` has a typed duplicate-name meaning. Subscription URLs are bearer secrets: response structs may carry them to the authenticated dashboard and a short-lived process-local cache, but the database, logs, tracing, cache diagnostics, and admin projections omit them. After a process restart, an upstream outage therefore yields no subscription link until a fresh Remnawave fetch succeeds.
 
 Recent statistics are cached briefly by user. If Remnawave fails and a prior value exists, the dashboard returns it with `statisticsStale:true`; without a prior value, statistics are absent, the warning remains visible, and local balance and entitlement data remain usable. Authentication distinguishes a confirmed `GET /api/users/{id}` 404 from timeout/5xx; only 404 enters missing-user recovery. Rollover quiesces access, then reads authoritative traffic, and never resets traffic before the durable rollover result. Mutation failures are retried only through kind-routed, idempotent full-desired-state outbox commands.
 
@@ -34,7 +34,7 @@ The bundled BEPusdt references differ on acknowledgement text: the general API d
 
 ## Emby
 
-The Emby adapter uses an encrypted base URL/token and sends `X-Emby-Token` only to that configured origin. It calls the bundled user, password, policy, library, and parental-rating endpoints with bounded responses and typed status errors. Candidate creation is reconciled only by the exact locally persisted name after ambiguous transport failure.
+The Emby adapter uses an encrypted base URL/token and sends `X-Emby-Token` only to that configured origin. The base URL may include the documented `/emby` prefix; appended paths preserve it. User identifiers must be canonical 32-hex or hyphenated GUID values. It calls the bundled user, password, policy, library, and parental-rating endpoints with bounded responses and typed status errors. Candidate creation is reconciled only by the exact locally persisted name after ambiguous transport failure.
 
 Policy updates never forward a browser document. The adapter fetches the complete current user policy and writes the domain's hardened overlay, preserving remote-access and unrelated fields while disabling hidden-login exposure, remote control, transcoding/remux/conversion, and downloads. Password byte slices are never logged or included in provider error bodies.
 

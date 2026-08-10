@@ -2,6 +2,7 @@ import { onScopeDispose, readonly, shallowRef } from 'vue'
 
 import type { QuestionnaireImportPreview, QuestionnaireImportSummary, QuestionnaireSettlementReport } from '@/api/features'
 import { featuresApi } from '@/api/features'
+import { localizedError, t } from '@/i18n'
 
 export function useQuestionnaireImport(questionnaireId: () => string) {
   const preview = shallowRef<QuestionnaireImportPreview | null>(null)
@@ -20,7 +21,7 @@ export function useQuestionnaireImport(questionnaireId: () => string) {
 
   async function upload(file: File): Promise<void> {
     if (file.size > 5 * 1024 * 1024) {
-      error.value = 'CSV files are limited to 5 MiB.'
+      error.value = t('errors.csvLimit')
       return
     }
     busy.value = true
@@ -33,7 +34,7 @@ export function useQuestionnaireImport(questionnaireId: () => string) {
       preview.value = await featuresApi.previewQuestionnaireCsv(questionnaireId(), file)
       codeColumn.value = preview.value.headers[0] ?? ''
     } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : 'The CSV could not be uploaded.'
+      error.value = localizedError(caught, 'errors.csvUpload')
     } finally {
       busy.value = false
     }
@@ -46,7 +47,7 @@ export function useQuestionnaireImport(questionnaireId: () => string) {
     try {
       summary.value = await featuresApi.analyzeQuestionnaireCsv(questionnaireId(), preview.value.id, codeColumn.value)
     } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : 'The CSV could not be analyzed.'
+      error.value = localizedError(caught, 'errors.csvAnalyze')
     } finally {
       busy.value = false
     }
@@ -62,7 +63,7 @@ export function useQuestionnaireImport(questionnaireId: () => string) {
       preview.value = response
       schedulePoll()
     } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : 'Settlement could not be queued.'
+      error.value = localizedError(caught, 'errors.settlementQueue')
     } finally {
       busy.value = false
     }
@@ -81,7 +82,7 @@ export function useQuestionnaireImport(questionnaireId: () => string) {
       report.value = state.report ?? null
       if (state.preview.status === 'settled' || state.preview.status === 'failed') {
         stopPolling()
-        if (state.preview.status === 'failed') error.value = 'Settlement failed. The import is preserved for review.'
+        if (state.preview.status === 'failed') error.value = t('errors.settlementFailed')
         return
       }
     } catch {

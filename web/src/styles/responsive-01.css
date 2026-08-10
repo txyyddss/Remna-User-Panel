@@ -1,0 +1,55 @@
+@keyframes sheet-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-status {
+  0%, 100% { opacity: 0.45; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes gentle-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+
+@keyframes icon-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (min-width: 640px) {
+  .page {
+    padding-right: 1.5rem;
+    padding-left: 1.5rem;
+  }
+
+  .combo-grid,
+  .squad-grid,
+  .backup-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .catalog-action > span {
+    display: inline-flex;
+  }
+
+  .catalog-action .button {
+    width: auto;
+  }
+
+  .admin-panel__heading {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .settings-group,
+  .catalog-editor {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .catalog-editor__wide {
+    grid-column: 1 / -1;
+  }
+
+}

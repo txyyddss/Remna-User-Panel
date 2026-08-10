@@ -14,6 +14,10 @@ function detectLocale(): Locale {
 }
 
 const locale = shallowRef<Locale>(detectLocale())
+if (typeof document !== 'undefined') {
+  document.documentElement.lang = locale.value
+  document.title = t('app.name')
+}
 
 function lookup(key: string, source: unknown): unknown {
   return key.split('.').reduce<unknown>((value, segment) => {
@@ -27,6 +31,7 @@ export function setLocale(next: Locale): void {
   locale.value = next
   globalThis.localStorage?.setItem(storageKey, next)
   document.documentElement.lang = next
+  document.title = t('app.name')
 }
 
 export function getLocale(): Locale {
@@ -45,7 +50,6 @@ export function localizedError(caught: unknown, fallbackKey = 'common.error'): s
     const message = t(`errors.api.${code}`)
     if (message !== `errors.api.${code}`) return message
   }
-  if (caught instanceof Error && caught.message) return caught.message
   return t(fallbackKey)
 }
 

@@ -3,6 +3,7 @@ import QRCode from 'qrcode'
 
 import type { FeaturePaymentMethod, FeaturePaymentOrder } from '@/api/features'
 import { api } from '@/api/client'
+import { localizedError, t } from '@/i18n'
 import { moneyFromTxbInput } from '@/utils/format'
 import { getTelegramWebApp, notifyHaptic, openExternalLink } from '@/utils/telegram'
 
@@ -61,7 +62,10 @@ export function usePaymentOrder(options: { onPaid: () => void }) {
         })
         : null
       if (!order.value.paymentUrl && !order.value.qrPayload && !order.value.receivingAddress) {
-        throw new Error('The provider did not return a payment target.')
+        stage.value = 'configure'
+        error.value = t('payment.targetMissing')
+        notifyHaptic('error')
+        return
       }
       stage.value = order.value.status === 'paid' ? 'paid' : 'pending'
 
@@ -73,7 +77,7 @@ export function usePaymentOrder(options: { onPaid: () => void }) {
       else schedulePoll()
     } catch (caught) {
       stage.value = 'configure'
-      error.value = caught instanceof Error ? caught.message : 'The payment order could not be created.'
+      error.value = localizedError(caught, 'errors.paymentCreate')
       notifyHaptic('error')
     }
   }
@@ -94,8 +98,8 @@ export function usePaymentOrder(options: { onPaid: () => void }) {
       }
       if (isTerminalPaymentStatus(refreshed.status)) {
         error.value = refreshed.status === 'expired'
-          ? 'This payment order expired. Start a new one when you are ready.'
-          : `Payment status: ${refreshed.status.toLowerCase()}.`
+          ? t('payment.orderExpired')
+          : t('payment.terminalStatus', { status: t(`payment.status.${refreshed.status}`) })
         stage.value = refreshed.status === 'cancelled' ? 'cancelled' : 'configure'
         return
       }
@@ -117,7 +121,7 @@ export function usePaymentOrder(options: { onPaid: () => void }) {
       else notifyHaptic('success')
     } catch (caught) {
       stage.value = 'pending'
-      error.value = caught instanceof Error ? caught.message : 'Cancellation could not be confirmed. Payment polling resumed.'
+      error.value = localizedError(caught, 'errors.paymentCancel')
       schedulePoll()
     }
   }

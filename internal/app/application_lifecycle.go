@@ -1,0 +1,73 @@
+package app
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
+	"time"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
+)
+
+// Run starts provider workers before serving HTTP and waits for all internal
+// workers before returning to the caller that owns Close.
+func (a *Application) Run(ctx context.Context) error {
+	if ctx == nil {
+		return errors.New("application run context is nil")
+	}
+	runCtx, cancelRun := context.WithCancel(ctx)
+	if err := a.upstreams.start(runCtx); err != nil {
+		cancelRun()
+		_ = a.upstreams.shutdown(context.Background())
+		return fmt.Errorf("start upstream queues: %w", err)
+	}
+
+	listenerDone := make(chan error, 1)
+	go func() {
+		a.logger.Info("TX Carpool listening", "address", a.httpServer.Addr)
+		listenerDone <- a.httpServer.ListenAndServe()
+	}()
+	schedulerDone := make(chan struct{})
+	go func() {
+		defer close(schedulerDone)
+		a.runScheduler(runCtx)
+	}()
+
+	var runErr error
+	select {
+	case <-ctx.Done():
+	case <-a.backups.RestartRequested():
+		a.logger.Info("verified database restore staged; shutting down for pre-open swap")
+	case err := <-listenerDone:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			runErr = fmt.Errorf("serve HTTP: %w", err)
+		}
+	}
+	return errors.Join(runErr, a.shutdownRuntime(cancelRun, schedulerDone))
+}
+
+func (a *Application) shutdownRuntime(cancelRun context.CancelFunc, schedulerDone <-chan struct{}) error {
+	cancelRun()
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), a.config.ShutdownTimeout)
+	serverErr := a.httpServer.Shutdown(shutdownCtx)
+	cancel()
+	if serverErr != nil {
+		serverErr = errors.Join(serverErr, a.httpServer.Close())
+	}
+
+	// Database-dependent scheduler work and provider workers must be gone before
+	// Run returns and the owner invokes Close on SQLite.
+	<-schedulerDone
+	queueErr := a.upstreams.shutdown(context.Background())
+	return errors.Join(serverErr, queueErr)
+}
+
+// Close checkpoints the authoritative on-disk database after runtime workers stop.
+func (a *Application) Close() error {
+	queueErr := a.upstreams.shutdown(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	checkpointErr := database.Checkpoint(ctx, a.store.DB(), true)
+	return errors.Join(queueErr, checkpointErr, a.store.DB().Close())
+}

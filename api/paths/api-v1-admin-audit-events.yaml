@@ -1,0 +1,15 @@
+get:
+  tags: [Admin]
+  operationId: listAdminAuditEvents
+  summary: List immutable administrative audit events
+  responses:
+    '200':
+      description: Audit page. Events cannot be updated or deleted through the API.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/AuditPage'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../openapi.yaml#/components/responses/Forbidden'

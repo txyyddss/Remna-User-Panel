@@ -1,0 +1,19 @@
+get:
+  tags: [Admin]
+  operationId: getAdminComboStatistics
+  summary: Aggregate combo purchase statistics
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+    - $ref: '../openapi.yaml#/components/parameters/StatisticsFrom'
+    - $ref: '../openapi.yaml#/components/parameters/StatisticsTo'
+    - $ref: '../openapi.yaml#/components/parameters/StatisticsBucket'
+    - $ref: '../openapi.yaml#/components/parameters/StatisticsTimeZone'
+  responses:
+    '200':
+      description: Daily or weekly purchase series and totals.
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/AdminStatistics' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }

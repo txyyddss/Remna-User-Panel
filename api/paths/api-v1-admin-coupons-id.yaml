@@ -1,0 +1,37 @@
+put:
+  tags: [Admin, Coupons]
+  operationId: updateAdminCoupon
+  summary: Partially replace a coupon definition
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/CouponWrite'
+  responses:
+    '200':
+      description: Updated coupon.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/Coupon'
+    '400': { $ref: '../openapi.yaml#/components/responses/BadRequest' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }
+    '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }
+delete:
+  tags: [Admin, Coupons]
+  operationId: deactivateAdminCoupon
+  summary: Deactivate a coupon without removing history
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+  responses:
+    '204':
+      description: Coupon deactivated.
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }

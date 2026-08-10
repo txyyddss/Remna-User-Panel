@@ -15,6 +15,8 @@ import (
 func TestClientWireContract(t *testing.T) {
 	t.Parallel()
 	const token = "server-api-token"
+	const userOne = "11111111111141118111111111111111"
+	const userTwo = "22222222-2222-4222-8222-222222222222"
 	requests := make(chan capturedRequest, 8)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		defer func() { _ = request.Body.Close() }()
@@ -26,11 +28,11 @@ func TestClientWireContract(t *testing.T) {
 		writer.Header().Set("Content-Type", "application/json")
 		switch request.URL.Path {
 		case "/Users":
-			_, _ = writer.Write([]byte(`[{"Name":"ada","Id":"user-1","Policy":{"EnableRemoteAccess":true,"FutureField":"kept"}}]`))
+			_, _ = writer.Write([]byte(`[{"Name":"ada","Id":"` + userOne + `","Policy":{"EnableRemoteAccess":true,"FutureField":"kept"}}]`))
 		case "/Users/New":
-			_, _ = writer.Write([]byte(`{"Name":"river","Id":"user-2","Policy":{}}`))
-		case "/Users/user-1":
-			_, _ = writer.Write([]byte(`{"Name":"ada","Id":"user-1","Policy":{"EnableRemoteAccess":true}}`))
+			_, _ = writer.Write([]byte(`{"Name":"river","Id":"` + userTwo + `","Policy":{}}`))
+		case "/Users/" + userOne:
+			_, _ = writer.Write([]byte(`{"Name":"ada","Id":"` + userOne + `","Policy":{"EnableRemoteAccess":true}}`))
 		case "/Library/SelectableMediaFolders":
 			_, _ = writer.Write([]byte(`[{"Name":"Movies","Id":"folder-1","SubFolders":[]}]`))
 		case "/Localization/ParentalRatings":
@@ -47,25 +49,25 @@ func TestClientWireContract(t *testing.T) {
 	ctx := context.Background()
 
 	user, exists, err := client.FindUserByName(ctx, "ada")
-	if err != nil || !exists || user.ID != "user-1" {
+	if err != nil || !exists || user.ID != userOne {
 		t.Fatalf("FindUserByName() = (%+v, %v, %v)", user, exists, err)
 	}
 	if _, exists, err := client.FindUserByName(ctx, "ADA"); err != nil || exists {
 		t.Fatalf("FindUserByName(case mismatch) = (%v, %v)", exists, err)
 	}
 	created, err := client.CreateUser(ctx, "river")
-	if err != nil || created.ID != "user-2" {
+	if err != nil || created.ID != userTwo {
 		t.Fatalf("CreateUser() = (%+v, %v)", created, err)
 	}
-	loaded, err := client.GetUser(ctx, "user-1")
+	loaded, err := client.GetUser(ctx, userOne)
 	if err != nil || loaded.Name != "ada" {
 		t.Fatalf("GetUser() = (%+v, %v)", loaded, err)
 	}
-	if err := client.SetPassword(ctx, "user-1", []byte("old"), []byte("new")); err != nil {
+	if err := client.SetPassword(ctx, userOne, []byte("old"), []byte("new")); err != nil {
 		t.Fatalf("SetPassword() error = %v", err)
 	}
 	policy := domain.HardenPolicy(loaded.Policy, domain.Preferences{DisabledLibraryIDs: []string{"folder-1"}})
-	if err := client.UpdatePolicy(ctx, "user-1", policy); err != nil {
+	if err := client.UpdatePolicy(ctx, userOne, policy); err != nil {
 		t.Fatalf("UpdatePolicy() error = %v", err)
 	}
 	folders, err := client.ListSelectableFolders(ctx)
@@ -82,8 +84,8 @@ func TestClientWireContract(t *testing.T) {
 		path   string
 	}{
 		{http.MethodGet, "/Users"}, {http.MethodGet, "/Users"}, {http.MethodPost, "/Users/New"},
-		{http.MethodGet, "/Users/user-1"}, {http.MethodPost, "/Users/user-1/Password"},
-		{http.MethodPost, "/Users/user-1/Policy"}, {http.MethodGet, "/Library/SelectableMediaFolders"},
+		{http.MethodGet, "/Users/" + userOne}, {http.MethodPost, "/Users/" + userOne + "/Password"},
+		{http.MethodPost, "/Users/" + userOne + "/Policy"}, {http.MethodGet, "/Library/SelectableMediaFolders"},
 		{http.MethodGet, "/Localization/ParentalRatings"},
 	}
 	for index, expected := range want {
@@ -94,13 +96,13 @@ func TestClientWireContract(t *testing.T) {
 		if request.Path == "/Users/New" && request.Body["Name"] != "river" {
 			t.Fatalf("create body = %#v", request.Body)
 		}
-		if request.Path == "/Users/user-1/Password" {
-			if request.Body["Id"] != "user-1" || request.Body["CurrentPw"] != "old" || request.Body["NewPw"] != "new" || request.Body["ResetPassword"] != false {
+		if request.Path == "/Users/"+userOne+"/Password" {
+			if request.Body["Id"] != userOne || request.Body["CurrentPw"] != "old" || request.Body["NewPw"] != "new" || request.Body["ResetPassword"] != false {
 				t.Fatalf("password body = %#v", request.Body)
 			}
 		}
-		if request.Path == "/Users/user-1/Policy" {
-			if request.Body["EnableRemoteAccess"] != true || request.Body["EnableAllFolders"] != false || request.Body["EnableVideoPlaybackTranscoding"] != false {
+		if request.Path == "/Users/"+userOne+"/Policy" {
+			if request.Body["EnableRemoteAccess"] != true || request.Body["EnableAllFolders"] != true || request.Body["EnableVideoPlaybackTranscoding"] != false {
 				t.Fatalf("policy body = %#v", request.Body)
 			}
 		}
@@ -109,6 +111,7 @@ func TestClientWireContract(t *testing.T) {
 
 func TestClientErrorClassification(t *testing.T) {
 	t.Parallel()
+	const userID = "11111111-1111-4111-8111-111111111111"
 	tests := []struct {
 		name         string
 		status       int
@@ -133,7 +136,7 @@ func TestClientErrorClassification(t *testing.T) {
 			if err != nil {
 				t.Fatalf("NewClient() error = %v", err)
 			}
-			_, err = client.GetUser(context.Background(), "user-1")
+			_, err = client.GetUser(context.Background(), userID)
 			if err == nil || client.IsNotFound(err) != test.wantNotFound || client.IsTerminal(err) != test.wantTerminal {
 				t.Fatalf("error = %v, notFound=%v terminal=%v", err, client.IsNotFound(err), client.IsTerminal(err))
 			}
@@ -148,6 +151,7 @@ func TestClientErrorClassification(t *testing.T) {
 func TestSetPasswordRedactsAnEchoedProviderSecret(t *testing.T) {
 	t.Parallel()
 	const secret = "correct horse battery staple"
+	const userID = "11111111-1111-4111-8111-111111111111"
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		defer func() { _ = request.Body.Close() }()
 		writer.WriteHeader(http.StatusBadRequest)
@@ -158,7 +162,7 @@ func TestSetPasswordRedactsAnEchoedProviderSecret(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = client.SetPassword(context.Background(), "user-1", nil, []byte(secret))
+	err = client.SetPassword(context.Background(), userID, nil, []byte(secret))
 	if err == nil {
 		t.Fatal("SetPassword() error = nil")
 	}
@@ -171,8 +175,27 @@ func TestSetPasswordRedactsAnEchoedProviderSecret(t *testing.T) {
 	}
 }
 
+func TestGetUserRejectsMismatchedResponseIdentity(t *testing.T) {
+	t.Parallel()
+	const requestedID = "11111111-1111-4111-8111-111111111111"
+	const returnedID = "22222222-2222-4222-8222-222222222222"
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = writer.Write([]byte(`{"Name":"other","Id":"` + returnedID + `","Policy":{}}`))
+	}))
+	defer server.Close()
+	client, err := NewClient(server.URL, "token", WithHTTPClient(server.Client()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.GetUser(context.Background(), requestedID); err == nil {
+		t.Fatal("GetUser(mismatched response Id) error = nil")
+	}
+}
+
 func TestClientValidationAndIncompletePolicy(t *testing.T) {
 	t.Parallel()
+	const missingPolicyID = "33333333-3333-4333-8333-333333333333"
 	constructorTests := []struct {
 		name  string
 		url   string
@@ -196,8 +219,8 @@ func TestClientValidationAndIncompletePolicy(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		writer.Header().Set("Content-Type", "application/json")
-		if request.URL.Path == "/Users/missing-policy" {
-			_, _ = writer.Write([]byte(`{"Name":"ada","Id":"missing-policy"}`))
+		if request.URL.Path == "/Users/"+missingPolicyID {
+			_, _ = writer.Write([]byte(`{"Name":"ada","Id":"` + missingPolicyID + `"}`))
 			return
 		}
 		_, _ = writer.Write([]byte(`[]`))
@@ -217,7 +240,7 @@ func TestClientValidationAndIncompletePolicy(t *testing.T) {
 	if _, err := client.GetUser(ctx, "bad/id"); err == nil {
 		t.Fatal("GetUser(invalid id) error = nil")
 	}
-	if _, err := client.GetUser(ctx, "missing-policy"); err == nil {
+	if _, err := client.GetUser(ctx, missingPolicyID); err == nil {
 		t.Fatal("GetUser(missing policy) error = nil")
 	}
 	if err := client.SetPassword(ctx, "user", nil, nil); err == nil {

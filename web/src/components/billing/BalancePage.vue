@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { shallowRef } from 'vue'
-import { PhPlus } from '@phosphor-icons/vue'
 
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
@@ -34,10 +33,7 @@ function handlePaid(): void {
       <section class="wallet-balance">
         <span>{{ $t('billing.available') }}</span>
         <strong>{{ formatMoney(balance) }}</strong>
-        <button class="button button--light" type="button" @click="paymentOpen = true">
-          <PhPlus :size="19" weight="bold" />
-          {{ $t('billing.addBalance') }}
-        </button>
+        <UButton icon="i-ph-plus-bold" :label="$t('billing.addBalance')" @click="paymentOpen = true" />
       </section>
       <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
       <CouponWalletPanel />
@@ -47,7 +43,7 @@ function handlePaid(): void {
     <div v-else class="error-state">
       <h1>{{ $t('billing.unavailable') }}</h1>
       <p>{{ error }}</p>
-      <button class="button button--primary" type="button" @click="load">{{ $t('common.tryAgain') }}</button>
+      <UButton :label="$t('common.tryAgain')" @click="load" />
     </div>
   </div>
 </template>

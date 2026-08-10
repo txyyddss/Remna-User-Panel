@@ -1,0 +1,71 @@
+{
+  "activity": {
+    "stakeRange": "{minimum} 至 {maximum} TXB",
+    "eyebrow": "社区活动",
+    "title": "透明地参与活动。",
+    "copy": "每次确认前都会显示费用、概率和回报。",
+    "balance": "余额 {amount}",
+    "unavailable": "活动暂时不可用。",
+    "resultRecorded": "结果已记录",
+    "groupRewardTitle": "群消息奖励",
+    "groupRewardDisabled": "群消息奖励当前未启用。",
+    "groupRewardProgress": "{count} / {threshold} 条消息",
+    "groupRewardClaimed": "今天的群消息奖励已领取。",
+    "groupRewardHint": "在订阅有效期间于群组中发送消息。",
+    "dailyCheckIn": "每日签到",
+    "todayComplete": "今天已完成。",
+    "claimToday": "今天可领取 {amount} TXB。",
+    "claimRangeToday": "今天可随机领取 {minimum} 至 {maximum} TXB。",
+    "resetsAt": "将在 {timezone} 午夜重置。",
+    "checkedIn": "已签到",
+    "checkingIn": "签到中",
+    "checkIn": "签到",
+    "betGames": "活动游戏",
+    "betCopy": "确认前会显示概率和总回报，每次点击只产生一个结果。",
+    "stake": "投入",
+    "totalReturn": "{multiplier}× 总回报",
+    "lossReturn": "失败时返还 0 TXB。",
+    "resolving": "安全结算中",
+    "confirmBet": "确认参与",
+    "noBetGames": "暂无游戏",
+    "publishGames": "管理员准备好后可以发布游戏。",
+    "luckyDraws": "幸运抽奖",
+    "drawCopy": "每次抽奖都会先显示费用，再安全记录结果。",
+    "drawSafety": "系统会先检查费用和最坏情况下的余额覆盖。",
+    "drawing": "安全抽取中",
+    "drawFor": "用 {amount} TXB 抽取",
+    "noDraws": "暂无抽奖",
+    "publishDraw": "管理员准备好后可以发布抽奖。",
+    "weightedPrize": "系统会选择并记录一个加权奖品。",
+    "balanceAfter": "结果后的余额",
+    "resultDescription": {
+      "checkInRewarded": "每日签到奖励已记入账户。",
+      "checkInRecorded": "今天的签到已记录，无需重复操作。",
+      "betWin": "胜利结果和最新余额已安全记录。",
+      "betLoss": "本次没有回报，最新余额已记录。",
+      "drawComplete": "抽奖结果和奖励已安全记录。"
+    },
+    "result": {
+      "win": {
+        "title": "你赢了"
+      },
+      "loss": {
+        "title": "结果已记录"
+      },
+      "complete": {
+        "title": "已完成"
+      }
+    }
+  },
+  "adminActivity": {
+    "dailyCheckIn": "每日签到",
+    "dailyCheckInHint": "按配置的本地日期每日奖励一次。",
+    "calendarTimezone": "日历时区",
+    "timezoneHint": "请使用有效的 IANA 时区名。",
+    "dailyReward": "每日奖励",
+    "groupMessageThreshold": "每次奖励所需消息数",
+    "groupMessageThresholdHint": "设为 0 可关闭群消息奖励。",
+    "groupMessageReward": "群消息奖励",
+    "saveSettings": "保存活动设置"
+  }
+}

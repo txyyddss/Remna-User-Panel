@@ -13,7 +13,7 @@ const session: Session = {
   user: {
     id: 'user-1', telegramId: '42', firstName: 'Mira', lastName: 'Lin', telegramUsername: 'mira', username: 'mira',
     role: 'user', onboardingState: 'complete', groupJoined: true, channelJoined: true,
-    policyAcceptedAt: '2026-08-08T00:00:00Z', recoveryReason: '', createdAt: '2026-08-08T00:00:00Z', updatedAt: '2026-08-08T00:00:00Z',
+    policyAcceptedAt: '2026-08-08T00:00:00Z', agreementRevision: 1, recoveryReason: '', createdAt: '2026-08-08T00:00:00Z', updatedAt: '2026-08-08T00:00:00Z',
   },
 }
 

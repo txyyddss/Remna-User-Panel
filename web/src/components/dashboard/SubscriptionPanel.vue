@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { shallowRef, watch } from 'vue'
-import { PhArrowSquareOut, PhCheck, PhCopy, PhKey, PhTrash } from '@phosphor-icons/vue'
 
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { useClipboard } from '@/composables/useClipboard'
@@ -32,26 +31,36 @@ function openLink(): void {
   <section class="section-block subscription-section">
     <div class="section-heading">
       <h2>{{ $t('dashboard.subscriptionLink') }}</h2>
-      <span class="feature-icon feature-icon--small"><PhKey :size="19" /></span>
+      <span class="feature-icon feature-icon--small"><UIcon name="i-ph-key" /></span>
     </div>
     <template v-if="subscriptionUrl">
       <p class="subscription-section__lead">{{ $t('dashboard.subscriptionHint') }}</p>
       <div class="secret-field">
-        <span>••••••••••••••••••••••••</span>
-        <button class="icon-button" type="button" :aria-label="copied ? $t('common.copied') : $t('dashboard.copySubscription')" @click="copyLink">
-          <PhCheck v-if="copied" :size="20" weight="bold" />
-          <PhCopy v-else :size="20" />
-        </button>
+        <span aria-hidden="true">••••••••••••••••••••••••</span>
+        <UButton
+          class="icon-button"
+          color="neutral"
+          variant="ghost"
+          :icon="copied ? 'i-ph-check-bold' : 'i-ph-copy'"
+          :aria-label="copied ? $t('common.copied') : $t('dashboard.copySubscription')"
+          @click="copyLink"
+        />
       </div>
       <div class="button-row">
-        <button class="button button--secondary" type="button" @click="openLink">
-          <PhArrowSquareOut :size="19" />
-          {{ $t('common.open') }}
-        </button>
-        <button class="button button--ghost-danger" type="button" @click="confirmOpen = true">
-          <PhTrash :size="19" />
-          {{ $t('common.revoke') }}
-        </button>
+        <UButton
+          color="neutral"
+          variant="outline"
+          icon="i-ph-arrow-square-out"
+          :label="$t('common.open')"
+          @click="openLink"
+        />
+        <UButton
+          color="error"
+          variant="ghost"
+          icon="i-ph-trash"
+          :label="$t('common.revoke')"
+          @click="confirmOpen = true"
+        />
       </div>
     </template>
     <div v-else class="empty-inline">

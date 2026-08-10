@@ -1,0 +1,18 @@
+get:
+  tags: [Dashboard]
+  operationId: getDashboard
+  summary: Get the current home-page projection
+  description: Returns balance, active and queued purchases, subscription data, and cached Remnawave statistics. `statisticsStale` is true when cached statistics were used after an upstream failure.
+  responses:
+    '200':
+      description: Dashboard projection.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/Dashboard'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '409':
+      $ref: '../openapi.yaml#/components/responses/Conflict'
+    '502':
+      $ref: '../openapi.yaml#/components/responses/UpstreamFailure'

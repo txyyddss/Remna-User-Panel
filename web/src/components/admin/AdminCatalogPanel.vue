@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { shallowRef } from 'vue'
-import { PhArrowClockwise, PhChartBar, PhPencilSimple, PhPlus, PhTrash } from '@phosphor-icons/vue'
 
 import { featuresApi, type AdminStatistics, type StatisticsQuery } from '@/api/features'
 import type { Combo, SquadProduct, SquadProductWrite } from '@/api/types'
@@ -59,19 +58,19 @@ async function saveSquad(payload: SquadProductWrite): Promise<void> {
   <section class="admin-panel">
     <div class="admin-panel__heading">
       <div><h2>{{ t('adminCatalog.title') }}</h2><p>{{ t('adminCatalog.copy') }}</p></div>
-      <button class="button button--primary" type="button" @click="editing = null"><PhPlus :size="18" /> {{ t('adminCatalog.newCombo') }}</button>
+      <UButton icon="i-ph-plus" :label="t('adminCatalog.newCombo')" @click="editing = null" />
     </div>
     <AdminCatalogEditor v-if="editing !== undefined" :combo="editing ?? undefined" :squads="squads.items.value" :busy="combos.busy.value" @save="save" @cancel="editing = undefined" />
     <AdminSectionState :loading="combos.loading.value" :error="combos.error.value" @retry="combos.load()">
-      <div class="admin-list">
+      <div v-auto-animate class="admin-list">
         <article v-for="combo in combos.items.value" :key="combo.id" class="admin-list-row admin-list-row--catalog">
           <div><strong>{{ combo.name }}</strong><small>{{ t('adminCatalog.comboSummary', { traffic: formatBytes(combo.trafficLimitBytes), days: combo.validityDays }) }}</small></div>
           <strong>{{ formatMoney(combo.price) }}</strong>
           <StatusBadge :tone="combo.active ? 'success' : 'neutral'" :label="combo.active ? t('adminCatalog.available') : t('adminCatalog.paused')" />
           <div class="row-actions">
-            <button class="icon-button" type="button" :aria-label="t('adminCatalog.statisticsFor', { name: combo.name })" @click="statisticsTarget = { kind: 'combo', id: combo.id, title: t('adminCatalog.statisticsTitle', { name: combo.name }) }"><PhChartBar :size="18" /></button>
-            <button class="icon-button" type="button" :aria-label="t('adminCatalog.editNamed', { name: combo.name })" @click="editing = combo"><PhPencilSimple :size="18" /></button>
-            <button class="icon-button icon-button--danger" type="button" :aria-label="t('adminCatalog.hideNamed', { name: combo.name })" @click="deleting = combo"><PhTrash :size="18" /></button>
+            <UButton color="neutral" variant="ghost" square icon="i-ph-chart-bar" :aria-label="t('adminCatalog.statisticsFor', { name: combo.name })" @click="statisticsTarget = { kind: 'combo', id: combo.id, title: t('adminCatalog.statisticsTitle', { name: combo.name }) }" />
+            <UButton color="neutral" variant="ghost" square icon="i-ph-pencil-simple" :aria-label="t('adminCatalog.editNamed', { name: combo.name })" @click="editing = combo" />
+            <UButton color="error" variant="ghost" square icon="i-ph-trash" :aria-label="t('adminCatalog.hideNamed', { name: combo.name })" @click="deleting = combo" />
           </div>
         </article>
         <div v-if="!combos.items.value.length" class="empty-inline"><div><h3>{{ t('adminCatalog.noCombos') }}</h3><p>{{ t('adminCatalog.noCombosHint') }}</p></div></div>
@@ -81,7 +80,7 @@ async function saveSquad(payload: SquadProductWrite): Promise<void> {
 
     <div class="admin-subsection-heading">
       <div><h3>{{ t('adminCatalog.squads') }}</h3><p>{{ t('adminCatalog.squadsHint') }}</p></div>
-      <button class="button button--secondary" type="button" :disabled="squads.busy.value" @click="importSquads"><PhArrowClockwise :size="18" /> {{ t('adminCatalog.refreshSquads') }}</button>
+      <UButton color="neutral" variant="outline" icon="i-ph-arrow-clockwise" :loading="squads.busy.value" :disabled="squads.busy.value" :label="t('adminCatalog.refreshSquads')" @click="importSquads" />
     </div>
     <AdminSquadEditor
       v-if="editingSquad"
@@ -91,16 +90,14 @@ async function saveSquad(payload: SquadProductWrite): Promise<void> {
       @cancel="editingSquad = null"
     />
     <AdminSectionState :loading="squads.loading.value" :error="squads.error.value" @retry="squads.load()">
-      <div class="admin-list admin-list--compact">
+      <div v-auto-animate class="admin-list admin-list--compact">
         <article v-for="squad in squads.items.value" :key="squad.id" class="admin-list-row">
           <div><strong>{{ squad.name }}</strong><small>{{ squad.description || squad.remnaSquadUuid }}</small></div>
           <strong>{{ formatMoney(squad.price) }}</strong>
           <StatusBadge :tone="squad.upstreamPresent && squad.visible ? 'success' : 'neutral'" :label="squad.upstreamPresent && squad.visible ? t('adminCatalog.available') : t('adminCatalog.hidden')" />
           <div class="row-actions">
-            <button class="icon-button" type="button" :aria-label="t('adminCatalog.statisticsFor', { name: squad.name })" @click="statisticsTarget = { kind: 'squad', id: squad.id, title: t('adminCatalog.statisticsTitle', { name: squad.name }) }"><PhChartBar :size="18" /></button>
-            <button class="icon-button" type="button" :aria-label="t('adminCatalog.editNamed', { name: squad.name })" @click="editingSquad = squad">
-              <PhPencilSimple :size="18" />
-            </button>
+            <UButton color="neutral" variant="ghost" square icon="i-ph-chart-bar" :aria-label="t('adminCatalog.statisticsFor', { name: squad.name })" @click="statisticsTarget = { kind: 'squad', id: squad.id, title: t('adminCatalog.statisticsTitle', { name: squad.name }) }" />
+            <UButton color="neutral" variant="ghost" square icon="i-ph-pencil-simple" :aria-label="t('adminCatalog.editNamed', { name: squad.name })" @click="editingSquad = squad" />
           </div>
         </article>
         <div v-if="!squads.items.value.length" class="empty-inline"><div><h3>{{ t('adminCatalog.noSquads') }}</h3><p>{{ t('adminCatalog.noSquadsHint') }}</p></div></div>

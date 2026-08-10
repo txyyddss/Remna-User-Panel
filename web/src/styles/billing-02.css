@@ -1,0 +1,118 @@
+.provider-option--selected {
+  border-color: #557763;
+  background: #18231b;
+}
+
+.provider-option__icon {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.provider-option strong,
+.provider-option small {
+  display: block;
+}
+
+.provider-option strong {
+  font-size: 0.82rem;
+}
+
+.provider-option small {
+  margin-top: 0.2rem;
+  color: var(--text-faint);
+  font-size: 0.66rem;
+}
+
+.payment-amount {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.payment-amount > span,
+.payment-amount small,
+.payment-expiry {
+  color: var(--text-faint);
+  font-size: 0.7rem;
+}
+
+.payment-amount strong {
+  margin: 0.3rem 0;
+  font-family: var(--font-mono);
+  font-size: 1.9rem;
+  letter-spacing: -0.04em;
+}
+
+.qr-frame {
+  width: min(72vw, 290px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 1rem;
+  padding: 0.75rem;
+  border-radius: var(--radius-panel);
+  background: #edf2ee;
+}
+
+.qr-frame img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 8px;
+}
+
+.payment-address {
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+}
+
+.payment-address span,
+.payment-address code {
+  display: block;
+}
+
+.payment-address span {
+  margin-bottom: 0.4rem;
+  color: var(--text-faint);
+  font-size: 0.68rem;
+}
+
+.payment-address code {
+  overflow-wrap: anywhere;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.payment-expiry {
+  margin: 0.75rem 0;
+  text-align: center;
+}
+
+.payment-waiting {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+
+.payment-waiting__pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse-status 1.5s ease-in-out infinite;
+}

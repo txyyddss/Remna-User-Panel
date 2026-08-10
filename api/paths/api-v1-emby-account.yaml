@@ -1,0 +1,15 @@
+get:
+  tags: [Emby]
+  operationId: getEmbyAccount
+  summary: Get setup choices and the current linked Emby account
+  responses:
+    '200':
+      description: Server-priced setup state plus choices fetched from Emby.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/EmbyOverview'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '502':
+      $ref: '../openapi.yaml#/components/responses/UpstreamFailure'

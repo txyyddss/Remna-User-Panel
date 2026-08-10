@@ -1,0 +1,21 @@
+get:
+  tags: [Billing]
+  operationId: returnFromPaymentProvider
+  summary: Navigate back to the Mini App after provider checkout
+  description: This route never credits balance. It redirects to the client order screen, which polls durable webhook-confirmed state.
+  security: []
+  parameters:
+    - name: provider
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [ezpay, bepusdt]
+  responses:
+    '303':
+      description: Redirect to the same-origin payment result route.
+      headers:
+        Location:
+          required: true
+          schema:
+            type: string

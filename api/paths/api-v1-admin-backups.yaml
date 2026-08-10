@@ -1,0 +1,40 @@
+get:
+  tags: [Admin, Database Administration]
+  operationId: listAdminBackups
+  summary: List verified online database backups
+  responses:
+    '200':
+      description: Backup runs newest first.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [items]
+            properties:
+              items:
+                type: array
+                items:
+                  $ref: '../openapi.yaml#/components/schemas/BackupRun'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../openapi.yaml#/components/responses/Forbidden'
+post:
+  tags: [Admin, Database Administration]
+  operationId: createAdminBackup
+  summary: Run and verify an online SQLite backup now
+  responses:
+    '201':
+      description: Backup completed and verified.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/BackupRun'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../openapi.yaml#/components/responses/Forbidden'
+    '409':
+      $ref: '../openapi.yaml#/components/responses/Conflict'
+    '422':
+      $ref: '../openapi.yaml#/components/responses/Unprocessable'

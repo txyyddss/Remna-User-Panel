@@ -9,7 +9,6 @@ describe('UsagePanel', () => {
       props: {
         ratio: 0.25,
         stale: true,
-        warning: 'Live usage is unavailable.',
         fetchedAt: '2026-08-07T00:00:00Z',
         statistics: {
           usedTrafficBytes: '26843545600',
@@ -23,7 +22,7 @@ describe('UsagePanel', () => {
       },
     })
     expect(wrapper.text()).toContain('Last known data')
-    expect(wrapper.text()).toContain('Live usage is unavailable.')
+    expect(wrapper.text()).toContain('Remnawave is temporarily unavailable.')
     expect(wrapper.text()).toContain('25%')
   })
 })

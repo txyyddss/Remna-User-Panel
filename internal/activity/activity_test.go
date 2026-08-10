@@ -68,14 +68,14 @@ func TestActivityDescriptionsAreBounded(t *testing.T) {
 		{
 			name: "game accepts bounded description",
 			validate: func() error {
-				return (GameInput{Name: "Coin", Description: strings.Repeat("g", 4_000), WinChanceBPS: 5_000,
+				return (GameInput{Name: "Coin", Icon: "coin", Description: strings.Repeat("g", 4_000), WinChanceBPS: 5_000,
 					MinimumStakeMinor: 1, MaximumStakeMinor: 10, ReturnMultiplierBPS: 20_000}).Validate()
 			},
 		},
 		{
 			name: "game rejects oversized description",
 			validate: func() error {
-				return (GameInput{Name: "Coin", Description: strings.Repeat("g", 4_001), WinChanceBPS: 5_000,
+				return (GameInput{Name: "Coin", Icon: "coin", Description: strings.Repeat("g", 4_001), WinChanceBPS: 5_000,
 					MinimumStakeMinor: 1, MaximumStakeMinor: 10, ReturnMultiplierBPS: 20_000}).Validate()
 			},
 			wantErr: true,

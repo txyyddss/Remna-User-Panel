@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { PhArrowSquareOut, PhCheckCircle, PhClipboardText, PhCopy } from '@phosphor-icons/vue'
-
 import type { ActiveQuestionnaire, QuestionnaireParticipation } from '@/api/features'
 import MarkdownContent from '@/components/common/MarkdownContent.vue'
 import { useClipboard } from '@/composables/useClipboard'
@@ -19,20 +17,37 @@ const { copied, copy } = useClipboard()
 <template>
   <section class="section-block questionnaire-card">
     <div class="questionnaire-card__heading">
-      <span class="feature-icon"><PhClipboardText :size="23" /></span>
-      <div><h2>{{ questionnaire.title }}</h2><p>Reward {{ txbInputFromMinor(questionnaire.rewardTxbMinor) }} TXB after validation.</p></div>
+      <span class="feature-icon"><UIcon name="i-ph-clipboard-text" /></span>
+      <div>
+        <h2>{{ questionnaire.title }}</h2>
+        <p>{{ $t('questionnaire.reward', { amount: txbInputFromMinor(questionnaire.rewardTxbMinor) }) }}</p>
+      </div>
     </div>
     <MarkdownContent :source="questionnaire.description" />
     <div v-if="participation" class="validation-code">
-      <span>Your validation code</span>
-      <div><code>{{ participation.validationCode }}</code><button class="icon-button" type="button" :aria-label="copied ? 'Code copied' : 'Copy validation code'" @click="copy(participation.validationCode)"><PhCheckCircle v-if="copied" :size="19" /><PhCopy v-else :size="19" /></button></div>
-      <small>Paste this exact code into the external form. You can return here to retrieve it.</small>
+      <span>{{ $t('questionnaire.validationCode') }}</span>
+      <div>
+        <code>{{ participation.validationCode }}</code>
+        <UButton
+          class="icon-button"
+          color="neutral"
+          variant="ghost"
+          :icon="copied ? 'i-ph-check-circle' : 'i-ph-copy'"
+          :aria-label="copied ? $t('questionnaire.codeCopied') : $t('questionnaire.copyCode')"
+          @click="copy(participation.validationCode)"
+        />
+      </div>
+      <small>{{ $t('questionnaire.codeHint') }}</small>
     </div>
     <div class="questionnaire-card__footer">
-      <span>{{ questionnaire.closesAt ? `Closes ${formatDateTime(questionnaire.closesAt)}` : 'No closing time announced' }}</span>
-      <button class="button button--primary" type="button" :disabled="joining" @click="$emit('open')">
-        <PhArrowSquareOut :size="18" /> {{ joining ? 'Preparing code' : participation ? 'Open form again' : 'Get code and open form' }}
-      </button>
+      <span>{{ questionnaire.closesAt ? $t('questionnaire.closes', { date: formatDateTime(questionnaire.closesAt) }) : $t('questionnaire.noClose') }}</span>
+      <UButton
+        icon="i-ph-arrow-square-out"
+        :disabled="joining"
+        :loading="joining"
+        :label="joining ? $t('questionnaire.preparing') : participation ? $t('questionnaire.openAgain') : $t('questionnaire.getCode')"
+        @click="$emit('open')"
+      />
     </div>
   </section>
 </template>
@@ -49,8 +64,5 @@ const { copied, copy } = useClipboard()
 .validation-code code { overflow-wrap: anywhere; color: var(--accent); font-family: var(--font-mono); font-size: 1.05rem; font-weight: 700; letter-spacing: 0.06em; }
 .questionnaire-card__footer { display: flex; flex-direction: column; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid var(--line); }
 .questionnaire-card__footer > span { color: var(--text-faint); font-size: 0.68rem; }
-
-@media (min-width: 640px) {
-  .questionnaire-card__footer { flex-direction: row; align-items: center; justify-content: space-between; }
-}
+@media (min-width: 640px) { .questionnaire-card__footer { flex-direction: row; align-items: center; justify-content: space-between; } }
 </style>

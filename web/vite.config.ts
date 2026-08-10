@@ -1,8 +1,8 @@
 import { fileURLToPath, URL } from 'node:url'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { writeFile } from 'node:fs/promises'
 
-import tailwindcss from '@tailwindcss/vite'
+import ui from '@nuxt/ui/vite'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vitest/config'
 
@@ -21,7 +21,16 @@ function localeLeaves(value: unknown, prefix = '', output: Record<string, string
 }
 
 function validateLocaleParity(): void {
-  const read = (name: string) => JSON.parse(readFileSync(new URL(`./locales/${name}.json`, import.meta.url), 'utf8')) as unknown
+  const read = (name: string) => {
+    const directory = new URL(`./locales/${name}/`, import.meta.url)
+    return readdirSync(directory)
+      .filter((file) => file.endsWith('.json'))
+      .sort()
+      .reduce<Record<string, unknown>>((messages, file) => ({
+        ...messages,
+        ...JSON.parse(readFileSync(new URL(file, directory), 'utf8')) as Record<string, unknown>,
+      }), {})
+  }
   const english = new Set(localeLeafKeys(read('en')))
   const englishLeaves = localeLeaves(read('en'))
   for (const name of ['zh-CN']) {
@@ -41,7 +50,32 @@ function validateLocaleParity(): void {
 export default defineConfig({
   plugins: [
     vue(),
-    tailwindcss(),
+    ui({
+      colorMode: false,
+      ui: {
+        colors: { primary: 'emerald', neutral: 'zinc' },
+        icons: {
+          arrowDown: 'i-ph-arrow-down', arrowLeft: 'i-ph-arrow-left',
+          arrowRight: 'i-ph-arrow-right', arrowUp: 'i-ph-arrow-up',
+          caution: 'i-ph-warning', check: 'i-ph-check',
+          chevronDoubleLeft: 'i-ph-caret-double-left', chevronDoubleRight: 'i-ph-caret-double-right',
+          chevronDown: 'i-ph-caret-down', chevronLeft: 'i-ph-caret-left',
+          chevronRight: 'i-ph-caret-right', chevronUp: 'i-ph-caret-up',
+          close: 'i-ph-x', copy: 'i-ph-copy', copyCheck: 'i-ph-check',
+          dark: 'i-ph-moon', drag: 'i-ph-dots-six-vertical', ellipsis: 'i-ph-dots-three',
+          error: 'i-ph-warning-circle', external: 'i-ph-arrow-square-out', eye: 'i-ph-eye',
+          eyeOff: 'i-ph-eye-slash', file: 'i-ph-file', folder: 'i-ph-folder',
+          folderOpen: 'i-ph-folder-open', hash: 'i-ph-hash', info: 'i-ph-info',
+          light: 'i-ph-sun', loading: 'i-ph-spinner-gap', menu: 'i-ph-list',
+          minus: 'i-ph-minus', panelClose: 'i-ph-sidebar-simple', panelOpen: 'i-ph-sidebar-simple',
+          plus: 'i-ph-plus', reload: 'i-ph-arrows-clockwise', search: 'i-ph-magnifying-glass',
+          star: 'i-ph-star', stop: 'i-ph-stop', success: 'i-ph-check-circle',
+          system: 'i-ph-monitor', tip: 'i-ph-lightbulb', upload: 'i-ph-upload-simple',
+          warning: 'i-ph-warning-circle',
+        },
+      },
+      icon: { clientBundle: { scan: true, sizeLimitKb: 512 } },
+    }),
     {
       name: 'validate-locale-parity',
       buildStart: validateLocaleParity,

@@ -164,7 +164,7 @@ func TestDashboardErrors(t *testing.T) {
 
 	service := newCatalogServiceForTest(&catalogRepository{}, &catalogRemnawave{dashboardErr: testError})
 	uncached, err := service.Dashboard(context.Background(), model.User{ID: "user", RemnaUserID: &remoteID})
-	if err != nil || !uncached.StatisticsStale || uncached.Statistics != nil || uncached.StatisticsWarning == "" {
+	if err != nil || !uncached.StatisticsStale || uncached.Statistics != nil || uncached.SubscriptionURL != nil || uncached.StatisticsWarning == "" {
 		t.Fatalf("Dashboard(uncached upstream failure) = (%+v, %v)", uncached, err)
 	}
 }
@@ -183,13 +183,13 @@ func TestRevokeSubscription(t *testing.T) {
 	}{
 		{name: "missing remote identity", user: model.User{ID: "user"}, repository: &catalogRepository{}, remote: &catalogRemnawave{}, want: database.ErrNotFound},
 		{name: "remote failure", user: model.User{ID: "user", RemnaUserID: &remoteID}, repository: &catalogRepository{}, remote: &catalogRemnawave{revokeErr: testError}, want: testError},
-		{name: "repository failure", user: model.User{ID: "user", RemnaUserID: &remoteID}, repository: &catalogRepository{updateErr: testError}, remote: &catalogRemnawave{revokeURL: "https://new.test"}, want: testError},
 		{name: "success", user: model.User{ID: "user", RemnaUserID: &remoteID}, repository: &catalogRepository{}, remote: &catalogRemnawave{revokeURL: "https://new.test"}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			service := newCatalogServiceForTest(test.repository, test.remote)
+			service.cache[test.user.ID] = cachedDashboard{value: RemoteDashboard{SubscriptionURL: "https://old.test"}, fetchedAt: service.now()}
 			got, err := service.RevokeSubscription(context.Background(), test.user)
 			if test.want != nil {
 				if !errors.Is(err, test.want) {
@@ -197,8 +197,8 @@ func TestRevokeSubscription(t *testing.T) {
 				}
 				return
 			}
-			if err != nil || got != "https://new.test" || test.repository.updatedUserID != "user" || test.repository.updatedURL != got {
-				t.Fatalf("RevokeSubscription() = (%q, %v), update %q/%q", got, err, test.repository.updatedUserID, test.repository.updatedURL)
+			if _, exists := service.cache[test.user.ID]; err != nil || got != "https://new.test" || exists {
+				t.Fatalf("RevokeSubscription() = (%q, %v), cache still present = %t", got, err, exists)
 			}
 		})
 	}
@@ -218,14 +218,11 @@ type catalogRepository struct {
 	purchasesErr        error
 	balanceErr          error
 	activeErr           error
-	updateErr           error
 	combosVisibleOnly   bool
 	addonsVisibleOnly   bool
 	purchaseInput       database.PurchaseInput
 	purchaseAt          time.Time
 	listPurchasesUserID string
-	updatedUserID       string
-	updatedURL          string
 }
 
 func (r *catalogRepository) ListCombos(_ context.Context, visible bool) ([]model.Combo, error) {
@@ -249,10 +246,6 @@ func (r *catalogRepository) Balance(context.Context, string) (model.Money, error
 }
 func (r *catalogRepository) ActiveAndQueuedPurchases(context.Context, string, time.Time) (*model.Purchase, *model.Purchase, error) {
 	return r.active, r.queued, r.activeErr
-}
-func (r *catalogRepository) UpdateSubscriptionURL(_ context.Context, userID, subscriptionURL string) error {
-	r.updatedUserID, r.updatedURL = userID, subscriptionURL
-	return r.updateErr
 }
 
 type catalogRemnawave struct {

@@ -42,7 +42,6 @@ export async function getTelegramInitData(timeoutMs = 8000): Promise<string | un
 
   while (Date.now() - startedAt < timeoutMs) {
     const app = getTelegramWebApp()
-    app?.ready()
     const initData = readTelegramInitData(app)
     if (initData) return initData
     await new Promise<void>((resolve) => window.setTimeout(resolve, 50))
@@ -51,10 +50,50 @@ export async function getTelegramInitData(timeoutMs = 8000): Promise<string | un
   return undefined
 }
 
-export function initializeTelegram(): void {
+const telegramEvents = ['themeChanged', 'safeAreaChanged', 'contentSafeAreaChanged', 'viewportChanged']
+
+function syncTelegramEnvironment(): void {
   const app = getTelegramWebApp()
-  app?.ready()
+  if (!app) return
+  const root = document.documentElement
+  root.classList.add('dark')
+  for (const [key, value] of Object.entries(app.themeParams ?? {})) {
+    if (value) root.style.setProperty(`--tg-theme-${key.replaceAll('_', '-')}`, value)
+  }
+  if (app.colorScheme === 'dark') {
+    const theme = app.themeParams ?? {}
+    if (theme.bg_color) root.style.setProperty('--canvas', theme.bg_color)
+    if (theme.secondary_bg_color) root.style.setProperty('--surface', theme.secondary_bg_color)
+    if (theme.text_color) root.style.setProperty('--text', theme.text_color)
+    if (theme.hint_color) root.style.setProperty('--text-muted', theme.hint_color)
+  }
+  const setInsets = (prefix: string, insets?: TelegramInsets) => {
+    if (!insets) return
+    for (const edge of ['top', 'right', 'bottom', 'left'] as const) {
+      root.style.setProperty(`${prefix}-${edge}`, `${insets[edge]}px`)
+    }
+  }
+  setInsets('--tg-safe-area-inset', app.safeAreaInset)
+  setInsets('--tg-content-safe-area-inset', app.contentSafeAreaInset)
+  root.style.setProperty('--tg-viewport-height', `${app.viewportHeight ?? window.innerHeight}px`)
+  root.style.setProperty('--tg-viewport-stable-height', `${app.viewportStableHeight ?? window.innerHeight}px`)
+}
+
+export function initializeTelegram(): () => void {
+  const app = getTelegramWebApp()
   app?.expand()
+  syncTelegramEnvironment()
+  for (const event of telegramEvents) app?.onEvent?.(event, syncTelegramEnvironment)
+  window.addEventListener('resize', syncTelegramEnvironment)
+  return () => {
+    for (const event of telegramEvents) app?.offEvent?.(event, syncTelegramEnvironment)
+    window.removeEventListener('resize', syncTelegramEnvironment)
+  }
+}
+
+export function markTelegramReady(): void {
+  syncTelegramEnvironment()
+  getTelegramWebApp()?.ready()
 }
 
 export function openExternalLink(url: string): void {

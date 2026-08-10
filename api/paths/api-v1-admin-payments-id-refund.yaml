@@ -1,0 +1,37 @@
+post:
+  tags: [Admin]
+  operationId: refundAdminPayment
+  summary: Append an immutable payment reversal
+  description: |
+    Reverses the credited TXB exactly once. If the balance becomes negative,
+    queued purchases are cancelled first, then active purchases newest-first,
+    and Remnawave revocations are queued. Remaining debt blocks purchases.
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/RefundRequest'
+  responses:
+    '200':
+      description: Refunded payment order after the immutable reversal and compensating work were recorded.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/PaymentOrder'
+    '400':
+      $ref: '../openapi.yaml#/components/responses/BadRequest'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../openapi.yaml#/components/responses/Forbidden'
+    '404':
+      $ref: '../openapi.yaml#/components/responses/NotFound'
+    '409':
+      $ref: '../openapi.yaml#/components/responses/Conflict'
+    '422':
+      $ref: '../openapi.yaml#/components/responses/Unprocessable'
+    '502':
+      $ref: '../openapi.yaml#/components/responses/UpstreamFailure'

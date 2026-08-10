@@ -1,0 +1,15 @@
+get:
+  tags: [Activity]
+  operationId: getActivityOverview
+  summary: Get daily check-in, games, draws, and recent results
+  responses:
+    '200':
+      description: Current server-configured Activity state.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/ActivityOverview'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '409':
+      $ref: '../openapi.yaml#/components/responses/Conflict'

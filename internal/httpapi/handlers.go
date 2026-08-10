@@ -4,74 +4,12 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/txyyddss/Remna-User-Panel/internal/accounts"
-	"github.com/txyyddss/Remna-User-Panel/internal/billing"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 )
-
-type userResponse struct {
-	ID                string     `json:"id"`
-	TelegramID        string     `json:"telegramId"`
-	FirstName         string     `json:"firstName"`
-	LastName          string     `json:"lastName"`
-	TelegramUsername  string     `json:"telegramUsername"`
-	Username          *string    `json:"username"`
-	Role              string     `json:"role"`
-	OnboardingState   string     `json:"onboardingState"`
-	GroupJoined       bool       `json:"groupJoined"`
-	ChannelJoined     bool       `json:"channelJoined"`
-	PolicyAcceptedAt  *time.Time `json:"policyAcceptedAt"`
-	AgreementRevision int        `json:"agreementRevision"`
-	RecoveryReason    string     `json:"recoveryReason"`
-	CreatedAt         time.Time  `json:"createdAt"`
-	UpdatedAt         time.Time  `json:"updatedAt"`
-}
-
-func mapUser(user model.User) userResponse {
-	return userResponse{
-		ID: user.ID, TelegramID: strconv.FormatInt(user.TelegramID, 10), FirstName: user.TelegramFirstName,
-		LastName: user.TelegramLastName, TelegramUsername: user.TelegramUsername, Username: user.Username, Role: user.Role,
-		OnboardingState: user.OnboardingState, GroupJoined: user.GroupJoined, ChannelJoined: user.ChannelJoined,
-		PolicyAcceptedAt: user.PolicyAcceptedAt, AgreementRevision: user.AgreementRevision, RecoveryReason: user.RecoveryReason, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt,
-	}
-}
-
-type authState struct {
-	Authenticated bool         `json:"authenticated"`
-	User          userResponse `json:"user"`
-}
-
-func (s *Server) authenticate(w http.ResponseWriter, r *http.Request) {
-	var request struct {
-		InitData string `json:"initData"`
-	}
-	if err := decodeJSON(w, r, &request); err != nil {
-		s.writeError(w, r, http.StatusBadRequest, "INVALID_REQUEST", "initData is required.")
-		return
-	}
-	user, token, expiresAt, err := s.deps.Accounts.Authenticate(r.Context(), request.InitData)
-	if err != nil {
-		if errors.Is(err, accounts.ErrUpstreamUnavailable) {
-			s.writeError(w, r, http.StatusServiceUnavailable, "REMNAWAVE_UNAVAILABLE", "Account verification is temporarily unavailable. Please retry.")
-			return
-		}
-		s.deps.Logger.Warn("Telegram Mini App authentication rejected", "request_id", middlewareRequestID(r), "error", err)
-		s.writeError(w, r, http.StatusUnauthorized, "INVALID_TELEGRAM_DATA", "Telegram authentication could not be verified.")
-		return
-	}
-	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: token, Path: "/", Expires: expiresAt, MaxAge: int(s.deps.SessionTTL.Seconds()),
-		HttpOnly: true, Secure: s.deps.SecureCookies, SameSite: http.SameSiteLaxMode})
-	writeJSON(w, http.StatusOK, authState{Authenticated: true, User: mapUser(user)})
-}
-
-func (s *Server) me(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, authState{Authenticated: true, User: mapUser(currentUser(r))})
-}
 
 func (s *Server) createInvites(w http.ResponseWriter, r *http.Request) {
 	user := currentUser(r)
@@ -278,75 +216,25 @@ func (s *Server) balance(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) ledger(w http.ResponseWriter, r *http.Request) {
-	items, err := s.deps.Store.ListLedger(r.Context(), currentUser(r).ID, 100)
+	size := 25
+	if raw := r.URL.Query().Get("size"); raw != "" {
+		parsed, parseErr := strconv.Atoi(raw)
+		if parseErr != nil || parsed < 1 || parsed > 100 {
+			s.writeError(w, r, http.StatusBadRequest, "INVALID_PAGE_SIZE", "Page size must be between 1 and 100.")
+			return
+		}
+		size = parsed
+	}
+	items, nextCursor, err := s.deps.Store.ListLedgerPage(r.Context(), currentUser(r).ID, r.URL.Query().Get("cursor"), size)
 	if err != nil {
+		if errors.Is(err, database.ErrInvalidCursor) {
+			s.writeError(w, r, http.StatusBadRequest, "INVALID_CURSOR", "The pagination cursor is invalid.")
+			return
+		}
 		s.writeError(w, r, http.StatusInternalServerError, "LEDGER_UNAVAILABLE", "Ledger history could not be loaded.")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": items})
-}
-
-func (s *Server) createPaymentOrder(w http.ResponseWriter, r *http.Request) {
-	user := currentUser(r)
-	if !s.requireOnboarded(w, r, user) {
-		return
-	}
-	var request struct {
-		MethodID string `json:"methodId"`
-		TXBMinor string `json:"txbMinor"`
-	}
-	if err := decodeJSON(w, r, &request); err != nil {
-		s.writeError(w, r, http.StatusBadRequest, "INVALID_REQUEST", "Provider and TXB amount are required.")
-		return
-	}
-	amount, err := strconv.ParseInt(request.TXBMinor, 10, 64)
-	if err != nil || !billing.CanonicalMethodID(request.MethodID) {
-		s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_AMOUNT", "TXB amount must be integer hundredths.")
-		return
-	}
-	order, err := s.deps.Billing.CreateOrder(r.Context(), user, strings.ToLower(request.MethodID), amount)
-	if err != nil {
-		if s.deps.Logger != nil {
-			s.deps.Logger.Warn("payment provider order creation failed", "request_id", middlewareRequestID(r), "method_id", strings.ToLower(request.MethodID), "amount_minor", amount, "error", err)
-		}
-		if errors.Is(err, billing.ErrInvalidOrder) {
-			s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_PAYMENT_ORDER", "The provider or TXB amount is invalid.")
-		} else if errors.Is(err, billing.ErrProviderDisabled) {
-			s.writeError(w, r, http.StatusConflict, "PROVIDER_DISABLED", "This payment provider is not available.")
-		} else if errors.Is(err, database.ErrPaymentCapacity) {
-			w.Header().Set("Retry-After", "30")
-			s.writeError(w, r, http.StatusConflict, "PAYMENT_CAPACITY", "Too many unsettled payment orders. Retry after an existing order settles.")
-		} else {
-			s.writeError(w, r, http.StatusBadGateway, "PAYMENT_CREATE_FAILED", "The payment order could not be created.")
-		}
-		return
-	}
-	writeJSON(w, http.StatusCreated, order)
-}
-
-func (s *Server) cancelPaymentOrder(w http.ResponseWriter, r *http.Request) {
-	order, err := s.deps.Billing.Cancel(r.Context(), chiURLParam(r, "id"), currentUser(r).ID)
-	if err != nil {
-		switch {
-		case errors.Is(err, database.ErrNotFound):
-			s.writeError(w, r, http.StatusNotFound, "PAYMENT_NOT_FOUND", "Payment order not found.")
-		case errors.Is(err, database.ErrConflict):
-			s.writeError(w, r, http.StatusConflict, "PAYMENT_NOT_CANCELLABLE", "This payment can no longer be cancelled.")
-		default:
-			s.writeError(w, r, http.StatusInternalServerError, "PAYMENT_CANCEL_FAILED", "The payment could not be cancelled.")
-		}
-		return
-	}
-	writeJSON(w, http.StatusOK, order)
-}
-
-func (s *Server) paymentOrder(w http.ResponseWriter, r *http.Request) {
-	order, err := s.deps.Billing.OrderForUser(r.Context(), chiURLParam(r, "id"), currentUser(r).ID)
-	if err != nil {
-		s.writeError(w, r, http.StatusNotFound, "PAYMENT_NOT_FOUND", "Payment order not found.")
-		return
-	}
-	writeJSON(w, http.StatusOK, order)
+	writeJSON(w, http.StatusOK, map[string]any{"items": items, "page": map[string]any{"nextCursor": nextCursor}})
 }
 
 func (s *Server) requireOnboarded(w http.ResponseWriter, r *http.Request, user model.User) bool {
@@ -355,8 +243,4 @@ func (s *Server) requireOnboarded(w http.ResponseWriter, r *http.Request, user m
 	}
 	s.writeError(w, r, http.StatusConflict, "ONBOARDING_REQUIRED", "Complete onboarding to use this feature.")
 	return false
-}
-
-func chiURLParam(r *http.Request, name string) string {
-	return strings.TrimSpace(chi.URLParam(r, name))
 }

@@ -1,0 +1,33 @@
+post:
+  tags: [Webhooks]
+  operationId: receiveTelegramWebhook
+  summary: Receive Telegram bot updates
+  description: Validates the configured Telegram webhook secret header. Relevant join requests, chat-member updates, pre-checkout queries, and successful payments are processed idempotently.
+  security: []
+  parameters:
+    - name: X-Telegram-Bot-Api-Secret-Token
+      in: header
+      required: true
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/TelegramUpdate'
+  responses:
+    '204':
+      description: Update accepted or already processed.
+    '400':
+      $ref: '../openapi.yaml#/components/responses/BadRequest'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '409':
+      $ref: '../openapi.yaml#/components/responses/Conflict'
+    '500':
+      $ref: '../openapi.yaml#/components/responses/InternalFailure'
+    '502':
+      $ref: '../openapi.yaml#/components/responses/UpstreamFailure'
+    '503':
+      $ref: '../openapi.yaml#/components/responses/ServiceUnavailable'

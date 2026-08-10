@@ -1,0 +1,15 @@
+get:
+  tags: [Admin, Onboarding]
+  operationId: getAdminOnboardingBundle
+  summary: Get draft and published localized onboarding bundles
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/OnboardingContentKind'
+  responses:
+    '200':
+      description: Independent draft and published revisions.
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/OnboardingBundle' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }

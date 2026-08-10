@@ -1,0 +1,63 @@
+.timeline-row p {
+  margin-top: 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+.timeline-row small {
+  margin-top: 0.4rem;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 0.61rem;
+}
+
+.route-enter-active,
+.route-leave-active,
+.onboarding-step-enter-active,
+.onboarding-step-leave-active,
+.intro-copy-enter-active,
+.intro-copy-leave-active {
+  transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out);
+}
+
+.route-enter-from,
+.onboarding-step-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.route-leave-to,
+.onboarding-step-leave-to {
+  opacity: 0;
+  transform: translateY(-5px);
+}
+
+.intro-copy-enter-from {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+.intro-copy-leave-to {
+  opacity: 0;
+  transform: translateY(-14px);
+}
+
+.icon-spin {
+  animation: icon-spin 900ms linear infinite;
+}
+
+@keyframes skeleton-shift {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(260%); }
+}
+
+@keyframes loading-bars {
+  0%, 100% { background: var(--line); transform: scaleX(0.7); }
+  50% { background: var(--accent); transform: scaleX(1); }
+}
+
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

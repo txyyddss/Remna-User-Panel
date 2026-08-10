@@ -1,0 +1,13 @@
+delete:
+  tags: [Admin, Database Administration]
+  operationId: deleteAdminBackup
+  summary: Delete a contained backup file and metadata consistently
+  description: Refuses deletion while any restore is staging or restarting and verifies the resolved regular file remains inside the configured backup directory.
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+  responses:
+    '204': { description: Backup file and metadata removed and audited. }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }

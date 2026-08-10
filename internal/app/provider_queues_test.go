@@ -1,0 +1,80 @@
+package app
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/upstreamqueue"
+)
+
+func TestProviderQueueConfiguration(t *testing.T) {
+	queues, err := newProviderQueues()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tests := []struct {
+		name         string
+		queue        *upstreamqueue.Queue
+		wantCapacity int
+		wantPace     time.Duration
+	}{
+		{name: "Remnawave", queue: queues.remnawave, wantCapacity: remnawaveQueueCapacity, wantPace: remnawavePace},
+		{name: "Emby", queue: queues.emby, wantCapacity: embyQueueCapacity, wantPace: embyPace},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if test.queue.Name() == "" || test.queue.Capacity() != test.wantCapacity || test.queue.MinInterval() != test.wantPace {
+				t.Fatalf("queue config = (%q, %d, %s)", test.queue.Name(), test.queue.Capacity(), test.queue.MinInterval())
+			}
+		})
+	}
+}
+
+func TestProviderQueuesUseIndependentWorkers(t *testing.T) {
+	queues, err := newProviderQueues()
+	if err != nil {
+		t.Fatal(err)
+	}
+	lifecycle, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := queues.start(lifecycle); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		cancel()
+		if err := queues.shutdown(context.Background()); err != nil {
+			t.Errorf("shutdown queues: %v", err)
+		}
+	})
+
+	remnaStarted := make(chan struct{})
+	remnaDone := make(chan error, 1)
+	go func() {
+		remnaDone <- upstreamqueue.Execute(context.Background(), queues.remnawave, func(ctx context.Context) error {
+			close(remnaStarted)
+			<-ctx.Done()
+			return ctx.Err()
+		})
+	}()
+	<-remnaStarted
+
+	embyDone := make(chan error, 1)
+	go func() {
+		embyDone <- upstreamqueue.Execute(context.Background(), queues.emby, func(context.Context) error { return nil })
+	}()
+	select {
+	case err := <-embyDone:
+		if err != nil {
+			t.Fatalf("Emby call failed: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Emby worker was blocked by Remnawave")
+	}
+
+	cancel()
+	if err := <-remnaDone; !errors.Is(err, context.Canceled) {
+		t.Fatalf("Remnawave call error = %v, want canceled", err)
+	}
+}

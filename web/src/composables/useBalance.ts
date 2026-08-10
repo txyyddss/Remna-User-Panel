@@ -3,6 +3,7 @@ import { onMounted, readonly, shallowRef } from 'vue'
 import { api } from '@/api/client'
 import type { FeaturePaymentMethod } from '@/api/features'
 import type { LedgerEntry, Money } from '@/api/types'
+import { localizedError } from '@/i18n'
 
 export function useBalance() {
   const balance = shallowRef<Money | null>(null)
@@ -23,7 +24,7 @@ export function useBalance() {
       methods.value = balanceResponse.paymentMethods
       ledger.value = ledgerResponse.items
     } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : 'Balance data is unavailable.'
+      error.value = localizedError(caught, 'errors.balanceUnavailable')
     } finally {
       loading.value = false
     }

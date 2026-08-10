@@ -13,7 +13,10 @@ Bootstrap environment is intentionally narrow: `ADMIN_TELEGRAM_ID`, `TELEGRAM_BO
 - Embedded migrations run in order before HTTP readiness. A migration failure aborts startup without partially advertising readiness.
 - Business transactions write durable state and their required outbox job together. The dispatcher routes each claimed job to the handler registered for its exact kind; Remnawave, rollover, Emby, and questionnaire workers can never claim one another's work. Workers use bounded leases/transactions, increment attempts, and preserve the last operator-safe error.
 - Typed outbox payloads are the only target-ID source. A partial unique index on canonical `(kind,payload)` deduplicates pending/processing work, and processing jobs cannot be deleted. Audit insertion transactionally retains the newest 200 audit events. The platform never offers raw SQL over HTTP.
+- Remnawave and Emby synchronous adapters run through separate bounded FIFO queues with provider-specific pacing. Queue workers share the application context, contain panics, honor caller cancellation/backpressure, and stop before SQLite closes.
 - The embedded filesystem contains the Vite production output. Unknown non-API paths fall back to the SPA entry point; API and operational misses return normal HTTP errors and never the SPA.
+
+Authenticated browser requests carry a timestamp, nonce, and HMAC-SHA256 signature derived from a companion key issued beside the HttpOnly session. Verification hashes the exact body, preserves escaped paths/raw queries, rejects stale timestamps and nonce replay, and restores the body for handlers. Telegram authentication/webhooks, provider callbacks, payment returns, probes, and static delivery are explicit protocol exceptions.
 
 ## Scheduler and backup behavior
 

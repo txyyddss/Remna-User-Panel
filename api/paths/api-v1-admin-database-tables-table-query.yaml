@@ -1,0 +1,23 @@
+post:
+  tags: [Admin, Database Administration]
+  operationId: queryAdminDatabaseRows
+  summary: Search and filter allowlisted typed table rows
+  description: Supports broad non-secret text search and at most five schema-allowlisted, bound predicates. Continuation cursors include the exact query fingerprint.
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/DatabaseTableName'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema: { $ref: '../openapi.yaml#/components/schemas/DatabaseQueryRequest' }
+  responses:
+    '200':
+      description: Typed query result page.
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/DatabaseRowPage' }
+    '400': { $ref: '../openapi.yaml#/components/responses/BadRequest' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }
+    '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }

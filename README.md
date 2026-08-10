@@ -4,11 +4,11 @@ TX Carpool is a Telegram Mini App for onboarding members, funding a TXB balance,
 
 ## What is included
 
-- Telegram-only authentication with five-minute `initData` validation and seven-day HttpOnly sessions.
+- Telegram-only authentication with five-minute `initData` validation, seven-day HttpOnly sessions, and replay-protected HMAC signing on every authenticated API request.
 - Resumable group/channel membership, immutable username, and agreement onboarding.
 - Server-priced combos, optional Remnawave internal squads, renewals, queued plan changes, and a transactional TXB ledger.
 - EZPay, BEPusdt, and Telegram Stars top-ups with signed, idempotent callback processing.
-- Remnawave provisioning, subscription rotation, traffic statistics, and persistent synchronization jobs.
+- Queue-first Remnawave and Emby access, subscription rotation, traffic statistics, and persistent synchronization jobs.
 - Multiple Activity games, daily check-ins, weighted lucky draws, coupon wallets, and one-active questionnaire CSV settlement.
 - Durable Emby account setup, encrypted temporary credentials, server-enforced restricted policies, and compensating refunds.
 - Audited administration for settings, catalog, users, adjustments, entitlements, refunds, schema-aware database editing, backups, staged restore, and failed jobs.
@@ -34,7 +34,9 @@ Go HTTP server :8080 ---- embedded Vue assets
 
 `cmd/server` is deliberately thin and exposes two commands: `serve` and `healthcheck`. Domain packages live under `internal`; blocking operations accept `context.Context`, and provider clients are hidden behind consumer-owned interfaces. SQLite enables foreign keys, WAL, a busy timeout, and bounded connections. Balance changes, purchases, webhook deduplication, and outbox creation are transactional.
 
-The Vue application lives in `web` and uses Composition API, `<script setup lang="ts">`, Vue Router, Pinia for session-wide identity only, typed composables, Tailwind CSS, Phosphor icons, and Reka UI primitives. `npm run build` writes to `internal/webui/dist`; Go embeds that directory and serves the SPA with same-origin APIs.
+The Vue application lives in `web` and uses Composition API, `<script setup lang="ts">`, Vue Router, Pinia for session-wide identity only, Nuxt UI v4, external Iconify Phosphor/country icons, Zod validation, and AutoAnimate. English and Simplified Chinese ship as parity-checked locale modules. `npm run build` writes to `internal/webui/dist`; Go embeds that directory and serves the SPA with same-origin APIs.
+
+After Telegram authentication, the server issues an HttpOnly `txc_session` cookie and a separate request-signing key. The browser signs the exact method, escaped path/query, timestamp, nonce, and body hash; the server rejects stale, replayed, malformed, or unsigned protected requests. Provider callbacks, payment returns, probes, and Telegram bootstrap retain their own documented unsigned protocols.
 
 ## Required environment
 
@@ -95,7 +97,7 @@ If a host bind mount is used instead of a named volume, make the mounted directo
 1. Deploy the HTTPS origin with the required environment and a durable `/data` volume.
 2. Open the Mini App as `ADMIN_TELEGRAM_ID`. It opens directly to the admin dashboard; authorization is the validated Telegram session plus the exact environment ID. Select **Set up user account** there only when the admin also needs normal user-side access and a Remnawave identity.
 3. Configure the target Telegram group and channel, Remnawave endpoint and token, enabled payment methods and required `txb_per_*` rates, and at least one combo. Configure the encrypted Emby token, HTTPS URL, and setup price only when Emby access is offered.
-4. Import Remnawave internal squads, then add local descriptions, TXB term prices, visibility, and availability.
+4. Review the live Remnawave internal squads, then add only the local descriptions, TXB prices, and visibility overrides you need. Upstream-owned squad identities are not duplicated in SQLite.
 5. In BotFather, select the deployed URL as the bot's Main Mini App. The service configures the Telegram webhook and chat menu button from `PUBLIC_BASE_URL`; the bot needs invite and join-request administration rights in both chats.
 6. Confirm `/readyz` reports `status: ok` before sharing the Mini App.
 
@@ -119,4 +121,4 @@ The admin API exposes domain operations plus an allowlisted, schema-aware table 
 
 ## CI and release images
 
-Pull requests run frontend lint/type/test/build checks, npm audit, Go format/vet/lint/race/coverage checks, `govulncheck`, and a production image build. Pushes to `main` and semantic `v*.*.*` tags run the same checks before publishing SBOM/provenance-enabled `linux/amd64` and `linux/arm64` images to `ghcr.io/txyyddss/remna-user-panel` with SHA, `latest`, and semantic tags as applicable.
+Pull requests enforce source line limits, per-folder file maps, locale parity, icon/control policy, generated-contract freshness, frontend lint/type/test/build checks, npm audit, Go format/vet/race/coverage checks, `govulncheck`, and a production image build. Pushes to `main` and semantic `v*.*.*` tags run the same checks before publishing SBOM/provenance-enabled `linux/amd64` and `linux/arm64` images to `ghcr.io/txyyddss/remna-user-panel` with SHA, `latest`, and semantic tags as applicable.

@@ -1,0 +1,260 @@
+ID:
+  type: string
+  minLength: 1
+  examples: [01JZX6BKW16M0CNQ5Q74K8DN7J]
+
+Timestamp:
+  type: string
+  format: date-time
+  examples: ['2026-08-07T10:00:00Z']
+
+DecimalInteger:
+  type: string
+  pattern: '^-?\d+$'
+  examples: ['1250']
+
+ApiError:
+  type: object
+  additionalProperties: false
+  required: [code, message]
+  properties:
+    code:
+      type: string
+      pattern: '^[A-Z][A-Z0-9_]*$'
+      examples: [INSUFFICIENT_BALANCE]
+    message:
+      type: string
+    details:
+      type: object
+      additionalProperties:
+        type: string
+    requestId:
+      type: string
+      minLength: 1
+
+TelegramAuthRequest:
+  type: object
+  additionalProperties: false
+  required: [initData]
+  properties:
+    initData:
+      type: string
+      minLength: 1
+      description: Raw `Telegram.WebApp.initData` query string.
+
+OnboardingStep:
+  type: string
+  enum: [intro, membership, username, agreement, complete]
+
+User:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - telegramId
+    - firstName
+    - lastName
+    - telegramUsername
+    - username
+    - role
+    - onboardingState
+    - groupJoined
+    - channelJoined
+    - policyAcceptedAt
+    - agreementRevision
+    - recoveryReason
+    - createdAt
+    - updatedAt
+  properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    telegramId:
+      type: string
+      pattern: '^\d+$'
+    firstName:
+      type: string
+    lastName:
+      type: string
+    telegramUsername:
+      type: string
+    username:
+      type: [string, 'null']
+      pattern: '^[a-z]{3,9}$'
+    role:
+      type: string
+      enum: [user, admin]
+    onboardingState:
+      $ref: '../../openapi.yaml#/components/schemas/OnboardingStep'
+    groupJoined:
+      type: boolean
+    channelJoined:
+      type: boolean
+    policyAcceptedAt:
+      type: [string, 'null']
+      format: date-time
+    agreementRevision:
+      type: integer
+      minimum: 0
+    recoveryReason:
+      type: string
+      enum: ['', remnawave_user_missing]
+      description: Non-empty only while confirmed linked-user recovery onboarding is required.
+    createdAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+    updatedAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+
+AuthState:
+  type: object
+  additionalProperties: false
+  required: [authenticated, user]
+  properties:
+    authenticated:
+      type: boolean
+      const: true
+    user:
+      $ref: '../../openapi.yaml#/components/schemas/User'
+
+JoinInvite:
+  type: object
+  additionalProperties: false
+  required: [url, expiresAt]
+  properties:
+    url:
+      type: string
+      format: uri
+    expiresAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+
+OnboardingInvites:
+  type: object
+  additionalProperties: false
+  required: [group, channel]
+  properties:
+    group:
+      $ref: '../../openapi.yaml#/components/schemas/JoinInvite'
+    channel:
+      $ref: '../../openapi.yaml#/components/schemas/JoinInvite'
+
+MembershipState:
+  type: object
+  additionalProperties: false
+  required: [groupJoined, channelJoined, complete, user]
+  properties:
+    groupJoined:
+      type: boolean
+    channelJoined:
+      type: boolean
+    complete:
+      type: boolean
+    user:
+      $ref: '../../openapi.yaml#/components/schemas/User'
+
+UsernameRequest:
+  type: object
+  additionalProperties: false
+  required: [username]
+  properties:
+    username:
+      type: string
+      pattern: '^[a-z]{3,9}$'
+
+AgreementRequest:
+  type: object
+  additionalProperties: false
+  required: [revision, agreementIds]
+  properties:
+    revision:
+      type: integer
+      minimum: 1
+    agreementIds:
+      type: array
+      minItems: 1
+      uniqueItems: true
+      items:
+        type: string
+        pattern: '^[a-z0-9][a-z0-9-]{0,63}$'
+
+WelcomeMessage:
+  type: object
+  additionalProperties: false
+  required: [id, text]
+  properties:
+    id:
+      type: string
+      pattern: '^[a-z0-9][a-z0-9-]{0,63}$'
+    text:
+      type: string
+      minLength: 1
+      maxLength: 1000
+    durationMs:
+      type: integer
+      minimum: 1800
+      maximum: 12000
+      readOnly: true
+
+OnboardingAgreement:
+  type: object
+  additionalProperties: false
+  required: [id, icon, title, body]
+  properties:
+    id:
+      type: string
+      pattern: '^[a-z0-9][a-z0-9-]{0,63}$'
+    icon:
+      type: string
+      enum: [link-break, shield-check, users-three, warning, lock-key, heart, scales]
+    title:
+      type: string
+      minLength: 1
+      maxLength: 200
+    body:
+      type: string
+      minLength: 1
+      maxLength: 2000
+
+LocalizedOnboardingContent:
+  type: object
+  additionalProperties: false
+  required: [en, zh-CN]
+  properties:
+    en:
+      type: array
+      minItems: 1
+      items:
+        oneOf:
+          - $ref: '../../openapi.yaml#/components/schemas/WelcomeMessage'
+          - $ref: '../../openapi.yaml#/components/schemas/OnboardingAgreement'
+    zh-CN:
+      type: array
+      minItems: 1
+      items:
+        oneOf:
+          - $ref: '../../openapi.yaml#/components/schemas/WelcomeMessage'
+          - $ref: '../../openapi.yaml#/components/schemas/OnboardingAgreement'
+
+PublishedOnboarding:
+  type: object
+  additionalProperties: false
+  required: [locale, welcomeRevision, agreementRevision, welcome, agreements]
+  properties:
+    locale: { type: string, enum: [en, zh-CN] }
+    welcomeRevision: { type: integer, minimum: 1 }
+    agreementRevision: { type: integer, minimum: 1 }
+    welcome:
+      type: array
+      items: { $ref: '../../openapi.yaml#/components/schemas/WelcomeMessage' }
+    agreements:
+      type: array
+      items: { $ref: '../../openapi.yaml#/components/schemas/OnboardingAgreement' }
+
+OnboardingBundle:
+  type: object
+  additionalProperties: false
+  required: [kind, draft, published, draftRevision, publishedRevision]
+  properties:
+    kind: { type: string, enum: [welcome, agreements] }
+    draft: { $ref: '../../openapi.yaml#/components/schemas/LocalizedOnboardingContent' }
+    published: { $ref: '../../openapi.yaml#/components/schemas/LocalizedOnboardingContent' }
+    draftRevision: { type: integer, minimum: 1 }
+    publishedRevision: { type: integer, minimum: 1 }

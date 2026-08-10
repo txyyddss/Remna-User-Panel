@@ -10,9 +10,9 @@ const { questionnaire, participation, loading, joining, error, load, openQuestio
 <template>
   <div class="page page--questionnaire">
     <header class="page-header">
-      <p class="eyebrow">Member feedback</p>
-      <h1>Share your experience.</h1>
-      <p>Your private validation code connects one eligible response to one reward.</p>
+      <p class="eyebrow">{{ $t('questionnaire.eyebrow') }}</p>
+      <h1>{{ $t('questionnaire.title') }}</h1>
+      <p>{{ $t('questionnaire.copy') }}</p>
     </header>
     <SkeletonBlock v-if="loading" height="24rem" />
     <template v-else-if="questionnaire">
@@ -20,8 +20,8 @@ const { questionnaire, participation, loading, joining, error, load, openQuestio
       <QuestionnaireAccessPanel :questionnaire="questionnaire" :participation="participation" :joining="joining" @open="openQuestionnaire" />
     </template>
     <section v-else class="section-block empty-inline">
-      <div><h3>No active questionnaire</h3><p>Completed questionnaires remain in your reward history.</p></div>
-      <button class="button button--secondary" type="button" @click="load">Refresh</button>
+      <div><h3>{{ $t('questionnaire.none') }}</h3><p>{{ $t('questionnaire.noneHint') }}</p></div>
+      <UButton color="neutral" variant="outline" :label="$t('common.refresh')" @click="load" />
     </section>
   </div>
 </template>

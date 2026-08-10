@@ -1,0 +1,42 @@
+.backup-card small {
+  margin-top: 0.2rem;
+  color: var(--text-faint);
+  font-size: 0.64rem;
+}
+
+.backup-card__verified {
+  grid-column: 2;
+}
+
+.timeline-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.8rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.timeline-row:last-child {
+  border-bottom: 0;
+}
+
+.timeline-row__icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.timeline-row strong,
+.timeline-row p,
+.timeline-row small {
+  display: block;
+  margin: 0;
+}
+
+.timeline-row strong {
+  font-size: 0.8rem;
+}

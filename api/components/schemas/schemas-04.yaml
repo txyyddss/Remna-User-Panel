@@ -1,0 +1,181 @@
+StatisticSlice:
+  type: object
+  additionalProperties: false
+  required: [id, label, count]
+  properties:
+    id: { type: string }
+    label: { type: string }
+    count: { type: integer, format: int64, minimum: 0 }
+
+AdminStatistics:
+  type: object
+  additionalProperties: false
+  required: [resourceId, timeZone, from, to, bucket, count, uniqueUsers, inputTxbMinor, outputTxbMinor, netTxbMinor, discountTxbMinor, addonTxbMinor, wins, losses, series, distribution]
+  properties:
+    resourceId: { $ref: '../../openapi.yaml#/components/schemas/ID' }
+    timeZone: { type: string }
+    from: { type: string, format: date }
+    to: { type: string, format: date }
+    bucket: { type: string, enum: [daily, weekly] }
+    count: { type: integer, format: int64, minimum: 0 }
+    uniqueUsers: { type: integer, format: int64, minimum: 0 }
+    inputTxbMinor: { $ref: '../../openapi.yaml#/components/schemas/DecimalInteger' }
+    outputTxbMinor: { $ref: '../../openapi.yaml#/components/schemas/DecimalInteger' }
+    netTxbMinor: { $ref: '../../openapi.yaml#/components/schemas/DecimalInteger' }
+    discountTxbMinor: { $ref: '../../openapi.yaml#/components/schemas/DecimalInteger' }
+    addonTxbMinor: { $ref: '../../openapi.yaml#/components/schemas/DecimalInteger' }
+    wins: { type: integer, format: int64, minimum: 0 }
+    losses: { type: integer, format: int64, minimum: 0 }
+    series:
+      type: array
+      items: { $ref: '../../openapi.yaml#/components/schemas/StatisticPoint' }
+    distribution:
+      type: array
+      items: { $ref: '../../openapi.yaml#/components/schemas/StatisticSlice' }
+
+Dashboard:
+  type: object
+  additionalProperties: false
+  required:
+    - user
+    - balance
+    - activePurchase
+    - queuedPurchase
+    - statistics
+    - subscriptionUrl
+    - statisticsStale
+    - statisticsWarning
+    - fetchedAt
+  properties:
+    user:
+      $ref: '../../openapi.yaml#/components/schemas/User'
+    balance:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    activePurchase:
+      oneOf:
+        - $ref: '../../openapi.yaml#/components/schemas/Purchase'
+        - type: 'null'
+    queuedPurchase:
+      oneOf:
+        - $ref: '../../openapi.yaml#/components/schemas/Purchase'
+        - type: 'null'
+    statistics:
+      oneOf:
+        - $ref: '../../openapi.yaml#/components/schemas/Statistics'
+        - type: 'null'
+    subscriptionUrl:
+      type: [string, 'null']
+      format: uri
+    statisticsStale:
+      type: boolean
+    statisticsWarning:
+      type: string
+    fetchedAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+
+LedgerKind:
+  type: string
+  enum:
+    - payment_credit
+    - payment_reversal
+    - purchase_debit
+    - purchase_cancellation
+    - admin_adjustment
+    - admin_entitlement_cancellation
+    - activity_bet_stake
+    - activity_bet_payout
+    - activity_daily_checkin
+    - activity_draw_fee
+    - activity_draw_reward
+    - coupon_balance_add
+    - coupon_balance_multiply
+    - questionnaire_reward
+    - emby_setup_debit
+    - emby_setup_refund
+    - rollover_credit
+
+LedgerEntry:
+  type: object
+  additionalProperties: false
+  required: [id, delta, balanceAfter, kind, referenceId, note, createdAt]
+  properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    delta:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    balanceAfter:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    kind:
+      $ref: '../../openapi.yaml#/components/schemas/LedgerKind'
+    referenceId:
+      type: string
+    note:
+      type: string
+    createdAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+
+PageInfo:
+  type: object
+  additionalProperties: false
+  required: [nextCursor]
+  properties:
+    nextCursor:
+      type: [string, 'null']
+
+LedgerPage:
+  type: object
+  additionalProperties: false
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/LedgerEntry'
+    page:
+      $ref: '../../openapi.yaml#/components/schemas/PageInfo'
+
+PaymentMethodID:
+  type: string
+  enum:
+    - ezpay:alipay
+    - ezpay:wxpay
+    - ezpay:qqpay
+    - ezpay:bank
+    - ezpay:jdpay
+    - bepusdt:usdt.trc20
+    - bepusdt:usdt.erc20
+    - bepusdt:usdt.polygon
+    - bepusdt:usdt.bep20
+    - bepusdt:usdt.aptos
+    - bepusdt:usdt.solana
+    - bepusdt:usdt.xlayer
+    - bepusdt:usdt.arbitrum
+    - bepusdt:usdt.plasma
+    - bepusdt:usdt.ton
+    - stars
+
+PaymentOrderMethodID:
+  description: Stable method ID for new orders; legacy pending snapshots may expose an empty value or provider alias.
+  oneOf:
+    - $ref: '../../openapi.yaml#/components/schemas/PaymentMethodID'
+    - type: string
+      enum: ['', ezpay, bepusdt]
+
+PaymentProvider:
+  type: string
+  enum: [ezpay, bepusdt, stars]
+
+PaymentStatus:
+  type: string
+  enum: [creating, pending, paid, expired, failed, refunded, cancelled]
+
+PaymentOrderRequest:
+  type: object
+  additionalProperties: false
+  required: [methodId, txbMinor]
+  properties:
+    methodId:
+      $ref: '../../openapi.yaml#/components/schemas/PaymentMethodID'
+    txbMinor:
+      type: string
+      pattern: '^[1-9]\d*$'

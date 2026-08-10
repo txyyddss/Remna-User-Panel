@@ -16,6 +16,52 @@ These documents describe the implemented module boundaries. They are maintenance
 | Admin authorization and domain operations | [admin-operations.md](admin-operations.md) |
 | Vue Mini App and generated API client | [web-ui.md](web-ui.md) |
 
+## Source package maps
+
+These READMEs describe the direct files in each implementation package:
+
+| Package | File map |
+| --- | --- |
+| Internal package boundary | [internal/README.md](../../internal/README.md) |
+| Accounts | [internal/accounts/README.md](../../internal/accounts/README.md) |
+| Activity | [internal/activity/README.md](../../internal/activity/README.md) |
+| Administration | [internal/admin/README.md](../../internal/admin/README.md) |
+| Application composition | [internal/app/README.md](../../internal/app/README.md) |
+| Billing | [internal/billing/README.md](../../internal/billing/README.md) |
+| Catalog | [internal/catalog/README.md](../../internal/catalog/README.md) |
+| Coupons | [internal/coupons/README.md](../../internal/coupons/README.md) |
+| Emby domain | [internal/emby/README.md](../../internal/emby/README.md) |
+| Entitlements | [internal/entitlements/README.md](../../internal/entitlements/README.md) |
+| HTTP API | [internal/httpapi/README.md](../../internal/httpapi/README.md) |
+| Shared models | [internal/model/README.md](../../internal/model/README.md) |
+| Onboarding content | [internal/onboarding/README.md](../../internal/onboarding/README.md) |
+| Outbox payload helpers | [internal/outbox/README.md](../../internal/outbox/README.md) |
+| Questionnaires | [internal/questionnaires/README.md](../../internal/questionnaires/README.md) |
+| Purchase rollover | [internal/rollover/README.md](../../internal/rollover/README.md) |
+| Embedded web UI | [internal/webui/README.md](../../internal/webui/README.md) |
+| Provider integrations boundary | [internal/integrations/README.md](../../internal/integrations/README.md) |
+| BEPusdt integration | [internal/integrations/bepusdt/README.md](../../internal/integrations/bepusdt/README.md) |
+| Emby integration | [internal/integrations/emby/README.md](../../internal/integrations/emby/README.md) |
+| EZPay integration | [internal/integrations/ezpay/README.md](../../internal/integrations/ezpay/README.md) |
+| Remnawave integration | [internal/integrations/remnawave/README.md](../../internal/integrations/remnawave/README.md) |
+| Telegram integration | [internal/integrations/telegram/README.md](../../internal/integrations/telegram/README.md) |
+| Platform boundary | [internal/platform/README.md](../../internal/platform/README.md) |
+| Backups and restore | [internal/platform/backup/README.md](../../internal/platform/backup/README.md) |
+| Runtime configuration | [internal/platform/config/README.md](../../internal/platform/config/README.md) |
+| Database | [internal/platform/database/README.md](../../internal/platform/database/README.md) |
+| Database migrations | [internal/platform/database/migrations/README.md](../../internal/platform/database/migrations/README.md) |
+| Reviewed database administration | [internal/platform/databaseadmin/README.md](../../internal/platform/databaseadmin/README.md) |
+| Identifier generation | [internal/platform/ids/README.md](../../internal/platform/ids/README.md) |
+| Durable outbox worker | [internal/platform/outbox/README.md](../../internal/platform/outbox/README.md) |
+| Secret vault | [internal/platform/secret/README.md](../../internal/platform/secret/README.md) |
+| Upstream queues | [internal/platform/upstreamqueue/README.md](../../internal/platform/upstreamqueue/README.md) |
+| Request authentication | [internal/requestauth/README.md](../../internal/requestauth/README.md) |
+| Request validation | [internal/validation/README.md](../../internal/validation/README.md) |
+| Command boundary | [cmd/README.md](../../cmd/README.md) |
+| Server command | [cmd/server/README.md](../../cmd/server/README.md) |
+
+The split HTTP contract is indexed from [api/README.md](../../api/README.md), and the frontend file maps start at [web/README.md](../../web/README.md) and [web/src/README.md](../../web/src/README.md).
+
 Cross-module rules:
 
 - HTTP request/response compatibility is defined by `api/openapi.yaml`; generated frontend types must not be hand-edited.

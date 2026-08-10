@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import { CheckboxIndicator, CheckboxRoot } from 'reka-ui'
-import { PhCheck, PhFilmSlate } from '@phosphor-icons/vue'
-
 import type { EmbyLibrary } from '@/api/features'
 
 const props = defineProps<{ libraries: readonly EmbyLibrary[]; selectedIds: readonly string[]; disabled?: boolean }>()
@@ -12,14 +9,14 @@ const emit = defineEmits<{ toggle: [id: string] }>()
   <fieldset class="emby-library-picker">
     <legend>{{ $t('emby.disabledLibraries') }}</legend>
     <label v-for="library in libraries" :key="library.id" class="emby-library">
-      <span class="feature-icon feature-icon--small"><PhFilmSlate :size="18" /></span>
+      <span class="feature-icon feature-icon--small"><UIcon name="i-ph-film-slate" /></span>
       <span>{{ library.name }}</span>
-      <CheckboxRoot
-        class="checkbox-control"
+      <UCheckbox
         :model-value="props.selectedIds.includes(library.id)"
         :disabled="disabled"
+        :aria-label="library.name"
         @update:model-value="emit('toggle', library.id)"
-      ><CheckboxIndicator class="checkbox-indicator"><PhCheck :size="16" weight="bold" /></CheckboxIndicator></CheckboxRoot>
+      />
     </label>
     <small class="field-hint">{{ $t('emby.disabledLibrariesHint') }}</small>
   </fieldset>

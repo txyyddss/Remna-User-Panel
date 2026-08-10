@@ -1,0 +1,19 @@
+get:
+  tags: [Admin]
+  operationId: getAdminUser
+  summary: Get one safe user identity projection
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+  responses:
+    '200':
+      description: Domain-safe user identity without subscription bearer data.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/User'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../openapi.yaml#/components/responses/Forbidden'
+    '404':
+      $ref: '../openapi.yaml#/components/responses/NotFound'

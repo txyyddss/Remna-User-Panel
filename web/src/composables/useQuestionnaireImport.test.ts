@@ -20,10 +20,9 @@ const preview = {
   status: 'preview' as const,
   headers: ['Validation code', 'Answer'],
   sampleRows: [['ABC', 'Yes']],
-  delimiter: ',',
+  delimiter: 'comma' as const,
   dataRowCount: 1,
   malformedRowCount: 0,
-  codeColumn: null,
   createdAt: '2026-08-08T00:00:00Z',
   updatedAt: '2026-08-08T00:00:00Z',
 }
@@ -40,7 +39,7 @@ describe('questionnaire import workflow', () => {
     analyzeQuestionnaireCsv.mockResolvedValue({ importId: 'import-1', questionnaireId: 'questionnaire-1', codeColumn: 'Validation code', matchedCount: 1, duplicateCount: 0, unknownCount: 0, malformedCount: 0, alreadyAwardedCount: 0 })
     settleQuestionnaireCsv.mockResolvedValue({ ...preview, status: 'queued' })
     getQuestionnaireImportState
-      .mockResolvedValueOnce({ preview: { ...preview, status: 'processing' }, report: null })
+      .mockResolvedValueOnce({ preview: { ...preview, status: 'processing' } })
       .mockResolvedValueOnce({
         preview: { ...preview, status: 'settled' },
         report: { importId: 'import-1', questionnaireId: 'questionnaire-1', matchedCount: 1, duplicateCount: 0, unknownCount: 0, malformedCount: 0, alreadyAwardedCount: 0, rewardedCount: 1, rewardTxbMinor: '500', settledAt: '2026-08-08T00:00:00Z', replayed: false },

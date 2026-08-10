@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { onScopeDispose, shallowRef } from 'vue'
-import { PhArchive, PhArrowClockwise, PhCheckCircle, PhDatabase, PhDownloadSimple, PhTrash, PhUploadSimple } from '@phosphor-icons/vue'
 
 import type { BackupRecord, JobRecord } from '@/api/types'
 import type { RestoreOperation } from '@/api/features'
@@ -47,7 +46,7 @@ async function pollRestore(): Promise<void> {
 }
 
 function createBackup(): void {
-  void backups.create({ action: 'create' })
+  void backups.perform(() => import('@/api/client').then(({ api }) => api.createAdminBackup()))
 }
 
 function retryJob(id: string): void {
@@ -120,17 +119,17 @@ onScopeDispose(stopRestorePolling)
   <section class="admin-panel">
     <div class="admin-panel__heading">
       <div><h2>{{ t('adminBackups.title') }}</h2><p>{{ t('adminBackups.copy') }}</p></div>
-      <button class="button button--primary" type="button" :disabled="backups.busy.value" @click="createBackup"><PhArchive :size="18" /> {{ t('adminBackups.create') }}</button>
+      <UButton icon="i-ph-archive" :disabled="backups.busy.value" :loading="backups.busy.value" :label="t('adminBackups.create')" @click="createBackup" />
     </div>
-    <InlineNotice v-if="restoreOperation" :tone="restoreOperation.status === 'failed' ? 'warning' : 'success'" :title="restoreOperation.status === 'complete' ? t('adminBackups.restoreComplete') : restoreOperation.status === 'failed' ? t('adminBackups.restoreFailedTitle') : t('adminBackups.restoreStaged')">{{ t('adminBackups.operationStatus', { id: restoreOperation.id, status: restoreOperation.status }) }} {{ restoreOperation.error || (restoreOperation.status === 'complete' ? t('adminBackups.reauthenticate') : t('adminBackups.reconnect')) }}</InlineNotice>
+    <InlineNotice v-if="restoreOperation" :tone="restoreOperation.status === 'failed' ? 'warning' : 'success'" :title="restoreOperation.status === 'complete' ? t('adminBackups.restoreComplete') : restoreOperation.status === 'failed' ? t('adminBackups.restoreFailedTitle') : t('adminBackups.restoreStaged')">{{ t('adminBackups.operationStatus', { id: restoreOperation.id, status: t(`adminBackups.status.${restoreOperation.status}`) }) }} {{ restoreOperation.error || (restoreOperation.status === 'complete' ? t('adminBackups.reauthenticate') : t('adminBackups.reconnect')) }}</InlineNotice>
     <InlineNotice v-if="actionError" tone="warning">{{ actionError }}</InlineNotice>
     <AdminSectionState :loading="backups.loading.value" :error="backups.error.value" @retry="backups.load()">
-      <div class="backup-grid">
+      <div v-auto-animate class="backup-grid">
         <article v-for="backup in backups.items.value" :key="backup.id" class="backup-card">
-          <span class="feature-icon"><PhDatabase :size="22" /></span>
+          <span class="feature-icon"><UIcon name="i-ph-database" /></span>
           <div><strong>{{ backupName(backup) }}</strong><small>{{ formatBytes(backup.sizeBytes) }} / {{ formatDateTime(backup.createdAt) }}</small></div>
-          <span class="backup-card__verified"><PhCheckCircle :size="17" weight="fill" /> {{ backup.status === 'complete' ? t('adminBackups.verified') : backup.status }}</span>
-          <div v-if="backup.status === 'complete'" class="backup-card__actions"><button class="button button--secondary button--small" type="button" @click="download(backup)"><PhDownloadSimple :size="17" />{{ t('adminBackups.download') }}</button><button class="button button--ghost-danger button--small" type="button" @click="restoreTarget = backup"><PhUploadSimple :size="17" />{{ t('adminBackups.restore') }}</button><button class="button button--ghost-danger button--small" type="button" @click="backupDeleteTarget = backup"><PhTrash :size="17" />{{ t('adminBackups.delete') }}</button></div>
+          <span class="backup-card__verified"><UIcon name="i-ph-check-circle-fill" /> {{ backup.status === 'complete' ? t('adminBackups.verified') : t(`adminBackups.status.${backup.status}`) }}</span>
+          <div v-if="backup.status === 'complete'" class="backup-card__actions"><UButton size="sm" color="neutral" variant="outline" icon="i-ph-download-simple" :label="t('adminBackups.download')" @click="download(backup)" /><UButton size="sm" color="error" variant="ghost" icon="i-ph-upload-simple" :label="t('adminBackups.restore')" @click="restoreTarget = backup" /><UButton size="sm" color="error" variant="ghost" icon="i-ph-trash" :label="t('adminBackups.delete')" @click="backupDeleteTarget = backup" /></div>
         </article>
         <div v-if="!backups.items.value.length" class="empty-inline"><div><h3>{{ t('adminBackups.none') }}</h3><p>{{ t('adminBackups.noneHint') }}</p></div></div>
       </div>
@@ -138,22 +137,23 @@ onScopeDispose(stopRestorePolling)
     <RestoreBackupDialog :open="restoreTarget !== null" :backup-name="restoreTarget ? backupName(restoreTarget) : ''" :busy="restoring" @update:open="!$event && (restoreTarget = null)" @restore="restore" />
     <ConfirmDialog :open="Boolean(backupDeleteTarget)" :title="t('adminBackups.deleteTitle', { name: backupDeleteTarget ? backupName(backupDeleteTarget) : t('adminBackups.backup') })" :description="t('adminBackups.deleteDescription')" :confirm-label="t('adminBackups.deleteBackup')" danger @update:open="!$event && (backupDeleteTarget = null)" @confirm="deleteBackup" />
 
-    <div class="admin-subsection-heading"><div><h3>{{ t('adminBackups.jobs') }}</h3><p>{{ t('adminBackups.jobsHint') }}</p></div><button class="text-button" type="button" @click="jobs.load()"><PhArrowClockwise :size="17" /> {{ t('common.refresh') }}</button></div>
+    <div class="admin-subsection-heading"><div><h3>{{ t('adminBackups.jobs') }}</h3><p>{{ t('adminBackups.jobsHint') }}</p></div><UButton color="neutral" variant="ghost" icon="i-ph-arrow-clockwise" :label="t('common.refresh')" @click="jobs.load()" /></div>
     <AdminSectionState :loading="jobs.loading.value" :error="jobs.error.value" @retry="jobs.load()">
-      <div class="admin-list admin-list--compact">
+      <div v-auto-animate class="admin-list admin-list--compact">
         <article v-for="job in jobs.items.value.slice(0, 12)" :key="job.id" class="admin-list-row">
           <div><strong>{{ job.kind }}</strong><small>{{ t('adminBackups.attempts', { count: job.attempts }) }} / {{ formatDateTime(job.createdAt) }}{{ job.lastError ? ` / ${job.lastError}` : '' }}</small></div>
-          <StatusBadge :tone="job.status === 'done' ? 'success' : job.status === 'failed' ? 'danger' : 'warning'" :label="job.status" />
-          <button
+          <StatusBadge :tone="job.status === 'done' ? 'success' : job.status === 'failed' ? 'danger' : 'warning'" :label="t(`adminBackups.status.${job.status}`)" />
+          <UButton
             v-if="job.status === 'failed'"
-            class="button button--secondary button--small"
-            type="button"
+            size="sm"
+            color="neutral"
+            variant="outline"
+            icon="i-ph-arrow-clockwise"
             :disabled="jobs.busy.value"
+            :label="t('adminBackups.retry')"
             @click="retryJob(job.id)"
-          >
-            <PhArrowClockwise :size="17" /> {{ t('adminBackups.retry') }}
-          </button>
-          <button class="icon-button icon-button--danger" type="button" :disabled="job.status === 'processing' || jobs.busy.value" :aria-label="t('adminBackups.deleteJobLabel', { kind: job.kind })" @click="jobDeleteTarget = job"><PhTrash :size="18" /></button>
+          />
+          <UButton color="error" variant="ghost" icon="i-ph-trash" :disabled="job.status === 'processing' || jobs.busy.value" :aria-label="t('adminBackups.deleteJobLabel', { kind: job.kind })" @click="jobDeleteTarget = job" />
         </article>
         <div v-if="!jobs.items.value.length" class="empty-inline"><div><h3>{{ t('adminBackups.noJobs') }}</h3><p>{{ t('adminBackups.noJobsHint') }}</p></div></div>
       </div>

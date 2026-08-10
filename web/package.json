@@ -8,34 +8,36 @@
   },
   "scripts": {
     "dev": "vite",
-    "generate:api": "openapi-typescript ../api/openapi.yaml -o src/api/generated.ts",
+    "generate:api": "openapi-typescript ../api/openapi.yaml -o src/api/generated.ts && node scripts/compact-contract.mjs",
     "build": "npm run typecheck && vite build",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run lint && npm run typecheck && npm run test && vite build"
+    "audit:structure": "node scripts/check-structure.mjs",
+    "check": "npm run audit:structure && npm run lint && npm run typecheck && npm run test && vite build"
   },
   "dependencies": {
-    "@phosphor-icons/vue": "^2.2.1",
+    "@formkit/auto-animate": "^0.10.0",
+    "@iconify-json/circle-flags": "^1.2.10",
+    "@iconify-json/ph": "^1.2.2",
+    "@nuxt/ui": "^4.10.0",
     "dompurify": "^3.4.13",
     "markdown-it": "^15.0.0",
     "pinia": "^4.0.2",
     "qrcode": "^1.5.4",
-    "reka-ui": "^2.10.1",
     "vue": "^3.5.41",
-    "vue-router": "^5.2.0"
+    "vue-router": "^5.2.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@tailwindcss/vite": "^4.3.3",
     "@types/markdown-it": "^14.1.2",
     "@types/node": "^26.2.0",
     "@types/qrcode": "^1.5.6",
     "@vitejs/plugin-vue": "^6.0.8",
     "@vitest/coverage-v8": "^4.1.10",
-    "@vue/language-core": "^3.3.9",
     "@vue/test-utils": "^2.4.11",
     "eslint": "^10.8.1",
     "eslint-plugin-vue": "^10.10.0",

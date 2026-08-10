@@ -96,6 +96,25 @@ describe('admin API mutations', () => {
     expect(options.body).toBeUndefined()
   })
 
+  it('creates a backup without sending an invented payload', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({
+      id: 'backup-1',
+      path: 'backup-1.sqlite',
+      sizeBytes: '1024',
+      status: 'complete',
+      error: '',
+      createdAt: '2026-08-07T00:00:00Z',
+      completedAt: '2026-08-07T00:00:01Z',
+    }))
+
+    await api.createAdminBackup()
+
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('/api/v1/admin/backups')
+    expect(options.method).toBe('POST')
+    expect(options.body).toBeUndefined()
+  })
+
   it('creates and cancels payments with canonical method IDs', async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse({ id: 'payment-1', status: 'pending' }))

@@ -5,8 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -28,6 +26,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 	"github.com/txyyddss/Remna-User-Panel/internal/questionnaires"
+	"github.com/txyyddss/Remna-User-Panel/internal/requestauth"
 )
 
 const sessionCookie = "txc_session"
@@ -48,32 +47,34 @@ type bepusdtUnsignedVerifier interface {
 
 // Dependencies contains already-constructed application services.
 type Dependencies struct {
-	Accounts        *accounts.Service
-	Catalog         *catalog.Service
-	Billing         *billing.Service
-	Activity        *activity.Service
-	Coupons         *coupons.Service
-	Questionnaires  *questionnaires.Service
-	Emby            *emby.Service
-	EmbyPrice       emby.PriceSource
-	Admin           *admin.Service
-	Settings        *admin.SettingsService
-	DatabaseAdmin   *DatabaseAdministrationHTTP
-	Store           *database.Store
-	Telegram        *telegram.Client
-	Webhooks        PaymentWebhookVerifier
-	PublicURL       *url.URL
-	Static          fs.FS
-	Logger          *slog.Logger
-	SessionTTL      time.Duration
-	SecureCookies   bool
-	AdminTelegramID int64
+	Accounts          *accounts.Service
+	Catalog           *catalog.Service
+	Billing           *billing.Service
+	Activity          *activity.Service
+	Coupons           *coupons.Service
+	Questionnaires    *questionnaires.Service
+	Emby              *emby.Service
+	EmbyPrice         emby.PriceSource
+	Admin             *admin.Service
+	Settings          *admin.SettingsService
+	DatabaseAdmin     *DatabaseAdministrationHTTP
+	Store             *database.Store
+	Telegram          *telegram.Client
+	Webhooks          PaymentWebhookVerifier
+	PublicURL         *url.URL
+	Static            fs.FS
+	Logger            *slog.Logger
+	RequestSigningKey []byte
+	SessionTTL        time.Duration
+	SecureCookies     bool
+	AdminTelegramID   int64
 }
 
 // Server owns HTTP routing and transport-only validation.
 type Server struct {
-	deps   Dependencies
-	router http.Handler
+	deps     Dependencies
+	requests *requestauth.Verifier
+	router   http.Handler
 }
 
 // New constructs all public, authenticated, admin, and webhook routes.
@@ -81,13 +82,18 @@ func New(deps Dependencies) (*Server, error) {
 	if deps.Accounts == nil || deps.Catalog == nil || deps.Billing == nil || deps.Activity == nil || deps.Coupons == nil || deps.Questionnaires == nil || deps.Emby == nil || deps.EmbyPrice == nil || deps.Admin == nil || deps.Settings == nil || deps.Store == nil || deps.Telegram == nil || deps.Webhooks == nil || deps.PublicURL == nil || deps.Logger == nil || deps.AdminTelegramID <= 0 {
 		return nil, errors.New("HTTP API dependencies are incomplete")
 	}
-	server := &Server{deps: deps}
+	requestVerifier, err := requestauth.New(deps.RequestSigningKey)
+	if err != nil {
+		return nil, err
+	}
+	server := &Server{deps: deps, requests: requestVerifier}
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP)
 	router.Use(middleware.RequestID)
 	router.Use(server.recoverer)
 	router.Use(server.securityHeaders)
 	router.Use(server.accessLog)
+	router.Use(server.validateRequest)
 
 	router.Get("/healthz", server.health)
 	router.Get("/readyz", server.ready)
@@ -100,6 +106,7 @@ func New(deps Dependencies) (*Server, error) {
 	router.Get("/api/v1/payments/return/{provider}/{orderID}", server.paymentReturn)
 
 	router.Group(func(authenticated chi.Router) {
+		authenticated.Use(server.requireSignedRequest)
 		authenticated.Use(server.requireSession)
 		authenticated.Get("/api/v1/me", server.me)
 		authenticated.Post("/api/v1/onboarding/invites", server.createInvites)
@@ -158,20 +165,6 @@ func writeJSON(w http.ResponseWriter, status int, value any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(value)
-}
-
-func decodeJSON(w http.ResponseWriter, r *http.Request, target any) error {
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(target); err != nil {
-		return fmt.Errorf("decode JSON: %w", err)
-	}
-	var extra any
-	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
-		return errors.New("request body contains multiple JSON values")
-	}
-	return nil
 }
 
 func (s *Server) requireSession(next http.Handler) http.Handler {

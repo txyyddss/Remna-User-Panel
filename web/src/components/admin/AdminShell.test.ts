@@ -22,6 +22,7 @@ function session(onboardingState: Session['user']['onboardingState']): Session {
       groupJoined: false,
       channelJoined: false,
       policyAcceptedAt: null,
+      agreementRevision: 0,
       recoveryReason: '',
       createdAt: '2026-08-08T00:00:00Z',
       updatedAt: '2026-08-08T00:00:00Z',
@@ -56,5 +57,12 @@ describe('AdminShell', () => {
     const wrapper = await mountShell('complete')
 
     expect(wrapper.find('a[href="/onboarding"]').exists()).toBe(false)
+  })
+
+  it('exposes user and Emby account sections', async () => {
+    const wrapper = await mountShell('complete')
+    const items = wrapper.getComponent({ name: 'Select' }).props('items') as Array<{ value: string }>
+
+    expect(items.map(({ value }) => value)).toEqual(expect.arrayContaining(['users', 'emby']))
   })
 })

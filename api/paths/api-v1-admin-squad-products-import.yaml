@@ -1,0 +1,24 @@
+post:
+  tags: [Admin]
+  operationId: importAdminSquadProducts
+  summary: Reconcile local squad products from Remnawave
+  description: Imports upstream squads and marks missing upstream records unavailable without deleting purchase history.
+  responses:
+    '200':
+      description: Complete reconciled squad-product list.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [items]
+            properties:
+              items:
+                type: array
+                items:
+                  $ref: '../openapi.yaml#/components/schemas/SquadProduct'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../openapi.yaml#/components/responses/Forbidden'
+    '502':
+      $ref: '../openapi.yaml#/components/responses/UpstreamFailure'

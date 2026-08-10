@@ -1,0 +1,188 @@
+.catalog-editor__heading,
+.admin-drawer__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  grid-column: 1 / -1;
+}
+
+.catalog-editor h3,
+.catalog-editor p,
+.admin-drawer h3,
+.admin-drawer p {
+  margin: 0;
+}
+
+.catalog-editor p,
+.admin-drawer p {
+  margin-top: 0.3rem;
+  color: var(--text-faint);
+  font-size: 0.7rem;
+}
+
+.catalog-editor label,
+.admin-drawer label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.catalog-editor input,
+.catalog-editor textarea,
+.catalog-editor select,
+.admin-drawer input,
+.form-stack textarea,
+.compact-select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  outline: 0;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.catalog-editor textarea,
+.form-stack textarea {
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.catalog-editor input:focus,
+.catalog-editor textarea:focus,
+.catalog-editor select:focus,
+.admin-drawer input:focus,
+.form-stack textarea:focus,
+.compact-select:focus {
+  border-color: var(--accent);
+}
+
+.switch-row {
+  flex-direction: row !important;
+  align-items: center;
+}
+
+.switch-row input {
+  width: 18px;
+  min-height: 18px;
+  accent-color: var(--accent);
+}
+
+.admin-subsection-heading {
+  padding: 1rem;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: #101310;
+}
+
+.admin-list,
+.timeline-list {
+  padding: 0 1rem;
+}
+
+.admin-list-row {
+  min-height: 64px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.admin-list-row:last-child {
+  border-bottom: 0;
+}
+
+.admin-list-row > div:first-of-type {
+  min-width: 0;
+}
+
+.admin-list-row strong,
+.admin-list-row small {
+  display: block;
+}
+
+.admin-list-row strong {
+  font-size: 0.79rem;
+}
+
+.admin-list-row small {
+  overflow: hidden;
+  margin-top: 0.22rem;
+  color: var(--text-faint);
+  font-size: 0.66rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-list-row > strong {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.admin-list-row .status-badge,
+.admin-list-row .row-actions,
+.admin-list-row > .button {
+  grid-column: 2;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.admin-search {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.7rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  color: var(--text-faint);
+  background: var(--surface-raised);
+}
+
+.admin-search input {
+  width: min(250px, 60vw);
+  border: 0;
+  outline: 0;
+  color: var(--text);
+  background: transparent;
+  font-size: 0.78rem;
+}
+
+.backup-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+  padding: 1rem;
+}
+
+.backup-card {
+  min-height: 88px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+}
+
+.backup-card strong,
+.backup-card small {
+  display: block;
+}
+
+.backup-card strong {
+  overflow: hidden;
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

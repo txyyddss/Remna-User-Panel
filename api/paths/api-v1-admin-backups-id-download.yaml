@@ -1,0 +1,38 @@
+get:
+  tags: [Admin, Database Administration]
+  operationId: downloadAdminBackup
+  summary: Download an authenticated verified SQLite snapshot
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+  responses:
+    '200':
+      description: Streamed SQLite database snapshot.
+      headers:
+        Content-Disposition:
+          required: true
+          schema:
+            type: string
+            pattern: '^attachment;'
+        Content-Length:
+          required: true
+          schema:
+            type: string
+            pattern: '^\d+$'
+        Cache-Control:
+          required: true
+          schema:
+            type: string
+            const: no-store
+        X-Content-Type-Options:
+          required: true
+          schema:
+            type: string
+            const: nosniff
+      content:
+        application/vnd.sqlite3:
+          schema:
+            type: string
+            format: binary
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }

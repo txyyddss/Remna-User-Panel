@@ -1,26 +1,15 @@
-import type { Component } from 'vue'
-import {
-  PhCardsThree,
-  PhCoinVertical,
-  PhDiceFive,
-  PhLightning,
-  PhSparkle,
-  PhTarget,
-  PhTrophy,
-} from '@phosphor-icons/vue'
-
 export const gameIconRegistry = {
-  dice: PhDiceFive,
-  coin: PhCoinVertical,
-  cards: PhCardsThree,
-  target: PhTarget,
-  trophy: PhTrophy,
-  lightning: PhLightning,
-  sparkle: PhSparkle,
-} satisfies Record<string, Component>
+  dice: 'i-ph-dice-five',
+  coin: 'i-ph-coin-vertical',
+  cards: 'i-ph-cards-three',
+  target: 'i-ph-target',
+  trophy: 'i-ph-trophy',
+  lightning: 'i-ph-lightning',
+  sparkle: 'i-ph-sparkle',
+} as const satisfies Record<string, string>
 
 export type GameIconKey = keyof typeof gameIconRegistry
 
-export function gameIcon(key: string): Component {
+export function gameIcon(key: string): string {
   return gameIconRegistry[key as GameIconKey] ?? gameIconRegistry.dice
 }

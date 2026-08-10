@@ -7,6 +7,7 @@ import type { InviteLink, MembershipState, OnboardingStep } from '@/api/types'
 import { useI18n } from '@/i18n'
 import { useSessionStore } from '@/stores/session'
 import { notifyHaptic, openExternalLink } from '@/utils/telegram'
+import { isValid, usernameSchema } from '@/utils/validation'
 
 function normalizeStep(step?: OnboardingStep): OnboardingStep {
   if (!step || step === 'complete') return 'membership'
@@ -30,7 +31,7 @@ export function useOnboarding() {
     return Math.max(0, order.indexOf(step.value)) / (order.length - 1)
   })
 
-  const usernameValid = computed(() => /^[a-z]{3,9}$/.test(form.username))
+  const usernameValid = computed(() => isValid(usernameSchema, form.username))
   const allAgreementsAccepted = computed(() => Boolean(content.value?.agreements.length)
     && content.value!.agreements.every((agreement) => form.agreementIds.includes(agreement.id)))
   const usernameHint = computed(() => {
@@ -60,7 +61,10 @@ export function useOnboarding() {
 
   async function loadInvites(): Promise<void> {
     const response = await run(() => api.createInvites())
-    if (response) invites.value = response.invites
+    if (response) invites.value = response.invites.map((invite) => ({
+      ...invite,
+      label: t(invite.kind === 'group' ? 'onboarding.privateGroup' : 'onboarding.updatesChannel'),
+    }))
   }
 
   async function loadContent(): Promise<void> {

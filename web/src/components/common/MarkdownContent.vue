@@ -2,7 +2,6 @@
 import { computed } from 'vue'
 import DOMPurify from 'dompurify'
 import MarkdownIt from 'markdown-it'
-import type StateInline from 'markdown-it/lib/rules_inline/state_inline.mjs'
 
 const props = withDefaults(defineProps<{
   source: string
@@ -15,7 +14,7 @@ const markdown = new MarkdownIt({ breaks: true, html: false, linkify: false, typ
 const allowedColors = new Set(['default', 'muted', 'accent', 'success', 'warning', 'danger'])
 const allowedSizes = new Set(['sm', 'base', 'lg', 'xl'])
 
-markdown.inline.ruler.before('link', 'safe_text_directive', (state: StateInline, silent: boolean): boolean => {
+markdown.inline.ruler.before('link', 'safe_text_directive', (state, silent): boolean => {
   const tail = state.src.slice(state.pos)
   const match = /^\[([^\]\n]+)\]\{([^}\n]+)\}/.exec(tail)
   if (!match) return false

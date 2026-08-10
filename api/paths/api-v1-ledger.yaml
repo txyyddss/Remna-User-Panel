@@ -1,0 +1,18 @@
+get:
+  tags: [Billing]
+  operationId: listLedgerEntries
+  summary: List the current user's immutable TXB ledger
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/Cursor'
+    - $ref: '../openapi.yaml#/components/parameters/PageSize'
+  responses:
+    '200':
+      description: Ledger entries newest first.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/LedgerPage'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '500':
+      $ref: '../openapi.yaml#/components/responses/InternalFailure'

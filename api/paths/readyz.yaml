@@ -1,0 +1,19 @@
+get:
+  tags: [Operations]
+  operationId: getReadiness
+  summary: Database and setup readiness
+  description: Returns 503 until the database is usable and required chat, Remnawave, exchange-rate, and catalog configuration is complete.
+  security: []
+  responses:
+    '200':
+      description: Ready to serve the complete product.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/RuntimeReadiness'
+    '503':
+      description: Alive but not fully configured or a required local dependency is unavailable.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/RuntimeReadiness'

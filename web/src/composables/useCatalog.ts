@@ -4,6 +4,7 @@ import { api, ApiError } from '@/api/client'
 import { featuresApi } from '@/api/features'
 import type { CouponGrant } from '@/api/features'
 import type { Catalog, Combo, Purchase, PurchaseQuote, SquadProduct } from '@/api/types'
+import { localizedError, t } from '@/i18n'
 import { notifyHaptic } from '@/utils/telegram'
 
 export function useCatalog() {
@@ -76,7 +77,7 @@ export function useCatalog() {
       const preferred = catalog.value.combos.find((combo) => combo.active)
       selectedComboId.value = preferred?.id ?? null
     } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : 'The catalog is unavailable.'
+      error.value = localizedError(caught, 'errors.catalogUnavailable')
     } finally {
       loading.value = false
     }
@@ -111,7 +112,7 @@ export function useCatalog() {
       )
       return true
     } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : 'The purchase quote could not be loaded.'
+      error.value = localizedError(caught, 'errors.quoteFailed')
       notifyHaptic('error')
       return false
     } finally {
@@ -148,9 +149,9 @@ export function useCatalog() {
     } catch (caught) {
       if (caught instanceof ApiError && caught.code === 'INSUFFICIENT_BALANCE') {
         needsBalance.value = true
-        error.value = 'Your TXB balance is too low for this purchase.'
+        error.value = t('errors.purchaseBalance')
       } else {
-        error.value = caught instanceof Error ? caught.message : 'The purchase could not be completed.'
+        error.value = localizedError(caught, 'errors.purchaseFailed')
       }
       notifyHaptic('error')
       return false

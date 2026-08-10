@@ -1,0 +1,100 @@
+package app
+
+import (
+	"context"
+	"errors"
+	"strconv"
+	"time"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/accounts"
+	"github.com/txyyddss/Remna-User-Panel/internal/admin"
+	"github.com/txyyddss/Remna-User-Panel/internal/integrations/remnawave"
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/upstreamqueue"
+)
+
+type remnaClient interface {
+	FindUserByUsername(context.Context, string) (*remnawave.User, bool, error)
+	FindUserByTelegramID(context.Context, int64) (*remnawave.User, error)
+	GetUserByID(context.Context, int64) (*remnawave.User, error)
+	CreateUser(context.Context, remnawave.CreateUserRequest) (*remnawave.User, error)
+	GetUserStats(context.Context, int64, time.Time, time.Time, int) (*remnawave.UserStats, error)
+	RevokeSubscription(context.Context, int64, bool) (*remnawave.User, error)
+	UpdateUser(context.Context, remnawave.UpdateUserRequest) (*remnawave.User, error)
+	ResetTraffic(context.Context, int64) (*remnawave.User, error)
+	ListInternalSquads(context.Context) ([]remnawave.InternalSquad, error)
+	ListNodes(context.Context) ([]remnawave.Node, error)
+	InternalSquadAccessibleNodes(context.Context, string) ([]remnawave.AccessibleNode, error)
+	UpdateInternalSquadInbounds(context.Context, string, []string) (*remnawave.InternalSquad, error)
+}
+
+type remnaClientFactory func(context.Context) (remnaClient, error)
+
+type remnaAdapter struct {
+	settings      *admin.SettingsService
+	queue         *upstreamqueue.Queue
+	clientFactory remnaClientFactory
+}
+
+func newRemnaAdapter(settings *admin.SettingsService, queue *upstreamqueue.Queue) remnaAdapter {
+	return remnaAdapter{settings: settings, queue: queue}
+}
+
+func (a remnaAdapter) client(ctx context.Context) (remnaClient, error) {
+	if a.clientFactory != nil {
+		return a.clientFactory(ctx)
+	}
+	if a.settings == nil {
+		return nil, errors.New("Remnawave settings are unavailable")
+	}
+	baseURL, err := a.settings.Plaintext(ctx, "remnawave.base_url")
+	if err != nil {
+		return nil, err
+	}
+	token, err := a.settings.Plaintext(ctx, "remnawave.api_token")
+	if err != nil {
+		return nil, err
+	}
+	return remnawave.NewClient(baseURL, token)
+}
+
+func remnaCall[T any](ctx context.Context, adapter remnaAdapter, call func(context.Context, remnaClient) (T, error)) (T, error) {
+	return upstreamqueue.Do(ctx, adapter.queue, func(callCtx context.Context) (T, error) {
+		client, err := adapter.client(callCtx)
+		if err != nil {
+			var zero T
+			return zero, err
+		}
+		return call(callCtx, client)
+	})
+}
+
+func remnaExecute(ctx context.Context, adapter remnaAdapter, call func(context.Context, remnaClient) error) error {
+	return upstreamqueue.Execute(ctx, adapter.queue, func(callCtx context.Context) error {
+		client, err := adapter.client(callCtx)
+		if err != nil {
+			return err
+		}
+		return call(callCtx, client)
+	})
+}
+
+func remnaUserID(remoteID string) (int64, error) {
+	userID, err := strconv.ParseInt(remoteID, 10, 64)
+	if err != nil || userID <= 0 {
+		return 0, errors.New("invalid Remnawave user id")
+	}
+	return userID, nil
+}
+
+func mapRemoteUser(user remnawave.User) accounts.RemoteUser {
+	return accounts.RemoteUser{
+		ID: strconv.FormatInt(user.ID, 10), Username: user.Username,
+		TelegramID: user.TelegramID,
+	}
+}
+
+func (a remnaAdapter) IsDuplicateError(err error) bool {
+	return remnawave.IsErrorCode(err, "A019")
+}
+
+var _ remnaClient = (*remnawave.Client)(nil)

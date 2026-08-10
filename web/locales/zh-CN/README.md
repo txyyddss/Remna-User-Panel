@@ -1,0 +1,16 @@
+# Simplified Chinese messages
+
+Each JSON file mirrors its English domain. Product text belongs here rather
+than in Vue templates, composables, or API clients.
+
+- `activity.json` contains member activity, check-in, game, and draw copy.
+- `admin-activity.json` contains activity-management and lucky-draw copy.
+- `admin-catalog.json` contains catalog, squad, and coupon administration copy.
+- `admin-community.json` contains questionnaire administration and import copy.
+- `admin-core.json` contains admin navigation, users, Emby, and onboarding copy.
+- `admin-data.json` contains database editor and backup-management copy.
+- `admin-operations.json` contains settings, audit, payment, and entitlement copy.
+- `commerce.json` contains wallet, billing, catalog, and checkout copy.
+- `community.json` contains coupon and questionnaire participation copy.
+- `core.json` contains application, navigation, status, and shared action copy.
+- `member.json` contains dashboard, onboarding, account, and Emby member copy.

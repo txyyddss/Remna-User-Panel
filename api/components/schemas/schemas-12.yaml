@@ -1,0 +1,165 @@
+AuditEvent:
+  type: object
+  additionalProperties: false
+  required: [id, actorUserId, action, targetType, targetId, detail, createdAt]
+  properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    actorUserId:
+      type: [string, 'null']
+    action:
+      type: string
+    targetType:
+      type: string
+    targetId:
+      type: string
+    detail:
+      type: string
+      description: Redacted JSON object encoded as a string.
+    createdAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+
+AuditPage:
+  type: object
+  additionalProperties: false
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/AuditEvent'
+    page:
+      $ref: '../../openapi.yaml#/components/schemas/PageInfo'
+
+TelegramUpdate:
+  type: object
+  required: [update_id]
+  additionalProperties: true
+  properties:
+    update_id:
+      type: integer
+      format: int64
+    chat_join_request:
+      type: object
+      additionalProperties: true
+    chat_member:
+      type: object
+      additionalProperties: true
+    pre_checkout_query:
+      type: object
+      additionalProperties: true
+    message:
+      type: object
+      additionalProperties: true
+      properties:
+        successful_payment:
+          type: object
+          additionalProperties: true
+          properties:
+            currency:
+              type: string
+              const: XTR
+            total_amount:
+              type: integer
+            invoice_payload:
+              type: string
+            telegram_payment_charge_id:
+              type: string
+            provider_payment_charge_id:
+              type: string
+        refunded_payment:
+          type: object
+          additionalProperties: true
+          properties:
+            currency:
+              type: string
+              const: XTR
+            total_amount:
+              type: integer
+            invoice_payload:
+              type: string
+            telegram_payment_charge_id:
+              type: string
+            provider_payment_charge_id:
+              type: string
+
+FlexibleDecimal:
+  oneOf:
+    - type: string
+      pattern: '^\d+(\.\d+)?$'
+    - type: number
+      minimum: 0
+
+BEPusdtNotification:
+  type: object
+  additionalProperties: true
+  required: [trade_id, order_id, amount, actual_amount, token, status, signature]
+  properties:
+    trade_id:
+      type: string
+    order_id:
+      type: string
+    amount:
+      $ref: '../../openapi.yaml#/components/schemas/FlexibleDecimal'
+    actual_amount:
+      $ref: '../../openapi.yaml#/components/schemas/FlexibleDecimal'
+    token:
+      type: string
+    block_transaction_id:
+      type: string
+    status:
+      type: integer
+      enum: [1, 2, 3]
+    signature:
+      type: string
+    created_at:
+      type: string
+    expired_at:
+      type: string
+
+BEPusdtUnsignedNotification:
+  type: object
+  additionalProperties: true
+  required: [order_id, amount, actual_amount, token, status]
+  properties:
+    trade_id:
+      type: string
+    order_id:
+      type: string
+    amount:
+      $ref: '../../openapi.yaml#/components/schemas/FlexibleDecimal'
+    actual_amount:
+      $ref: '../../openapi.yaml#/components/schemas/FlexibleDecimal'
+    token:
+      type: string
+    block_transaction_id:
+      type: string
+    status:
+      type: integer
+      enum: [1, 2, 3]
+    created_at:
+      type: string
+    expired_at:
+      type: string
+
+HealthStatus:
+  type: object
+  additionalProperties: false
+  required: [status]
+  properties:
+    status:
+      type: string
+      const: ok
+
+RuntimeReadiness:
+  type: object
+  additionalProperties: false
+  required: [status]
+  properties:
+    status:
+      type: string
+      enum: [ok, setup_required, degraded]
+    missing:
+      type: array
+      items:
+        type: string

@@ -1,0 +1,32 @@
+post:
+  tags: [Webhooks]
+  operationId: receiveBEPusdtWebhook
+  summary: Receive a signed BEPusdt transaction notification
+  description: |
+    Status `2` is the only crediting state. Signature, local order, provider trade ID,
+    requested USD amount, and actual crypto amount are checked before the idempotent
+    ledger transaction. When the callback's overloaded `token` field carries a receiving
+    address, it must exactly match the checkout address; the reference-compatible literal
+    `USDT` token is treated as a currency marker. Status `3` is validated against the same
+    durable order snapshot before the order is marked expired.
+  security: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/BEPusdtNotification'
+  responses:
+    '200':
+      description: Configured plain-text acknowledgement; defaults to `ok` and may be `success`.
+      content:
+        text/plain:
+          schema:
+            type: string
+            enum: [ok, success]
+    '400':
+      $ref: '../openapi.yaml#/components/responses/BadRequest'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '409':
+      $ref: '../openapi.yaml#/components/responses/Conflict'

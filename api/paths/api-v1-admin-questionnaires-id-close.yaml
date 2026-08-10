@@ -1,0 +1,11 @@
+post:
+  tags: [Admin, Questionnaires]
+  operationId: closeAdminQuestionnaire
+  summary: Close a questionnaire without deleting participants
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+  responses:
+    '204': { description: Questionnaire closed. }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }

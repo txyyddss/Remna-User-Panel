@@ -1,0 +1,50 @@
+{
+  "adminCatalog": {
+    "title": "Catalog",
+    "copy": "Manage live combo terms and sparse overrides for upstream Remnawave squads.",
+    "chooseRecord": "Choose a catalog record.",
+    "newCombo": "New combo",
+    "comboSummary": "{traffic} for {days} days",
+    "available": "Available",
+    "paused": "Paused",
+    "hidden": "Hidden",
+    "statisticsFor": "Statistics for {name}",
+    "statisticsTitle": "{name} statistics",
+    "editNamed": "Edit {name}",
+    "hideNamed": "Hide {name}",
+    "noCombos": "No combos",
+    "noCombosHint": "Create the first plan to open the catalog.",
+    "squads": "Internal squads",
+    "squadsHint": "Identity comes from live Remnawave squads; only non-default display and price values are stored locally.",
+    "refreshSquads": "Refresh squads",
+    "noSquads": "No upstream squads",
+    "noSquadsHint": "Refresh from Remnawave to configure optional access.",
+    "hideTitle": "Hide this combo?",
+    "hideDescription": "The combo is hidden from new checkout. Existing and historical purchases keep their live reference, so later edits still affect them.",
+    "hideCombo": "Hide combo"
+  },
+  "adminCatalogEditor": {
+    "edit": "Edit {name}",
+    "new": "New combo",
+    "close": "Close combo editor",
+    "name": "Name",
+    "description": "Description",
+    "descriptionPlaceholder": "Describe the combo",
+    "price": "Price",
+    "validityDays": "Validity days",
+    "trafficLimit": "Traffic limit, bytes",
+    "resetCadence": "Reset cadence",
+    "reset": {
+      "DAY": "Daily",
+      "WEEK": "Weekly",
+      "MONTH": "Monthly"
+    },
+    "rolloverMinimum": "Minimum remaining traffic, percent",
+    "rolloverMaximum": "Maximum rollover",
+    "includedSquads": "Included live squads",
+    "noSquads": "Refresh Remnawave squads before assigning them.",
+    "available": "Available to users",
+    "liveTermsHint": "Hiding blocks new checkout. Changes to this live record affect active, queued, and historical purchases.",
+    "save": "Save combo"
+  }
+}

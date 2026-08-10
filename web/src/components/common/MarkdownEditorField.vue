@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { nextTick, shallowRef } from 'vue'
-import { PhPalette, PhTextAa } from '@phosphor-icons/vue'
+import { computed, nextTick, shallowRef } from 'vue'
 
 import MarkdownContent from '@/components/common/MarkdownContent.vue'
 import { useI18n } from '@/i18n'
+
+interface TextareaExpose {
+  textareaRef?: globalThis.HTMLTextAreaElement
+}
 
 const model = defineModel<string>({ required: true })
 const props = withDefaults(defineProps<{
@@ -17,13 +20,23 @@ const props = withDefaults(defineProps<{
   maxlength: 1000,
 })
 
-const textarea = shallowRef<HTMLTextAreaElement>()
+const textarea = shallowRef<TextareaExpose>()
 const color = shallowRef('accent')
 const size = shallowRef('lg')
 const { t } = useI18n()
+const colorItems = computed(() => ['default', 'muted', 'accent', 'success', 'warning', 'danger'].map((value) => ({
+  value,
+  label: t(`markdown.${value}`),
+})))
+const sizeItems = computed(() => [
+  { value: 'sm', label: t('markdown.small') },
+  { value: 'base', label: t('markdown.base') },
+  { value: 'lg', label: t('markdown.large') },
+  { value: 'xl', label: t('markdown.extraLarge') },
+])
 
 async function applyDirective(): Promise<void> {
-  const field = textarea.value
+  const field = textarea.value?.textareaRef
   if (!field) return
   const start = field.selectionStart
   const end = field.selectionEnd
@@ -38,32 +51,32 @@ async function applyDirective(): Promise<void> {
 
 <template>
   <div class="markdown-field">
-    <label>
-      <span>{{ label }}</span>
-      <textarea
+    <UFormField :label="label" :required="required">
+      <UTextarea
         ref="textarea"
         v-model="model"
-        rows="4"
+        :rows="4"
         :maxlength="props.maxlength"
         :placeholder="placeholder"
         :required="required"
+        autoresize
       />
-    </label>
+    </UFormField>
     <div class="markdown-field__toolbar" role="toolbar" :aria-label="t('markdown.toolbar')">
-      <label><PhPalette :size="15" aria-hidden="true" /><span class="sr-only">{{ t('markdown.color') }}</span><select v-model="color" :aria-label="t('markdown.color')"><option value="default">{{ t('markdown.default') }}</option><option value="muted">{{ t('markdown.muted') }}</option><option value="accent">{{ t('markdown.accent') }}</option><option value="success">{{ t('markdown.success') }}</option><option value="warning">{{ t('markdown.warning') }}</option><option value="danger">{{ t('markdown.danger') }}</option></select></label>
-      <label><PhTextAa :size="15" aria-hidden="true" /><span class="sr-only">{{ t('markdown.size') }}</span><select v-model="size" :aria-label="t('markdown.size')"><option value="sm">{{ t('markdown.small') }}</option><option value="base">{{ t('markdown.base') }}</option><option value="lg">{{ t('markdown.large') }}</option><option value="xl">{{ t('markdown.extraLarge') }}</option></select></label>
-      <button class="button button--quiet" type="button" @click="applyDirective">{{ t('markdown.apply') }}</button>
+      <USelect v-model="color" :items="colorItems" value-key="value" icon="i-ph-palette" :aria-label="t('markdown.color')" />
+      <USelect v-model="size" :items="sizeItems" value-key="value" icon="i-ph-text-aa" :aria-label="t('markdown.size')" />
+      <UButton :label="t('markdown.apply')" color="neutral" variant="soft" @click="applyDirective" />
     </div>
-    <div class="markdown-field__preview"><span>{{ t('markdown.preview') }}</span><MarkdownContent :source="model || placeholder || t('markdown.descriptionPreview')" compact /></div>
+    <div class="markdown-field__preview">
+      <span>{{ t('markdown.preview') }}</span>
+      <MarkdownContent :source="model || placeholder || t('markdown.descriptionPreview')" compact />
+    </div>
   </div>
 </template>
 
 <style scoped>
 .markdown-field { display: grid; gap: 0.55rem; }
-.markdown-field label { display: grid; gap: 0.35rem; }
 .markdown-field__toolbar { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; }
-.markdown-field__toolbar label { display: flex; grid-template-columns: auto 1fr; align-items: center; gap: 0.3rem; }
-.markdown-field__toolbar select { min-height: 36px; }
 .markdown-field__preview { min-height: 58px; padding: 0.7rem; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface); }
 .markdown-field__preview > span { display: block; margin-bottom: 0.45rem; color: var(--text-faint); font-size: 0.68rem; font-weight: 700; }
 </style>

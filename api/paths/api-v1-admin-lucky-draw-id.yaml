@@ -1,0 +1,36 @@
+put:
+  tags: [Admin, Activity]
+  operationId: updateAdminLuckyDraw
+  summary: Replace a lucky draw and its typed rewards
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/LuckyDrawWrite'
+  responses:
+    '200':
+      description: Updated draw.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/LuckyDrawAdmin'
+    '400': { $ref: '../openapi.yaml#/components/responses/BadRequest' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }
+    '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }
+delete:
+  tags: [Admin, Activity]
+  operationId: deleteAdminLuckyDraw
+  summary: Hard-delete a lucky draw and feature-linked records
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+  responses:
+    '204': { description: Draw data removed; settled prizes and balances are unchanged. }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }

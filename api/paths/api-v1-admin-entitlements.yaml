@@ -1,0 +1,15 @@
+get:
+  tags: [Admin]
+  operationId: listAdminEntitlements
+  summary: List active, queued, and historical entitlements
+  responses:
+    '200':
+      description: Entitlement page.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/EntitlementPage'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../openapi.yaml#/components/responses/Forbidden'

@@ -20,7 +20,6 @@ type Repository interface {
 	ListPurchases(context.Context, string) ([]model.Purchase, error)
 	Balance(context.Context, string) (model.Money, error)
 	ActiveAndQueuedPurchases(context.Context, string, time.Time) (*model.Purchase, *model.Purchase, error)
-	UpdateSubscriptionURL(context.Context, string, string) error
 }
 
 // RemoteDashboard is the safe, normalized Remnawave dashboard response.
@@ -223,7 +222,7 @@ func (s *Service) Dashboard(ctx context.Context, user model.User) (model.Dashboa
 	if err != nil {
 		return model.Dashboard{}, err
 	}
-	dashboard := model.Dashboard{User: user, Balance: balance, ActivePurchase: active, QueuedPurchase: queued, SubscriptionURL: user.RemnaSubscriptionURL, FetchedAt: now}
+	dashboard := model.Dashboard{User: user, Balance: balance, ActivePurchase: active, QueuedPurchase: queued, FetchedAt: now}
 	if user.RemnaUserID == nil {
 		return dashboard, nil
 	}
@@ -258,16 +257,13 @@ func (s *Service) Dashboard(ctx context.Context, user model.User) (model.Dashboa
 	return dashboard, nil
 }
 
-// RevokeSubscription rotates the bearer URL and immediately updates the local secret cache.
+// RevokeSubscription rotates the bearer URL and invalidates the process-local cache.
 func (s *Service) RevokeSubscription(ctx context.Context, user model.User) (string, error) {
 	if user.RemnaUserID == nil {
 		return "", database.ErrNotFound
 	}
 	url, err := s.remnawave.RevokeSubscription(ctx, *user.RemnaUserID)
 	if err != nil {
-		return "", err
-	}
-	if err := s.repository.UpdateSubscriptionURL(ctx, user.ID, url); err != nil {
 		return "", err
 	}
 	s.cacheMu.Lock()
