@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/outbox"
 )
 
 // Repository is the durable outbox and entitlement query surface.
@@ -71,7 +72,11 @@ func (w *Worker) Drain(ctx context.Context, limit int) error {
 func (w *Worker) HandleOutbox(ctx context.Context, job model.OutboxJob) error {
 	jobErr := w.process(ctx, job)
 	if jobErr != nil && job.Attempts >= 10 && job.Kind == "remna_apply_entitlement" {
-		if markErr := w.repository.MarkPurchaseSyncResult(ctx, job.AggregateID, false, w.now().UTC()); markErr != nil {
+		purchaseID, targetErr := outbox.TargetID(job, "purchaseId")
+		if targetErr != nil {
+			return errors.Join(jobErr, targetErr)
+		}
+		if markErr := w.repository.MarkPurchaseSyncResult(ctx, purchaseID, false, w.now().UTC()); markErr != nil {
 			return errors.Join(jobErr, fmt.Errorf("mark terminal entitlement failure: %w", markErr))
 		}
 	}
@@ -81,7 +86,11 @@ func (w *Worker) HandleOutbox(ctx context.Context, job model.OutboxJob) error {
 func (w *Worker) process(ctx context.Context, job model.OutboxJob) error {
 	switch job.Kind {
 	case "remna_apply_entitlement":
-		purchase, err := w.repository.PurchaseByID(ctx, job.AggregateID)
+		purchaseID, err := outbox.TargetID(job, "purchaseId")
+		if err != nil {
+			return err
+		}
+		purchase, err := w.repository.PurchaseByID(ctx, purchaseID)
 		if err != nil {
 			return err
 		}
@@ -130,7 +139,11 @@ func (w *Worker) process(ctx context.Context, job model.OutboxJob) error {
 		}
 		return w.repository.MarkPurchaseSyncResult(ctx, purchase.ID, true, w.now().UTC())
 	case "remna_sync_user":
-		user, err := w.repository.UserByID(ctx, job.AggregateID)
+		userID, err := outbox.TargetID(job, "userId")
+		if err != nil {
+			return err
+		}
+		user, err := w.repository.UserByID(ctx, userID)
 		if err != nil {
 			return err
 		}

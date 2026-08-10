@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/backup"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 )
 
@@ -24,9 +25,13 @@ func (s *Server) mountAdmin(router chi.Router) {
 	router.Post("/combos", s.adminCreateCombo)
 	router.Put("/combos/{id}", s.adminUpdateCombo)
 	router.Delete("/combos/{id}", s.adminDeleteCombo)
+	router.Get("/combos/{id}/statistics", s.adminComboStatistics)
 	router.Get("/squad-products", s.adminSquadProducts)
 	router.Post("/squad-products", s.adminCreateSquadProduct)
 	router.Put("/squad-products/{id}", s.adminUpdateSquadProduct)
+	router.Get("/squad-products/{id}/nodes", s.adminSquadNodes)
+	router.Put("/squad-products/{id}/nodes", s.adminUpdateSquadNodes)
+	router.Get("/squad-products/{id}/statistics", s.adminSquadStatistics)
 	router.Post("/squad-products/import", s.adminImportSquads)
 	router.Get("/users", s.adminUsers)
 	router.Get("/users/{id}", s.adminUser)
@@ -38,9 +43,14 @@ func (s *Server) mountAdmin(router chi.Router) {
 	router.Get("/refunds", s.adminRefunds)
 	router.Get("/backups", s.adminBackups)
 	router.Post("/backups", s.adminCreateBackup)
+	router.Delete("/backups/{id}", s.adminDeleteBackup)
 	router.Get("/jobs", s.adminJobs)
 	router.Post("/jobs/{id}/retry", s.adminRetryJob)
+	router.Delete("/jobs/{id}", s.adminDeleteJob)
 	router.Get("/audit-events", s.adminAuditEvents)
+	router.Get("/onboarding/content/{kind}", s.adminOnboardingBundle)
+	router.Put("/onboarding/content/{kind}/draft", s.adminSaveOnboardingDraft)
+	router.Post("/onboarding/content/{kind}/publish", s.adminPublishOnboarding)
 }
 
 func (s *Server) adminSettings(w http.ResponseWriter, r *http.Request) {
@@ -157,8 +167,21 @@ func (s *Server) adminDeleteCombo(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (s *Server) adminComboStatistics(w http.ResponseWriter, r *http.Request) {
+	from, to, bucket, location, ok := s.statisticsWindow(w, r)
+	if !ok {
+		return
+	}
+	statistics, err := s.deps.Store.ComboStatistics(r.Context(), chiURLParam(r, "id"), from, to, bucket, location)
+	if err != nil {
+		s.adminFailure(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, statistics)
+}
+
 func (s *Server) adminSquadProducts(w http.ResponseWriter, r *http.Request) {
-	items, err := s.deps.Store.ListSquadProducts(r.Context(), false)
+	items, err := s.deps.Admin.Squads(r.Context())
 	if err != nil {
 		s.adminFailure(w, r, err)
 		return
@@ -193,6 +216,9 @@ func (s *Server) adminSaveSquadProduct(w http.ResponseWriter, r *http.Request, i
 		s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_PRICE", "Price must be integer hundredths of TXB.")
 		return
 	}
+	if request.RemnaSquadUUID == "" {
+		request.RemnaSquadUUID = id
+	}
 	product, err := s.deps.Admin.SaveSquadProduct(r.Context(), currentUser(r).ID, database.SquadProductInput{ID: id,
 		RemnaSquadUUID: request.RemnaSquadUUID, Name: request.Name, Description: request.Description, PriceTXBMinor: price,
 		Visible: request.Visible, UpstreamPresent: true})
@@ -214,6 +240,86 @@ func (s *Server) adminImportSquads(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
+func (s *Server) adminSquadNodes(w http.ResponseWriter, r *http.Request) {
+	items, err := s.deps.Admin.SquadNodes(r.Context(), chiURLParam(r, "id"))
+	if err != nil {
+		s.adminFailure(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
+func (s *Server) adminUpdateSquadNodes(w http.ResponseWriter, r *http.Request) {
+	var request struct {
+		NodeUUIDs []string `json:"nodeUuids"`
+	}
+	if err := decodeJSON(w, r, &request); err != nil || len(request.NodeUUIDs) > 500 {
+		s.writeError(w, r, http.StatusBadRequest, "INVALID_NODE_SELECTION", "Select valid Remnawave nodes.")
+		return
+	}
+	items, err := s.deps.Admin.UpdateSquadNodes(r.Context(), currentUser(r).ID, chiURLParam(r, "id"), request.NodeUUIDs)
+	if err != nil {
+		s.adminFailure(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
+func (s *Server) adminSquadStatistics(w http.ResponseWriter, r *http.Request) {
+	from, to, bucket, location, ok := s.statisticsWindow(w, r)
+	if !ok {
+		return
+	}
+	statistics, err := s.deps.Store.SquadStatistics(r.Context(), chiURLParam(r, "id"), from, to, bucket, location)
+	if err != nil {
+		s.adminFailure(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, statistics)
+}
+
+func (s *Server) statisticsWindow(w http.ResponseWriter, r *http.Request) (time.Time, time.Time, string, *time.Location, bool) {
+	zone := strings.TrimSpace(r.URL.Query().Get("timeZone"))
+	if zone == "" {
+		zone = defaultActivityTimezone
+	}
+	location, err := time.LoadLocation(zone)
+	if err != nil {
+		s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_TIMEZONE", "Use a valid IANA timezone.")
+		return time.Time{}, time.Time{}, "", nil, false
+	}
+	today := time.Now().In(location)
+	toDate := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, location)
+	fromDate := toDate.AddDate(0, 0, -29)
+	if value := strings.TrimSpace(r.URL.Query().Get("from")); value != "" {
+		fromDate, err = time.ParseInLocation(time.DateOnly, value, location)
+		if err != nil {
+			s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_DATE_RANGE", "Dates must use YYYY-MM-DD.")
+			return time.Time{}, time.Time{}, "", nil, false
+		}
+	}
+	if value := strings.TrimSpace(r.URL.Query().Get("to")); value != "" {
+		toDate, err = time.ParseInLocation(time.DateOnly, value, location)
+		if err != nil {
+			s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_DATE_RANGE", "Dates must use YYYY-MM-DD.")
+			return time.Time{}, time.Time{}, "", nil, false
+		}
+	}
+	if toDate.Before(fromDate) || toDate.Sub(fromDate) > 731*24*time.Hour {
+		s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_DATE_RANGE", "Choose a range of at most two years.")
+		return time.Time{}, time.Time{}, "", nil, false
+	}
+	bucket := r.URL.Query().Get("bucket")
+	if bucket == "" {
+		bucket = "daily"
+	}
+	if bucket != "daily" && bucket != "weekly" {
+		s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_BUCKET", "Bucket must be daily or weekly.")
+		return time.Time{}, time.Time{}, "", nil, false
+	}
+	return fromDate.UTC(), toDate.AddDate(0, 0, 1).UTC(), bucket, location, true
 }
 
 func (s *Server) adminUsers(w http.ResponseWriter, r *http.Request) {
@@ -375,6 +481,14 @@ func (s *Server) adminCreateBackup(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, mapBackupRun(run))
 }
 
+func (s *Server) adminDeleteBackup(w http.ResponseWriter, r *http.Request) {
+	if err := s.deps.Admin.DeleteBackup(r.Context(), currentUser(r).ID, chiURLParam(r, "id")); err != nil {
+		s.adminFailure(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 type backupRunResponse struct {
 	ID          string     `json:"id"`
 	Path        string     `json:"path"`
@@ -407,6 +521,14 @@ func (s *Server) adminRetryJob(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (s *Server) adminDeleteJob(w http.ResponseWriter, r *http.Request) {
+	if err := s.deps.Store.DeleteOutboxJob(r.Context(), chiURLParam(r, "id")); err != nil {
+		s.adminFailure(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) adminAuditEvents(w http.ResponseWriter, r *http.Request) {
 	items, err := s.deps.Store.ListAuditEvents(r.Context(), 200)
 	if err != nil {
@@ -421,7 +543,7 @@ func (s *Server) adminFailure(w http.ResponseWriter, r *http.Request, err error)
 	switch {
 	case errors.Is(err, database.ErrNotFound):
 		status, code, message = http.StatusNotFound, "NOT_FOUND", "The requested record was not found."
-	case errors.Is(err, database.ErrConflict):
+	case errors.Is(err, database.ErrConflict), errors.Is(err, backup.ErrRestoreConflict):
 		status, code, message = http.StatusConflict, "CONFLICT", "The operation conflicts with current state."
 	case strings.Contains(strings.ToLower(err.Error()), "remnawave") || strings.Contains(strings.ToLower(err.Error()), "provider"):
 		status, code, message = http.StatusBadGateway, "UPSTREAM_UNAVAILABLE", "The upstream operation failed."

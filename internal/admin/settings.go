@@ -49,7 +49,8 @@ var settingDefinitions = map[string]SettingDefinition{
 	"emby.api_token":                    {Secret: true, Validate: nonempty},
 	"emby.setup_price_txb":              {Validate: validateNonnegativeTXB},
 	"activity.timezone":                 {Validate: validateTimezone},
-	"activity.daily_reward_txb":         {Validate: validateNonnegativeTXB},
+	"activity.daily_reward_min_txb":     {Validate: validateNonnegativeTXB},
+	"activity.daily_reward_max_txb":     {Validate: validateNonnegativeTXB},
 	"activity.group_message_threshold":  {Validate: validateNonnegativeInteger},
 	"activity.group_message_reward_txb": {Validate: validateNonnegativeTXB},
 }
@@ -110,6 +111,11 @@ func (s *SettingsService) Put(ctx context.Context, actorID, key, value string) e
 			return fmt.Errorf("%s: %w", key, err)
 		}
 	}
+	if key == "activity.daily_reward_min_txb" || key == "activity.daily_reward_max_txb" {
+		if err := s.validateActivityRewardRange(ctx, key, value); err != nil {
+			return err
+		}
+	}
 	stored := value
 	// A non-blank secret is an explicit replacement. Encrypt it freshly so
 	// the write-only value from the settings UI can never be persisted as-is.
@@ -121,6 +127,33 @@ func (s *SettingsService) Put(ctx context.Context, actorID, key, value string) e
 		}
 	}
 	return s.repository.PutSetting(ctx, key, stored, definition.Secret, &actorID)
+}
+
+func (s *SettingsService) validateActivityRewardRange(ctx context.Context, key, value string) error {
+	proposed, err := billing.ParseTXBMajor(value)
+	if err != nil {
+		return fmt.Errorf("%s: invalid TXB amount", key)
+	}
+	otherKey := "activity.daily_reward_max_txb"
+	if key == otherKey {
+		otherKey = "activity.daily_reward_min_txb"
+	}
+	otherValue, err := s.Optional(ctx, otherKey)
+	if err != nil || strings.TrimSpace(otherValue) == "" {
+		return err
+	}
+	other, err := billing.ParseTXBMajor(otherValue)
+	if err != nil {
+		return fmt.Errorf("%s: stored reward boundary is invalid", otherKey)
+	}
+	minimum, maximum := proposed, other
+	if key == "activity.daily_reward_max_txb" {
+		minimum, maximum = other, proposed
+	}
+	if minimum > maximum {
+		return errors.New("daily reward minimum cannot exceed maximum")
+	}
+	return nil
 }
 
 // SafeList exposes only known keys and masks credentials as write-only.

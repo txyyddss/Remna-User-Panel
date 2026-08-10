@@ -6,6 +6,7 @@ import type { CouponDefinition } from '@/api/features'
 import { featuresApi } from '@/api/features'
 import SwitchField from '@/components/common/SwitchField.vue'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
+import { localizedError, useI18n } from '@/i18n'
 import { moneyFromTxbInput, txbInputFromMinor } from '@/utils/format'
 
 const items = shallowRef<CouponDefinition[]>([])
@@ -18,10 +19,11 @@ const draft = reactive({
   valueTxb: '5.00', percent: 10, factor: 2, capTxb: '', globalLimit: '', perUserLimit: '1',
   eligibleComboIds: '', eligibleSquadIds: '', expiresAt: '', active: true,
 })
+const { t } = useI18n()
 
 async function load(): Promise<void> {
   loading.value = true
-  try { items.value = (await featuresApi.getAdminCoupons()).items } catch (caught) { error.value = caught instanceof Error ? caught.message : 'Coupons could not be loaded.' } finally { loading.value = false }
+  try { items.value = (await featuresApi.getAdminCoupons()).items } catch (caught) { error.value = localizedError(caught, 'adminCoupons.loadFailed') } finally { loading.value = false }
 }
 
 function edit(coupon?: CouponDefinition): void {
@@ -71,19 +73,19 @@ async function save(): Promise<void> {
     })
     editingId.value = undefined
     await load()
-  } catch (caught) { error.value = caught instanceof Error ? caught.message : 'The coupon could not be created.' } finally { busy.value = false }
+  } catch (caught) { error.value = localizedError(caught, 'adminCoupons.saveFailed') } finally { busy.value = false }
 }
 
 
 async function deactivate(coupon: CouponDefinition): Promise<void> {
-  if (!globalThis.confirm(`Deactivate coupon ${coupon.code}? Existing purchase grants will stop being eligible.`)) return
+  if (!globalThis.confirm(t('adminCoupons.deactivateConfirm', { code: coupon.code }))) return
   busy.value = true
   error.value = null
   try {
     await featuresApi.deactivateAdminCoupon(coupon.id)
     await load()
   } catch (caught) {
-    error.value = caught instanceof Error ? caught.message : 'The coupon could not be deactivated.'
+    error.value = localizedError(caught, 'adminCoupons.deactivateFailed')
   } finally {
     busy.value = false
   }
@@ -94,28 +96,28 @@ onMounted(() => void load())
 
 <template>
   <section class="admin-panel">
-    <div class="admin-panel__heading"><div><h2>Coupons</h2><p>One explicit coupon grant per purchase. Discounts never stack.</p></div><button class="button button--primary" type="button" @click="edit()"><PhPlus :size="18" />New coupon</button></div>
+    <div class="admin-panel__heading"><div><h2>{{ t('adminCoupons.title') }}</h2><p>{{ t('adminCoupons.copy') }}</p></div><button class="button button--primary" type="button" @click="edit()"><PhPlus :size="18" />{{ t('adminCoupons.new') }}</button></div>
     <form v-if="editingId !== undefined" class="catalog-editor" @submit.prevent="save">
-      <div class="catalog-editor__heading"><h3>{{ editingId ? 'Edit coupon' : 'Coupon definition' }}</h3></div>
-      <label><span>Code</span><input v-model.trim="draft.code" required pattern="[A-Za-z0-9_-]+" maxlength="40" /></label>
-      <label><span>Name</span><input v-model.trim="draft.name" required maxlength="80" /></label>
-      <label><span>Kind</span><select v-model="draft.kind" :disabled="Boolean(editingId)"><option value="purchase_once">One-time discount</option><option value="purchase_recurring">Recurring discount</option><option value="balance_add">Balance adding</option><option value="balance_multiply">Balance multiplying</option></select><small v-if="editingId" class="field-hint">Create a new definition to change the financial effect.</small></label>
-      <label v-if="draft.kind === 'purchase_once' || draft.kind === 'purchase_recurring'"><span>Discount mode</span><select v-model="draft.discountMode" :disabled="Boolean(editingId)"><option value="percent">Percent</option><option value="fixed">Fixed TXB</option></select></label>
-      <label v-if="(draft.kind === 'purchase_once' || draft.kind === 'purchase_recurring') && draft.discountMode === 'percent'"><span>Discount, percent</span><input v-model.number="draft.percent" type="number" min="0.01" max="100" step="0.01" /></label>
-      <label v-if="draft.kind === 'balance_multiply'"><span>Balance multiplier</span><input v-model.number="draft.factor" type="number" min="1.01" max="100" step="0.01" /></label>
-      <TxbAmountField v-if="draft.kind === 'balance_add' || ((draft.kind === 'purchase_once' || draft.kind === 'purchase_recurring') && draft.discountMode === 'fixed')" id="coupon-value" v-model="draft.valueTxb" label="TXB value" min-minor="1" required />
-      <TxbAmountField v-if="(draft.kind === 'purchase_once' || draft.kind === 'purchase_recurring') && draft.discountMode === 'percent'" id="coupon-cap" v-model="draft.capTxb" label="Optional percentage cap" hint="Leave blank for no TXB cap." />
-      <label><span>Eligible combo IDs, comma separated</span><input v-model="draft.eligibleComboIds" :disabled="draft.kind === 'balance_add' || draft.kind === 'balance_multiply'" /></label>
-      <label><span>Eligible squad IDs, comma separated</span><input v-model="draft.eligibleSquadIds" :disabled="draft.kind === 'balance_add' || draft.kind === 'balance_multiply'" /></label>
-      <label><span>Expires after, optional</span><input v-model="draft.expiresAt" type="date" /></label>
-      <label><span>Global use limit, blank for unlimited</span><input v-model="draft.globalLimit" inputmode="numeric" pattern="[0-9]*" /></label>
-      <label><span>Per-user use limit, blank for unlimited</span><input v-model="draft.perUserLimit" inputmode="numeric" pattern="[0-9]*" /></label>
-      <SwitchField id="coupon-active" v-model="draft.active" label="Active" />
-      <div class="button-row"><button class="button button--secondary" type="button" @click="editingId = undefined">Cancel</button><button class="button button--primary" type="submit" :disabled="busy">{{ busy ? 'Saving' : editingId ? 'Save coupon' : 'Create coupon' }}</button></div>
+      <div class="catalog-editor__heading"><h3>{{ editingId ? t('adminCoupons.edit') : t('adminCoupons.definition') }}</h3></div>
+      <label><span>{{ t('adminCoupons.code') }}</span><input v-model.trim="draft.code" required pattern="[A-Za-z0-9_-]+" maxlength="40" /></label>
+      <label><span>{{ t('adminCoupons.name') }}</span><input v-model.trim="draft.name" required maxlength="80" /></label>
+      <label><span>{{ t('adminCoupons.kind') }}</span><select v-model="draft.kind" :disabled="Boolean(editingId)"><option value="purchase_once">{{ t('adminCoupons.oneTime') }}</option><option value="purchase_recurring">{{ t('adminCoupons.recurring') }}</option><option value="balance_add">{{ t('adminCoupons.balanceAdd') }}</option><option value="balance_multiply">{{ t('adminCoupons.balanceMultiply') }}</option></select><small v-if="editingId" class="field-hint">{{ t('adminCoupons.financialHint') }}</small></label>
+      <label v-if="draft.kind === 'purchase_once' || draft.kind === 'purchase_recurring'"><span>{{ t('adminCoupons.discountMode') }}</span><select v-model="draft.discountMode" :disabled="Boolean(editingId)"><option value="percent">{{ t('adminCoupons.percent') }}</option><option value="fixed">{{ t('adminCoupons.fixed') }}</option></select></label>
+      <label v-if="(draft.kind === 'purchase_once' || draft.kind === 'purchase_recurring') && draft.discountMode === 'percent'"><span>{{ t('adminCoupons.discountPercent') }}</span><input v-model.number="draft.percent" type="number" min="0.01" max="100" step="0.01" /></label>
+      <label v-if="draft.kind === 'balance_multiply'"><span>{{ t('adminCoupons.balanceMultiplier') }}</span><input v-model.number="draft.factor" type="number" min="1.01" max="100" step="0.01" /></label>
+      <TxbAmountField v-if="draft.kind === 'balance_add' || ((draft.kind === 'purchase_once' || draft.kind === 'purchase_recurring') && draft.discountMode === 'fixed')" id="coupon-value" v-model="draft.valueTxb" :label="t('adminCoupons.txbValue')" min-minor="1" required />
+      <TxbAmountField v-if="(draft.kind === 'purchase_once' || draft.kind === 'purchase_recurring') && draft.discountMode === 'percent'" id="coupon-cap" v-model="draft.capTxb" :label="t('adminCoupons.cap')" :hint="t('adminCoupons.capHint')" />
+      <label><span>{{ t('adminCoupons.comboIds') }}</span><input v-model="draft.eligibleComboIds" :disabled="draft.kind === 'balance_add' || draft.kind === 'balance_multiply'" /></label>
+      <label><span>{{ t('adminCoupons.squadIds') }}</span><input v-model="draft.eligibleSquadIds" :disabled="draft.kind === 'balance_add' || draft.kind === 'balance_multiply'" /></label>
+      <label><span>{{ t('adminCoupons.expires') }}</span><input v-model="draft.expiresAt" type="date" /></label>
+      <label><span>{{ t('adminCoupons.globalLimit') }}</span><input v-model="draft.globalLimit" inputmode="numeric" pattern="[0-9]*" /></label>
+      <label><span>{{ t('adminCoupons.userLimit') }}</span><input v-model="draft.perUserLimit" inputmode="numeric" pattern="[0-9]*" /></label>
+      <SwitchField id="coupon-active" v-model="draft.active" :label="t('common.active')" />
+      <div class="button-row"><button class="button button--secondary" type="button" @click="editingId = undefined">{{ t('common.cancel') }}</button><button class="button button--primary" type="submit" :disabled="busy">{{ busy ? t('common.saving') : editingId ? t('adminCoupons.save') : t('adminCoupons.create') }}</button></div>
     </form>
     <p v-if="error" class="field-error admin-error">{{ error }}</p>
-    <div v-if="loading" class="admin-loading">Loading coupons</div>
-    <div v-else class="admin-list"><article v-for="coupon in items" :key="coupon.id" class="admin-list-row"><span class="feature-icon feature-icon--small"><PhTicket :size="18" /></span><div><strong>{{ coupon.code }} · {{ coupon.name }}</strong><small>{{ coupon.kind.replaceAll('_', ' ') }} · {{ coupon.active ? 'active' : 'paused' }} · {{ coupon.globalUseLimit ?? 'unlimited' }} global limit</small></div><div class="row-actions"><button class="icon-button" type="button" :aria-label="`Edit ${coupon.code}`" @click="edit(coupon)"><PhPencilSimple :size="18" /></button><button v-if="coupon.active" class="button button--ghost-danger button--small" type="button" :disabled="busy" @click="deactivate(coupon)"><PhPause :size="17" />Deactivate</button></div></article><div v-if="!items.length" class="empty-inline"><div><h3>No coupons</h3><p>Create a definition or grant one as a draw prize.</p></div></div></div>
+    <div v-if="loading" class="admin-loading">{{ t('adminCoupons.loading') }}</div>
+    <div v-else class="admin-list"><article v-for="coupon in items" :key="coupon.id" class="admin-list-row"><span class="feature-icon feature-icon--small"><PhTicket :size="18" /></span><div><strong>{{ coupon.code }} · {{ coupon.name }}</strong><small>{{ t('adminCoupons.summary', { kind: coupon.kind.replaceAll('_', ' '), status: coupon.active ? t('common.active') : t('adminCatalog.paused'), uses: coupon.usageCount, limit: coupon.globalUseLimit ?? t('adminCoupons.unlimited') }) }}</small></div><div class="row-actions"><button class="icon-button" type="button" :aria-label="t('adminCoupons.editNamed', { code: coupon.code })" @click="edit(coupon)"><PhPencilSimple :size="18" /></button><button v-if="coupon.active" class="button button--ghost-danger button--small" type="button" :disabled="busy" @click="deactivate(coupon)"><PhPause :size="17" />{{ t('adminCoupons.deactivate') }}</button></div></article><div v-if="!items.length" class="empty-inline"><div><h3>{{ t('adminCoupons.none') }}</h3><p>{{ t('adminCoupons.noneHint') }}</p></div></div></div>
   </section>
 </template>
 

@@ -70,8 +70,8 @@ jobs:
           build-args: |
             VERSION=${{ steps.meta.outputs.version }}
             COMMIT=${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=tx-carpool
+          cache-to: type=gha,mode=max,scope=tx-carpool
           provenance: true
           sbom: true
 

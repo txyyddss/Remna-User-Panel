@@ -15,20 +15,23 @@ const {
   loading,
   error,
   invites,
+  content,
   form,
   usernameValid,
   usernameHint,
+  allAgreementsAccepted,
   finishIntro,
   loadInvites,
   openInvite,
   checkMembership,
   submitUsername,
   acceptAgreement,
+  toggleAgreement,
 } = useOnboarding()
 </script>
 
 <template>
-  <IntroSequence v-if="step === 'intro'" @complete="finishIntro" />
+  <IntroSequence v-if="step === 'intro' && content" :messages="content.welcome" @complete="finishIntro" />
   <main v-else class="onboarding-shell">
     <header class="onboarding-shell__top">
       <span class="onboarding-shell__brand"><PhCirclesFour :size="20" weight="fill" /> TX Carpool</span>
@@ -62,8 +65,11 @@ const {
         <AgreementPanel
           v-else-if="step === 'agreement'"
           key="agreement"
-          v-model="form.agreement"
+          :agreements="content?.agreements ?? []"
+          :selected-ids="form.agreementIds"
+          :all-accepted="allAgreementsAccepted"
           :loading="loading"
+          @toggle="toggleAgreement"
           @submit="acceptAgreement"
         />
       </Transition>

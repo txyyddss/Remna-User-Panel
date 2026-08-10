@@ -123,20 +123,21 @@ func TestCreateInvites(t *testing.T) {
 	settings := &accountsSettings{values: map[string]string{
 		"telegram.group_chat_id":   "-1001",
 		"telegram.channel_chat_id": "-1002",
+		"telegram.webhook_secret":  "test-invite-secret",
 	}}
 	repository := &accountsRepository{}
 	telegram := &accountsTelegram{}
 	service := newAccountsServiceForTest(repository, &accountsValidator{}, telegram, &accountsRemnawave{}, settings, 1)
-	user := model.User{ID: strings.Repeat("x", 40), OnboardingState: "intro"}
+	user := model.User{ID: strings.Repeat("x", 40), TelegramID: 42, OnboardingState: "intro"}
 
 	invites, expiresAt, err := service.CreateInvites(context.Background(), user)
 	if err != nil {
 		t.Fatalf("CreateInvites(): %v", err)
 	}
-	if invites["group"] == "" || invites["channel"] == "" || !repository.advanced || len(repository.savedInvites) != 2 {
-		t.Fatalf("CreateInvites() = %+v, advanced %t, saved %+v", invites, repository.advanced, repository.savedInvites)
+	if invites["group"] == "" || invites["channel"] == "" || !repository.advanced {
+		t.Fatalf("CreateInvites() = %+v, advanced %t", invites, repository.advanced)
 	}
-	if len(telegram.inviteNames[0]) != 32 || !expiresAt.Equal(service.now().UTC().Add(30*time.Minute)) {
+	if len(telegram.inviteNames) != 2 || len(telegram.inviteNames[0]) > 32 || !expiresAt.Equal(service.now().UTC().Add(30*time.Minute)) {
 		t.Fatalf("invite name/expiry = %d/%s", len(telegram.inviteNames[0]), expiresAt)
 	}
 }
@@ -158,7 +159,6 @@ func TestCreateInviteFailures(t *testing.T) {
 		{name: "invalid chat", user: model.User{ID: "user"}, settings: &accountsSettings{values: map[string]string{"telegram.group_chat_id": "nope"}}, repository: &accountsRepository{}, telegram: &accountsTelegram{}},
 		{name: "zero chat", user: model.User{ID: "user"}, settings: &accountsSettings{values: map[string]string{"telegram.group_chat_id": "0"}}, repository: &accountsRepository{}, telegram: &accountsTelegram{}},
 		{name: "telegram", user: model.User{ID: "user"}, settings: validAccountsSettings(), repository: &accountsRepository{}, telegram: &accountsTelegram{createErr: testError}},
-		{name: "persistence revokes provider invite", user: model.User{ID: "user"}, settings: validAccountsSettings(), repository: &accountsRepository{saveInviteErr: testError}, telegram: &accountsTelegram{}, wantRevoke: true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -216,65 +216,30 @@ func TestRefreshMembershipByTelegramID(t *testing.T) {
 	}
 }
 
-func TestHandleJoinRequest(t *testing.T) {
+func TestHandleSignedJoinRequest(t *testing.T) {
 	t.Parallel()
 
-	now := time.Date(2026, 8, 7, 12, 0, 0, 0, time.UTC)
-	validInvite := database.JoinInvite{ID: "invite-1", UserID: "user-1", ChatID: -1001, InviteLink: "invite", ExpiresAt: now.Add(time.Hour)}
-	tests := []struct {
-		name       string
-		configure  func(*accountsRepository, *accountsTelegram)
-		telegramID int64
-		chatID     int64
-		want       error
-	}{
-		{name: "success", telegramID: 42, chatID: -1001},
-		{name: "invite lookup", telegramID: 42, chatID: -1001, configure: func(repository *accountsRepository, _ *accountsTelegram) {
-			repository.inviteLookupErr = errors.New("lookup")
-		}},
-		{name: "user lookup", telegramID: 42, chatID: -1001, configure: func(repository *accountsRepository, _ *accountsTelegram) {
-			repository.userByIDErr = errors.New("lookup")
-		}},
-		{name: "wrong identity", telegramID: 99, chatID: -1001, want: ErrInvalidAuthentication},
-		{name: "wrong chat", telegramID: 42, chatID: -1002, want: ErrInvalidAuthentication},
-		{name: "approved", telegramID: 42, chatID: -1001, configure: func(repository *accountsRepository, _ *accountsTelegram) {
-			at := now
-			repository.invite.ApprovedAt = &at
-		}, want: ErrInvalidAuthentication},
-		{name: "revoked", telegramID: 42, chatID: -1001, configure: func(repository *accountsRepository, _ *accountsTelegram) {
-			at := now
-			repository.invite.RevokedAt = &at
-		}, want: ErrInvalidAuthentication},
-		{name: "expired", telegramID: 42, chatID: -1001, configure: func(repository *accountsRepository, _ *accountsTelegram) { repository.invite.ExpiresAt = now }, want: ErrInvalidAuthentication},
-		{name: "approve error", telegramID: 42, chatID: -1001, configure: func(_ *accountsRepository, telegram *accountsTelegram) { telegram.approveErr = errors.New("approve") }},
-		{name: "already joined after approve error", telegramID: 42, chatID: -1001, configure: func(_ *accountsRepository, telegram *accountsTelegram) {
-			telegram.approveErr = errors.New("approve")
-			telegram.memberships = map[string]bool{"-1001": true}
-		}},
-		{name: "revoke error", telegramID: 42, chatID: -1001, configure: func(_ *accountsRepository, telegram *accountsTelegram) { telegram.revokeErr = errors.New("revoke") }},
-		{name: "mark error", telegramID: 42, chatID: -1001, configure: func(repository *accountsRepository, _ *accountsTelegram) {
-			repository.markInviteErr = errors.New("mark")
-		}},
+	const telegramID, chatID = int64(42), int64(-1001)
+	settings := validAccountsSettings()
+	repository := &accountsRepository{}
+	telegram := &accountsTelegram{}
+	service := newAccountsServiceForTest(repository, &accountsValidator{}, telegram, &accountsRemnawave{}, settings, 1)
+	expiresAt := service.now().UTC().Add(time.Hour)
+	name, err := service.signedInviteName(context.Background(), telegramID, chatID, expiresAt)
+	if err != nil {
+		t.Fatalf("signedInviteName(): %v", err)
 	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			repository := &accountsRepository{user: model.User{ID: "user-1", TelegramID: 42}, invite: validInvite}
-			telegram := &accountsTelegram{}
-			if test.configure != nil {
-				test.configure(repository, telegram)
-			}
-			err := newAccountsServiceForTest(repository, &accountsValidator{}, telegram, &accountsRemnawave{}, &accountsSettings{}, 1).HandleJoinRequest(context.Background(), test.telegramID, test.chatID, "invite")
-			if test.want != nil && !errors.Is(err, test.want) {
-				t.Fatalf("HandleJoinRequest() error = %v, want %v", err, test.want)
-			}
-			if test.want == nil && (test.name == "success" || test.name == "already joined after approve error") && (err != nil || !repository.inviteMarked || telegram.approveCalls != 1 || len(telegram.revokedLinks) != 1) {
-				t.Fatalf("successful HandleJoinRequest() = err %v, marked %t, approve %d, revoke %d", err, repository.inviteMarked, telegram.approveCalls, len(telegram.revokedLinks))
-			}
-			if test.want == nil && test.name != "success" && test.name != "already joined after approve error" && err == nil {
-				t.Fatal("HandleJoinRequest() unexpectedly succeeded")
-			}
-		})
+	if err := service.HandleSignedJoinRequest(context.Background(), telegramID, chatID, "invite", name, expiresAt); err != nil {
+		t.Fatalf("HandleSignedJoinRequest(): %v", err)
+	}
+	if telegram.approveCalls != 1 || len(telegram.revokedLinks) != 1 {
+		t.Fatalf("provider calls = approve %d, revoke %d", telegram.approveCalls, len(telegram.revokedLinks))
+	}
+	if err := service.HandleSignedJoinRequest(context.Background(), telegramID+1, chatID, "invite", name, expiresAt); !errors.Is(err, ErrInvalidAuthentication) {
+		t.Fatalf("identity mismatch error = %v", err)
+	}
+	if err := service.HandleSignedJoinRequest(context.Background(), telegramID, chatID, "invite", name, service.now().UTC()); !errors.Is(err, ErrInvalidAuthentication) {
+		t.Fatalf("expired signature error = %v", err)
 	}
 }
 
@@ -342,12 +307,12 @@ func TestAcceptAgreementCreatesOrReconcilesUser(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			repository := &accountsRepository{user: model.User{ID: "user-1", OnboardingState: "complete"}}
+			repository := &accountsRepository{user: model.User{ID: "user-1", OnboardingState: "complete"}, agreementRevision: 1, requiredAgreementIDs: []string{"terms"}}
 			service := newAccountsServiceForTest(repository, &accountsValidator{}, &accountsTelegram{}, test.remote, &accountsSettings{}, 1)
 			user := model.User{ID: "user-1", TelegramID: telegramID, Username: &username, OnboardingState: "agreement"}
-			completed, err := service.AcceptAgreement(context.Background(), user, true)
+			completed, err := service.AcceptAgreementRevision(context.Background(), user, 1, []string{"terms"})
 			if err != nil || completed.OnboardingState != "complete" {
-				t.Fatalf("AcceptAgreement() = (%+v, %v)", completed, err)
+				t.Fatalf("AcceptAgreementRevision() = (%+v, %v)", completed, err)
 			}
 			if got := len(test.remote.created) > 0; got != test.wantCreate {
 				t.Fatalf("CreateUser called = %t, want %t", got, test.wantCreate)
@@ -397,9 +362,15 @@ func TestAcceptAgreementFailures(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := newAccountsServiceForTest(test.repository, &accountsValidator{}, &accountsTelegram{}, test.remote, &accountsSettings{}, 1).AcceptAgreement(context.Background(), test.user, test.accepted)
+			test.repository.agreementRevision = 1
+			test.repository.requiredAgreementIDs = []string{"terms"}
+			revision := 1
+			if !test.accepted {
+				revision = 0
+			}
+			_, err := newAccountsServiceForTest(test.repository, &accountsValidator{}, &accountsTelegram{}, test.remote, &accountsSettings{}, 1).AcceptAgreementRevision(context.Background(), test.user, revision, []string{"terms"})
 			if !errors.Is(err, test.want) {
-				t.Fatalf("AcceptAgreement() error = %v, want %v", err, test.want)
+				t.Fatalf("AcceptAgreementRevision() error = %v, want %v", err, test.want)
 			}
 		})
 	}
@@ -408,15 +379,11 @@ func TestAcceptAgreementFailures(t *testing.T) {
 type accountsRepository struct {
 	user                  model.User
 	sessionUser           model.User
-	invite                database.JoinInvite
 	upsertErr             error
 	createSessionErr      error
 	sessionLookupErr      error
 	advanceErr            error
-	saveInviteErr         error
-	inviteLookupErr       error
 	userByIDErr           error
-	markInviteErr         error
 	reserveErr            error
 	completeErr           error
 	userByTelegramErr     error
@@ -426,16 +393,16 @@ type accountsRepository struct {
 	sessionExpires        time.Time
 	lookupSessionHash     []byte
 	advanced              bool
-	savedInvites          []database.JoinInvite
 	groupJoined           bool
 	channelJoined         bool
-	inviteMarked          bool
 	reservedUsername      string
 	completedRemoteID     string
 	completedSubscription string
 	recoveryUser          model.User
 	recoveryStarted       bool
 	recoveryReason        string
+	agreementRevision     int
+	requiredAgreementIDs  []string
 }
 
 func (r *accountsRepository) UpsertTelegramUser(_ context.Context, _ model.TelegramProfile, admin bool) (model.User, bool, error) {
@@ -468,25 +435,16 @@ func (r *accountsRepository) ReserveUsername(_ context.Context, _ string, userna
 	r.reservedUsername = username
 	return r.reserveErr
 }
-func (r *accountsRepository) CompleteOnboarding(_ context.Context, _ string, remoteID, subscription string, _ time.Time) (model.User, error) {
+func (r *accountsRepository) CurrentAgreementContract(context.Context) (int, []string, error) {
+	return r.agreementRevision, append([]string(nil), r.requiredAgreementIDs...), nil
+}
+func (r *accountsRepository) CompleteOnboardingRevision(_ context.Context, _ string, remoteID, subscription string, _ int, _ []string, _ time.Time) (model.User, error) {
 	r.completedRemoteID, r.completedSubscription = remoteID, subscription
 	return r.user, r.completeErr
 }
 func (r *accountsRepository) BeginRemnawaveRecovery(_ context.Context, _ string, reason string, _ time.Time) (model.User, error) {
 	r.recoveryStarted, r.recoveryReason = true, reason
 	return r.recoveryUser, nil
-}
-func (r *accountsRepository) SaveJoinInvite(_ context.Context, userID, kind string, chatID int64, link string, expires time.Time) (database.JoinInvite, error) {
-	invite := database.JoinInvite{ID: "saved-" + kind, UserID: userID, ChatKind: kind, ChatID: chatID, InviteLink: link, ExpiresAt: expires}
-	r.savedInvites = append(r.savedInvites, invite)
-	return invite, r.saveInviteErr
-}
-func (r *accountsRepository) JoinInviteByLink(context.Context, string) (database.JoinInvite, error) {
-	return r.invite, r.inviteLookupErr
-}
-func (r *accountsRepository) MarkJoinInviteUsed(context.Context, string, time.Time) error {
-	r.inviteMarked = true
-	return r.markInviteErr
 }
 
 type accountsValidator struct {
@@ -576,7 +534,7 @@ func (s *accountsSettings) Plaintext(_ context.Context, key string) (string, err
 }
 
 func validAccountsSettings() *accountsSettings {
-	return &accountsSettings{values: map[string]string{"telegram.group_chat_id": "-1001", "telegram.channel_chat_id": "-1002"}}
+	return &accountsSettings{values: map[string]string{"telegram.group_chat_id": "-1001", "telegram.channel_chat_id": "-1002", "telegram.webhook_secret": "test-invite-secret"}}
 }
 
 func newAccountsServiceForTest(repository Repository, validator InitDataValidator, telegram TelegramClient, remnawave RemnawaveClient, settings Settings, adminID int64) *Service {

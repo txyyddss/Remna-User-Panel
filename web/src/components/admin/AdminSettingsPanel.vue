@@ -6,11 +6,13 @@ import type { AdminSetting } from '@/api/types'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import SwitchField from '@/components/common/SwitchField.vue'
 import { useAdminSection } from '@/composables/useAdminSection'
+import { useI18n } from '@/i18n'
 import AdminSectionState from './AdminSectionState.vue'
 
 const { items, loading, busy, error, load, perform } = useAdminSection<AdminSetting>('settings')
 const draft = reactive<Record<string, string>>({})
 const saved = reactive({ visible: false })
+const { t } = useI18n()
 
 const grouped = computed(() => items.value.reduce<Record<string, AdminSetting[]>>((groups, item) => {
   const category = item.category
@@ -24,7 +26,16 @@ watch(items, (next) => {
 }, { immediate: true })
 
 function settingLabel(setting: AdminSetting): string {
+  const key = `adminSettings.settingLabels.${setting.key.replaceAll('.', '_')}`
+  const translated = t(key)
+  if (translated !== key) return translated
   return setting.key.replace(/[._]/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase())
+}
+
+function categoryLabel(category: string): string {
+  const key = `adminSettings.categories.${category.toLowerCase()}`
+  const translated = t(key)
+  return translated === key ? category : translated
 }
 
 function isSensitive(setting: AdminSetting): boolean {
@@ -53,27 +64,27 @@ async function save(): Promise<void> {
 <template>
   <section class="admin-panel">
     <div class="admin-panel__heading">
-      <div><h2>System settings</h2><p>Secrets are write-only and stay masked after save.</p></div>
+      <div><h2>{{ t('adminSettings.title') }}</h2><p>{{ t('adminSettings.copy') }}</p></div>
       <button class="button button--primary" type="button" :disabled="busy" @click="save">
-        <PhFloppyDisk :size="18" /> {{ busy ? 'Saving' : 'Save settings' }}
+        <PhFloppyDisk :size="18" /> {{ busy ? t('common.saving') : t('adminSettings.save') }}
       </button>
     </div>
-    <InlineNotice v-if="saved.visible" tone="success" title="Settings saved">New values will be used by the next integration request.</InlineNotice>
+    <InlineNotice v-if="saved.visible" tone="success" :title="t('adminSettings.saved')">{{ t('adminSettings.savedHint') }}</InlineNotice>
     <AdminSectionState :loading="loading" :error="error" @retry="load()">
       <form class="settings-groups" @submit.prevent="save">
         <fieldset v-for="(settings, category) in grouped" :key="category" class="settings-group">
-          <legend>{{ category }}</legend>
+          <legend>{{ categoryLabel(String(category)) }}</legend>
           <div v-for="setting in settings" :key="setting.key" class="settings-field">
             <span class="settings-field__label">
               <span>{{ settingLabel(setting) }}</span>
-              <span v-if="setting.configured" class="configured-label"><PhCheck :size="14" /> Configured</span>
+              <span v-if="setting.configured" class="configured-label"><PhCheck :size="14" /> {{ t('common.configured') }}</span>
             </span>
             <SwitchField
               v-if="isBoolean(setting)"
               :id="`setting-${setting.key}`"
               :model-value="draft[setting.key] === 'true'"
-              label="Enabled"
-              help="Applied after validation."
+              :label="t('common.enabled')"
+              :help="t('adminSettings.validated')"
               @update:model-value="setBoolean(setting.key, $event)"
             />
             <span v-if="!isBoolean(setting)" class="input-shell">
@@ -81,11 +92,11 @@ async function save(): Promise<void> {
               <input
                 v-model="draft[setting.key]"
                 :type="isSensitive(setting) ? 'password' : 'text'"
-                :placeholder="isSensitive(setting) && setting.configured ? 'Leave blank to keep current value' : ''"
+                :placeholder="isSensitive(setting) && setting.configured ? t('adminSettings.keepSecret') : ''"
                 :autocomplete="isSensitive(setting) ? 'new-password' : 'off'"
               />
             </span>
-            <small v-if="!isBoolean(setting)">{{ isSensitive(setting) ? 'Stored encrypted and never returned in plaintext.' : 'Applied after validation.' }}</small>
+            <small v-if="!isBoolean(setting)">{{ isSensitive(setting) ? t('adminSettings.secretHint') : t('adminSettings.validated') }}</small>
           </div>
         </fieldset>
       </form>

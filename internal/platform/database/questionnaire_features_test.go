@@ -90,7 +90,7 @@ func TestQuestionnaireSingleActiveAndIdempotentCSVSettlement(t *testing.T) {
 		t.Fatalf("ListQuestionnaireParticipations() = (%+v, %v)", history, err)
 	}
 	var jobs int
-	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind='questionnaire_settlement' AND aggregate_id=?`, preview.ID).Scan(&jobs); err != nil || jobs != 1 {
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind='questionnaire_settlement' AND payload=?`, `{"importId":"`+preview.ID+`"}`).Scan(&jobs); err != nil || jobs != 1 {
 		t.Fatalf("questionnaire outbox jobs = %d, %v, want 1", jobs, err)
 	}
 }

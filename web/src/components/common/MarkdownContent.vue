@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import DOMPurify from 'dompurify'
 import MarkdownIt from 'markdown-it'
+import type StateInline from 'markdown-it/lib/rules_inline/state_inline.mjs'
 
 const props = withDefaults(defineProps<{
   source: string
@@ -11,6 +12,33 @@ const props = withDefaults(defineProps<{
 })
 
 const markdown = new MarkdownIt({ breaks: true, html: false, linkify: false, typographer: false })
+const allowedColors = new Set(['default', 'muted', 'accent', 'success', 'warning', 'danger'])
+const allowedSizes = new Set(['sm', 'base', 'lg', 'xl'])
+
+markdown.inline.ruler.before('link', 'safe_text_directive', (state: StateInline, silent: boolean): boolean => {
+  const tail = state.src.slice(state.pos)
+  const match = /^\[([^\]\n]+)\]\{([^}\n]+)\}/.exec(tail)
+  if (!match) return false
+  const attributes = match[2].trim().split(/\s+/)
+  let color = ''
+  let size = ''
+  for (const attribute of attributes) {
+    const [key, value, ...extra] = attribute.split('=')
+    if (extra.length || !value) return false
+    if (key === 'color' && !color && allowedColors.has(value)) color = value
+    else if (key === 'size' && !size && allowedSizes.has(value)) size = value
+    else return false
+  }
+  if (!color && !size) return false
+  if (!silent) {
+    const open = state.push('span_open', 'span', 1)
+    open.attrSet('class', [color && `md-color-${color}`, size && `md-size-${size}`].filter(Boolean).join(' '))
+    state.push('text', '', 0).content = match[1]
+    state.push('span_close', 'span', -1)
+  }
+  state.pos += match[0].length
+  return true
+})
 const defaultLinkOpen = markdown.renderer.rules.link_open
 markdown.renderer.rules.link_open = (tokens, index, options, environment, renderer) => {
   const token = tokens[index]
@@ -28,8 +56,8 @@ markdown.renderer.rules.link_open = (tokens, index, options, environment, render
 }
 
 const html = computed(() => DOMPurify.sanitize(markdown.render(props.source), {
-  ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 's', 'code', 'pre', 'ul', 'ol', 'li', 'blockquote', 'a', 'h1', 'h2', 'h3'],
-  ALLOWED_ATTR: ['href', 'target', 'rel'],
+  ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 's', 'code', 'pre', 'ul', 'ol', 'li', 'blockquote', 'a', 'h1', 'h2', 'h3', 'span'],
+  ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
   ALLOW_UNKNOWN_PROTOCOLS: false,
 }))
 </script>
@@ -57,6 +85,17 @@ const html = computed(() => DOMPurify.sanitize(markdown.render(props.source), {
 }
 
 .markdown-content :deep(code) { font-family: var(--font-mono); }
+
+.markdown-content :deep(.md-color-default) { color: var(--text); }
+.markdown-content :deep(.md-color-muted) { color: var(--text-muted); }
+.markdown-content :deep(.md-color-accent) { color: var(--accent); }
+.markdown-content :deep(.md-color-success) { color: var(--success); }
+.markdown-content :deep(.md-color-warning) { color: var(--warning); }
+.markdown-content :deep(.md-color-danger) { color: var(--danger); }
+.markdown-content :deep(.md-size-sm) { font-size: 0.78em; }
+.markdown-content :deep(.md-size-base) { font-size: 1em; }
+.markdown-content :deep(.md-size-lg) { font-size: 1.18em; }
+.markdown-content :deep(.md-size-xl) { font-size: 1.38em; }
 
 .markdown-content--compact {
   font-size: 0.76rem;

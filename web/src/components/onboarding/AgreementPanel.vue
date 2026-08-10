@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { CheckboxIndicator, CheckboxRoot } from 'reka-ui'
-import { PhArrowRight, PhCheck, PhLinkBreak, PhShieldWarning } from '@phosphor-icons/vue'
+import { PhArrowRight, PhCheck, PhShieldWarning } from '@phosphor-icons/vue'
 
-const accepted = defineModel<boolean>({ required: true })
+import type { OnboardingAgreement } from '@/api/features'
+import { agreementIcon } from './agreementIcons'
 
-defineProps<{ loading: boolean }>()
-defineEmits<{ submit: [] }>()
+defineProps<{ agreements: readonly OnboardingAgreement[]; selectedIds: readonly string[]; allAccepted: boolean; loading: boolean }>()
+defineEmits<{ submit: []; toggle: [id: string] }>()
 </script>
 
 <template>
@@ -16,23 +17,26 @@ defineEmits<{ submit: [] }>()
       <p>{{ $t('onboarding.agreementCopy') }}</p>
     </header>
 
-    <div class="agreement-callout">
-      <PhLinkBreak :size="23" aria-hidden="true" />
-      <p>{{ $t('onboarding.agreementWarning') }}</p>
+    <div class="agreement-list">
+      <label v-for="agreement in agreements" :key="agreement.id" class="agreement-callout agreement-callout--selectable">
+        <component :is="agreementIcon(agreement.icon)" :size="23" aria-hidden="true" />
+        <span><strong>{{ agreement.title }}</strong><small>{{ agreement.body }}</small></span>
+        <CheckboxRoot class="checkbox-control" :model-value="selectedIds.includes(agreement.id)" @update:model-value="$emit('toggle', agreement.id)">
+          <CheckboxIndicator class="checkbox-indicator"><PhCheck :size="16" weight="bold" /></CheckboxIndicator>
+        </CheckboxRoot>
+      </label>
     </div>
 
-    <label class="checkbox-row">
-      <CheckboxRoot v-model="accepted" class="checkbox-control">
-        <CheckboxIndicator class="checkbox-indicator">
-          <PhCheck :size="16" weight="bold" />
-        </CheckboxIndicator>
-      </CheckboxRoot>
-      <span>{{ $t('onboarding.agreementAccept') }}</span>
-    </label>
-
-    <button class="button button--primary button--wide" type="button" :disabled="!accepted || loading" @click="$emit('submit')">
-      {{ loading ? 'Creating your account' : 'Finish setup' }}
+    <button class="button button--primary button--wide" type="button" :disabled="!allAccepted || loading" @click="$emit('submit')">
+      {{ loading ? $t('onboarding.finishing') : $t('onboarding.finish') }}
       <PhArrowRight :size="19" />
     </button>
   </section>
 </template>
+
+<style scoped>
+.agreement-list { display: grid; gap: 0.65rem; }
+.agreement-callout--selectable { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; cursor: pointer; }
+.agreement-callout--selectable strong, .agreement-callout--selectable small { display: block; }
+.agreement-callout--selectable small { margin-top: 0.25rem; color: var(--text-muted); font-size: 0.72rem; line-height: 1.5; }
+</style>

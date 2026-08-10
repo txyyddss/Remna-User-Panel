@@ -13,12 +13,131 @@ import (
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 )
 
 // Repository records backup attempts in the primary database.
 type Repository interface {
 	StartBackupRun(context.Context, string, time.Time) (model.BackupRun, error)
 	CompleteBackupRun(context.Context, string, int64, error, time.Time) error
+}
+
+// Delete removes one backup file and its completed metadata while no restore is
+// staging, ready, or restarting. The path is resolved against the configured
+// backup directory and symlinks are rejected before any mutation.
+func (s *Service) Delete(ctx context.Context, backupID, actorID string) error {
+	s.restoreMu.Lock()
+	defer s.restoreMu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	select {
+	case <-s.restart:
+		return ErrRestoreConflict
+	default:
+	}
+	var activeRestores int
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM restore_jobs WHERE status IN ('staging','ready','applying')`).Scan(&activeRestores); err != nil {
+		return fmt.Errorf("check active restores: %w", err)
+	}
+	if activeRestores != 0 {
+		return ErrRestoreConflict
+	}
+	var path, status string
+	if err := s.db.QueryRowContext(ctx, `SELECT path,status FROM backup_runs WHERE id=?`, backupID).Scan(&path, &status); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrBackupNotFound
+		}
+		return err
+	}
+	if status == "running" {
+		return ErrRestoreConflict
+	}
+	resolved, err := s.resolveBackupFile(path, status == "failed")
+	if err != nil {
+		return err
+	}
+	staged := resolved + ".deleting-" + backupID
+	fileExists := true
+	if err := os.Rename(resolved, staged); err != nil {
+		if errors.Is(err, os.ErrNotExist) && status == "failed" {
+			fileExists = false
+		} else {
+			return fmt.Errorf("stage backup deletion: %w", err)
+		}
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		if fileExists {
+			_ = os.Rename(staged, resolved)
+		}
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, `DELETE FROM restore_jobs WHERE backup_run_id=? AND status NOT IN ('staging','ready','applying')`, backupID); err != nil {
+		if fileExists {
+			_ = os.Rename(staged, resolved)
+		}
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM backup_runs WHERE id=?`, backupID); err != nil {
+		if fileExists {
+			_ = os.Rename(staged, resolved)
+		}
+		return err
+	}
+	auditID, err := ids.New()
+	if err != nil {
+		if fileExists {
+			_ = os.Rename(staged, resolved)
+		}
+		return err
+	}
+	now := s.now().UTC().Format(time.RFC3339Nano)
+	if _, err := tx.ExecContext(ctx, `INSERT INTO audit_events(id,actor_user_id,action,target_type,target_id,detail,created_at) VALUES(?,?,?,?,?,?,?)`,
+		auditID, actorID, "backup.delete", "backup", backupID, `{"path":"redacted"}`, now); err != nil {
+		if fileExists {
+			_ = os.Rename(staged, resolved)
+		}
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		if fileExists {
+			_ = os.Rename(staged, resolved)
+		}
+		return err
+	}
+	if fileExists {
+		if err := os.Remove(staged); err != nil {
+			return fmt.Errorf("remove deleted backup file: %w", err)
+		}
+	}
+	return nil
+}
+
+func (s *Service) resolveBackupFile(path string, allowMissing bool) (string, error) {
+	directory, err := filepath.Abs(s.directory)
+	if err != nil {
+		return "", err
+	}
+	target, err := filepath.Abs(filepath.Clean(path))
+	if err != nil {
+		return "", err
+	}
+	relative, err := filepath.Rel(directory, target)
+	if err != nil || relative == "." || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.IsAbs(relative) {
+		return "", errors.New("backup path escapes the configured directory")
+	}
+	info, err := os.Lstat(target)
+	if err != nil {
+		if allowMissing && errors.Is(err, os.ErrNotExist) {
+			return target, nil
+		}
+		return "", err
+	}
+	if !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
+		return "", errors.New("backup path is not a regular file")
+	}
+	return target, nil
 }
 
 // Service owns the SQLite online-backup and retention lifecycle.
@@ -102,6 +221,9 @@ func (s *Service) createAndVerify(ctx context.Context, temporaryPath, finalPath 
 		}
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return err
+	}
+	if _, err := s.db.ExecContext(ctx, `PRAGMA wal_checkpoint(PASSIVE)`); err != nil {
+		return fmt.Errorf("checkpoint before SQLite backup: %w", err)
 	}
 	if _, err := s.db.ExecContext(ctx, `VACUUM INTO ?`, temporaryPath); err != nil {
 		return fmt.Errorf("create online SQLite backup: %w", err)

@@ -151,6 +151,64 @@ func TestClientEndpointMapping(t *testing.T) {
 	}
 }
 
+func TestInternalSquadNodeWireContract(t *testing.T) {
+	t.Parallel()
+
+	const squadUUID = "11111111-1111-4111-8111-111111111111"
+	const nodeUUID = "22222222-2222-4222-8222-222222222222"
+	const inboundUUID = "33333333-3333-4333-8333-333333333333"
+	requestNumber := 0
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		requestNumber++
+		writer.Header().Set("Content-Type", "application/json")
+		switch requestNumber {
+		case 1:
+			if request.Method != http.MethodGet || request.URL.Path != "/api/nodes" {
+				t.Errorf("nodes request = %s %s", request.Method, request.URL.Path)
+			}
+			_, _ = writer.Write([]byte(`{"response":[{"uuid":"` + nodeUUID + `","name":"Singapore","countryCode":"SG","consumptionMultiplier":1.5,"isDisabled":false,"configProfile":{"activeInbounds":[{"uuid":"` + inboundUUID + `"}]}}]}`))
+		case 2:
+			if request.Method != http.MethodGet || request.URL.Path != "/api/internal-squads/"+squadUUID+"/accessible-nodes" {
+				t.Errorf("accessible nodes request = %s %s", request.Method, request.URL.Path)
+			}
+			_, _ = writer.Write([]byte(`{"response":{"squadUuid":"` + squadUUID + `","accessibleNodes":[{"uuid":"` + nodeUUID + `","nodeName":"Singapore","countryCode":"SG","activeInbounds":["` + inboundUUID + `"]}]}}`))
+		case 3:
+			if request.Method != http.MethodPatch || request.URL.Path != "/api/internal-squads" {
+				t.Errorf("update squad request = %s %s", request.Method, request.URL.Path)
+			}
+			var body struct {
+				UUID     string   `json:"uuid"`
+				Inbounds []string `json:"inbounds"`
+			}
+			if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+				t.Errorf("decode update body: %v", err)
+			}
+			if body.UUID != squadUUID || len(body.Inbounds) != 1 || body.Inbounds[0] != inboundUUID {
+				t.Errorf("update squad body = %#v", body)
+			}
+			_, _ = writer.Write([]byte(`{"response":{"uuid":"` + squadUUID + `","name":"Squad"}}`))
+		default:
+			t.Errorf("unexpected request %d", requestNumber)
+		}
+	}))
+	defer server.Close()
+	client, err := NewClient(server.URL, "token", WithHTTPClient(server.Client()))
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	nodes, err := client.ListNodes(context.Background())
+	if err != nil || len(nodes) != 1 || nodes[0].ConfigProfile.ActiveInbounds[0].UUID != inboundUUID {
+		t.Fatalf("ListNodes() = (%+v, %v)", nodes, err)
+	}
+	accessible, err := client.InternalSquadAccessibleNodes(context.Background(), squadUUID)
+	if err != nil || len(accessible) != 1 || accessible[0].UUID != nodeUUID {
+		t.Fatalf("InternalSquadAccessibleNodes() = (%+v, %v)", accessible, err)
+	}
+	if _, err := client.UpdateInternalSquadInbounds(context.Background(), squadUUID, []string{inboundUUID}); err != nil {
+		t.Fatalf("UpdateInternalSquadInbounds() error = %v", err)
+	}
+}
+
 func TestAPIErrorCode(t *testing.T) {
 	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {

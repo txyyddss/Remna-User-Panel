@@ -13,31 +13,31 @@ const props = defineProps<{
   libraries: readonly EmbyLibrary[]
   busy: boolean
 }>()
-const emit = defineEmits<{ setup: [payload: { password: string; maxParentalRating: number | null; libraryIds: string[] }] }>()
+const emit = defineEmits<{ setup: [payload: { password: string; maxParentalRating: number | null; disabledLibraryIds: string[] }] }>()
 
-const draft = reactive({ password: '', maxParentalRating: props.ratings[0]?.value ?? null as number | null, libraryIds: [] as string[] })
+const draft = reactive({ password: '', maxParentalRating: props.ratings[0]?.value ?? null as number | null, disabledLibraryIds: [] as string[] })
 
 function toggleLibrary(id: string): void {
-  draft.libraryIds = draft.libraryIds.includes(id)
-    ? draft.libraryIds.filter((value) => value !== id)
-    : [...draft.libraryIds, id]
+  draft.disabledLibraryIds = draft.disabledLibraryIds.includes(id)
+    ? draft.disabledLibraryIds.filter((value) => value !== id)
+    : [...draft.disabledLibraryIds, id]
 }
 
 function submit(): void {
   if (draft.password.length < 8) return
-  emit('setup', { password: draft.password, maxParentalRating: draft.maxParentalRating, libraryIds: [...draft.libraryIds] })
+  emit('setup', { password: draft.password, maxParentalRating: draft.maxParentalRating, disabledLibraryIds: [...draft.disabledLibraryIds] })
   draft.password = ''
 }
 </script>
 
 <template>
   <form class="section-block emby-form" autocomplete="off" @submit.prevent="submit">
-    <div class="section-heading section-heading--stacked"><h2>Create your Emby account</h2><p>Setup costs {{ formatMoney(price) }}. Your password is erased after provisioning.</p></div>
-    <label><span class="field-label">Initial password</span><span class="input-shell"><PhLockKey :size="19" /><input v-model="draft.password" type="password" minlength="8" required autocomplete="new-password" /></span><small class="field-hint">At least 8 characters. It never appears in logs or responses.</small></label>
-    <label><span class="field-label">Maximum parental rating</span><select v-model="draft.maxParentalRating" class="compact-select"><option :value="null">No rating ceiling</option><option v-for="rating in ratings" :key="rating.value" :value="rating.value">{{ rating.name }}</option></select></label>
-    <EmbyLibraryPicker :libraries="libraries" :selected-ids="draft.libraryIds" :disabled="busy" @toggle="toggleLibrary" />
-    <div class="emby-restrictions"><PhShieldCheck :size="20" /><p>Remote control, shared-device control, transcoding, conversion, sync, and downloads stay disabled.</p></div>
-    <button class="button button--primary" type="submit" :disabled="busy || draft.password.length < 8">{{ busy ? 'Starting setup' : `Pay ${formatMoney(price)} and create account` }}</button>
+    <div class="section-heading section-heading--stacked"><h2>{{ $t('emby.createAccount') }}</h2><p>{{ $t('emby.setupCost', { amount: formatMoney(price) }) }}</p></div>
+    <label><span class="field-label">{{ $t('emby.initialPassword') }}</span><span class="input-shell"><PhLockKey :size="19" /><input v-model="draft.password" type="password" minlength="8" required autocomplete="new-password" /></span><small class="field-hint">{{ $t('emby.passwordHint') }}</small></label>
+    <label><span class="field-label">{{ $t('emby.rating') }}</span><select v-model="draft.maxParentalRating" class="compact-select"><option :value="null">{{ $t('emby.noRating') }}</option><option v-for="rating in ratings" :key="rating.value" :value="rating.value">{{ rating.name }}</option></select></label>
+    <EmbyLibraryPicker :libraries="libraries" :selected-ids="draft.disabledLibraryIds" :disabled="busy" @toggle="toggleLibrary" />
+    <div class="emby-restrictions"><PhShieldCheck :size="20" /><p>{{ $t('emby.safetyControls') }}</p></div>
+    <button class="button button--primary" type="submit" :disabled="busy || draft.password.length < 8">{{ busy ? $t('emby.startingSetup') : $t('emby.payAndCreate', { amount: formatMoney(price) }) }}</button>
   </form>
 </template>
 

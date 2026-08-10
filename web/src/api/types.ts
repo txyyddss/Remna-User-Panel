@@ -44,6 +44,25 @@ export type Combo = DeepReadonly<components['schemas']['Combo']>
 export type Catalog = DeepReadonly<components['schemas']['Catalog']>
 export type EntitlementStatus = components['schemas']['EntitlementStatus']
 export type Purchase = DeepReadonly<components['schemas']['Purchase']>
+export interface PurchaseQuote {
+  comboId: string
+  comboName: string
+  grossPrice: Money
+  discount: Money
+  netPrice: Money
+  effectiveAt: RFC3339
+  expiresAt: RFC3339
+  queued: boolean
+  addonSquadUuids: string[]
+}
+export interface RemnaNode {
+  uuid: string
+  name: string
+  countryCode: string
+  consumptionMultiplier: number
+  activeInboundUuids: string[]
+  accessible: boolean
+}
 export type TopNode = DeepReadonly<components['schemas']['TopNode']>
 export type UsageStatistics = DeepReadonly<components['schemas']['Statistics']>
 export type Dashboard = DeepReadonly<components['schemas']['Dashboard']>

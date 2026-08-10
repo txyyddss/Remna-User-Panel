@@ -27,7 +27,7 @@ func TestEmbySetupDebitRefundAndRetryAreAtomic(t *testing.T) {
 	rating := int32(13)
 	input := domain.QueueSetupInput{ID: "emby-account", UserID: user.ID, BaseUsername: "ada", PasswordCiphertext: "sealed-1",
 		PasswordContext: "emby.provisioning.password:" + user.ID, SetupPriceTXBMinor: 275,
-		Preferences: domain.Preferences{MaxParentalRating: &rating, LibraryIDs: []string{"movies", "shows"}}}
+		Preferences: domain.Preferences{MaxParentalRating: &rating, DisabledLibraryIDs: []string{"movies", "shows"}}}
 	account, created, err := store.QueueEmbySetup(ctx, input, now.Add(time.Second))
 	if err != nil || !created || account.SetupAttempt != 1 {
 		t.Fatalf("QueueEmbySetup() = (%+v, %v, %v)", account, created, err)
@@ -62,7 +62,7 @@ func TestEmbySetupDebitRefundAndRetryAreAtomic(t *testing.T) {
 	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM ledger_entries WHERE kind='emby_setup_refund'`).Scan(&refundCount); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind=? AND aggregate_id=?`, domain.ProvisionOutboxKind, account.ID).Scan(&outboxCount); err != nil {
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind=? AND payload=?`, domain.ProvisionOutboxKind, `{"accountId":"`+account.ID+`"}`).Scan(&outboxCount); err != nil {
 		t.Fatal(err)
 	}
 	if debitCount != 2 || refundCount != 1 || outboxCount != 2 {
@@ -80,7 +80,7 @@ func TestEmbyProvisioningTransitionsEraseSecretOnlyAfterSuccess(t *testing.T) {
 	}
 	now := time.Date(2026, 8, 8, 11, 0, 0, 0, time.UTC)
 	input := domain.QueueSetupInput{ID: "emby-transition", UserID: user.ID, BaseUsername: "river", PasswordCiphertext: "sealed",
-		PasswordContext: "emby.provisioning.password:" + user.ID, Preferences: domain.Preferences{LibraryIDs: []string{"movies"}}}
+		PasswordContext: "emby.provisioning.password:" + user.ID, Preferences: domain.Preferences{DisabledLibraryIDs: []string{"movies"}}}
 	account, _, err := store.QueueEmbySetup(ctx, input, now)
 	if err != nil {
 		t.Fatalf("QueueEmbySetup() error = %v", err)
@@ -107,7 +107,7 @@ func TestEmbyProvisioningTransitionsEraseSecretOnlyAfterSuccess(t *testing.T) {
 	if err != nil || requeued.Status != domain.StatusQueued || requeued.LastError != "temporary outage" || requeued.PasswordCiphertext != "sealed" || !requeued.Retryable {
 		t.Fatalf("requeued record = (%+v, %v)", requeued, err)
 	}
-	if _, err := store.DB().ExecContext(ctx, `UPDATE outbox_jobs SET status='failed' WHERE kind=? AND aggregate_id=?`, domain.ProvisionOutboxKind, account.ID); err != nil {
+	if _, err := store.DB().ExecContext(ctx, `UPDATE outbox_jobs SET status='failed' WHERE kind=? AND payload=?`, domain.ProvisionOutboxKind, `{"accountId":"`+account.ID+`"}`); err != nil {
 		t.Fatal(err)
 	}
 	if retried, err := store.RetryEmbyProvisioning(ctx, account.ID, now.Add(3*time.Second)); err != nil || !retried.Retryable {
@@ -126,7 +126,7 @@ func TestEmbyProvisioningTransitionsEraseSecretOnlyAfterSuccess(t *testing.T) {
 	if err != nil || before.PasswordCiphertext != "sealed" {
 		t.Fatalf("before success = (%+v, %v)", before, err)
 	}
-	if err := store.MarkEmbyProvisioned(ctx, account.ID, now.Add(5*time.Second)); err != nil {
+	if err := store.MarkEmbyProvisioned(ctx, account.ID, account.Preferences, now.Add(5*time.Second)); err != nil {
 		t.Fatal(err)
 	}
 	after, err := store.EmbyProvisioningByID(ctx, account.ID)
@@ -134,8 +134,8 @@ func TestEmbyProvisioningTransitionsEraseSecretOnlyAfterSuccess(t *testing.T) {
 		t.Fatalf("after success = (%+v, %v)", after, err)
 	}
 	rating := int32(7)
-	updated, err := store.UpdateEmbyPreferences(ctx, account.ID, domain.Preferences{MaxParentalRating: &rating, LibraryIDs: []string{"shows"}}, now.Add(6*time.Second))
-	if err != nil || updated.Preferences.MaxParentalRating == nil || *updated.Preferences.MaxParentalRating != 7 || len(updated.Preferences.LibraryIDs) != 1 || updated.Preferences.LibraryIDs[0] != "shows" {
+	updated, err := store.UpdateEmbyPreferences(ctx, account.ID, domain.Preferences{MaxParentalRating: &rating, DisabledLibraryIDs: []string{"shows"}}, now.Add(6*time.Second))
+	if err != nil || updated.Preferences.MaxParentalRating == nil || *updated.Preferences.MaxParentalRating != 7 || len(updated.Preferences.DisabledLibraryIDs) != 1 || updated.Preferences.DisabledLibraryIDs[0] != "shows" {
 		t.Fatalf("UpdateEmbyPreferences() = (%+v, %v)", updated, err)
 	}
 	if err := store.TouchEmbyAccount(ctx, account.ID, now.Add(7*time.Second)); err != nil {

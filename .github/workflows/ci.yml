@@ -4,80 +4,93 @@ on:
   workflow_call:
   pull_request:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
-  quality:
-    name: Audit and test
+  frontend:
+    name: Frontend contract and quality
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
+    timeout-minutes: 20
     steps:
       - name: Check out source
         uses: actions/checkout@v4
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 26
           cache: npm
           cache-dependency-path: web/package-lock.json
-
-      - name: Install frontend dependencies
+      - name: Install dependencies
         working-directory: web
         run: npm ci
-
       - name: Generate API types
         working-directory: web
         run: npm run generate:api
-
+      - name: Require committed generated contract
+        run: git diff --exit-code -- web/src/api/generated.ts
       - name: Lint frontend
         working-directory: web
         run: npm run lint
-
       - name: Type-check frontend
         working-directory: web
         run: npm run typecheck
-
       - name: Test frontend
         working-directory: web
         run: npm run test
-
       - name: Audit frontend dependencies
         working-directory: web
         run: npm audit --audit-level=high
-
       - name: Build frontend
         working-directory: web
         run: npm run build
 
+  go-quality-security:
+    name: Go quality and security
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: 1.26.5
-
-      - name: Cache Go modules and build artifacts
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-
-      - name: Download and verify Go modules
+          cache: true
+          cache-dependency-path: go.sum
+      - name: Download and verify modules
         run: |
           go mod download
           go mod verify
-
-      - name: Vet Go packages
+      - name: Require gofmt
+        shell: bash
+        run: test -z "$(gofmt -l .)"
+      - name: Vet packages
         run: go vet ./...
+      - name: Install pinned vulnerability scanner
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+      - name: Scan Go dependencies
+        run: govulncheck ./...
 
-      - name: Test Go packages with race detector
+  go-race-coverage:
+    name: Go race and coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.5
+          cache: true
+          cache-dependency-path: go.sum
+      - name: Test all packages with race detector
         run: go test -race ./...
-
       - name: Enforce domain coverage
         shell: bash
         run: |
@@ -93,14 +106,15 @@ jobs:
           total="$(go tool cover -func=domain-coverage.out | awk '/^total:/ {gsub(/%/, "", $3); print $3}')"
           awk -v total="$total" 'BEGIN { if ((total + 0) < 80) { printf "coverage %.1f%% is below 80%%\n", total; exit 1 } }'
 
-      - name: Scan Go dependencies
-        run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
-          govulncheck ./...
-
+  image-validation:
+    name: Production image validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Validate production image
         uses: docker/build-push-action@v6
         with:

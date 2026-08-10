@@ -159,8 +159,18 @@ func (s *Store) PlaceActivityBet(ctx context.Context, userID, gameID string, sta
 
 // ClaimDailyActivity credits at most one reward per configured local calendar date.
 func (s *Store) ClaimDailyActivity(ctx context.Context, userID, localDate, timezone string, rewardMinor int64, now time.Time) (activity.DailyCheckIn, error) {
+	return s.claimDailyActivity(ctx, userID, localDate, timezone, rewardMinor, rewardMinor, nil, now)
+}
+
+// ClaimDailyActivityRange chooses the inclusive reward exactly once, after the
+// idempotency row check and while holding the write transaction lock.
+func (s *Store) ClaimDailyActivityRange(ctx context.Context, userID, localDate, timezone string, minimumMinor, maximumMinor int64, rng activity.RandomSource, now time.Time) (activity.DailyCheckIn, error) {
+	return s.claimDailyActivity(ctx, userID, localDate, timezone, minimumMinor, maximumMinor, rng, now)
+}
+
+func (s *Store) claimDailyActivity(ctx context.Context, userID, localDate, timezone string, minimumMinor, maximumMinor int64, rng activity.RandomSource, now time.Time) (activity.DailyCheckIn, error) {
 	location, err := time.LoadLocation(timezone)
-	if err != nil || rewardMinor < 0 || strings.TrimSpace(userID) == "" {
+	if err != nil || minimumMinor < 0 || maximumMinor < minimumMinor || maximumMinor-minimumMinor == math.MaxInt64 || strings.TrimSpace(userID) == "" {
 		return activity.DailyCheckIn{}, activity.ErrInvalidInput
 	}
 	if _, err := time.Parse(time.DateOnly, localDate); err != nil || now.In(location).Format(time.DateOnly) != localDate {
@@ -179,6 +189,17 @@ func (s *Store) ClaimDailyActivity(ctx context.Context, userID, localDate, timez
 		return existing, nil
 	} else if !errors.Is(loadErr, ErrNotFound) {
 		return activity.DailyCheckIn{}, loadErr
+	}
+	rewardMinor := minimumMinor
+	if maximumMinor > minimumMinor {
+		if rng == nil {
+			return activity.DailyCheckIn{}, activity.ErrInvalidInput
+		}
+		offset, randomErr := rng.Int63n(maximumMinor - minimumMinor + 1)
+		if randomErr != nil {
+			return activity.DailyCheckIn{}, randomErr
+		}
+		rewardMinor += offset
 	}
 	checkInID, err := ids.New()
 	if err != nil {

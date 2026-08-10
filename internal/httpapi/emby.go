@@ -11,14 +11,14 @@ import (
 )
 
 type embyAccountResponse struct {
-	ID                string    `json:"id"`
-	Username          string    `json:"username"`
-	Status            string    `json:"status"`
-	MaxParentalRating *int32    `json:"maxParentalRating"`
-	LibraryIDs        []string  `json:"libraryIds"`
-	Retryable         bool      `json:"retryable"`
-	ErrorMessage      string    `json:"errorMessage,omitempty"`
-	UpdatedAt         time.Time `json:"updatedAt"`
+	ID                 string    `json:"id"`
+	Username           string    `json:"username"`
+	Status             string    `json:"status"`
+	MaxParentalRating  *int32    `json:"maxParentalRating"`
+	DisabledLibraryIDs []string  `json:"disabledLibraryIds"`
+	Retryable          bool      `json:"retryable"`
+	ErrorMessage       string    `json:"errorMessage,omitempty"`
+	UpdatedAt          time.Time `json:"updatedAt"`
 }
 
 type embyRatingResponse struct {
@@ -39,12 +39,12 @@ func mapEmbyAccount(account emby.Account) embyAccountResponse {
 	if username == "" {
 		username = account.BaseUsername
 	}
-	libraries := account.Preferences.LibraryIDs
+	libraries := account.Preferences.DisabledLibraryIDs
 	if libraries == nil {
 		libraries = []string{}
 	}
 	return embyAccountResponse{ID: account.ID, Username: username, Status: account.Status,
-		MaxParentalRating: account.Preferences.MaxParentalRating, LibraryIDs: libraries,
+		MaxParentalRating: account.Preferences.MaxParentalRating, DisabledLibraryIDs: libraries,
 		Retryable: account.Retryable, ErrorMessage: account.LastError, UpdatedAt: account.UpdatedAt}
 }
 
@@ -100,9 +100,9 @@ func (s *Server) embyAccount(w http.ResponseWriter, r *http.Request) {
 
 func decodeEmbyPreferences(w http.ResponseWriter, r *http.Request, withPassword bool) (emby.Preferences, string, error) {
 	request := struct {
-		Password          string   `json:"password"`
-		MaxParentalRating *int32   `json:"maxParentalRating"`
-		LibraryIDs        []string `json:"libraryIds"`
+		Password           string   `json:"password"`
+		MaxParentalRating  *int32   `json:"maxParentalRating"`
+		DisabledLibraryIDs []string `json:"disabledLibraryIds"`
 	}{}
 	if err := decodeJSON(w, r, &request); err != nil {
 		return emby.Preferences{}, "", err
@@ -110,7 +110,7 @@ func decodeEmbyPreferences(w http.ResponseWriter, r *http.Request, withPassword 
 	if withPassword && request.Password == "" {
 		return emby.Preferences{}, "", emby.ErrInvalidSetup
 	}
-	return emby.Preferences{MaxParentalRating: request.MaxParentalRating, LibraryIDs: request.LibraryIDs}, request.Password, nil
+	return emby.Preferences{MaxParentalRating: request.MaxParentalRating, DisabledLibraryIDs: request.DisabledLibraryIDs}, request.Password, nil
 }
 
 func (s *Server) setupEmby(w http.ResponseWriter, r *http.Request) {

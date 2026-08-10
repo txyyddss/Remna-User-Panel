@@ -15,20 +15,21 @@ import (
 )
 
 type userResponse struct {
-	ID               string     `json:"id"`
-	TelegramID       string     `json:"telegramId"`
-	FirstName        string     `json:"firstName"`
-	LastName         string     `json:"lastName"`
-	TelegramUsername string     `json:"telegramUsername"`
-	Username         *string    `json:"username"`
-	Role             string     `json:"role"`
-	OnboardingState  string     `json:"onboardingState"`
-	GroupJoined      bool       `json:"groupJoined"`
-	ChannelJoined    bool       `json:"channelJoined"`
-	PolicyAcceptedAt *time.Time `json:"policyAcceptedAt"`
-	RecoveryReason   string     `json:"recoveryReason"`
-	CreatedAt        time.Time  `json:"createdAt"`
-	UpdatedAt        time.Time  `json:"updatedAt"`
+	ID                string     `json:"id"`
+	TelegramID        string     `json:"telegramId"`
+	FirstName         string     `json:"firstName"`
+	LastName          string     `json:"lastName"`
+	TelegramUsername  string     `json:"telegramUsername"`
+	Username          *string    `json:"username"`
+	Role              string     `json:"role"`
+	OnboardingState   string     `json:"onboardingState"`
+	GroupJoined       bool       `json:"groupJoined"`
+	ChannelJoined     bool       `json:"channelJoined"`
+	PolicyAcceptedAt  *time.Time `json:"policyAcceptedAt"`
+	AgreementRevision int        `json:"agreementRevision"`
+	RecoveryReason    string     `json:"recoveryReason"`
+	CreatedAt         time.Time  `json:"createdAt"`
+	UpdatedAt         time.Time  `json:"updatedAt"`
 }
 
 func mapUser(user model.User) userResponse {
@@ -36,7 +37,7 @@ func mapUser(user model.User) userResponse {
 		ID: user.ID, TelegramID: strconv.FormatInt(user.TelegramID, 10), FirstName: user.TelegramFirstName,
 		LastName: user.TelegramLastName, TelegramUsername: user.TelegramUsername, Username: user.Username, Role: user.Role,
 		OnboardingState: user.OnboardingState, GroupJoined: user.GroupJoined, ChannelJoined: user.ChannelJoined,
-		PolicyAcceptedAt: user.PolicyAcceptedAt, RecoveryReason: user.RecoveryReason, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt,
+		PolicyAcceptedAt: user.PolicyAcceptedAt, AgreementRevision: user.AgreementRevision, RecoveryReason: user.RecoveryReason, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt,
 	}
 }
 
@@ -124,13 +125,14 @@ func (s *Server) reserveUsername(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) acceptAgreement(w http.ResponseWriter, r *http.Request) {
 	var request struct {
-		Accepted bool `json:"accepted"`
+		Revision     int      `json:"revision"`
+		AgreementIDs []string `json:"agreementIds"`
 	}
-	if err := decodeJSON(w, r, &request); err != nil || !request.Accepted {
-		s.writeError(w, r, http.StatusBadRequest, "AGREEMENT_REQUIRED", "You must accept the agreement to continue.")
+	if err := decodeJSON(w, r, &request); err != nil || request.Revision <= 0 || len(request.AgreementIDs) == 0 {
+		s.writeError(w, r, http.StatusBadRequest, "AGREEMENT_REQUIRED", "Select every current agreement to continue.")
 		return
 	}
-	user, err := s.deps.Accounts.AcceptAgreement(r.Context(), currentUser(r), request.Accepted)
+	user, err := s.deps.Accounts.AcceptAgreementRevision(r.Context(), currentUser(r), request.Revision, request.AgreementIDs)
 	if err != nil {
 		status, code := http.StatusBadGateway, "REMNAWAVE_UNAVAILABLE"
 		if errors.Is(err, accounts.ErrUsernameUnavailable) || errors.Is(err, database.ErrConflict) {
@@ -213,6 +215,34 @@ func (s *Server) purchase(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, purchase)
+}
+
+func (s *Server) purchaseQuote(w http.ResponseWriter, r *http.Request) {
+	user := currentUser(r)
+	if !s.requireOnboarded(w, r, user) {
+		return
+	}
+	var request struct {
+		ComboID              string   `json:"comboId"`
+		AddonSquadProductIDs []string `json:"addonSquadProductIds"`
+		CouponGrantID        string   `json:"couponGrantId"`
+	}
+	if err := decodeJSON(w, r, &request); err != nil || request.ComboID == "" {
+		s.writeError(w, r, http.StatusBadRequest, "INVALID_REQUEST", "Select a combo to continue.")
+		return
+	}
+	quote, err := s.deps.Catalog.Quote(r.Context(), user, request.ComboID, request.AddonSquadProductIDs, request.CouponGrantID)
+	if err != nil {
+		status := http.StatusConflict
+		code := "QUOTE_FAILED"
+		if errors.Is(err, database.ErrNotFound) {
+			status = http.StatusNotFound
+			code = "CATALOG_ITEM_NOT_FOUND"
+		}
+		s.writeError(w, r, status, code, "The selected price or entitlement is no longer available.")
+		return
+	}
+	writeJSON(w, http.StatusOK, quote)
 }
 
 func (s *Server) purchases(w http.ResponseWriter, r *http.Request) {

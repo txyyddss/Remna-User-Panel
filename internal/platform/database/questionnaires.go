@@ -411,7 +411,7 @@ func (s *Store) QueueQuestionnaireSettlement(ctx context.Context, importID strin
 	if err != nil {
 		return questionnaires.ImportPreview{}, err
 	}
-	if err := insertOutboxTx(ctx, tx, "questionnaire_settlement", importID, string(payload), now, now); err != nil {
+	if err := insertOutboxTx(ctx, tx, "questionnaire_settlement", string(payload), now, now); err != nil {
 		return questionnaires.ImportPreview{}, err
 	}
 	if err := tx.Commit(); err != nil {

@@ -4,6 +4,8 @@
 
 Questionnaires owns the single-active-questionnaire lifecycle, durable participant validation codes, bounded CSV ingestion, pre-settlement analysis, and idempotent background awards. Members retrieve the active questionnaire and history, then create or retrieve participation at `/api/v1/questionnaires/{id}/participation`. Administrators manage definitions and activate one questionnaire at a time under `/api/v1/admin/questionnaires`.
 
+Closing remains a distinct `POST /api/v1/admin/questionnaires/{id}/close` transition. Hard deletion uses `DELETE` and transactionally removes imports, participants, settlement artifacts, feature-linked ledger rows, and removable queued/failed/done jobs. It never reverses balances or already-delivered rewards, preserves the administrative deletion audit, and returns `409` while associated work is processing.
+
 External form URLs must use HTTPS and an allowlisted Google Forms or Microsoft Forms host. Each member/questionnaire pair receives one cryptographically generated code. The code is stored durably and remains retrievable; retries never rotate it.
 
 ## CSV import state machine
@@ -22,6 +24,7 @@ Only one questionnaire can be active. Activation retires the prior active defini
 - Browser-supplied reward amounts, participant IDs, or match counts are ignored.
 - Malformed encodings, oversized multipart bodies, duplicate headers, invalid delimiter inference, and unknown code columns fail before settlement.
 - A crash after queuing or during a settlement batch is recoverable through durable state and idempotent award references.
+- Deletion is all-or-nothing; a processing settlement prevents any partial cleanup.
 
 ## Verification
 

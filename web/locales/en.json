@@ -45,7 +45,9 @@
     "formatInvalid": "Only 3-9 lowercase English letters are allowed.",
     "usernameUnavailable": "That username is already in use. Try another one.",
     "somethingWrong": "Something went wrong. Please try again.",
-    "joinBoth": "Join both spaces, then check again."
+    "joinBoth": "Join both spaces, then check again.",
+    "finishing": "Creating your account",
+    "finish": "Finish setup"
   },
   "common": {
     "refresh": "Refresh",
@@ -66,6 +68,7 @@
     "open": "Open",
     "revoke": "Revoke",
     "copied": "Copied",
+    "skip": "Skip",
     "error": "Something went wrong. Please try again."
   },
   "activity": {
@@ -84,6 +87,7 @@
     "dailyCheckIn": "Daily check-in",
     "todayComplete": "Today is complete.",
     "claimToday": "Claim {amount} TXB once today.",
+    "claimRangeToday": "Claim a random {minimum} to {maximum} TXB once today.",
     "resetsAt": "Resets at midnight in {timezone}.",
     "checkedIn": "Checked in",
     "checkingIn": "Checking in",
@@ -104,7 +108,13 @@
     "drawFor": "Draw for {amount} TXB",
     "noDraws": "No lucky draws",
     "publishDraw": "An administrator can publish a draw when it is ready.",
-    "weightedPrize": "One weighted prize is selected and recorded."
+    "weightedPrize": "One weighted prize is selected and recorded.",
+    "balanceAfter": "Balance after result",
+    "result": {
+      "win": { "title": "You won" },
+      "loss": { "title": "Result recorded" },
+      "complete": { "title": "Complete" }
+    }
   },
   "adminActivity": {
     "dailyCheckIn": "Daily check-in",
@@ -148,7 +158,22 @@
     "optionalSquadsHint": "Add regions to the same traffic budget and subscription term.",
     "included": "Included",
     "noSquads": "No optional squads today",
-    "noSquadsHint": "Your combo still includes its standard regions."
+    "noSquadsHint": "Your combo still includes its standard regions.",
+    "effectiveDate": "Effective date",
+    "queuedEffectiveHint": "This selection begins when your current active term ends.",
+    "immediateEffectiveHint": "This selection begins immediately after confirmation.",
+    "serverTotal": "Server total",
+    "quoting": "Calculating quote",
+    "confirming": "Confirming with server",
+    "confirmPurchase": "Confirm purchase",
+    "checkoutDescription": "Review the live price and effective date before you confirm.",
+    "closeCheckout": "Close purchase review",
+    "termSummary": "{days} days · {reset} reset",
+    "coupon": "Coupon",
+    "noCoupon": "No coupon",
+    "couponHint": "Eligibility and discount are rechecked by the server.",
+    "currentBalance": "Current balance",
+    "addBalance": "Add balance"
   },
   "dashboard": {
     "greeting": "Good to see you, {name}",
@@ -179,6 +204,70 @@
     "acrossSubscriptions": "across all subscriptions",
     "topNodes": "Top nodes"
   },
+  "emby": {
+    "disabledLibraries": "Disabled libraries",
+    "disabledLibrariesHint": "All libraries are enabled by default. Check only the libraries this account must not access.",
+    "eyebrow": "Shared media", "title": "Your Emby access.", "copy": "Choose libraries and age rating while account safety controls remain locked.", "notConfigured": "Emby is not configured", "notConfiguredHint": "An administrator must connect Emby before setup can start.", "unavailable": "Emby is unavailable.", "usernameHint": "Your Emby sign-in name.", "preferences": "Viewing preferences", "preferencesHint": "Restrictions are reapplied by the server and verified against the full remote policy on every update.", "rating": "Maximum parental rating", "noRating": "No rating ceiling", "savePreferences": "Save preferences", "changePassword": "Change password", "changePasswordHint": "The new password is sent directly to Emby and not retained.", "newPassword": "New password", "changingPassword": "Changing password", "createAccount": "Create your Emby account", "setupCost": "Setup costs {amount}. Your password is erased after provisioning.", "initialPassword": "Initial password", "passwordHint": "At least 8 characters. It never appears in logs or responses.", "safetyControls": "Remote control, shared-device control, transcoding, conversion, sync, and downloads stay disabled.", "startingSetup": "Starting setup", "payAndCreate": "Pay {amount} and create account"
+  },
+  "adminNav": {
+    "eyebrow": "Control room", "title": "TX administration.", "copy": "Configuration and account changes are validated and audited.", "setupAccount": "Set up user account", "sections": "Admin sections", "section": "Section",
+    "commerce": "Commerce", "community": "Community", "accounts": "Accounts", "system": "System", "catalog": "Catalog", "coupons": "Coupons", "payments": "Payments", "activity": "Activity", "questionnaires": "Questionnaires", "onboarding": "Onboarding", "entitlements": "Entitlements", "settings": "Settings", "backups": "Backups and jobs", "database": "Database", "audit": "Audit"
+  },
+  "adminOnboarding": {
+    "title": "Onboarding content", "copy": "Save complete localized drafts, then publish them as one validated revision.", "bundle": "Bundle", "welcome": "Welcome messages", "agreements": "Agreements", "arrayRequired": "Each locale must be a JSON array.", "saved": "Draft saved.", "published": "Draft published.", "draftRevision": "Draft revision {revision}", "publishedRevision": "Published revision {revision}", "welcomeHint": "Locale arrays must have matching IDs and order. Display timing is computed when content is read.", "agreementHint": "Locale arrays must have matching IDs, icons, and order. Publishing a change requires renewed consent.", "saveDraft": "Save draft", "publishing": "Publishing", "publish": "Publish"
+  },
+  "markdown": {
+    "text": "text", "toolbar": "Safe text styling", "color": "Text color", "size": "Text size", "default": "Default", "muted": "Muted", "accent": "Accent", "success": "Success", "warning": "Warning", "danger": "Danger", "small": "Small", "base": "Base", "large": "Large", "extraLarge": "Extra large", "apply": "Apply style", "preview": "Live preview", "descriptionPreview": "Description preview"
+  },
+  "adminSquad": {
+    "loadError": "Node assignments could not be loaded.", "saveError": "Node assignments could not be verified and saved.", "edit": "Edit {name}", "identityHint": "The live Remnawave squad remains the source of identity and node data.", "close": "Close squad editor", "description": "Description", "descriptionPlaceholder": "Short, useful context for this optional squad", "price": "Price", "visible": "Visible in catalog", "visibleHint": "Hidden squads remain available to existing purchases.", "nodes": "Accessible nodes", "nodeHint": "Selections are converted to active inbound UUIDs and verified against Remnawave.", "verifying": "Verifying", "saveNodes": "Save nodes", "nodeTraffic": "{country} · {multiplier}× traffic", "isoUnavailable": "ISO unavailable", "noNodes": "No upstream nodes are available.", "saveSquad": "Save squad"
+  },
+  "adminStatistics": {
+    "error": "Statistics could not be loaded.", "serverCalculated": "Server-calculated statistics", "close": "Close statistics", "from": "From", "to": "To", "grouping": "Grouping", "daily": "Daily", "weekly": "Weekly", "refresh": "Refresh", "participation": "Participation", "uniqueUsers": "Unique users", "input": "Input", "output": "Output", "net": "Net", "discountAddons": "Discounts · add-ons {amount}", "chartLabel": "Statistics series", "caption": "Statistics by {grouping} period", "period": "Period", "count": "Count", "unique": "Unique", "inputTxb": "Input TXB", "outputTxb": "Output TXB", "netTxb": "Net TXB", "loading": "Loading statistics"
+  },
+  "adminDatabase": {
+    "title": "Database editor", "copy": "Typed records only. Raw SQL and internal SQLite tables are unavailable.", "insertRow": "Insert row", "bypassTitle": "Domain hooks are bypassed", "bypassCopy": "Use normal admin actions whenever possible. Every direct change requires a reason, diff review, typed confirmation, and rescue backup.", "appliedTitle": "Reviewed change applied", "appliedCopy": "Rescue backup {id} was created before the mutation.", "tables": "Application tables", "highRisk": "High risk", "rows": "Table rows", "searchPlaceholder": "Search non-secret columns", "search": "Search table rows", "addFilter": "Add filter", "filterColumn": "Filter column", "filterOperator": "Filter operator", "filterValue": "Filter value", "value": "Value", "removeFilter": "Remove filter", "actions": "Actions", "editRow": "Edit row", "deleteRow": "Delete row", "noRows": "No rows", "empty": "This table is empty.", "loadMore": "Load more", "nullValue": "NULL", "blobValue": "[BLOB]", "maskedValue": "MASKED",
+    "operators": { "eq": "Equals", "ne": "Not equal", "contains": "Contains", "startsWith": "Starts with", "gt": "Greater than", "gte": "At least", "lt": "Less than", "lte": "At most", "isNull": "Is null", "notNull": "Is not null" }
+  },
+  "adminBackups": {
+    "title": "Backups", "copy": "Verified SQLite snapshots are retained for seven days.", "create": "Create backup", "deleteFailed": "Backup deletion failed.", "jobDeleteFailed": "Job deletion failed.", "downloadFailed": "Backup download failed.", "restoreFailed": "Restore staging failed.", "backupName": "Backup {id}", "restoreComplete": "Restore complete", "restoreFailedTitle": "Restore failed", "restoreStaged": "Restore staged", "operationStatus": "Operation {id} is {status}.", "reauthenticate": "Reauthenticate if your previous session no longer exists.", "reconnect": "The app will reconnect after restart.", "verified": "Verified", "download": "Download", "restore": "Restore", "delete": "Delete", "none": "No backups yet", "noneHint": "The daily scheduler will create the first verified copy.", "deleteTitle": "Delete {name}?", "backup": "backup", "deleteDescription": "The verified file and its metadata are removed together. Deletion is blocked while a restore is staging or restarting.", "deleteBackup": "Delete backup", "jobs": "Synchronization jobs", "jobsHint": "Outbox retries and scheduled entitlement changes.", "attempts": "{count} attempts", "retry": "Retry", "deleteJobLabel": "Delete {kind} job", "noJobs": "No synchronization jobs", "noJobsHint": "Scheduled work and retries will appear here.", "deleteJobTitle": "Delete synchronization job?", "deleteJobDescription": "Pending, completed, and failed work may be removed. A currently processing job remains protected.", "deleteJob": "Delete job"
+  },
+  "adminActivityManagement": {
+    "title": "Activity", "copy": "Set check-in timing, transparent game odds, and weighted draws. Reward amounts are managed in Settings.", "chooseActivity": "Choose an activity.", "deleteFailed": "The activity could not be deleted.", "loadFailed": "Activity configuration could not be loaded.", "settingsFailed": "Check-in settings could not be saved.", "gameSaveFailed": "The game could not be saved.", "drawSaveFailed": "The lucky draw could not be saved.", "games": "Betting games", "gamesHint": "Members see odds, limits, and total return before staking.", "newGame": "New game", "editGame": "Edit game", "name": "Name", "icon": "Icon", "description": "Description", "winChance": "Win chance, percent", "returnMultiplier": "Total return multiplier", "minimumStake": "Minimum stake", "maximumStake": "Maximum stake", "available": "Available to members", "availableHint": "Disabled games remain in result history.", "saveGame": "Save game", "loadingGames": "Loading games", "gameSummary": "{chance}% win · {multiplier}× return · {minimum} to {maximum} TXB", "statisticsFor": "Statistics for {name}", "statisticsTitle": "{name} statistics", "editNamed": "Edit {name}", "deleteNamed": "Delete {name}", "noGames": "No games", "noGamesHint": "Create a game with explicit odds.", "draws": "Lucky draws", "drawsHint": "Configure a fee and a complete weighted prize table.", "newDraw": "New draw", "drawSummary": "{fee} TXB fee · {prizes} prizes · {status}", "availableStatus": "Available", "disabledStatus": "Disabled", "noDraws": "No lucky draws", "noDrawsHint": "Add a weighted draw when prizes are ready.", "deleteTitle": "Delete {name}?", "activity": "activity", "deleteDescription": "Configuration, participation records, linked ledger rows, and unfinished background work are deleted. Settled balances and granted outcomes are not reversed.", "deletePermanently": "Delete permanently",
+    "icons": { "dice": "Dice", "coin": "Coin", "cards": "Cards", "target": "Target", "trophy": "Trophy", "lightning": "Lightning", "sparkle": "Sparkle" }
+  },
+  "adminQuestionnaires": {
+    "title": "Questionnaires", "copy": "One active form, one validation code, one reward per participant.", "new": "New questionnaire", "loadFailed": "Questionnaires could not be loaded.", "saveFailed": "The questionnaire could not be saved.", "activateFailed": "Activation failed.", "closeConfirm": "Close {name}? New participation will stop.", "closeFailed": "The questionnaire could not be closed.", "deleteFailed": "The questionnaire could not be deleted.", "edit": "Edit questionnaire", "draft": "Draft questionnaire", "formTitle": "Title", "formUrl": "HTTPS Google or Microsoft Forms URL", "description": "Description, Markdown", "reward": "Reward", "saveDraft": "Save draft", "loading": "Loading questionnaires", "summary": "{status} · {count} participants · {reward} TXB", "activate": "Activate", "importCsv": "Import CSV", "editNamed": "Edit {name}", "deleteNamed": "Delete {name}", "none": "No questionnaires", "noneHint": "Create a draft to begin.", "deleteTitle": "Delete {name}?", "questionnaire": "questionnaire", "deleteDescription": "Imports, participants, feature-linked ledger rows, and non-processing jobs are deleted. Settled balances and granted rewards are not reversed.", "deletePermanently": "Delete permanently"
+  },
+  "adminLuckyDraw": {
+    "edit": "Edit lucky draw", "new": "New lucky draw", "copy": "Weights are relative integers. The result is selected securely after balance checks.", "name": "Name", "fee": "Fee per draw", "description": "Description", "available": "Available to members", "availableHint": "Disabled draws remain in result history.", "weightedPrizes": "Weighted prizes", "prizeHint": "Negative TXB deltas are allowed and included in the pre-draw balance check.", "addPrize": "Add prize", "prizeName": "Prize name", "weight": "Weight", "stock": "Remaining stock", "unlimited": "Unlimited", "reward": "Reward", "noPrize": "No prize", "txbChange": "TXB balance change", "couponGrant": "Coupon grant", "extension": "Subscription extension", "signedChange": "Signed TXB change", "signedPlaceholder": "5.00 or -1.00", "coupon": "Coupon", "selectCoupon": "Select coupon", "extensionDays": "Extension days", "removePrize": "Remove {name}", "prizeNumber": "prize {index}", "save": "Save lucky draw", "nameRequired": "Enter a lucky draw name.", "feePrizeRequired": "Enter a valid fee and at least one prize.", "prizeInvalid": "Prize {index} needs a name, positive integer weight, and complete reward.", "stockInvalid": "Prize {index} stock must be empty or a non-negative integer."
+  },
+  "adminCatalog": {
+    "title": "Catalog", "copy": "Manage live combo terms and sparse overrides for upstream Remnawave squads.", "chooseRecord": "Choose a catalog record.", "newCombo": "New combo", "comboSummary": "{traffic} for {days} days", "available": "Available", "paused": "Paused", "hidden": "Hidden", "statisticsFor": "Statistics for {name}", "statisticsTitle": "{name} statistics", "editNamed": "Edit {name}", "hideNamed": "Hide {name}", "noCombos": "No combos", "noCombosHint": "Create the first plan to open the catalog.", "squads": "Internal squads", "squadsHint": "Identity comes from live Remnawave squads; only non-default display and price values are stored locally.", "refreshSquads": "Refresh squads", "noSquads": "No upstream squads", "noSquadsHint": "Refresh from Remnawave to configure optional access.", "hideTitle": "Hide this combo?", "hideDescription": "The combo is hidden from new checkout. Existing and historical purchases keep their live reference, so later edits still affect them.", "hideCombo": "Hide combo"
+  },
+  "adminCatalogEditor": {
+    "edit": "Edit {name}", "new": "New combo", "close": "Close combo editor", "name": "Name", "description": "Description", "descriptionPlaceholder": "Describe the combo", "price": "Price", "validityDays": "Validity days", "trafficLimit": "Traffic limit, bytes", "resetCadence": "Reset cadence", "rolloverMinimum": "Minimum remaining traffic, percent", "rolloverMaximum": "Maximum rollover", "includedSquads": "Included live squads", "noSquads": "Refresh Remnawave squads before assigning them.", "available": "Available to users", "liveTermsHint": "Hiding blocks new checkout. Changes to this live record affect active, queued, and historical purchases.", "save": "Save combo"
+  },
+  "adminCoupons": {
+    "title": "Coupons", "copy": "One explicit coupon grant per purchase. Discounts never stack.", "new": "New coupon", "loadFailed": "Coupons could not be loaded.", "saveFailed": "The coupon could not be saved.", "deactivateConfirm": "Deactivate coupon {code}? Existing purchase grants will stop being eligible.", "deactivateFailed": "The coupon could not be deactivated.", "edit": "Edit coupon", "definition": "Coupon definition", "code": "Code", "name": "Name", "kind": "Kind", "oneTime": "One-time discount", "recurring": "Recurring discount", "balanceAdd": "Balance adding", "balanceMultiply": "Balance multiplying", "financialHint": "Create a new definition to change the financial effect.", "discountMode": "Discount mode", "percent": "Percent", "fixed": "Fixed TXB", "discountPercent": "Discount, percent", "balanceMultiplier": "Balance multiplier", "txbValue": "TXB value", "cap": "Optional percentage cap", "capHint": "Leave blank for no TXB cap.", "comboIds": "Eligible combo IDs, comma separated", "squadIds": "Eligible squad IDs, comma separated", "expires": "Expires after, optional", "globalLimit": "Global use limit, blank for unlimited", "userLimit": "Per-user use limit, blank for unlimited", "save": "Save coupon", "create": "Create coupon", "loading": "Loading coupons", "summary": "{kind} · {status} · {uses} uses · {limit} global limit", "unlimited": "unlimited", "editNamed": "Edit {code}", "deactivate": "Deactivate", "none": "No coupons", "noneHint": "Create a definition or grant one as a draw prize."
+  },
+  "questionnaireImport": {
+    "settle": "Settle {name}", "copy": "Upload, map, review, then queue rewards.", "close": "Close import", "running": "Settlement running", "failed": "Settlement failed", "queued": "Settlement queued", "durable": "Import {id} is durable. This drawer checks its status automatically.", "complete": "Settlement complete", "completeCopy": "{count} participants received {reward} TXB each. Duplicate and previously rewarded codes were not credited again.", "csv": "CSV response export", "csvHint": "UTF-8, up to 5 MiB, 50,000 rows, and 100 columns.", "uploading": "Uploading", "choose": "Choose CSV", "rows": "{count} rows", "columns": "{count} columns", "delimiter": "{value} delimiter", "codeColumn": "Validation-code column", "matched": "matched", "duplicate": "duplicate", "unknown": "unknown", "malformed": "malformed", "rewarded": "already rewarded", "startOver": "Start over", "analyzing": "Analyzing", "analyze": "Analyze codes", "queueing": "Queueing", "confirm": "Confirm settlement"
+  },
+  "databaseRecord": {
+    "title": "{action} {table} row", "actions": { "insert": "Insert", "update": "Edit", "delete": "Delete" }, "copy": "Direct edits bypass domain synchronization hooks.", "close": "Close record editor", "warning": "Every direct mutation is high risk and creates a rescue backup.", "recordKey": "Record key", "deleteHint": "The reviewed diff must show the full row removal before apply.", "base64": "Base64-encoded bytes", "masked": "Masked, use settings to replace", "storeNull": "Store NULL", "reason": "Reason", "reasonPlaceholder": "Why is this direct edit necessary?", "review": "Review exact changes", "to": "to", "backupRequired": "Rescue backup required before apply.", "typeConfirmation": "Type {confirmation}", "changeDraft": "Change draft", "working": "Working", "apply": "Apply reviewed change", "reviewChange": "Review change", "notPresent": "Not present"
+  },
+  "adminReason": { "reason": "Reason", "placeholder": "Required for the audit trail", "working": "Working" },
+  "adminSettings": {
+    "title": "System settings", "copy": "Secrets are write-only and stay masked after save.", "save": "Save settings", "saved": "Settings saved", "savedHint": "New values will be used by the next integration request.", "validated": "Applied after validation.", "keepSecret": "Leave blank to keep current value", "secretHint": "Stored encrypted and never returned in plaintext.",
+    "categories": { "telegram": "Telegram", "remnawave": "Remnawave", "rates": "Exchange rates", "payments": "Payments", "emby": "Emby", "activity": "Activity", "application": "Application" },
+    "settingLabels": { "telegram_group_chat_id": "Telegram group chat ID", "telegram_channel_chat_id": "Telegram channel chat ID", "telegram_webhook_secret": "Telegram webhook secret", "remnawave_base_url": "Remnawave base URL", "remnawave_api_token": "Remnawave API token", "billing_rate_txb_per_cny": "TXB per CNY", "billing_rate_txb_per_usd": "TXB per USD", "billing_rate_txb_per_xtr": "TXB per Telegram Star", "billing_ezpay_enabled": "Enable EZPay", "billing_ezpay_base_url": "EZPay base URL", "billing_ezpay_merchant_id": "EZPay merchant ID", "billing_ezpay_key": "EZPay key", "billing_ezpay_methods": "EZPay methods", "billing_bepusdt_enabled": "Enable BEPUSDT", "billing_bepusdt_base_url": "BEPUSDT base URL", "billing_bepusdt_api_token": "BEPUSDT API token", "billing_bepusdt_methods": "BEPUSDT methods", "billing_bepusdt_ack": "BEPUSDT acknowledgement", "billing_stars_enabled": "Enable Telegram Stars", "emby_base_url": "Emby base URL", "emby_api_token": "Emby API token", "emby_setup_price_txb": "Emby setup price", "activity_timezone": "Activity timezone", "activity_daily_reward_min_txb": "Minimum daily reward", "activity_daily_reward_max_txb": "Maximum daily reward", "activity_group_message_threshold": "Group-message threshold", "activity_group_message_reward_txb": "Group-message reward" }
+  },
+  "adminAudit": { "title": "Audit trail", "copy": "Append-only records for sensitive administrative actions.", "filter": "Filter action", "filterLabel": "Filter by action", "system": "System", "none": "No audit events", "noneHint": "Changes appear here as administrators use the console." },
+  "adminPayments": { "title": "Payments", "copy": "Provider events, credits, and immutable reversals.", "filter": "Filter payments", "all": "All statuses", "creating": "Creating", "pending": "Pending", "paid": "Paid", "refunded": "Refunded", "failed": "Failed", "expired": "Expired", "paymentSummary": "User {user} / {date} / {amount} credit", "refund": "Refund", "none": "No payments in this view", "noneHint": "Provider orders will appear after users start a top-up.", "refundRecords": "Refund records", "refundRecordsHint": "Completed reversals are immutable and retain the operator reason.", "refundSummary": "Payment {payment} / {date} / Actor {actor}", "completed": "completed", "noRefunds": "No refunds", "noRefundsHint": "Immutable reversal records will remain visible here.", "refundTitle": "Refund this payment?", "refundDescription": "The TXB credit will be reversed. Entitlements may be cancelled if the account becomes negative.", "issueRefund": "Issue refund" },
+  "adminEntitlements": { "title": "Entitlements", "copy": "Review current and historical access, including the owning account.", "filter": "Filter entitlements", "all": "All statuses", "activating": "Activating", "expired": "Expired", "cancelled": "Cancelled", "summary": "User {user} / {from} to {to}", "none": "No entitlements in this view", "noneHint": "Purchases appear here once users select a combo.", "cancelTitle": "Cancel this entitlement?", "cancelDescription": "The charged TXB amount will be credited back. Active access will be revoked through a synchronization job.", "cancelEntitlement": "Cancel entitlement" },
+  "restoreBackup": { "title": "Stage database restore?", "copy": "A rescue backup is created first. The service then restarts and reconnects on the selected verified snapshot.", "staging": "Staging restore", "confirm": "Create rescue backup and restore" },
+  "adminSection": { "unavailable": "This section is unavailable.", "retry": "Retry" },
   "errors": {
     "activityUnavailable": "Activity is unavailable.",
     "activityFailed": "The activity could not be completed.",

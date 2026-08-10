@@ -5,6 +5,7 @@ import { PhProhibit, PhStack } from '@phosphor-icons/vue'
 import type { AdminEntitlement } from '@/api/types'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import { useAdminSection } from '@/composables/useAdminSection'
+import { useI18n } from '@/i18n'
 import { formatDate, formatMoney } from '@/utils/format'
 import AdminReasonDialog from './AdminReasonDialog.vue'
 import AdminSectionState from './AdminSectionState.vue'
@@ -13,6 +14,7 @@ const entitlements = useAdminSection<AdminEntitlement>('entitlements')
 const selected = shallowRef<AdminEntitlement | null>(null)
 const reason = shallowRef('')
 const statusFilter = shallowRef<'all' | AdminEntitlement['status']>('all')
+const { t } = useI18n()
 
 const filtered = computed(() => statusFilter.value === 'all'
   ? entitlements.items.value
@@ -51,17 +53,17 @@ function setCancelOpen(open: boolean): void {
   <section class="admin-panel">
     <div class="admin-panel__heading">
       <div>
-        <h2>Entitlements</h2>
-        <p>Review current and historical access, including the owning account.</p>
+        <h2>{{ t('adminEntitlements.title') }}</h2>
+        <p>{{ t('adminEntitlements.copy') }}</p>
       </div>
-      <select v-model="statusFilter" class="compact-select" aria-label="Filter entitlements">
-        <option value="all">All statuses</option>
-        <option value="activating">Activating</option>
-        <option value="active">Active</option>
-        <option value="queued">Queued</option>
-        <option value="expired">Expired</option>
-        <option value="cancelled">Cancelled</option>
-        <option value="failed">Failed</option>
+      <select v-model="statusFilter" class="compact-select" :aria-label="t('adminEntitlements.filter')">
+        <option value="all">{{ t('adminEntitlements.all') }}</option>
+        <option value="activating">{{ t('adminEntitlements.activating') }}</option>
+        <option value="active">{{ t('common.active') }}</option>
+        <option value="queued">{{ t('common.queued') }}</option>
+        <option value="expired">{{ t('adminEntitlements.expired') }}</option>
+        <option value="cancelled">{{ t('adminEntitlements.cancelled') }}</option>
+        <option value="failed">{{ t('adminPayments.failed') }}</option>
       </select>
     </div>
 
@@ -71,7 +73,7 @@ function setCancelOpen(open: boolean): void {
           <span class="feature-icon feature-icon--small"><PhStack :size="19" /></span>
           <div>
             <strong>{{ entitlement.comboName }}</strong>
-            <small>User {{ entitlement.userId }} / {{ formatDate(entitlement.validFrom) }} to {{ formatDate(entitlement.validUntil) }}</small>
+            <small>{{ t('adminEntitlements.summary', { user: entitlement.userId, from: formatDate(entitlement.validFrom), to: formatDate(entitlement.validUntil) }) }}</small>
           </div>
           <strong>{{ formatMoney(entitlement.price) }}</strong>
           <StatusBadge :tone="tone(entitlement.status)" :label="entitlement.status" />
@@ -81,11 +83,11 @@ function setCancelOpen(open: boolean): void {
             type="button"
             @click="selected = entitlement"
           >
-            <PhProhibit :size="17" /> Cancel
+            <PhProhibit :size="17" /> {{ t('common.cancel') }}
           </button>
         </article>
         <div v-if="!filtered.length" class="empty-inline">
-          <div><h3>No entitlements in this view</h3><p>Purchases appear here once users select a combo.</p></div>
+          <div><h3>{{ t('adminEntitlements.none') }}</h3><p>{{ t('adminEntitlements.noneHint') }}</p></div>
         </div>
       </div>
     </AdminSectionState>
@@ -93,9 +95,9 @@ function setCancelOpen(open: boolean): void {
     <AdminReasonDialog
       :open="selected !== null"
       v-model:reason="reason"
-      title="Cancel this entitlement?"
-      description="The snapshotted TXB price will be credited back. Active access will be revoked through a synchronization job."
-      confirm-label="Cancel entitlement"
+      :title="t('adminEntitlements.cancelTitle')"
+      :description="t('adminEntitlements.cancelDescription')"
+      :confirm-label="t('adminEntitlements.cancelEntitlement')"
       :busy="entitlements.busy.value"
       danger
       @update:open="setCancelOpen"

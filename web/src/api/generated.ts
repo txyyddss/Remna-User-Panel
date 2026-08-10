@@ -55,9 +55,10 @@ export interface paths {
         put?: never;
         /**
          * Create identity-bound group and channel join-request links
-         * @description Creates or replaces 30-minute join-request links for the authenticated
-         *     Telegram identity. Only that identity may be approved. Links are revoked
-         *     after approval or replacement.
+         * @description Creates 30-minute join-request links whose names contain the Telegram
+         *     user ID and a 96-bit HMAC over user, chat, and expiry. No invite is
+         *     persisted. Only the signed identity may be approved and the link is
+         *     revoked immediately after approval.
          */
         post: operations["createOnboardingInvites"];
         delete?: never;
@@ -130,6 +131,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/onboarding/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get localized published welcome and agreement content */
+        get: operations["getPublishedOnboardingContent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dashboard": {
         parameters: {
             query?: never;
@@ -161,6 +179,26 @@ export interface paths {
         get: operations["getCatalog"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchases/quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Calculate a non-mutating authoritative purchase quote
+         * @description Revalidates the live combo, coupon, add-ons, active term, and upstream squad identities without debiting balance.
+         */
+        post: operations["quotePurchase"];
         delete?: never;
         options?: never;
         head?: never;
@@ -583,6 +621,24 @@ export interface paths {
         /** Replace a betting-game definition */
         put: operations["updateAdminActivityGame"];
         post?: never;
+        /** Hard-delete a betting game and feature-linked records */
+        delete: operations["deleteAdminActivityGame"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/activity-games/{id}/statistics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get participation, stake, payout, house-net, and win/loss statistics */
+        get: operations["getAdminActivityGameStatistics"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -617,6 +673,24 @@ export interface paths {
         get?: never;
         /** Replace a lucky draw and its typed rewards */
         put: operations["updateAdminLuckyDraw"];
+        post?: never;
+        /** Hard-delete a lucky draw and feature-linked records */
+        delete: operations["deleteAdminLuckyDraw"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/lucky-draw/{id}/statistics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get participation, fee, reward, house-net, and prize-distribution statistics */
+        get: operations["getAdminLuckyDrawStatistics"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -689,8 +763,25 @@ export interface paths {
         /** Partially replace a questionnaire definition */
         put: operations["updateAdminQuestionnaire"];
         post?: never;
+        /** Hard-delete a questionnaire and feature-linked records */
+        delete: operations["deleteAdminQuestionnaire"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/questionnaires/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
         /** Close a questionnaire without deleting participants */
-        delete: operations["closeAdminQuestionnaire"];
+        post: operations["closeAdminQuestionnaire"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -886,16 +977,33 @@ export interface paths {
         };
         get?: never;
         /**
-         * Replace a combo's future-sale definition
-         * @description Existing purchases retain their stored catalog snapshot.
+         * Replace a live combo definition
+         * @description The stable combo ID remains authoritative for active, queued, and historical purchases; affected users are queued for deduplicated synchronization.
          */
         put: operations["updateAdminCombo"];
         post?: never;
         /**
          * Archive a combo from future sales
-         * @description This is a soft archive. Historical purchases and audit records remain intact.
+         * @description Combos referenced by purchases are always hidden rather than hard-deleted.
          */
         delete: operations["archiveAdminCombo"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/combos/{id}/statistics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Aggregate combo purchase statistics */
+        get: operations["getAdminComboStatistics"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -949,6 +1057,41 @@ export interface paths {
         get?: never;
         /** Set a squad product's local merchandising fields */
         put: operations["updateAdminSquadProduct"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/squad-products/{id}/nodes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List live Remnawave nodes and actual squad accessibility */
+        get: operations["getAdminSquadNodes"];
+        /** Replace squad node selection through active inbound unions */
+        put: operations["updateAdminSquadNodes"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/squad-products/{id}/statistics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Aggregate included-versus-add-on squad usage */
+        get: operations["getAdminSquadStatistics"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1141,6 +1284,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/database/tables/{table}/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Search and filter allowlisted typed table rows
+         * @description Supports broad non-secret text search and at most five schema-allowlisted, bound predicates. Continuation cursors include the exact query fingerprint.
+         */
+        post: operations["queryAdminDatabaseRows"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/database/mutations/review": {
         parameters: {
             query?: never;
@@ -1205,6 +1368,26 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/backups/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a contained backup file and metadata consistently
+         * @description Refuses deletion while any restore is staging or restarting and verifies the resolved regular file remains inside the configured backup directory.
+         */
+        delete: operations["deleteAdminBackup"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1275,6 +1458,74 @@ export interface paths {
         put?: never;
         /** Make a failed retryable job available now */
         post: operations["retryAdminJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/jobs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a non-processing synchronization job */
+        delete: operations["deleteAdminJob"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/onboarding/content/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get draft and published localized onboarding bundles */
+        get: operations["getAdminOnboardingBundle"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/onboarding/content/{kind}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save a complete English and Simplified Chinese draft */
+        put: operations["saveAdminOnboardingDraft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/onboarding/content/{kind}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish the current validated draft */
+        post: operations["publishAdminOnboarding"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1504,6 +1755,7 @@ export interface components {
             channelJoined: boolean;
             /** Format: date-time */
             policyAcceptedAt: string | null;
+            agreementRevision: number;
             /**
              * @description Non-empty only while confirmed linked-user recovery onboarding is required.
              * @enum {string}
@@ -1536,8 +1788,47 @@ export interface components {
             username: string;
         };
         AgreementRequest: {
-            /** @constant */
-            accepted: true;
+            revision: number;
+            agreementIds: string[];
+        };
+        WelcomeMessage: {
+            id: string;
+            text: string;
+            readonly durationMs?: number;
+        };
+        OnboardingAgreement: {
+            id: string;
+            /** @enum {string} */
+            icon: "link-break" | "shield-check" | "users-three" | "warning" | "lock-key" | "heart" | "scales";
+            title: string;
+            body: string;
+        };
+        LocalizedOnboardingContent: {
+            en: (components["schemas"]["WelcomeMessage"] | components["schemas"]["OnboardingAgreement"])[];
+            "zh-CN": (components["schemas"]["WelcomeMessage"] | components["schemas"]["OnboardingAgreement"])[];
+        };
+        PublishedOnboarding: {
+            /** @enum {string} */
+            locale: "en" | "zh-CN";
+            welcomeRevision: number;
+            agreementRevision: number;
+            welcome: components["schemas"]["WelcomeMessage"][];
+            agreements: components["schemas"]["OnboardingAgreement"][];
+        };
+        OnboardingBundle: {
+            /** @enum {string} */
+            kind: "welcome" | "agreements";
+            draft: components["schemas"]["LocalizedOnboardingContent"];
+            published: components["schemas"]["LocalizedOnboardingContent"];
+            draftRevision: number;
+            publishedRevision: number;
+        };
+        OnboardingDraftWrite: {
+            draftRevision: number;
+            content: components["schemas"]["LocalizedOnboardingContent"];
+        };
+        OnboardingPublishRequest: {
+            draftRevision: number;
         };
         /** @description Integer minor units. TXB, CNY, and USD use scale 2; XTR uses scale 0. */
         Money: {
@@ -1605,7 +1896,7 @@ export interface components {
             trafficLimitBytes: string;
             resetStrategy: components["schemas"]["ResetStrategy"];
             squadProductIds?: components["schemas"]["ID"][];
-            /** @description Compatibility alias used by the combo picker for included imported squads. */
+            /** @description Compatibility alias used by the combo picker for included live Remnawave squads. */
             includedSquadIds?: components["schemas"]["ID"][];
             active: boolean;
             rolloverMinRemainingBps: number;
@@ -1619,11 +1910,37 @@ export interface components {
             priceTxbMinor: string;
             visible: boolean;
         };
+        RemnaNode: {
+            /** Format: uuid */
+            uuid: string;
+            name: string;
+            countryCode: string;
+            consumptionMultiplier: number;
+            activeInboundUuids: string[];
+            accessible: boolean;
+        };
+        RemnaNodeList: {
+            items: components["schemas"]["RemnaNode"][];
+        };
+        SquadNodeWrite: {
+            nodeUuids: string[];
+        };
         PurchaseRequest: {
             comboId: components["schemas"]["ID"];
             addonSquadProductIds: components["schemas"]["ID"][];
             /** @description One explicitly selected eligible wallet grant; discounts never stack. */
             couponGrantId?: string;
+        };
+        PurchaseQuote: {
+            comboId: components["schemas"]["ID"];
+            comboName: string;
+            grossPrice: components["schemas"]["Money"];
+            discount: components["schemas"]["Money"];
+            netPrice: components["schemas"]["Money"];
+            effectiveAt: components["schemas"]["Timestamp"];
+            expiresAt: components["schemas"]["Timestamp"];
+            queued: boolean;
+            addonSquadUuids: string[];
         };
         /** @enum {string} */
         EntitlementStatus: "activating" | "active" | "queued" | "expired" | "cancelled" | "failed";
@@ -1678,6 +1995,48 @@ export interface components {
             categories: string[];
             sparklineData: string[];
             topNodes: components["schemas"]["TopNode"][];
+        };
+        StatisticPoint: {
+            /** Format: date */
+            periodStart: string;
+            /** Format: int64 */
+            count: number;
+            /** Format: int64 */
+            uniqueUsers: number;
+            inputTxbMinor: components["schemas"]["DecimalInteger"];
+            outputTxbMinor: components["schemas"]["DecimalInteger"];
+            netTxbMinor: components["schemas"]["DecimalInteger"];
+        };
+        StatisticSlice: {
+            id: string;
+            label: string;
+            /** Format: int64 */
+            count: number;
+        };
+        AdminStatistics: {
+            resourceId: components["schemas"]["ID"];
+            timeZone: string;
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            /** @enum {string} */
+            bucket: "daily" | "weekly";
+            /** Format: int64 */
+            count: number;
+            /** Format: int64 */
+            uniqueUsers: number;
+            inputTxbMinor: components["schemas"]["DecimalInteger"];
+            outputTxbMinor: components["schemas"]["DecimalInteger"];
+            netTxbMinor: components["schemas"]["DecimalInteger"];
+            discountTxbMinor: components["schemas"]["DecimalInteger"];
+            addonTxbMinor: components["schemas"]["DecimalInteger"];
+            /** Format: int64 */
+            wins: number;
+            /** Format: int64 */
+            losses: number;
+            series: components["schemas"]["StatisticPoint"][];
+            distribution: components["schemas"]["StatisticSlice"][];
         };
         Dashboard: {
             user: components["schemas"]["User"];
@@ -1850,7 +2209,8 @@ export interface components {
             /** @example Asia/Shanghai */
             timeZone: string;
             checkedInToday: boolean;
-            dailyRewardTxbMinor: string;
+            dailyRewardMinTxbMinor: string;
+            dailyRewardMaxTxbMinor: string;
             games: components["schemas"]["ActivityGame"][];
             draws: components["schemas"]["LuckyDraw"][];
             recentResults: components["schemas"]["ActivityResult"][];
@@ -1865,8 +2225,10 @@ export interface components {
         };
         ActivitySettings: {
             timezone: string;
-            dailyRewardTxb: string;
-            dailyRewardTxbMinor: string;
+            dailyRewardMinTxb: string;
+            dailyRewardMinTxbMinor: string;
+            dailyRewardMaxTxb: string;
+            dailyRewardMaxTxbMinor: string;
             groupMessageThreshold: number;
             groupMessageRewardTxb: string;
             groupMessageRewardTxbMinor: string;
@@ -1874,9 +2236,7 @@ export interface components {
         ActivitySettingsWrite: {
             /** @example Asia/Shanghai */
             timezone: string;
-            dailyRewardTxb: string;
             groupMessageThreshold: number;
-            groupMessageRewardTxb: string;
         };
         LuckyDrawPrize: {
             id: components["schemas"]["ID"];
@@ -1935,6 +2295,8 @@ export interface components {
             /** Format: int64 */
             perUserUseLimit: number | null;
             active: boolean;
+            /** Format: int64 */
+            usageCount: number;
             createdAt: components["schemas"]["Timestamp"];
             updatedAt: components["schemas"]["Timestamp"];
         };
@@ -2114,7 +2476,7 @@ export interface components {
             status: "queued" | "provisioning" | "active" | "failed";
             /** Format: int32 */
             maxParentalRating: number | null;
-            libraryIds: string[];
+            disabledLibraryIds: string[];
             retryable: boolean;
             /** @description Redacted operator-safe failure detail; absent when empty. */
             errorMessage?: string;
@@ -2130,13 +2492,13 @@ export interface components {
         EmbyPreferencesRequest: {
             /** Format: int32 */
             maxParentalRating?: number | null;
-            libraryIds: string[];
+            disabledLibraryIds: string[];
         };
         EmbySetupRequest: {
             password: string;
             /** Format: int32 */
             maxParentalRating?: number | null;
-            libraryIds: string[];
+            disabledLibraryIds: string[];
         };
         EmbyPasswordRequest: {
             password: string;
@@ -2301,6 +2663,21 @@ export interface components {
             nextCursor: string | null;
         };
         /** @enum {string} */
+        DatabaseFilterOperator: "eq" | "ne" | "contains" | "starts_with" | "gt" | "gte" | "lt" | "lte" | "is_null" | "not_null";
+        DatabaseFilter: {
+            column: string;
+            operator: components["schemas"]["DatabaseFilterOperator"];
+            value?: components["schemas"]["DatabaseValue"];
+        };
+        DatabaseQueryRequest: {
+            search?: string;
+            filters: components["schemas"]["DatabaseFilter"][];
+            /** @description Sealed continuation cursor bound to the table, search, and filters. */
+            cursor?: string;
+            /** @default 50 */
+            limit: number;
+        };
+        /** @enum {string} */
         DatabaseMutationAction: "insert" | "update" | "delete";
         DatabaseMutationReviewRequest: {
             action: components["schemas"]["DatabaseMutationAction"];
@@ -2378,7 +2755,6 @@ export interface components {
         Job: {
             id: components["schemas"]["ID"];
             kind: string;
-            aggregateId: string;
             /** @description JSON command payload; provider credentials and bearer URLs are never included. */
             payload: string;
             status: components["schemas"]["JobStatus"];
@@ -2583,6 +2959,11 @@ export interface components {
         Cursor: string;
         PageSize: number;
         DatabasePageLimit: number;
+        OnboardingContentKind: "welcome" | "agreements";
+        StatisticsFrom: string;
+        StatisticsTo: string;
+        StatisticsBucket: "daily" | "weekly";
+        StatisticsTimeZone: string;
     };
     requestBodies: never;
     headers: never;
@@ -2740,6 +3121,29 @@ export interface operations {
             502: components["responses"]["UpstreamFailure"];
         };
     };
+    getPublishedOnboardingContent: {
+        parameters: {
+            query?: {
+                locale?: "en" | "zh-CN";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Published localized content with computed welcome timings and the current agreement revision. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishedOnboarding"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
     getDashboard: {
         parameters: {
             query?: never;
@@ -2784,6 +3188,34 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             409: components["responses"]["Conflict"];
             500: components["responses"]["InternalFailure"];
+        };
+    };
+    quotePurchase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PurchaseRequest"];
+            };
+        };
+        responses: {
+            /** @description Current price and effective entitlement dates. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseQuote"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+            502: components["responses"]["UpstreamFailure"];
         };
     };
     listPurchases: {
@@ -3473,6 +3905,60 @@ export interface operations {
             422: components["responses"]["Unprocessable"];
         };
     };
+    deleteAdminActivityGame: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Game data removed; settled balance outcomes are unchanged. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getAdminActivityGameStatistics: {
+        parameters: {
+            query?: {
+                from?: components["parameters"]["StatisticsFrom"];
+                to?: components["parameters"]["StatisticsTo"];
+                bucket?: components["parameters"]["StatisticsBucket"];
+                timeZone?: components["parameters"]["StatisticsTimeZone"];
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accessible daily or weekly series and distribution. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminStatistics"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
     listAdminLuckyDraws: {
         parameters: {
             query?: never;
@@ -3551,6 +4037,60 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    deleteAdminLuckyDraw: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Draw data removed; settled prizes and balances are unchanged. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getAdminLuckyDrawStatistics: {
+        parameters: {
+            query?: {
+                from?: components["parameters"]["StatisticsFrom"];
+                to?: components["parameters"]["StatisticsTo"];
+                bucket?: components["parameters"]["StatisticsBucket"];
+                timeZone?: components["parameters"]["StatisticsTimeZone"];
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accessible daily or weekly series and prize distribution. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminStatistics"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             422: components["responses"]["Unprocessable"];
         };
     };
@@ -3741,6 +4281,30 @@ export interface operations {
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["Unprocessable"];
+        };
+    };
+    deleteAdminQuestionnaire: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Questionnaire, imports, participants, linked ledger rows, and non-processing jobs removed; settled outcomes remain unchanged. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     closeAdminQuestionnaire: {
@@ -4151,6 +4715,36 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    getAdminComboStatistics: {
+        parameters: {
+            query?: {
+                from?: components["parameters"]["StatisticsFrom"];
+                to?: components["parameters"]["StatisticsTo"];
+                bucket?: components["parameters"]["StatisticsBucket"];
+                timeZone?: components["parameters"]["StatisticsTimeZone"];
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Daily or weekly purchase series and totals. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminStatistics"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
     listAdminSquadProducts: {
         parameters: {
             query?: never;
@@ -4257,6 +4851,91 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    getAdminSquadNodes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Nodes with upstream multipliers, ISO country codes, active inbound UUIDs, and verified accessibility. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RemnaNodeList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            502: components["responses"]["UpstreamFailure"];
+        };
+    };
+    updateAdminSquadNodes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SquadNodeWrite"];
+            };
+        };
+        responses: {
+            /** @description Re-fetched actual upstream accessibility after the patch. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RemnaNodeList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["Unprocessable"];
+            502: components["responses"]["UpstreamFailure"];
+        };
+    };
+    getAdminSquadStatistics: {
+        parameters: {
+            query?: {
+                from?: components["parameters"]["StatisticsFrom"];
+                to?: components["parameters"]["StatisticsTo"];
+                bucket?: components["parameters"]["StatisticsBucket"];
+                timeZone?: components["parameters"]["StatisticsTimeZone"];
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Daily or weekly unique buyers, purchase counts, and squad-use distribution. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminStatistics"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             422: components["responses"]["Unprocessable"];
         };
     };
@@ -4555,6 +5234,38 @@ export interface operations {
             422: components["responses"]["Unprocessable"];
         };
     };
+    queryAdminDatabaseRows: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Exact name from the server-provided allowlisted table catalog. */
+                table: components["parameters"]["DatabaseTableName"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DatabaseQueryRequest"];
+            };
+        };
+        responses: {
+            /** @description Typed query result page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatabaseRowPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
     reviewAdminDatabaseMutation: {
         parameters: {
             query?: never;
@@ -4693,6 +5404,30 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    deleteAdminBackup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Backup file and metadata removed and audited. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
     stageAdminRestore: {
         parameters: {
             query?: never;
@@ -4794,6 +5529,114 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    deleteAdminJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pending */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getAdminOnboardingBundle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: components["parameters"]["OnboardingContentKind"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Independent draft and published revisions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OnboardingBundle"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    saveAdminOnboardingDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: components["parameters"]["OnboardingContentKind"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OnboardingDraftWrite"];
+            };
+        };
+        responses: {
+            /** @description Saved draft with incremented optimistic revision. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OnboardingBundle"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    publishAdminOnboarding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: components["parameters"]["OnboardingContentKind"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OnboardingPublishRequest"];
+            };
+        };
+        responses: {
+            /** @description Published bundle; changed agreements require renewed consent for every user. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OnboardingBundle"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["Unprocessable"];
         };

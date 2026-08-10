@@ -21,7 +21,7 @@ The kind-specific worker advances idempotently:
 
 ## Policy and secret boundary
 
-Every policy write starts from the current complete upstream policy. The server overlays only the selected parental rating and folder IDs, sets `EnableAllFolders=false`, and forces both hidden-login flags, remote-control fields, all audio/video transcoding, remux, sync conversion, media conversion, content download, and subtitle download fields off. `EnableRemoteAccess` and unrelated provider fields are preserved.
+Every policy write starts from the current complete upstream policy. Local state stores only disabled folder IDs; migration gives existing accounts none, so all libraries are enabled by default. The overlay sets `EnableAllFolders=true`, clears `EnabledFolders`, sets `BlockedMediaFolders`, and forces the hardened restrictions while preserving `EnableRemoteAccess` and unrelated provider fields. The service submits the full documented policy, re-fetches it, verifies the requested overlay against actual upstream state, and only then persists disabled IDs. A failed verification leaves the prior local preferences intact.
 
 Plaintext passwords exist only in request memory or the short worker decryption window, are zeroed on return, and never enter responses, provider payload snapshots, audits, or logs. Linked password changes are synchronous and never persist either password. Options and account responses expose only safe identifiers, preferences, status, retryability, and redacted failure text.
 

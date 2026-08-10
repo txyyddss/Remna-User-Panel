@@ -79,7 +79,7 @@ func (s *Store) UserByTelegramID(ctx context.Context, telegramID int64) (model.U
 
 const userSelect = `SELECT users.id,users.telegram_id,users.telegram_first_name,users.telegram_last_name,users.telegram_username,
 	users.username,users.role,users.onboarding_state,users.group_joined,users.channel_joined,users.policy_accepted_at,
-	users.remna_user_id,users.remna_subscription_url,users.recovery_reason,users.created_at,users.updated_at FROM users`
+	users.accepted_agreement_revision,users.remna_user_id,users.remna_subscription_url,users.recovery_reason,users.created_at,users.updated_at FROM users`
 
 type rowScanner interface{ Scan(dest ...any) error }
 
@@ -90,7 +90,7 @@ func scanUser(row rowScanner) (model.User, error) {
 	var groupJoined, channelJoined int
 	var createdAt, updatedAt string
 	if err := row.Scan(&user.ID, &user.TelegramID, &user.TelegramFirstName, &user.TelegramLastName, &user.TelegramUsername,
-		&username, &user.Role, &user.OnboardingState, &groupJoined, &channelJoined, &policy, &remnaID, &subscription, &recoveryReason, &createdAt, &updatedAt); err != nil {
+		&username, &user.Role, &user.OnboardingState, &groupJoined, &channelJoined, &policy, &user.AgreementRevision, &remnaID, &subscription, &recoveryReason, &createdAt, &updatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.User{}, ErrNotFound
 		}
@@ -212,35 +212,6 @@ func (s *Store) ReserveUsername(ctx context.Context, userID, username string) er
 		return ErrConflict
 	}
 	return nil
-}
-
-// CompleteOnboarding records agreement acceptance and the Remnawave identity.
-func (s *Store) CompleteOnboarding(ctx context.Context, userID string, remnaUserID, subscriptionURL string, acceptedAt time.Time) (model.User, error) {
-	s.writeMu.Lock()
-	defer s.writeMu.Unlock()
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return model.User{}, err
-	}
-	defer func() { _ = tx.Rollback() }()
-	result, err := tx.ExecContext(ctx, `UPDATE users SET onboarding_state='complete',policy_accepted_at=?,remna_user_id=?,remna_subscription_url=?,recovery_reason='',updated_at=? WHERE id=? AND onboarding_state='agreement'`, stamp(acceptedAt), remnaUserID, subscriptionURL, stamp(acceptedAt), userID)
-	if err != nil {
-		return model.User{}, fmt.Errorf("complete onboarding: %w", err)
-	}
-	affected, err := result.RowsAffected()
-	if err != nil {
-		return model.User{}, fmt.Errorf("inspect onboarding completion: %w", err)
-	}
-	if affected == 0 {
-		return model.User{}, ErrConflict
-	}
-	if err := insertOutboxTx(ctx, tx, "remna_sync_user", userID, `{"userId":"`+userID+`"}`, acceptedAt, acceptedAt); err != nil {
-		return model.User{}, err
-	}
-	if err := tx.Commit(); err != nil {
-		return model.User{}, fmt.Errorf("commit onboarding completion: %w", err)
-	}
-	return s.UserByID(ctx, userID)
 }
 
 // UpdateSubscriptionURL replaces the cached bearer URL after revocation.

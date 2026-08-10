@@ -43,11 +43,11 @@ export function useEmby() {
     }
   }
 
-  function setup(payload: { password: string; maxParentalRating: number | null; libraryIds: string[] }): Promise<boolean> {
+  function setup(payload: { password: string; maxParentalRating: number | null; disabledLibraryIds: string[] }): Promise<boolean> {
     return perform('setup', () => featuresApi.setupEmby(payload), 'Provisioning started. You can leave this page safely.')
   }
 
-  function updatePreferences(payload: { maxParentalRating: number | null; libraryIds: string[] }): Promise<boolean> {
+  function updatePreferences(payload: { maxParentalRating: number | null; disabledLibraryIds: string[] }): Promise<boolean> {
     return perform('preferences', () => featuresApi.updateEmbyPreferences(payload), 'Emby preferences updated.')
   }
 

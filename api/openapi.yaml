@@ -91,9 +91,10 @@ paths:
       operationId: createOnboardingInvites
       summary: Create identity-bound group and channel join-request links
       description: |
-        Creates or replaces 30-minute join-request links for the authenticated
-        Telegram identity. Only that identity may be approved. Links are revoked
-        after approval or replacement.
+        Creates 30-minute join-request links whose names contain the Telegram
+        user ID and a 96-bit HMAC over user, chat, and expiry. No invite is
+        persisted. Only the signed identity may be approved and the link is
+        revoked immediately after approval.
       responses:
         '200':
           description: Active one-time join-request links.
@@ -186,6 +187,26 @@ paths:
         '502':
           $ref: '#/components/responses/UpstreamFailure'
 
+  /api/v1/onboarding/content:
+    get:
+      tags: [Onboarding]
+      operationId: getPublishedOnboardingContent
+      summary: Get localized published welcome and agreement content
+      parameters:
+        - name: locale
+          in: query
+          schema:
+            type: string
+            enum: [en, zh-CN]
+      responses:
+        '200':
+          description: Published localized content with computed welcome timings and the current agreement revision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishedOnboarding'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
   /api/v1/dashboard:
     get:
       tags: [Dashboard]
@@ -223,6 +244,30 @@ paths:
           $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalFailure'
+
+  /api/v1/purchases/quote:
+    post:
+      tags: [Catalog]
+      operationId: quotePurchase
+      summary: Calculate a non-mutating authoritative purchase quote
+      description: Revalidates the live combo, coupon, add-ons, active term, and upstream squad identities without debiting balance.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PurchaseRequest'
+      responses:
+        '200':
+          description: Current price and effective entitlement dates.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseQuote'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '502': { $ref: '#/components/responses/UpstreamFailure' }
 
   /api/v1/purchases:
     get:
@@ -814,6 +859,39 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/Unprocessable' }
+    delete:
+      tags: [Admin, Activity]
+      operationId: deleteAdminActivityGame
+      summary: Hard-delete a betting game and feature-linked records
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '204': { description: Game data removed; settled balance outcomes are unchanged. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/admin/activity-games/{id}/statistics:
+    get:
+      tags: [Admin, Activity]
+      operationId: getAdminActivityGameStatistics
+      summary: Get participation, stake, payout, house-net, and win/loss statistics
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+        - $ref: '#/components/parameters/StatisticsFrom'
+        - $ref: '#/components/parameters/StatisticsTo'
+        - $ref: '#/components/parameters/StatisticsBucket'
+        - $ref: '#/components/parameters/StatisticsTimeZone'
+      responses:
+        '200':
+          description: Accessible daily or weekly series and distribution.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminStatistics' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
 
   /api/v1/admin/lucky-draw:
     get:
@@ -875,6 +953,39 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+    delete:
+      tags: [Admin, Activity]
+      operationId: deleteAdminLuckyDraw
+      summary: Hard-delete a lucky draw and feature-linked records
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '204': { description: Draw data removed; settled prizes and balances are unchanged. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/admin/lucky-draw/{id}/statistics:
+    get:
+      tags: [Admin, Activity]
+      operationId: getAdminLuckyDrawStatistics
+      summary: Get participation, fee, reward, house-net, and prize-distribution statistics
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+        - $ref: '#/components/parameters/StatisticsFrom'
+        - $ref: '#/components/parameters/StatisticsTo'
+        - $ref: '#/components/parameters/StatisticsBucket'
+        - $ref: '#/components/parameters/StatisticsTimeZone'
+      responses:
+        '200':
+          description: Accessible daily or weekly series and prize distribution.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminStatistics' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/Unprocessable' }
 
   /api/v1/admin/coupons:
@@ -1018,13 +1129,27 @@ paths:
         '422': { $ref: '#/components/responses/Unprocessable' }
     delete:
       tags: [Admin, Questionnaires]
+      operationId: deleteAdminQuestionnaire
+      summary: Hard-delete a questionnaire and feature-linked records
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '204':
+          description: Questionnaire, imports, participants, linked ledger rows, and non-processing jobs removed; settled outcomes remain unchanged.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/admin/questionnaires/{id}/close:
+    post:
+      tags: [Admin, Questionnaires]
       operationId: closeAdminQuestionnaire
       summary: Close a questionnaire without deleting participants
       parameters:
         - $ref: '#/components/parameters/ResourceID'
       responses:
-        '204':
-          description: Questionnaire closed.
+        '204': { description: Questionnaire closed. }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -1316,8 +1441,8 @@ paths:
     put:
       tags: [Admin]
       operationId: updateAdminCombo
-      summary: Replace a combo's future-sale definition
-      description: Existing purchases retain their stored catalog snapshot.
+      summary: Replace a live combo definition
+      description: The stable combo ID remains authoritative for active, queued, and historical purchases; affected users are queued for deduplicated synchronization.
       parameters:
         - $ref: '#/components/parameters/ResourceID'
       requestBody:
@@ -1347,7 +1472,7 @@ paths:
       tags: [Admin]
       operationId: archiveAdminCombo
       summary: Archive a combo from future sales
-      description: This is a soft archive. Historical purchases and audit records remain intact.
+      description: Combos referenced by purchases are always hidden rather than hard-deleted.
       parameters:
         - $ref: '#/components/parameters/ResourceID'
       responses:
@@ -1359,6 +1484,27 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /api/v1/admin/combos/{id}/statistics:
+    get:
+      tags: [Admin]
+      operationId: getAdminComboStatistics
+      summary: Aggregate combo purchase statistics
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+        - $ref: '#/components/parameters/StatisticsFrom'
+        - $ref: '#/components/parameters/StatisticsTo'
+        - $ref: '#/components/parameters/StatisticsBucket'
+        - $ref: '#/components/parameters/StatisticsTimeZone'
+      responses:
+        '200':
+          description: Daily or weekly purchase series and totals.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminStatistics' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
 
   /api/v1/admin/squad-products:
     get:
@@ -1466,6 +1612,65 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/Unprocessable'
+
+  /api/v1/admin/squad-products/{id}/nodes:
+    get:
+      tags: [Admin]
+      operationId: getAdminSquadNodes
+      summary: List live Remnawave nodes and actual squad accessibility
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '200':
+          description: Nodes with upstream multipliers, ISO country codes, active inbound UUIDs, and verified accessibility.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RemnaNodeList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '502': { $ref: '#/components/responses/UpstreamFailure' }
+    put:
+      tags: [Admin]
+      operationId: updateAdminSquadNodes
+      summary: Replace squad node selection through active inbound unions
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SquadNodeWrite' }
+      responses:
+        '200':
+          description: Re-fetched actual upstream accessibility after the patch.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RemnaNodeList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '502': { $ref: '#/components/responses/UpstreamFailure' }
+
+  /api/v1/admin/squad-products/{id}/statistics:
+    get:
+      tags: [Admin]
+      operationId: getAdminSquadStatistics
+      summary: Aggregate included-versus-add-on squad usage
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+        - $ref: '#/components/parameters/StatisticsFrom'
+        - $ref: '#/components/parameters/StatisticsTo'
+        - $ref: '#/components/parameters/StatisticsBucket'
+        - $ref: '#/components/parameters/StatisticsTimeZone'
+      responses:
+        '200':
+          description: Daily or weekly unique buyers, purchase counts, and squad-use distribution.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminStatistics' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
 
   /api/v1/admin/users:
     get:
@@ -1723,6 +1928,31 @@ paths:
         '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/Unprocessable' }
 
+  /api/v1/admin/database/tables/{table}/query:
+    post:
+      tags: [Admin, Database Administration]
+      operationId: queryAdminDatabaseRows
+      summary: Search and filter allowlisted typed table rows
+      description: Supports broad non-secret text search and at most five schema-allowlisted, bound predicates. Continuation cursors include the exact query fingerprint.
+      parameters:
+        - $ref: '#/components/parameters/DatabaseTableName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DatabaseQueryRequest' }
+      responses:
+        '200':
+          description: Typed query result page.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DatabaseRowPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
   /api/v1/admin/database/mutations/review:
     post:
       tags: [Admin, Database Administration]
@@ -1856,6 +2086,21 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /api/v1/admin/backups/{id}:
+    delete:
+      tags: [Admin, Database Administration]
+      operationId: deleteAdminBackup
+      summary: Delete a contained backup file and metadata consistently
+      description: Refuses deletion while any restore is staging or restarting and verifies the resolved regular file remains inside the configured backup directory.
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '204': { description: Backup file and metadata removed and audited. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
   /api/v1/admin/backups/{id}/restore:
     post:
       tags: [Admin, Database Administration]
@@ -1938,8 +2183,83 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/Unprocessable'
+
+  /api/v1/admin/jobs/{id}:
+    delete:
+      tags: [Admin]
+      operationId: deleteAdminJob
+      summary: Delete a non-processing synchronization job
+      parameters:
+        - $ref: '#/components/parameters/ResourceID'
+      responses:
+        '204': { description: Pending, done, or failed job deleted. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/admin/onboarding/content/{kind}:
+    get:
+      tags: [Admin, Onboarding]
+      operationId: getAdminOnboardingBundle
+      summary: Get draft and published localized onboarding bundles
+      parameters:
+        - $ref: '#/components/parameters/OnboardingContentKind'
+      responses:
+        '200':
+          description: Independent draft and published revisions.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OnboardingBundle' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/admin/onboarding/content/{kind}/draft:
+    put:
+      tags: [Admin, Onboarding]
+      operationId: saveAdminOnboardingDraft
+      summary: Save a complete English and Simplified Chinese draft
+      parameters:
+        - $ref: '#/components/parameters/OnboardingContentKind'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OnboardingDraftWrite' }
+      responses:
+        '200':
+          description: Saved draft with incremented optimistic revision.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OnboardingBundle' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /api/v1/admin/onboarding/content/{kind}/publish:
+    post:
+      tags: [Admin, Onboarding]
+      operationId: publishAdminOnboarding
+      summary: Publish the current validated draft
+      parameters:
+        - $ref: '#/components/parameters/OnboardingContentKind'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OnboardingPublishRequest' }
+      responses:
+        '200':
+          description: Published bundle; changed agreements require renewed consent for every user.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OnboardingBundle' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
 
   /api/v1/admin/audit-events:
     get:
@@ -2310,6 +2630,34 @@ components:
         minimum: 1
         maximum: 200
         default: 50
+    OnboardingContentKind:
+      name: kind
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [welcome, agreements]
+    StatisticsFrom:
+      name: from
+      in: query
+      schema: { type: string, format: date }
+    StatisticsTo:
+      name: to
+      in: query
+      schema: { type: string, format: date }
+    StatisticsBucket:
+      name: bucket
+      in: query
+      schema:
+        type: string
+        enum: [daily, weekly]
+        default: daily
+    StatisticsTimeZone:
+      name: timeZone
+      in: query
+      schema:
+        type: string
+        default: Asia/Shanghai
 
   responses:
     BadRequest:
@@ -2431,6 +2779,7 @@ components:
         - groupJoined
         - channelJoined
         - policyAcceptedAt
+        - agreementRevision
         - recoveryReason
         - createdAt
         - updatedAt
@@ -2461,6 +2810,9 @@ components:
         policyAcceptedAt:
           type: [string, 'null']
           format: date-time
+        agreementRevision:
+          type: integer
+          minimum: 0
         recoveryReason:
           type: string
           enum: ['', remnawave_user_missing]
@@ -2528,11 +2880,117 @@ components:
     AgreementRequest:
       type: object
       additionalProperties: false
-      required: [accepted]
+      required: [revision, agreementIds]
       properties:
-        accepted:
-          type: boolean
-          const: true
+        revision:
+          type: integer
+          minimum: 1
+        agreementIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            pattern: '^[a-z0-9][a-z0-9-]{0,63}$'
+
+    WelcomeMessage:
+      type: object
+      additionalProperties: false
+      required: [id, text]
+      properties:
+        id:
+          type: string
+          pattern: '^[a-z0-9][a-z0-9-]{0,63}$'
+        text:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        durationMs:
+          type: integer
+          minimum: 1800
+          maximum: 12000
+          readOnly: true
+
+    OnboardingAgreement:
+      type: object
+      additionalProperties: false
+      required: [id, icon, title, body]
+      properties:
+        id:
+          type: string
+          pattern: '^[a-z0-9][a-z0-9-]{0,63}$'
+        icon:
+          type: string
+          enum: [link-break, shield-check, users-three, warning, lock-key, heart, scales]
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        body:
+          type: string
+          minLength: 1
+          maxLength: 2000
+
+    LocalizedOnboardingContent:
+      type: object
+      additionalProperties: false
+      required: [en, zh-CN]
+      properties:
+        en:
+          type: array
+          minItems: 1
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/WelcomeMessage'
+              - $ref: '#/components/schemas/OnboardingAgreement'
+        zh-CN:
+          type: array
+          minItems: 1
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/WelcomeMessage'
+              - $ref: '#/components/schemas/OnboardingAgreement'
+
+    PublishedOnboarding:
+      type: object
+      additionalProperties: false
+      required: [locale, welcomeRevision, agreementRevision, welcome, agreements]
+      properties:
+        locale: { type: string, enum: [en, zh-CN] }
+        welcomeRevision: { type: integer, minimum: 1 }
+        agreementRevision: { type: integer, minimum: 1 }
+        welcome:
+          type: array
+          items: { $ref: '#/components/schemas/WelcomeMessage' }
+        agreements:
+          type: array
+          items: { $ref: '#/components/schemas/OnboardingAgreement' }
+
+    OnboardingBundle:
+      type: object
+      additionalProperties: false
+      required: [kind, draft, published, draftRevision, publishedRevision]
+      properties:
+        kind: { type: string, enum: [welcome, agreements] }
+        draft: { $ref: '#/components/schemas/LocalizedOnboardingContent' }
+        published: { $ref: '#/components/schemas/LocalizedOnboardingContent' }
+        draftRevision: { type: integer, minimum: 1 }
+        publishedRevision: { type: integer, minimum: 1 }
+
+    OnboardingDraftWrite:
+      type: object
+      additionalProperties: false
+      required: [draftRevision, content]
+      properties:
+        draftRevision: { type: integer, minimum: 1 }
+        content: { $ref: '#/components/schemas/LocalizedOnboardingContent' }
+
+    OnboardingPublishRequest:
+      type: object
+      additionalProperties: false
+      required: [draftRevision]
+      properties:
+        draftRevision: { type: integer, minimum: 1 }
 
     Money:
       type: object
@@ -2733,7 +3191,7 @@ components:
         includedSquadIds:
           type: array
           uniqueItems: true
-          description: Compatibility alias used by the combo picker for included imported squads.
+          description: Compatibility alias used by the combo picker for included live Remnawave squads.
           items:
             $ref: '#/components/schemas/ID'
         active:
@@ -2766,6 +3224,45 @@ components:
         visible:
           type: boolean
 
+    RemnaNode:
+      type: object
+      additionalProperties: false
+      required: [uuid, name, countryCode, consumptionMultiplier, activeInboundUuids, accessible]
+      properties:
+        uuid: { type: string, format: uuid }
+        name: { type: string }
+        countryCode:
+          type: string
+          pattern: '^[A-Z]{2}$'
+        consumptionMultiplier:
+          type: number
+          minimum: 0
+        activeInboundUuids:
+          type: array
+          uniqueItems: true
+          items: { type: string, format: uuid }
+        accessible: { type: boolean }
+
+    RemnaNodeList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/RemnaNode' }
+
+    SquadNodeWrite:
+      type: object
+      additionalProperties: false
+      required: [nodeUuids]
+      properties:
+        nodeUuids:
+          type: array
+          maxItems: 500
+          uniqueItems: true
+          items: { type: string, format: uuid }
+
     PurchaseRequest:
       type: object
       additionalProperties: false
@@ -2782,6 +3279,24 @@ components:
           type: string
           minLength: 1
           description: One explicitly selected eligible wallet grant; discounts never stack.
+
+    PurchaseQuote:
+      type: object
+      additionalProperties: false
+      required: [comboId, comboName, grossPrice, discount, netPrice, effectiveAt, expiresAt, queued, addonSquadUuids]
+      properties:
+        comboId: { $ref: '#/components/schemas/ID' }
+        comboName: { type: string }
+        grossPrice: { $ref: '#/components/schemas/Money' }
+        discount: { $ref: '#/components/schemas/Money' }
+        netPrice: { $ref: '#/components/schemas/Money' }
+        effectiveAt: { $ref: '#/components/schemas/Timestamp' }
+        expiresAt: { $ref: '#/components/schemas/Timestamp' }
+        queued: { type: boolean }
+        addonSquadUuids:
+          type: array
+          uniqueItems: true
+          items: { type: string, format: uuid }
 
     EntitlementStatus:
       type: string
@@ -2953,6 +3468,53 @@ components:
           maxItems: 10
           items:
             $ref: '#/components/schemas/TopNode'
+
+    StatisticPoint:
+      type: object
+      additionalProperties: false
+      required: [periodStart, count, uniqueUsers, inputTxbMinor, outputTxbMinor, netTxbMinor]
+      properties:
+        periodStart: { type: string, format: date }
+        count: { type: integer, format: int64, minimum: 0 }
+        uniqueUsers: { type: integer, format: int64, minimum: 0 }
+        inputTxbMinor: { $ref: '#/components/schemas/DecimalInteger' }
+        outputTxbMinor: { $ref: '#/components/schemas/DecimalInteger' }
+        netTxbMinor: { $ref: '#/components/schemas/DecimalInteger' }
+
+    StatisticSlice:
+      type: object
+      additionalProperties: false
+      required: [id, label, count]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        count: { type: integer, format: int64, minimum: 0 }
+
+    AdminStatistics:
+      type: object
+      additionalProperties: false
+      required: [resourceId, timeZone, from, to, bucket, count, uniqueUsers, inputTxbMinor, outputTxbMinor, netTxbMinor, discountTxbMinor, addonTxbMinor, wins, losses, series, distribution]
+      properties:
+        resourceId: { $ref: '#/components/schemas/ID' }
+        timeZone: { type: string }
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        bucket: { type: string, enum: [daily, weekly] }
+        count: { type: integer, format: int64, minimum: 0 }
+        uniqueUsers: { type: integer, format: int64, minimum: 0 }
+        inputTxbMinor: { $ref: '#/components/schemas/DecimalInteger' }
+        outputTxbMinor: { $ref: '#/components/schemas/DecimalInteger' }
+        netTxbMinor: { $ref: '#/components/schemas/DecimalInteger' }
+        discountTxbMinor: { $ref: '#/components/schemas/DecimalInteger' }
+        addonTxbMinor: { $ref: '#/components/schemas/DecimalInteger' }
+        wins: { type: integer, format: int64, minimum: 0 }
+        losses: { type: integer, format: int64, minimum: 0 }
+        series:
+          type: array
+          items: { $ref: '#/components/schemas/StatisticPoint' }
+        distribution:
+          type: array
+          items: { $ref: '#/components/schemas/StatisticSlice' }
 
     Dashboard:
       type: object
@@ -3384,7 +3946,7 @@ components:
     ActivityOverview:
       type: object
       additionalProperties: false
-      required: [balance, timeZone, checkedInToday, dailyRewardTxbMinor, games, draws, recentResults, groupMessageReward]
+      required: [balance, timeZone, checkedInToday, dailyRewardMinTxbMinor, dailyRewardMaxTxbMinor, games, draws, recentResults, groupMessageReward]
       properties:
         balance:
           $ref: '#/components/schemas/Money'
@@ -3393,7 +3955,10 @@ components:
           examples: [Asia/Shanghai]
         checkedInToday:
           type: boolean
-        dailyRewardTxbMinor:
+        dailyRewardMinTxbMinor:
+          type: string
+          pattern: '^\d+$'
+        dailyRewardMaxTxbMinor:
           type: string
           pattern: '^\d+$'
         games:
@@ -3433,14 +3998,20 @@ components:
     ActivitySettings:
       type: object
       additionalProperties: false
-      required: [timezone, dailyRewardTxb, dailyRewardTxbMinor, groupMessageThreshold, groupMessageRewardTxb, groupMessageRewardTxbMinor]
+      required: [timezone, dailyRewardMinTxb, dailyRewardMinTxbMinor, dailyRewardMaxTxb, dailyRewardMaxTxbMinor, groupMessageThreshold, groupMessageRewardTxb, groupMessageRewardTxbMinor]
       properties:
         timezone:
           type: string
-        dailyRewardTxb:
+        dailyRewardMinTxb:
           type: string
           pattern: '^\d+\.\d{2}$'
-        dailyRewardTxbMinor:
+        dailyRewardMinTxbMinor:
+          type: string
+          pattern: '^\d+$'
+        dailyRewardMaxTxb:
+          type: string
+          pattern: '^\d+\.\d{2}$'
+        dailyRewardMaxTxbMinor:
           type: string
           pattern: '^\d+$'
         groupMessageThreshold:
@@ -3456,20 +4027,14 @@ components:
     ActivitySettingsWrite:
       type: object
       additionalProperties: false
-      required: [timezone, dailyRewardTxb, groupMessageThreshold, groupMessageRewardTxb]
+      required: [timezone, groupMessageThreshold]
       properties:
         timezone:
           type: string
           examples: [Asia/Shanghai]
-        dailyRewardTxb:
-          type: string
-          pattern: '^\d+(\.\d{1,2})?$'
         groupMessageThreshold:
           type: integer
           minimum: 0
-        groupMessageRewardTxb:
-          type: string
-          pattern: '^\d+(\.\d{1,2})?$'
 
     LuckyDrawPrize:
       type: object
@@ -3577,7 +4142,7 @@ components:
     Coupon:
       type: object
       additionalProperties: false
-      required: [id, code, name, kind, valueMinorOrBps, eligibleComboIds, eligibleSquadIds, expiresAt, globalUseLimit, perUserUseLimit, active, createdAt, updatedAt]
+      required: [id, code, name, kind, valueMinorOrBps, eligibleComboIds, eligibleSquadIds, expiresAt, globalUseLimit, perUserUseLimit, active, usageCount, createdAt, updatedAt]
       properties:
         id:
           $ref: '#/components/schemas/ID'
@@ -3617,6 +4182,10 @@ components:
           minimum: 1
         active:
           type: boolean
+        usageCount:
+          type: integer
+          format: int64
+          minimum: 0
         createdAt:
           $ref: '#/components/schemas/Timestamp'
         updatedAt:
@@ -4040,7 +4609,7 @@ components:
     EmbyAccount:
       type: object
       additionalProperties: false
-      required: [id, username, status, maxParentalRating, libraryIds, retryable, updatedAt]
+      required: [id, username, status, maxParentalRating, disabledLibraryIds, retryable, updatedAt]
       properties:
         id:
           $ref: '#/components/schemas/ID'
@@ -4052,7 +4621,7 @@ components:
         maxParentalRating:
           type: [integer, 'null']
           format: int32
-        libraryIds:
+        disabledLibraryIds:
           type: array
           uniqueItems: true
           items:
@@ -4090,12 +4659,12 @@ components:
     EmbyPreferencesRequest:
       type: object
       additionalProperties: false
-      required: [libraryIds]
+      required: [disabledLibraryIds]
       properties:
         maxParentalRating:
           type: [integer, 'null']
           format: int32
-        libraryIds:
+        disabledLibraryIds:
           type: array
           uniqueItems: true
           items:
@@ -4104,7 +4673,7 @@ components:
     EmbySetupRequest:
       type: object
       additionalProperties: false
-      required: [password, libraryIds]
+      required: [password, disabledLibraryIds]
       properties:
         password:
           type: string
@@ -4113,7 +4682,7 @@ components:
         maxParentalRating:
           type: [integer, 'null']
           format: int32
-        libraryIds:
+        disabledLibraryIds:
           type: array
           uniqueItems: true
           items:
@@ -4563,6 +5132,44 @@ components:
         nextCursor:
           type: [string, 'null']
 
+    DatabaseFilterOperator:
+      type: string
+      enum: [eq, ne, contains, starts_with, gt, gte, lt, lte, is_null, not_null]
+
+    DatabaseFilter:
+      type: object
+      additionalProperties: false
+      required: [column, operator]
+      properties:
+        column:
+          type: string
+          pattern: '^[A-Za-z_][A-Za-z0-9_]*$'
+        operator:
+          $ref: '#/components/schemas/DatabaseFilterOperator'
+        value:
+          $ref: '#/components/schemas/DatabaseValue'
+
+    DatabaseQueryRequest:
+      type: object
+      additionalProperties: false
+      required: [filters]
+      properties:
+        search:
+          type: string
+          maxLength: 200
+        filters:
+          type: array
+          maxItems: 5
+          items: { $ref: '#/components/schemas/DatabaseFilter' }
+        cursor:
+          type: string
+          description: Sealed continuation cursor bound to the table, search, and filters.
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+
     DatabaseMutationAction:
       type: string
       enum: [insert, update, delete]
@@ -4743,13 +5350,11 @@ components:
     Job:
       type: object
       additionalProperties: false
-      required: [id, kind, aggregateId, payload, status, attempts, availableAt, lastError, createdAt, updatedAt]
+      required: [id, kind, payload, status, attempts, availableAt, lastError, createdAt, updatedAt]
       properties:
         id:
           $ref: '#/components/schemas/ID'
         kind:
-          type: string
-        aggregateId:
           type: string
         payload:
           type: string

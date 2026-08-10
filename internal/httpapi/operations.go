@@ -70,7 +70,8 @@ func (s *Server) telegramWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 	if update.ChatJoinRequest != nil && update.ChatJoinRequest.InviteLink != nil {
 		join := update.ChatJoinRequest
-		if err := s.deps.Accounts.HandleJoinRequest(r.Context(), join.From.ID, join.Chat.ID, join.InviteLink.InviteLink); err != nil {
+		expiresAt := time.Unix(join.InviteLink.ExpireDate, 0).UTC()
+		if err := s.deps.Accounts.HandleSignedJoinRequest(r.Context(), join.From.ID, join.Chat.ID, join.InviteLink.InviteLink, join.InviteLink.Name, expiresAt); err != nil {
 			s.deps.Logger.Warn("Telegram join request was not approved", "request_id", middlewareRequestID(r), "chat_id", join.Chat.ID, "telegram_id", join.From.ID, "error", err)
 		}
 	}

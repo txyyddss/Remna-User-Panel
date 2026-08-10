@@ -10,12 +10,12 @@ const { overview, loading, busy, error, message, load, setup, updatePreferences,
 
 <template>
   <div class="page page--emby">
-    <header class="page-header"><p class="eyebrow">Shared media</p><h1>Your Emby access.</h1><p>Choose libraries and age rating while account safety controls remain locked.</p></header>
+    <header class="page-header"><p class="eyebrow">{{ $t('emby.eyebrow') }}</p><h1>{{ $t('emby.title') }}</h1><p>{{ $t('emby.copy') }}</p></header>
     <SkeletonBlock v-if="loading" height="28rem" />
     <template v-else-if="overview">
       <InlineNotice v-if="message" tone="success">{{ message }}</InlineNotice>
       <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
-      <InlineNotice v-if="!overview.configured" tone="warning" title="Emby is not configured">An administrator must connect Emby before setup can start.</InlineNotice>
+      <InlineNotice v-if="!overview.configured" tone="warning" :title="$t('emby.notConfigured')">{{ $t('emby.notConfiguredHint') }}</InlineNotice>
       <EmbyPreferencesPanel
         v-if="overview.account && !(overview.account.status === 'failed' && !overview.account.retryable)"
         :account="overview.account"
@@ -34,6 +34,6 @@ const { overview, loading, busy, error, message, load, setup, updatePreferences,
         @setup="setup"
       />
     </template>
-    <div v-else class="error-state"><h1>Emby is unavailable.</h1><p>{{ error }}</p><button class="button button--primary" type="button" @click="load">Try again</button></div>
+    <div v-else class="error-state"><h1>{{ $t('emby.unavailable') }}</h1><p>{{ error }}</p><button class="button button--primary" type="button" @click="load">{{ $t('common.tryAgain') }}</button></div>
   </div>
 </template>

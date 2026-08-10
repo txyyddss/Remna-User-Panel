@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue'
-import { PhDiceFive, PhTrendUp } from '@phosphor-icons/vue'
+import { PhTrendUp } from '@phosphor-icons/vue'
 
 import type { BetGame } from '@/api/features'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
 import { moneyFromTxbInput, txbInputFromMinor } from '@/utils/format'
+import { gameIcon } from './gameIcons'
 
 const props = defineProps<{
   games: readonly BetGame[]
@@ -56,7 +57,7 @@ function submit(): void {
         :aria-pressed="game.id === selectedId"
         @click="selectedId = game.id"
       >
-        <span class="bet-option__icon"><PhDiceFive :size="21" /></span>
+        <span class="bet-option__icon"><component :is="gameIcon(game.icon)" :size="21" /></span>
         <span><strong>{{ game.name }}</strong><small>{{ game.description || `${txbInputFromMinor(game.minimumStakeMinor)} to ${txbInputFromMinor(game.maximumStakeMinor)} TXB` }}</small></span>
         <span class="bet-option__odds">{{ (game.winChanceBps / 100).toFixed(2) }}%</span>
       </button>

@@ -10,7 +10,7 @@ const emit = defineEmits<{ toggle: [id: string] }>()
 
 <template>
   <fieldset class="emby-library-picker">
-    <legend>Libraries</legend>
+    <legend>{{ $t('emby.disabledLibraries') }}</legend>
     <label v-for="library in libraries" :key="library.id" class="emby-library">
       <span class="feature-icon feature-icon--small"><PhFilmSlate :size="18" /></span>
       <span>{{ library.name }}</span>
@@ -21,6 +21,7 @@ const emit = defineEmits<{ toggle: [id: string] }>()
         @update:model-value="emit('toggle', library.id)"
       ><CheckboxIndicator class="checkbox-indicator"><PhCheck :size="16" weight="bold" /></CheckboxIndicator></CheckboxRoot>
     </label>
+    <small class="field-hint">{{ $t('emby.disabledLibrariesHint') }}</small>
   </fieldset>
 </template>
 

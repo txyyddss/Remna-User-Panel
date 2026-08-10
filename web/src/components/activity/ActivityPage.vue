@@ -9,8 +9,9 @@ import BetGamesPanel from './BetGamesPanel.vue'
 import DailyCheckInCard from './DailyCheckInCard.vue'
 import LuckyDrawPanel from './LuckyDrawPanel.vue'
 import GroupMessageRewardPanel from './GroupMessageRewardPanel.vue'
+import ActivityResultDialog from './ActivityResultDialog.vue'
 
-const { overview, result, loading, busy, error, load, checkIn, placeBet, draw } = useActivity()
+const { overview, result, loading, busy, error, load, checkIn, placeBet, draw, clearResult } = useActivity()
 </script>
 
 <template>
@@ -29,12 +30,12 @@ const { overview, result, loading, busy, error, load, checkIn, placeBet, draw } 
         <p>{{ $t('activity.balance', { amount: formatMoney(overview.balance) }) }}</p>
         <button class="text-button" type="button" :aria-label="$t('common.refresh')" @click="load({ quiet: true })"><PhArrowClockwise :size="17" /> {{ $t('common.refresh') }}</button>
       </div>
-      <InlineNotice v-if="result" :tone="result.outcome === 'loss' ? 'warning' : 'success'" :title="$t('activity.resultRecorded')">{{ result.message }}</InlineNotice>
       <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
       <div class="activity-layout">
         <DailyCheckInCard
           :checked-in="overview.checkedInToday"
-          :reward-txb-minor="overview.dailyRewardTxbMinor"
+          :reward-min-txb-minor="overview.dailyRewardMinTxbMinor"
+          :reward-max-txb-minor="overview.dailyRewardMaxTxbMinor"
           :time-zone="overview.timeZone"
           :busy="busy === 'check-in'"
           @check-in="checkIn"
@@ -43,6 +44,7 @@ const { overview, result, loading, busy, error, load, checkIn, placeBet, draw } 
         <BetGamesPanel :games="overview.games" :busy="busy === 'bet'" @bet="placeBet" />
         <LuckyDrawPanel :draws="overview.draws" :busy="busy === 'draw'" @draw="draw" />
       </div>
+      <ActivityResultDialog :result="result" @close="clearResult" />
     </template>
     <div v-else class="error-state">
       <h1>{{ $t('errors.activityUnavailable') }}</h1><p>{{ error }}</p>

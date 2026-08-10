@@ -78,14 +78,18 @@ type GameInput struct {
 	ReturnMultiplierBPS int64  `json:"returnMultiplierBps"`
 }
 
+var allowedGameIcons = map[string]struct{}{
+	"dice": {}, "coin": {}, "cards": {}, "target": {}, "trophy": {}, "lightning": {}, "sparkle": {},
+}
+
 // Validate rejects an invalid betting-game configuration.
 func (input GameInput) Validate() error {
 	name := strings.TrimSpace(input.Name)
 	if name == "" || len(name) > 80 {
 		return fmt.Errorf("%w: game name must be 1 to 80 bytes", ErrInvalidInput)
 	}
-	if len(strings.TrimSpace(input.Icon)) > 64 {
-		return fmt.Errorf("%w: game icon is too long", ErrInvalidInput)
+	if _, ok := allowedGameIcons[strings.TrimSpace(input.Icon)]; !ok {
+		return fmt.Errorf("%w: unsupported game icon", ErrInvalidInput)
 	}
 	if len(strings.TrimSpace(input.Description)) > 4_000 {
 		return fmt.Errorf("%w: game description is too long", ErrInvalidInput)
@@ -127,7 +131,8 @@ type BetResult struct {
 // CheckInConfig contains the server-owned daily reward and timezone.
 type CheckInConfig struct {
 	Timezone                string
-	RewardMinor             int64
+	RewardMinMinor          int64
+	RewardMaxMinor          int64
 	GroupMessageThreshold   int
 	GroupMessageRewardMinor int64
 }
@@ -302,7 +307,7 @@ type Store interface {
 	SaveActivityGame(context.Context, GameInput, time.Time) (Game, error)
 	ListActivityGames(context.Context, bool) ([]Game, error)
 	PlaceActivityBet(context.Context, string, string, int64, string, RandomSource, time.Time) (BetResult, error)
-	ClaimDailyActivity(context.Context, string, string, string, int64, time.Time) (DailyCheckIn, error)
+	ClaimDailyActivityRange(context.Context, string, string, string, int64, int64, RandomSource, time.Time) (DailyCheckIn, error)
 	SaveLuckyDraw(context.Context, LuckyDrawInput, time.Time) (LuckyDraw, error)
 	ListLuckyDraws(context.Context, bool) ([]LuckyDraw, error)
 	PlayLuckyDraw(context.Context, string, string, string, RandomSource, time.Time) (DrawResult, error)
@@ -355,7 +360,7 @@ func (service *Service) PlayBet(ctx context.Context, userID, gameID string, stak
 
 // CheckIn claims the configured reward for the current local calendar date.
 func (service *Service) CheckIn(ctx context.Context, userID string, config CheckInConfig) (DailyCheckIn, error) {
-	if strings.TrimSpace(userID) == "" || config.RewardMinor < 0 {
+	if strings.TrimSpace(userID) == "" || config.RewardMinMinor < 0 || config.RewardMaxMinor < config.RewardMinMinor {
 		return DailyCheckIn{}, fmt.Errorf("%w: invalid check-in request", ErrInvalidInput)
 	}
 	location, err := time.LoadLocation(strings.TrimSpace(config.Timezone))
@@ -364,7 +369,7 @@ func (service *Service) CheckIn(ctx context.Context, userID string, config Check
 	}
 	now := service.now()
 	localDate := now.In(location).Format(time.DateOnly)
-	return service.store.ClaimDailyActivity(ctx, userID, localDate, location.String(), config.RewardMinor, now.UTC())
+	return service.store.ClaimDailyActivityRange(ctx, userID, localDate, location.String(), config.RewardMinMinor, config.RewardMaxMinor, service.rng, now.UTC())
 }
 
 // SaveDraw validates and atomically replaces one lucky-draw configuration.

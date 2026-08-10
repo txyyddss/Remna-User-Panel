@@ -4,6 +4,7 @@ import { PhCheckCircle, PhFloppyDisk, PhWarning, PhX } from '@phosphor-icons/vue
 
 import type { DatabaseMutationReview, DatabaseRow, DatabaseTable, DatabaseValue } from '@/api/features'
 import SwitchField from '@/components/common/SwitchField.vue'
+import { useI18n } from '@/i18n'
 
 type DeepReadonly<T> = T extends readonly (infer Item)[]
   ? readonly DeepReadonly<Item>[]
@@ -22,9 +23,10 @@ const textDraft = reactive<Record<string, string>>({})
 const nullDraft = reactive<Record<string, boolean>>({})
 const reason = shallowRef('')
 const confirmation = shallowRef('')
+const { t } = useI18n()
 const canReview = computed(() => reason.value.trim().length >= 4)
 const canApply = computed(() => Boolean(props.review && confirmation.value === props.review.requiredConfirmation))
-const title = computed(() => `${props.action === 'insert' ? 'Insert' : props.action === 'delete' ? 'Delete' : 'Edit'} ${props.table.name} row`)
+const title = computed(() => t('databaseRecord.title', { action: t(`databaseRecord.actions.${props.action}`), table: props.table.name }))
 
 watch([() => props.row, () => props.action, () => props.table], ([row]) => {
   for (const key of Object.keys(draft)) delete draft[key]
@@ -95,19 +97,19 @@ function submit(): void {
 }
 
 function displayValue(value: DatabaseValue | undefined): string {
-  if (value === undefined) return 'Not present'
-  if (value === null) return 'NULL'
-  if (typeof value === 'object') return '[BLOB]'
+  if (value === undefined) return t('databaseRecord.notPresent')
+  if (value === null) return t('adminDatabase.nullValue')
+  if (typeof value === 'object') return t('adminDatabase.blobValue')
   return String(value)
 }
 </script>
 
 <template>
   <aside class="database-drawer" aria-labelledby="database-editor-title">
-    <header class="database-drawer__header"><div><h3 id="database-editor-title">{{ title }}</h3><p>Direct edits bypass domain synchronization hooks.</p></div><button class="icon-button" type="button" aria-label="Close record editor" @click="$emit('cancel')"><PhX :size="19" /></button></header>
-    <div class="database-warning"><PhWarning :size="20" weight="fill" /><p>{{ review?.warning || table.warning || 'Every direct mutation is high risk and creates a rescue backup.' }}</p></div>
+    <header class="database-drawer__header"><div><h3 id="database-editor-title">{{ title }}</h3><p>{{ t('databaseRecord.copy') }}</p></div><button class="icon-button" type="button" :aria-label="t('databaseRecord.close')" @click="$emit('cancel')"><PhX :size="19" /></button></header>
+    <div class="database-warning"><PhWarning :size="20" weight="fill" /><p>{{ review?.warning || table.warning || t('databaseRecord.warning') }}</p></div>
     <form class="database-form" @submit.prevent="submit">
-      <div v-if="action === 'delete'" class="database-delete-summary"><strong>Record key</strong><code>{{ JSON.stringify(row?.key ?? {}) }}</code><p>The reviewed diff must show the full row removal before apply.</p></div>
+      <div v-if="action === 'delete'" class="database-delete-summary"><strong>{{ t('databaseRecord.recordKey') }}</strong><code>{{ JSON.stringify(row?.key ?? {}) }}</code><p>{{ t('databaseRecord.deleteHint') }}</p></div>
       <template v-for="column in action === 'delete' ? [] : table.columns" :key="column.name">
         <div class="database-field-wrap">
           <SwitchField
@@ -119,22 +121,22 @@ function displayValue(value: DatabaseValue | undefined): string {
             :help="column.declaredType"
             @update:model-value="setBoolean(column.name, $event)"
           />
-          <label v-else class="database-field"><span>{{ column.name }} <small>{{ column.declaredType }}</small></span><textarea v-if="isBlob(column.declaredType, draft[column.name])" v-model.trim="textDraft[column.name]" rows="3" spellcheck="false" :disabled="review !== null || !column.editable || column.sensitive || nullDraft[column.name]" placeholder="Base64-encoded bytes" @input="$emit('invalidate')" /><input v-else v-model="textDraft[column.name]" :inputmode="isNumeric(column.declaredType) ? 'decimal' : 'text'" :disabled="review !== null || !column.editable || column.sensitive || nullDraft[column.name]" :placeholder="column.sensitive ? 'Masked, use settings to replace' : ''" @input="$emit('invalidate')" /></label>
-          <label v-if="column.nullable && column.editable && !column.sensitive" class="database-null-toggle"><input :checked="nullDraft[column.name]" type="checkbox" :disabled="review !== null" @change="setNull(column.name, ($event.target as HTMLInputElement).checked)" />Store NULL</label>
+          <label v-else class="database-field"><span>{{ column.name }} <small>{{ column.declaredType }}</small></span><textarea v-if="isBlob(column.declaredType, draft[column.name])" v-model.trim="textDraft[column.name]" rows="3" spellcheck="false" :disabled="review !== null || !column.editable || column.sensitive || nullDraft[column.name]" :placeholder="t('databaseRecord.base64')" @input="$emit('invalidate')" /><input v-else v-model="textDraft[column.name]" :inputmode="isNumeric(column.declaredType) ? 'decimal' : 'text'" :disabled="review !== null || !column.editable || column.sensitive || nullDraft[column.name]" :placeholder="column.sensitive ? t('databaseRecord.masked') : ''" @input="$emit('invalidate')" /></label>
+          <label v-if="column.nullable && column.editable && !column.sensitive" class="database-null-toggle"><input :checked="nullDraft[column.name]" type="checkbox" :disabled="review !== null" @change="setNull(column.name, ($event.target as HTMLInputElement).checked)" />{{ t('databaseRecord.storeNull') }}</label>
         </div>
       </template>
-      <label class="database-field"><span>Reason</span><textarea v-model.trim="reason" rows="3" required minlength="4" :disabled="review !== null" placeholder="Why is this direct edit necessary?" @input="$emit('invalidate')" /></label>
+      <label class="database-field"><span>{{ t('databaseRecord.reason') }}</span><textarea v-model.trim="reason" rows="3" required minlength="4" :disabled="review !== null" :placeholder="t('databaseRecord.reasonPlaceholder')" @input="$emit('invalidate')" /></label>
 
       <section v-if="review" class="database-diff" aria-labelledby="database-diff-title">
-        <div><PhCheckCircle :size="20" /><h4 id="database-diff-title">Review exact changes</h4></div>
-        <dl><template v-for="column in review.changedColumns" :key="column"><dt>{{ column }}</dt><dd><span>{{ displayValue(review.before?.[column]) }}</span><strong>to</strong><span>{{ displayValue(review.after?.[column]) }}</span></dd></template></dl>
-        <p>Rescue backup required before apply.</p>
+        <div><PhCheckCircle :size="20" /><h4 id="database-diff-title">{{ t('databaseRecord.review') }}</h4></div>
+        <dl><template v-for="column in review.changedColumns" :key="column"><dt>{{ column }}</dt><dd><span>{{ displayValue(review.before?.[column]) }}</span><strong>{{ t('databaseRecord.to') }}</strong><span>{{ displayValue(review.after?.[column]) }}</span></dd></template></dl>
+        <p>{{ t('databaseRecord.backupRequired') }}</p>
       </section>
 
-      <label v-if="review" class="database-field"><span>Type {{ review.requiredConfirmation }}</span><input v-model="confirmation" required autocomplete="off" /></label>
+      <label v-if="review" class="database-field"><span>{{ t('databaseRecord.typeConfirmation', { confirmation: review.requiredConfirmation }) }}</span><input v-model="confirmation" required autocomplete="off" /></label>
       <div class="button-row">
-        <button v-if="review" class="button button--secondary" type="button" :disabled="busy" @click="$emit('invalidate')">Change draft</button>
-        <button class="button button--primary" type="submit" :disabled="busy || (review ? !canApply : !canReview)"><PhFloppyDisk :size="18" />{{ busy ? 'Working' : review ? 'Apply reviewed change' : 'Review change' }}</button>
+        <button v-if="review" class="button button--secondary" type="button" :disabled="busy" @click="$emit('invalidate')">{{ t('databaseRecord.changeDraft') }}</button>
+        <button class="button button--primary" type="submit" :disabled="busy || (review ? !canApply : !canReview)"><PhFloppyDisk :size="18" />{{ busy ? t('databaseRecord.working') : review ? t('databaseRecord.apply') : t('databaseRecord.reviewChange') }}</button>
       </div>
     </form>
   </aside>

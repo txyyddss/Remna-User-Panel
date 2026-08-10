@@ -2,7 +2,9 @@ import { computed, onMounted, reactive, readonly, shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { api, ApiError } from '@/api/client'
+import { featuresApi, type PublishedOnboarding } from '@/api/features'
 import type { InviteLink, MembershipState, OnboardingStep } from '@/api/types'
+import { useI18n } from '@/i18n'
 import { useSessionStore } from '@/stores/session'
 import { notifyHaptic, openExternalLink } from '@/utils/telegram'
 
@@ -14,12 +16,14 @@ function normalizeStep(step?: OnboardingStep): OnboardingStep {
 export function useOnboarding() {
   const router = useRouter()
   const sessionStore = useSessionStore()
+  const { locale, t } = useI18n()
   const step = shallowRef<OnboardingStep>(normalizeStep(sessionStore.user?.onboardingState))
   const loading = shallowRef(false)
   const error = shallowRef<string | null>(null)
   const invites = shallowRef<InviteLink[]>([])
   const membership = shallowRef<MembershipState | null>(null)
-  const form = reactive({ username: '', agreement: false })
+  const content = shallowRef<PublishedOnboarding | null>(null)
+  const form = reactive({ username: '', agreementIds: [] as string[] })
 
   const progress = computed(() => {
     const order: OnboardingStep[] = ['intro', 'membership', 'username', 'agreement', 'complete']
@@ -27,9 +31,11 @@ export function useOnboarding() {
   })
 
   const usernameValid = computed(() => /^[a-z]{3,9}$/.test(form.username))
+  const allAgreementsAccepted = computed(() => Boolean(content.value?.agreements.length)
+    && content.value!.agreements.every((agreement) => form.agreementIds.includes(agreement.id)))
   const usernameHint = computed(() => {
-    if (!form.username) return 'Use 3-9 lowercase English letters.'
-    return usernameValid.value ? 'This format looks good.' : 'Only 3-9 lowercase English letters are allowed.'
+    if (!form.username) return t('onboarding.useLowercase')
+    return usernameValid.value ? t('onboarding.formatGood') : t('onboarding.formatInvalid')
   })
 
   async function run<T>(task: () => Promise<T>): Promise<T | undefined> {
@@ -39,9 +45,11 @@ export function useOnboarding() {
       return await task()
     } catch (caught) {
       if (caught instanceof ApiError && caught.code === 'USERNAME_UNAVAILABLE') {
-        error.value = 'That username is already in use. Try another one.'
+        error.value = t('onboarding.usernameUnavailable')
       } else {
-        error.value = caught instanceof Error ? caught.message : 'Something went wrong. Please try again.'
+        const key = caught instanceof ApiError ? `errors.api.${caught.code}` : ''
+        const translated = key ? t(key) : ''
+        error.value = translated && translated !== key ? translated : t('onboarding.somethingWrong')
       }
       notifyHaptic('error')
       return undefined
@@ -53,6 +61,13 @@ export function useOnboarding() {
   async function loadInvites(): Promise<void> {
     const response = await run(() => api.createInvites())
     if (response) invites.value = response.invites
+  }
+
+  async function loadContent(): Promise<void> {
+    const response = await run(() => featuresApi.getPublishedOnboarding(locale.value))
+    if (!response) return
+    content.value = response
+    form.agreementIds = form.agreementIds.filter((id) => response.agreements.some((agreement) => agreement.id === id))
   }
 
   function finishIntro(): void {
@@ -76,7 +91,7 @@ export function useOnboarding() {
       notifyHaptic('success')
       step.value = 'username'
     } else {
-      error.value = 'Join both spaces, then check again.'
+      error.value = t('onboarding.joinBoth')
     }
   }
 
@@ -90,8 +105,8 @@ export function useOnboarding() {
   }
 
   async function acceptAgreement(): Promise<void> {
-    if (!form.agreement) return
-    const response = await run(() => api.acceptAgreement())
+    if (!content.value || !allAgreementsAccepted.value) return
+    const response = await run(() => api.acceptAgreement(content.value!.agreementRevision, [...form.agreementIds]))
     if (!response) return
     sessionStore.updateSession(response)
     notifyHaptic('success')
@@ -99,12 +114,21 @@ export function useOnboarding() {
     await router.replace('/home')
   }
 
+  function toggleAgreement(id: string): void {
+    form.agreementIds = form.agreementIds.includes(id)
+      ? form.agreementIds.filter((value) => value !== id)
+      : [...form.agreementIds, id]
+  }
+
   watch(step, (next) => {
     error.value = null
     if (next === 'membership' && invites.value.length === 0) void loadInvites()
   })
 
+  watch(locale, () => void loadContent())
+
   onMounted(() => {
+    void loadContent()
     if (step.value === 'membership') void loadInvites()
   })
 
@@ -115,14 +139,17 @@ export function useOnboarding() {
     error: readonly(error),
     invites: readonly(invites),
     membership: readonly(membership),
+    content: readonly(content),
     form,
     usernameValid,
     usernameHint,
+    allAgreementsAccepted,
     finishIntro,
     loadInvites,
     openInvite,
     checkMembership,
     submitUsername,
     acceptAgreement,
+    toggleAgreement,
   }
 }

@@ -14,8 +14,10 @@ const {
   balance,
   loading,
   purchasing,
+  quoting,
   error,
   purchase,
+  quote,
   selectedComboId,
   selectedSquadIds,
   selectedCouponGrantId,
@@ -100,6 +102,8 @@ const {
         v-model:coupon-grant-id="selectedCouponGrantId"
         :balance="balance"
         :purchasing="purchasing"
+        :quoting="quoting"
+        :quote="quote"
         :needs-balance="needsBalance"
         :error="checkoutOpen ? error : null"
         @confirm="confirmPurchase"

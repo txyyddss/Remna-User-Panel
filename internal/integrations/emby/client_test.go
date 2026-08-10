@@ -64,7 +64,7 @@ func TestClientWireContract(t *testing.T) {
 	if err := client.SetPassword(ctx, "user-1", []byte("old"), []byte("new")); err != nil {
 		t.Fatalf("SetPassword() error = %v", err)
 	}
-	policy := domain.HardenPolicy(loaded.Policy, domain.Preferences{LibraryIDs: []string{"folder-1"}})
+	policy := domain.HardenPolicy(loaded.Policy, domain.Preferences{DisabledLibraryIDs: []string{"folder-1"}})
 	if err := client.UpdatePolicy(ctx, "user-1", policy); err != nil {
 		t.Fatalf("UpdatePolicy() error = %v", err)
 	}

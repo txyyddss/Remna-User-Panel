@@ -2,26 +2,28 @@
 
 ## Ownership and interfaces
 
-This module owns combo definitions, locally merchandised Remnawave squad products, server-side pricing, coupon-aware purchases, active/queued access terms, rollover settlement, and durable commands that make Remnawave match local entitlement state. It consumes the transactional balance interface and a narrow access-synchronization interface; it does not call HTTP providers directly.
+This module owns live combo definitions, sparse per-Remnawave-squad merchandising overrides, server-side quotes/pricing, coupon-aware purchases, active/queued access terms, rollover settlement, statistics, and durable commands that make Remnawave match local entitlement state. It consumes the transactional balance interface and a narrow access-synchronization interface; it does not call HTTP providers directly.
 
-Members read `/api/v1/catalog`, create/list `/api/v1/purchases`, and see entitlement projections on `/api/v1/dashboard`. Administrators manage combos, import/update squad products, inspect entitlements, and issue audited cancellation commands.
+Members read `/api/v1/catalog`, quote at `/api/v1/purchases/quote`, create/list `/api/v1/purchases`, and see entitlement projections on `/api/v1/dashboard`. Administrators manage combos and sparse squad overrides, inspect combo/squad statistics, assign upstream nodes, inspect entitlements, and issue audited cancellation commands.
 
 ## Catalog and pricing invariants
 
 - A combo has a positive traffic limit, `DAY`, `WEEK`, or `MONTH` reset cadence, positive validity in days, a nonnegative TXB minor-unit price, included internal squads, and rollover threshold/cap settings.
 - "Free nodes" are represented only by included Remnawave internal squads. Node IDs are not stored as a second access model.
-- Squad products originate from Remnawave import. Local description, term price, visibility, and availability do not mutate the upstream squad.
+- Squad identity/name/availability comes from every live Remnawave list call. `squad_product_overrides` stores only edited description, term price, and visibility keyed by upstream UUID; restoring defaults removes the row.
 - A public catalog contains only active combos whose included squads are all upstream-present, plus visible upstream-present add-ons. A stale selection is revalidated in the purchase transaction before any debit. Historical records are archived rather than deleted when purchases refer to them.
 - Included squads are selected explicitly in combo administration. They are disabled, gray, and labelled `Included` in member add-on selection; a combo change immediately prunes newly included squads from the paid selection.
-- Combo and squad descriptions use Markdown with raw HTML disabled and sanitized link protocols. Administration uses the same renderer for preview.
+- Combo and squad descriptions use Markdown with raw HTML disabled and sanitized link protocols. The closed `[text]{color=... size=...}` directive accepts only the documented six color and four size tokens and emits classes; unsupported directives remain text. Administration uses the same renderer for preview.
 - The server reloads all selected records and calculates the final gross and coupon-adjusted net TXB price in one transaction. Browser totals are display-only.
-- Every purchase stores immutable combo, squad, traffic, cadence, validity, gross/net price, coupon effect, rollover threshold, and rollover cap snapshots so later catalog edits do not rewrite history.
+- Included upstream squad UUIDs are validated JSON on `combos`; paid add-ons alone are retained in `purchase_addons`. A purchase retains charged/gross/discount facts, coupon relationship, validity, status, user, idempotency, and one live `combo_id`. Combo edits intentionally change active, queued, and historical behavior/projections and enqueue one canonical user-sync job per affected member. Referenced combos can only be hidden.
 
 ## Purchase and term behavior
 
 A member has at most one active combo and one effective account-wide traffic budget/expiry. A first purchase starts immediately. A same-combo renewal extends from `max(now,currentEnd)`. Selecting a different combo or changing add-ons creates a queued term starting exactly at the current term end; there is no proration or mid-term squad replacement.
 
-The selected coupon check/consumption, balance debit, purchase row, squad snapshot, rollover snapshot, pending extension-credit consumption, ledger entry, and outbox operation commit atomically. Insufficient TXB, including a balance already below zero after debt reconciliation, returns `409 INSUFFICIENT_BALANCE`. No purchase is visible without its matching ledger debit and synchronization job.
+The read-only quote and the creation transaction both revalidate the live combo, coupon/grant, selected add-ons, active term, effective date, and upstream squad identities. Creation then atomically commits coupon use, balance debit, purchase/add-on facts, pending extension-credit consumption, ledger entry, and canonical outbox operation. Insufficient TXB returns `409 INSUFFICIENT_BALANCE`; no purchase is visible without its matching debit and synchronization job.
+
+Combo and internal-squad statistics accept a bounded date range, IANA timezone, and daily/weekly bucket. They report unique buyers, purchase count, charged/discount/add-on totals, series, and included-versus-add-on distribution from authoritative purchase facts plus current live combo references.
 
 When a term activates, synchronization persists three phases: remove all squads to quiesce access, reset usage while access is quiesced, then replace the complete internal-squad list and apply the account-wide limit/reset strategy. A crash or ambiguous reset response repeats only a phase safe while no traffic can accrue; a retry after final apply never resets again. At expiry, synchronization removes all internal squads but leaves the upstream identity ACTIVE with the fixed 2099 upstream expiry. The local term, not Remnawave's user expiry, is authoritative.
 

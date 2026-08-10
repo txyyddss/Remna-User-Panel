@@ -1,24 +1,21 @@
-import { computed, onScopeDispose, shallowRef } from 'vue'
+import { computed, onScopeDispose, shallowRef, type MaybeRefOrGetter, toValue } from 'vue'
 
-export const onboardingMessages = [
-  'Hi, how are you?',
-  'Welcome to TX Carpool',
-  'Just take you several seconds to complete',
-] as const
+import type { OnboardingWelcomeMessage } from '@/api/features'
 
 export interface IntroSequenceOptions {
-  duration?: number
+  messages: MaybeRefOrGetter<readonly OnboardingWelcomeMessage[]>
   onComplete: () => void
 }
 
 export function useIntroSequence(options: IntroSequenceOptions) {
-  const { duration = 900, onComplete } = options
+  const { onComplete } = options
   const index = shallowRef(0)
   const active = shallowRef(true)
   let timer: ReturnType<typeof setTimeout> | undefined
 
-  const message = computed(() => onboardingMessages[index.value] ?? onboardingMessages[0])
-  const progress = computed(() => ((index.value + 1) / onboardingMessages.length) * 100)
+  const messages = computed(() => toValue(options.messages))
+  const message = computed(() => messages.value[index.value]?.text ?? '')
+  const progress = computed(() => messages.value.length ? ((index.value + 1) / messages.value.length) * 100 : 0)
 
   function stopTimer(): void {
     if (timer !== undefined) clearTimeout(timer)
@@ -35,17 +32,17 @@ export function useIntroSequence(options: IntroSequenceOptions) {
   function schedule(): void {
     stopTimer()
     timer = setTimeout(() => {
-      if (index.value >= onboardingMessages.length - 1) {
+      if (index.value >= messages.value.length - 1) {
         finish()
         return
       }
       index.value += 1
       schedule()
-    }, duration)
+    }, messages.value[index.value]?.durationMs ?? 1800)
   }
 
   function start(): void {
-    if (!active.value) return
+    if (!active.value || messages.value.length === 0) return
     schedule()
   }
 

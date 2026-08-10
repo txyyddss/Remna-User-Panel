@@ -19,7 +19,7 @@ func TestHardenPolicyPreservesRemoteAccessAndForcesRestrictions(t *testing.T) {
 		"IsHidden":           json.RawMessage(`false`),
 	}
 	rating := int32(13)
-	hardened := HardenPolicy(current, Preferences{MaxParentalRating: &rating, LibraryIDs: []string{"movies"}})
+	hardened := HardenPolicy(current, Preferences{MaxParentalRating: &rating, DisabledLibraryIDs: []string{"movies"}})
 	checks := map[string]string{
 		"EnableRemoteAccess":              "true",
 		"FutureField":                     `{"nested":"kept"}`,
@@ -34,9 +34,10 @@ func TestHardenPolicyPreservesRemoteAccessAndForcesRestrictions(t *testing.T) {
 		"EnableMediaConversion":           "false",
 		"EnableContentDownloading":        "false",
 		"EnableSubtitleDownloading":       "false",
-		"EnableAllFolders":                "false",
+		"EnableAllFolders":                "true",
 		"MaxParentalRating":               "13",
-		"EnabledFolders":                  `["movies"]`,
+		"EnabledFolders":                  `[]`,
+		"BlockedMediaFolders":             `["movies"]`,
 	}
 	for key, want := range checks {
 		if got := string(hardened[key]); got != want {
@@ -55,14 +56,14 @@ func TestSetupUsesServerPriceAndProvisioningContext(t *testing.T) {
 	secrets := &serviceSecrets{}
 	service := NewService(repository, remote, fixedPrice(275), secrets)
 	rating := int32(13)
-	account, created, err := service.Setup(context.Background(), "user-1", "private password", Preferences{MaxParentalRating: &rating, LibraryIDs: []string{"movies", "movies"}})
+	account, created, err := service.Setup(context.Background(), "user-1", "private password", Preferences{MaxParentalRating: &rating, DisabledLibraryIDs: []string{"movies", "movies"}})
 	if err != nil || !created || account.SetupPriceTXBMinor != 275 {
 		t.Fatalf("Setup() = (%+v, %v, %v)", account, created, err)
 	}
 	if secrets.context != "emby.provisioning.password:user-1" || secrets.plaintext != "private password" {
 		t.Fatalf("sealed secret = context %q plaintext %q", secrets.context, secrets.plaintext)
 	}
-	if repository.record.BaseUsername != "ada" || repository.record.SetupPriceTXBMinor != 275 || !reflect.DeepEqual(repository.record.Preferences.LibraryIDs, []string{"movies"}) {
+	if repository.record.BaseUsername != "ada" || repository.record.SetupPriceTXBMinor != 275 || !reflect.DeepEqual(repository.record.Preferences.DisabledLibraryIDs, []string{"movies"}) {
 		t.Fatalf("queued record = %+v", repository.record)
 	}
 }
@@ -79,13 +80,13 @@ func TestProvisionCollisionHardeningAndAmbiguousReconciliation(t *testing.T) {
 		{
 			name: "base collision receives stable suffix",
 			record: ProvisioningRecord{Account: Account{ID: "account-1", UserID: "user-1", BaseUsername: "ada", Status: StatusQueued,
-				Preferences: Preferences{LibraryIDs: []string{"movies"}}}, PasswordCiphertext: "sealed", PasswordContext: "emby.provisioning.password:user-1"},
+				Preferences: Preferences{DisabledLibraryIDs: []string{"movies"}}}, PasswordCiphertext: "sealed", PasswordContext: "emby.provisioning.password:user-1"},
 			seedBaseCollision: true, wantCreate: true,
 		},
 		{
 			name: "ambiguous create is reconciled by persisted exact name",
 			record: ProvisioningRecord{Account: Account{ID: "account-2", UserID: "user-2", BaseUsername: "river", CandidateUsername: "river", Status: StatusQueued,
-				Preferences: Preferences{LibraryIDs: []string{"movies"}}}, PasswordCiphertext: "sealed", PasswordContext: "emby.provisioning.password:user-2", CreateAttempted: true},
+				Preferences: Preferences{DisabledLibraryIDs: []string{"movies"}}}, PasswordCiphertext: "sealed", PasswordContext: "emby.provisioning.password:user-2", CreateAttempted: true},
 			seedCandidate: true,
 		},
 	}
@@ -114,7 +115,7 @@ func TestProvisionCollisionHardeningAndAmbiguousReconciliation(t *testing.T) {
 			if test.seedBaseCollision && repository.record.CandidateUsername != SuffixedUsername("ada", "user-1") {
 				t.Fatalf("candidate = %q", repository.record.CandidateUsername)
 			}
-			if string(remote.updatedPolicy["EnableRemoteAccess"]) != "true" || string(remote.updatedPolicy["EnableAllFolders"]) != "false" ||
+			if string(remote.updatedPolicy["EnableRemoteAccess"]) != "true" || string(remote.updatedPolicy["EnableAllFolders"]) != "true" ||
 				string(remote.updatedPolicy["FutureField"]) != `"kept"` {
 				t.Fatalf("updated policy = %#v", remote.updatedPolicy)
 			}
@@ -134,7 +135,7 @@ func TestLinkedPreferencesAndPasswordNeverPersistPlaintext(t *testing.T) {
 	remote.addUser(RemoteUser{ID: "remote", Name: "ada", Policy: basePolicy()})
 	service := NewService(repository, remote, fixedPrice(100), &serviceSecrets{})
 	rating := int32(13)
-	updated, err := service.UpdatePreferences(context.Background(), "user", Preferences{MaxParentalRating: &rating, LibraryIDs: []string{"movies"}})
+	updated, err := service.UpdatePreferences(context.Background(), "user", Preferences{MaxParentalRating: &rating, DisabledLibraryIDs: []string{"movies"}})
 	if err != nil || updated.Preferences.MaxParentalRating == nil || *updated.Preferences.MaxParentalRating != 13 {
 		t.Fatalf("UpdatePreferences() = (%+v, %v)", updated, err)
 	}
@@ -336,7 +337,7 @@ func TestSetupAndLinkedValidationBranches(t *testing.T) {
 		preferences Preferences
 	}{
 		{name: "empty password"},
-		{name: "unknown library", password: "password", preferences: Preferences{LibraryIDs: []string{"missing"}}},
+		{name: "unknown library", password: "password", preferences: Preferences{DisabledLibraryIDs: []string{"missing"}}},
 		{name: "unknown rating", password: "password", preferences: Preferences{MaxParentalRating: int32Pointer(99)}},
 	}
 	for _, test := range tests {
@@ -449,7 +450,8 @@ func (r *serviceRepository) RequeueEmbyProvisioning(_ context.Context, _ string,
 	r.record.Status = StatusQueued
 	return nil
 }
-func (r *serviceRepository) MarkEmbyProvisioned(context.Context, string, time.Time) error {
+func (r *serviceRepository) MarkEmbyProvisioned(_ context.Context, _ string, preferences Preferences, _ time.Time) error {
+	r.record.Preferences = preferences
 	r.record.Status, r.record.PasswordCiphertext, r.record.PasswordContext = StatusActive, "", ""
 	return nil
 }
@@ -520,8 +522,11 @@ func (r *serviceRemote) SetPassword(_ context.Context, _ string, current, passwo
 	r.password = append([]byte(nil), password...)
 	return r.passwordErr
 }
-func (r *serviceRemote) UpdatePolicy(_ context.Context, _ string, policy Policy) error {
+func (r *serviceRemote) UpdatePolicy(_ context.Context, id string, policy Policy) error {
 	r.updatedPolicy = policy.Clone()
+	user := r.byID[id]
+	user.Policy = policy.Clone()
+	r.byID[id], r.byName[user.Name] = user, user
 	return nil
 }
 func (*serviceRemote) ListSelectableFolders(context.Context) ([]Folder, error) {

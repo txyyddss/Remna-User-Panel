@@ -24,7 +24,8 @@ import (
 
 const (
 	activityTimezoneSetting      = "activity.timezone"
-	activityRewardSetting        = "activity.daily_reward_txb"
+	activityRewardMinSetting     = "activity.daily_reward_min_txb"
+	activityRewardMaxSetting     = "activity.daily_reward_max_txb"
 	groupMessageThresholdSetting = "activity.group_message_threshold"
 	groupMessageRewardSetting    = "activity.group_message_reward_txb"
 	defaultActivityTimezone      = "Asia/Shanghai"
@@ -71,9 +72,13 @@ func (s *Server) mountCommunityAdmin(router chi.Router) {
 	router.Get("/activity-games", s.adminActivityGames)
 	router.Post("/activity-games", s.adminCreateActivityGame)
 	router.Put("/activity-games/{id}", s.adminUpdateActivityGame)
+	router.Delete("/activity-games/{id}", s.adminDeleteActivityGame)
+	router.Get("/activity-games/{id}/statistics", s.adminActivityGameStatistics)
 	router.Get("/lucky-draw", s.adminLuckyDraws)
 	router.Post("/lucky-draw", s.adminCreateLuckyDraw)
 	router.Put("/lucky-draw/{id}", s.adminUpdateLuckyDraw)
+	router.Delete("/lucky-draw/{id}", s.adminDeleteLuckyDraw)
+	router.Get("/lucky-draw/{id}/statistics", s.adminLuckyDrawStatistics)
 	router.Get("/coupons", s.adminCoupons)
 	router.Post("/coupons", s.adminCreateCoupon)
 	router.Put("/coupons/{id}", s.adminUpdateCoupon)
@@ -81,7 +86,8 @@ func (s *Server) mountCommunityAdmin(router chi.Router) {
 	router.Get("/questionnaires", s.adminQuestionnaires)
 	router.Post("/questionnaires", s.adminCreateQuestionnaire)
 	router.Put("/questionnaires/{id}", s.adminUpdateQuestionnaire)
-	router.Delete("/questionnaires/{id}", s.adminCloseQuestionnaire)
+	router.Delete("/questionnaires/{id}", s.adminDeleteQuestionnaire)
+	router.Post("/questionnaires/{id}/close", s.adminCloseQuestionnaire)
 	router.Post("/questionnaires/{id}/activate", s.adminActivateQuestionnaire)
 	router.Post("/questionnaires/{id}/imports", s.adminUploadQuestionnaireCSV)
 	router.Get("/questionnaires/{id}/imports/{importID}", s.adminQuestionnaireImport)
@@ -128,14 +134,15 @@ type activityResultResponse struct {
 }
 
 type activityOverviewResponse struct {
-	Balance             model.Money                       `json:"balance"`
-	TimeZone            string                            `json:"timeZone"`
-	CheckedInToday      bool                              `json:"checkedInToday"`
-	DailyRewardTXBMinor string                            `json:"dailyRewardTxbMinor"`
-	Games               []activityGameResponse            `json:"games"`
-	Draws               []luckyDrawResponse               `json:"draws"`
-	RecentResults       []activityResultResponse          `json:"recentResults"`
-	GroupMessageReward  activity.GroupMessageRewardStatus `json:"groupMessageReward"`
+	Balance                model.Money                       `json:"balance"`
+	TimeZone               string                            `json:"timeZone"`
+	CheckedInToday         bool                              `json:"checkedInToday"`
+	DailyRewardMinTXBMinor string                            `json:"dailyRewardMinTxbMinor"`
+	DailyRewardMaxTXBMinor string                            `json:"dailyRewardMaxTxbMinor"`
+	Games                  []activityGameResponse            `json:"games"`
+	Draws                  []luckyDrawResponse               `json:"draws"`
+	RecentResults          []activityResultResponse          `json:"recentResults"`
+	GroupMessageReward     activity.GroupMessageRewardStatus `json:"groupMessageReward"`
 }
 
 func mapActivityGame(game activity.Game) activityGameResponse {
@@ -261,7 +268,7 @@ func (s *Server) activityOverview(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, http.StatusOK, activityOverviewResponse{Balance: balance, TimeZone: config.Timezone, CheckedInToday: checkedIn,
-		DailyRewardTXBMinor: strconv.FormatInt(config.RewardMinor, 10), Games: gameResponses, Draws: drawResponses,
+		DailyRewardMinTXBMinor: strconv.FormatInt(config.RewardMinMinor, 10), DailyRewardMaxTXBMinor: strconv.FormatInt(config.RewardMaxMinor, 10), Games: gameResponses, Draws: drawResponses,
 		RecentResults: mapActivityHistory(history, 30), GroupMessageReward: groupMessageReward})
 }
 
@@ -351,15 +358,26 @@ func (s *Server) activityConfig(ctx context.Context) (activity.CheckInConfig, er
 	if _, err := time.LoadLocation(timezone); err != nil {
 		return activity.CheckInConfig{}, errActivityConfiguration
 	}
-	rewardValue, err := s.deps.Settings.Optional(ctx, activityRewardSetting)
+	rewardMinValue, err := s.deps.Settings.Optional(ctx, activityRewardMinSetting)
 	if err != nil {
 		return activity.CheckInConfig{}, err
 	}
-	if strings.TrimSpace(rewardValue) == "" {
-		rewardValue = "0"
+	if strings.TrimSpace(rewardMinValue) == "" {
+		rewardMinValue = "0"
 	}
-	rewardMinor, err := billing.ParseTXBMajor(rewardValue)
-	if err != nil || rewardMinor < 0 {
+	rewardMinMinor, err := billing.ParseTXBMajor(rewardMinValue)
+	if err != nil || rewardMinMinor < 0 {
+		return activity.CheckInConfig{}, errActivityConfiguration
+	}
+	rewardMaxValue, err := s.deps.Settings.Optional(ctx, activityRewardMaxSetting)
+	if err != nil {
+		return activity.CheckInConfig{}, err
+	}
+	if strings.TrimSpace(rewardMaxValue) == "" {
+		rewardMaxValue = "0"
+	}
+	rewardMaxMinor, err := billing.ParseTXBMajor(rewardMaxValue)
+	if err != nil || rewardMaxMinor < rewardMinMinor {
 		return activity.CheckInConfig{}, errActivityConfiguration
 	}
 	thresholdValue, err := s.deps.Settings.Optional(ctx, groupMessageThresholdSetting)
@@ -384,7 +402,7 @@ func (s *Server) activityConfig(ctx context.Context) (activity.CheckInConfig, er
 	if err != nil || groupRewardMinor < 0 {
 		return activity.CheckInConfig{}, errActivityConfiguration
 	}
-	return activity.CheckInConfig{Timezone: timezone, RewardMinor: rewardMinor, GroupMessageThreshold: int(threshold), GroupMessageRewardMinor: groupRewardMinor}, nil
+	return activity.CheckInConfig{Timezone: timezone, RewardMinMinor: rewardMinMinor, RewardMaxMinor: rewardMaxMinor, GroupMessageThreshold: int(threshold), GroupMessageRewardMinor: groupRewardMinor}, nil
 }
 
 func (s *Server) adminActivitySettings(w http.ResponseWriter, r *http.Request) {
@@ -395,8 +413,10 @@ func (s *Server) adminActivitySettings(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"timezone":                   config.Timezone,
-		"dailyRewardTxb":             txbMajorString(config.RewardMinor),
-		"dailyRewardTxbMinor":        strconv.FormatInt(config.RewardMinor, 10),
+		"dailyRewardMinTxb":          txbMajorString(config.RewardMinMinor),
+		"dailyRewardMinTxbMinor":     strconv.FormatInt(config.RewardMinMinor, 10),
+		"dailyRewardMaxTxb":          txbMajorString(config.RewardMaxMinor),
+		"dailyRewardMaxTxbMinor":     strconv.FormatInt(config.RewardMaxMinor, 10),
 		"groupMessageThreshold":      config.GroupMessageThreshold,
 		"groupMessageRewardTxb":      txbMajorString(config.GroupMessageRewardMinor),
 		"groupMessageRewardTxbMinor": strconv.FormatInt(config.GroupMessageRewardMinor, 10),
@@ -406,32 +426,19 @@ func (s *Server) adminActivitySettings(w http.ResponseWriter, r *http.Request) {
 func (s *Server) adminUpdateActivitySettings(w http.ResponseWriter, r *http.Request) {
 	var request struct {
 		Timezone              string `json:"timezone"`
-		DailyRewardTXB        string `json:"dailyRewardTxb"`
 		GroupMessageThreshold int    `json:"groupMessageThreshold"`
-		GroupMessageRewardTXB string `json:"groupMessageRewardTxb"`
 	}
 	if err := decodeJSON(w, r, &request); err != nil {
-		s.writeError(w, r, http.StatusBadRequest, "INVALID_ACTIVITY_SETTINGS", "Timezone and daily reward are required.")
+		s.writeError(w, r, http.StatusBadRequest, "INVALID_ACTIVITY_SETTINGS", "Timezone and message threshold are required.")
 		return
 	}
 	request.Timezone = strings.TrimSpace(request.Timezone)
-	request.DailyRewardTXB = strings.TrimSpace(request.DailyRewardTXB)
 	if _, err := time.LoadLocation(request.Timezone); err != nil {
 		s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_TIMEZONE", "Use a valid IANA timezone such as Asia/Shanghai.")
 		return
 	}
-	minor, err := billing.ParseTXBMajor(request.DailyRewardTXB)
-	if err != nil || minor < 0 {
-		s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_REWARD", "Daily reward must be a non-negative TXB amount with at most two decimals.")
-		return
-	}
 	if request.GroupMessageThreshold < 0 {
 		s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_GROUP_MESSAGE_THRESHOLD", "Message threshold must be a non-negative integer.")
-		return
-	}
-	groupRewardMinor, err := billing.ParseTXBMajor(request.GroupMessageRewardTXB)
-	if err != nil || groupRewardMinor < 0 {
-		s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_GROUP_MESSAGE_REWARD", "Group-message reward must be a non-negative TXB amount with at most two decimals.")
 		return
 	}
 	actorID := currentUser(r).ID
@@ -439,21 +446,20 @@ func (s *Server) adminUpdateActivitySettings(w http.ResponseWriter, r *http.Requ
 		s.communityFailure(w, r, err)
 		return
 	}
-	if err := s.deps.Admin.PutSetting(r.Context(), actorID, activityRewardSetting, request.DailyRewardTXB); err != nil {
-		s.communityFailure(w, r, err)
-		return
-	}
 	if err := s.deps.Admin.PutSetting(r.Context(), actorID, groupMessageThresholdSetting, strconv.Itoa(request.GroupMessageThreshold)); err != nil {
 		s.communityFailure(w, r, err)
 		return
 	}
-	if err := s.deps.Admin.PutSetting(r.Context(), actorID, groupMessageRewardSetting, request.GroupMessageRewardTXB); err != nil {
+	config, err := s.activityConfig(r.Context())
+	if err != nil {
 		s.communityFailure(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"timezone": request.Timezone, "dailyRewardTxb": txbMajorString(minor), "dailyRewardTxbMinor": strconv.FormatInt(minor, 10),
-		"groupMessageThreshold": request.GroupMessageThreshold, "groupMessageRewardTxb": txbMajorString(groupRewardMinor), "groupMessageRewardTxbMinor": strconv.FormatInt(groupRewardMinor, 10),
+		"timezone": config.Timezone, "dailyRewardMinTxb": txbMajorString(config.RewardMinMinor),
+		"dailyRewardMinTxbMinor": strconv.FormatInt(config.RewardMinMinor, 10), "dailyRewardMaxTxb": txbMajorString(config.RewardMaxMinor),
+		"dailyRewardMaxTxbMinor": strconv.FormatInt(config.RewardMaxMinor, 10), "groupMessageThreshold": config.GroupMessageThreshold,
+		"groupMessageRewardTxb": txbMajorString(config.GroupMessageRewardMinor), "groupMessageRewardTxbMinor": strconv.FormatInt(config.GroupMessageRewardMinor, 10),
 	})
 }
 
@@ -487,6 +493,27 @@ func (s *Server) adminCreateActivityGame(w http.ResponseWriter, r *http.Request)
 
 func (s *Server) adminUpdateActivityGame(w http.ResponseWriter, r *http.Request) {
 	s.adminSaveActivityGame(w, r, chiURLParam(r, "id"))
+}
+
+func (s *Server) adminDeleteActivityGame(w http.ResponseWriter, r *http.Request) {
+	if err := s.deps.Store.DeleteActivityGame(r.Context(), currentUser(r).ID, chiURLParam(r, "id"), time.Now().UTC()); err != nil {
+		s.communityFailure(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) adminActivityGameStatistics(w http.ResponseWriter, r *http.Request) {
+	from, to, bucket, location, ok := s.statisticsWindow(w, r)
+	if !ok {
+		return
+	}
+	statistics, err := s.deps.Store.ActivityGameStatistics(r.Context(), chiURLParam(r, "id"), from, to, bucket, location)
+	if err != nil {
+		s.communityFailure(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, statistics)
 }
 
 func (s *Server) adminSaveActivityGame(w http.ResponseWriter, r *http.Request, id string) {
@@ -586,6 +613,27 @@ func (s *Server) adminUpdateLuckyDraw(w http.ResponseWriter, r *http.Request) {
 	s.adminSaveLuckyDraw(w, r, chiURLParam(r, "id"))
 }
 
+func (s *Server) adminDeleteLuckyDraw(w http.ResponseWriter, r *http.Request) {
+	if err := s.deps.Store.DeleteLuckyDraw(r.Context(), currentUser(r).ID, chiURLParam(r, "id"), time.Now().UTC()); err != nil {
+		s.communityFailure(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) adminLuckyDrawStatistics(w http.ResponseWriter, r *http.Request) {
+	from, to, bucket, location, ok := s.statisticsWindow(w, r)
+	if !ok {
+		return
+	}
+	statistics, err := s.deps.Store.LuckyDrawStatistics(r.Context(), chiURLParam(r, "id"), from, to, bucket, location)
+	if err != nil {
+		s.communityFailure(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, statistics)
+}
+
 func (s *Server) adminSaveLuckyDraw(w http.ResponseWriter, r *http.Request, id string) {
 	var request luckyDrawRequest
 	if err := decodeJSON(w, r, &request); err != nil {
@@ -642,6 +690,7 @@ type couponResponse struct {
 	GlobalUseLimit   *int64               `json:"globalUseLimit"`
 	PerUserUseLimit  *int64               `json:"perUserUseLimit"`
 	Active           bool                 `json:"active"`
+	UsageCount       int64                `json:"usageCount"`
 	CreatedAt        time.Time            `json:"createdAt"`
 	UpdatedAt        time.Time            `json:"updatedAt"`
 }
@@ -678,7 +727,7 @@ func mapCoupon(coupon coupons.Coupon) couponResponse {
 		ValueMinorOrBPS: strconv.FormatInt(coupon.ValueMinorOrBPS, 10), PercentCapMinor: capMinor,
 		EligibleComboIDs: nonNilStrings(coupon.EligibleComboIDs), EligibleSquadIDs: nonNilStrings(coupon.EligibleSquadIDs),
 		ExpiresAt: coupon.ExpiresAt, GlobalUseLimit: coupon.GlobalUseLimit, PerUserUseLimit: coupon.PerUserUseLimit,
-		Active: coupon.Active, CreatedAt: coupon.CreatedAt, UpdatedAt: coupon.UpdatedAt}
+		Active: coupon.Active, UsageCount: coupon.UsageCount, CreatedAt: coupon.CreatedAt, UpdatedAt: coupon.UpdatedAt}
 }
 
 func mapCouponGrant(grant coupons.Grant) couponGrantResponse {
@@ -1071,6 +1120,14 @@ func (s *Server) adminCloseQuestionnaire(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if _, err := s.deps.Questionnaires.Save(r.Context(), input); err != nil {
+		s.communityFailure(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) adminDeleteQuestionnaire(w http.ResponseWriter, r *http.Request) {
+	if err := s.deps.Store.DeleteQuestionnaire(r.Context(), currentUser(r).ID, chiURLParam(r, "id"), time.Now().UTC()); err != nil {
 		s.communityFailure(w, r, err)
 		return
 	}

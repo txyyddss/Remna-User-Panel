@@ -3,9 +3,11 @@ package database
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
@@ -13,6 +15,8 @@ import (
 )
 
 // ComboInput is the validated catalog representation persisted by an administrator.
+// SquadProductIDs contains Remnawave internal-squad UUIDs; the historical field
+// name remains at the service boundary for source compatibility.
 type ComboInput struct {
 	ID                      string
 	Name                    string
@@ -27,7 +31,8 @@ type ComboInput struct {
 	RolloverMaxTXBMinor     int64
 }
 
-// SquadProductInput is the local merchandising data associated with a Remnawave squad.
+// SquadProductInput is the local merchandising override associated with a
+// Remnawave-owned internal squad.
 type SquadProductInput struct {
 	ID              string
 	RemnaSquadUUID  string
@@ -38,15 +43,18 @@ type SquadProductInput struct {
 	UpstreamPresent bool
 }
 
-// ImportedSquad is the upstream-owned portion of an internal squad.
+// ImportedSquad is retained as a compatibility DTO. Upstream squads are no
+// longer persisted by refresh operations.
 type ImportedSquad struct {
 	UUID string
 	Name string
 }
 
-// SaveCombo creates a catalog combo when ID is empty and otherwise updates an
-// existing combo. Client-selected IDs can never create records.
+// SaveCombo creates or updates one stable live combo and schedules affected
+// active users for upstream re-synchronization after an edit.
 func (s *Store) SaveCombo(ctx context.Context, input ComboInput) (model.Combo, error) {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	creating := input.ID == ""
 	if creating {
 		var err error
@@ -55,7 +63,12 @@ func (s *Store) SaveCombo(ctx context.Context, input ComboInput) (model.Combo, e
 			return model.Combo{}, err
 		}
 	}
-	now := stamp(time.Now().UTC())
+	squadUUIDs := uniqueSorted(input.SquadProductIDs)
+	encodedSquads, err := json.Marshal(squadUUIDs)
+	if err != nil {
+		return model.Combo{}, fmt.Errorf("encode combo squad UUIDs: %w", err)
+	}
+	now := time.Now().UTC()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return model.Combo{}, fmt.Errorf("begin save combo: %w", err)
@@ -63,13 +76,14 @@ func (s *Store) SaveCombo(ctx context.Context, input ComboInput) (model.Combo, e
 	defer func() { _ = tx.Rollback() }()
 	var result sql.Result
 	if creating {
-		result, err = tx.ExecContext(ctx, `INSERT INTO combos(id,name,description,price_txb_minor,validity_days,traffic_limit_bytes,reset_strategy,active,rollover_min_remaining_bps,rollover_max_txb_minor,created_at,updated_at)
-			VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`, input.ID, input.Name, input.Description, input.PriceTXBMinor, input.ValidityDays,
-			input.TrafficLimitBytes, input.ResetStrategy, boolInt(input.Active), input.RolloverMinRemainingBPS, input.RolloverMaxTXBMinor, now, now)
+		result, err = tx.ExecContext(ctx, `INSERT INTO combos(id,name,description,price_txb_minor,validity_days,traffic_limit_bytes,reset_strategy,active,rollover_min_remaining_bps,rollover_max_txb_minor,included_squad_uuids,created_at,updated_at)
+			VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`, input.ID, input.Name, input.Description, input.PriceTXBMinor, input.ValidityDays,
+			input.TrafficLimitBytes, input.ResetStrategy, boolInt(input.Active), input.RolloverMinRemainingBPS, input.RolloverMaxTXBMinor,
+			string(encodedSquads), stamp(now), stamp(now))
 	} else {
-		result, err = tx.ExecContext(ctx, `UPDATE combos SET name=?,description=?,price_txb_minor=?,validity_days=?,traffic_limit_bytes=?,
-			reset_strategy=?,active=?,rollover_min_remaining_bps=?,rollover_max_txb_minor=?,updated_at=? WHERE id=?`, input.Name, input.Description, input.PriceTXBMinor, input.ValidityDays,
-			input.TrafficLimitBytes, input.ResetStrategy, boolInt(input.Active), input.RolloverMinRemainingBPS, input.RolloverMaxTXBMinor, now, input.ID)
+		result, err = tx.ExecContext(ctx, `UPDATE combos SET name=?,description=?,price_txb_minor=?,validity_days=?,traffic_limit_bytes=?,reset_strategy=?,active=?,rollover_min_remaining_bps=?,rollover_max_txb_minor=?,included_squad_uuids=?,updated_at=? WHERE id=?`,
+			input.Name, input.Description, input.PriceTXBMinor, input.ValidityDays, input.TrafficLimitBytes, input.ResetStrategy,
+			boolInt(input.Active), input.RolloverMinRemainingBPS, input.RolloverMaxTXBMinor, string(encodedSquads), stamp(now), input.ID)
 	}
 	if err != nil {
 		return model.Combo{}, fmt.Errorf("save combo: %w", err)
@@ -79,24 +93,33 @@ func (s *Store) SaveCombo(ctx context.Context, input ComboInput) (model.Combo, e
 	} else if affected != 1 {
 		return model.Combo{}, ErrNotFound
 	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM combo_squads WHERE combo_id=?`, input.ID); err != nil {
-		return model.Combo{}, fmt.Errorf("replace combo squads: %w", err)
-	}
-	seen := make(map[string]struct{}, len(input.SquadProductIDs))
-	for _, squadID := range input.SquadProductIDs {
-		if _, duplicate := seen[squadID]; duplicate {
-			continue
+	if !creating {
+		rows, queryErr := tx.QueryContext(ctx, `SELECT DISTINCT user_id FROM purchases WHERE combo_id=? AND status IN ('activating','active','queued')`, input.ID)
+		if queryErr != nil {
+			return model.Combo{}, fmt.Errorf("list combo users for resync: %w", queryErr)
 		}
-		seen[squadID] = struct{}{}
-		result, err := tx.ExecContext(ctx, `INSERT INTO combo_squads(combo_id,squad_product_id)
-			SELECT ?,id FROM squad_products WHERE id=? AND upstream_present=1`, input.ID, squadID)
-		if err != nil {
-			return model.Combo{}, fmt.Errorf("attach combo squad: %w", err)
+		userIDs := make([]string, 0)
+		for rows.Next() {
+			var userID string
+			if scanErr := rows.Scan(&userID); scanErr != nil {
+				_ = rows.Close()
+				return model.Combo{}, fmt.Errorf("scan combo user for resync: %w", scanErr)
+			}
+			userIDs = append(userIDs, userID)
 		}
-		if affected, rowsErr := result.RowsAffected(); rowsErr != nil {
-			return model.Combo{}, fmt.Errorf("inspect combo squad: %w", rowsErr)
-		} else if affected != 1 {
-			return model.Combo{}, ErrNotFound
+		if rowsErr := rows.Err(); rowsErr != nil {
+			_ = rows.Close()
+			return model.Combo{}, fmt.Errorf("iterate combo users for resync: %w", rowsErr)
+		}
+		_ = rows.Close()
+		for _, userID := range userIDs {
+			payload, marshalErr := json.Marshal(map[string]string{"userId": userID})
+			if marshalErr != nil {
+				return model.Combo{}, marshalErr
+			}
+			if enqueueErr := insertOutboxTx(ctx, tx, "remna_sync_user", string(payload), now, now); enqueueErr != nil {
+				return model.Combo{}, enqueueErr
+			}
 		}
 	}
 	if err := tx.Commit(); err != nil {
@@ -105,7 +128,7 @@ func (s *Store) SaveCombo(ctx context.Context, input ComboInput) (model.Combo, e
 	return s.ComboByID(ctx, input.ID, false)
 }
 
-// DeleteCombo hides a combo without invalidating historical purchases.
+// DeleteCombo hides a combo without invalidating purchases that reference it.
 func (s *Store) DeleteCombo(ctx context.Context, comboID string) error {
 	result, err := s.db.ExecContext(ctx, `UPDATE combos SET active=0,updated_at=? WHERE id=?`, stamp(time.Now().UTC()), comboID)
 	if err != nil {
@@ -117,130 +140,110 @@ func (s *Store) DeleteCombo(ctx context.Context, comboID string) error {
 	return nil
 }
 
-// SaveSquadProduct updates merchandising for an imported upstream squad.
-// New upstream identities can only enter through RefreshImportedSquads.
+// SaveSquadProduct upserts only non-default local merchandising. Restoring all
+// defaults removes the row so unedited upstream squads consume no local space.
 func (s *Store) SaveSquadProduct(ctx context.Context, input SquadProductInput) (model.SquadProduct, error) {
-	if input.ID == "" {
+	uuid := strings.TrimSpace(input.RemnaSquadUUID)
+	if uuid == "" {
 		return model.SquadProduct{}, ErrNotFound
 	}
-	now := stamp(time.Now().UTC())
-	result, err := s.db.ExecContext(ctx, `UPDATE squad_products SET name=?,description=?,price_txb_minor=?,visible=?,updated_at=?
-		WHERE id=? AND remna_squad_uuid=?`, input.Name, input.Description, input.PriceTXBMinor, boolInt(input.Visible), now,
-		input.ID, input.RemnaSquadUUID)
+	now := time.Now().UTC()
+	if strings.TrimSpace(input.Description) == "" && input.PriceTXBMinor == 0 && !input.Visible {
+		if _, err := s.db.ExecContext(ctx, `DELETE FROM squad_product_overrides WHERE remna_squad_uuid=?`, uuid); err != nil {
+			return model.SquadProduct{}, fmt.Errorf("remove default squad override: %w", err)
+		}
+		return virtualSquad(input, now), nil
+	}
+	_, err := s.db.ExecContext(ctx, `INSERT INTO squad_product_overrides(remna_squad_uuid,description,price_txb_minor,visible,created_at,updated_at)
+		VALUES(?,?,?,?,?,?) ON CONFLICT(remna_squad_uuid) DO UPDATE SET description=excluded.description,price_txb_minor=excluded.price_txb_minor,visible=excluded.visible,updated_at=excluded.updated_at`,
+		uuid, strings.TrimSpace(input.Description), input.PriceTXBMinor, boolInt(input.Visible), stamp(now), stamp(now))
 	if err != nil {
-		return model.SquadProduct{}, fmt.Errorf("save squad product: %w", err)
+		return model.SquadProduct{}, fmt.Errorf("save squad override: %w", err)
 	}
-	if affected, rowsErr := result.RowsAffected(); rowsErr != nil {
-		return model.SquadProduct{}, fmt.Errorf("inspect saved squad product: %w", rowsErr)
-	} else if affected != 1 {
-		return model.SquadProduct{}, ErrNotFound
+	product, err := s.SquadProductByRemnaUUID(ctx, uuid)
+	if err != nil {
+		return model.SquadProduct{}, err
 	}
-	return s.SquadProductByID(ctx, input.ID)
+	product.Name = input.Name
+	return product, nil
 }
 
-// SquadProductByRemnaUUID resolves an already imported upstream squad.
+func virtualSquad(input SquadProductInput, now time.Time) model.SquadProduct {
+	return model.SquadProduct{ID: input.RemnaSquadUUID, RemnaSquadUUID: input.RemnaSquadUUID, Name: input.Name,
+		Description: strings.TrimSpace(input.Description), PriceTXBMinor: input.PriceTXBMinor, Price: model.TXBMoney(input.PriceTXBMinor),
+		Visible: input.Visible, UpstreamPresent: true, CreatedAt: now, UpdatedAt: now}
+}
+
+// SquadProductByRemnaUUID resolves a persisted local override.
 func (s *Store) SquadProductByRemnaUUID(ctx context.Context, uuid string) (model.SquadProduct, error) {
 	return scanSquad(s.db.QueryRowContext(ctx, squadSelect+` WHERE remna_squad_uuid=?`, uuid))
 }
 
-// ImportSquad refreshes upstream identity while preserving local description, price, and visibility.
-func (s *Store) ImportSquad(ctx context.Context, remnaSquadUUID, name string) (model.SquadProduct, error) {
-	now := stamp(time.Now().UTC())
-	id, err := ids.New()
-	if err != nil {
-		return model.SquadProduct{}, err
-	}
-	_, err = s.db.ExecContext(ctx, `INSERT INTO squad_products(id,remna_squad_uuid,name,description,price_txb_minor,visible,upstream_present,created_at,updated_at)
-		VALUES(?,?,?,'',0,0,1,?,?) ON CONFLICT(remna_squad_uuid) DO UPDATE SET name=excluded.name,upstream_present=1,updated_at=excluded.updated_at`,
-		id, remnaSquadUUID, name, now, now)
-	if err != nil {
-		return model.SquadProduct{}, fmt.Errorf("import squad: %w", err)
-	}
-	var productID string
-	if err := s.db.QueryRowContext(ctx, `SELECT id FROM squad_products WHERE remna_squad_uuid=?`, remnaSquadUUID).Scan(&productID); err != nil {
-		return model.SquadProduct{}, err
-	}
-	return s.SquadProductByID(ctx, productID)
-}
-
-// MarkAllSquadsMissing clears the import-presence flag before an upstream refresh.
-func (s *Store) MarkAllSquadsMissing(ctx context.Context) error {
-	_, err := s.db.ExecContext(ctx, `UPDATE squad_products SET upstream_present=0,updated_at=?`, stamp(time.Now().UTC()))
-	if err != nil {
-		return fmt.Errorf("mark squads missing: %w", err)
-	}
-	return nil
-}
-
-// RefreshImportedSquads atomically updates presence and names while retaining all merchandising fields.
-func (s *Store) RefreshImportedSquads(ctx context.Context, squads []ImportedSquad) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-	now := stamp(time.Now().UTC())
-	if _, err := tx.ExecContext(ctx, `UPDATE squad_products SET upstream_present=0,updated_at=?`, now); err != nil {
-		return fmt.Errorf("mark squads missing: %w", err)
-	}
-	for _, squad := range squads {
-		id, err := ids.New()
-		if err != nil {
-			return err
-		}
-		_, err = tx.ExecContext(ctx, `INSERT INTO squad_products(id,remna_squad_uuid,name,description,price_txb_minor,visible,upstream_present,created_at,updated_at)
-			VALUES(?,?,?,'',0,0,1,?,?) ON CONFLICT(remna_squad_uuid) DO UPDATE SET name=excluded.name,upstream_present=1,updated_at=excluded.updated_at`,
-			id, squad.UUID, squad.Name, now, now)
-		if err != nil {
-			return fmt.Errorf("refresh imported squad: %w", err)
-		}
-	}
-	return tx.Commit()
-}
-
-// SquadProductByID loads one optional product.
+// SquadProductByID treats the public product ID as the upstream UUID.
 func (s *Store) SquadProductByID(ctx context.Context, id string) (model.SquadProduct, error) {
-	return scanSquad(s.db.QueryRowContext(ctx, squadSelect+` WHERE id=?`, id))
+	return s.SquadProductByRemnaUUID(ctx, id)
 }
 
-// ListSquadProducts loads visible products for users or every product for administrators.
+// ImportSquad returns the live upstream identity overlaid with local data. It
+// deliberately performs no persistence.
+func (s *Store) ImportSquad(ctx context.Context, remnaSquadUUID, name string) (model.SquadProduct, error) {
+	product, err := s.SquadProductByRemnaUUID(ctx, remnaSquadUUID)
+	if errors.Is(err, ErrNotFound) {
+		return virtualSquad(SquadProductInput{RemnaSquadUUID: remnaSquadUUID, Name: name, UpstreamPresent: true}, time.Now().UTC()), nil
+	}
+	if err != nil {
+		return model.SquadProduct{}, err
+	}
+	product.Name = name
+	return product, nil
+}
+
+// MarkAllSquadsMissing is retained for compatibility and intentionally does
+// nothing because presence is now read directly from Remnawave.
+func (s *Store) MarkAllSquadsMissing(context.Context) error { return nil }
+
+// RefreshImportedSquads is retained for compatibility and intentionally does
+// not store upstream-owned identities.
+func (s *Store) RefreshImportedSquads(context.Context, []ImportedSquad) error { return nil }
+
+// ListSquadProducts loads only local overrides.
 func (s *Store) ListSquadProducts(ctx context.Context, visibleOnly bool) ([]model.SquadProduct, error) {
 	query := squadSelect
 	if visibleOnly {
-		query += ` WHERE visible=1 AND upstream_present=1`
+		query += ` WHERE visible=1`
 	}
-	query += ` ORDER BY name,id`
+	query += ` ORDER BY remna_squad_uuid`
 	rows, err := s.db.QueryContext(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("list squad products: %w", err)
+		return nil, fmt.Errorf("list squad overrides: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 	products := make([]model.SquadProduct, 0)
 	for rows.Next() {
-		product, err := scanSquad(rows)
-		if err != nil {
-			return nil, err
+		product, scanErr := scanSquad(rows)
+		if scanErr != nil {
+			return nil, scanErr
 		}
 		products = append(products, product)
 	}
 	return products, rows.Err()
 }
 
-const squadSelect = `SELECT id,remna_squad_uuid,name,description,price_txb_minor,visible,upstream_present,created_at,updated_at FROM squad_products`
+const squadSelect = `SELECT remna_squad_uuid,description,price_txb_minor,visible,created_at,updated_at FROM squad_product_overrides`
 
 func scanSquad(row rowScanner) (model.SquadProduct, error) {
 	var product model.SquadProduct
-	var visible, present int
+	var visible int
 	var created, updated string
-	if err := row.Scan(&product.ID, &product.RemnaSquadUUID, &product.Name, &product.Description, &product.PriceTXBMinor,
-		&visible, &present, &created, &updated); err != nil {
+	if err := row.Scan(&product.RemnaSquadUUID, &product.Description, &product.PriceTXBMinor, &visible, &created, &updated); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.SquadProduct{}, ErrNotFound
 		}
-		return model.SquadProduct{}, fmt.Errorf("scan squad product: %w", err)
+		return model.SquadProduct{}, fmt.Errorf("scan squad override: %w", err)
 	}
+	product.ID = product.RemnaSquadUUID
 	product.Visible = visible == 1
-	product.UpstreamPresent = present == 1
+	product.UpstreamPresent = true
 	product.Price = model.TXBMoney(product.PriceTXBMinor)
 	var err error
 	product.CreatedAt, err = parseStamp(created)
@@ -251,29 +254,20 @@ func scanSquad(row rowScanner) (model.SquadProduct, error) {
 	return product, err
 }
 
-// ComboByID returns one combo with its included squad products.
+// ComboByID returns one live combo with UUID-only included-squad placeholders.
 func (s *Store) ComboByID(ctx context.Context, id string, activeOnly bool) (model.Combo, error) {
 	query := comboSelect + ` WHERE id=?`
 	if activeOnly {
 		query += ` AND active=1`
 	}
-	combo, err := scanCombo(s.db.QueryRowContext(ctx, query, id))
-	if err != nil {
-		return model.Combo{}, err
-	}
-	combo.IncludedSquads, err = s.comboSquads(ctx, combo.ID)
-	return combo, err
+	return scanCombo(s.db.QueryRowContext(ctx, query, id))
 }
 
 // ListCombos returns the catalog in stable display order.
 func (s *Store) ListCombos(ctx context.Context, activeOnly bool) ([]model.Combo, error) {
 	query := comboSelect
 	if activeOnly {
-		query += ` WHERE active=1 AND NOT EXISTS (
-			SELECT 1 FROM combo_squads cs
-			JOIN squad_products sp ON sp.id=cs.squad_product_id
-			WHERE cs.combo_id=combos.id AND sp.upstream_present=0
-		)`
+		query += ` WHERE active=1`
 	}
 	query += ` ORDER BY price_txb_minor,name,id`
 	rows, err := s.db.QueryContext(ctx, query)
@@ -283,36 +277,36 @@ func (s *Store) ListCombos(ctx context.Context, activeOnly bool) ([]model.Combo,
 	defer func() { _ = rows.Close() }()
 	combos := make([]model.Combo, 0)
 	for rows.Next() {
-		combo, err := scanCombo(rows)
-		if err != nil {
-			return nil, err
+		combo, scanErr := scanCombo(rows)
+		if scanErr != nil {
+			return nil, scanErr
 		}
 		combos = append(combos, combo)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate combos: %w", err)
-	}
-	for index := range combos {
-		combos[index].IncludedSquads, err = s.comboSquads(ctx, combos[index].ID)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return combos, nil
+	return combos, rows.Err()
 }
 
-const comboSelect = `SELECT id,name,description,price_txb_minor,validity_days,traffic_limit_bytes,reset_strategy,active,rollover_min_remaining_bps,rollover_max_txb_minor,created_at,updated_at FROM combos`
+const comboSelect = `SELECT id,name,description,price_txb_minor,validity_days,traffic_limit_bytes,reset_strategy,active,rollover_min_remaining_bps,rollover_max_txb_minor,included_squad_uuids,created_at,updated_at FROM combos`
 
 func scanCombo(row rowScanner) (model.Combo, error) {
 	var combo model.Combo
 	var active int
-	var created, updated string
+	var encodedSquads, created, updated string
 	if err := row.Scan(&combo.ID, &combo.Name, &combo.Description, &combo.PriceTXBMinor, &combo.ValidityDays,
-		&combo.TrafficLimitBytes, &combo.ResetStrategy, &active, &combo.RolloverMinRemainingBPS, &combo.RolloverMaxTXBMinor, &created, &updated); err != nil {
+		&combo.TrafficLimitBytes, &combo.ResetStrategy, &active, &combo.RolloverMinRemainingBPS, &combo.RolloverMaxTXBMinor,
+		&encodedSquads, &created, &updated); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.Combo{}, ErrNotFound
 		}
 		return model.Combo{}, fmt.Errorf("scan combo: %w", err)
+	}
+	var squadUUIDs []string
+	if err := json.Unmarshal([]byte(encodedSquads), &squadUUIDs); err != nil {
+		return model.Combo{}, fmt.Errorf("decode combo squad UUIDs: %w", err)
+	}
+	combo.IncludedSquads = make([]model.SquadProduct, 0, len(squadUUIDs))
+	for _, uuid := range uniqueSorted(squadUUIDs) {
+		combo.IncludedSquads = append(combo.IncludedSquads, model.SquadProduct{ID: uuid, RemnaSquadUUID: uuid, UpstreamPresent: true})
 	}
 	combo.Active = active == 1
 	combo.Price = model.TXBMoney(combo.PriceTXBMinor)
@@ -327,27 +321,11 @@ func scanCombo(row rowScanner) (model.Combo, error) {
 	return combo, err
 }
 
-func (s *Store) comboSquads(ctx context.Context, comboID string) ([]model.SquadProduct, error) {
-	rows, err := s.db.QueryContext(ctx, squadSelect+` JOIN combo_squads cs ON cs.squad_product_id=squad_products.id WHERE cs.combo_id=? ORDER BY name,id`, comboID)
-	if err != nil {
-		return nil, fmt.Errorf("list combo squads: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	products := make([]model.SquadProduct, 0)
-	for rows.Next() {
-		product, err := scanSquad(rows)
-		if err != nil {
-			return nil, err
-		}
-		products = append(products, product)
-	}
-	return products, rows.Err()
-}
-
 func uniqueSorted(values []string) []string {
 	seen := make(map[string]struct{}, len(values))
 	result := make([]string, 0, len(values))
 	for _, value := range values {
+		value = strings.TrimSpace(value)
 		if _, ok := seen[value]; ok || value == "" {
 			continue
 		}

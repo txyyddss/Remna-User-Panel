@@ -35,6 +35,20 @@ type RemnawaveClient interface {
 	RevokeSubscription(context.Context, string) (string, error)
 }
 
+// RemoteSquad is the live identity portion of a Remnawave internal squad.
+type RemoteSquad struct {
+	UUID string
+	Name string
+}
+
+type remoteSquadLister interface {
+	ListCatalogSquads(context.Context) ([]RemoteSquad, error)
+}
+
+type quoteRepository interface {
+	QuotePurchase(context.Context, database.PurchaseInput, time.Time) (model.PurchaseQuote, error)
+}
+
 type cachedDashboard struct {
 	value     RemoteDashboard
 	fetchedAt time.Time
@@ -55,7 +69,9 @@ func NewService(repository Repository, remnawave RemnawaveClient, cacheTTL time.
 	return &Service{repository: repository, remnawave: remnawave, cacheTTL: cacheTTL, now: time.Now, cache: make(map[string]cachedDashboard)}
 }
 
-// Catalog returns only active combos and visible upstream-present add-ons.
+// Catalog overlays local merchandising on the live Remnawave squad list. A
+// combo with a stale included UUID is omitted until the upstream identity is
+// restored, preventing checkout against a locally cached catalog.
 func (s *Service) Catalog(ctx context.Context) (model.Catalog, error) {
 	combos, err := s.repository.ListCombos(ctx, true)
 	if err != nil {
@@ -65,7 +81,60 @@ func (s *Service) Catalog(ctx context.Context) (model.Catalog, error) {
 	if err != nil {
 		return model.Catalog{}, err
 	}
-	return model.Catalog{Combos: combos, Addons: addons}, nil
+	return s.hydrateLiveCatalog(ctx, combos, addons)
+}
+
+func (s *Service) hydrateLiveCatalog(ctx context.Context, combos []model.Combo, overrides []model.SquadProduct) (model.Catalog, error) {
+	lister, ok := s.remnawave.(remoteSquadLister)
+	if !ok {
+		return model.Catalog{Combos: combos, Addons: overrides}, nil
+	}
+	remote, err := lister.ListCatalogSquads(ctx)
+	if err != nil {
+		return model.Catalog{}, err
+	}
+	live := make(map[string]string, len(remote))
+	for _, squad := range remote {
+		live[strings.TrimSpace(squad.UUID)] = strings.TrimSpace(squad.Name)
+	}
+	overrideByUUID := make(map[string]model.SquadProduct, len(overrides))
+	addons := make([]model.SquadProduct, 0, len(overrides))
+	for _, override := range overrides {
+		name, present := live[override.RemnaSquadUUID]
+		if !present {
+			continue
+		}
+		override.Name = name
+		override.UpstreamPresent = true
+		overrideByUUID[override.RemnaSquadUUID] = override
+		if override.Visible {
+			addons = append(addons, override)
+		}
+	}
+	liveCombos := make([]model.Combo, 0, len(combos))
+	for _, combo := range combos {
+		included := make([]model.SquadProduct, 0, len(combo.IncludedSquads))
+		valid := true
+		for _, placeholder := range combo.IncludedSquads {
+			name, present := live[placeholder.RemnaSquadUUID]
+			if !present {
+				valid = false
+				break
+			}
+			product, hasOverride := overrideByUUID[placeholder.RemnaSquadUUID]
+			if !hasOverride {
+				product = model.SquadProduct{ID: placeholder.RemnaSquadUUID, RemnaSquadUUID: placeholder.RemnaSquadUUID, Visible: true}
+			}
+			product.Name = name
+			product.UpstreamPresent = true
+			included = append(included, product)
+		}
+		if valid {
+			combo.IncludedSquads = included
+			liveCombos = append(liveCombos, combo)
+		}
+	}
+	return model.Catalog{Combos: liveCombos, Addons: addons}, nil
 }
 
 // Purchase delegates all pricing and balance work to one SQLite transaction.
@@ -82,8 +151,60 @@ func (s *Service) PurchaseWithCoupon(ctx context.Context, user model.User, combo
 	if comboID == "" || len(addonIDs) > 100 || idempotencyKey == "" || len(idempotencyKey) > 128 {
 		return model.Purchase{}, errors.New("invalid purchase selection")
 	}
+	if err := s.validateLiveSelection(ctx, comboID, addonIDs); err != nil {
+		return model.Purchase{}, err
+	}
 	return s.repository.CreatePurchase(ctx, database.PurchaseInput{UserID: user.ID, ComboID: comboID, AddonSquadIDs: addonIDs,
 		CouponGrantID: couponGrantID, IdempotencyKey: idempotencyKey}, s.now().UTC())
+}
+
+// Quote returns the authoritative price and entitlement start time without
+// mutating the user's balance, coupon wallet, or purchases.
+func (s *Service) Quote(ctx context.Context, user model.User, comboID string, addonIDs []string, couponGrantID string) (model.PurchaseQuote, error) {
+	if user.OnboardingState != "complete" {
+		return model.PurchaseQuote{}, errors.New("onboarding is incomplete")
+	}
+	if comboID == "" || len(addonIDs) > 100 {
+		return model.PurchaseQuote{}, errors.New("invalid purchase selection")
+	}
+	if err := s.validateLiveSelection(ctx, comboID, addonIDs); err != nil {
+		return model.PurchaseQuote{}, err
+	}
+	repository, ok := s.repository.(quoteRepository)
+	if !ok {
+		return model.PurchaseQuote{}, errors.New("purchase quotes are unavailable")
+	}
+	return repository.QuotePurchase(ctx, database.PurchaseInput{UserID: user.ID, ComboID: comboID, AddonSquadIDs: addonIDs, CouponGrantID: couponGrantID}, s.now().UTC())
+}
+
+func (s *Service) validateLiveSelection(ctx context.Context, comboID string, addonIDs []string) error {
+	if _, ok := s.remnawave.(remoteSquadLister); !ok {
+		return nil
+	}
+	catalog, err := s.Catalog(ctx)
+	if err != nil {
+		return err
+	}
+	comboFound := false
+	for _, combo := range catalog.Combos {
+		if combo.ID == comboID {
+			comboFound = true
+			break
+		}
+	}
+	if !comboFound {
+		return database.ErrNotFound
+	}
+	visible := make(map[string]struct{}, len(catalog.Addons))
+	for _, addon := range catalog.Addons {
+		visible[addon.RemnaSquadUUID] = struct{}{}
+	}
+	for _, addonID := range addonIDs {
+		if _, exists := visible[strings.TrimSpace(addonID)]; !exists {
+			return database.ErrNotFound
+		}
+	}
+	return nil
 }
 
 // Purchases returns the account's immutable purchase history.

@@ -5,7 +5,8 @@ import { txbInputFromMinor } from '@/utils/format'
 
 defineProps<{
   checkedIn: boolean
-  rewardTxbMinor: string
+  rewardMinTxbMinor: string
+  rewardMaxTxbMinor: string
   timeZone: string
   busy: boolean
 }>()
@@ -18,7 +19,9 @@ defineEmits<{ checkIn: [] }>()
     <span class="feature-icon"><PhCalendarCheck :size="23" /></span>
     <div class="activity-card__copy">
       <h2>{{ $t('activity.dailyCheckIn') }}</h2>
-      <p>{{ checkedIn ? $t('activity.todayComplete') : $t('activity.claimToday', { amount: txbInputFromMinor(rewardTxbMinor) }) }}</p>
+      <p>{{ checkedIn ? $t('activity.todayComplete') : rewardMinTxbMinor === rewardMaxTxbMinor
+        ? $t('activity.claimToday', { amount: txbInputFromMinor(rewardMinTxbMinor) })
+        : $t('activity.claimRangeToday', { minimum: txbInputFromMinor(rewardMinTxbMinor), maximum: txbInputFromMinor(rewardMaxTxbMinor) }) }}</p>
       <small>{{ $t('activity.resetsAt', { timezone: timeZone }) }}</small>
     </div>
     <button class="button button--primary" type="button" :disabled="checkedIn || busy" @click="$emit('checkIn')">

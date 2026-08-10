@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onScopeDispose, shallowRef } from 'vue'
-import { PhArchive, PhArrowClockwise, PhCheckCircle, PhDatabase, PhDownloadSimple, PhUploadSimple } from '@phosphor-icons/vue'
+import { PhArchive, PhArrowClockwise, PhCheckCircle, PhDatabase, PhDownloadSimple, PhTrash, PhUploadSimple } from '@phosphor-icons/vue'
 
 import type { BackupRecord, JobRecord } from '@/api/types'
 import type { RestoreOperation } from '@/api/features'
@@ -8,9 +8,11 @@ import { featuresApi } from '@/api/features'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import { useAdminSection } from '@/composables/useAdminSection'
+import { localizedError, useI18n } from '@/i18n'
 import { formatBytes, formatDateTime } from '@/utils/format'
 import AdminSectionState from './AdminSectionState.vue'
 import RestoreBackupDialog from './backups/RestoreBackupDialog.vue'
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 
 const backups = useAdminSection<BackupRecord>('backups')
 const jobs = useAdminSection<JobRecord>('jobs')
@@ -18,6 +20,9 @@ const restoring = shallowRef(false)
 const restoreTarget = shallowRef<BackupRecord | null>(null)
 const restoreOperation = shallowRef<RestoreOperation | null>(null)
 const actionError = shallowRef<string | null>(null)
+const backupDeleteTarget = shallowRef<BackupRecord | null>(null)
+const jobDeleteTarget = shallowRef<JobRecord | null>(null)
+const { t } = useI18n()
 let restorePollTimer: ReturnType<typeof globalThis.setTimeout> | undefined
 
 function stopRestorePolling(): void {
@@ -49,8 +54,33 @@ function retryJob(id: string): void {
   void jobs.perform(() => import('@/api/client').then(({ api }) => api.retryAdminJob(id)))
 }
 
+async function deleteBackup(): Promise<void> {
+  if (!backupDeleteTarget.value) return
+  actionError.value = null
+  try {
+    await featuresApi.deleteBackup(backupDeleteTarget.value.id)
+    backupDeleteTarget.value = null
+    await backups.load()
+  } catch (caught) {
+    actionError.value = localizedError(caught, 'adminBackups.deleteFailed')
+  }
+}
+
+async function deleteJob(): Promise<void> {
+  if (!jobDeleteTarget.value) return
+  actionError.value = null
+  try {
+    const { api } = await import('@/api/client')
+    await api.deleteAdminJob(jobDeleteTarget.value.id)
+    jobDeleteTarget.value = null
+    await jobs.load()
+  } catch (caught) {
+    actionError.value = localizedError(caught, 'adminBackups.jobDeleteFailed')
+  }
+}
+
 function backupName(backup: BackupRecord): string {
-  return backup.path.split(/[\\/]/).pop() ?? `Backup ${backup.id}`
+  return backup.path.split(/[\\/]/).pop() ?? t('adminBackups.backupName', { id: backup.id })
 }
 
 async function download(backup: BackupRecord): Promise<void> {
@@ -64,7 +94,7 @@ async function download(backup: BackupRecord): Promise<void> {
     anchor.click()
     globalThis.URL.revokeObjectURL(url)
   } catch (caught) {
-    actionError.value = caught instanceof Error ? caught.message : 'Backup download failed.'
+    actionError.value = localizedError(caught, 'adminBackups.downloadFailed')
   }
 }
 
@@ -77,7 +107,7 @@ async function restore(payload: { reason: string; confirmation: string }): Promi
     restoreTarget.value = null
     scheduleRestorePoll()
   } catch (caught) {
-    actionError.value = caught instanceof Error ? caught.message : 'Restore staging failed.'
+    actionError.value = localizedError(caught, 'adminBackups.restoreFailed')
   } finally {
     restoring.value = false
   }
@@ -89,29 +119,30 @@ onScopeDispose(stopRestorePolling)
 <template>
   <section class="admin-panel">
     <div class="admin-panel__heading">
-      <div><h2>Backups</h2><p>Verified SQLite snapshots are retained for seven days.</p></div>
-      <button class="button button--primary" type="button" :disabled="backups.busy.value" @click="createBackup"><PhArchive :size="18" /> Create backup</button>
+      <div><h2>{{ t('adminBackups.title') }}</h2><p>{{ t('adminBackups.copy') }}</p></div>
+      <button class="button button--primary" type="button" :disabled="backups.busy.value" @click="createBackup"><PhArchive :size="18" /> {{ t('adminBackups.create') }}</button>
     </div>
-    <InlineNotice v-if="restoreOperation" :tone="restoreOperation.status === 'failed' ? 'warning' : 'success'" :title="restoreOperation.status === 'complete' ? 'Restore complete' : restoreOperation.status === 'failed' ? 'Restore failed' : 'Restore staged'">Operation {{ restoreOperation.id }} is {{ restoreOperation.status }}. {{ restoreOperation.error || (restoreOperation.status === 'complete' ? 'Reauthenticate if your previous session no longer exists.' : 'The app will reconnect after restart.') }}</InlineNotice>
+    <InlineNotice v-if="restoreOperation" :tone="restoreOperation.status === 'failed' ? 'warning' : 'success'" :title="restoreOperation.status === 'complete' ? t('adminBackups.restoreComplete') : restoreOperation.status === 'failed' ? t('adminBackups.restoreFailedTitle') : t('adminBackups.restoreStaged')">{{ t('adminBackups.operationStatus', { id: restoreOperation.id, status: restoreOperation.status }) }} {{ restoreOperation.error || (restoreOperation.status === 'complete' ? t('adminBackups.reauthenticate') : t('adminBackups.reconnect')) }}</InlineNotice>
     <InlineNotice v-if="actionError" tone="warning">{{ actionError }}</InlineNotice>
     <AdminSectionState :loading="backups.loading.value" :error="backups.error.value" @retry="backups.load()">
       <div class="backup-grid">
         <article v-for="backup in backups.items.value" :key="backup.id" class="backup-card">
           <span class="feature-icon"><PhDatabase :size="22" /></span>
           <div><strong>{{ backupName(backup) }}</strong><small>{{ formatBytes(backup.sizeBytes) }} / {{ formatDateTime(backup.createdAt) }}</small></div>
-          <span class="backup-card__verified"><PhCheckCircle :size="17" weight="fill" /> {{ backup.status === 'complete' ? 'Verified' : backup.status }}</span>
-          <div v-if="backup.status === 'complete'" class="backup-card__actions"><button class="button button--secondary button--small" type="button" @click="download(backup)"><PhDownloadSimple :size="17" />Download</button><button class="button button--ghost-danger button--small" type="button" @click="restoreTarget = backup"><PhUploadSimple :size="17" />Restore</button></div>
+          <span class="backup-card__verified"><PhCheckCircle :size="17" weight="fill" /> {{ backup.status === 'complete' ? t('adminBackups.verified') : backup.status }}</span>
+          <div v-if="backup.status === 'complete'" class="backup-card__actions"><button class="button button--secondary button--small" type="button" @click="download(backup)"><PhDownloadSimple :size="17" />{{ t('adminBackups.download') }}</button><button class="button button--ghost-danger button--small" type="button" @click="restoreTarget = backup"><PhUploadSimple :size="17" />{{ t('adminBackups.restore') }}</button><button class="button button--ghost-danger button--small" type="button" @click="backupDeleteTarget = backup"><PhTrash :size="17" />{{ t('adminBackups.delete') }}</button></div>
         </article>
-        <div v-if="!backups.items.value.length" class="empty-inline"><div><h3>No backups yet</h3><p>The daily scheduler will create the first verified copy.</p></div></div>
+        <div v-if="!backups.items.value.length" class="empty-inline"><div><h3>{{ t('adminBackups.none') }}</h3><p>{{ t('adminBackups.noneHint') }}</p></div></div>
       </div>
     </AdminSectionState>
     <RestoreBackupDialog :open="restoreTarget !== null" :backup-name="restoreTarget ? backupName(restoreTarget) : ''" :busy="restoring" @update:open="!$event && (restoreTarget = null)" @restore="restore" />
+    <ConfirmDialog :open="Boolean(backupDeleteTarget)" :title="t('adminBackups.deleteTitle', { name: backupDeleteTarget ? backupName(backupDeleteTarget) : t('adminBackups.backup') })" :description="t('adminBackups.deleteDescription')" :confirm-label="t('adminBackups.deleteBackup')" danger @update:open="!$event && (backupDeleteTarget = null)" @confirm="deleteBackup" />
 
-    <div class="admin-subsection-heading"><div><h3>Synchronization jobs</h3><p>Outbox retries and scheduled entitlement changes.</p></div><button class="text-button" type="button" @click="jobs.load()"><PhArrowClockwise :size="17" /> Refresh</button></div>
+    <div class="admin-subsection-heading"><div><h3>{{ t('adminBackups.jobs') }}</h3><p>{{ t('adminBackups.jobsHint') }}</p></div><button class="text-button" type="button" @click="jobs.load()"><PhArrowClockwise :size="17" /> {{ t('common.refresh') }}</button></div>
     <AdminSectionState :loading="jobs.loading.value" :error="jobs.error.value" @retry="jobs.load()">
       <div class="admin-list admin-list--compact">
         <article v-for="job in jobs.items.value.slice(0, 12)" :key="job.id" class="admin-list-row">
-          <div><strong>{{ job.kind }}</strong><small>{{ job.attempts }} attempt{{ job.attempts === 1 ? '' : 's' }} / {{ formatDateTime(job.createdAt) }}{{ job.lastError ? ` / ${job.lastError}` : '' }}</small></div>
+          <div><strong>{{ job.kind }}</strong><small>{{ t('adminBackups.attempts', { count: job.attempts }) }} / {{ formatDateTime(job.createdAt) }}{{ job.lastError ? ` / ${job.lastError}` : '' }}</small></div>
           <StatusBadge :tone="job.status === 'done' ? 'success' : job.status === 'failed' ? 'danger' : 'warning'" :label="job.status" />
           <button
             v-if="job.status === 'failed'"
@@ -120,12 +151,14 @@ onScopeDispose(stopRestorePolling)
             :disabled="jobs.busy.value"
             @click="retryJob(job.id)"
           >
-            <PhArrowClockwise :size="17" /> Retry
+            <PhArrowClockwise :size="17" /> {{ t('adminBackups.retry') }}
           </button>
+          <button class="icon-button icon-button--danger" type="button" :disabled="job.status === 'processing' || jobs.busy.value" :aria-label="t('adminBackups.deleteJobLabel', { kind: job.kind })" @click="jobDeleteTarget = job"><PhTrash :size="18" /></button>
         </article>
-        <div v-if="!jobs.items.value.length" class="empty-inline"><div><h3>No synchronization jobs</h3><p>Scheduled work and retries will appear here.</p></div></div>
+        <div v-if="!jobs.items.value.length" class="empty-inline"><div><h3>{{ t('adminBackups.noJobs') }}</h3><p>{{ t('adminBackups.noJobsHint') }}</p></div></div>
       </div>
     </AdminSectionState>
+    <ConfirmDialog :open="Boolean(jobDeleteTarget)" :title="t('adminBackups.deleteJobTitle')" :description="t('adminBackups.deleteJobDescription')" :confirm-label="t('adminBackups.deleteJob')" danger @update:open="!$event && (jobDeleteTarget = null)" @confirm="deleteJob" />
   </section>
 </template>
 

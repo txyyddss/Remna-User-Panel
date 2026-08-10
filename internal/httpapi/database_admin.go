@@ -34,6 +34,7 @@ func NewDatabaseAdministrationHTTP(editor *databaseadmin.Service, backups *backu
 func (h *DatabaseAdministrationHTTP) Mount(router chi.Router) {
 	router.Get("/database/tables", h.tables)
 	router.Get("/database/tables/{table}/rows", h.rows)
+	router.Post("/database/tables/{table}/query", h.queryRows)
 	router.Put("/database/tables/{table}/rows", h.updateCompatibility)
 	router.Post("/database/mutations/review", h.review)
 	router.Post("/database/mutations", h.apply)
@@ -58,6 +59,20 @@ func (h *DatabaseAdministrationHTTP) rows(w http.ResponseWriter, r *http.Request
 		return
 	}
 	page, err := h.editor.Records(r.Context(), chi.URLParam(r, "table"), r.URL.Query().Get("cursor"), limit)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, page)
+}
+
+func (h *DatabaseAdministrationHTTP) queryRows(w http.ResponseWriter, r *http.Request) {
+	var request databaseadmin.QueryRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		h.writeError(w, r, http.StatusBadRequest, "INVALID_DATABASE_QUERY", "The typed database query is invalid.")
+		return
+	}
+	page, err := h.editor.QueryRecords(r.Context(), chi.URLParam(r, "table"), request)
 	if err != nil {
 		h.failure(w, r, err)
 		return

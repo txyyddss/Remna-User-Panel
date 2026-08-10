@@ -146,8 +146,9 @@ func (input CouponInput) Normalize() (CouponInput, error) {
 // Coupon is a persisted definition.
 type Coupon struct {
 	CouponInput
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	UsageCount int64     `json:"usageCount"`
+	CreatedAt  time.Time `json:"createdAt"`
+	UpdatedAt  time.Time `json:"updatedAt"`
 }
 
 // Grant is a coupon held in a member's wallet.

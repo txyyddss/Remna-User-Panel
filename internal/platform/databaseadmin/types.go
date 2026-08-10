@@ -207,6 +207,22 @@ type Page struct {
 	NextCursor *string  `json:"nextCursor"`
 }
 
+// QueryFilter is one allowlisted, typed predicate. Value is omitted for null
+// operators and otherwise uses the existing precision-safe DatabaseValue union.
+type QueryFilter struct {
+	Column   string `json:"column"`
+	Operator string `json:"operator"`
+	Value    *Value `json:"value,omitempty"`
+}
+
+// QueryRequest combines broad search with at most five typed column filters.
+type QueryRequest struct {
+	Search  string        `json:"search"`
+	Filters []QueryFilter `json:"filters"`
+	Cursor  string        `json:"cursor,omitempty"`
+	Limit   int           `json:"limit,omitempty"`
+}
+
 // MutationRequest is the exact reviewed mutation. Key is omitted for inserts;
 // ExpectedHash is required for updates and deletes.
 type MutationRequest struct {

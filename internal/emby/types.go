@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
+	"sort"
 	"time"
 )
 
@@ -48,8 +50,8 @@ func (p Policy) Clone() Policy {
 
 // Preferences is the only user-controlled portion of an Emby policy.
 type Preferences struct {
-	MaxParentalRating *int32
-	LibraryIDs        []string
+	MaxParentalRating  *int32   `json:"maxParentalRating"`
+	DisabledLibraryIDs []string `json:"disabledLibraryIds"`
 }
 
 // Account is the safe local view of an Emby account. It never contains a password.
@@ -75,9 +77,10 @@ type Account struct {
 // ProvisioningRecord contains the server-only encrypted fields needed by the worker.
 type ProvisioningRecord struct {
 	Account
-	PasswordCiphertext string
-	PasswordContext    string
-	CreateAttempted    bool
+	PasswordCiphertext     string
+	PasswordContext        string
+	CreateAttempted        bool
+	PendingPreferencesJSON string
 }
 
 // QueueSetupInput is a fully priced and sealed setup attempt.
@@ -142,7 +145,7 @@ type Repository interface {
 	MarkEmbyCreateAttempted(context.Context, string, time.Time) error
 	SetEmbyRemoteIdentity(context.Context, string, string, string, time.Time) error
 	RequeueEmbyProvisioning(context.Context, string, error, time.Time) error
-	MarkEmbyProvisioned(context.Context, string, time.Time) error
+	MarkEmbyProvisioned(context.Context, string, Preferences, time.Time) error
 	FailAndRefundEmbySetup(context.Context, string, string, time.Time) (Account, error)
 	UpdateEmbyPreferences(context.Context, string, Preferences, time.Time) (Account, error)
 	TouchEmbyAccount(context.Context, string, time.Time) error
@@ -194,12 +197,13 @@ func (b cipherSecretBox) Open(context, ciphertext string) ([]byte, error) {
 func HardenPolicy(current Policy, preferences Preferences) Policy {
 	policy := current.Clone()
 	setPolicy(policy, "MaxParentalRating", preferences.MaxParentalRating)
-	libraries := append([]string(nil), preferences.LibraryIDs...)
-	if libraries == nil {
-		libraries = []string{}
+	disabled := append([]string(nil), preferences.DisabledLibraryIDs...)
+	if disabled == nil {
+		disabled = []string{}
 	}
-	setPolicy(policy, "EnabledFolders", libraries)
-	setPolicy(policy, "EnableAllFolders", false)
+	setPolicy(policy, "EnableAllFolders", true)
+	setPolicy(policy, "EnabledFolders", []string{})
+	setPolicy(policy, "BlockedMediaFolders", disabled)
 	setPolicy(policy, "IsHidden", true)
 	setPolicy(policy, "IsHiddenRemotely", true)
 	setPolicy(policy, "EnableRemoteControlOfOtherUsers", false)
@@ -212,6 +216,48 @@ func HardenPolicy(current Policy, preferences Preferences) Policy {
 	setPolicy(policy, "EnableContentDownloading", false)
 	setPolicy(policy, "EnableSubtitleDownloading", false)
 	return policy
+}
+
+// PolicyMatchesPreferences verifies the documented fields after an Emby
+// policy write. The complete policy remains remote-owned; only these fields are
+// compared before local disabled-folder IDs may be committed.
+func PolicyMatchesPreferences(policy Policy, preferences Preferences) bool {
+	var enableAll bool
+	var enabled, blocked []string
+	if json.Unmarshal(policy["EnableAllFolders"], &enableAll) != nil || !enableAll ||
+		json.Unmarshal(policy["EnabledFolders"], &enabled) != nil || len(enabled) != 0 ||
+		json.Unmarshal(policy["BlockedMediaFolders"], &blocked) != nil {
+		return false
+	}
+	sort.Strings(blocked)
+	expected := append([]string(nil), preferences.DisabledLibraryIDs...)
+	sort.Strings(expected)
+	if !slices.Equal(blocked, expected) {
+		return false
+	}
+	for _, key := range []string{"IsHidden", "IsHiddenRemotely"} {
+		if !policyBooleanEquals(policy, key, true) {
+			return false
+		}
+	}
+	for _, key := range []string{"EnableRemoteControlOfOtherUsers", "EnableSharedDeviceControl", "EnableAudioPlaybackTranscoding",
+		"EnableVideoPlaybackTranscoding", "EnablePlaybackRemuxing", "EnableSyncTranscoding", "EnableMediaConversion",
+		"EnableContentDownloading", "EnableSubtitleDownloading"} {
+		if !policyBooleanEquals(policy, key, false) {
+			return false
+		}
+	}
+	var storedRating *int32
+	if json.Unmarshal(policy["MaxParentalRating"], &storedRating) != nil {
+		return false
+	}
+	return (storedRating == nil && preferences.MaxParentalRating == nil) ||
+		(storedRating != nil && preferences.MaxParentalRating != nil && *storedRating == *preferences.MaxParentalRating)
+}
+
+func policyBooleanEquals(policy Policy, key string, expected bool) bool {
+	var actual bool
+	return json.Unmarshal(policy[key], &actual) == nil && actual == expected
 }
 
 func setPolicy(policy Policy, key string, value any) {

@@ -3,7 +3,9 @@ package accounts
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"regexp"
@@ -94,10 +96,8 @@ type Repository interface {
 	AdvanceToMembership(context.Context, string) error
 	UpdateMembership(context.Context, string, bool, bool) (model.User, error)
 	ReserveUsername(context.Context, string, string) error
-	CompleteOnboarding(context.Context, string, string, string, time.Time) (model.User, error)
-	SaveJoinInvite(context.Context, string, string, int64, string, time.Time) (database.JoinInvite, error)
-	JoinInviteByLink(context.Context, string) (database.JoinInvite, error)
-	MarkJoinInviteUsed(context.Context, string, time.Time) error
+	CurrentAgreementContract(context.Context) (int, []string, error)
+	CompleteOnboardingRevision(context.Context, string, string, string, int, []string, time.Time) (model.User, error)
 }
 
 // Service coordinates authentication and onboarding state.
@@ -201,17 +201,13 @@ func (s *Service) CreateInvites(ctx context.Context, user model.User) (map[strin
 		if err != nil || chatID == 0 {
 			return nil, time.Time{}, fmt.Errorf("invalid %s chat id", kind)
 		}
-		inviteName := "TXC " + user.ID
-		if len(inviteName) > 32 {
-			inviteName = inviteName[:32]
+		inviteName, err := s.signedInviteName(ctx, user.TelegramID, chatID, expiresAt)
+		if err != nil {
+			return nil, time.Time{}, err
 		}
 		link, err := s.telegram.CreateJoinRequestInvite(ctx, chatIDValue, inviteName, expiresAt)
 		if err != nil {
 			return nil, time.Time{}, fmt.Errorf("create %s invite: %w", kind, err)
-		}
-		if _, err := s.repository.SaveJoinInvite(ctx, user.ID, kind, chatID, link, expiresAt); err != nil {
-			_ = s.telegram.RevokeInviteLink(ctx, chatIDValue, link)
-			return nil, time.Time{}, err
 		}
 		created = append(created, createdInvite{chatID: chatIDValue, link: link})
 		result[kind] = link
@@ -245,17 +241,22 @@ func (s *Service) RefreshMembershipByTelegramID(ctx context.Context, telegramID 
 	return s.CheckMembership(ctx, user)
 }
 
-// HandleJoinRequest approves only the identity bound to the exact invite link, then revokes it.
-func (s *Service) HandleJoinRequest(ctx context.Context, telegramID, chatID int64, inviteLink string) error {
-	invite, err := s.repository.JoinInviteByLink(ctx, inviteLink)
-	if err != nil {
-		return err
+// HandleSignedJoinRequest verifies signature, identity, chat, and expiry before
+// approval and immediate invite revocation. No invite link is stored locally.
+func (s *Service) HandleSignedJoinRequest(ctx context.Context, telegramID, chatID int64, inviteLink, inviteName string, expiresAt time.Time) error {
+	if strings.TrimSpace(inviteLink) == "" || len(inviteName) > 32 || !s.now().UTC().Before(expiresAt.UTC()) {
+		return ErrInvalidAuthentication
 	}
-	user, err := s.repository.UserByID(ctx, invite.UserID)
-	if err != nil {
-		return err
+	parts := strings.Split(inviteName, ".")
+	if len(parts) != 2 {
+		return ErrInvalidAuthentication
 	}
-	if user.TelegramID != telegramID || invite.ChatID != chatID || invite.ApprovedAt != nil || invite.RevokedAt != nil || !s.now().UTC().Before(invite.ExpiresAt) {
+	signedTelegramID, err := strconv.ParseInt(parts[0], 36, 64)
+	if err != nil || signedTelegramID != telegramID {
+		return ErrInvalidAuthentication
+	}
+	expected, err := s.inviteSignature(ctx, signedTelegramID, chatID, expiresAt)
+	if err != nil || !hmac.Equal([]byte(parts[1]), []byte(expected)) {
 		return ErrInvalidAuthentication
 	}
 	chatIDValue := strconv.FormatInt(chatID, 10)
@@ -268,7 +269,29 @@ func (s *Service) HandleJoinRequest(ctx context.Context, telegramID, chatID int6
 	if err := s.telegram.RevokeInviteLink(ctx, chatIDValue, inviteLink); err != nil {
 		return err
 	}
-	return s.repository.MarkJoinInviteUsed(ctx, invite.ID, s.now().UTC())
+	return nil
+}
+
+func (s *Service) signedInviteName(ctx context.Context, telegramID, chatID int64, expiresAt time.Time) (string, error) {
+	signature, err := s.inviteSignature(ctx, telegramID, chatID, expiresAt)
+	if err != nil {
+		return "", err
+	}
+	name := strconv.FormatInt(telegramID, 36) + "." + signature
+	if len(name) > 32 {
+		return "", errors.New("Telegram invite identity exceeds name limit")
+	}
+	return name, nil
+}
+
+func (s *Service) inviteSignature(ctx context.Context, telegramID, chatID int64, expiresAt time.Time) (string, error) {
+	secret, err := s.settings.Plaintext(ctx, "telegram.webhook_secret")
+	if err != nil || strings.TrimSpace(secret) == "" {
+		return "", errors.New("Telegram invite signing secret is unavailable")
+	}
+	mac := hmac.New(sha256.New, []byte(secret))
+	_, _ = fmt.Fprintf(mac, "%d|%d|%d", telegramID, chatID, expiresAt.UTC().Unix())
+	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil)[:12]), nil
 }
 
 // ReserveUsername applies local syntax and uniqueness plus an upstream preflight.
@@ -294,26 +317,42 @@ func (s *Service) ReserveUsername(ctx context.Context, user model.User, username
 	return s.repository.UserByID(ctx, user.ID)
 }
 
-// AcceptAgreement creates or reconciles the permanent upstream identity.
-func (s *Service) AcceptAgreement(ctx context.Context, user model.User, accepted bool) (model.User, error) {
-	if !accepted || user.Username == nil || user.OnboardingState != "agreement" {
+// AcceptAgreementRevision rejects stale revisions and requires every currently
+// published agreement ID before reconciling the permanent Remnawave identity.
+func (s *Service) AcceptAgreementRevision(ctx context.Context, user model.User, revision int, agreementIDs []string) (model.User, error) {
+	if user.Username == nil || user.OnboardingState != "agreement" || revision <= 0 {
 		return model.User{}, database.ErrConflict
 	}
+	currentRevision, requiredIDs, err := s.repository.CurrentAgreementContract(ctx)
+	if err != nil {
+		return model.User{}, err
+	}
+	if revision != currentRevision || !sameStringSet(requiredIDs, agreementIDs) {
+		return model.User{}, database.ErrConflict
+	}
+	remote, err := s.reconcileAgreementUser(ctx, user)
+	if err != nil {
+		return model.User{}, err
+	}
+	return s.repository.CompleteOnboardingRevision(ctx, user.ID, remote.ID, remote.SubscriptionURL, revision, agreementIDs, s.now().UTC())
+}
+
+func (s *Service) reconcileAgreementUser(ctx context.Context, user model.User) (RemoteUser, error) {
 	remote, exists, err := s.remnawave.FindUserByUsername(ctx, *user.Username)
 	if err != nil {
-		return model.User{}, fmt.Errorf("reconcile Remnawave user: %w", err)
+		return RemoteUser{}, fmt.Errorf("reconcile Remnawave user: %w", err)
 	}
 	if exists && (remote.TelegramID == nil || *remote.TelegramID != user.TelegramID) {
-		return model.User{}, ErrUsernameUnavailable
+		return RemoteUser{}, ErrUsernameUnavailable
 	}
 	if !exists {
 		byTelegram, telegramExists, telegramErr := s.remnawave.FindUserByTelegramID(ctx, user.TelegramID)
 		if telegramErr != nil {
-			return model.User{}, fmt.Errorf("reconcile Remnawave Telegram identity: %w", telegramErr)
+			return RemoteUser{}, fmt.Errorf("reconcile Remnawave Telegram identity: %w", telegramErr)
 		}
 		if telegramExists {
 			if byTelegram.Username != *user.Username {
-				return model.User{}, ErrUsernameUnavailable
+				return RemoteUser{}, ErrUsernameUnavailable
 			}
 			remote, exists = byTelegram, true
 		}
@@ -331,8 +370,25 @@ func (s *Service) AcceptAgreement(ctx context.Context, user model.User, accepted
 			}
 		}
 		if err != nil {
-			return model.User{}, fmt.Errorf("create Remnawave user: %w", err)
+			return RemoteUser{}, fmt.Errorf("create Remnawave user: %w", err)
 		}
 	}
-	return s.repository.CompleteOnboarding(ctx, user.ID, remote.ID, remote.SubscriptionURL, s.now().UTC())
+	return remote, nil
+}
+
+func sameStringSet(expected, provided []string) bool {
+	if len(expected) != len(provided) {
+		return false
+	}
+	seen := make(map[string]struct{}, len(expected))
+	for _, value := range expected {
+		seen[value] = struct{}{}
+	}
+	for _, value := range provided {
+		if _, exists := seen[value]; !exists {
+			return false
+		}
+		delete(seen, value)
+	}
+	return len(seen) == 0
 }

@@ -26,7 +26,8 @@ type PurchaseInput struct {
 	IdempotencyKey string
 }
 
-// CreatePurchase atomically snapshots the catalog, debits TXB, and queues Remnawave synchronization.
+// CreatePurchase atomically revalidates live pricing, debits TXB, stores only
+// transaction facts and selected paid add-ons, and queues Remnawave sync.
 func (s *Store) CreatePurchase(ctx context.Context, input PurchaseInput, now time.Time) (model.Purchase, error) {
 	fingerprint, err := normalizeAndFingerprintPurchase(&input)
 	if err != nil {
@@ -57,51 +58,12 @@ func (s *Store) CreatePurchase(ctx context.Context, input PurchaseInput, now tim
 		return model.Purchase{}, fmt.Errorf("load purchase idempotency key: %w", loadErr)
 	}
 
-	combo, err := comboByIDTx(ctx, tx, input.ComboID, true)
+	quote, combo, addonRows, err := quotePurchaseTx(ctx, tx, input, now)
 	if err != nil {
 		return model.Purchase{}, err
 	}
-	included, err := comboSquadsTx(ctx, tx, combo.ID)
-	if err != nil {
-		return model.Purchase{}, err
-	}
-	combo.IncludedSquads = included
-	includedUUIDs := make(map[string]struct{}, len(included))
-	for _, product := range included {
-		includedUUIDs[product.RemnaSquadUUID] = struct{}{}
-	}
-	addonPrice := int64(0)
-	addonRows := make([]model.SquadProduct, 0, len(input.AddonSquadIDs))
-	for _, productID := range uniqueSorted(input.AddonSquadIDs) {
-		product, err := squadByIDTx(ctx, tx, productID, true)
-		if err != nil {
-			return model.Purchase{}, err
-		}
-		if _, alreadyIncluded := includedUUIDs[product.RemnaSquadUUID]; alreadyIncluded {
-			continue
-		}
-		includedUUIDs[product.RemnaSquadUUID] = struct{}{}
-		addonRows = append(addonRows, product)
-		addonPrice += product.PriceTXBMinor
-	}
-	grossPrice := combo.PriceTXBMinor + addonPrice
-
-	validFrom := now
-	var latestEnd string
-	err = tx.QueryRowContext(ctx, `SELECT valid_until FROM purchases WHERE user_id=? AND status IN ('activating','active','queued') ORDER BY valid_until DESC LIMIT 1`, input.UserID).Scan(&latestEnd)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return model.Purchase{}, fmt.Errorf("find current entitlement: %w", err)
-	}
-	if err == nil {
-		parsed, parseErr := parseStamp(latestEnd)
-		if parseErr != nil {
-			return model.Purchase{}, fmt.Errorf("parse current entitlement: %w", parseErr)
-		}
-		if parsed.After(validFrom) {
-			validFrom = parsed
-		}
-	}
-	validUntil := validFrom.AddDate(0, 0, combo.ValidityDays)
+	validFrom := quote.EffectiveAt
+	validUntil := quote.ExpiresAt
 	status := "queued"
 	if !validFrom.After(now) {
 		status = "activating"
@@ -111,15 +73,15 @@ func (s *Store) CreatePurchase(ctx context.Context, input PurchaseInput, now tim
 	if err != nil {
 		return model.Purchase{}, err
 	}
-	discount := coupons.Discount{GrossMinor: grossPrice, NetMinor: grossPrice}
+	discount := coupons.Discount{GrossMinor: quote.GrossPriceTXBMinor, NetMinor: quote.GrossPriceTXBMinor}
 	if input.CouponGrantID != "" {
 		pricedAddonIDs := make([]string, 0, len(addonRows))
 		for _, addon := range addonRows {
-			pricedAddonIDs = append(pricedAddonIDs, addon.ID)
+			pricedAddonIDs = append(pricedAddonIDs, addon.RemnaSquadUUID)
 		}
 		discount, err = applyPurchaseCouponTx(ctx, tx, coupons.PurchaseContext{
 			UserID: input.UserID, GrantID: input.CouponGrantID, ComboID: combo.ID,
-			AddonSquadIDs: pricedAddonIDs, GrossPriceMinor: grossPrice,
+			AddonSquadIDs: pricedAddonIDs, GrossPriceMinor: quote.GrossPriceTXBMinor,
 		}, purchaseID, now)
 		if err != nil {
 			return model.Purchase{}, err
@@ -130,21 +92,13 @@ func (s *Store) CreatePurchase(ctx context.Context, input PurchaseInput, now tim
 	if err != nil {
 		return model.Purchase{}, err
 	}
-	snapshotBytes, err := json.Marshal(struct {
-		Combo  model.Combo          `json:"combo"`
-		Addons []model.SquadProduct `json:"addons"`
-	}{Combo: combo, Addons: addonRows})
-	if err != nil {
-		return model.Purchase{}, fmt.Errorf("encode catalog snapshot: %w", err)
-	}
 	var couponGrantID any
 	if input.CouponGrantID != "" {
 		couponGrantID = input.CouponGrantID
 	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO purchases(id,user_id,combo_id,price_txb_minor,valid_from,valid_until,status,traffic_limit_bytes,reset_strategy,catalog_snapshot,coupon_grant_id,gross_price_txb_minor,coupon_discount_txb_minor,rollover_min_remaining_bps,rollover_max_txb_minor,idempotency_key,request_fingerprint,created_at,updated_at)
-		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, purchaseID, input.UserID, combo.ID, netPrice, stamp(validFrom), stamp(validUntil), status,
-		combo.TrafficLimitBytes, combo.ResetStrategy, string(snapshotBytes), couponGrantID, grossPrice, discount.DiscountMinor,
-		combo.RolloverMinRemainingBPS, combo.RolloverMaxTXBMinor, input.IdempotencyKey, fingerprint, stamp(now), stamp(now))
+	_, err = tx.ExecContext(ctx, `INSERT INTO purchases(id,user_id,combo_id,charged_txb_minor,valid_from,valid_until,status,coupon_grant_id,gross_price_txb_minor,coupon_discount_txb_minor,idempotency_key,request_fingerprint,created_at,updated_at)
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, purchaseID, input.UserID, combo.ID, netPrice, stamp(validFrom), stamp(validUntil), status,
+		couponGrantID, quote.GrossPriceTXBMinor, discount.DiscountMinor, input.IdempotencyKey, fingerprint, stamp(now), stamp(now))
 	if err != nil {
 		return model.Purchase{}, fmt.Errorf("insert purchase: %w", err)
 	}
@@ -153,13 +107,8 @@ func (s *Store) CreatePurchase(ctx context.Context, input PurchaseInput, now tim
 			return model.Purchase{}, fmt.Errorf("apply pending subscription extensions: %w", err)
 		}
 	}
-	for _, product := range included {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO purchase_squads(purchase_id,remna_squad_uuid,kind,price_txb_minor) VALUES(?,?,?,?)`, purchaseID, product.RemnaSquadUUID, "included", 0); err != nil {
-			return model.Purchase{}, fmt.Errorf("snapshot included squad: %w", err)
-		}
-	}
 	for _, product := range addonRows {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO purchase_squads(purchase_id,remna_squad_uuid,kind,price_txb_minor) VALUES(?,?,?,?)`, purchaseID, product.RemnaSquadUUID, "addon", product.PriceTXBMinor); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO purchase_addons(purchase_id,remna_squad_uuid,charged_txb_minor) VALUES(?,?,?)`, purchaseID, product.RemnaSquadUUID, product.PriceTXBMinor); err != nil {
 			return model.Purchase{}, fmt.Errorf("snapshot add-on squad: %w", err)
 		}
 	}
@@ -167,7 +116,7 @@ func (s *Store) CreatePurchase(ctx context.Context, input PurchaseInput, now tim
 		return model.Purchase{}, err
 	}
 	if status == "activating" {
-		if err := insertOutboxTx(ctx, tx, "remna_apply_entitlement", purchaseID, `{"purchaseId":"`+purchaseID+`"}`, now, now); err != nil {
+		if err := insertOutboxTx(ctx, tx, "remna_apply_entitlement", `{"purchaseId":"`+purchaseID+`"}`, now, now); err != nil {
 			return model.Purchase{}, err
 		}
 	}
@@ -175,6 +124,91 @@ func (s *Store) CreatePurchase(ctx context.Context, input PurchaseInput, now tim
 		return model.Purchase{}, fmt.Errorf("commit purchase: %w", err)
 	}
 	return s.PurchaseByID(ctx, purchaseID)
+}
+
+// QuotePurchase performs the same catalog, coupon, and effective-date checks as
+// checkout without changing balances, coupon grants, or entitlement state.
+func (s *Store) QuotePurchase(ctx context.Context, input PurchaseInput, now time.Time) (model.PurchaseQuote, error) {
+	input.IdempotencyKey = "quote"
+	if _, err := normalizeAndFingerprintPurchase(&input); err != nil {
+		return model.PurchaseQuote{}, err
+	}
+	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		return model.PurchaseQuote{}, fmt.Errorf("begin purchase quote: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	quote, _, _, err := quotePurchaseTx(ctx, tx, input, now.UTC())
+	return quote, err
+}
+
+func quotePurchaseTx(ctx context.Context, tx *sql.Tx, input PurchaseInput, now time.Time) (model.PurchaseQuote, model.Combo, []model.SquadProduct, error) {
+	combo, err := comboByIDTx(ctx, tx, input.ComboID, true)
+	if err != nil {
+		return model.PurchaseQuote{}, model.Combo{}, nil, err
+	}
+	includedUUIDs := make(map[string]struct{}, len(combo.IncludedSquads))
+	for _, product := range combo.IncludedSquads {
+		includedUUIDs[product.RemnaSquadUUID] = struct{}{}
+	}
+	addonRows := make([]model.SquadProduct, 0, len(input.AddonSquadIDs))
+	addonPrice := int64(0)
+	for _, squadUUID := range uniqueSorted(input.AddonSquadIDs) {
+		product, loadErr := squadByIDTx(ctx, tx, squadUUID, true)
+		if loadErr != nil {
+			return model.PurchaseQuote{}, model.Combo{}, nil, loadErr
+		}
+		if _, included := includedUUIDs[product.RemnaSquadUUID]; included {
+			continue
+		}
+		includedUUIDs[product.RemnaSquadUUID] = struct{}{}
+		addonRows = append(addonRows, product)
+		addonPrice += product.PriceTXBMinor
+	}
+	grossMinor := combo.PriceTXBMinor + addonPrice
+	validFrom, err := nextPurchaseStartTx(ctx, tx, input.UserID, now)
+	if err != nil {
+		return model.PurchaseQuote{}, model.Combo{}, nil, err
+	}
+	discount := coupons.Discount{GrossMinor: grossMinor, NetMinor: grossMinor}
+	addonUUIDs := make([]string, 0, len(addonRows))
+	for _, addon := range addonRows {
+		addonUUIDs = append(addonUUIDs, addon.RemnaSquadUUID)
+	}
+	if input.CouponGrantID != "" {
+		discount, err = quoteCouponGrantTx(ctx, tx, coupons.PurchaseContext{
+			UserID: input.UserID, GrantID: input.CouponGrantID, ComboID: combo.ID,
+			AddonSquadIDs: addonUUIDs, GrossPriceMinor: grossMinor,
+		}, now)
+		if err != nil {
+			return model.PurchaseQuote{}, model.Combo{}, nil, err
+		}
+	}
+	return model.PurchaseQuote{
+		ComboID: combo.ID, ComboName: combo.Name,
+		GrossPriceTXBMinor: grossMinor, DiscountTXBMinor: discount.DiscountMinor, NetPriceTXBMinor: discount.NetMinor,
+		GrossPrice: model.TXBMoney(grossMinor), Discount: model.TXBMoney(discount.DiscountMinor), NetPrice: model.TXBMoney(discount.NetMinor),
+		EffectiveAt: validFrom, ExpiresAt: validFrom.AddDate(0, 0, combo.ValidityDays), Queued: validFrom.After(now), AddonSquadUUIDs: addonUUIDs,
+	}, combo, addonRows, nil
+}
+
+func nextPurchaseStartTx(ctx context.Context, tx *sql.Tx, userID string, now time.Time) (time.Time, error) {
+	validFrom := now
+	var latestEnd string
+	err := tx.QueryRowContext(ctx, `SELECT valid_until FROM purchases WHERE user_id=? AND status IN ('activating','active','queued') ORDER BY valid_until DESC LIMIT 1`, userID).Scan(&latestEnd)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return time.Time{}, fmt.Errorf("find current entitlement: %w", err)
+	}
+	if err == nil {
+		parsed, parseErr := parseStamp(latestEnd)
+		if parseErr != nil {
+			return time.Time{}, fmt.Errorf("parse current entitlement: %w", parseErr)
+		}
+		if parsed.After(validFrom) {
+			validFrom = parsed
+		}
+	}
+	return validFrom, nil
 }
 
 func normalizeAndFingerprintPurchase(input *PurchaseInput) (string, error) {
@@ -214,30 +248,10 @@ func comboByIDTx(ctx context.Context, tx *sql.Tx, id string, activeOnly bool) (m
 	return scanCombo(tx.QueryRowContext(ctx, query, id))
 }
 
-func comboSquadsTx(ctx context.Context, tx *sql.Tx, comboID string) ([]model.SquadProduct, error) {
-	rows, err := tx.QueryContext(ctx, squadSelect+` JOIN combo_squads cs ON cs.squad_product_id=squad_products.id WHERE cs.combo_id=? ORDER BY name,id`, comboID)
-	if err != nil {
-		return nil, fmt.Errorf("list combo squads: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	products := make([]model.SquadProduct, 0)
-	for rows.Next() {
-		product, err := scanSquad(rows)
-		if err != nil {
-			return nil, err
-		}
-		if !product.UpstreamPresent {
-			return nil, ErrNotFound
-		}
-		products = append(products, product)
-	}
-	return products, rows.Err()
-}
-
 func squadByIDTx(ctx context.Context, tx *sql.Tx, id string, requireVisible bool) (model.SquadProduct, error) {
-	query := squadSelect + ` WHERE id=?`
+	query := squadSelect + ` WHERE remna_squad_uuid=?`
 	if requireVisible {
-		query += ` AND visible=1 AND upstream_present=1`
+		query += ` AND visible=1`
 	}
 	return scanSquad(tx.QueryRowContext(ctx, query, id))
 }
@@ -381,7 +395,8 @@ func scanLedger(row rowScanner) (model.LedgerEntry, error) {
 	return entry, err
 }
 
-// PurchaseByID returns a catalog-snapshotted purchase.
+// PurchaseByID returns transaction facts combined with the combo's current
+// live configuration, as required by the mutable-catalog contract.
 func (s *Store) PurchaseByID(ctx context.Context, id string) (model.Purchase, error) {
 	purchase, err := scanPurchase(s.db.QueryRowContext(ctx, purchaseSelect+` WHERE purchases.id=?`, id))
 	if err != nil {
@@ -479,7 +494,7 @@ func (s *Store) CancelPurchase(ctx context.Context, purchaseID, reason string, n
 		return model.Purchase{}, err
 	}
 	if previousStatus != "queued" {
-		if err := insertOutboxTx(ctx, tx, "remna_sync_user", purchase.UserID, `{"userId":"`+purchase.UserID+`"}`, now, now); err != nil {
+		if err := insertOutboxTx(ctx, tx, "remna_sync_user", `{"userId":"`+purchase.UserID+`"}`, now, now); err != nil {
 			return model.Purchase{}, err
 		}
 	}
@@ -489,9 +504,9 @@ func (s *Store) CancelPurchase(ctx context.Context, purchaseID, reason string, n
 	return s.PurchaseByID(ctx, purchase.ID)
 }
 
-const purchaseSelect = `SELECT purchases.id,purchases.user_id,purchases.combo_id,combos.name,purchases.price_txb_minor,purchases.valid_from,purchases.valid_until,
-	purchases.status,purchases.traffic_limit_bytes,purchases.reset_strategy,purchases.coupon_grant_id,COALESCE(purchases.gross_price_txb_minor,purchases.price_txb_minor),purchases.coupon_discount_txb_minor,
-	purchases.rollover_min_remaining_bps,purchases.rollover_max_txb_minor,purchases.created_at,purchases.updated_at FROM purchases JOIN combos ON combos.id=purchases.combo_id`
+const purchaseSelect = `SELECT purchases.id,purchases.user_id,purchases.combo_id,combos.name,purchases.charged_txb_minor,purchases.valid_from,purchases.valid_until,
+	purchases.status,combos.traffic_limit_bytes,combos.reset_strategy,purchases.coupon_grant_id,COALESCE(purchases.gross_price_txb_minor,purchases.charged_txb_minor),purchases.coupon_discount_txb_minor,
+	combos.rollover_min_remaining_bps,combos.rollover_max_txb_minor,purchases.created_at,purchases.updated_at FROM purchases JOIN combos ON combos.id=purchases.combo_id`
 
 func scanPurchase(row rowScanner) (model.Purchase, error) {
 	var purchase model.Purchase
@@ -526,7 +541,12 @@ func scanPurchase(row rowScanner) (model.Purchase, error) {
 }
 
 func (s *Store) purchaseSquads(ctx context.Context, purchaseID string) ([]string, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT remna_squad_uuid FROM purchase_squads WHERE purchase_id=? ORDER BY remna_squad_uuid`, purchaseID)
+	rows, err := s.db.QueryContext(ctx, `SELECT value AS remna_squad_uuid
+		FROM purchases JOIN combos ON combos.id=purchases.combo_id, json_each(combos.included_squad_uuids)
+		WHERE purchases.id=?
+		UNION
+		SELECT remna_squad_uuid FROM purchase_addons WHERE purchase_id=?
+		ORDER BY remna_squad_uuid`, purchaseID, purchaseID)
 	if err != nil {
 		return nil, err
 	}
@@ -862,10 +882,13 @@ func (s *Store) SettlePayment(ctx context.Context, provider, dedupeKey, payloadH
 	if order.Provider != provider {
 		return model.PaymentOrder{}, false, ErrConflict
 	}
+	if order.ProviderTradeID != nil && tradeID != "" && *order.ProviderTradeID != tradeID {
+		return model.PaymentOrder{}, false, ErrConflict
+	}
+	if order.ProviderChargeID != nil && chargeID != "" && *order.ProviderChargeID != chargeID {
+		return model.PaymentOrder{}, false, ErrConflict
+	}
 	if order.Status == "paid" || order.Status == "refunded" {
-		if order.ProviderTradeID != nil && tradeID != "" && *order.ProviderTradeID != tradeID {
-			return model.PaymentOrder{}, false, ErrConflict
-		}
 		return order, false, nil
 	}
 	if order.Status != "pending" && order.Status != "creating" && order.Status != "expired" && order.Status != "cancelled" {
@@ -881,7 +904,10 @@ func (s *Store) SettlePayment(ctx context.Context, provider, dedupeKey, payloadH
 	if _, err := insertLedgerTx(ctx, tx, order.UserID, order.TXBMinor, balance, "payment_credit", order.ID, provider+" payment", now); err != nil {
 		return model.PaymentOrder{}, false, err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE webhook_events SET processed_at=? WHERE id=?`, stamp(now), eventID); err != nil {
+	// The terminal order state plus provider trade/charge identifiers are the
+	// durable replay guard. The webhook row is only a transient concurrency
+	// claim and is removed in the same successful settlement transaction.
+	if _, err := tx.ExecContext(ctx, `DELETE FROM webhook_events WHERE id=?`, eventID); err != nil {
 		return model.PaymentOrder{}, false, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -928,7 +954,7 @@ func (s *Store) RefundPayment(ctx context.Context, actorID *string, orderID, rea
 	if _, err := insertLedgerTx(ctx, tx, order.UserID, -order.TXBMinor, balance, "payment_reversal", order.ID, reason, now); err != nil {
 		return model.PaymentOrder{}, err
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT id,price_txb_minor,status FROM purchases WHERE user_id=? AND status IN ('queued','activating','active') ORDER BY CASE status WHEN 'queued' THEN 0 ELSE 1 END,created_at DESC`, order.UserID)
+	rows, err := tx.QueryContext(ctx, `SELECT id,charged_txb_minor,status FROM purchases WHERE user_id=? AND status IN ('queued','activating','active') ORDER BY CASE status WHEN 'queued' THEN 0 ELSE 1 END,created_at DESC`, order.UserID)
 	if err != nil {
 		return model.PaymentOrder{}, err
 	}
@@ -965,7 +991,7 @@ func (s *Store) RefundPayment(ctx context.Context, actorID *string, orderID, rea
 			return model.PaymentOrder{}, err
 		}
 		if item.status != "queued" {
-			if err := insertOutboxTx(ctx, tx, "remna_sync_user", order.UserID, `{"userId":"`+order.UserID+`"}`, now, now); err != nil {
+			if err := insertOutboxTx(ctx, tx, "remna_sync_user", `{"userId":"`+order.UserID+`"}`, now, now); err != nil {
 				return model.PaymentOrder{}, err
 			}
 		}

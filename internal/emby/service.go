@@ -156,7 +156,14 @@ func (s *Service) Provision(ctx context.Context, accountID string) error {
 	if err := s.remote.UpdatePolicy(ctx, current.ID, HardenPolicy(current.Policy, record.Preferences)); err != nil {
 		return s.handleProvisionError(ctx, record.ID, fmt.Errorf("apply restricted Emby policy: %w", err))
 	}
-	if err := s.repository.MarkEmbyProvisioned(ctx, record.ID, s.now().UTC()); err != nil {
+	verified, err := s.remote.GetUser(ctx, current.ID)
+	if err != nil {
+		return s.handleProvisionError(ctx, record.ID, fmt.Errorf("verify Emby policy: %w", err))
+	}
+	if !PolicyMatchesPreferences(verified.Policy, record.Preferences) {
+		return s.handleProvisionError(ctx, record.ID, errors.New("Emby policy verification failed"))
+	}
+	if err := s.repository.MarkEmbyProvisioned(ctx, record.ID, record.Preferences, s.now().UTC()); err != nil {
 		return fmt.Errorf("complete Emby provisioning: %w", err)
 	}
 	return nil
@@ -185,6 +192,13 @@ func (s *Service) UpdatePreferences(ctx context.Context, userID string, preferen
 	}
 	if err := s.remote.UpdatePolicy(ctx, remoteUser.ID, HardenPolicy(remoteUser.Policy, preferences)); err != nil {
 		return Account{}, fmt.Errorf("update Emby policy: %w", err)
+	}
+	verified, err := s.remote.GetUser(ctx, remoteUser.ID)
+	if err != nil {
+		return Account{}, fmt.Errorf("verify Emby policy: %w", err)
+	}
+	if !PolicyMatchesPreferences(verified.Policy, preferences) {
+		return Account{}, errors.New("Emby policy verification failed")
 	}
 	return s.repository.UpdateEmbyPreferences(ctx, account.ID, preferences, s.now().UTC())
 }
@@ -318,7 +332,7 @@ func (s *Service) validatePreferences(ctx context.Context, preferences Preferenc
 	for _, folder := range options.Folders {
 		availableFolders[folder.ID] = struct{}{}
 	}
-	for _, selected := range preferences.LibraryIDs {
+	for _, selected := range preferences.DisabledLibraryIDs {
 		if _, ok := availableFolders[selected]; !ok {
 			return fmt.Errorf("%w: unknown Emby library", ErrInvalidSetup)
 		}
@@ -363,9 +377,9 @@ func SuffixedUsername(baseUsername, userID string) string {
 }
 
 func normalizePreferences(preferences Preferences) Preferences {
-	seen := make(map[string]struct{}, len(preferences.LibraryIDs))
-	libraries := make([]string, 0, len(preferences.LibraryIDs))
-	for _, libraryID := range preferences.LibraryIDs {
+	seen := make(map[string]struct{}, len(preferences.DisabledLibraryIDs))
+	libraries := make([]string, 0, len(preferences.DisabledLibraryIDs))
+	for _, libraryID := range preferences.DisabledLibraryIDs {
 		libraryID = strings.TrimSpace(libraryID)
 		if libraryID == "" {
 			continue
@@ -377,7 +391,7 @@ func normalizePreferences(preferences Preferences) Preferences {
 		libraries = append(libraries, libraryID)
 	}
 	sort.Strings(libraries)
-	preferences.LibraryIDs = libraries
+	preferences.DisabledLibraryIDs = libraries
 	return preferences
 }
 

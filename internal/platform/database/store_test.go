@@ -211,13 +211,13 @@ func TestDueRenewalWaitsForRolloverThenEnqueuesExactlyOneActivation(t *testing.T
 		t.Fatalf("EnqueueDueEntitlementTransitions(retry): %v", err)
 	}
 	var count int
-	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind='rollover_finalize' AND aggregate_id=?`, first.ID).Scan(&count); err != nil {
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind='rollover_finalize' AND payload=?`, `{"purchaseId":"`+first.ID+`"}`).Scan(&count); err != nil {
 		t.Fatalf("count rollover jobs: %v", err)
 	}
 	if count != 1 {
 		t.Fatalf("rollover job count = %d, want 1", count)
 	}
-	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind='remna_apply_entitlement' AND aggregate_id=?`, renewal.ID).Scan(&count); err != nil {
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind='remna_apply_entitlement' AND payload=?`, `{"purchaseId":"`+renewal.ID+`"}`).Scan(&count); err != nil {
 		t.Fatalf("count renewal activation jobs: %v", err)
 	}
 	if count != 0 {
@@ -229,7 +229,7 @@ func TestDueRenewalWaitsForRolloverThenEnqueuesExactlyOneActivation(t *testing.T
 	if _, err := store.FinalizeRollover(ctx, first.ID, 1000, 500, "", first.ValidUntil); err != nil {
 		t.Fatalf("FinalizeRollover(): %v", err)
 	}
-	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind='remna_apply_entitlement' AND aggregate_id=?`, renewal.ID).Scan(&count); err != nil {
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind='remna_apply_entitlement' AND payload=?`, `{"purchaseId":"`+renewal.ID+`"}`).Scan(&count); err != nil {
 		t.Fatalf("count renewal activation jobs after rollover: %v", err)
 	}
 	if count != 1 {
@@ -243,7 +243,7 @@ func TestRecoverOutboxReleasesAbandonedLease(t *testing.T) {
 	ctx := context.Background()
 	store := newTestStore(t)
 	now := time.Date(2026, 8, 7, 12, 0, 0, 0, time.UTC)
-	if err := store.EnqueueOutbox(ctx, "remna_sync_user", "user-1", `{"userId":"user-1"}`, now); err != nil {
+	if err := store.EnqueueOutbox(ctx, "remna_sync_user", `{"userId":"user-1"}`, now); err != nil {
 		t.Fatalf("EnqueueOutbox(): %v", err)
 	}
 	claimed, err := store.ClaimOutboxJob(ctx, now)

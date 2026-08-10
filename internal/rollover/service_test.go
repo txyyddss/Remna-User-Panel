@@ -43,7 +43,7 @@ func TestHandleOutboxOrdersQuiesceTrafficAndFinalization(t *testing.T) {
 			remote := &rolloverRemote{events: &events, quiesceErr: test.quiesceErr, trafficErr: test.trafficErr, limit: 1_000, used: 250}
 			service := NewService(repository, remote)
 			service.now = func() time.Time { return time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC) }
-			err := service.HandleOutbox(context.Background(), model.OutboxJob{Kind: "rollover_finalize", AggregateID: "purchase-1"})
+			err := service.HandleOutbox(context.Background(), model.OutboxJob{Kind: "rollover_finalize", Payload: `{"purchaseId":"purchase-1"}`})
 			if (err != nil) != test.wantError {
 				t.Fatalf("HandleOutbox() error = %v, wantError=%t", err, test.wantError)
 			}
@@ -62,7 +62,7 @@ func TestHandleOutboxLocalIdentityMissingFinalizesWithoutRemoteAccess(t *testing
 	events := make([]string, 0, 2)
 	repository := &rolloverRepository{events: &events, rollover: model.PurchaseRollover{PurchaseID: "purchase-1", Status: "pending"}, user: model.User{ID: "user-1"}}
 	service := NewService(repository, &rolloverRemote{events: &events})
-	if err := service.HandleOutbox(context.Background(), model.OutboxJob{Kind: "rollover_finalize", AggregateID: "purchase-1"}); err != nil {
+	if err := service.HandleOutbox(context.Background(), model.OutboxJob{Kind: "rollover_finalize", Payload: `{"purchaseId":"purchase-1"}`}); err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(events, []string{"mark", "finalize"}) || repository.exception != "local_identity_missing" {

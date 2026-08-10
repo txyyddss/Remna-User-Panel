@@ -119,12 +119,20 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		return cleanup(fmt.Errorf("register rollover outbox handler: %w", err))
 	}
 	if err := outboxWorker.Register(emby.ProvisionOutboxKind, outbox.HandlerFunc(func(ctx context.Context, job model.OutboxJob) error {
-		return embyService.HandleProvisionJob(ctx, job.AggregateID)
+		accountID, err := outbox.TargetID(job, "accountId")
+		if err != nil {
+			return err
+		}
+		return embyService.HandleProvisionJob(ctx, accountID)
 	})); err != nil {
 		return cleanup(fmt.Errorf("register Emby outbox handler: %w", err))
 	}
 	if err := outboxWorker.Register("questionnaire_settlement", outbox.HandlerFunc(func(ctx context.Context, job model.OutboxJob) error {
-		_, settleErr := store.SettleQuestionnaireImport(ctx, job.AggregateID, time.Now().UTC())
+		importID, err := outbox.TargetID(job, "importId")
+		if err != nil {
+			return err
+		}
+		_, settleErr := store.SettleQuestionnaireImport(ctx, importID, time.Now().UTC())
 		return settleErr
 	})); err != nil {
 		return cleanup(fmt.Errorf("register questionnaire outbox handler: %w", err))
@@ -192,8 +200,14 @@ func (a *Application) Run(ctx context.Context) error {
 	}
 }
 
-// Close releases the SQLite pool after the HTTP server has stopped.
-func (a *Application) Close() error { return a.store.DB().Close() }
+// Close checkpoints the authoritative on-disk database before releasing the
+// SQLite pool after the HTTP server has stopped.
+func (a *Application) Close() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	checkpointErr := database.Checkpoint(ctx, a.store.DB(), true)
+	return errors.Join(checkpointErr, a.store.DB().Close())
+}
 
 func ensureBootstrapSettings(ctx context.Context, store *database.Store, vault *secret.Vault) error {
 	if _, err := store.GetSetting(ctx, "telegram.webhook_secret"); errors.Is(err, database.ErrNotFound) {
@@ -215,7 +229,7 @@ func ensureBootstrapSettings(ctx context.Context, store *database.Store, vault *
 		"billing.ezpay.enabled": "false", "billing.ezpay.methods": "alipay,wxpay,qqpay,bank,jdpay",
 		"billing.bepusdt.enabled": "false", "billing.bepusdt.methods": "usdt.trc20,usdt.erc20,usdt.polygon,usdt.bep20,usdt.aptos,usdt.solana,usdt.xlayer,usdt.arbitrum,usdt.plasma,usdt.ton",
 		"billing.bepusdt.ack": "ok", "billing.stars.enabled": "true",
-		"activity.timezone": "Asia/Shanghai", "activity.daily_reward_txb": "0",
+		"activity.timezone": "Asia/Shanghai", "activity.daily_reward_min_txb": "0", "activity.daily_reward_max_txb": "0",
 		"activity.group_message_threshold": "0", "activity.group_message_reward_txb": "0",
 	}
 	for key, value := range defaults {

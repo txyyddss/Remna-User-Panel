@@ -15,6 +15,16 @@ type fixedActivityRandom struct {
 	err   error
 }
 
+type countingActivityRandom struct {
+	value int64
+	calls int
+}
+
+func (random *countingActivityRandom) Int63n(upperBound int64) (int64, error) {
+	random.calls++
+	return random.value % upperBound, nil
+}
+
 func (random fixedActivityRandom) Int63n(upperBound int64) (int64, error) {
 	if random.err != nil {
 		return 0, random.err
@@ -92,6 +102,25 @@ func TestDailyActivityUsesConfiguredTimezoneDate(t *testing.T) {
 	}
 	if _, err := store.ClaimDailyActivity(ctx, user.ID, "2026-08-08", "Asia/Shanghai", 125, now); !errors.Is(err, activity.ErrInvalidInput) {
 		t.Fatalf("wrong local date error = %v, want invalid input", err)
+	}
+}
+
+func TestDailyActivityRangeChoosesOnceAndReplaysPersistedReward(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := newTestStore(t)
+	user := createTestUser(t, store, 31_102)
+	now := time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC)
+	random := &countingActivityRandom{value: 50}
+	claimed, err := store.ClaimDailyActivityRange(ctx, user.ID, "2026-08-08", "UTC", 100, 200, random, now)
+	if err != nil || claimed.RewardMinor != 150 || random.calls != 1 {
+		t.Fatalf("ClaimDailyActivityRange() = (%+v, %v), random calls %d", claimed, err, random.calls)
+	}
+	random.value = 99
+	replayed, err := store.ClaimDailyActivityRange(ctx, user.ID, "2026-08-08", "UTC", 100, 200, random, now.Add(time.Hour))
+	if err != nil || !replayed.AlreadyClaimed || replayed.ID != claimed.ID || replayed.RewardMinor != 150 || random.calls != 1 {
+		t.Fatalf("replayed range = (%+v, %v), random calls %d", replayed, err, random.calls)
 	}
 }
 

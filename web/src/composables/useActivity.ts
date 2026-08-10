@@ -63,6 +63,10 @@ export function useActivity() {
     return run('draw', `draw:${drawId}`, (key) => featuresApi.drawLuckyPrize(drawId, key))
   }
 
+  function clearResult(): void {
+    result.value = null
+  }
+
   onMounted(() => void load())
 
   return {
@@ -75,5 +79,6 @@ export function useActivity() {
     checkIn,
     placeBet,
     draw,
+    clearResult,
   }
 }

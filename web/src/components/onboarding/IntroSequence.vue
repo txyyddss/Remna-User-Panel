@@ -3,10 +3,12 @@ import { onMounted } from 'vue'
 import { PhArrowRight } from '@phosphor-icons/vue'
 
 import { useIntroSequence } from '@/composables/useIntroSequence'
+import type { OnboardingWelcomeMessage } from '@/api/features'
 
 const emit = defineEmits<{ complete: [] }>()
+const props = defineProps<{ messages: readonly OnboardingWelcomeMessage[] }>()
 const { index, message, progress, start, skip } = useIntroSequence({
-  duration: 900,
+  messages: () => props.messages,
   onComplete: () => emit('complete'),
 })
 
@@ -16,7 +18,7 @@ onMounted(start)
 <template>
   <section class="intro-sequence">
     <button class="text-button intro-sequence__skip" type="button" @click="skip">
-      Skip
+      {{ $t('common.skip') }}
       <PhArrowRight :size="17" />
     </button>
     <div class="intro-sequence__center">

@@ -9,6 +9,8 @@ import type {
   Paginated,
   PaymentOrder,
   Purchase,
+  PurchaseQuote,
+  RemnaNode,
   Session,
   SquadProduct,
   SquadProductWrite,
@@ -115,9 +117,9 @@ export const api = {
     method: 'PUT',
     body: { username },
   }),
-  acceptAgreement: () => request<Session>('/api/v1/onboarding/agreement', {
+  acceptAgreement: (revision: number, agreementIds: string[]) => request<Session>('/api/v1/onboarding/agreement', {
     method: 'POST',
-    body: { accepted: true },
+    body: { revision, agreementIds },
   }),
   getDashboard: () => request<Dashboard>('/api/v1/dashboard'),
   getCatalog: () => request<Catalog>('/api/v1/catalog'),
@@ -125,6 +127,10 @@ export const api = {
     method: 'POST',
     headers: { 'Idempotency-Key': idempotencyKey },
     body: { comboId, addonSquadProductIds: squadProductIds, couponGrantId } as PurchaseRequest & { couponGrantId?: string },
+  }),
+  quotePurchase: (comboId: string, squadProductIds: string[], couponGrantId?: string) => request<PurchaseQuote>('/api/v1/purchases/quote', {
+    method: 'POST',
+    body: { comboId, addonSquadProductIds: squadProductIds, couponGrantId },
   }),
   getPurchases: () => request<Paginated<Purchase>>('/api/v1/purchases'),
   revokeSubscription: () => request<{ subscriptionUrl: string }>('/api/v1/subscription/revoke', {
@@ -149,6 +155,10 @@ export const api = {
       method: 'PUT',
       body: body satisfies GeneratedSquadProductWrite,
     }),
+  getAdminSquadNodes: (id: string) =>
+    request<{ items: RemnaNode[] }>(`/api/v1/admin/squad-products/${encodeURIComponent(id)}/nodes`),
+  updateAdminSquadNodes: (id: string, nodeUuids: string[]) =>
+    request<{ items: RemnaNode[] }>(`/api/v1/admin/squad-products/${encodeURIComponent(id)}/nodes`, { method: 'PUT', body: { nodeUuids } }),
   createAdminResource: <T>(resource: AdminResource, body: unknown) =>
     request<T>(`/api/v1/admin/${resource}`, { method: 'POST', body }),
   updateAdminResource: <T>(resource: AdminResource, id: string, body: unknown) =>
@@ -166,6 +176,7 @@ export const api = {
   retryAdminJob: (jobId: string) => request<void>(`/api/v1/admin/jobs/${encodeURIComponent(jobId)}/retry`, {
     method: 'POST',
   }),
+  deleteAdminJob: (jobId: string) => request<void>(`/api/v1/admin/jobs/${encodeURIComponent(jobId)}`, { method: 'DELETE' }),
   adjustBalance: (userId: string, amountMinor: string, reason: string) => request<LedgerEntry>(`/api/v1/admin/users/${encodeURIComponent(userId)}/balance-adjustments`, {
     method: 'POST',
     body: { deltaTxbMinor: amountMinor, reason } satisfies BalanceAdjustmentRequest,

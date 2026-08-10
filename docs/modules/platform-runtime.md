@@ -8,18 +8,18 @@ Bootstrap environment is intentionally narrow: `ADMIN_TELEGRAM_ID`, `TELEGRAM_BO
 
 ## Persistence contract
 
-- The database lives at `${DATA_DIR}/tx-carpool.db`; backups live below `${DATA_DIR}/backups`.
-- Every connection enables foreign keys, WAL, and a busy timeout. The pool is bounded to avoid SQLite write starvation.
+- The authoritative database lives on disk at `${DATA_DIR}/tx-carpool.db`; backups live below `${DATA_DIR}/backups`. It is never mirrored wholesale into memory.
+- Every connection enables foreign keys, WAL, a busy timeout, a 16 MiB page cache, a 128 MiB mmap ceiling, memory-backed temporary storage, and `synchronous=FULL`. The pool is fixed at four connections; passive checkpoints run normally and a final checkpoint runs before backup and shutdown.
 - Embedded migrations run in order before HTTP readiness. A migration failure aborts startup without partially advertising readiness.
 - Business transactions write durable state and their required outbox job together. The dispatcher routes each claimed job to the handler registered for its exact kind; Remnawave, rollover, Emby, and questionnaire workers can never claim one another's work. Workers use bounded leases/transactions, increment attempts, and preserve the last operator-safe error.
-- `ledger_entries`, `webhook_events`, and refund records are append-only. Audit insertion transactionally retains the newest 200 audit events. The platform never offers raw SQL over HTTP.
+- Typed outbox payloads are the only target-ID source. A partial unique index on canonical `(kind,payload)` deduplicates pending/processing work, and processing jobs cannot be deleted. Audit insertion transactionally retains the newest 200 audit events. The platform never offers raw SQL over HTTP.
 - The embedded filesystem contains the Vite production output. Unknown non-API paths fall back to the SPA entry point; API and operational misses return normal HTTP errors and never the SPA.
 
 ## Scheduler and backup behavior
 
 One application-owned scheduler starts after migrations and stops when the root context is cancelled. It handles queued entitlement transitions, expired access, retryable Remnawave work, Stars reconciliation, and the daily backup trigger. Work is idempotent so a crash between provider success and job acknowledgement can be replayed safely.
 
-The backup task uses SQLite's online-safe mechanism, writes a temporary file, verifies that file by opening/checking it, then atomically renames it. Only verified snapshots receive final backup filenames. Files older than seven days are removed during retention scans, and a failed run never publishes its temporary file. Admin-triggered and scheduled runs share the same single-flight guard. Authenticated administrators may stream a stored backup by opaque run ID; filesystem paths are never accepted from the request.
+The backup task first checkpoints WAL, uses SQLite's online-safe mechanism, writes a temporary file, verifies that file by opening/checking it, then atomically renames it. The destructive schema migration similarly creates and integrity-checks a pre-migration snapshot before rebuilding tables. Backup deletion is denied while restore is staging/restarting, resolves the stored path beneath the configured backup directory, removes file and metadata consistently, and records an audit event.
 
 A restore accepts only a verified stored snapshot. It creates a rescue backup, checks SQLite integrity and migration compatibility, stages the candidate beside the live database, writes a durable restore marker, returns `202`, and triggers graceful shutdown. On the next startup, the marker is processed before opening the application database: the files are swapped atomically, the replacement is opened and verified, and failure restores the rescue copy. Restore status is recorded for the reconnecting administrator, who must reauthenticate after restart.
 

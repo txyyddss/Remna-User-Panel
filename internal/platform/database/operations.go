@@ -3,90 +3,31 @@ package database
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 )
 
-// JoinInvite is the persistent identity binding for a Telegram invite.
-type JoinInvite struct {
-	ID         string
-	UserID     string
-	ChatKind   string
-	ChatID     int64
-	InviteLink string
-	ExpiresAt  time.Time
-	ApprovedAt *time.Time
-	RevokedAt  *time.Time
-	CreatedAt  time.Time
-}
-
-// SaveJoinInvite records a provider-created invite before it is shown to the user.
-func (s *Store) SaveJoinInvite(ctx context.Context, userID, chatKind string, chatID int64, link string, expiresAt time.Time) (JoinInvite, error) {
-	id, err := ids.New()
+func insertOutboxTx(ctx context.Context, tx *sql.Tx, kind, payload string, availableAt, now time.Time) error {
+	kind = strings.TrimSpace(kind)
+	var typedPayload map[string]json.RawMessage
+	if kind == "" || json.Unmarshal([]byte(payload), &typedPayload) != nil || len(typedPayload) == 0 {
+		return errors.New("outbox kind and typed payload are required")
+	}
+	canonicalPayload, err := json.Marshal(typedPayload)
 	if err != nil {
-		return JoinInvite{}, err
+		return fmt.Errorf("canonicalize outbox payload: %w", err)
 	}
-	now := time.Now().UTC()
-	_, err = s.db.ExecContext(ctx, `INSERT INTO join_invites(id,user_id,chat_kind,chat_id,invite_link,expires_at,created_at) VALUES(?,?,?,?,?,?,?)`, id, userID, chatKind, chatID, link, stamp(expiresAt), stamp(now))
-	if err != nil {
-		return JoinInvite{}, fmt.Errorf("save join invite: %w", err)
-	}
-	return JoinInvite{ID: id, UserID: userID, ChatKind: chatKind, ChatID: chatID, InviteLink: link, ExpiresAt: expiresAt, CreatedAt: now}, nil
-}
-
-// JoinInviteByLink resolves the exact invite delivered in a join-request update.
-func (s *Store) JoinInviteByLink(ctx context.Context, link string) (JoinInvite, error) {
-	var invite JoinInvite
-	var expires, approved, revoked, created sql.NullString
-	err := s.db.QueryRowContext(ctx, `SELECT id,user_id,chat_kind,chat_id,invite_link,expires_at,approved_at,revoked_at,created_at FROM join_invites WHERE invite_link=? ORDER BY created_at DESC LIMIT 1`, link).
-		Scan(&invite.ID, &invite.UserID, &invite.ChatKind, &invite.ChatID, &invite.InviteLink, &expires, &approved, &revoked, &created)
-	if errors.Is(err, sql.ErrNoRows) {
-		return JoinInvite{}, ErrNotFound
-	}
-	if err != nil {
-		return JoinInvite{}, err
-	}
-	invite.ExpiresAt, err = parseStamp(expires.String)
-	if err != nil {
-		return JoinInvite{}, err
-	}
-	invite.CreatedAt, err = parseStamp(created.String)
-	if err != nil {
-		return JoinInvite{}, err
-	}
-	if approved.Valid {
-		value, parseErr := parseStamp(approved.String)
-		if parseErr != nil {
-			return JoinInvite{}, parseErr
-		}
-		invite.ApprovedAt = &value
-	}
-	if revoked.Valid {
-		value, parseErr := parseStamp(revoked.String)
-		if parseErr != nil {
-			return JoinInvite{}, parseErr
-		}
-		invite.RevokedAt = &value
-	}
-	return invite, nil
-}
-
-// MarkJoinInviteUsed records both approval and revocation after Telegram accepts the intended user.
-func (s *Store) MarkJoinInviteUsed(ctx context.Context, inviteID string, at time.Time) error {
-	_, err := s.db.ExecContext(ctx, `UPDATE join_invites SET approved_at=?,revoked_at=? WHERE id=?`, stamp(at), stamp(at), inviteID)
-	return err
-}
-
-func insertOutboxTx(ctx context.Context, tx *sql.Tx, kind, aggregateID, payload string, availableAt, now time.Time) error {
 	id, err := ids.New()
 	if err != nil {
 		return err
 	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO outbox_jobs(id,kind,aggregate_id,payload,status,attempts,available_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)`, id, kind, aggregateID, payload, "pending", 0, stamp(availableAt), stamp(now), stamp(now))
+	_, err = tx.ExecContext(ctx, `INSERT OR IGNORE INTO outbox_jobs(id,kind,payload,status,attempts,available_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)`, id, kind, string(canonicalPayload), "pending", 0, stamp(availableAt), stamp(now), stamp(now))
 	if err != nil {
 		return fmt.Errorf("enqueue outbox job: %w", err)
 	}
@@ -94,13 +35,13 @@ func insertOutboxTx(ctx context.Context, tx *sql.Tx, kind, aggregateID, payload 
 }
 
 // EnqueueOutbox appends a durable job.
-func (s *Store) EnqueueOutbox(ctx context.Context, kind, aggregateID, payload string, availableAt time.Time) error {
+func (s *Store) EnqueueOutbox(ctx context.Context, kind, payload string, availableAt time.Time) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
-	if err := insertOutboxTx(ctx, tx, kind, aggregateID, payload, availableAt, time.Now().UTC()); err != nil {
+	if err := insertOutboxTx(ctx, tx, kind, payload, availableAt, time.Now().UTC()); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -136,12 +77,13 @@ func (s *Store) EnqueueDueEntitlementTransitions(ctx context.Context, now time.T
 	_ = rows.Close()
 	for _, item := range expired {
 		result, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO purchase_rollovers(purchase_id,status,traffic_limit_bytes,minimum_remaining_bps,maximum_txb_minor,net_paid_txb_minor,created_at,updated_at)
-			SELECT id,'pending',traffic_limit_bytes,rollover_min_remaining_bps,rollover_max_txb_minor,price_txb_minor,?,? FROM purchases WHERE id=?`, stamp(now), stamp(now), item.purchaseID)
+			SELECT p.id,'pending',c.traffic_limit_bytes,c.rollover_min_remaining_bps,c.rollover_max_txb_minor,p.charged_txb_minor,?,?
+			FROM purchases p JOIN combos c ON c.id=p.combo_id WHERE p.id=?`, stamp(now), stamp(now), item.purchaseID)
 		if err != nil {
 			return err
 		}
 		if affected, _ := result.RowsAffected(); affected == 1 {
-			if err := insertOutboxTx(ctx, tx, "rollover_finalize", item.purchaseID, `{"purchaseId":"`+item.purchaseID+`"}`, now, now); err != nil {
+			if err := insertOutboxTx(ctx, tx, "rollover_finalize", `{"purchaseId":"`+item.purchaseID+`"}`, now, now); err != nil {
 				return err
 			}
 		}
@@ -180,7 +122,7 @@ func (s *Store) EnqueueDueEntitlementTransitions(ctx context.Context, now time.T
 		if err := applyPendingExtensionsToActivationTx(ctx, tx, purchaseID, now); err != nil {
 			return err
 		}
-		if err := insertOutboxTx(ctx, tx, "remna_apply_entitlement", purchaseID, `{"purchaseId":"`+purchaseID+`"}`, now, now); err != nil {
+		if err := insertOutboxTx(ctx, tx, "remna_apply_entitlement", `{"purchaseId":"`+purchaseID+`"}`, now, now); err != nil {
 			return err
 		}
 	}
@@ -209,7 +151,7 @@ func (s *Store) ExpirePurchase(ctx context.Context, purchaseID string, now time.
 	if _, err := tx.ExecContext(ctx, `UPDATE purchases SET status='expired',updated_at=? WHERE id=?`, stamp(now), purchaseID); err != nil {
 		return err
 	}
-	if err := insertOutboxTx(ctx, tx, "remna_sync_user", userID, `{"userId":"`+userID+`"}`, now, now); err != nil {
+	if err := insertOutboxTx(ctx, tx, "remna_sync_user", `{"userId":"`+userID+`"}`, now, now); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -266,9 +208,32 @@ func (s *Store) CompleteOutboxJob(ctx context.Context, jobID string, attempts in
 func (s *Store) RetryOutboxJob(ctx context.Context, jobID string, now time.Time) error {
 	result, err := s.db.ExecContext(ctx, `UPDATE outbox_jobs SET status='pending',attempts=0,last_error='',available_at=?,updated_at=? WHERE id=? AND status='failed'`, stamp(now), stamp(now), jobID)
 	if err != nil {
+		if isUniqueViolation(err) {
+			return ErrConflict
+		}
 		return err
 	}
 	if affected, _ := result.RowsAffected(); affected == 0 {
+		return ErrConflict
+	}
+	return nil
+}
+
+// DeleteOutboxJob removes any job that is not currently leased by a worker.
+func (s *Store) DeleteOutboxJob(ctx context.Context, jobID string) error {
+	result, err := s.db.ExecContext(ctx, `DELETE FROM outbox_jobs WHERE id=? AND status<>'processing'`, jobID)
+	if err != nil {
+		return fmt.Errorf("delete outbox job: %w", err)
+	}
+	if affected, rowsErr := result.RowsAffected(); rowsErr != nil {
+		return fmt.Errorf("inspect deleted outbox job: %w", rowsErr)
+	} else if affected == 0 {
+		var status string
+		if loadErr := s.db.QueryRowContext(ctx, `SELECT status FROM outbox_jobs WHERE id=?`, jobID).Scan(&status); errors.Is(loadErr, sql.ErrNoRows) {
+			return ErrNotFound
+		} else if loadErr != nil {
+			return loadErr
+		}
 		return ErrConflict
 	}
 	return nil
@@ -304,12 +269,12 @@ func (s *Store) ListOutboxJobs(ctx context.Context, limit int) ([]model.OutboxJo
 	return jobs, rows.Err()
 }
 
-const outboxSelect = `SELECT id,kind,aggregate_id,payload,status,attempts,available_at,last_error,created_at,updated_at FROM outbox_jobs`
+const outboxSelect = `SELECT id,kind,payload,status,attempts,available_at,last_error,created_at,updated_at FROM outbox_jobs`
 
 func scanOutbox(row rowScanner) (model.OutboxJob, error) {
 	var job model.OutboxJob
 	var available, created, updated string
-	if err := row.Scan(&job.ID, &job.Kind, &job.AggregateID, &job.Payload, &job.Status, &job.Attempts, &available, &job.LastError, &created, &updated); err != nil {
+	if err := row.Scan(&job.ID, &job.Kind, &job.Payload, &job.Status, &job.Attempts, &available, &job.LastError, &created, &updated); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.OutboxJob{}, ErrNotFound
 		}
@@ -419,7 +384,7 @@ func (s *Store) AppendAudit(ctx context.Context, actorUserID *string, action, ta
 		return fmt.Errorf("begin audit retention: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.ExecContext(ctx, `INSERT INTO audit_events(id,actor_user_id,action,target_type,target_id,detail,created_at) VALUES(?,?,?,?,?,?,?)`, id, actorUserID, action, targetType, targetID, detail, stamp(now)); err != nil {
+	if err := insertAuditTx(ctx, tx, id, actorUserID, action, targetType, targetID, detail, now); err != nil {
 		return fmt.Errorf("append audit event: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM audit_events WHERE id IN (
@@ -431,6 +396,11 @@ func (s *Store) AppendAudit(ctx context.Context, actorUserID *string, action, ta
 		return fmt.Errorf("commit audit retention: %w", err)
 	}
 	return nil
+}
+
+func insertAuditTx(ctx context.Context, tx *sql.Tx, id string, actorUserID *string, action, targetType, targetID, detail string, now time.Time) error {
+	_, err := tx.ExecContext(ctx, `INSERT INTO audit_events(id,actor_user_id,action,target_type,target_id,detail,created_at) VALUES(?,?,?,?,?,?,?)`, id, actorUserID, action, targetType, targetID, detail, stamp(now))
+	return err
 }
 
 // ListAuditEvents returns the newest administrative actions.

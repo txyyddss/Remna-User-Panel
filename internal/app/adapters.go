@@ -259,6 +259,68 @@ func (a remnaAdapter) ListInternalSquads(ctx context.Context) ([]admin.UpstreamS
 	return result, nil
 }
 
+func (a remnaAdapter) ListCatalogSquads(ctx context.Context) ([]catalog.RemoteSquad, error) {
+	client, err := a.client(ctx)
+	if err != nil {
+		return nil, err
+	}
+	squads, err := client.ListInternalSquads(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]catalog.RemoteSquad, 0, len(squads))
+	for _, squad := range squads {
+		result = append(result, catalog.RemoteSquad{UUID: squad.UUID, Name: squad.Name})
+	}
+	return result, nil
+}
+
+func (a remnaAdapter) ListNodes(ctx context.Context) ([]admin.UpstreamNode, error) {
+	client, err := a.client(ctx)
+	if err != nil {
+		return nil, err
+	}
+	nodes, err := client.ListNodes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]admin.UpstreamNode, 0, len(nodes))
+	for _, node := range nodes {
+		inbounds := make([]string, 0, len(node.ConfigProfile.ActiveInbounds))
+		for _, inbound := range node.ConfigProfile.ActiveInbounds {
+			inbounds = append(inbounds, inbound.UUID)
+		}
+		result = append(result, admin.UpstreamNode{UUID: node.UUID, Name: node.Name, CountryCode: node.CountryCode,
+			ConsumptionMultiplier: node.ConsumptionMultiplier, ActiveInboundUUIDs: inbounds, Disabled: node.IsDisabled})
+	}
+	return result, nil
+}
+
+func (a remnaAdapter) AccessibleNodeUUIDs(ctx context.Context, squadUUID string) ([]string, error) {
+	client, err := a.client(ctx)
+	if err != nil {
+		return nil, err
+	}
+	nodes, err := client.InternalSquadAccessibleNodes(ctx, squadUUID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]string, 0, len(nodes))
+	for _, node := range nodes {
+		result = append(result, node.UUID)
+	}
+	return result, nil
+}
+
+func (a remnaAdapter) UpdateInternalSquadInbounds(ctx context.Context, squadUUID string, inbounds []string) error {
+	client, err := a.client(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = client.UpdateInternalSquadInbounds(ctx, squadUUID, inbounds)
+	return err
+}
+
 func (a remnaAdapter) clientAndID(ctx context.Context, remoteID string) (*remnawave.Client, int64, error) {
 	client, err := a.client(ctx)
 	if err != nil {

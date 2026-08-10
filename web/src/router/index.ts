@@ -23,7 +23,7 @@ const router = createRouter({
     { path: '/emby', name: 'emby', component: () => import('@/views/EmbyView.vue') },
     { path: '/admin', redirect: '/admin/settings' },
     {
-      path: '/admin/:section(settings|catalog|activity|coupons|questionnaires|emby|users|entitlements|payments|backups|database|audit)',
+      path: '/admin/:section(settings|catalog|activity|coupons|questionnaires|onboarding|entitlements|payments|backups|database|audit)',
       name: 'admin',
       component: () => import('@/views/AdminView.vue'),
     },

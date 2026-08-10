@@ -14,7 +14,7 @@ import (
 
 const embyAccountSelect = `SELECT id,user_id,base_username,remote_user_id,remote_username,candidate_username,status,
 	setup_price_txb_minor,setup_attempt,password_ciphertext,password_context,max_parental_rating,create_attempted,
-	last_error,created_at,updated_at,provisioned_at,refunded_at FROM emby_accounts`
+	last_error,created_at,updated_at,provisioned_at,refunded_at,pending_preferences_json FROM emby_accounts`
 
 // EmbyBaseUsername returns the user's immutable local Remnawave username.
 func (s *Store) EmbyBaseUsername(ctx context.Context, userID string) (string, error) {
@@ -60,8 +60,7 @@ func (s *Store) QueueEmbySetup(ctx context.Context, input domain.QueueSetupInput
 	existing, loadErr := scanEmbyProvisioning(tx.QueryRowContext(ctx, embyAccountSelect+` WHERE user_id=?`, input.UserID))
 	accountID, attempt, isRetry := input.ID, 1, false
 	if loadErr == nil {
-		existing.Preferences.LibraryIDs, err = embyFolderIDs(ctx, tx, existing.ID)
-		if err != nil {
+		if err = hydrateEmbyPreferences(ctx, tx, &existing); err != nil {
 			return domain.Account{}, false, err
 		}
 		if existing.Status != domain.StatusFailed || existing.RefundedAt == nil {
@@ -76,31 +75,32 @@ func (s *Store) QueueEmbySetup(ctx context.Context, input domain.QueueSetupInput
 	if err != nil {
 		return domain.Account{}, false, err
 	}
+	pendingPreferences, err := json.Marshal(input.Preferences)
+	if err != nil {
+		return domain.Account{}, false, fmt.Errorf("encode pending Emby preferences: %w", err)
+	}
 	if isRetry {
 		if _, err := tx.ExecContext(ctx, `UPDATE emby_accounts SET base_username=?,
 			candidate_username=CASE WHEN remote_user_id IS NULL THEN NULL ELSE candidate_username END,
 			remote_username=CASE WHEN remote_user_id IS NULL THEN NULL ELSE remote_username END,
 			status='queued',setup_price_txb_minor=?,setup_attempt=?,password_ciphertext=?,password_context=?,
-			max_parental_rating=?,create_attempted=CASE WHEN remote_user_id IS NULL THEN 0 ELSE create_attempted END,
+			pending_preferences_json=?,create_attempted=CASE WHEN remote_user_id IS NULL THEN 0 ELSE create_attempted END,
 			last_error='',refunded_at=NULL,updated_at=? WHERE id=?`,
 			input.BaseUsername, input.SetupPriceTXBMinor, attempt, input.PasswordCiphertext, input.PasswordContext,
-			nullableInt32(input.Preferences.MaxParentalRating), stamp(now), accountID); err != nil {
+			string(pendingPreferences), stamp(now), accountID); err != nil {
 			return domain.Account{}, false, fmt.Errorf("restart Emby setup: %w", err)
 		}
 	} else {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO emby_accounts(id,user_id,base_username,status,setup_price_txb_minor,
-			setup_attempt,password_ciphertext,password_context,max_parental_rating,created_at,updated_at)
+			setup_attempt,password_ciphertext,password_context,pending_preferences_json,created_at,updated_at)
 			VALUES(?,?,?,?,?,?,?,?,?,?,?)`, accountID, input.UserID, input.BaseUsername, domain.StatusQueued,
 			input.SetupPriceTXBMinor, attempt, input.PasswordCiphertext, input.PasswordContext,
-			nullableInt32(input.Preferences.MaxParentalRating), stamp(now), stamp(now)); err != nil {
+			string(pendingPreferences), stamp(now), stamp(now)); err != nil {
 			if isUniqueViolation(err) {
 				return domain.Account{}, false, ErrConflict
 			}
 			return domain.Account{}, false, fmt.Errorf("insert Emby setup: %w", err)
 		}
-	}
-	if err := replaceEmbyFoldersTx(ctx, tx, accountID, input.Preferences.LibraryIDs); err != nil {
-		return domain.Account{}, false, err
 	}
 	referenceID := fmt.Sprintf("%s:%d", accountID, attempt)
 	if _, err := insertLedgerTx(ctx, tx, input.UserID, -input.SetupPriceTXBMinor, newBalance, "emby_setup_debit", referenceID, "Emby account setup", now); err != nil {
@@ -110,7 +110,7 @@ func (s *Store) QueueEmbySetup(ctx context.Context, input domain.QueueSetupInput
 	if err != nil {
 		return domain.Account{}, false, err
 	}
-	if err := insertOutboxTx(ctx, tx, domain.ProvisionOutboxKind, accountID, string(payload), now, now); err != nil {
+	if err := insertOutboxTx(ctx, tx, domain.ProvisionOutboxKind, string(payload), now, now); err != nil {
 		return domain.Account{}, false, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -126,7 +126,7 @@ func (s *Store) EmbyAccountForUser(ctx context.Context, userID string) (domain.A
 	if err != nil {
 		return domain.Account{}, err
 	}
-	record.Preferences.LibraryIDs, err = embyFolderIDs(ctx, s.db, record.ID)
+	err = hydrateEmbyPreferences(ctx, s.db, &record)
 	return record.Account, err
 }
 
@@ -146,7 +146,7 @@ func (s *Store) ListEmbyAccounts(ctx context.Context, limit int) ([]domain.Accou
 		if scanErr != nil {
 			return nil, scanErr
 		}
-		record.Preferences.LibraryIDs, scanErr = embyFolderIDs(ctx, s.db, record.ID)
+		scanErr = hydrateEmbyPreferences(ctx, s.db, &record)
 		if scanErr != nil {
 			return nil, scanErr
 		}
@@ -161,7 +161,7 @@ func (s *Store) EmbyProvisioningByID(ctx context.Context, accountID string) (dom
 	if err != nil {
 		return domain.ProvisioningRecord{}, err
 	}
-	record.Preferences.LibraryIDs, err = embyFolderIDs(ctx, s.db, record.ID)
+	err = hydrateEmbyPreferences(ctx, s.db, &record)
 	return record, err
 }
 
@@ -180,23 +180,23 @@ func (s *Store) RetryEmbyProvisioning(ctx context.Context, accountID string, now
 		return domain.Account{}, err
 	}
 	if record.Status == domain.StatusActive {
-		record.Preferences.LibraryIDs, err = embyFolderIDs(ctx, tx, record.ID)
+		err = hydrateEmbyPreferences(ctx, tx, &record)
 		return record.Account, err
 	}
 	if record.Status != domain.StatusQueued || record.PasswordCiphertext == "" {
 		return domain.Account{}, ErrConflict
 	}
+	payload, marshalErr := json.Marshal(map[string]string{"accountId": accountID})
+	if marshalErr != nil {
+		return domain.Account{}, marshalErr
+	}
 	var existing int
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind=? AND aggregate_id=? AND status IN ('pending','processing')`,
-		domain.ProvisionOutboxKind, accountID).Scan(&existing); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind=? AND payload=? AND status IN ('pending','processing')`,
+		domain.ProvisionOutboxKind, string(payload)).Scan(&existing); err != nil {
 		return domain.Account{}, fmt.Errorf("check Emby retry work: %w", err)
 	}
 	if existing == 0 {
-		payload, marshalErr := json.Marshal(map[string]string{"accountId": accountID})
-		if marshalErr != nil {
-			return domain.Account{}, marshalErr
-		}
-		if err := insertOutboxTx(ctx, tx, domain.ProvisionOutboxKind, accountID, string(payload), now, now); err != nil {
+		if err := insertOutboxTx(ctx, tx, domain.ProvisionOutboxKind, string(payload), now, now); err != nil {
 			return domain.Account{}, err
 		}
 	}
@@ -281,18 +281,29 @@ func (s *Store) RequeueEmbyProvisioning(ctx context.Context, accountID string, p
 	return nil
 }
 
-// MarkEmbyProvisioned activates an account and irreversibly erases its temporary secret.
-func (s *Store) MarkEmbyProvisioned(ctx context.Context, accountID string, now time.Time) error {
-	result, err := s.db.ExecContext(ctx, `UPDATE emby_accounts SET status='active',password_ciphertext='',password_context='',
-		last_error='',provisioned_at=COALESCE(provisioned_at,?),updated_at=?
-		WHERE id=? AND status='provisioning' AND remote_user_id IS NOT NULL`, stamp(now), stamp(now), accountID)
+// MarkEmbyProvisioned persists disabled folders only after the service has
+// re-fetched and verified the remote full policy.
+func (s *Store) MarkEmbyProvisioned(ctx context.Context, accountID string, preferences domain.Preferences, now time.Time) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	result, err := tx.ExecContext(ctx, `UPDATE emby_accounts SET status='active',password_ciphertext='',password_context='',
+		max_parental_rating=?,pending_preferences_json='{}',last_error='',provisioned_at=COALESCE(provisioned_at,?),updated_at=?
+		WHERE id=? AND status='provisioning' AND remote_user_id IS NOT NULL`, nullableInt32(preferences.MaxParentalRating), stamp(now), stamp(now), accountID)
 	if err != nil {
 		return fmt.Errorf("mark Emby provisioned: %w", err)
 	}
 	if affected, _ := result.RowsAffected(); affected == 0 {
 		return ErrConflict
 	}
-	return nil
+	if err := replaceEmbyFoldersTx(ctx, tx, accountID, preferences.DisabledLibraryIDs); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // FailAndRefundEmbySetup atomically records a terminal failure, erases the
@@ -313,7 +324,7 @@ func (s *Store) FailAndRefundEmbySetup(ctx context.Context, accountID, reason st
 		return domain.Account{}, ErrConflict
 	}
 	if record.RefundedAt != nil {
-		record.Preferences.LibraryIDs, err = embyFolderIDs(ctx, tx, record.ID)
+		err = hydrateEmbyPreferences(ctx, tx, &record)
 		return record.Account, err
 	}
 	balance, err := adjustBalanceTx(ctx, tx, record.UserID, record.SetupPriceTXBMinor, now)
@@ -324,7 +335,7 @@ func (s *Store) FailAndRefundEmbySetup(ctx context.Context, accountID, reason st
 	if _, err := insertLedgerTx(ctx, tx, record.UserID, record.SetupPriceTXBMinor, balance, "emby_setup_refund", referenceID, "Emby setup refund", now); err != nil {
 		return domain.Account{}, err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE emby_accounts SET status='failed',password_ciphertext='',password_context='',
+	if _, err := tx.ExecContext(ctx, `UPDATE emby_accounts SET status='failed',password_ciphertext='',password_context='',pending_preferences_json='{}',
 		last_error=?,refunded_at=?,updated_at=? WHERE id=?`, truncateEmbyError(reason), stamp(now), stamp(now), record.ID); err != nil {
 		return domain.Account{}, fmt.Errorf("record failed Emby setup: %w", err)
 	}
@@ -351,7 +362,7 @@ func (s *Store) UpdateEmbyPreferences(ctx context.Context, accountID string, pre
 	if affected, _ := result.RowsAffected(); affected == 0 {
 		return domain.Account{}, domain.ErrNotFound
 	}
-	if err := replaceEmbyFoldersTx(ctx, tx, accountID, preferences.LibraryIDs); err != nil {
+	if err := replaceEmbyFoldersTx(ctx, tx, accountID, preferences.DisabledLibraryIDs); err != nil {
 		return domain.Account{}, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -382,7 +393,7 @@ func scanEmbyProvisioning(row rowScanner) (domain.ProvisioningRecord, error) {
 	var createAttempted int
 	if err := row.Scan(&record.ID, &record.UserID, &record.BaseUsername, &remoteID, &remoteUsername, &candidate, &record.Status,
 		&record.SetupPriceTXBMinor, &record.SetupAttempt, &record.PasswordCiphertext, &record.PasswordContext,
-		&parentalRating, &createAttempted, &record.LastError, &created, &updated, &provisioned, &refunded); err != nil {
+		&parentalRating, &createAttempted, &record.LastError, &created, &updated, &provisioned, &refunded, &record.PendingPreferencesJSON); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return domain.ProvisioningRecord{}, domain.ErrNotFound
 		}
@@ -430,8 +441,24 @@ type embyQueryer interface {
 	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
 }
 
+func hydrateEmbyPreferences(ctx context.Context, queryer embyQueryer, record *domain.ProvisioningRecord) error {
+	disabled, err := embyFolderIDs(ctx, queryer, record.ID)
+	if err != nil {
+		return err
+	}
+	record.Preferences.DisabledLibraryIDs = disabled
+	if (record.Status == domain.StatusQueued || record.Status == domain.StatusProvisioning) && record.PendingPreferencesJSON != "" && record.PendingPreferencesJSON != "{}" {
+		var pending domain.Preferences
+		if err := json.Unmarshal([]byte(record.PendingPreferencesJSON), &pending); err != nil {
+			return fmt.Errorf("decode pending Emby preferences: %w", err)
+		}
+		record.Preferences = pending
+	}
+	return nil
+}
+
 func embyFolderIDs(ctx context.Context, queryer embyQueryer, accountID string) ([]string, error) {
-	rows, err := queryer.QueryContext(ctx, `SELECT folder_id FROM emby_account_folders WHERE account_id=? ORDER BY folder_id`, accountID)
+	rows, err := queryer.QueryContext(ctx, `SELECT folder_id FROM emby_account_disabled_folders WHERE account_id=? ORDER BY folder_id`, accountID)
 	if err != nil {
 		return nil, fmt.Errorf("list Emby folders: %w", err)
 	}
@@ -448,7 +475,7 @@ func embyFolderIDs(ctx context.Context, queryer embyQueryer, accountID string) (
 }
 
 func replaceEmbyFoldersTx(ctx context.Context, tx *sql.Tx, accountID string, folderIDs []string) error {
-	if _, err := tx.ExecContext(ctx, `DELETE FROM emby_account_folders WHERE account_id=?`, accountID); err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM emby_account_disabled_folders WHERE account_id=?`, accountID); err != nil {
 		return fmt.Errorf("clear Emby folders: %w", err)
 	}
 	seen := make(map[string]struct{}, len(folderIDs))
@@ -461,7 +488,7 @@ func replaceEmbyFoldersTx(ctx context.Context, tx *sql.Tx, accountID string, fol
 			continue
 		}
 		seen[folderID] = struct{}{}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO emby_account_folders(account_id,folder_id) VALUES(?,?)`, accountID, folderID); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO emby_account_disabled_folders(account_id,folder_id) VALUES(?,?)`, accountID, folderID); err != nil {
 			return fmt.Errorf("insert Emby folder: %w", err)
 		}
 	}

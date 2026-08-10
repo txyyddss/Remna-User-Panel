@@ -9,7 +9,7 @@ The main boundaries are:
 - `AppShell`: safe areas, session bootstrap, desktop/mobile navigation, skip link, Telegram BackButton, and focus restoration after navigation.
 - Member features: `ActivityPage`, `CouponWalletPanel`, `QuestionnairePage`, `EmbyPage`, `CatalogCheckout`, and `BalancePaymentSheet`.
 - Shared controls: `TxbAmountField` converts human major-unit input to integer hundredths, `SwitchField` wraps accessible Reka switches, and `MarkdownContent` renders sanitized Markdown with raw HTML disabled.
-- `AdminShell`: lazy section composition grouped as Commerce, Community, Accounts, and System while preserving every `/admin/:section` URL.
+- `AdminShell`: a compact grouped dropdown for Commerce, Community, Onboarding, and System. User and Emby-account administration routes are intentionally absent from the UI while backend operations remain available.
 - Workflow surfaces: questionnaire CSV import and database record editing use mobile drawers/dialogs with explicit review states rather than exposing raw SQL or unreviewed mutations.
 
 `src/api/generated.ts` is generated from `api/openapi.yaml`. `src/api/features.ts` is a narrow handwritten transport adapter for the new feature screens; it uses the same error envelope, credentials, decimal-string conventions, and canonical server routes.
@@ -22,9 +22,9 @@ The canonical member routes are `/home`, `/catalog`, `/balance`, `/activity`, `/
 
 Activity shows daily check-in, group-message reward progress/claimed state, enabled betting games, lucky draws, recent outcomes, exact stakes/fees, and resulting balance. It does not use streak pressure, near-miss animation, celebratory loops, or other manipulative gambling cues. Every financial action is disabled while pending and displays the server result.
 
-Coupon wallet redemption is explicit. Catalog checkout displays at most one selected eligible grant, uses the server quote, prunes add-on squads newly included by a changed combo, and disables included squads with an `Included` label. Combo and squad descriptions pass through `MarkdownContent`; admin editing provides the same renderer as a preview.
+Coupon wallet redemption is explicit. Catalog checkout displays at most one selected eligible grant, uses the non-mutating server quote, shows the authoritative effective date before confirmation, prunes add-on squads newly included by a changed combo, and disables included squads with an `Included` label. Combo and squad descriptions pass through `MarkdownContent`; the safe `[text]{color=accent size=lg}` directive maps only allowlisted colors and sizes to CSS classes with raw HTML disabled. Admin editing provides toolbar controls and the same renderer as a live preview.
 
-Questionnaire participation retrieves the same durable validation code on repeat visits. The administrator import flow progresses through upload, header/sample review, validation-column selection, match analysis, explicit settlement, and background-status polling. Empty, malformed, duplicate, unknown, failed, and completed states remain visible without losing the selected import.
+Questionnaire participation retrieves the same durable validation code on repeat visits. The administrator import flow progresses through upload, header/sample review, validation-column selection, match analysis, explicit settlement, and background-status polling. Closing and destructive deletion are separate actions. Activity result dialogs are focus-trapped, game icons come from a shared whitelisted Phosphor registry, and statistics expose accessible table data alongside daily/weekly graphs.
 
 Emby setup collects a write-only password, parental rating, and libraries before debit and shows the exact TXB setup price. Linked accounts expose only approved password and preference controls; raw policy fields are never presented. Failed retryable provisioning shows a bounded retry action.
 
@@ -34,7 +34,7 @@ The payment sheet selects a canonical method ID in two stages: provider, then ra
 
 All TXB form fields accept major-unit decimal strings. For example, entering `150` sends `15000` minor units. Rates, percentages, and multipliers retain their documented server units.
 
-The database editor lists allowlisted application tables, cursor-paginates records, and renders typed null, boolean, numeric, text, and blob controls. A write first requests a server diff/review hash, then requires the optimistic record hash, reason, and typed `EDIT <table>` confirmation. The UI warns that direct edits bypass domain synchronization hooks.
+The database editor lists allowlisted application tables, debounces broad search, supports up to five typed filters, cursor-paginates fingerprinted queries, and renders typed null, boolean, numeric, text, and blob controls. A write first requests a server diff/review hash, then requires the optimistic record hash, reason, and typed `EDIT <table>` confirmation. The UI warns that direct edits bypass domain synchronization hooks.
 
 Backup downloads use an authenticated binary response. Restore requires `RESTORE <filename>`, describes the automatic rescue backup, submits a staged restore, polls its operation, and enters reconnect/reauthentication state after the server begins its graceful restart.
 

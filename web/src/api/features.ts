@@ -36,8 +36,10 @@ export interface LuckyDraw {
 
 export interface ActivitySettings {
   timezone: string
-  dailyRewardTxb: string
-  dailyRewardTxbMinor: string
+  dailyRewardMinTxb: string
+  dailyRewardMinTxbMinor: string
+  dailyRewardMaxTxb: string
+  dailyRewardMaxTxbMinor: string
   groupMessageThreshold: number
   groupMessageRewardTxb: string
   groupMessageRewardTxbMinor: string
@@ -90,7 +92,8 @@ export interface ActivityOverview {
   balance: Money
   timeZone: string
   checkedInToday: boolean
-  dailyRewardTxbMinor: string
+  dailyRewardMinTxbMinor: string
+  dailyRewardMaxTxbMinor: string
   games: BetGame[]
   draws: LuckyDraw[]
   recentResults: ActivityResult[]
@@ -111,6 +114,7 @@ export interface CouponDefinition {
   globalUseLimit: number | null
   perUserUseLimit: number | null
   active: boolean
+  usageCount: number
   createdAt: RFC3339
   updatedAt: RFC3339
 }
@@ -224,7 +228,7 @@ export interface EmbyAccount {
   username: string
   status: 'queued' | 'provisioning' | 'active' | 'failed'
   maxParentalRating: number | null
-  libraryIds: string[]
+  disabledLibraryIds: string[]
   retryable?: boolean
   errorMessage?: string | null
   updatedAt: RFC3339
@@ -302,6 +306,93 @@ export interface DatabaseRow {
 export interface DatabaseRowsPage {
   items: DatabaseRow[]
   nextCursor: string | null
+}
+
+export type DatabaseFilterOperator = 'eq' | 'ne' | 'contains' | 'starts_with' | 'gt' | 'gte' | 'lt' | 'lte' | 'is_null' | 'not_null'
+
+export interface DatabaseFilter {
+  column: string
+  operator: DatabaseFilterOperator
+  value?: string
+}
+
+export interface DatabaseQueryInput {
+  search?: string
+  filters: DatabaseFilter[]
+  cursor?: string
+  limit: number
+}
+
+export interface StatisticPoint {
+  periodStart: string
+  count: number
+  uniqueUsers: number
+  inputTxbMinor: string
+  outputTxbMinor: string
+  netTxbMinor: string
+}
+
+export interface StatisticSlice {
+  id: string
+  label: string
+  count: number
+}
+
+export interface AdminStatistics {
+  resourceId: string
+  timeZone: string
+  from: string
+  to: string
+  bucket: 'daily' | 'weekly'
+  count: number
+  uniqueUsers: number
+  inputTxbMinor: string
+  outputTxbMinor: string
+  netTxbMinor: string
+  discountTxbMinor: string
+  addonTxbMinor: string
+  wins: number
+  losses: number
+  series: StatisticPoint[]
+  distribution: StatisticSlice[]
+}
+
+export interface StatisticsQuery {
+  from?: string
+  to?: string
+  bucket?: 'daily' | 'weekly'
+  timeZone?: string
+}
+
+export interface OnboardingWelcomeMessage {
+  id: string
+  text: string
+  durationMs?: number
+}
+
+export interface OnboardingAgreement {
+  id: string
+  icon: 'link-break' | 'shield-check' | 'users-three' | 'warning' | 'lock-key' | 'heart' | 'scales'
+  title: string
+  body: string
+}
+
+export type OnboardingLocalizedContent = Record<'en' | 'zh-CN', OnboardingWelcomeMessage[] | OnboardingAgreement[]>
+
+export interface PublishedOnboarding {
+  locale: 'en' | 'zh-CN'
+  welcomeRevision: number
+  agreementRevision: number
+  welcome: OnboardingWelcomeMessage[]
+  agreements: OnboardingAgreement[]
+}
+
+export interface OnboardingBundle {
+  kind: 'welcome' | 'agreements'
+  draft: OnboardingLocalizedContent
+  published: OnboardingLocalizedContent
+  draftRevision: number
+  publishedRevision: number
 }
 
 export interface DatabaseMutationInput {
@@ -401,27 +492,37 @@ export const featuresApi = {
     `/api/v1/questionnaires/${encodeURIComponent(questionnaireId)}/participation`, { method: 'POST', headers: { 'Idempotency-Key': idempotencyKey } },
   ),
   getEmby: () => featureRequest<EmbyOverview>('/api/v1/emby/account'),
-  setupEmby: (body: { password: string; maxParentalRating: number | null; libraryIds: string[] }) =>
+  setupEmby: (body: { password: string; maxParentalRating: number | null; disabledLibraryIds: string[] }) =>
     featureRequest<EmbyAccount>('/api/v1/emby/setup', { method: 'POST', body }),
-  updateEmbyPreferences: (body: { maxParentalRating: number | null; libraryIds: string[] }) =>
+  updateEmbyPreferences: (body: { maxParentalRating: number | null; disabledLibraryIds: string[] }) =>
     featureRequest<EmbyAccount>('/api/v1/emby/preferences', { method: 'PUT', body }),
   changeEmbyPassword: (password: string) => featureRequest<void>('/api/v1/emby/password', {
     method: 'PUT', body: { password },
   }),
   getAdminActivityGames: () => featureRequest<{ items: BetGame[] }>('/api/v1/admin/activity-games'),
   getAdminActivitySettings: () => featureRequest<ActivitySettings>('/api/v1/admin/activity-settings'),
-  saveAdminActivitySettings: (body: { timezone: string; dailyRewardTxb: string; groupMessageThreshold: number; groupMessageRewardTxb: string }) =>
+  saveAdminActivitySettings: (body: { timezone: string; groupMessageThreshold: number }) =>
     featureRequest<ActivitySettings>('/api/v1/admin/activity-settings', { method: 'PUT', body }),
   saveAdminActivityGame: (id: string | null, body: Omit<BetGame, 'id'>) => featureRequest<BetGame>(
     id ? `/api/v1/admin/activity-games/${encodeURIComponent(id)}` : '/api/v1/admin/activity-games',
     { method: id ? 'PUT' : 'POST', body },
   ),
+  deleteAdminActivityGame: (id: string) => featureRequest<void>(`/api/v1/admin/activity-games/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  getAdminActivityGameStatistics: (id: string, query: StatisticsQuery = {}) =>
+    featureRequest<AdminStatistics>(`/api/v1/admin/activity-games/${encodeURIComponent(id)}/statistics`, { query: { from: query.from, to: query.to, bucket: query.bucket, timeZone: query.timeZone } }),
   getAdminLuckyDraws: () => featureRequest<{ items: LuckyDrawAdmin[] }>('/api/v1/admin/lucky-draw'),
   saveAdminLuckyDraw: (id: string | null, body: LuckyDrawWrite) => featureRequest<LuckyDrawAdmin>(
     id ? `/api/v1/admin/lucky-draw/${encodeURIComponent(id)}` : '/api/v1/admin/lucky-draw',
     { method: id ? 'PUT' : 'POST', body },
   ),
+  deleteAdminLuckyDraw: (id: string) => featureRequest<void>(`/api/v1/admin/lucky-draw/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  getAdminLuckyDrawStatistics: (id: string, query: StatisticsQuery = {}) =>
+    featureRequest<AdminStatistics>(`/api/v1/admin/lucky-draw/${encodeURIComponent(id)}/statistics`, { query: { from: query.from, to: query.to, bucket: query.bucket, timeZone: query.timeZone } }),
   getAdminCoupons: () => featureRequest<{ items: CouponDefinition[] }>('/api/v1/admin/coupons'),
+  getAdminComboStatistics: (id: string, query: StatisticsQuery = {}) =>
+    featureRequest<AdminStatistics>(`/api/v1/admin/combos/${encodeURIComponent(id)}/statistics`, { query: { from: query.from, to: query.to, bucket: query.bucket, timeZone: query.timeZone } }),
+  getAdminSquadStatistics: (id: string, query: StatisticsQuery = {}) =>
+    featureRequest<AdminStatistics>(`/api/v1/admin/squad-products/${encodeURIComponent(id)}/statistics`, { query: { from: query.from, to: query.to, bucket: query.bucket, timeZone: query.timeZone } }),
   saveAdminCoupon: (id: string | null, body: Partial<CouponDefinition>) => featureRequest<CouponDefinition>(
     id ? `/api/v1/admin/coupons/${encodeURIComponent(id)}` : '/api/v1/admin/coupons',
     { method: id ? 'PUT' : 'POST', body },
@@ -436,8 +537,9 @@ export const featuresApi = {
     `/api/v1/admin/questionnaires/${encodeURIComponent(id)}/activate`, { method: 'POST' },
   ),
   closeAdminQuestionnaire: (id: string) => featureRequest<void>(
-    `/api/v1/admin/questionnaires/${encodeURIComponent(id)}`, { method: 'DELETE' },
+    `/api/v1/admin/questionnaires/${encodeURIComponent(id)}/close`, { method: 'POST' },
   ),
+  deleteAdminQuestionnaire: (id: string) => featureRequest<void>(`/api/v1/admin/questionnaires/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   previewQuestionnaireCsv: (id: string, file: File) => {
     const body = new FormData()
     body.set('file', file)
@@ -467,11 +569,21 @@ export const featuresApi = {
   restoreBackup: (id: string, reason: string, confirmation: string) => featureRequest<RestoreOperation>(`/api/v1/admin/backups/${encodeURIComponent(id)}/restore`, {
     method: 'POST', body: { reason, confirmation },
   }),
+  deleteBackup: (id: string) => featureRequest<void>(`/api/v1/admin/backups/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   getRestoreStatus: (id: string) => featureRequest<RestoreOperation>(`/api/v1/admin/restores/${encodeURIComponent(id)}`),
   getDatabaseTables: () => featureRequest<{ items: DatabaseTable[] }>('/api/v1/admin/database/tables'),
   getDatabaseRows: (table: string, cursor?: string) => featureRequest<DatabaseRowsPage>(
     `/api/v1/admin/database/tables/${encodeURIComponent(table)}/rows`, { query: { cursor, limit: 50 } },
   ),
+  queryDatabaseRows: (table: string, body: DatabaseQueryInput) => featureRequest<DatabaseRowsPage>(
+    `/api/v1/admin/database/tables/${encodeURIComponent(table)}/query`, { method: 'POST', body },
+  ),
+  getPublishedOnboarding: (locale: string) => featureRequest<PublishedOnboarding>('/api/v1/onboarding/content', { query: { locale } }),
+  getAdminOnboardingBundle: (kind: 'welcome' | 'agreements') => featureRequest<OnboardingBundle>(`/api/v1/admin/onboarding/content/${kind}`),
+  saveAdminOnboardingDraft: (kind: 'welcome' | 'agreements', draftRevision: number, content: OnboardingLocalizedContent) =>
+    featureRequest<OnboardingBundle>(`/api/v1/admin/onboarding/content/${kind}/draft`, { method: 'PUT', body: { draftRevision, content } }),
+  publishAdminOnboarding: (kind: 'welcome' | 'agreements', draftRevision: number) =>
+    featureRequest<OnboardingBundle>(`/api/v1/admin/onboarding/content/${kind}/publish`, { method: 'POST', body: { draftRevision } }),
   reviewDatabaseMutation: (body: DatabaseMutationInput) => featureRequest<DatabaseMutationReview>('/api/v1/admin/database/mutations/review', {
     method: 'POST', body,
   }),

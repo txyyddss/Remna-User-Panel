@@ -29,9 +29,9 @@ func TestCreatePurchaseSnapshotsAndRenewsAtCurrentTermEnd(t *testing.T) {
 
 	now := time.Date(2026, time.August, 7, 12, 0, 0, 0, time.UTC)
 	first, err := store.CreatePurchase(ctx, PurchaseInput{
-		UserID:        user.ID,
-		ComboID:       combo.ID,
-		AddonSquadIDs: []string{addon.ID, addon.ID},
+		UserID:         user.ID,
+		ComboID:        combo.ID,
+		AddonSquadIDs:  []string{addon.ID, addon.ID},
 		IdempotencyKey: "purchase-snapshot-first",
 	}, now)
 	if err != nil {
@@ -54,9 +54,9 @@ func TestCreatePurchaseSnapshotsAndRenewsAtCurrentTermEnd(t *testing.T) {
 	}
 
 	second, err := store.CreatePurchase(ctx, PurchaseInput{
-		UserID:        user.ID,
-		ComboID:       combo.ID,
-		AddonSquadIDs: []string{addon.ID},
+		UserID:         user.ID,
+		ComboID:        combo.ID,
+		AddonSquadIDs:  []string{addon.ID},
 		IdempotencyKey: "purchase-snapshot-second",
 	}, now.Add(24*time.Hour))
 	if err != nil {
@@ -183,7 +183,7 @@ func TestCreatePurchaseIdempotencyReplaysAndRejectsFingerprintReuse(t *testing.T
 	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM ledger_entries WHERE user_id=? AND kind='purchase_debit'`, user.ID).Scan(&debits); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind='remna_apply_entitlement' AND aggregate_id=?`, purchaseID).Scan(&jobs); err != nil {
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind='remna_apply_entitlement' AND payload=?`, `{"purchaseId":"`+purchaseID+`"}`).Scan(&jobs); err != nil {
 		t.Fatal(err)
 	}
 	if purchases != 1 || debits != 1 || jobs != 1 {
@@ -488,7 +488,7 @@ func TestRefundCancelsQueuedBeforeActiveAndIsIdempotent(t *testing.T) {
 		}
 	}
 	var syncJobs int
-	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind='remna_sync_user' AND aggregate_id=?`, user.ID).Scan(&syncJobs); err != nil {
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind='remna_sync_user' AND payload=?`, `{"userId":"`+user.ID+`"}`).Scan(&syncJobs); err != nil {
 		t.Fatalf("count refund sync jobs: %v", err)
 	}
 	if syncJobs != 1 {

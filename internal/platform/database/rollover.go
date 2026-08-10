@@ -123,11 +123,11 @@ func (s *Store) FinalizeRollover(ctx context.Context, purchaseID string, limitBy
 		if err := applyPendingExtensionsToActivationTx(ctx, tx, nextID, now); err != nil {
 			return model.PurchaseRollover{}, err
 		}
-		if err := insertOutboxTx(ctx, tx, "remna_apply_entitlement", nextID, `{"purchaseId":"`+nextID+`"}`, now, now); err != nil {
+		if err := insertOutboxTx(ctx, tx, "remna_apply_entitlement", `{"purchaseId":"`+nextID+`"}`, now, now); err != nil {
 			return model.PurchaseRollover{}, err
 		}
 	} else if errors.Is(err, sql.ErrNoRows) {
-		if err := insertOutboxTx(ctx, tx, "remna_sync_user", userID, `{"userId":"`+userID+`"}`, now, now); err != nil {
+		if err := insertOutboxTx(ctx, tx, "remna_sync_user", `{"userId":"`+userID+`"}`, now, now); err != nil {
 			return model.PurchaseRollover{}, err
 		}
 	} else {

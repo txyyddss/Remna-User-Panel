@@ -10,7 +10,7 @@ The HTTP layer accepts TXB as decimal-string minor units and basis-point integer
 
 - A game snapshots its name, icon, win chance, stake bounds, and total-return multiplier into every immutable result.
 - The stake is debited before the injected cryptographic random source selects an integer in `[0,10000)`. A win credits `floor(stakeMinor * returnMultiplierBps / 10000)` as total return.
-- A check-in key is the member plus local `YYYY-MM-DD` in the administrator-configured IANA timezone. Replays return the original result and never append another ledger credit.
+- A check-in key is the member plus local `YYYY-MM-DD` in the administrator-configured IANA timezone. The first claim draws once from the cryptographic source inside the inclusive configured minimum/maximum and persists that amount; replays return it without another random draw or ledger credit. Reward amounts are edited only through Settings.
 - A lucky draw validates its total positive weight and available stock in the same write transaction that charges the fee and applies its reward.
 - Before drawing, available balance must cover the fee plus the largest possible negative TXB prize. This prevents the random result from producing unapproved debt.
 - Prize effects are a closed `Reward` union: `none`, signed `txb_delta`, `coupon_grant`, or positive `subscription_extension`. The selected definition is snapshotted in the result.
@@ -26,7 +26,9 @@ Every debit and credit is committed with its ledger entry and a semantic referen
 
 ## Product and safety behavior
 
-The member interface presents probability and cost plainly, never uses streak pressure, near-miss animation, confetti, or loss-chasing copy, and respects reduced motion. Disabled games and draws cannot be invoked through the API even if a stale client still renders them. Activity history is user-scoped and bounded.
+The member interface presents probability and cost plainly, renders only whitelisted Phosphor game icon keys, shows each result in a focus-trapped dialog, never uses streak pressure/near-miss/confetti/loss-chasing copy, and respects reduced motion. Disabled games and draws cannot be invoked through a stale API request.
+
+Administrators may hard-delete games and draws when no protected processing work is running. Definitions, participation/results, prizes/snapshots, feature-linked ledger rows, and non-processing jobs are removed transactionally; already-settled balances, coupons, and extensions are not reversed. Statistics expose date-filtered daily/weekly participation, stake/fee, payout/reward, house-net, and win/loss or prize distributions.
 
 ## Verification
 

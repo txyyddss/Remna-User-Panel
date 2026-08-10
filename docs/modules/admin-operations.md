@@ -20,7 +20,7 @@ The fixed registry defines each known key's validator, sensitivity, display cate
 | `billing.bepusdt.enabled`, `.base_url`, `.api_token`, `.methods`, `.ack` | Boolean gate, HTTPS origin, encrypted token, ordered ten-rail list, `ok`/`success` ack |
 | `billing.stars.enabled` | Boolean Stars gate |
 | `emby.base_url`, `emby.api_token`, `emby.setup_price_txb` | Encrypted HTTPS origin/token and human-major setup price |
-| `activity.timezone`, `activity.daily_reward_txb` | IANA timezone and human-major nonnegative daily reward |
+| `activity.timezone`, `activity.daily_reward_min_txb`, `activity.daily_reward_max_txb` | IANA timezone and inclusive nonnegative daily reward range; minimum may not exceed maximum |
 | `activity.group_message_threshold`, `activity.group_message_reward_txb` | Nonnegative message threshold and human-major TXB reward; either zero disables the reward |
 
 All TXB setting/editor fields accept human-major decimals with at most two fractional digits. `150` therefore stores or resolves to `15000` minor units when used financially. Admin API domain records continue to serialize money as decimal-string minor units.
@@ -29,20 +29,20 @@ Readiness checks required settings, enabled-provider completeness, and at least 
 
 ## Domain operations and audit retention
 
-- Combo changes affect future purchases only. The editor includes imported-squad selection, safe Markdown preview, and rollover basis-point/cap fields.
-- Squad import reconciles Remnawave identity; local merchandising cannot invent an upstream UUID.
+- Combo records are live: changes affect active, queued, and historical purchases and enqueue deduplicated user synchronization. Referenced combos may be hidden but not hard-deleted.
+- Squad merchandising is a sparse override over the live Remnawave list; default values remove the override. Node assignments are revalidated and re-fetched upstream and are never persisted locally.
 - Balance adjustment requires a bounded nonzero signed amount and reason and appends one ledger entry plus audit event.
 - Telegram `/deduct <amount>` is accepted only from the configured administrator in the configured group as a reply to a known human sender. Amounts are positive human-major TXB values; the atomic debit rejects insufficient balance, uses a deterministic quoted-message reference for replay safety, and appends `telegram.balance_deduct` audit metadata.
 - Entitlement cancellation and payment refund append durable compensating commands; they never mutate provider state first and hope persistence follows.
 - Activity games/draws, coupons, questionnaires/imports, and Emby retries use their module services so validation, transactions, and idempotency remain centralized.
-- Job retry is allowed only for an eligible failed job and cannot change kind, aggregate, or payload.
+- Job retry is allowed only for an eligible failed job and cannot change kind or typed payload. Pending, done, and failed jobs may be deleted; processing jobs return `409`.
 - Every audit insertion transactionally retains the newest 200 events. Sensitive values are redacted before persistence.
 
 ## Schema-aware database editor
 
 The editor lists every application table except `schema_migrations` and SQLite internals. Table and column identifiers come only from `sqlite_schema`, must pass a strict identifier allowlist, and are always quoted. Records use a declared primary key or `_rowid_` only when addressable. Cursor values are sealed by the vault; pages are bounded.
 
-Wire values are typed: `null`, boolean, text, decimal-string integer/numeric/real, or `{blobBase64}`. Integers never cross JavaScript as numbers. Sensitive columns are masked; encrypted `settings.value` supports only a write-only replacement that is encrypted with the correct setting-key context. Raw password, token, ciphertext, subscription URL, invite link, provider payload, and questionnaire CSV columns are never rendered.
+Wire values are typed: `null`, boolean, text, decimal-string integer/numeric/real, or `{blobBase64}`. Integers never cross JavaScript as numbers. The query endpoint accepts debounced broad search plus up to five allowlisted column filters using `eq`, `ne`, `contains`, `starts_with`, `gt`, `gte`, `lt`, `lte`, `is_null`, or `not_null`; all values are bound and cursors include the query fingerprint. Sensitive columns are masked and excluded from broad search.
 
 Every insert/update/delete is a two-step command:
 

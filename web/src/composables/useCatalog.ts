@@ -3,7 +3,7 @@ import { computed, getCurrentInstance, onMounted, readonly, shallowRef, watch } 
 import { api, ApiError } from '@/api/client'
 import { featuresApi } from '@/api/features'
 import type { CouponGrant } from '@/api/features'
-import type { Catalog, Combo, Purchase, SquadProduct } from '@/api/types'
+import type { Catalog, Combo, Purchase, PurchaseQuote, SquadProduct } from '@/api/types'
 import { notifyHaptic } from '@/utils/telegram'
 
 export function useCatalog() {
@@ -11,8 +11,10 @@ export function useCatalog() {
   const balance = shallowRef<import('@/api/types').Money | null>(null)
   const loading = shallowRef(true)
   const purchasing = shallowRef(false)
+  const quoting = shallowRef(false)
   const error = shallowRef<string | null>(null)
   const purchase = shallowRef<Purchase | null>(null)
+  const quote = shallowRef<PurchaseQuote | null>(null)
   const selectedComboId = shallowRef<string | null>(null)
   const selectedSquadIds = shallowRef<string[]>([])
   const couponGrants = shallowRef<CouponGrant[]>([])
@@ -55,6 +57,8 @@ export function useCatalog() {
 
   watch(purchaseFingerprint, () => {
     purchaseIdempotencyKey.value = null
+    quote.value = null
+    if (checkoutOpen.value) void refreshQuote()
   })
 
   async function load(): Promise<void> {
@@ -94,12 +98,31 @@ export function useCatalog() {
     if (!eligibleCoupons.value.some((coupon) => coupon.id === selectedCouponGrantId.value)) selectedCouponGrantId.value = null
   }
 
-  function reviewPurchase(): void {
-    if (!selectedCombo.value) return
+  async function refreshQuote(): Promise<boolean> {
+    if (!selectedCombo.value) return false
     error.value = null
     needsBalance.value = false
+    quoting.value = true
+    try {
+      quote.value = await api.quotePurchase(
+        selectedCombo.value.id,
+        selectedSquadIds.value,
+        selectedCouponGrantId.value ?? undefined,
+      )
+      return true
+    } catch (caught) {
+      error.value = caught instanceof Error ? caught.message : 'The purchase quote could not be loaded.'
+      notifyHaptic('error')
+      return false
+    } finally {
+      quoting.value = false
+    }
+  }
+
+  async function reviewPurchase(): Promise<void> {
+    if (!selectedCombo.value) return
     purchaseIdempotencyKey.value ??= globalThis.crypto.randomUUID()
-    checkoutOpen.value = true
+    if (await refreshQuote()) checkoutOpen.value = true
   }
 
   async function confirmPurchase(): Promise<boolean> {
@@ -143,8 +166,10 @@ export function useCatalog() {
     balance: readonly(balance),
     loading: readonly(loading),
     purchasing: readonly(purchasing),
+    quoting: readonly(quoting),
     error: readonly(error),
     purchase: readonly(purchase),
+    quote: readonly(quote),
     selectedComboId,
     selectedSquadIds: readonly(selectedSquadIds),
     selectedCouponGrantId,
@@ -160,6 +185,7 @@ export function useCatalog() {
     selectCombo,
     toggleSquad,
     reviewPurchase,
+    refreshQuote,
     confirmPurchase,
   }
 }

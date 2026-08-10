@@ -1,0 +1,238 @@
+package databaseadmin
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"strconv"
+	"strings"
+)
+
+var filterOperators = map[string]struct{}{
+	"eq": {}, "ne": {}, "contains": {}, "starts_with": {}, "gt": {}, "gte": {}, "lt": {}, "lte": {}, "is_null": {}, "not_null": {},
+}
+
+type queryCursor struct {
+	Fingerprint string   `json:"fingerprint"`
+	Keys        []string `json:"keys"`
+}
+
+// QueryRecords executes schema-allowlisted SQL with bound values. The sealed
+// cursor carries a query fingerprint so it cannot be replayed against changed
+// search text or filters.
+func (s *Service) QueryRecords(ctx context.Context, table string, request QueryRequest) (Page, error) {
+	schema, err := s.schema(ctx, table)
+	if err != nil {
+		return Page{}, err
+	}
+	request.Search = strings.TrimSpace(request.Search)
+	if len(request.Search) > 200 || len(request.Filters) > 5 {
+		return Page{}, fmt.Errorf("%w: query limits exceeded", ErrInvalidValue)
+	}
+	if request.Limit <= 0 || request.Limit > 200 {
+		request.Limit = 50
+	}
+	fingerprint, err := queryFingerprint(schema.Name, request)
+	if err != nil {
+		return Page{}, err
+	}
+	conditions := make([]string, 0, len(request.Filters)+2)
+	args := make([]any, 0, len(request.Filters)+8)
+	if request.Search != "" {
+		searchable := make([]string, 0)
+		for _, column := range schema.ColumnsRaw {
+			if column.Sensitive || column.Affinity == affinityBlob || column.Hidden != 0 {
+				continue
+			}
+			searchable = append(searchable, `CAST(`+quoteIdentifier(column.Name)+` AS TEXT) LIKE ? ESCAPE '\'`)
+			args = append(args, "%"+escapeLike(request.Search)+"%")
+		}
+		if len(searchable) > 0 {
+			conditions = append(conditions, "("+strings.Join(searchable, " OR ")+")")
+		}
+	}
+	columns := make(map[string]schemaColumn, len(schema.ColumnsRaw))
+	for _, column := range schema.ColumnsRaw {
+		columns[column.Name] = column
+	}
+	for _, filter := range request.Filters {
+		column, exists := columns[filter.Column]
+		if !exists {
+			return Page{}, fmt.Errorf("%w: unknown filter column", ErrInvalidValue)
+		}
+		if _, exists := filterOperators[filter.Operator]; !exists {
+			return Page{}, fmt.Errorf("%w: unknown filter operator", ErrInvalidValue)
+		}
+		quoted := quoteIdentifier(column.Name)
+		switch filter.Operator {
+		case "is_null":
+			if filter.Value != nil {
+				return Page{}, fmt.Errorf("%w: is_null does not accept a value", ErrInvalidValue)
+			}
+			conditions = append(conditions, quoted+" IS NULL")
+		case "not_null":
+			if filter.Value != nil {
+				return Page{}, fmt.Errorf("%w: not_null does not accept a value", ErrInvalidValue)
+			}
+			conditions = append(conditions, quoted+" IS NOT NULL")
+		default:
+			if filter.Value == nil || column.Sensitive || column.Affinity == affinityBlob {
+				return Page{}, fmt.Errorf("%w: filter value is unavailable", ErrInvalidValue)
+			}
+			value, parseErr := parseEditorValue(column, *filter.Value)
+			if parseErr != nil || value == nil {
+				return Page{}, fmt.Errorf("%w: invalid filter value", ErrInvalidValue)
+			}
+			switch filter.Operator {
+			case "contains", "starts_with":
+				if column.Affinity != affinityText {
+					return Page{}, fmt.Errorf("%w: text operator requires a text column", ErrInvalidValue)
+				}
+				text, _ := filter.Value.Text()
+				pattern := "%" + escapeLike(text) + "%"
+				if filter.Operator == "starts_with" {
+					pattern = escapeLike(text) + "%"
+				}
+				conditions = append(conditions, quoted+` LIKE ? ESCAPE '\'`)
+				args = append(args, pattern)
+			default:
+				operatorSQL := map[string]string{"eq": "=", "ne": "<>", "gt": ">", "gte": ">=", "lt": "<", "lte": "<="}[filter.Operator]
+				conditions = append(conditions, quoted+" "+operatorSQL+" ?")
+				args = append(args, value)
+			}
+		}
+	}
+	if strings.TrimSpace(request.Cursor) != "" {
+		keys, decodeErr := s.decodeQueryCursor(schema, request.Cursor, fingerprint)
+		if decodeErr != nil {
+			return Page{}, fmt.Errorf("%w: invalid query cursor", ErrInvalidValue)
+		}
+		conditions = append(conditions, keyTuple(schema)+" > ("+placeholders(len(keys))+")")
+		args = append(args, keys...)
+	}
+	query := `SELECT ` + selectList(schema) + ` FROM ` + quoteIdentifier(schema.Name)
+	if len(conditions) > 0 {
+		query += ` WHERE ` + strings.Join(conditions, ` AND `)
+	}
+	query += ` ORDER BY ` + keyOrder(schema) + ` LIMIT ?`
+	args = append(args, request.Limit+1)
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return Page{}, fmt.Errorf("query %s records: %w", schema.Name, err)
+	}
+	defer func() { _ = rows.Close() }()
+	data := make([]rowData, 0, request.Limit+1)
+	for rows.Next() {
+		item, scanErr := s.scanRecord(schema, rows)
+		if scanErr != nil {
+			return Page{}, scanErr
+		}
+		data = append(data, item)
+	}
+	if err := rows.Err(); err != nil {
+		return Page{}, err
+	}
+	visible := min(request.Limit, len(data))
+	page := Page{Items: make([]Record, 0, visible)}
+	for index := 0; index < visible; index++ {
+		page.Items = append(page.Items, data[index].record)
+	}
+	if len(data) > request.Limit && visible > 0 {
+		next, encodeErr := s.encodeQueryCursor(schema, data[visible-1].keyRaw, fingerprint)
+		if encodeErr != nil {
+			return Page{}, encodeErr
+		}
+		page.NextCursor = &next
+	}
+	return page, nil
+}
+
+func queryFingerprint(table string, request QueryRequest) (string, error) {
+	payload := struct {
+		Table   string        `json:"table"`
+		Search  string        `json:"search"`
+		Filters []QueryFilter `json:"filters"`
+	}{Table: table, Search: request.Search, Filters: request.Filters}
+	encoded, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256(encoded)
+	return hex.EncodeToString(digest[:]), nil
+}
+
+func (s *Service) encodeQueryCursor(schema tableSchema, raw []any, fingerprint string) (string, error) {
+	if s.vault == nil {
+		return "", errors.New("vault is required for query cursors")
+	}
+	keys := make([]string, 0, len(raw))
+	if schema.UsesRowID {
+		value, err := canonicalKeyValue(schemaColumn{Column: Column{Name: "_rowid_"}, Affinity: affinityInteger}, raw[0])
+		if err != nil {
+			return "", err
+		}
+		keys = append(keys, value)
+	} else {
+		for index, column := range schema.KeyColumns {
+			value, err := canonicalKeyValue(column, raw[index])
+			if err != nil {
+				return "", err
+			}
+			keys = append(keys, value)
+		}
+	}
+	encoded, err := json.Marshal(queryCursor{Fingerprint: fingerprint, Keys: keys})
+	if err != nil {
+		return "", err
+	}
+	sealed, err := s.vault.Encrypt("databaseadmin:query-cursor:"+schema.Name, string(encoded))
+	if err != nil {
+		return "", err
+	}
+	return "sealed:" + sealed, nil
+}
+
+func (s *Service) decodeQueryCursor(schema tableSchema, cursor, fingerprint string) ([]any, error) {
+	if s.vault == nil || !strings.HasPrefix(cursor, "sealed:") {
+		return nil, errors.New("invalid cursor format")
+	}
+	plain, err := s.vault.Decrypt("databaseadmin:query-cursor:"+schema.Name, strings.TrimPrefix(cursor, "sealed:"))
+	if err != nil {
+		return nil, err
+	}
+	var decoded queryCursor
+	if err := json.Unmarshal([]byte(plain), &decoded); err != nil || decoded.Fingerprint != fingerprint {
+		return nil, errors.New("query cursor fingerprint differs")
+	}
+	if schema.UsesRowID {
+		if len(decoded.Keys) != 1 {
+			return nil, errors.New("query cursor key shape differs")
+		}
+		value, err := strconv.ParseInt(decoded.Keys[0], 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		return []any{value}, nil
+	}
+	if len(decoded.Keys) != len(schema.KeyColumns) {
+		return nil, errors.New("query cursor key shape differs")
+	}
+	values := make([]any, 0, len(decoded.Keys))
+	for index, column := range schema.KeyColumns {
+		value, err := parseKeyValue(column, decoded.Keys[index])
+		if err != nil {
+			return nil, err
+		}
+		values = append(values, value)
+	}
+	return values, nil
+}
+
+func escapeLike(value string) string {
+	value = strings.ReplaceAll(value, `\`, `\\`)
+	value = strings.ReplaceAll(value, `%`, `\%`)
+	return strings.ReplaceAll(value, `_`, `\_`)
+}

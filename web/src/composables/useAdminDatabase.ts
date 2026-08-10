@@ -1,6 +1,6 @@
 import { computed, onMounted, readonly, shallowRef } from 'vue'
 
-import type { DatabaseMutationInput, DatabaseMutationReview, DatabaseRow, DatabaseTable } from '@/api/features'
+import type { DatabaseMutationInput, DatabaseMutationReview, DatabaseQueryInput, DatabaseRow, DatabaseTable } from '@/api/features'
 import { featuresApi } from '@/api/features'
 
 export function useAdminDatabase() {
@@ -13,6 +13,7 @@ export function useAdminDatabase() {
   const error = shallowRef<string | null>(null)
   const review = shallowRef<DatabaseMutationReview | null>(null)
   const lastRescueBackupId = shallowRef<string | null>(null)
+  const activeQuery = shallowRef<DatabaseQueryInput>({ filters: [], limit: 50 })
 
   const selectedTable = computed(() => tables.value.find((table) => table.name === selectedTableName.value) ?? null)
 
@@ -25,7 +26,7 @@ export function useAdminDatabase() {
       if (!selectedTableName.value || !tables.value.some((table) => table.name === selectedTableName.value)) {
         selectedTableName.value = tables.value[0]?.name ?? null
       }
-      if (selectedTableName.value) await loadRows(selectedTableName.value)
+      if (selectedTableName.value) await queryRows(selectedTableName.value, activeQuery.value)
     } catch (caught) {
       error.value = caught instanceof Error ? caught.message : 'Database metadata is unavailable.'
     } finally {
@@ -34,11 +35,17 @@ export function useAdminDatabase() {
   }
 
   async function loadRows(table: string, options: { append?: boolean } = {}): Promise<void> {
+    return queryRows(table, activeQuery.value, options)
+  }
+
+  async function queryRows(table: string, input: DatabaseQueryInput, options: { append?: boolean } = {}): Promise<void> {
     if (busy.value) return
     busy.value = true
     error.value = null
     try {
-      const response = await featuresApi.getDatabaseRows(table, options.append ? nextCursor.value ?? undefined : undefined)
+      const base = { ...input, filters: input.filters.map((filter) => ({ ...filter })), limit: Math.min(200, Math.max(1, input.limit || 50)) }
+      const response = await featuresApi.queryDatabaseRows(table, { ...base, cursor: options.append ? nextCursor.value ?? undefined : undefined })
+      activeQuery.value = base
       rows.value = options.append ? [...rows.value, ...response.items] : response.items
       nextCursor.value = response.nextCursor
     } catch (caught) {
@@ -53,7 +60,8 @@ export function useAdminDatabase() {
     rows.value = []
     nextCursor.value = null
     review.value = null
-    await loadRows(name)
+    activeQuery.value = { filters: [], limit: 50 }
+    await queryRows(name, activeQuery.value)
   }
 
   async function reviewMutation(input: DatabaseMutationInput): Promise<boolean> {
@@ -114,6 +122,7 @@ export function useAdminDatabase() {
     lastRescueBackupId: readonly(lastRescueBackupId),
     loadTables,
     loadRows,
+    queryRows,
     selectTable,
     reviewMutation,
     applyMutation,

@@ -15,7 +15,9 @@ import (
 )
 
 const couponSelect = `SELECT id,code,name,kind,discount_mode,value_minor_or_bps,percent_cap_minor,
-	eligible_combo_ids,eligible_squad_ids,expires_at,global_use_limit,per_user_use_limit,active,created_at,updated_at
+	eligible_combo_ids,eligible_squad_ids,expires_at,global_use_limit,per_user_use_limit,active,created_at,updated_at,
+	(SELECT COUNT(*) FROM coupon_uses WHERE coupon_id=coupon_definitions.id) +
+	(SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id=coupon_definitions.id AND balance_delta_minor<>0)
 	FROM coupon_definitions`
 
 // SaveCoupon creates or updates a canonical coupon definition.
@@ -388,7 +390,7 @@ func scanCoupon(row rowScanner) (coupons.Coupon, error) {
 	var active int
 	var created, updated string
 	if err := row.Scan(&coupon.ID, &coupon.Code, &coupon.Name, &coupon.Kind, &coupon.DiscountMode, &coupon.ValueMinorOrBPS,
-		&percentCap, &comboJSON, &squadJSON, &expires, &globalLimit, &userLimit, &active, &created, &updated); err != nil {
+		&percentCap, &comboJSON, &squadJSON, &expires, &globalLimit, &userLimit, &active, &created, &updated, &coupon.UsageCount); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return coupons.Coupon{}, ErrNotFound
 		}
