@@ -40,6 +40,9 @@ func (s *Store) DB() *sql.DB { return s.db }
 
 // UpsertTelegramUser creates or refreshes a user from validated Telegram data.
 func (s *Store) UpsertTelegramUser(ctx context.Context, profile model.TelegramProfile, isAdmin bool) (model.User, bool, error) {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+
 	now := time.Now().UTC()
 	role := "user"
 	if isAdmin {
@@ -122,6 +125,9 @@ func scanUser(row rowScanner) (model.User, error) {
 
 // CreateSession stores a hash of an opaque session token.
 func (s *Store) CreateSession(ctx context.Context, tokenHash []byte, userID string, expiresAt time.Time) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+
 	now := time.Now().UTC()
 	if _, err := s.db.ExecContext(ctx, `INSERT INTO sessions(token_hash,user_id,expires_at,created_at) VALUES(?,?,?,?)`, tokenHash, userID, stamp(expiresAt), stamp(now)); err != nil {
 		return fmt.Errorf("create session: %w", err)
@@ -136,6 +142,9 @@ func (s *Store) UserBySession(ctx context.Context, tokenHash []byte, now time.Ti
 
 // DeleteExpiredSessions removes stale session rows.
 func (s *Store) DeleteExpiredSessions(ctx context.Context, now time.Time) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+
 	if _, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE expires_at<=?`, stamp(now)); err != nil {
 		return fmt.Errorf("delete expired sessions: %w", err)
 	}
@@ -144,6 +153,9 @@ func (s *Store) DeleteExpiredSessions(ctx context.Context, now time.Time) error 
 
 // UpdateMembership persists canonical Telegram membership results.
 func (s *Store) UpdateMembership(ctx context.Context, userID string, groupJoined, channelJoined bool) (model.User, error) {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+
 	_, err := s.db.ExecContext(ctx, `UPDATE users SET group_joined=?,channel_joined=?,onboarding_state=CASE
 		WHEN onboarding_state IN ('intro','membership') AND ?=1 AND ?=1 THEN CASE WHEN username IS NULL THEN 'username' ELSE 'agreement' END
 		ELSE onboarding_state END,updated_at=? WHERE id=?`, boolInt(groupJoined), boolInt(channelJoined), boolInt(groupJoined), boolInt(channelJoined), stamp(time.Now().UTC()), userID)
@@ -160,6 +172,9 @@ func (s *Store) BeginRemnawaveRecovery(ctx context.Context, userID, reason strin
 	if strings.TrimSpace(userID) == "" || reason == "" {
 		return model.User{}, ErrConflict
 	}
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+
 	result, err := s.db.ExecContext(ctx, `UPDATE users SET onboarding_state='membership',group_joined=0,channel_joined=0,
 		policy_accepted_at=NULL,remna_user_id=NULL,remna_subscription_url=NULL,recovery_reason=?,updated_at=?
 		WHERE id=? AND onboarding_state='complete'`, reason, stamp(now), userID)
@@ -186,6 +201,9 @@ func (s *Store) BeginRemnawaveRecovery(ctx context.Context, userID, reason strin
 
 // AdvanceToMembership moves a new user past the intro animation.
 func (s *Store) AdvanceToMembership(ctx context.Context, userID string) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+
 	if _, err := s.db.ExecContext(ctx, `UPDATE users SET onboarding_state='membership',updated_at=? WHERE id=? AND onboarding_state='intro'`, stamp(time.Now().UTC()), userID); err != nil {
 		return fmt.Errorf("advance onboarding: %w", err)
 	}
@@ -194,6 +212,9 @@ func (s *Store) AdvanceToMembership(ctx context.Context, userID string) error {
 
 // ReserveUsername atomically assigns a locally unique username.
 func (s *Store) ReserveUsername(ctx context.Context, userID, username string) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+
 	result, err := s.db.ExecContext(ctx, `UPDATE users SET username=?,onboarding_state='agreement',updated_at=?
 		WHERE id=? AND (onboarding_state='username' OR (onboarding_state='agreement' AND username=?))`,
 		username, stamp(time.Now().UTC()), userID, username)
