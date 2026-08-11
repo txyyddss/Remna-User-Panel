@@ -4,6 +4,13 @@ import { describe, expect, it } from 'vitest'
 import type { DatabaseRow } from '@/api/features'
 import DatabaseMobileRowCard from './DatabaseMobileRowCard.vue'
 
+const ButtonStub = {
+  inheritAttrs: false,
+  props: { icon: { type: String, default: '' } },
+  emits: ['click'],
+  template: '<div role="button" :data-test="icon.includes(\'pencil\') ? \'edit-action\' : \'delete-action\'" @click="$emit(\'click\')" />',
+}
+
 const row: DatabaseRow = {
   key: { id: 'user-1' },
   values: { id: 'user-1', role: 'admin', secret: 'hidden' },
@@ -15,21 +22,15 @@ describe('DatabaseMobileRowCard', () => {
     const wrapper = mount(DatabaseMobileRowCard, {
       props: { row },
       global: {
-        stubs: {
-          UButton: {
-            inheritAttrs: false,
-            template: '<button v-bind="$attrs" @click="$emit(\'click\')"><slot /></button>',
-          },
-        },
+        stubs: { UButton: ButtonStub },
       },
     })
 
     expect(wrapper.get('code').text()).toBe('{"id":"user-1"}')
     expect(wrapper.text()).not.toContain('hidden')
 
-    const buttons = wrapper.findAll('button')
-    await buttons[0].trigger('click')
-    await buttons[1].trigger('click')
+    await wrapper.get('[data-test="edit-action"]').trigger('click')
+    await wrapper.get('[data-test="delete-action"]').trigger('click')
 
     expect(wrapper.emitted('edit')).toEqual([[row]])
     expect(wrapper.emitted('delete')).toEqual([[row]])
