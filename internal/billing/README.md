@@ -13,4 +13,5 @@ Payment-method discovery, exact decimal arithmetic, checkout creation, provider 
 - `service_test_helpers_test.go` contains shared billing repository, settings, and gateway doubles.
 - `methods_test.go` covers documented method identifiers and rail ordering.
 - `decimal_test.go` covers decimal parsing, equivalence, and rounding.
+- `methods_service_test.go` covers configured method availability, cancellation behavior, and BEPusdt callback capabilities.
 - `README.md` documents the package layout.

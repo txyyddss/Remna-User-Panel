@@ -8,3 +8,4 @@ This package builds the live catalog, validates purchase selections against curr
 - `usage.go` validates a member-selected UTC range and projects live, bounded per-node traffic through the optional queued provider reader.
 - `service_test.go` verifies forwarding, validation errors, dashboard freshness, and subscription revocation behavior.
 - `live_catalog_test.go` verifies missing live squads are rejected during catalog hydration and purchase validation.
+- `usage_quote_test.go` verifies bounded node-usage ranges, quote selection validation, and purchase-history forwarding.
