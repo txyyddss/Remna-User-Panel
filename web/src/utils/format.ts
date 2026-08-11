@@ -40,7 +40,7 @@ export function formatBytes(raw: string | number): string {
   const fraction = hundredths === 0n
     ? '0'
     : hundredths.toString().padStart(2, '0').replace(/0$/, '')
-  return `${whole}.${fraction} ${units[index]}`
+  return `${fraction === '0' ? whole.toString() : `${whole}.${fraction}`} ${units[index]}`
 }
 
 export function trafficBytesFromInput(value: string): string {

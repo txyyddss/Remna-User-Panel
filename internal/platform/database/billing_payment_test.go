@@ -241,7 +241,7 @@ func TestPaymentPayloadMinimizationMigration(t *testing.T) {
 	ctx := context.Background()
 	store := newTestStore(t)
 	user := createTestUser(t, store, 34000)
-	now := time.Date(2026, time.August, 10, 13, 0, 0, 0, time.UTC)
+	now := time.Date(2099, time.August, 10, 13, 0, 0, 0, time.UTC)
 	orderIDs := make([]string, len(tests))
 	for index, test := range tests {
 		order, err := store.CreatePaymentOrder(ctx, model.PaymentOrder{

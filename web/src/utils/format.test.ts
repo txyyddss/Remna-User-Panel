@@ -23,7 +23,7 @@ describe('format utilities', () => {
   })
 
   it('formats byte counts without mutating the source value', () => {
-    expect(formatBytes('1073741824')).toBe('1.0 GB')
+    expect(formatBytes('1073741824')).toBe('1 GB')
     expect(formatBytes('1610612736')).toBe('1.5 GB')
     expect(formatBytes('1342177280')).toBe('1.25 GB')
     expect(formatBytes(0)).toBe('0 GB')
