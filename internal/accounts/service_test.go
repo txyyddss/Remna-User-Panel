@@ -37,6 +37,33 @@ func TestAuthenticateAndSessionLookup(t *testing.T) {
 	}
 }
 
+func TestAuthenticateMarksConfiguredAdminIDs(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		profile model.TelegramProfile
+		want    bool
+	}{
+		{name: "first configured admin", profile: model.TelegramProfile{ID: 42}, want: true},
+		{name: "second configured admin", profile: model.TelegramProfile{ID: 43}, want: true},
+		{name: "ordinary user", profile: model.TelegramProfile{ID: 44}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			repository := &accountsRepository{user: model.User{ID: "user-1", TelegramID: test.profile.ID}}
+			service := NewService(repository, &accountsValidator{profile: test.profile}, &accountsTelegram{}, &accountsRemnawave{}, &accountsSettings{}, []int64{42, 43}, 7*24*time.Hour)
+			if _, _, _, err := service.Authenticate(context.Background(), "signed-init-data"); err != nil {
+				t.Fatalf("Authenticate(): %v", err)
+			}
+			if repository.upsertAdmin != test.want {
+				t.Fatalf("upsert admin = %t, want %t", repository.upsertAdmin, test.want)
+			}
+		})
+	}
+}
+
 func TestAuthenticationFailures(t *testing.T) {
 	t.Parallel()
 

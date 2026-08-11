@@ -19,7 +19,7 @@ type Config struct {
 	DataDir           string
 	DatabasePath      string
 	PublicBaseURL     *url.URL
-	AdminTelegramID   int64
+	AdminTelegramIDs  []int64
 	TelegramBotToken  string
 	MasterKey         []byte
 	Timezone          *time.Location
@@ -45,11 +45,11 @@ func Load() (Config, error) {
 	cfg.BackupHour = 2
 	cfg.AllowInsecureHTTP = strings.EqualFold(os.Getenv("ALLOW_INSECURE_HTTP"), "true")
 
-	adminID, err := strconv.ParseInt(strings.TrimSpace(os.Getenv("ADMIN_TELEGRAM_ID")), 10, 64)
-	if err != nil || adminID <= 0 {
-		return Config{}, fmt.Errorf("ADMIN_TELEGRAM_ID must be a positive integer")
+	adminIDs, err := parseAdminTelegramIDs(os.Getenv("ADMIN_TELEGRAM_ID"))
+	if err != nil {
+		return Config{}, err
 	}
-	cfg.AdminTelegramID = adminID
+	cfg.AdminTelegramIDs = adminIDs
 
 	cfg.TelegramBotToken = strings.TrimSpace(os.Getenv("TELEGRAM_BOT_TOKEN"))
 	if cfg.TelegramBotToken == "" {
@@ -98,4 +98,26 @@ func envDefault(name, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func parseAdminTelegramIDs(raw string) ([]int64, error) {
+	parts := strings.Split(raw, ",")
+	ids := make([]int64, 0, len(parts))
+	seen := make(map[int64]struct{}, len(parts))
+	for _, part := range parts {
+		value := strings.TrimSpace(part)
+		if value == "" {
+			return nil, fmt.Errorf("ADMIN_TELEGRAM_ID must contain comma-separated positive integers")
+		}
+		id, err := strconv.ParseInt(value, 10, 64)
+		if err != nil || id <= 0 {
+			return nil, fmt.Errorf("ADMIN_TELEGRAM_ID must contain comma-separated positive integers")
+		}
+		if _, exists := seen[id]; exists {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	return ids, nil
 }

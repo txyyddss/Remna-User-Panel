@@ -44,7 +44,7 @@ Copy `.env.example` to a secret deployment-specific file and set these four valu
 
 | Variable | Requirement |
 | --- | --- |
-| `ADMIN_TELEGRAM_ID` | Positive Telegram user ID. This exact identity starts in the admin dashboard and can optionally complete signup to create a Remnawave user. |
+| `ADMIN_TELEGRAM_ID` | One or more positive Telegram user IDs separated by commas. Each configured identity starts in the admin dashboard and can optionally complete signup to create a Remnawave user. |
 | `TELEGRAM_BOT_TOKEN` | Bot token from BotFather. It is also used for Mini App auth validation and Stars. |
 | `PUBLIC_BASE_URL` | Canonical externally reachable HTTPS origin, without a trailing path. Webhooks and returns are derived only from this value. |
 | `CONFIG_MASTER_KEY` | Base64 encoding of exactly 32 random bytes, for example `openssl rand -base64 32`. Keep it stable and backed up. |
@@ -95,7 +95,7 @@ If a host bind mount is used instead of a named volume, make the mounted directo
 ## First-time setup
 
 1. Deploy the HTTPS origin with the required environment and a durable `/data` volume.
-2. Open the Mini App as `ADMIN_TELEGRAM_ID`. It opens directly to the admin dashboard; authorization is the validated Telegram session plus the exact environment ID. Select **Set up user account** there only when the admin also needs normal user-side access and a Remnawave identity.
+2. Open the Mini App as one of the configured `ADMIN_TELEGRAM_ID` values. It opens directly to the admin dashboard; authorization is the validated Telegram session plus a configured environment ID. Select **Set up user account** there only when the admin also needs normal user-side access and a Remnawave identity.
 3. Configure the target Telegram group and channel, Remnawave endpoint and token, enabled payment methods and required `txb_per_*` rates, and at least one combo. Configure the encrypted Emby token, HTTPS URL, and setup price only when Emby access is offered.
 4. Review the live Remnawave internal squads, then add only the local descriptions, TXB prices, and visibility overrides you need. Upstream-owned squad identities are not duplicated in SQLite.
 5. In BotFather, select the deployed URL as the bot's Main Mini App. The service configures the Telegram webhook and chat menu button from `PUBLIC_BASE_URL`; the bot needs invite and join-request administration rights in both chats.

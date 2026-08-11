@@ -67,26 +67,34 @@ type Dependencies struct {
 	RequestSigningKey []byte
 	SessionTTL        time.Duration
 	SecureCookies     bool
-	AdminTelegramID   int64
+	AdminTelegramIDs  []int64
 }
 
 // Server owns HTTP routing and transport-only validation.
 type Server struct {
-	deps     Dependencies
-	requests *requestauth.Verifier
-	router   http.Handler
+	deps             Dependencies
+	requests         *requestauth.Verifier
+	router           http.Handler
+	adminTelegramIDs map[int64]struct{}
 }
 
 // New constructs all public, authenticated, admin, and webhook routes.
 func New(deps Dependencies) (*Server, error) {
-	if deps.Accounts == nil || deps.Catalog == nil || deps.Billing == nil || deps.Activity == nil || deps.Coupons == nil || deps.Questionnaires == nil || deps.Emby == nil || deps.EmbyPrice == nil || deps.Admin == nil || deps.Settings == nil || deps.Store == nil || deps.Telegram == nil || deps.Webhooks == nil || deps.PublicURL == nil || deps.Logger == nil || deps.AdminTelegramID <= 0 {
+	if deps.Accounts == nil || deps.Catalog == nil || deps.Billing == nil || deps.Activity == nil || deps.Coupons == nil || deps.Questionnaires == nil || deps.Emby == nil || deps.EmbyPrice == nil || deps.Admin == nil || deps.Settings == nil || deps.Store == nil || deps.Telegram == nil || deps.Webhooks == nil || deps.PublicURL == nil || deps.Logger == nil || len(deps.AdminTelegramIDs) == 0 {
 		return nil, errors.New("HTTP API dependencies are incomplete")
+	}
+	adminTelegramIDs := make(map[int64]struct{}, len(deps.AdminTelegramIDs))
+	for _, adminID := range deps.AdminTelegramIDs {
+		if adminID <= 0 {
+			return nil, errors.New("HTTP API dependencies are incomplete")
+		}
+		adminTelegramIDs[adminID] = struct{}{}
 	}
 	requestVerifier, err := requestauth.New(deps.RequestSigningKey)
 	if err != nil {
 		return nil, err
 	}
-	server := &Server{deps: deps, requests: requestVerifier}
+	server := &Server{deps: deps, requests: requestVerifier, adminTelegramIDs: adminTelegramIDs}
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP)
 	router.Use(middleware.RequestID)
@@ -187,12 +195,17 @@ func (s *Server) requireSession(next http.Handler) http.Handler {
 func (s *Server) requireAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user := currentUser(r)
-		if user.Role != "admin" || user.TelegramID != s.deps.AdminTelegramID {
+		if user.Role != "admin" || !s.isAdminTelegramID(user.TelegramID) {
 			s.writeError(w, r, http.StatusForbidden, "ADMIN_REQUIRED", "Administrator access is required.")
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (s *Server) isAdminTelegramID(telegramID int64) bool {
+	_, ok := s.adminTelegramIDs[telegramID]
+	return ok
 }
 
 func currentUser(r *http.Request) model.User {

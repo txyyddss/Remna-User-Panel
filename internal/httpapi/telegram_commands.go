@@ -45,14 +45,15 @@ func (s *Server) processTelegramGroupMessage(ctx context.Context, message *teleg
 }
 
 func (s *Server) processTelegramDeduction(ctx context.Context, message *telegram.Message, amountText string) {
-	if message.From == nil || message.From.ID != s.deps.AdminTelegramID || message.ReplyToMessage == nil || message.ReplyToMessage.From == nil || message.ReplyToMessage.From.IsBot {
+	if message.From == nil || !s.isAdminTelegramID(message.From.ID) || message.ReplyToMessage == nil || message.ReplyToMessage.From == nil || message.ReplyToMessage.From.IsBot {
 		return
 	}
+	adminTelegramID := message.From.ID
 	amount, err := billing.ParseTXBMajor(amountText)
 	if err != nil || amount <= 0 {
 		return
 	}
-	actor, err := s.deps.Store.UserByTelegramID(ctx, s.deps.AdminTelegramID)
+	actor, err := s.deps.Store.UserByTelegramID(ctx, adminTelegramID)
 	if err != nil {
 		s.deps.Logger.Warn("load Telegram administrator for deduction", "error", err)
 		return

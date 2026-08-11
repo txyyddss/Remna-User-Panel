@@ -14,11 +14,19 @@ const items = computed(() => [
   { value: 5, title: t('catalog.steps.review'), icon: 'i-ph-list-checks' },
   { value: 6, title: t('catalog.steps.payment'), icon: 'i-ph-credit-card' },
 ])
+
+function indicatorIcon(value: number, icon: string): string {
+  return value < step.value ? 'i-ph-check-bold' : icon
+}
 </script>
 
 <template>
   <section class="catalog-progress" :aria-label="$t('catalog.steps.progress')">
-    <UStepper v-model="step" color="neutral" size="xs" :items="items" disabled />
+    <UStepper v-model="step" color="neutral" size="xs" :items="items" disabled>
+      <template #indicator="{ item }">
+        <UIcon :name="indicatorIcon(item.value, item.icon)" data-slot="icon" />
+      </template>
+    </UStepper>
   </section>
 </template>
 

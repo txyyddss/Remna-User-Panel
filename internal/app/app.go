@@ -100,7 +100,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	backupService := backup.NewService(db, store, filepath.Join(cfg.DataDir, "backups"), cfg.BackupRetention)
 	databaseEditor := databaseadmin.NewService(db, backupService, vault, logger)
 	databaseAdminHTTP := httpapi.NewDatabaseAdministrationHTTP(databaseEditor, backupService, migrationVersions)
-	accountsService := accounts.NewService(store, initDataAdapter{verifier: verifier}, telegramBridge, remna, settings, cfg.AdminTelegramID, cfg.SessionTTL)
+	accountsService := accounts.NewService(store, initDataAdapter{verifier: verifier}, telegramBridge, remna, settings, cfg.AdminTelegramIDs, cfg.SessionTTL)
 	catalogService := catalog.NewService(store, remna, 2*time.Minute)
 	billingService := billing.NewService(store, settings, paymentBridge, cfg.PublicBaseURL)
 	activityService := activity.NewService(store, activity.CryptoRandom{}, nil)
@@ -149,7 +149,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		Admin: adminService, Settings: settings, DatabaseAdmin: databaseAdminHTTP,
 		Store: store, Telegram: telegramClient, Webhooks: paymentBridge, PublicURL: cfg.PublicBaseURL, Static: static,
 		Logger: logger, SessionTTL: cfg.SessionTTL, SecureCookies: cfg.PublicBaseURL.Scheme == "https",
-		AdminTelegramID: cfg.AdminTelegramID, RequestSigningKey: cfg.MasterKey,
+		AdminTelegramIDs: cfg.AdminTelegramIDs, RequestSigningKey: cfg.MasterKey,
 	})
 	if err != nil {
 		return cleanup(err)

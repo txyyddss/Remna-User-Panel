@@ -4,7 +4,7 @@
 
 This module owns Telegram Mini App session exchange, local users/sessions, versioned localized onboarding content, stateless signed join-request links, canonical membership verification, immutable username reservation, agreement acceptance, initial Remnawave provisioning, and recovery from a confirmed missing linked Remnawave user.
 
-Public operations are `POST /api/v1/auth/telegram`, `GET /api/v1/me`, and the `/api/v1/onboarding/*` operations defined in OpenAPI. Administrator authorization reuses the validated session and compares the Telegram ID to `ADMIN_TELEGRAM_ID`; no browser role is trusted.
+Public operations are `POST /api/v1/auth/telegram`, `GET /api/v1/me`, and the `/api/v1/onboarding/*` operations defined in OpenAPI. Administrator authorization reuses the validated session and compares the Telegram ID to the configured comma-separated `ADMIN_TELEGRAM_ID` list; no browser role is trusted.
 
 ## State and invariants
 

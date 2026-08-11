@@ -1,7 +1,7 @@
 # Catalog components
 
 - `CatalogPage.vue` owns the six-step customer purchase journey and its guarded transitions.
-- `CatalogFlowProgress.vue` and `CatalogFlowControls.vue` present the current step and navigation controls.
+- `CatalogFlowProgress.vue` and `CatalogFlowControls.vue` present the current step and navigation controls; completed catalog steps use a check indicator while current and future steps retain their own icons.
 - `ComboOption.vue` and `SquadSelector.vue` collect the core-combo and optional-squad selections.
 - `CatalogNodes.vue` presents the server-projected accessible nodes with a country flag and traffic multiplier.
 - `CatalogCouponStep.vue` selects an eligible wallet coupon or redeems a new code.

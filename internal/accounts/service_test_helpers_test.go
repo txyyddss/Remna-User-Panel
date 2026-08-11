@@ -168,7 +168,7 @@ func validAccountsSettings() *accountsSettings {
 }
 
 func newAccountsServiceForTest(repository Repository, validator InitDataValidator, telegram TelegramClient, remnawave RemnawaveClient, settings Settings, adminID int64) *Service {
-	service := NewService(repository, validator, telegram, remnawave, settings, adminID, 7*24*time.Hour)
+	service := NewService(repository, validator, telegram, remnawave, settings, []int64{adminID}, 7*24*time.Hour)
 	service.now = func() time.Time { return time.Date(2026, 8, 7, 12, 0, 0, 0, time.UTC) }
 	return service
 }

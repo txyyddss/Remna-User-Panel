@@ -4,7 +4,7 @@
 
 The platform layer owns bootstrap configuration, structured logging, IDs, AES-256-GCM setting encryption, SQLite lifecycle and migrations, HTTP lifecycle, embedded Vue assets, the durable outbox scheduler, and online backups. `cmd/server` only parses `serve` or `healthcheck`, loads configuration, builds the application, and manages process cancellation.
 
-Bootstrap environment is intentionally narrow: `ADMIN_TELEGRAM_ID`, `TELEGRAM_BOT_TOKEN`, `PUBLIC_BASE_URL`, and `CONFIG_MASTER_KEY` are required; `PORT`, `DATA_DIR`, `TZ`, and `LOG_LEVEL` have documented defaults. Provider credentials and business configuration belong in the encrypted settings registry rather than process environment.
+Bootstrap environment is intentionally narrow: comma-separated `ADMIN_TELEGRAM_ID`, `TELEGRAM_BOT_TOKEN`, `PUBLIC_BASE_URL`, and `CONFIG_MASTER_KEY` are required; `PORT`, `DATA_DIR`, `TZ`, and `LOG_LEVEL` have documented defaults. Provider credentials and business configuration belong in the encrypted settings registry rather than process environment.
 
 ## Persistence contract
 

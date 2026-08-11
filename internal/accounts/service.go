@@ -6,10 +6,11 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"github.com/txyyddss/Remna-User-Panel/internal/model"
-	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 	"regexp"
 	"time"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 )
 
 var usernamePattern = regexp.MustCompile(`^[a-z]{3,9}$`)
@@ -100,14 +101,23 @@ type Service struct {
 	telegram   TelegramClient
 	remnawave  RemnawaveClient
 	settings   Settings
-	adminID    int64
+	adminIDs   map[int64]struct{}
 	sessionTTL time.Duration
 	now        func() time.Time
 }
 
 // NewService constructs an accounts service.
-func NewService(repository Repository, validator InitDataValidator, telegram TelegramClient, remnawave RemnawaveClient, settings Settings, adminID int64, sessionTTL time.Duration) *Service {
-	return &Service{repository: repository, validator: validator, telegram: telegram, remnawave: remnawave, settings: settings, adminID: adminID, sessionTTL: sessionTTL, now: time.Now}
+func NewService(repository Repository, validator InitDataValidator, telegram TelegramClient, remnawave RemnawaveClient, settings Settings, adminIDs []int64, sessionTTL time.Duration) *Service {
+	configuredAdmins := make(map[int64]struct{}, len(adminIDs))
+	for _, adminID := range adminIDs {
+		configuredAdmins[adminID] = struct{}{}
+	}
+	return &Service{repository: repository, validator: validator, telegram: telegram, remnawave: remnawave, settings: settings, adminIDs: configuredAdmins, sessionTTL: sessionTTL, now: time.Now}
+}
+
+func (s *Service) isAdminTelegramID(telegramID int64) bool {
+	_, ok := s.adminIDs[telegramID]
+	return ok
 }
 
 // Authenticate exchanges fresh initData for a server-owned opaque session.
@@ -116,7 +126,7 @@ func (s *Service) Authenticate(ctx context.Context, raw string) (model.User, str
 	if err != nil {
 		return model.User{}, "", time.Time{}, fmt.Errorf("%w: %v", ErrInvalidAuthentication, err)
 	}
-	user, _, err := s.repository.UpsertTelegramUser(ctx, profile, profile.ID == s.adminID)
+	user, _, err := s.repository.UpsertTelegramUser(ctx, profile, s.isAdminTelegramID(profile.ID))
 	if err != nil {
 		return model.User{}, "", time.Time{}, err
 	}
