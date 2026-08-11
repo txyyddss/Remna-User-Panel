@@ -23,7 +23,7 @@ describe('AppShell accessibility', () => {
     document.body.innerHTML = ''
   })
 
-  it('provides a skip target, restores focus after routing, and drives Telegram BackButton', async () => {
+  it('restores focus after routing and drives Telegram BackButton', async () => {
     const show = vi.fn()
     const hide = vi.fn()
     const onClick = vi.fn()
@@ -51,7 +51,6 @@ describe('AppShell accessibility', () => {
     await router.isReady()
     const wrapper = mount(AppShell, { attachTo: document.body, global: { plugins: [pinia, router] }, slots: { default: '<h1>Content</h1>' } })
 
-    expect(wrapper.get('.skip-link').attributes('href')).toBe('#main-content')
     expect(wrapper.get('main').attributes('tabindex')).toBe('-1')
     await router.push('/catalog')
     await nextTick()

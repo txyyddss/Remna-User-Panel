@@ -41,7 +41,6 @@ function isActive(to: string): boolean {
 
 <template>
   <div class="app-frame">
-    <a class="skip-link" href="#main-content">{{ $t('nav.skip') }}</a>
     <aside class="side-rail" :aria-label="$t('nav.primary')">
       <nav class="side-rail__nav">
         <RouterLink
@@ -68,7 +67,7 @@ function isActive(to: string): boolean {
     </aside>
 
     <div class="app-frame__content">
-      <main id="main-content" ref="mainContent" class="app-main" tabindex="-1">
+      <main ref="mainContent" class="app-main" tabindex="-1">
         <slot />
       </main>
     </div>

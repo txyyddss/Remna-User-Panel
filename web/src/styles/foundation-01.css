@@ -99,25 +99,6 @@ a {
   -webkit-tap-highlight-color: transparent;
 }
 
-.skip-link {
-  position: fixed;
-  top: calc(var(--shell-safe-top, env(safe-area-inset-top, 0px)) + 0.75rem);
-  left: calc(var(--shell-safe-left, env(safe-area-inset-left, 0px)) + 0.75rem);
-  z-index: 100;
-  padding: 0.7rem 0.9rem;
-  border-radius: var(--radius-control);
-  color: var(--accent-ink);
-  background: var(--accent);
-  font-size: 0.8rem;
-  font-weight: 800;
-  transform: translateY(-160%);
-  transition: transform 160ms var(--ease-out);
-}
-
-.skip-link:focus {
-  transform: translateY(0);
-}
-
 .sr-only {
   width: 1px;
   height: 1px;
