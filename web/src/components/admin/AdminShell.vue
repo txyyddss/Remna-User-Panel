@@ -42,6 +42,10 @@ const selected = computed({
   get: () => String(route.params.section || 'settings'),
   set: (section: string) => void router.push(`/admin/${section}`),
 })
+
+function goToOnboarding(): void {
+  void router.push('/onboarding')
+}
 </script>
 
 <template>
@@ -52,11 +56,11 @@ const selected = computed({
       <p>{{ t('adminNav.copy') }}</p>
       <div v-if="!sessionStore.onboardingComplete" class="button-row">
         <UButton
-          to="/onboarding"
           color="neutral"
           variant="outline"
           icon="i-ph-user-plus-bold"
           :label="t('adminNav.setupAccount')"
+          @click="goToOnboarding"
         />
       </div>
     </header>

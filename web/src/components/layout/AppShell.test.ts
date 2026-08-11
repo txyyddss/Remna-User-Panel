@@ -62,6 +62,12 @@ describe('AppShell accessibility', () => {
     onClick.mock.calls[0]?.[0]?.()
     expect(impactOccurred).toHaveBeenCalledWith('light')
 
+    const launchURL = window.location.href
+    await wrapper.get('.side-rail a[href="/catalog"]').trigger('click')
+    await nextTick()
+    expect(router.currentRoute.value.path).toBe('/catalog')
+    expect(window.location.href).toBe(launchURL)
+
     wrapper.unmount()
     expect(offClick).toHaveBeenCalledOnce()
   })

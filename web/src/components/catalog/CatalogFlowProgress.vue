@@ -2,9 +2,12 @@
 import { computed } from 'vue'
 
 import { useI18n } from '@/i18n'
+import { indicatorIcon } from './catalogFlowProgress'
 
 const step = defineModel<number>({ required: true })
 const { t } = useI18n()
+
+const stepperIndex = computed(() => Math.max(0, step.value - 1))
 
 const items = computed(() => [
   { value: 1, title: t('catalog.steps.core'), icon: 'i-ph-cube' },
@@ -15,16 +18,13 @@ const items = computed(() => [
   { value: 6, title: t('catalog.steps.payment'), icon: 'i-ph-credit-card' },
 ])
 
-function indicatorIcon(value: number, icon: string): string {
-  return value < step.value ? 'i-ph-check-bold' : icon
-}
 </script>
 
 <template>
   <section class="catalog-progress" :aria-label="$t('catalog.steps.progress')">
-    <UStepper v-model="step" color="neutral" size="xs" :items="items" disabled>
+    <UStepper :model-value="stepperIndex" color="neutral" size="xs" :items="items" disabled>
       <template #indicator="{ item }">
-        <UIcon :name="indicatorIcon(item.value, item.icon)" data-slot="icon" />
+        <UIcon :name="indicatorIcon(item.value, step, item.icon)" data-slot="icon" />
       </template>
     </UStepper>
   </section>

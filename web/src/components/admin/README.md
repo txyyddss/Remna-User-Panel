@@ -18,7 +18,7 @@ Localized route-level panels and shared admin-only Nuxt UI.
 - `AdminReasonDialog.vue` collects audited reasons and keeps action failures visible in the dialog.
 - `AdminSectionState.vue` renders loading and error states.
 - `AdminSettingsPanel.vue` edits runtime settings and specialized calendar/reward controls.
-- `AdminShell.vue` provides admin section navigation.
+- `AdminShell.vue` provides admin section navigation and sends optional signup through Vue Router without native anchor navigation.
 - `AdminShell.test.ts` covers shell navigation and onboarding actions.
 - `AdminSquadEditor.vue` edits squad overrides and node access.
 - `AdminStatisticsPanel.vue` presents resource statistics.

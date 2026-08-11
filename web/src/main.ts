@@ -17,6 +17,8 @@ async function bootstrap(): Promise<void> {
     return
   }
 
+  const { initializeTelegram, markTelegramReady } = await import('./utils/telegram')
+  const disposeTelegram = initializeTelegram()
   const [
     { createPinia },
     { autoAnimatePlugin },
@@ -25,7 +27,6 @@ async function bootstrap(): Promise<void> {
     { default: App },
     { default: router },
     { t },
-    { initializeTelegram, markTelegramReady },
   ] = await Promise.all([
     import('pinia'),
     import('@formkit/auto-animate/vue'),
@@ -34,9 +35,7 @@ async function bootstrap(): Promise<void> {
     import('./App.vue'),
     import('./router'),
     import('./i18n'),
-    import('./utils/telegram'),
   ])
-  const disposeTelegram = initializeTelegram()
   const app = createApp(App)
   app.config.globalProperties.$t = t
   app.use(createPinia()).use(router).use(ui).use(autoAnimatePlugin)

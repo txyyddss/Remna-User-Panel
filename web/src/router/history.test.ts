@@ -19,6 +19,19 @@ describe('application history', () => {
     expect(window.location.pathname).toBe('/')
   })
 
+  it('keeps Telegram route changes inside the WebView before delayed initData', () => {
+    window.Telegram = { WebApp: { version: '9.0', platform: 'ios', initData: '', initDataUnsafe: {}, colorScheme: 'dark', ready: () => undefined, expand: () => undefined, close: () => undefined, openLink: () => undefined, openTelegramLink: () => undefined, openInvoice: () => undefined } }
+    window.history.replaceState({}, '', '/?tgWebAppVersion=9.0&keep=1#tgWebAppStartParam=home')
+    const launchURL = window.location.href
+
+    const history = createAppHistory()
+    expect(history.location).toBe('/?keep=1')
+    history.push('/catalog')
+
+    expect(window.location.href).toBe(launchURL)
+    expect(window.location.pathname).toBe('/')
+  })
+
   it('keeps browser history shareable outside Telegram', () => {
     const history = createAppHistory()
     history.push('/catalog')

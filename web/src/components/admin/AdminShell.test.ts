@@ -40,29 +40,43 @@ async function mountShell(onboardingState: Session['user']['onboardingState']) {
   await router.push('/admin/settings')
   await router.isReady()
 
-  return mount(AdminShell, {
-    global: { plugins: [pinia, router] },
-    slots: { default: '<div>Admin panel</div>' },
-  })
+  return {
+    router,
+    wrapper: mount(AdminShell, {
+      global: { plugins: [pinia, router] },
+      slots: { default: '<div>Admin panel</div>' },
+    }),
+  }
 }
 
 describe('AdminShell', () => {
   it('offers optional signup to an admin without a completed user account', async () => {
-    const wrapper = await mountShell('intro')
+    const { wrapper } = await mountShell('intro')
 
-    expect(wrapper.get('a[href="/onboarding"]').text()).toContain('Set up user account')
+    expect(wrapper.get('.button-row button').text()).toContain('Set up user account')
   })
 
   it('removes the signup entry after the admin completes onboarding', async () => {
-    const wrapper = await mountShell('complete')
+    const { wrapper } = await mountShell('complete')
 
-    expect(wrapper.find('a[href="/onboarding"]').exists()).toBe(false)
+    expect(wrapper.find('.button-row button').exists()).toBe(false)
   })
 
   it('exposes user and Emby account sections', async () => {
-    const wrapper = await mountShell('complete')
+    const { wrapper } = await mountShell('complete')
     const items = wrapper.getComponent({ name: 'Select' }).props('items') as Array<{ value: string }>
 
     expect(items.map(({ value }) => value)).toEqual(expect.arrayContaining(['users', 'emby']))
+  })
+
+  it('keeps the setup button inside the router history', async () => {
+    const { router, wrapper } = await mountShell('intro')
+    const launchURL = window.location.href
+
+    await wrapper.get('.button-row button').trigger('click')
+    await new Promise<void>((resolve) => setTimeout(resolve, 0))
+
+    expect(router.currentRoute.value.path).toBe('/onboarding')
+    expect(window.location.href).toBe(launchURL)
   })
 })

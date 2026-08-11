@@ -1,3 +1,7 @@
+import { detectTelegramWebApp } from './telegramContext'
+
+export { isTelegramUserAgent } from './telegramContext'
+
 export function getTelegramWebApp(): TelegramWebApp | undefined {
   return window.Telegram?.WebApp
 }
@@ -36,15 +40,8 @@ export function tryTelegramCall(callback: () => void): boolean {
   }
 }
 
-export function isTelegramUserAgent(userAgent: string): boolean {
-  return /\bTelegram\b/i.test(userAgent)
-}
-
 export function isTelegramWebAppDetected(): boolean {
-  if (getTelegramWebApp()?.initData?.trim()) return true
-  const hasLaunchData = [window.location.hash, window.location.search].some((source) => new URLSearchParams(source.replace(/^#/, '').replace(/^\?/, '')).has('tgWebAppData'))
-  if (hasLaunchData) return true
-  return typeof navigator !== 'undefined' && isTelegramUserAgent(navigator.userAgent)
+  return detectTelegramWebApp(getTelegramWebApp())
 }
 
 function decodeTelegramData(value: string): string {

@@ -2,11 +2,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { getTelegramInitData, installHapticClickFeedback, isTelegramUserAgent, isTelegramWebAppDetected, openExternalLink, supportsTelegramVersion } from './telegram'
 
+const defaultUserAgent = navigator.userAgent
+
 describe('Telegram bootstrap', () => {
   afterEach(() => {
     vi.useRealTimers()
     window.history.replaceState({}, '', '/')
     window.Telegram = undefined
+    Object.defineProperty(navigator, 'userAgent', { configurable: true, value: defaultUserAgent })
   })
 
   it('reads standard WebApp data from the launch hash', async () => {
@@ -43,8 +46,24 @@ describe('Telegram bootstrap', () => {
     expect(isTelegramWebAppDetected()).toBe(false)
   })
 
-  it('recognizes Telegram before the WebApp object is available', () => {
+  it('recognizes Telegram before initData is available', () => {
+    window.Telegram = { WebApp: { version: '9.0', platform: 'ios', initData: '', initDataUnsafe: {}, colorScheme: 'dark', ready: vi.fn(), expand: vi.fn(), close: vi.fn(), openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn() } }
+
+    expect(isTelegramWebAppDetected()).toBe(true)
+  })
+
+  it('recognizes Telegram launch markers without initData', () => {
+    window.Telegram = { WebApp: { version: '9.0', platform: 'unknown', initData: '', initDataUnsafe: {}, colorScheme: 'dark', ready: vi.fn(), expand: vi.fn(), close: vi.fn(), openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn() } }
+    window.history.replaceState({}, '', '/#tgWebAppVersion=9.0')
+
+    expect(isTelegramWebAppDetected()).toBe(true)
+  })
+
+  it('recognizes Telegram mobile and desktop user agents', () => {
     expect(isTelegramUserAgent('Mozilla/5.0 Telegram/11.0 Mobile')).toBe(true)
+    expect(isTelegramUserAgent('Mozilla/5.0 Telegram-Android/11.0 Mobile')).toBe(true)
+    expect(isTelegramUserAgent('Mozilla/5.0 Telegram-iOS/11.0 Mobile')).toBe(true)
+    expect(isTelegramUserAgent('Mozilla/5.0 TelegramDesktop/5.0')).toBe(true)
     expect(isTelegramUserAgent('Mozilla/5.0 Chrome/140.0 Mobile')).toBe(false)
   })
 

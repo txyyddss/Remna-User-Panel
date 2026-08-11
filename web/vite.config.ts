@@ -6,6 +6,16 @@ import ui from '@nuxt/ui/vite'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vitest/config'
 
+import { gameIconRegistry } from './src/components/activity/gameIcons.ts'
+import { agreementIconRegistry } from './src/components/onboarding/agreementIcons.ts'
+
+const explicitlyBundledIcons = [
+  ...new Set([
+    ...Object.values(gameIconRegistry),
+    ...Object.values(agreementIconRegistry),
+  ]),
+]
+
 function localeLeafKeys(value: unknown, prefix = ''): string[] {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return prefix ? [prefix] : []
   return Object.entries(value).flatMap(([key, child]) => localeLeafKeys(child, prefix ? `${prefix}.${key}` : key))
@@ -74,7 +84,13 @@ export default defineConfig({
           warning: 'i-ph-warning-circle',
         },
       },
-      icon: { clientBundle: { scan: true, sizeLimitKb: 512 } },
+      icon: {
+        clientBundle: {
+          icons: explicitlyBundledIcons,
+          scan: true,
+          sizeLimitKb: 512,
+        },
+      },
     }),
     {
       name: 'validate-locale-parity',
