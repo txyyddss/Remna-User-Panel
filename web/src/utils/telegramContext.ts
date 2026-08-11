@@ -18,7 +18,13 @@ function hasKnownTelegramPlatform(platform: string | undefined): boolean {
   return Boolean(platform && telegramPlatforms.has(platform.toLowerCase()))
 }
 
+function hasTelegramWebViewBridge(): boolean {
+  return typeof window.TelegramWebviewProxy?.postEvent === 'function'
+    || typeof window.TelegramWebviewProxyProto?.postEvent === 'function'
+}
+
 export function detectTelegramWebApp(app: TelegramWebApp | undefined): boolean {
+  if (hasTelegramWebViewBridge()) return true
   if (app?.initData?.trim()) return true
   if (app?.initDataUnsafe?.user?.id) return true
   if (hasTelegramLaunchParameters()) return true

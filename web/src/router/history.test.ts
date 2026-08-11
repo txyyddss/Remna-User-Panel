@@ -6,6 +6,8 @@ describe('application history', () => {
   afterEach(() => {
     window.history.replaceState({}, '', '/')
     window.Telegram = undefined
+    window.TelegramWebviewProxy = undefined
+    window.TelegramWebviewProxyProto = undefined
     sessionStorage.removeItem('txc-route-recovery')
   })
 
@@ -20,7 +22,8 @@ describe('application history', () => {
   })
 
   it('keeps Telegram route changes inside the WebView before delayed initData', () => {
-    window.Telegram = { WebApp: { version: '9.0', platform: 'ios', initData: '', initDataUnsafe: {}, colorScheme: 'dark', ready: () => undefined, expand: () => undefined, close: () => undefined, openLink: () => undefined, openTelegramLink: () => undefined, openInvoice: () => undefined } }
+    window.TelegramWebviewProxy = { postEvent: () => undefined }
+    window.Telegram = { WebApp: { version: '9.0', platform: 'unknown', initData: '', initDataUnsafe: {}, colorScheme: 'dark', ready: () => undefined, expand: () => undefined, close: () => undefined, openLink: () => undefined, openTelegramLink: () => undefined, openInvoice: () => undefined } }
     window.history.replaceState({}, '', '/?tgWebAppVersion=9.0&keep=1#tgWebAppStartParam=home')
     const launchURL = window.location.href
 

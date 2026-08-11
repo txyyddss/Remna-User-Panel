@@ -8,8 +8,9 @@
 - `history.test.ts` covers Telegram and browser history selection.
 - `recovery.test.ts` covers one-shot lazy-route recovery.
 
-Telegram sessions are detected before router construction from launch markers,
-WebApp data, platform, or Telegram user-agent signals. They use Vue Router's
+Telegram sessions are detected before router construction from the native
+`TelegramWebviewProxy` bridge, launch markers, WebApp data, platform, or
+Telegram user-agent signals. They use Vue Router's
 in-memory history so internal links do not reload the Mini App at a new WebView
 URL and lose Telegram's launch context; Telegram-only launch parameters are
 removed from the initial in-app route. Regular browser sessions use HTML5

@@ -15,6 +15,10 @@ interface TelegramWebView {
   initParams?: Record<string, string | undefined>
 }
 
+interface TelegramWebviewProxy {
+  postEvent?: (eventType: string, eventData?: string) => void
+}
+
 interface TelegramWebApp {
   version?: string
   platform?: string
@@ -57,6 +61,8 @@ interface TelegramInsets {
 
 interface Window {
   Telegram?: { WebApp?: TelegramWebApp; WebView?: TelegramWebView }
+  TelegramWebviewProxy?: TelegramWebviewProxy
+  TelegramWebviewProxyProto?: TelegramWebviewProxy
 }
 }
 

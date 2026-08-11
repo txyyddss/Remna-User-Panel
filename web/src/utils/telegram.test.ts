@@ -9,6 +9,8 @@ describe('Telegram bootstrap', () => {
     vi.useRealTimers()
     window.history.replaceState({}, '', '/')
     window.Telegram = undefined
+    window.TelegramWebviewProxy = undefined
+    window.TelegramWebviewProxyProto = undefined
     Object.defineProperty(navigator, 'userAgent', { configurable: true, value: defaultUserAgent })
   })
 
@@ -38,6 +40,13 @@ describe('Telegram bootstrap', () => {
 
   it('distinguishes an absent Telegram context', () => {
     expect(isTelegramWebAppDetected()).toBe(false)
+  })
+
+  it('recognizes the native Telegram WebView bridge before launch data is ready', () => {
+    window.TelegramWebviewProxy = { postEvent: vi.fn() }
+    window.Telegram = { WebApp: { version: '9.0', platform: 'unknown', initData: '', initDataUnsafe: {}, colorScheme: 'dark', ready: vi.fn(), expand: vi.fn(), close: vi.fn(), openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn() } }
+
+    expect(isTelegramWebAppDetected()).toBe(true)
   })
 
   it('does not treat the SDK placeholder in a regular browser as Telegram', () => {
