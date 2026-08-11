@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -11,12 +12,28 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 )
 
+const testDatabaseOpenTimeout = 30 * time.Second
+
+// testDatabaseOpenGate prevents parallel tests from compiling and applying the
+// full SQLite schema simultaneously under the race detector. The timeout starts
+// only after a test enters the gate, so scheduler contention cannot consume it.
+var testDatabaseOpenGate = make(chan struct{}, 2)
+
 func newTestStore(t *testing.T) *Store {
 	t.Helper()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	return NewStore(openTestDatabase(t, "tx-carpool-test.db"))
+}
+
+func openTestDatabase(t *testing.T, filename string) *sql.DB {
+	t.Helper()
+
+	testDatabaseOpenGate <- struct{}{}
+	defer func() { <-testDatabaseOpenGate }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), testDatabaseOpenTimeout)
 	defer cancel()
-	db, err := Open(ctx, filepath.Join(t.TempDir(), "tx-carpool-test.db"))
+	db, err := Open(ctx, filepath.Join(t.TempDir(), filename))
 	if err != nil {
 		t.Fatalf("Open(): %v", err)
 	}
@@ -25,7 +42,7 @@ func newTestStore(t *testing.T) *Store {
 			t.Errorf("close test database: %v", err)
 		}
 	})
-	return NewStore(db)
+	return db
 }
 
 func createTestUser(t *testing.T, store *Store, telegramID int64) model.User {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -157,18 +156,7 @@ func assertBalance(t *testing.T, store *Store, userID, want string) {
 
 func newEmbyTestStore(t *testing.T) *Store {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	db, err := Open(ctx, filepath.Join(t.TempDir(), "emby-test.db"))
-	if err != nil {
-		t.Fatalf("Open() error = %v", err)
-	}
-	t.Cleanup(func() {
-		if err := db.Close(); err != nil {
-			t.Errorf("close test database: %v", err)
-		}
-	})
-	return NewStore(db)
+	return NewStore(openTestDatabase(t, "emby-test.db"))
 }
 
 func createEmbyTestUser(t *testing.T, store *Store, telegramID int64) model.User {
