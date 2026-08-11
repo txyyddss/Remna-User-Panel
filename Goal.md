@@ -1,6 +1,6 @@
 # Your Goal
 
-I need you to COMPLETE SEVERAL TASKS for a carpool panel called "TX Carpool". Visually, it need to be as simple as possible and using premium-dark design. Refer to the requirements below and follow the skills. The frontend should be designed initially for mobile device, and have tablet device support.
+I need you to COMPLETE TASKS BELOW for a carpool panel called "TX Carpool". Visually, it need to be as simple as possible and using premium-dark design. Refer to the requirements below and follow the skills. The frontend should be designed initially for mobile device, and have tablet device support.
 
 When coding, split the codes into main entrance and modules to ensure its extendability and maintainability. Write module specification when finish. Organize everything into folders, do not contain less than 2 files per folder, and do not contain more than 200 lines per file. Write an README.md under every frontend and backend sub-folers.
 
@@ -29,3 +29,4 @@ You may want to use the following projects for frontend:
 - Feel free to use other projects.
 
 ---
+Apply different vibration for a success bet or lose. Also show dynamic fireworks when there's a success bet.

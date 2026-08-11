@@ -40,6 +40,7 @@ declare module 'vue' {
     BalanceHero: typeof import('./src/components/dashboard/BalanceHero.vue')['default']
     BalancePaymentSheet: typeof import('./src/components/billing/BalancePaymentSheet.vue')['default']
     BetGamesPanel: typeof import('./src/components/activity/BetGamesPanel.vue')['default']
+    BetSuccessFireworks: typeof import('./src/components/activity/BetSuccessFireworks.vue')['default']
     BrowserCapabilityGate: typeof import('./src/components/session/BrowserCapabilityGate.vue')['default']
     CatalogCheckout: typeof import('./src/components/catalog/CatalogCheckout.vue')['default']
     CatalogCouponStep: typeof import('./src/components/catalog/CatalogCouponStep.vue')['default']

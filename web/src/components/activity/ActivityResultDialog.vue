@@ -4,11 +4,14 @@ import { computed } from 'vue'
 import type { ActivityResult } from '@/api/features'
 import { useI18n } from '@/i18n'
 import { formatMoney } from '@/utils/format'
+import BetSuccessFireworks from './BetSuccessFireworks.vue'
+import { isSuccessfulBet } from './feedback'
 
 const props = defineProps<{ result: ActivityResult | null }>()
 defineEmits<{ close: [] }>()
 
 const { t } = useI18n()
+const showFireworks = computed(() => isSuccessfulBet(props.result))
 
 const description = computed(() => {
   const result = props.result
@@ -30,15 +33,18 @@ const description = computed(() => {
     @update:open="!$event && $emit('close')"
   >
     <template v-if="result" #body>
-      <UIcon
-        :name="result.outcome === 'loss' ? 'i-ph-warning-circle-fill' : 'i-ph-check-circle-fill'"
-        class="feature-icon"
-        :class="{ 'feature-icon--warning': result.outcome === 'loss' }"
-        aria-hidden="true"
-      />
-      <div class="result-balance">
-        <span>{{ $t('activity.balanceAfter') }}</span>
-        <strong>{{ formatMoney(result.balanceAfter) }}</strong>
+      <div class="result-body">
+        <BetSuccessFireworks v-if="showFireworks" :key="result.id" />
+        <UIcon
+          :name="result.outcome === 'loss' ? 'i-ph-warning-circle-fill' : 'i-ph-check-circle-fill'"
+          class="feature-icon"
+          :class="{ 'feature-icon--warning': result.outcome === 'loss' }"
+          aria-hidden="true"
+        />
+        <div class="result-balance">
+          <span>{{ $t('activity.balanceAfter') }}</span>
+          <strong>{{ formatMoney(result.balanceAfter) }}</strong>
+        </div>
       </div>
     </template>
     <template #footer="{ close }">
@@ -48,6 +54,8 @@ const description = computed(() => {
 </template>
 
 <style scoped>
+.result-body { position: relative; overflow: hidden; }
+.result-body > :not(.bet-fireworks) { position: relative; z-index: 1; }
 .result-balance { display: flex; align-items: baseline; justify-content: space-between; padding: 0.8rem; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface-raised); }
 .result-balance span { color: var(--text-muted); font-size: 0.74rem; }
 .result-balance strong { font-size: 1rem; }

@@ -26,7 +26,7 @@ Every debit and credit is committed with its ledger entry and a semantic referen
 
 ## Product and safety behavior
 
-The member interface presents probability and cost plainly, renders only whitelisted Phosphor game icon keys, shows each result in a focus-trapped dialog, never uses streak pressure/near-miss/confetti/loss-chasing copy, and respects reduced motion. Disabled games and draws cannot be invoked through a stale API request.
+The member interface presents probability and cost plainly, renders only whitelisted Phosphor game icon keys, shows each result in a focus-trapped dialog, and never uses streak pressure, near-miss, loss-chasing copy, or persistent celebratory loops. A successful bet may show one short fireworks burst; losses, check-ins, and draws do not. All result states respect reduced motion. Disabled games and draws cannot be invoked through a stale API request.
 
 Administrators may hard-delete games and draws when no protected processing work is running. Definitions, participation/results, prizes/snapshots, feature-linked ledger rows, and non-processing jobs are removed transactionally; already-settled balances, coupons, and extensions are not reversed. Statistics expose date-filtered daily/weekly participation, stake/fee, payout/reward, house-net, and win/loss or prize distributions.
 
@@ -35,4 +35,4 @@ Administrators may hard-delete games and draws when no protected processing work
 - Table-driven tests inject deterministic randomness for loss, win, weight boundaries, and invalid upper bounds.
 - SQLite tests cover insufficient funds, fee-plus-deduction coverage, stock races, idempotent replays, ledger atomicity, and extension application.
 - Calendar tests cover the configured timezone at UTC/local day boundaries.
-- Vue tests cover human-major TXB conversion, loading/error/empty states, visible cost and odds, reduced motion, keyboard use, and narrow layouts.
+- Vue tests cover human-major TXB conversion, loading/error/empty states, visible cost and odds, bet feedback boundaries, reduced motion, keyboard use, and narrow layouts.

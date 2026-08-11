@@ -2,6 +2,7 @@ import { onMounted, readonly, shallowRef } from 'vue'
 
 import { featuresApi } from '@/api/features'
 import type { ActivityOverview, ActivityResult } from '@/api/features'
+import { activityNotification } from '@/components/activity/feedback'
 import { localizedError } from '@/i18n'
 import { createUuid } from '@/utils/browserCompatibility'
 import { notifyHaptic } from '@/utils/telegram'
@@ -41,7 +42,7 @@ export function useActivity() {
     try {
       result.value = await action(idempotencyKey(actionId))
       actionKeys.delete(actionId)
-      notifyHaptic(result.value.outcome === 'loss' ? 'warning' : 'success')
+      notifyHaptic(activityNotification(result.value))
       await load({ quiet: true })
     } catch (caught) {
       error.value = localizedError(caught, 'errors.activityFailed')
