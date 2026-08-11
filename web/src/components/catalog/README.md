@@ -9,3 +9,4 @@
 - `CatalogCouponStep.vue` selects an eligible wallet coupon or redeems a new code.
 - `CatalogCheckout.vue` and `CatalogPaymentStep.vue` separate review from the idempotent purchase confirmation.
 - `ComboOption.test.ts` verifies stable plan values and selection events.
+- `CatalogPaymentStep.test.ts` verifies the add-balance action stays in Vue Router history.

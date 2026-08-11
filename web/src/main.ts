@@ -17,8 +17,9 @@ async function bootstrap(): Promise<void> {
     return
   }
 
-  const { initializeTelegram, markTelegramReady } = await import('./utils/telegram')
+  const { initializeTelegram, markTelegramReady, waitForTelegramContext } = await import('./utils/telegram')
   const disposeTelegram = initializeTelegram()
+  await waitForTelegramContext()
   const [
     { createPinia },
     { autoAnimatePlugin },

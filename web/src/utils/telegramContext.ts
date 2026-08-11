@@ -18,7 +18,20 @@ function hasKnownTelegramPlatform(platform: string | undefined): boolean {
 
 export function detectTelegramWebApp(app: TelegramWebApp | undefined): boolean {
   if (app?.initData?.trim()) return true
+  if (app?.initDataUnsafe?.user?.id) return true
   if (hasTelegramLaunchParameters()) return true
   if (hasKnownTelegramPlatform(app?.platform)) return true
   return typeof navigator !== 'undefined' && isTelegramUserAgent(navigator.userAgent)
+}
+
+export async function waitForTelegramContext(timeoutMs = 500): Promise<boolean> {
+  if (detectTelegramWebApp(window.Telegram?.WebApp)) return true
+  if (!window.Telegram?.WebApp) return false
+
+  const startedAt = Date.now()
+  while (Date.now() - startedAt < timeoutMs) {
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 50))
+    if (detectTelegramWebApp(window.Telegram?.WebApp)) return true
+  }
+  return detectTelegramWebApp(window.Telegram?.WebApp)
 }

@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import type { DeepReadonly } from 'vue'
+import { useRouter } from 'vue-router'
 
 import type { Combo, Money, Purchase, PurchaseQuote } from '@/api/types'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import { formatMoney } from '@/utils/format'
+
+const router = useRouter()
 
 defineProps<{
   combo?: Combo
@@ -16,13 +19,21 @@ defineProps<{
 }>()
 
 defineEmits<{ confirm: [] }>()
+
+function goHome(): void {
+  void router.push('/home')
+}
+
+function goToBalance(): void {
+  void router.push({ path: '/home', query: { topUp: '1' } })
+}
 </script>
 
 <template>
   <section class="catalog-payment-step">
     <template v-if="purchase">
       <InlineNotice tone="success" :title="$t('catalog.purchaseConfirmed')">{{ $t('catalog.purchaseScheduled', { name: purchase.comboName }) }}</InlineNotice>
-      <UButton block to="/home" trailing-icon="i-ph-house" :label="$t('catalog.returnHome')" data-haptic />
+      <UButton block trailing-icon="i-ph-house" :label="$t('catalog.returnHome')" data-haptic @click="goHome" />
     </template>
     <template v-else>
       <div class="section-heading section-heading--stacked">
@@ -35,7 +46,7 @@ defineEmits<{ confirm: [] }>()
         <small>{{ $t('catalog.paymentBalance', { amount: formatMoney(balance) }) }}</small>
       </div>
       <UAlert v-if="error" color="warning" variant="soft" icon="i-ph-warning-circle" :description="error" />
-      <UButton v-if="needsBalance" block to="/home?topUp=1" trailing-icon="i-ph-plus" :label="$t('catalog.addBalance')" data-haptic />
+      <UButton v-if="needsBalance" block trailing-icon="i-ph-plus" :label="$t('catalog.addBalance')" data-haptic @click="goToBalance" />
       <UButton v-else block :disabled="purchasing || !quote || !combo" :loading="purchasing" trailing-icon="i-ph-check" :label="purchasing ? $t('catalog.confirming') : $t('catalog.confirmPurchase')" data-haptic @click="$emit('confirm')" />
     </template>
   </section>

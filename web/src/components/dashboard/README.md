@@ -5,3 +5,4 @@
 - `UsagePanel.vue` shows current-term traffic and opens the date-bounded per-node detail; `TrafficUsageDetails.vue` owns its UTC range controls and node/day breakdown. `EntitlementSummary.vue` presents the active ride and reset cadence.
 - `ComingSoonLinks.vue` links to Questionnaire and Emby under Around TX.
 - `UsagePanel.test.ts` verifies stale upstream data disclosure.
+- `EntitlementSummary.test.ts` verifies the catalog action stays in Vue Router history.

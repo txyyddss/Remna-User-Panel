@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, toRefs } from 'vue'
+import { useRouter } from 'vue-router'
 
 import type { Purchase } from '@/api/types'
 import StatusBadge from '@/components/common/StatusBadge.vue'
@@ -14,7 +15,12 @@ const props = defineProps<{
 
 const { active, queued } = toRefs(props)
 const { t } = useI18n()
+const router = useRouter()
 const resetLabel = computed(() => props.active ? t(`home.reset.${props.active.resetStrategy}`) : '')
+
+function goToCatalog(): void {
+  void router.push('/catalog')
+}
 </script>
 
 <template>
@@ -60,12 +66,12 @@ const resetLabel = computed(() => props.active ? t(`home.reset.${props.active.re
         <p>{{ $t('dashboard.choosePlan') }}</p>
       </div>
       <UButton
-        to="/catalog"
         color="neutral"
         variant="outline"
         trailing-icon="i-ph-arrow-right"
         :label="$t('catalog.viewCombos')"
         data-haptic
+        @click="goToCatalog"
       />
     </div>
   </section>

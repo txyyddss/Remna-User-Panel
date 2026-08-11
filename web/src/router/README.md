@@ -14,8 +14,10 @@ in-memory history so internal links do not reload the Mini App at a new WebView
 URL and lose Telegram's launch context; Telegram-only launch parameters are
 removed from the initial in-app route. Regular browser sessions use HTML5
 history and keep shareable route URLs.
-If a cached WebView bundle cannot load a lazy route chunk, the router retries
-once after reloading and preserves the intended route in session storage.
+If a cached browser bundle cannot load a lazy route chunk, the router retries
+once after reloading and preserves the intended route in session storage. In a
+Telegram session it retries through the in-memory router instead, so a chunk
+failure never changes or reloads the Telegram launch URL.
 
 `/payment-result` is an immersive provider-return landing route. Telegram opens it with owner-scoped durable order polling; a provider redirect opened in a regular browser uses the short-lived capability-return status endpoint and never boots the protected app shell. Failed or expired Telegram orders hand their ID to Home for an owner-scoped reissue fetch.
 

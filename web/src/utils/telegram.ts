@@ -1,6 +1,6 @@
 import { detectTelegramWebApp } from './telegramContext'
 
-export { isTelegramUserAgent } from './telegramContext'
+export { isTelegramUserAgent, waitForTelegramContext } from './telegramContext'
 
 export function getTelegramWebApp(): TelegramWebApp | undefined {
   return window.Telegram?.WebApp

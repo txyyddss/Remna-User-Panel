@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { getTelegramInitData, installHapticClickFeedback, isTelegramUserAgent, isTelegramWebAppDetected, openExternalLink, supportsTelegramVersion } from './telegram'
+import { getTelegramInitData, installHapticClickFeedback, isTelegramUserAgent, isTelegramWebAppDetected, openExternalLink, supportsTelegramVersion, waitForTelegramContext } from './telegram'
 
 const defaultUserAgent = navigator.userAgent
 
@@ -50,6 +50,25 @@ describe('Telegram bootstrap', () => {
     window.Telegram = { WebApp: { version: '9.0', platform: 'ios', initData: '', initDataUnsafe: {}, colorScheme: 'dark', ready: vi.fn(), expand: vi.fn(), close: vi.fn(), openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn() } }
 
     expect(isTelegramWebAppDetected()).toBe(true)
+  })
+
+  it('recognizes a Telegram user before signed initData is populated', () => {
+    window.Telegram = { WebApp: { version: '9.0', initData: '', initDataUnsafe: { user: { id: 42, first_name: 'Mira' } }, colorScheme: 'dark', ready: vi.fn(), expand: vi.fn(), close: vi.fn(), openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn() } }
+
+    expect(isTelegramWebAppDetected()).toBe(true)
+  })
+
+  it('waits for delayed Telegram initData before router construction', async () => {
+    vi.useFakeTimers()
+    const app = { version: '9.0', platform: 'unknown', initData: '', initDataUnsafe: {}, colorScheme: 'dark' as const, ready: vi.fn(), expand: vi.fn(), close: vi.fn(), openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn() }
+    window.Telegram = { WebApp: app }
+
+    const pending = waitForTelegramContext(500)
+    await vi.advanceTimersByTimeAsync(100)
+    app.initData = 'query_id=ready-later'
+    await vi.advanceTimersByTimeAsync(50)
+
+    await expect(pending).resolves.toBe(true)
   })
 
   it('recognizes Telegram launch markers without initData', () => {

@@ -58,7 +58,7 @@ onScopeDispose(() => {
       <h1>{{ title }}</h1>
       <p>{{ description }}</p>
       <p v-if="isConfirmed && !browserReturn" class="payment-return__hint">{{ $t('payment.returnAutoHome') }}</p>
-      <UButton v-if="isConfirmed && !browserReturn" block to="/home" trailing-icon="i-ph-house" :label="$t('payment.returnHome')" />
+      <UButton v-if="isConfirmed && !browserReturn" block trailing-icon="i-ph-house" :label="$t('payment.returnHome')" @click="router.replace('/home')" />
       <UButton v-else-if="canReissue" block trailing-icon="i-ph-arrow-clockwise" :label="$t('payment.reissue')" @click="reissue" />
       <UButton v-else-if="state === 'checking' || state === 'pending'" block color="neutral" variant="outline" :loading="true" :label="$t('payment.returnCheckingAction')" @click="refresh" />
       <UButton v-else-if="!browserReturn" block color="neutral" variant="outline" :label="$t('payment.returnHome')" @click="router.replace('/home')" />

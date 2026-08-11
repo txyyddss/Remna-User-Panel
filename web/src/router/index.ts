@@ -41,6 +41,10 @@ router.afterEach((to) => {
 
 router.onError((error, to) => {
   if (!isRouteChunkError(error) || !beginRouteRecovery(to.fullPath)) return
+  if (isTelegramWebAppDetected()) {
+    void router.replace(to.fullPath).catch(() => undefined)
+    return
+  }
   try {
     window.location.reload()
   } catch {
