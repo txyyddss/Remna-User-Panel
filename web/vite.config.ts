@@ -9,8 +9,29 @@ import { defineConfig } from 'vitest/config'
 import { gameIconRegistry } from './src/components/activity/gameIcons.ts'
 import { agreementIconRegistry } from './src/components/onboarding/agreementIcons.ts'
 
+const uiIconRegistry = {
+  arrowDown: 'i-ph-arrow-down', arrowLeft: 'i-ph-arrow-left',
+  arrowRight: 'i-ph-arrow-right', arrowUp: 'i-ph-arrow-up',
+  caution: 'i-ph-warning', check: 'i-ph-check',
+  chevronDoubleLeft: 'i-ph-caret-double-left', chevronDoubleRight: 'i-ph-caret-double-right',
+  chevronDown: 'i-ph-caret-down', chevronLeft: 'i-ph-caret-left',
+  chevronRight: 'i-ph-caret-right', chevronUp: 'i-ph-caret-up',
+  close: 'i-ph-x', copy: 'i-ph-copy', copyCheck: 'i-ph-check',
+  dark: 'i-ph-moon', drag: 'i-ph-dots-six-vertical', ellipsis: 'i-ph-dots-three',
+  error: 'i-ph-warning-circle', external: 'i-ph-arrow-square-out', eye: 'i-ph-eye',
+  eyeOff: 'i-ph-eye-slash', file: 'i-ph-file', folder: 'i-ph-folder',
+  folderOpen: 'i-ph-folder-open', hash: 'i-ph-hash', info: 'i-ph-info',
+  light: 'i-ph-sun', loading: 'i-ph-spinner-gap', menu: 'i-ph-list',
+  minus: 'i-ph-minus', panelClose: 'i-ph-sidebar-simple', panelOpen: 'i-ph-sidebar-simple',
+  plus: 'i-ph-plus', reload: 'i-ph-arrows-clockwise', search: 'i-ph-magnifying-glass',
+  star: 'i-ph-star', stop: 'i-ph-stop', success: 'i-ph-check-circle',
+  system: 'i-ph-monitor', tip: 'i-ph-lightbulb', upload: 'i-ph-upload-simple',
+  warning: 'i-ph-warning-circle',
+} as const
+
 const explicitlyBundledIcons = [
   ...new Set([
+    ...Object.values(uiIconRegistry),
     ...Object.values(gameIconRegistry),
     ...Object.values(agreementIconRegistry),
   ]),
@@ -64,25 +85,7 @@ export default defineConfig({
       colorMode: false,
       ui: {
         colors: { primary: 'emerald', neutral: 'zinc' },
-        icons: {
-          arrowDown: 'i-ph-arrow-down', arrowLeft: 'i-ph-arrow-left',
-          arrowRight: 'i-ph-arrow-right', arrowUp: 'i-ph-arrow-up',
-          caution: 'i-ph-warning', check: 'i-ph-check',
-          chevronDoubleLeft: 'i-ph-caret-double-left', chevronDoubleRight: 'i-ph-caret-double-right',
-          chevronDown: 'i-ph-caret-down', chevronLeft: 'i-ph-caret-left',
-          chevronRight: 'i-ph-caret-right', chevronUp: 'i-ph-caret-up',
-          close: 'i-ph-x', copy: 'i-ph-copy', copyCheck: 'i-ph-check',
-          dark: 'i-ph-moon', drag: 'i-ph-dots-six-vertical', ellipsis: 'i-ph-dots-three',
-          error: 'i-ph-warning-circle', external: 'i-ph-arrow-square-out', eye: 'i-ph-eye',
-          eyeOff: 'i-ph-eye-slash', file: 'i-ph-file', folder: 'i-ph-folder',
-          folderOpen: 'i-ph-folder-open', hash: 'i-ph-hash', info: 'i-ph-info',
-          light: 'i-ph-sun', loading: 'i-ph-spinner-gap', menu: 'i-ph-list',
-          minus: 'i-ph-minus', panelClose: 'i-ph-sidebar-simple', panelOpen: 'i-ph-sidebar-simple',
-          plus: 'i-ph-plus', reload: 'i-ph-arrows-clockwise', search: 'i-ph-magnifying-glass',
-          star: 'i-ph-star', stop: 'i-ph-stop', success: 'i-ph-check-circle',
-          system: 'i-ph-monitor', tip: 'i-ph-lightbulb', upload: 'i-ph-upload-simple',
-          warning: 'i-ph-warning-circle',
-        },
+        icons: uiIconRegistry,
       },
       icon: {
         clientBundle: {

@@ -23,7 +23,7 @@ npm run dev
 - `src/api/` contains generated OpenAPI types, focused contracts, and one same-origin transport. Authenticated calls use the companion request key to sign the exact method, path/query, timestamp, nonce, and body bytes, including a secure HMAC fallback when Web Crypto is unavailable.
 - `src/i18n/` merges parity-checked locale shards from `locales/en/` and `locales/zh-CN/`; user-facing copy belongs there rather than in components or composables.
 - `src/composables/` owns remote state, polling, cancellation, idempotency, and mutations.
-- `src/components/` composes Nuxt UI controls into domain features; Iconify supplies all Phosphor and country icons, so no local icon assets are shipped.
+- `src/components/` composes Nuxt UI controls into domain features; Iconify supplies all Phosphor and country icons, so no local icon assets are shipped. `vite.config.ts` keeps the Nuxt UI icon registry and dynamic feature registries in the client bundle explicitly; source scanning remains enabled for static icon references.
 - `src/styles/` defines the flat premium-dark tokens, safe-area layout, restrained motion, and tablet breakpoints without gradients or decorative shadows.
 - `scripts/` generates compact contract output and enforces repository structure in CI.
 
