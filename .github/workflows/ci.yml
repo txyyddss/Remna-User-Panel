@@ -97,7 +97,7 @@ jobs:
         run: |
           set -o pipefail
           timeout --signal=TERM --kill-after=2m 35m \
-            go test -race -timeout 20m -json ./... | tee race-results.json
+            go test -race -count=1 -timeout 20m -json ./... | tee race-results.json
       - name: Upload race diagnostics
         if: failure()
         uses: actions/upload-artifact@v4

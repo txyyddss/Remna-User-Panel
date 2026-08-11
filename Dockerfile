@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.18
 
 FROM node:26-alpine AS frontend-build
 WORKDIR /src
