@@ -36,6 +36,7 @@ const emit = defineEmits<{
           :loading="props.discardingId === grant.id"
           :disabled="props.discardingId !== null"
           :label="$t('coupons.discard')"
+          data-haptic
           @click="emit('discard', grant)"
         />
       </div>

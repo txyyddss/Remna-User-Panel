@@ -95,5 +95,6 @@ Each YAML file is one complete OpenAPI Path Item Object. `../openapi.yaml` regis
 - `api-v1-webhooks-bepusdt-capability.yaml`: `/api/v1/webhooks/bepusdt/{capability}`
 - `api-v1-payments-return-provider.yaml`: `/api/v1/payments/return/{provider}`
 - `api-v1-payments-return-provider-orderid.yaml`: `/api/v1/payments/return/{provider}/{orderID}`
+- `api-v1-payments-return-provider-orderid-status.yaml`: `/api/v1/payments/return/{provider}/{orderID}/status`
 - `healthz.yaml`: `/healthz`
 - `readyz.yaml`: `/readyz`

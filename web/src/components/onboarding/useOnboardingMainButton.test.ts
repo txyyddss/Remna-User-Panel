@@ -15,10 +15,12 @@ describe('useOnboardingMainButton', () => {
       setText: vi.fn(), showProgress: vi.fn(), hideProgress: vi.fn(),
       onClick: vi.fn(), offClick: vi.fn(),
     }
+    const impactOccurred = vi.fn()
     window.Telegram = { WebApp: {
       version: '9.0', initData: '', initDataUnsafe: {}, colorScheme: 'dark',
       ready: vi.fn(), expand: vi.fn(), close: vi.fn(), openLink: vi.fn(),
       openTelegramLink: vi.fn(), openInvoice: vi.fn(), MainButton: button,
+      HapticFeedback: { impactOccurred, notificationOccurred: vi.fn() },
     } as TelegramWebApp }
     const text = shallowRef('Continue')
     const run = vi.fn()
@@ -39,6 +41,7 @@ describe('useOnboardingMainButton', () => {
     const click = button.onClick.mock.calls[0]?.[0]
     click?.()
     expect(run).toHaveBeenCalledOnce()
+    expect(impactOccurred).toHaveBeenCalledWith('light')
 
     text.value = 'Finish'
     await wrapper.vm.$nextTick()

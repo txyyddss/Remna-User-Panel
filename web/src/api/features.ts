@@ -11,6 +11,12 @@ export type * from './contracts/commerce'
 export type * from './contracts/admin'
 export type { CourtesyCredit } from './types'
 
+export type PaymentReturnProvider = 'ezpay' | 'bepusdt'
+
+export interface FeaturePaymentReturnStatus {
+  status: import('./types').PaymentStatus
+}
+
 const featureRequest = request
 
 export const featuresApi = {

@@ -1,0 +1,33 @@
+get:
+  tags: [Billing]
+  operationId: getPaymentReturnStatus
+  summary: Poll a provider-return payment status
+  description: Returns only the durable status for a short-lived signed provider-return capability. It never exposes owner, amount, checkout, or provider payload data and never changes payment state.
+  security: []
+  parameters:
+    - name: provider
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [ezpay, bepusdt]
+    - name: orderID
+      in: path
+      required: true
+      schema:
+        $ref: '../openapi.yaml#/components/schemas/ID'
+    - name: capability
+      in: query
+      required: true
+      schema:
+        type: string
+        pattern: '^[0-9]+\.[a-f0-9]{64}$'
+  responses:
+    '200':
+      description: Current durable payment status.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/PaymentReturnStatus'
+    '404':
+      $ref: '../openapi.yaml#/components/responses/NotFound'

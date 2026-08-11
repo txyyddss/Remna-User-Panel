@@ -101,9 +101,11 @@ func TestSPAHandlerServesAssetsAndFallsBackToIndex(t *testing.T) {
 		path        string
 		wantBody    string
 		contentType string
+		cache       string
 	}{
-		{name: "static asset", path: "/assets/app.js", wantBody: "window.txc = true", contentType: "text/javascript"},
-		{name: "client route", path: "/catalog/checkout", wantBody: "<main>TX Carpool</main>", contentType: "text/html"},
+		{name: "index", path: "/", wantBody: "<main>TX Carpool</main>", contentType: "text/html", cache: "no-cache, must-revalidate"},
+		{name: "static asset", path: "/assets/app.js", wantBody: "window.txc = true", contentType: "text/javascript", cache: "public, max-age=31536000, immutable"},
+		{name: "client route", path: "/catalog/checkout", wantBody: "<main>TX Carpool</main>", contentType: "text/html", cache: "no-cache, must-revalidate"},
 	}
 
 	for _, test := range tests {
@@ -121,6 +123,9 @@ func TestSPAHandlerServesAssetsAndFallsBackToIndex(t *testing.T) {
 			}
 			if got := response.Header().Get("Content-Type"); !strings.Contains(got, test.contentType) {
 				t.Fatalf("Content-Type = %q, want it to contain %q", got, test.contentType)
+			}
+			if got := response.Header().Get("Cache-Control"); got != test.cache {
+				t.Fatalf("Cache-Control = %q, want %q", got, test.cache)
 			}
 		})
 	}

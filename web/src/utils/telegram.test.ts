@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { getTelegramInitData, isTelegramWebAppDetected, openExternalLink, supportsTelegramVersion } from './telegram'
+import { getTelegramInitData, installHapticClickFeedback, isTelegramUserAgent, isTelegramWebAppDetected, openExternalLink, supportsTelegramVersion } from './telegram'
 
 describe('Telegram bootstrap', () => {
   afterEach(() => {
@@ -37,6 +37,17 @@ describe('Telegram bootstrap', () => {
     expect(isTelegramWebAppDetected()).toBe(false)
   })
 
+  it('does not treat the SDK placeholder in a regular browser as Telegram', () => {
+    window.Telegram = { WebApp: { version: '9.0', initData: '', initDataUnsafe: {}, colorScheme: 'dark', ready: vi.fn(), expand: vi.fn(), close: vi.fn(), openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn() } }
+
+    expect(isTelegramWebAppDetected()).toBe(false)
+  })
+
+  it('recognizes Telegram before the WebApp object is available', () => {
+    expect(isTelegramUserAgent('Mozilla/5.0 Telegram/11.0 Mobile')).toBe(true)
+    expect(isTelegramUserAgent('Mozilla/5.0 Chrome/140.0 Mobile')).toBe(false)
+  })
+
   it('uses browser navigation rather than unsupported native bridge methods', () => {
     const openLink = vi.fn()
     const browserOpen = vi.spyOn(window, 'open').mockReturnValue(null)
@@ -50,5 +61,30 @@ describe('Telegram bootstrap', () => {
     expect(supportsTelegramVersion('6.1')).toBe(false)
     expect(openLink).not.toHaveBeenCalled()
     expect(browserOpen).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer')
+  })
+
+  it('adds marked click feedback and disposes the delegated listener', () => {
+    const impactOccurred = vi.fn()
+    window.Telegram = { WebApp: {
+      version: '9.0', initData: '', initDataUnsafe: {}, colorScheme: 'dark', ready: vi.fn(), expand: vi.fn(), close: vi.fn(),
+      openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn(),
+      HapticFeedback: { impactOccurred, notificationOccurred: vi.fn() },
+    } }
+    const button = document.createElement('button')
+    button.dataset.haptic = 'medium'
+    document.body.append(button)
+    const dispose = installHapticClickFeedback()
+
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(impactOccurred).toHaveBeenCalledWith('medium')
+
+    button.setAttribute('disabled', 'true')
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(impactOccurred).toHaveBeenCalledTimes(1)
+
+    dispose()
+    button.removeAttribute('disabled')
+    button.click()
+    expect(impactOccurred).toHaveBeenCalledTimes(1)
   })
 })

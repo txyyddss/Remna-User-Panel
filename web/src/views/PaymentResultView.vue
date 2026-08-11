@@ -2,20 +2,27 @@
 import { computed, onScopeDispose, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import type { PaymentReturnProvider } from '@/api/features'
 import { useI18n } from '@/i18n'
 import { usePaymentReturn } from '@/composables/usePaymentReturn'
+import { isTelegramWebAppDetected } from '@/utils/telegram'
 
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 const orderId = shallowRef('')
+const provider = shallowRef<PaymentReturnProvider | null>(null)
+const capability = shallowRef('')
+const browserReturn = !isTelegramWebAppDetected()
 let homeTimer: ReturnType<typeof globalThis.setTimeout> | undefined
 
-watch(() => route.query.paymentOrder, (value) => {
-  orderId.value = typeof value === 'string' ? value : ''
+watch(() => [route.query.paymentOrder, route.query.provider, route.query.paymentCapability], ([rawOrder, rawProvider, rawCapability]) => {
+  provider.value = rawProvider === 'ezpay' || rawProvider === 'bepusdt' ? rawProvider : null
+  capability.value = typeof rawCapability === 'string' ? rawCapability : ''
+  orderId.value = typeof rawOrder === 'string' ? rawOrder : ''
 }, { immediate: true })
 
-const { state, order, isConfirmed, refresh } = usePaymentReturn(orderId)
+const { state, order, orderStatus, isConfirmed, refresh } = usePaymentReturn(orderId, { browserStatus: browserReturn, provider, capability })
 const title = computed(() => ({
   checking: t('payment.returnCheckingTitle'),
   pending: t('payment.returnCheckingTitle'),
@@ -25,7 +32,7 @@ const title = computed(() => ({
   unavailable: t('payment.returnUnavailableTitle'),
 })[state.value])
 const description = computed(() => state.value === 'terminal'
-  ? t('payment.returnTerminalDescription', { status: t(`payment.status.${order.value?.status ?? 'failed'}`) })
+  ? t('payment.returnTerminalDescription', { status: t(`payment.status.${orderStatus.value ?? order.value?.status ?? 'failed'}`) })
   : t(`payment.return${state.value[0]?.toUpperCase()}${state.value.slice(1)}Description`))
 const icon = computed(() => isConfirmed.value ? 'i-ph-check-circle-fill' : state.value === 'terminal' ? 'i-ph-x-circle-fill' : 'i-ph-spinner-gap')
 const canReissue = computed(() => order.value?.status === 'expired' || order.value?.status === 'failed')
@@ -37,7 +44,7 @@ function reissue(): void {
 
 watch(isConfirmed, (confirmed) => {
   if (homeTimer !== undefined) globalThis.clearTimeout(homeTimer)
-  homeTimer = confirmed ? globalThis.setTimeout(() => void router.replace('/home'), 2600) : undefined
+  homeTimer = confirmed && !browserReturn ? globalThis.setTimeout(() => void router.replace('/home'), 2600) : undefined
 }, { immediate: true })
 onScopeDispose(() => {
   if (homeTimer !== undefined) globalThis.clearTimeout(homeTimer)
@@ -50,11 +57,11 @@ onScopeDispose(() => {
       <span class="payment-return__icon" :class="{ 'payment-return__icon--pending': !isConfirmed && state !== 'terminal' }"><UIcon :name="icon" /></span>
       <h1>{{ title }}</h1>
       <p>{{ description }}</p>
-      <p v-if="isConfirmed" class="payment-return__hint">{{ $t('payment.returnAutoHome') }}</p>
-      <UButton v-if="isConfirmed" block to="/home" trailing-icon="i-ph-house" :label="$t('payment.returnHome')" />
+      <p v-if="isConfirmed && !browserReturn" class="payment-return__hint">{{ $t('payment.returnAutoHome') }}</p>
+      <UButton v-if="isConfirmed && !browserReturn" block to="/home" trailing-icon="i-ph-house" :label="$t('payment.returnHome')" />
       <UButton v-else-if="canReissue" block trailing-icon="i-ph-arrow-clockwise" :label="$t('payment.reissue')" @click="reissue" />
       <UButton v-else-if="state === 'checking' || state === 'pending'" block color="neutral" variant="outline" :loading="true" :label="$t('payment.returnCheckingAction')" @click="refresh" />
-      <UButton v-else block color="neutral" variant="outline" :label="$t('payment.returnHome')" @click="router.replace('/home')" />
+      <UButton v-else-if="!browserReturn" block color="neutral" variant="outline" :label="$t('payment.returnHome')" @click="router.replace('/home')" />
     </section>
   </main>
 </template>

@@ -7,5 +7,5 @@
 - `EntryView.vue` selects the initial authenticated destination.
 - `HomeView.vue` delegates to the member dashboard, including balance funding.
 - `OnboardingView.vue` hosts the resumable membership and agreement flow.
-- `PaymentResultView.vue` verifies a provider-returned payment order, returns confirmed payments to Home, and offers failed/expired orders a localized reissue handoff.
+- `PaymentResultView.vue` verifies a provider-returned payment order in Telegram or polls the capability-limited status in a regular browser, returns confirmed Telegram payments to Home, and offers failed/expired Telegram orders a localized reissue handoff.
 - `QuestionnaireView.vue` delegates to active questionnaire participation.

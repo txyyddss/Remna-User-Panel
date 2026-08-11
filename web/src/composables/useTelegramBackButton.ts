@@ -1,12 +1,23 @@
 import type { ComputedRef } from 'vue'
 import { onMounted, onUnmounted, watch } from 'vue'
 
-import { getTelegramWebApp, supportsTelegramVersion, tryTelegramCall } from '@/utils/telegram'
+import { getTelegramWebApp, haptic, supportsTelegramVersion, tryTelegramCall } from '@/utils/telegram'
 
-export function useTelegramBackButton(visible: ComputedRef<boolean>, onBack: () => void): void {
+type BackAction = () => void | Promise<void>
+
+export function useTelegramBackButton(visible: ComputedRef<boolean>, onBack: BackAction): void {
   let backButton: TelegramWebApp['BackButton']
   let retry: number | undefined
   let attempts = 0
+
+  function handleBack(): void {
+    haptic()
+    try {
+      void Promise.resolve(onBack()).catch(() => undefined)
+    } catch {
+      // Telegram can dispatch the event while the route component is tearing down.
+    }
+  }
 
   function bind(): void {
     if (retry !== undefined) window.clearTimeout(retry)
@@ -22,9 +33,9 @@ export function useTelegramBackButton(visible: ComputedRef<boolean>, onBack: () 
     if (!supportsTelegramVersion('6.1')) return
     const next = app.BackButton
     if (next && next !== backButton) {
-      if (backButton) tryTelegramCall(() => backButton?.offClick(onBack))
+      if (backButton) tryTelegramCall(() => backButton?.offClick(handleBack))
       backButton = next
-      if (!tryTelegramCall(() => next.onClick(onBack))) {
+      if (!tryTelegramCall(() => next.onClick(handleBack))) {
         backButton = undefined
         return
       }
@@ -49,7 +60,7 @@ export function useTelegramBackButton(visible: ComputedRef<boolean>, onBack: () 
   onUnmounted(() => {
     if (retry !== undefined) window.clearTimeout(retry)
     if (backButton) {
-      tryTelegramCall(() => backButton?.offClick(onBack))
+      tryTelegramCall(() => backButton?.offClick(handleBack))
       tryTelegramCall(() => backButton?.hide())
     }
   })

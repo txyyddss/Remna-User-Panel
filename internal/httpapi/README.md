@@ -3,6 +3,7 @@
 ## Core transport
 
 - `server.go` constructs middleware, public routes, authenticated routes, and the SPA fallback.
+- The SPA fallback revalidates `index.html` while serving hashed assets with immutable caching to avoid stale WebView bundles.
 - `request_auth.go` requires the per-session HMAC contract on authenticated browser requests.
 - `request_auth_test.go` tests signed-route enforcement and session-cookie visibility rules.
 - `request_validation.go` applies shared request validation, strict JSON decoding, and URL parameter normalization.
@@ -46,7 +47,7 @@
 - `operations_shared.go` contains bounded-context and request-ID helpers.
 - `telegram_webhook.go` validates and processes Telegram membership and Stars payment updates.
 - `telegram_commands.go` handles group-message rewards and administrator deduction commands.
-- `payment_callbacks.go` handles EZPay/BEPusdt callbacks and navigation-only payment returns.
+- `payment_callbacks.go` handles EZPay/BEPusdt callbacks, short-lived payment-return capabilities, and navigation-only payment returns/status polling.
 
 ## Tests
 
@@ -55,4 +56,4 @@
 - `operations_commands_test.go` covers Telegram deduction command parsing.
 - `payment_callbacks_test.go` verifies that navigation returns accept only the documented payment providers.
 
-`README.md` is this direct-file ownership index. Unsigned routes remain limited to operational probes, Telegram authentication, provider-authenticated callbacks, payment returns, and static assets.
+`README.md` is this direct-file ownership index. Unsigned routes remain limited to operational probes, Telegram authentication, provider-authenticated callbacks, the capability-limited payment return/status flow, and static assets.

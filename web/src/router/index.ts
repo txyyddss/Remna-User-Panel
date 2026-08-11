@@ -1,17 +1,10 @@
-import { createMemoryHistory, createRouter, createWebHistory } from 'vue-router'
+import { createRouter } from 'vue-router'
 
 import { useSessionStore } from '@/stores/session'
 import { isTelegramWebAppDetected } from '@/utils/telegram'
 import { resolveProtectedRoute } from './guards'
-
-function createAppHistory() {
-  if (!isTelegramWebAppDetected()) return createWebHistory()
-
-  const history = createMemoryHistory()
-  const initialRoute = `${window.location.pathname}${window.location.search}`
-  if (initialRoute !== '/') history.replace(initialRoute)
-  return history
-}
+import { createAppHistory } from './history'
+import { beginRouteRecovery, completeRouteRecovery, isRouteChunkError } from './recovery'
 
 const router = createRouter({
   history: createAppHistory(),
@@ -26,7 +19,7 @@ const router = createRouter({
     },
     { path: '/home', name: 'home', component: () => import('@/views/HomeView.vue') },
     { path: '/catalog', name: 'catalog', component: () => import('@/views/CatalogView.vue') },
-    { path: '/payment-result', name: 'payment-result', component: () => import('@/views/PaymentResultView.vue'), meta: { immersive: true } },
+    { path: '/payment-result', name: 'payment-result', component: () => import('@/views/PaymentResultView.vue'), meta: { immersive: true, browserPublic: true } },
     { path: '/balance', redirect: { name: 'home', query: { topUp: '1' } } },
     { path: '/activity', name: 'activity', component: () => import('@/views/ActivityView.vue') },
     { path: '/games', redirect: '/activity' },
@@ -42,8 +35,22 @@ const router = createRouter({
   ],
 })
 
+router.afterEach((to) => {
+  completeRouteRecovery(to.fullPath)
+})
+
+router.onError((error, to) => {
+  if (!isRouteChunkError(error) || !beginRouteRecovery(to.fullPath)) return
+  try {
+    window.location.reload()
+  } catch {
+    // A WebView may reject reload while its host is changing state.
+  }
+})
+
 router.beforeEach(async (to) => {
   const store = useSessionStore()
+  if (to.meta.browserPublic === true && !isTelegramWebAppDetected()) return true
   await store.bootstrap()
   if (store.status === 'error') return true
   return resolveProtectedRoute(to, store.user) ?? true

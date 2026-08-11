@@ -38,6 +38,7 @@ function copyLink(): void {
           variant="ghost"
           :icon="copied ? 'i-ph-check-bold' : 'i-ph-copy'"
           :aria-label="copied ? $t('common.copied') : $t('dashboard.copySubscription')"
+          data-haptic
           @click="copyLink"
         />
       </div>
@@ -47,6 +48,7 @@ function copyLink(): void {
         variant="ghost"
         icon="i-ph-trash"
         :label="$t('common.revoke')"
+        data-haptic
         @click="confirmOpen = true"
       />
     </template>

@@ -47,6 +47,7 @@ const { t } = useI18n()
         :label="busy ? t('common.working') : confirmLabel"
         :color="danger ? 'error' : 'primary'"
         :loading="busy"
+        :data-haptic="danger ? 'heavy' : 'light'"
         @click="$emit('confirm')"
       />
     </template>

@@ -36,9 +36,15 @@ export function tryTelegramCall(callback: () => void): boolean {
   }
 }
 
+export function isTelegramUserAgent(userAgent: string): boolean {
+  return /\bTelegram\b/i.test(userAgent)
+}
+
 export function isTelegramWebAppDetected(): boolean {
-  if (getTelegramWebApp()) return true
-  return [window.location.hash, window.location.search].some((source) => new URLSearchParams(source.replace(/^#/, '').replace(/^\?/, '')).has('tgWebAppData'))
+  if (getTelegramWebApp()?.initData?.trim()) return true
+  const hasLaunchData = [window.location.hash, window.location.search].some((source) => new URLSearchParams(source.replace(/^#/, '').replace(/^\?/, '')).has('tgWebAppData'))
+  if (hasLaunchData) return true
+  return typeof navigator !== 'undefined' && isTelegramUserAgent(navigator.userAgent)
 }
 
 function decodeTelegramData(value: string): string {
@@ -116,6 +122,7 @@ function syncTelegramEnvironment(): void {
 
 export function initializeTelegram(): () => void {
   const app = getTelegramWebApp()
+  const disposeHapticClicks = installHapticClickFeedback()
   if (app) tryTelegramCall(() => app.expand())
   syncTelegramEnvironment()
   const events = supportsTelegramVersion('8.0') ? [...telegramEvents, ...safeAreaEvents] : telegramEvents
@@ -128,6 +135,7 @@ export function initializeTelegram(): () => void {
       if (app?.offEvent) tryTelegramCall(() => app.offEvent?.(event, syncTelegramEnvironment))
     }
     window.removeEventListener('resize', syncTelegramEnvironment)
+    disposeHapticClicks()
   }
 }
 
@@ -151,11 +159,30 @@ export function openTelegramInvoice(url: string): boolean {
   return Boolean(app && supportsTelegramVersion('6.1') && tryTelegramCall(() => app.openInvoice(url)))
 }
 
-export function haptic(type: 'light' | 'medium' | 'heavy' = 'light'): void {
+export type HapticImpact = 'light' | 'medium' | 'heavy'
+
+export function haptic(type: HapticImpact = 'light'): void {
   const app = getTelegramWebApp()
   if (app?.HapticFeedback && supportsTelegramVersion('6.1')) {
     tryTelegramCall(() => app.HapticFeedback?.impactOccurred(type))
   }
+}
+
+function hapticImpactFor(element: Element): HapticImpact {
+  const value = element.getAttribute('data-haptic')
+  return value === 'medium' || value === 'heavy' ? value : 'light'
+}
+
+function handleHapticClick(event: MouseEvent): void {
+  if (!(event.target instanceof Element)) return
+  const target = event.target.closest('[data-haptic]')
+  if (!target || target.hasAttribute('disabled') || target.getAttribute('aria-disabled') === 'true') return
+  haptic(hapticImpactFor(target))
+}
+
+export function installHapticClickFeedback(): () => void {
+  document.addEventListener('click', handleHapticClick, true)
+  return () => document.removeEventListener('click', handleHapticClick, true)
 }
 
 export function notifyHaptic(type: 'error' | 'success' | 'warning'): void {

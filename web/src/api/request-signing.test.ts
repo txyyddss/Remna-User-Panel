@@ -52,6 +52,13 @@ describe('request signing', () => {
     expect(headers.has('X-TXC-Signature')).toBe(false)
   })
 
+  it('leaves the provider-return status projection unsigned', async () => {
+    document.cookie = `txc_request_key=${base64Url(new Uint8Array(32))}; Path=/`
+    const headers = new Headers()
+    await applyRequestSignature(headers, 'GET', '/api/v1/payments/return/ezpay/payment-1/status?capability=test', requestBodyBytes())
+    expect(headers.has('X-TXC-Signature')).toBe(false)
+  })
+
   it('keeps protected requests signed without Web Crypto subtle', async () => {
     const nativeCrypto = globalThis.crypto
     vi.stubGlobal('crypto', { getRandomValues: nativeCrypto.getRandomValues.bind(nativeCrypto) })

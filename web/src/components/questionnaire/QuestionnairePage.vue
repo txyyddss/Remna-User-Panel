@@ -21,7 +21,7 @@ const { questionnaire, participation, loading, joining, error, load, openQuestio
     </template>
     <section v-else class="section-block empty-inline">
       <div><h3>{{ $t('questionnaire.none') }}</h3><p>{{ $t('questionnaire.noneHint') }}</p></div>
-      <UButton color="neutral" variant="outline" :label="$t('common.refresh')" @click="load" />
+      <UButton color="neutral" variant="outline" :label="$t('common.refresh')" data-haptic @click="load" />
     </section>
   </div>
 </template>

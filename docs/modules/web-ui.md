@@ -6,7 +6,7 @@ The web module is a mobile-first Telegram Mini App built with Vue 3 Composition 
 
 The main boundaries are:
 
-- `AppShell`: safe areas, session bootstrap, desktop/mobile navigation, skip link, Telegram BackButton, and focus restoration after navigation.
+- `AppShell`: safe areas, session bootstrap, desktop/mobile navigation, skip link, Telegram BackButton, and guarded focus restoration after navigation.
 - Member features: `ActivityPage`, `CouponWalletPanel`, `QuestionnairePage`, `EmbyPage`, `CatalogCheckout`, and `BalancePaymentSheet`.
 - Shared controls: `TxbAmountField` converts human major-unit input to integer hundredths, Nuxt UI owns accessible switches/forms/overlays/tables, and `MarkdownContent` renders sanitized Markdown with raw HTML disabled.
 - `AdminShell`: compact responsive navigation for Commerce, Community, Onboarding, Users, Emby, and System operations. Every registered backend administration domain has a live UI route.
@@ -18,7 +18,7 @@ Localization is embedded from matching domain shards under `locales/en/` and `lo
 
 ## Routes and state behavior
 
-The canonical member routes are `/home`, `/catalog`, `/activity`, `/questionnaire`, `/emby`, and `/payment-result`. `/balance` is retained only as a compatibility redirect to Home's funding sheet, and `/games` redirects to `/activity`. Telegram uses in-memory route history so page changes do not reload the Mini App and discard its launch context; regular browsers use HTML5 history. The provider-return route verifies the durable order before rendering; only failed or expired orders may hand their ID to Home, which refetches it before presenting a replacement payment. The three expanded product areas are real data-backed routes; they no longer share a placeholder view.
+The canonical member routes are `/home`, `/catalog`, `/activity`, `/questionnaire`, `/emby`, and `/payment-result`. `/balance` is retained only as a compatibility redirect to Home's funding sheet, and `/games` redirects to `/activity`. Telegram uses in-memory route history so page changes do not reload the Mini App and discard its launch context; regular browsers use HTML5 history. Failed lazy route imports receive one guarded reload attempt, while the server revalidates `index.html` and gives hashed assets immutable caching. The provider-return route is browser-public only for the signed return landing flow: Telegram verifies the owner-scoped durable order, while a regular browser receives only the capability-limited status projection. Only failed or expired Telegram orders may hand their ID to Home, which refetches it before presenting a replacement payment. The three expanded product areas are real data-backed routes; they no longer share a placeholder view.
 
 Home's traffic detail opens on demand, defaults to the latest seven inclusive UTC dates, lets the member choose a start and end date within 31 dates, and displays Remnawave's top 20 returned nodes with daily byte totals. The date-range request is independent of the cached home summary and preserves an explicit upstream-unavailable state.
 

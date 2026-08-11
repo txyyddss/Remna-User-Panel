@@ -1,7 +1,7 @@
 import type { ComputedRef } from 'vue'
 import { onMounted, onUnmounted, shallowRef, watch } from 'vue'
 
-import { getTelegramWebApp, supportsTelegramVersion, tryTelegramCall } from '@/utils/telegram'
+import { getTelegramWebApp, haptic, supportsTelegramVersion, tryTelegramCall } from '@/utils/telegram'
 
 interface TelegramMainButton {
   show(): void
@@ -34,7 +34,10 @@ export function useOnboardingMainButton(action: ComputedRef<OnboardingMainAction
   let attempts = 0
 
   function handleClick(): void {
-    if (!action.value?.disabled) action.value?.run()
+    if (!action.value?.disabled) {
+      haptic()
+      action.value?.run()
+    }
   }
 
   function sync(): void {

@@ -80,6 +80,11 @@
     "amount": "Amount",
     "minimumTopUp": "Minimum top-up applies.",
     "provider": "Provider",
+    "providers": {
+      "ezpay": "EZPay",
+      "bepusdt": "BEPUSDT",
+      "stars": "Telegram Stars"
+    },
     "localRails": "Local payment rail",
     "noChannel": "No payment channel is available.",
     "channel": "Channel",

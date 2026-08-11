@@ -17,7 +17,7 @@ import type {
   SquadProductWrite,
 } from './types'
 import type { components } from './generated'
-import type { FeaturePaymentMethod, FeaturePaymentOrder } from './features'
+import type { FeaturePaymentMethod, FeaturePaymentOrder, FeaturePaymentReturnStatus, PaymentReturnProvider } from './features'
 import { request, type QueryValue } from './http'
 
 export { ApiError } from './http'
@@ -83,6 +83,9 @@ export const api = {
     body: { methodId, txbMinor: txbMinorUnits },
   }),
   getPaymentOrder: (id: string) => request<FeaturePaymentOrder>(`/api/v1/payments/orders/${encodeURIComponent(id)}`),
+  getPaymentReturnStatus: (provider: PaymentReturnProvider, id: string, capability: string) => request<FeaturePaymentReturnStatus>(
+    `/api/v1/payments/return/${provider}/${encodeURIComponent(id)}/status`, { query: { capability } },
+  ),
   cancelPaymentOrder: (id: string) => request<FeaturePaymentOrder>(`/api/v1/payments/orders/${encodeURIComponent(id)}/cancel`, { method: 'POST' }),
   getAdminResource: <T>(resource: AdminResource, query?: Record<string, QueryValue>) =>
     request<T>(`/api/v1/admin/${resource}`, { query }),

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue'
-
 import type { FeaturePaymentMethod, FeaturePaymentOrder } from '@/api/features'
 import type { PaymentProvider } from '@/api/types'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
@@ -19,12 +18,7 @@ const { t } = useI18n()
 
 const methods = computed(() => props.methods)
 const providers = computed(() => {
-  const seen = new Set<PaymentProvider>()
-  return methods.value.filter((method) => {
-    if (seen.has(method.provider)) return false
-    seen.add(method.provider)
-    return true
-  })
+  return [...new Set(methods.value.map((method) => method.provider))]
 })
 const channels = computed(() => methods.value.filter((method) => method.provider === selectedProvider.value))
 
@@ -63,15 +57,19 @@ const description = computed(() => stage.value === 'configure'
     ? t('payment.cancelledHint')
     : t('payment.providerHint'))
 
+function providerLabel(provider: PaymentProvider): string {
+  return t(`payment.providers.${provider}`)
+}
+
 function chooseProvider(provider: PaymentProvider): void {
   selectedProvider.value = provider
   const first = methods.value.find((method) => method.provider === provider && method.available)
   if (first) chooseMethod(first.id)
 }
 
-function providerNote(provider: FeaturePaymentMethod): string {
-  if (provider.provider === 'ezpay') return t('payment.localRails')
-  const available = methods.value.some((method) => method.provider === provider.provider && method.available)
+function providerNote(provider: PaymentProvider): string {
+  if (provider === 'ezpay') return t('payment.localRails')
+  const available = methods.value.some((method) => method.provider === provider && method.available)
   return available ? '' : t('payment.rateUnavailable')
 }
 
@@ -113,18 +111,19 @@ watch(open, (next) => {
           <legend>{{ $t('payment.provider') }}</legend>
           <UButton
             v-for="provider in providers"
-            :key="provider.provider"
+            :key="provider"
             class="provider-option"
-            :class="{ 'provider-option--selected': selectedProvider === provider.provider }"
+            :class="{ 'provider-option--selected': selectedProvider === provider }"
             color="neutral"
             variant="ghost"
-            :disabled="!methods.some((method) => method.provider === provider.provider && method.available)"
-            :aria-pressed="selectedProvider === provider.provider"
-            @click="chooseProvider(provider.provider)"
+            :disabled="!methods.some((method) => method.provider === provider && method.available)"
+            :aria-pressed="selectedProvider === provider"
+            data-haptic
+            @click="chooseProvider(provider)"
           >
-            <span class="provider-option__icon"><UIcon :name="icons[provider.provider]" /></span>
+            <span class="provider-option__icon"><UIcon :name="icons[provider]" /></span>
             <span>
-              <strong>{{ provider.provider === 'bepusdt' ? 'USDT' : provider.name }}</strong>
+              <strong>{{ providerLabel(provider) }}</strong>
               <small>{{ providerNote(provider) }}</small>
             </span>
           </UButton>
@@ -148,6 +147,7 @@ watch(open, (next) => {
             variant="ghost"
             :disabled="!method.available"
             :aria-pressed="selectedMethodId === method.id"
+            data-haptic
             @click="chooseMethod(method.id)"
           >
             <span><strong>{{ method.name }}</strong><small>{{ methodNote(method) }}</small></span>
@@ -161,6 +161,7 @@ watch(open, (next) => {
           :disabled="!canCreate || stage === 'creating' || !amountValid"
           :loading="stage === 'creating'"
           :label="stage === 'creating' ? $t('payment.creating') : canReissue ? $t('payment.reissue') : $t('payment.continue')"
+          data-haptic
           @click="createOrder"
         />
       </template>
@@ -174,9 +175,9 @@ watch(open, (next) => {
         <div v-if="qrDataUrl" class="qr-frame"><img :src="qrDataUrl" :alt="$t('payment.qrAlt')" width="260" height="260" /></div>
         <div v-if="order.receivingAddress" class="payment-address"><span>{{ $t('payment.receivingAddress') }}</span><code>{{ order.receivingAddress }}</code></div>
         <p class="payment-expiry">{{ $t('payment.expires', { date: formatDateTime(order.expiresAt) }) }}</p>
-        <UButton v-if="order.paymentUrl" block color="neutral" variant="outline" trailing-icon="i-ph-arrow-square-out" :label="$t('payment.openPage')" @click="openPaymentTarget" />
+        <UButton v-if="order.paymentUrl" block color="neutral" variant="outline" trailing-icon="i-ph-arrow-square-out" :label="$t('payment.openPage')" data-haptic @click="openPaymentTarget" />
         <div class="payment-waiting" role="status"><span class="payment-waiting__pulse" />{{ stage === 'cancelling' ? $t('payment.cancelling') : $t('payment.waiting') }}</div>
-        <UButton block color="error" variant="ghost" :disabled="stage === 'cancelling'" :label="$t('payment.cancelOrder')" @click="cancelOrder" />
+        <UButton block color="error" variant="ghost" :disabled="stage === 'cancelling'" :label="$t('payment.cancelOrder')" data-haptic="medium" @click="cancelOrder" />
         <p class="field-hint">{{ $t('payment.callbackHint') }}</p>
         <UAlert v-if="error" color="error" variant="soft" :description="error" />
       </template>

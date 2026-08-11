@@ -119,6 +119,20 @@ func (s *Service) OrderForUser(ctx context.Context, orderID, userID string) (mod
 	return s.repository.PaymentOrderForUser(ctx, orderID, userID)
 }
 
+// ReturnStatus exposes only the durable payment state needed by the
+// unauthenticated provider-return landing page. It deliberately omits the
+// owner, amount, checkout URL, and all provider payload details.
+func (s *Service) ReturnStatus(ctx context.Context, provider, orderID string) (string, error) {
+	order, err := s.repository.PaymentOrderByID(ctx, orderID)
+	if err != nil {
+		return "", err
+	}
+	if !strings.EqualFold(order.Provider, provider) {
+		return "", database.ErrNotFound
+	}
+	return order.Status, nil
+}
+
 // Cancel stops client polling immediately and then performs provider cancellation
 // on a best-effort basis. A later verified paid event remains authoritative.
 func (s *Service) Cancel(ctx context.Context, orderID, userID string) (model.PaymentOrder, error) {

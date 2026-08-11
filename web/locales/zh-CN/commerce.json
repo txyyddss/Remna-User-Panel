@@ -80,6 +80,11 @@
     "amount": "金额",
     "minimumTopUp": "有最低充值金额。",
     "provider": "支付方",
+    "providers": {
+      "ezpay": "EZPay",
+      "bepusdt": "BEPUSDT",
+      "stars": "Telegram Stars"
+    },
     "localRails": "本地支付渠道",
     "noChannel": "暂无可用支付渠道。",
     "channel": "渠道",

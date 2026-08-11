@@ -138,3 +138,16 @@
   border-radius: var(--radius-control);
   color: var(--text-muted);
 }
+
+.section-heading p,
+.admin-subsection-heading p {
+  margin: 0.35rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.section-heading__meta {
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+}

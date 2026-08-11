@@ -44,21 +44,21 @@ async function confirmDiscard(): Promise<void> {
       <UFormField :label="$t('catalog.addCoupon')">
         <UInput v-model.trim="code" icon="i-ph-ticket" :placeholder="$t('coupons.codePlaceholder')" autocomplete="off" />
       </UFormField>
-      <UButton type="submit" color="neutral" variant="outline" :loading="redeeming" :disabled="redeeming || !code" :label="redeeming ? $t('coupons.redeeming') : $t('coupons.redeem')" />
+      <UButton type="submit" color="neutral" variant="outline" :loading="redeeming" :disabled="redeeming || !code" :label="redeeming ? $t('coupons.redeeming') : $t('coupons.redeem')" data-haptic />
     </form>
     <InlineNotice v-if="message" tone="success">{{ message }}</InlineNotice>
     <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
     <div class="catalog-coupon-list">
-      <UButton class="catalog-coupon-choice" :class="{ 'catalog-coupon-choice--selected': couponGrantId === null }" color="neutral" variant="ghost" :aria-pressed="couponGrantId === null" @click="couponGrantId = null">
+      <UButton class="catalog-coupon-choice" :class="{ 'catalog-coupon-choice--selected': couponGrantId === null }" color="neutral" variant="ghost" :aria-pressed="couponGrantId === null" data-haptic @click="couponGrantId = null">
         <span><strong>{{ $t('catalog.noCoupon') }}</strong><small>{{ $t('catalog.noCouponHint') }}</small></span>
         <UIcon v-if="couponGrantId === null" name="i-ph-check-bold" />
       </UButton>
       <div v-for="grant in props.coupons" :key="grant.id" class="catalog-coupon-choice-row">
-        <UButton class="catalog-coupon-choice" :class="{ 'catalog-coupon-choice--selected': couponGrantId === grant.id, 'catalog-coupon-choice--ineligible': !eligibleIds.includes(grant.id) }" color="neutral" variant="ghost" :aria-pressed="couponGrantId === grant.id" :disabled="!eligibleIds.includes(grant.id)" @click="couponGrantId = grant.id">
+        <UButton class="catalog-coupon-choice" :class="{ 'catalog-coupon-choice--selected': couponGrantId === grant.id, 'catalog-coupon-choice--ineligible': !eligibleIds.includes(grant.id) }" color="neutral" variant="ghost" :aria-pressed="couponGrantId === grant.id" :disabled="!eligibleIds.includes(grant.id)" data-haptic @click="couponGrantId = grant.id">
           <span><strong>{{ grant.coupon.name }}</strong><small>{{ eligibleIds.includes(grant.id) ? grant.coupon.code : $t('catalog.couponIneligible') }}</small></span>
           <UIcon v-if="couponGrantId === grant.id" name="i-ph-check-bold" />
         </UButton>
-        <UButton color="error" variant="ghost" square icon="i-ph-trash" :aria-label="$t('coupons.discardTitle', { name: grant.coupon.name })" @click="pendingDiscard = grant" />
+        <UButton color="error" variant="ghost" square icon="i-ph-trash" :aria-label="$t('coupons.discardTitle', { name: grant.coupon.name })" data-haptic @click="pendingDiscard = grant" />
       </div>
     </div>
     <p v-if="!hasEligibleCoupons" class="field-hint">{{ $t('catalog.noEligibleCoupons') }}</p>

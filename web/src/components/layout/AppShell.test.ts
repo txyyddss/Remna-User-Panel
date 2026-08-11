@@ -28,9 +28,11 @@ describe('AppShell accessibility', () => {
     const hide = vi.fn()
     const onClick = vi.fn()
     const offClick = vi.fn()
+    const impactOccurred = vi.fn()
     window.Telegram = { WebApp: {
       version: '9.0', initData: '', initDataUnsafe: {}, colorScheme: 'dark', ready: vi.fn(), expand: vi.fn(), close: vi.fn(),
       openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn(),
+      HapticFeedback: { impactOccurred, notificationOccurred: vi.fn() },
       BackButton: { isVisible: false, show, hide, onClick, offClick },
     } }
     const pinia = createPinia()
@@ -57,6 +59,8 @@ describe('AppShell accessibility', () => {
     expect(document.activeElement).toBe(wrapper.get('main').element)
     expect(show).toHaveBeenCalled()
     expect(onClick).toHaveBeenCalledOnce()
+    onClick.mock.calls[0]?.[0]?.()
+    expect(impactOccurred).toHaveBeenCalledWith('light')
 
     wrapper.unmount()
     expect(offClick).toHaveBeenCalledOnce()

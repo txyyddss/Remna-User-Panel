@@ -39,6 +39,7 @@ watch(detailsOpen, (open) => {
             variant="ghost"
             icon="i-ph-question"
             :aria-label="$t('home.trafficDetails')"
+            data-haptic
           />
           <template #content>
             <TrafficUsageDetails

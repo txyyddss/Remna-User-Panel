@@ -19,6 +19,7 @@ defineEmits<{ select: [id: string] }>()
     color="neutral"
     variant="ghost"
     :aria-pressed="selected"
+    data-haptic
     @click="$emit('select', combo.id)"
   >
     <span class="combo-option__top">

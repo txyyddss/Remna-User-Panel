@@ -85,7 +85,7 @@ function consumeReissueRequest(): void {
     <div v-else class="error-state">
       <h1>{{ $t('dashboard.unavailable') }}</h1>
       <p>{{ error ?? $t('dashboard.loadFailed') }}</p>
-      <UButton :label="$t('common.tryAgain')" @click="load()" />
+      <UButton :label="$t('common.tryAgain')" data-haptic @click="load()" />
     </div>
   </div>
 </template>

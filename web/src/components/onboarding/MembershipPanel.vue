@@ -33,6 +33,7 @@ function iconFor(kind: InviteLink['kind']): string {
         class="invite-row"
         color="neutral"
         variant="ghost"
+        data-haptic
         @click="$emit('openInvite', invite)"
       >
         <span class="invite-row__icon"><UIcon :name="iconFor(invite.kind)" /></span>
@@ -50,6 +51,7 @@ function iconFor(kind: InviteLink['kind']): string {
       icon="i-ph-arrow-clockwise"
       :disabled="loading"
       :label="$t('onboarding.generateInvites')"
+      data-haptic
       @click="$emit('refresh')"
     />
 
@@ -59,6 +61,7 @@ function iconFor(kind: InviteLink['kind']): string {
       icon="i-ph-arrow-clockwise"
       :loading="loading"
       :label="loading ? $t('onboarding.checkingMembership') : $t('onboarding.alreadyJoined')"
+      data-haptic
       @click="$emit('check')"
     />
   </section>

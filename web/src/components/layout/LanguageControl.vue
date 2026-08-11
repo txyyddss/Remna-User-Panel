@@ -38,6 +38,7 @@ function selectLocale(value: Locale): void {
           color="neutral"
           :variant="locale === value ? 'soft' : 'ghost'"
           :aria-pressed="locale === value"
+          data-haptic
           @click="selectLocale(value)"
         >
           {{ localeLabel(value) }}

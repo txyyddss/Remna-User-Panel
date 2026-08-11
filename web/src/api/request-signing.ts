@@ -87,7 +87,7 @@ function canonicalTarget(url: string): string {
 }
 
 function signingRequired(target: string): boolean {
-  return target !== '/api/v1/auth/telegram'
+  return target !== '/api/v1/auth/telegram' && !target.startsWith('/api/v1/payments/return/')
 }
 
 export async function applyRequestSignature(

@@ -15,7 +15,7 @@ defineEmits<{ submit: []; toggle: [id: string] }>()
     </header>
 
     <div class="agreement-list">
-      <label v-for="agreement in agreements" :key="agreement.id" class="agreement-callout agreement-callout--selectable" :class="`agreement-callout--${agreement.color || 'warning'}`">
+      <label v-for="agreement in agreements" :key="agreement.id" class="agreement-callout agreement-callout--selectable" :class="`agreement-callout--${agreement.color || 'warning'}`" data-haptic>
         <UIcon :name="agreementIcon(agreement.icon)" aria-hidden="true" />
         <span><strong>{{ agreement.title }}</strong><small>{{ agreement.body }}</small></span>
         <UCheckbox
@@ -33,6 +33,7 @@ defineEmits<{ submit: []; toggle: [id: string] }>()
       :disabled="!allAccepted || loading"
       :loading="loading"
       :label="loading ? $t('onboarding.finishing') : $t('onboarding.finish')"
+      data-haptic
       @click="$emit('submit')"
     />
   </section>

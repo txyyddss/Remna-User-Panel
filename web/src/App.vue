@@ -8,17 +8,24 @@ import AuthGate from '@/components/session/AuthGate.vue'
 import LoadingScreen from '@/components/session/LoadingScreen.vue'
 import { useSessionStore } from '@/stores/session'
 import { useI18n } from '@/i18n'
+import { isTelegramWebAppDetected } from '@/utils/telegram'
 
 const route = useRoute()
 const sessionStore = useSessionStore()
 const immersive = computed(() => route.meta.immersive === true)
+const browserPublic = computed(() => route.meta.browserPublic === true && !isTelegramWebAppDetected())
 const { locale } = useI18n()
 const uiLocale = computed(() => locale.value === 'zh-CN' ? zh_cn : en)
 </script>
 
 <template>
   <UApp :locale="uiLocale" :toaster="{ position: 'top-center' }">
-    <LoadingScreen v-if="sessionStore.status === 'idle' || sessionStore.status === 'loading'" />
+    <RouterView v-if="browserPublic" v-slot="{ Component, route: currentRoute }">
+      <Transition name="route" mode="out-in">
+        <component :is="Component" :key="currentRoute.fullPath" />
+      </Transition>
+    </RouterView>
+    <LoadingScreen v-else-if="sessionStore.status === 'idle' || sessionStore.status === 'loading'" />
     <AuthGate
       v-else-if="sessionStore.status === 'error'"
       :message="sessionStore.error ?? $t('auth.authenticationFailed')"

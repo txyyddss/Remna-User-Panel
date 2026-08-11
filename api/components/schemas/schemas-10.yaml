@@ -1,3 +1,11 @@
+PaymentReturnStatus:
+  type: object
+  additionalProperties: false
+  required: [status]
+  properties:
+    status:
+      $ref: '../../openapi.yaml#/components/schemas/PaymentStatus'
+
 PaymentPage:
   type: object
   additionalProperties: false

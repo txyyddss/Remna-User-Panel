@@ -4,6 +4,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
 import { useSessionStore } from '@/stores/session'
+import { focusWithoutScrolling } from '@/utils/dom'
 import LanguageControl from './LanguageControl.vue'
 
 interface NavItem {
@@ -26,12 +27,23 @@ const activePath = computed(() => route.path)
 const showBackButton = computed(() => !['/', '/home'].includes(route.path))
 const mainContent = useTemplateRef<globalThis.HTMLElement>('mainContent')
 
-useTelegramBackButton(showBackButton, () => router.back())
+function goBack(): void {
+  try {
+    void Promise.resolve(router.back()).catch(() => undefined)
+  } catch {
+    // The router may already be disposing the current view.
+  }
+}
 
-watch(() => route.fullPath, async (_next, previous) => {
+useTelegramBackButton(showBackButton, goBack)
+
+watch(() => route.fullPath, (_next, previous) => {
   if (!previous) return
-  await nextTick()
-  mainContent.value?.focus({ preventScroll: true })
+  void nextTick()
+    .then(() => {
+      if (mainContent.value) focusWithoutScrolling(mainContent.value)
+    })
+    .catch(() => undefined)
 })
 
 function isActive(to: string): boolean {
@@ -49,6 +61,7 @@ function isActive(to: string): boolean {
           :to="item.to"
           class="nav-item"
           :class="{ 'nav-item--active': isActive(item.to) }"
+          data-haptic
         >
           <UIcon :name="item.icon" />
           <span>{{ $t(item.labelKey) }}</span>
@@ -58,6 +71,7 @@ function isActive(to: string): boolean {
           to="/admin/settings"
           class="nav-item"
           :class="{ 'nav-item--active': activePath.startsWith('/admin') }"
+          data-haptic
         >
           <UIcon name="i-ph-shield-check" />
           <span>{{ $t('nav.admin') }}</span>
@@ -79,6 +93,7 @@ function isActive(to: string): boolean {
         :to="item.to"
         class="bottom-nav__item"
         :class="{ 'bottom-nav__item--active': isActive(item.to) }"
+        data-haptic
       >
         <UIcon :name="item.icon" />
         <span>{{ $t(item.labelKey) }}</span>

@@ -110,6 +110,7 @@ func New(deps Dependencies) (*Server, error) {
 	router.Get("/api/v1/webhooks/ezpay", server.ezpayWebhook)
 	router.Post("/api/v1/webhooks/bepusdt", server.bepusdtWebhook)
 	router.Post("/api/v1/webhooks/bepusdt/{capability}", server.bepusdtWebhook)
+	router.Get("/api/v1/payments/return/{provider}/{orderID}/status", server.paymentReturnStatus)
 	router.Get("/api/v1/payments/return/{provider}", server.paymentReturn)
 	router.Get("/api/v1/payments/return/{provider}/{orderID}", server.paymentReturn)
 
@@ -263,6 +264,7 @@ func spaHandler(content fs.FS) http.Handler {
 				http.Error(w, "failed to close file", http.StatusInternalServerError)
 				return
 			}
+			setStaticCacheHeaders(w, path)
 			files.ServeHTTP(w, r)
 			return
 		}
@@ -271,7 +273,18 @@ func spaHandler(content fs.FS) http.Handler {
 			http.NotFound(w, r)
 			return
 		}
+		setStaticCacheHeaders(w, "index.html")
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write(index)
 	})
+}
+
+func setStaticCacheHeaders(w http.ResponseWriter, path string) {
+	if path == "index.html" {
+		w.Header().Set("Cache-Control", "no-cache, must-revalidate")
+		return
+	}
+	if strings.HasPrefix(path, "assets/") {
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	}
 }

@@ -28,7 +28,7 @@ function isIncluded(id: string): boolean {
       <p>{{ $t('catalog.optionalSquadsHint') }}</p>
     </div>
     <div v-if="squads.length" v-auto-animate class="squad-grid">
-      <label v-for="squad in squads" :key="squad.id" class="squad-option" :class="{ 'squad-option--selected': isSelected(squad.id), 'squad-option--included': isIncluded(squad.id) }">
+      <label v-for="squad in squads" :key="squad.id" class="squad-option" :class="{ 'squad-option--selected': isSelected(squad.id), 'squad-option--included': isIncluded(squad.id) }" :data-haptic="isIncluded(squad.id) ? undefined : 'light'">
         <span class="squad-option__icon"><UIcon name="i-ph-globe-hemisphere-west" /></span>
         <span class="squad-option__copy">
           <strong>{{ squad.name }}</strong>

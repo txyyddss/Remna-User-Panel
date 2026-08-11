@@ -65,6 +65,7 @@ const resetLabel = computed(() => props.active ? t(`home.reset.${props.active.re
         variant="outline"
         trailing-icon="i-ph-arrow-right"
         :label="$t('catalog.viewCombos')"
+        data-haptic
       />
     </div>
   </section>

@@ -28,7 +28,7 @@ const { t } = useI18n()
     </template>
     <template #footer="{ close }">
       <UButton color="neutral" variant="outline" :label="t('common.cancel')" :disabled="busy" @click="close" />
-      <UButton :color="danger ? 'error' : 'primary'" trailing-icon="i-ph-arrow-right" :disabled="reason.length < 4 || busy" :loading="busy" :label="busy ? t('adminReason.working') : confirmLabel" @click="$emit('confirm')" />
+      <UButton :color="danger ? 'error' : 'primary'" trailing-icon="i-ph-arrow-right" :disabled="reason.length < 4 || busy" :loading="busy" :label="busy ? t('adminReason.working') : confirmLabel" :data-haptic="danger ? 'heavy' : 'light'" @click="$emit('confirm')" />
     </template>
   </UModal>
 </template>

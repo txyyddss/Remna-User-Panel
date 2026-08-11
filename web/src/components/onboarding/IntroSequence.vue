@@ -24,7 +24,7 @@ onMounted(start)
     </div>
     <footer class="intro-sequence__footer">
       <LanguageControl />
-      <UButton color="neutral" variant="ghost" trailing-icon="i-ph-arrow-right" :label="$t('common.skip')" @click="skip" />
+      <UButton color="neutral" variant="ghost" trailing-icon="i-ph-arrow-right" :label="$t('common.skip')" data-haptic @click="skip" />
     </footer>
     <UProgress class="intro-sequence__progress" :model-value="progress" :max="100" aria-hidden="true" />
   </section>

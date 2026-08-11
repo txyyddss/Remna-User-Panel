@@ -109,6 +109,7 @@ paths:
   /api/v1/webhooks/bepusdt/{capability}: { $ref: './paths/api-v1-webhooks-bepusdt-capability.yaml' }
   /api/v1/payments/return/{provider}: { $ref: './paths/api-v1-payments-return-provider.yaml' }
   /api/v1/payments/return/{provider}/{orderID}: { $ref: './paths/api-v1-payments-return-provider-orderid.yaml' }
+  /api/v1/payments/return/{provider}/{orderID}/status: { $ref: './paths/api-v1-payments-return-provider-orderid-status.yaml' }
   /healthz: { $ref: './paths/healthz.yaml' }
   /readyz: { $ref: './paths/readyz.yaml' }
 components:
@@ -261,6 +262,7 @@ components:
     AdminEntitlement: { $ref: './components/schemas/schemas-09.yaml#/AdminEntitlement' }
     PaymentPage: { $ref: './components/schemas/schemas-10.yaml#/PaymentPage' }
     AdminPaymentOrder: { $ref: './components/schemas/schemas-10.yaml#/AdminPaymentOrder' }
+    PaymentReturnStatus: { $ref: './components/schemas/schemas-10.yaml#/PaymentReturnStatus' }
     RefundRequest: { $ref: './components/schemas/schemas-10.yaml#/RefundRequest' }
     Refund: { $ref: './components/schemas/schemas-10.yaml#/Refund' }
     RefundPage: { $ref: './components/schemas/schemas-10.yaml#/RefundPage' }
