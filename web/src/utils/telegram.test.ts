@@ -78,6 +78,16 @@ describe('Telegram bootstrap', () => {
     expect(isTelegramWebAppDetected()).toBe(true)
   })
 
+  it('recognizes SDK-captured launch markers after the URL hash is cleared', async () => {
+    window.Telegram = {
+      WebView: { initParams: { tgWebAppData: 'query_id%3Dcaptured' } },
+      WebApp: { version: '9.0', platform: 'unknown', initData: '', initDataUnsafe: {}, colorScheme: 'dark', ready: vi.fn(), expand: vi.fn(), close: vi.fn(), openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn() },
+    }
+
+    expect(isTelegramWebAppDetected()).toBe(true)
+    await expect(getTelegramInitData(100)).resolves.toBe('query_id=captured')
+  })
+
   it('recognizes Telegram mobile and desktop user agents', () => {
     expect(isTelegramUserAgent('Mozilla/5.0 Telegram/11.0 Mobile')).toBe(true)
     expect(isTelegramUserAgent('Mozilla/5.0 Telegram-Android/11.0 Mobile')).toBe(true)

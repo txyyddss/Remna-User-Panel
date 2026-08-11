@@ -11,6 +11,10 @@ interface TelegramWebAppUser {
   language_code?: string
 }
 
+interface TelegramWebView {
+  initParams?: Record<string, string | undefined>
+}
+
 interface TelegramWebApp {
   version?: string
   platform?: string
@@ -52,7 +56,7 @@ interface TelegramInsets {
 }
 
 interface Window {
-  Telegram?: { WebApp: TelegramWebApp }
+  Telegram?: { WebApp?: TelegramWebApp; WebView?: TelegramWebView }
 }
 }
 

@@ -6,10 +6,12 @@ export function isTelegramUserAgent(userAgent: string): boolean {
 }
 
 function hasTelegramLaunchParameters(): boolean {
-  return [window.location.hash, window.location.search].some((source) => {
+  const locationHasParameters = [window.location.hash, window.location.search].some((source) => {
     const normalized = source.replace(/^#/, '').replace(/^\?/, '')
     return [...new URLSearchParams(normalized).keys()].some((key) => telegramLaunchParameter.test(key))
   })
+  if (locationHasParameters) return true
+  return Object.keys(window.Telegram?.WebView?.initParams ?? {}).some((key) => telegramLaunchParameter.test(key))
 }
 
 function hasKnownTelegramPlatform(platform: string | undefined): boolean {

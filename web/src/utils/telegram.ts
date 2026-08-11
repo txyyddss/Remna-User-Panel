@@ -66,6 +66,8 @@ function readTelegramDataFromLocation(source: string): string | undefined {
 function readTelegramInitData(app: TelegramWebApp | undefined): string | undefined {
   const direct = app?.initData?.trim()
   if (direct) return direct
+  const webViewData = window.Telegram?.WebView?.initParams?.tgWebAppData?.trim()
+  if (webViewData) return decodeTelegramData(webViewData)
   const sources = [window.location.hash, window.location.search]
   for (const source of sources) {
     const launchData = readTelegramDataFromLocation(source)
