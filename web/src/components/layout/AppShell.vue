@@ -35,6 +35,10 @@ function goBack(): void {
   }
 }
 
+function goTo(to: string): void {
+  void router.push(to).catch(() => undefined)
+}
+
 useTelegramBackButton(showBackButton, goBack)
 
 watch(() => route.fullPath, (_next, previous) => {
@@ -87,17 +91,21 @@ function isActive(to: string): boolean {
     </div>
 
     <nav class="bottom-nav" :aria-label="$t('nav.primary')">
-      <RouterLink
+      <UButton
         v-for="item in primaryItems"
         :key="item.to"
-        :to="item.to"
+        type="button"
+        color="neutral"
+        variant="ghost"
         class="bottom-nav__item"
         :class="{ 'bottom-nav__item--active': isActive(item.to) }"
+        :aria-current="isActive(item.to) ? 'page' : undefined"
         data-haptic
+        @click="goTo(item.to)"
       >
         <UIcon :name="item.icon" />
         <span>{{ $t(item.labelKey) }}</span>
-      </RouterLink>
+      </UButton>
       <div class="bottom-nav__locale">
         <LanguageControl />
         <span class="sr-only">{{ $t('app.language') }}</span>

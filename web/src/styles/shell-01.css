@@ -86,9 +86,13 @@
 .bottom-nav__item {
   flex-direction: column;
   gap: 0.2rem;
+  padding: 0;
+  border: 0;
   color: var(--text-faint);
+  background: transparent;
   font-size: 0.64rem;
   font-weight: 700;
+  cursor: pointer;
   transition: color 180ms var(--ease-out), background-color 180ms var(--ease-out);
 }
 

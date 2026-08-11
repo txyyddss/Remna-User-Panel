@@ -68,6 +68,14 @@ describe('AppShell accessibility', () => {
     expect(router.currentRoute.value.path).toBe('/catalog')
     expect(window.location.href).toBe(launchURL)
 
+    await router.push('/home')
+    await nextTick()
+    const bottomNavigationItems = wrapper.findAll('.bottom-nav__item')
+    expect(bottomNavigationItems).toHaveLength(3)
+    await bottomNavigationItems[1].trigger('click')
+    await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/catalog'))
+    expect(window.location.href).toBe(launchURL)
+
     wrapper.unmount()
     expect(offClick).toHaveBeenCalledOnce()
   })
