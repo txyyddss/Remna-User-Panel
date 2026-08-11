@@ -42,9 +42,10 @@ const ButtonStub = defineComponent({
     type: { type: String, default: 'button' },
     form: { type: String, default: '' },
     label: { type: String, default: '' },
+    disabled: { type: Boolean, default: false },
   },
   emits: ['click'],
-  template: '<div role="button" :data-action="type === \'submit\' ? \'submit\' : \'secondary\'" :data-form="form || undefined" @click="$emit(\'click\')">{{ label }}</div>',
+  template: '<div role="button" :data-action="type === \'submit\' ? \'submit\' : \'secondary\'" :data-form="form || undefined" :data-disabled="disabled || undefined" @click="$emit(\'click\')">{{ label }}</div>',
 })
 
 const InputStub = defineComponent({
@@ -66,14 +67,14 @@ function mountEditor(reviewState: DatabaseMutationReview | null = null) {
     props: { table, action: 'insert', review: reviewState, busy: false },
     global: {
       stubs: {
-        UDrawer: DrawerStub,
-        UButton: ButtonStub,
-        UInput: InputStub,
-        UTextarea: TextareaStub,
-        UFormField: { template: '<div><slot /></div>' },
-        UAlert: { template: '<div />' },
-        UCheckbox: { template: '<div />' },
-        UIcon: { template: '<span />' },
+        Drawer: DrawerStub,
+        Button: ButtonStub,
+        Input: InputStub,
+        Textarea: TextareaStub,
+        FormField: { template: '<div><slot /></div>' },
+        Alert: { template: '<div />' },
+        Checkbox: { template: '<div />' },
+        Icon: { template: '<span />' },
         SwitchField: { template: '<div />' },
       },
     },

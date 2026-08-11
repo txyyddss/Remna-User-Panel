@@ -28,7 +28,7 @@ function mountDialog(activityResult: ActivityResult) {
   return mount(ActivityResultDialog, {
     props: { result: activityResult },
     global: {
-      stubs: { UIcon: true, UButton: true, UModal: ModalStub },
+      stubs: { Icon: true, Button: true, Modal: ModalStub },
     },
   })
 }

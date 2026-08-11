@@ -56,6 +56,8 @@ declare module 'vue' {
     CouponGrantList: typeof import('./src/components/coupons/CouponGrantList.vue')['default']
     CouponWalletPanel: typeof import('./src/components/coupons/CouponWalletPanel.vue')['default']
     DailyCheckInCard: typeof import('./src/components/activity/DailyCheckInCard.vue')['default']
+    DatabaseMobileRowCard: typeof import('./src/components/admin/database/DatabaseMobileRowCard.vue')['default']
+    DatabaseQueryControls: typeof import('./src/components/admin/database/DatabaseQueryControls.vue')['default']
     DatabaseRecordEditor: typeof import('./src/components/admin/database/DatabaseRecordEditor.vue')['default']
     EmbyLibraryPicker: typeof import('./src/components/emby/EmbyLibraryPicker.vue')['default']
     EmbyPage: typeof import('./src/components/emby/EmbyPage.vue')['default']

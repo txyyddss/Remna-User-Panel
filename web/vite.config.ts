@@ -90,7 +90,9 @@ export default defineConfig({
       icon: {
         clientBundle: {
           icons: explicitlyBundledIcons,
-          scan: true,
+          scan: {
+            globInclude: ['**/*.{vue,ts}'],
+          },
           sizeLimitKb: 512,
         },
       },

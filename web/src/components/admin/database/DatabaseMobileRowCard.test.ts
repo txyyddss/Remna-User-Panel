@@ -22,7 +22,7 @@ describe('DatabaseMobileRowCard', () => {
     const wrapper = mount(DatabaseMobileRowCard, {
       props: { row },
       global: {
-        stubs: { UButton: ButtonStub },
+        stubs: { Button: ButtonStub },
       },
     })
 

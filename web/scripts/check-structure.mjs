@@ -125,6 +125,29 @@ function checkScriptCopy(path, source, lineOffset = 0) {
   visit(sourceFile)
 }
 
+const frontendIconPattern = /\bi-(?:ph|circle-flags)-[a-z0-9-]+\b/g
+const defaultIconScanExtensions = new Set(['.vue', '.jsx', '.tsx', '.md', '.mdc', '.mdx', '.yml', '.yaml'])
+function frontendSourceFiles() {
+  return files('web/src').filter((path) => ['.vue', '.ts'].includes(extname(path).toLowerCase()) && !path.endsWith('.test.ts') && !path.endsWith('generated.ts') && !/(^|\/)tests?\//.test(pathLabel(path)))
+}
+function iconNames(source) { return new Set([...source.matchAll(frontendIconPattern)].map((match) => match[0])) }
+function configuredIconScanExtensions(viteConfig) {
+  if (/\bscan:\s*true\b/.test(viteConfig)) return defaultIconScanExtensions
+  const include = viteConfig.match(/globInclude:\s*\[([^\]]*)\]/)?.[1]
+  return include ? new Set([...include.matchAll(/\b([a-z]+)\b/g)].map((match) => `.${match[1]}`)) : new Set()
+}
+function checkFrontendIconBundle() {
+  const viteConfigPath = resolve(workspace, 'web/vite.config.ts')
+  if (!existsSync(viteConfigPath)) return failures.push(`${pathLabel(viteConfigPath)} is missing; frontend icon registration cannot be verified`)
+  const viteConfig = readFileSync(viteConfigPath, 'utf8')
+  const explicitlyBundled = iconNames(viteConfig)
+  const scanExtensions = configuredIconScanExtensions(viteConfig)
+  for (const path of frontendSourceFiles()) {
+    const source = readFileSync(path, 'utf8')
+    const extension = extname(path).toLowerCase()
+    for (const icon of iconNames(source)) if (!scanExtensions.has(extension) && !explicitlyBundled.has(icon)) failures.push(`${pathLabel(path)} uses ${icon}, but web/vite.config.ts neither scans ${extension} files nor explicitly bundles it`)
+  }
+}
 function checkFrontendPolicy() {
   const forbidden = /@phosphor-icons\/vue|from\s+['"]reka-ui['"]|<(?:button|input|select|textarea|table)\b/i
   const visibleText = />\s*([^<>{}\n]*[A-Za-z\u3400-\u9fff][^<>{}\n]*)\s*</g
@@ -152,6 +175,7 @@ function checkFrontendPolicy() {
       }
     }
   }
+  checkFrontendIconBundle()
   const indexPath = resolve(workspace, 'web/index.html')
   const title = readFileSync(indexPath, 'utf8').match(/<title>([\s\S]*?)<\/title>/i)?.[1].trim()
   if (title) failures.push(`${pathLabel(indexPath)} contains a hardcoded document title: ${title}`)
