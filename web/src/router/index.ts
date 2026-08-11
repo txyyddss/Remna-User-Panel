@@ -1,10 +1,20 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createMemoryHistory, createRouter, createWebHistory } from 'vue-router'
 
 import { useSessionStore } from '@/stores/session'
+import { isTelegramWebAppDetected } from '@/utils/telegram'
 import { resolveProtectedRoute } from './guards'
 
+function createAppHistory() {
+  if (!isTelegramWebAppDetected()) return createWebHistory()
+
+  const history = createMemoryHistory()
+  const initialRoute = `${window.location.pathname}${window.location.search}`
+  if (initialRoute !== '/') history.replace(initialRoute)
+  return history
+}
+
 const router = createRouter({
-  history: createWebHistory(),
+  history: createAppHistory(),
   scrollBehavior: () => ({ top: 0 }),
   routes: [
     { path: '/', name: 'root', component: () => import('@/views/EntryView.vue') },
