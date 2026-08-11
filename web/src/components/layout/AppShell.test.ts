@@ -8,13 +8,15 @@ import type { Session } from '@/api/types'
 import { useSessionStore } from '@/stores/session'
 import AppShell from './AppShell.vue'
 
-const session: Session = {
-  authenticated: true,
-  user: {
-    id: 'user-1', telegramId: '42', firstName: 'Mira', lastName: 'Lin', telegramUsername: 'mira', username: 'mira',
-    role: 'user', onboardingState: 'complete', groupJoined: true, channelJoined: true,
-    policyAcceptedAt: '2026-08-08T00:00:00Z', agreementRevision: 1, recoveryReason: '', createdAt: '2026-08-08T00:00:00Z', updatedAt: '2026-08-08T00:00:00Z',
-  },
+function session(role: Session['user']['role'] = 'user'): Session {
+  return {
+    authenticated: true,
+    user: {
+      id: 'user-1', telegramId: '42', firstName: 'Mira', lastName: 'Lin', telegramUsername: 'mira', username: 'mira',
+      role, onboardingState: 'complete', groupJoined: true, channelJoined: true,
+      policyAcceptedAt: '2026-08-08T00:00:00Z', agreementRevision: 1, recoveryReason: '', createdAt: '2026-08-08T00:00:00Z', updatedAt: '2026-08-08T00:00:00Z',
+    },
+  }
 }
 
 describe('AppShell accessibility', () => {
@@ -36,7 +38,7 @@ describe('AppShell accessibility', () => {
       BackButton: { isVisible: false, show, hide, onClick, offClick },
     } }
     const pinia = createPinia()
-    useSessionStore(pinia).session = session
+    useSessionStore(pinia).session = session()
     const router = createRouter({
       history: createMemoryHistory(),
       routes: [
@@ -78,5 +80,32 @@ describe('AppShell accessibility', () => {
 
     wrapper.unmount()
     expect(offClick).toHaveBeenCalledOnce()
+  })
+
+  it('adds the admin entry to mobile navigation for administrators', async () => {
+    const pinia = createPinia()
+    useSessionStore(pinia).session = session('admin')
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/home', component: { template: '<div />' } },
+        { path: '/catalog', component: { template: '<div />' } },
+        { path: '/activity', component: { template: '<div />' } },
+        { path: '/admin/settings', component: { template: '<div />' } },
+      ],
+    })
+    await router.push('/home')
+    await router.isReady()
+    const wrapper = mount(AppShell, { global: { plugins: [pinia, router] }, slots: { default: '<h1>Content</h1>' } })
+
+    const bottomNavigationItems = wrapper.findAll('.bottom-nav__item')
+    expect(bottomNavigationItems).toHaveLength(4)
+    expect(bottomNavigationItems[3]?.text()).toContain('Admin')
+
+    await bottomNavigationItems[3]?.trigger('click')
+    await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/admin/settings'))
+    expect(wrapper.find('.bottom-nav').classes()).toContain('bottom-nav--admin')
+
+    wrapper.unmount()
   })
 })

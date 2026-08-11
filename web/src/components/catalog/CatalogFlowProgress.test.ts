@@ -27,4 +27,17 @@ describe('CatalogFlowProgress', () => {
     expect(indicatorIcon(3, 3, 'i-ph-network')).toBe('i-ph-network')
     expect(indicatorIcon(4, 3, 'i-ph-ticket')).toBe('i-ph-ticket')
   })
+
+  it('marks only completed step icons for the success color', () => {
+    const wrapper = mountProgress(3)
+
+    expect(wrapper.findAll('[data-slot="icon"]').map((icon) => icon.classes().includes('catalog-progress__icon--completed'))).toEqual([
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+    ])
+  })
 })

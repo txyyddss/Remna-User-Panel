@@ -147,14 +147,14 @@
 }
 
 .home-around__link {
-  min-height: 60px;
-  display: grid;
+  min-height: 60px; display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 0.7rem;
-  padding: 0.65rem;
+  padding: 0.65rem; border: 0;
   border-radius: var(--radius-control);
-  transition: background-color 180ms var(--ease-out), transform 180ms var(--ease-out);
+  color: inherit; background: transparent;
+  text-align: left; cursor: pointer; transition: background-color 180ms var(--ease-out), transform 180ms var(--ease-out);
 }
 
 .home-around__link:hover {

@@ -22,8 +22,10 @@ const primaryItems: NavItem[] = [
   { labelKey: 'nav.explore', to: '/catalog', icon: 'i-ph-compass' },
   { labelKey: 'nav.activity', to: '/activity', icon: 'i-ph-game-controller' },
 ]
+const adminItem: NavItem = { labelKey: 'nav.admin', to: '/admin/settings', icon: 'i-ph-shield-check' }
 
 const activePath = computed(() => route.path)
+const mobileItems = computed(() => sessionStore.isAdmin ? [...primaryItems, adminItem] : primaryItems)
 const showBackButton = computed(() => !['/', '/home'].includes(route.path))
 const mainContent = useTemplateRef<globalThis.HTMLElement>('mainContent')
 
@@ -51,6 +53,7 @@ watch(() => route.fullPath, (_next, previous) => {
 })
 
 function isActive(to: string): boolean {
+  if (to === adminItem.to) return activePath.value.startsWith('/admin')
   return activePath.value === to || (to === '/home' && activePath.value === '/')
 }
 </script>
@@ -72,13 +75,13 @@ function isActive(to: string): boolean {
         </RouterLink>
         <RouterLink
           v-if="sessionStore.isAdmin"
-          to="/admin/settings"
+          :to="adminItem.to"
           class="nav-item"
-          :class="{ 'nav-item--active': activePath.startsWith('/admin') }"
+          :class="{ 'nav-item--active': isActive(adminItem.to) }"
           data-haptic
         >
-          <UIcon name="i-ph-shield-check" />
-          <span>{{ $t('nav.admin') }}</span>
+          <UIcon :name="adminItem.icon" />
+          <span>{{ $t(adminItem.labelKey) }}</span>
         </RouterLink>
       </nav>
       <div class="side-rail__footer"><LanguageControl /></div>
@@ -90,9 +93,9 @@ function isActive(to: string): boolean {
       </main>
     </div>
 
-    <nav class="bottom-nav" :aria-label="$t('nav.primary')">
+    <nav class="bottom-nav" :class="{ 'bottom-nav--admin': sessionStore.isAdmin }" :aria-label="$t('nav.primary')">
       <UButton
-        v-for="item in primaryItems"
+        v-for="item in mobileItems"
         :key="item.to"
         type="button"
         color="neutral"
