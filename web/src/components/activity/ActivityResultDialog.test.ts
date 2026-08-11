@@ -5,7 +5,6 @@ import { describe, expect, it } from 'vitest'
 import type { ActivityResult } from '@/api/features'
 
 import ActivityResultDialog from './ActivityResultDialog.vue'
-import BetSuccessFireworks from './BetSuccessFireworks.vue'
 
 const ModalStub = defineComponent({
   props: { open: Boolean },
@@ -36,9 +35,9 @@ function mountDialog(activityResult: ActivityResult) {
 
 describe('ActivityResultDialog', () => {
   it('shows fireworks only for a winning bet', () => {
-    expect(mountDialog(result('bet', 'win')).findComponent(BetSuccessFireworks).exists()).toBe(true)
-    expect(mountDialog(result('bet', 'loss')).findComponent(BetSuccessFireworks).exists()).toBe(false)
-    expect(mountDialog(result('check_in', 'complete')).findComponent(BetSuccessFireworks).exists()).toBe(false)
-    expect(mountDialog(result('draw', 'complete')).findComponent(BetSuccessFireworks).exists()).toBe(false)
+    expect(mountDialog(result('bet', 'win')).find('.bet-fireworks').exists()).toBe(true)
+    expect(mountDialog(result('bet', 'loss')).find('.bet-fireworks').exists()).toBe(false)
+    expect(mountDialog(result('check_in', 'complete')).find('.bet-fireworks').exists()).toBe(false)
+    expect(mountDialog(result('draw', 'complete')).find('.bet-fireworks').exists()).toBe(false)
   })
 })

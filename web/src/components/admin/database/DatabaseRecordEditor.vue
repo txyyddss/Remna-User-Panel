@@ -22,6 +22,7 @@ const textDraft = reactive<Record<string, string>>({})
 const nullDraft = reactive<Record<string, boolean>>({})
 const reason = shallowRef('')
 const confirmation = shallowRef('')
+const formId = 'database-record-form'
 const { t } = useI18n()
 const canReview = computed(() => reason.value.trim().length >= 4)
 const canApply = computed(() => Boolean(props.review && confirmation.value === props.review.requiredConfirmation))
@@ -102,10 +103,13 @@ function displayValue(value: DatabaseValue | undefined): string {
 </script>
 
 <template>
-  <UDrawer :open="true" :title="title" :description="t('databaseRecord.copy')" @update:open="!$event && emit('cancel')">
+  <UDrawer class="database-record-editor-drawer" :open="true" :title="title" :description="t('databaseRecord.copy')" @update:open="!$event && emit('cancel')">
+    <template #close>
+      <UButton icon="i-ph-x" color="neutral" variant="ghost" :aria-label="t('databaseRecord.close')" />
+    </template>
     <template #body>
       <UAlert color="warning" variant="soft" icon="i-ph-warning" :description="review?.warning || table.warning || t('databaseRecord.warning')" />
-      <form class="database-form" @submit.prevent="submit">
+      <form :id="formId" class="database-form" @submit.prevent="submit">
         <div v-if="action === 'delete'" class="database-delete-summary">
           <strong>{{ t('databaseRecord.recordKey') }}</strong><code>{{ JSON.stringify(row?.key ?? {}) }}</code><p>{{ t('databaseRecord.deleteHint') }}</p>
         </div>
@@ -130,18 +134,21 @@ function displayValue(value: DatabaseValue | undefined): string {
         <UFormField v-if="review" name="confirmation" :label="t('databaseRecord.typeConfirmation', { confirmation: review.requiredConfirmation })" required>
           <UInput v-model="confirmation" autocomplete="off" />
         </UFormField>
-        <div class="button-row">
-          <UButton v-if="review" color="neutral" variant="outline" :disabled="busy" :label="t('databaseRecord.changeDraft')" @click="emit('invalidate')" />
-          <UButton type="submit" icon="i-ph-floppy-disk" :loading="busy" :disabled="busy || (review ? !canApply : !canReview)" :label="busy ? t('databaseRecord.working') : review ? t('databaseRecord.apply') : t('databaseRecord.reviewChange')" />
-        </div>
       </form>
+    </template>
+    <template #footer>
+      <div class="database-form-actions button-row">
+        <UButton v-if="review" type="button" color="neutral" variant="outline" :disabled="busy" :label="t('databaseRecord.changeDraft')" @click="emit('invalidate')" />
+        <UButton type="submit" :form="formId" icon="i-ph-floppy-disk" :loading="busy" :disabled="busy || (review ? !canApply : !canReview)" :label="busy ? t('databaseRecord.working') : review ? t('databaseRecord.apply') : t('databaseRecord.reviewChange')" />
+      </div>
     </template>
   </UDrawer>
 </template>
 
 <style scoped>
-.database-form { display: grid; gap: 0.8rem; }
-.database-field-wrap { display: grid; gap: 0.4rem; padding-bottom: 0.7rem; border-bottom: 1px solid var(--line); }
+.database-form { display: grid; min-width: 0; gap: 0.8rem; }
+.database-form :deep(input), .database-form :deep(textarea) { font-size: 1rem; }
+.database-field-wrap { display: grid; min-width: 0; gap: 0.4rem; padding-bottom: 0.7rem; border-bottom: 1px solid var(--line); }
 .database-delete-summary { display: grid; gap: 0.45rem; padding: 0.8rem; border: 1px solid var(--danger); border-radius: var(--radius-control); background: var(--danger-soft); }
 .database-delete-summary strong { color: var(--danger); font-size: 0.78rem; }
 .database-delete-summary code { overflow-wrap: anywhere; font-family: var(--font-mono); font-size: 0.68rem; }
@@ -152,6 +159,18 @@ function displayValue(value: DatabaseValue | undefined): string {
 .database-diff dl { display: grid; gap: 0.55rem; margin: 0.8rem 0; }
 .database-diff dt { color: var(--text-muted); font-size: 0.7rem; font-weight: 800; }
 .database-diff dd { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 0.45rem; margin: 0; }
-.database-diff dd span { overflow: hidden; padding: 0.45rem; border-radius: 8px; background: var(--surface); font-family: var(--font-mono); font-size: 0.65rem; text-overflow: ellipsis; white-space: nowrap; }
+.database-diff dd span { min-width: 0; overflow: hidden; padding: 0.45rem; border-radius: 8px; background: var(--surface); font-family: var(--font-mono); font-size: 0.65rem; text-overflow: ellipsis; white-space: nowrap; }
 .database-diff dd strong, .database-diff p { color: var(--text-faint); font-size: 0.62rem; }
+.database-form-actions { justify-content: flex-end; }
+
+@media (max-width: 899px) {
+  .database-diff dd { grid-template-columns: 1fr; }
+  .database-diff dd span { overflow-wrap: anywhere; white-space: normal; }
+  .database-diff dd strong { justify-self: start; }
+}
+
+@media (max-width: 639px) {
+  .database-form-actions { flex-direction: column; }
+  .database-form-actions :deep(button) { width: 100%; }
+}
 </style>

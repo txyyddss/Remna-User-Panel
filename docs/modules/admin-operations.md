@@ -50,7 +50,7 @@ Every insert/update/delete is a two-step command:
 1. `POST /database/mutations/review` loads the current row, validates types/nullability, checks its optimistic `recordHash`, and returns a redacted before/after diff, exact `reviewHash`, warning, and required `EDIT <table>` confirmation.
 2. `POST /database/mutations` must reproduce the exact reviewed mutation, reason, record hash, review hash, and confirmation before the review expires. The server creates a verified rescue backup, rechecks the row/hash, performs one transaction, consumes the review, and appends a structured redacted audit.
 
-Review tokens are single-use. Concurrent changes produce a conflict and leave the review unconsumed so the administrator can refresh and review again. All tables are marked high risk because direct edits bypass domain synchronization hooks; the UI keeps that warning visible and uses a mobile drawer for record/diff work.
+Review tokens are single-use. Concurrent changes produce a conflict and leave the review unconsumed so the administrator can refresh and review again. All tables are marked high risk because direct edits bypass domain synchronization hooks; the UI keeps that warning visible, uses key-only touch cards below the desktop breakpoint, preserves the full table on wider screens, and uses a safe-area-aware mobile drawer with a scrollable body and sticky review actions for record/diff work.
 
 ## Backup download and staged restore
 

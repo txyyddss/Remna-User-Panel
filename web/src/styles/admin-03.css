@@ -40,3 +40,37 @@
 .timeline-row strong {
   font-size: 0.8rem;
 }
+
+.database-record-editor-drawer {
+  max-height: calc(100dvh - 3.5rem);
+}
+
+.database-record-editor-drawer [data-slot="container"] {
+  min-height: 0;
+  max-height: inherit;
+  overflow: hidden;
+  gap: 0;
+  padding: 0;
+}
+
+.database-record-editor-drawer [data-slot="header"] {
+  flex: 0 0 auto;
+  padding: 0.9rem 1rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.database-record-editor-drawer [data-slot="body"] {
+  min-height: 0;
+  display: grid;
+  gap: 0.8rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.9rem 1rem 1rem;
+}
+
+.database-record-editor-drawer [data-slot="footer"] {
+  flex: 0 0 auto;
+  padding: 0.75rem 1rem max(0.75rem, var(--tg-content-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  border-top: 1px solid var(--line);
+  background: var(--surface-raised);
+}
