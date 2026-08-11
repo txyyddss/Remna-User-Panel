@@ -1,9 +1,7 @@
 {
   "activity": {
     "stakeRange": "{minimum} 至 {maximum} TXB",
-    "eyebrow": "社区活动",
     "title": "透明地参与活动。",
-    "copy": "每次确认前都会显示费用、概率和回报。",
     "balance": "余额 {amount}",
     "unavailable": "活动暂时不可用。",
     "resultRecorded": "结果已记录",

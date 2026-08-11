@@ -66,7 +66,7 @@ function goToOnboarding(): void {
     </header>
     <nav class="admin-section-picker" :aria-label="t('adminNav.sections')">
       <UFormField :label="t('adminNav.section')">
-        <USelect v-model="selected" :items="sectionItems" value-key="value" />
+        <USelect v-model="selected" class="admin-section-picker__select" :items="sectionItems" value-key="value" />
       </UFormField>
     </nav>
     <div class="admin-shell__content"><slot /></div>
@@ -75,4 +75,5 @@ function goToOnboarding(): void {
 
 <style scoped>
 .admin-section-picker { max-width: 420px; margin: 0 0 0.9rem; padding: 0.75rem; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface-raised); }
+.admin-section-picker__select { width: 100%; }
 </style>

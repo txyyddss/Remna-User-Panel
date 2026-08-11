@@ -43,9 +43,7 @@
   "emby": {
     "disabledLibraries": "Disabled libraries",
     "disabledLibrariesHint": "All libraries are enabled by default. Check only the libraries this account must not access.",
-    "eyebrow": "Shared media",
     "title": "Your Emby access.",
-    "copy": "Choose libraries and age rating while account safety controls remain locked.",
     "notConfigured": "Emby is not configured",
     "notConfiguredHint": "An administrator must connect Emby before setup can start.",
     "unavailable": "Emby is unavailable.",

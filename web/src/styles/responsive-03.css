@@ -1,3 +1,152 @@
+@media (max-width: 639px) {
+  .page--admin {
+    padding-right: 0.75rem;
+    padding-left: 0.75rem;
+  }
+
+  .admin-shell__header {
+    margin-bottom: 1rem;
+  }
+
+  .admin-section-picker {
+    max-width: none;
+    margin-bottom: 0.75rem;
+  }
+
+  .admin-panel__heading {
+    gap: 0.75rem;
+    padding: 0.9rem;
+  }
+
+  .admin-panel__heading > :last-child {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-panel__heading h2 {
+    font-size: 1.1rem;
+  }
+
+  .admin-search {
+    width: 100%;
+  }
+
+  .admin-search > * {
+    width: 100%;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .admin-list,
+  .timeline-list {
+    padding-right: 0.9rem;
+    padding-left: 0.9rem;
+  }
+
+  .admin-list-row--user,
+  .admin-list-row--payment,
+  .admin-list-row--entitlement,
+  .admin-list-row--refund {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 0.45rem 0.7rem;
+    padding: 0.85rem 0;
+  }
+
+  .admin-list-row--user > strong,
+  .admin-list-row--payment > strong,
+  .admin-list-row--entitlement > strong,
+  .admin-list-row--refund > strong,
+  .admin-list-row--user > .status-badge,
+  .admin-list-row--payment > .status-badge,
+  .admin-list-row--entitlement > .status-badge,
+  .admin-list-row--refund > .status-badge,
+  .admin-list-row--user > .row-actions,
+  .admin-list-row--payment > .row-actions,
+  .admin-list-row--entitlement > .row-actions,
+  .admin-list-row--refund > .row-actions,
+  .admin-list-row--user > .button,
+  .admin-list-row--payment > .button,
+  .admin-list-row--entitlement > .button,
+  .admin-list-row--refund > .button {
+    grid-column: 2;
+    min-width: 0;
+  }
+
+  .admin-list-row--user > strong,
+  .admin-list-row--payment > strong,
+  .admin-list-row--entitlement > strong,
+  .admin-list-row--refund > strong {
+    margin-top: 0.1rem;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-list-row--user > .status-badge,
+  .admin-list-row--payment > .status-badge,
+  .admin-list-row--entitlement > .status-badge,
+  .admin-list-row--refund > .status-badge {
+    justify-self: start;
+  }
+
+  .admin-list-row--user > .button,
+  .admin-list-row--payment > .button,
+  .admin-list-row--entitlement > .button,
+  .admin-list-row--refund > .button {
+    width: 100%;
+  }
+
+  .admin-list-row > div {
+    min-width: 0;
+  }
+
+  .admin-list-row small {
+    overflow: visible;
+    white-space: normal;
+    text-overflow: clip;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-list-row strong {
+    overflow-wrap: anywhere;
+  }
+
+  .admin-list-row .row-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .admin-list-row .row-actions > .button {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
+  .timeline-row {
+    align-items: start;
+    gap: 0.65rem;
+    padding: 0.85rem 0;
+  }
+
+  .timeline-row > div {
+    min-width: 0;
+  }
+
+  .timeline-row p {
+    margin: 0.35rem 0;
+    font-size: 0.74rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+
+  .timeline-row small {
+    color: var(--text-faint);
+    font-size: 0.65rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+}
 @media (min-width: 1180px) {
   .app-frame {
     grid-template-columns: 250px minmax(0, 1fr);
@@ -25,7 +174,6 @@
     grid-column: span 2;
   }
 }
-
 @keyframes dialog-in {
   from { opacity: 0; transform: translate(-50%, calc(-50% + 14px)) scale(0.985); }
   to { opacity: 1; transform: translate(-50%, -50%) scale(1); }

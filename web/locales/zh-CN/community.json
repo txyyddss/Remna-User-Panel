@@ -29,9 +29,7 @@
     "emptyHint": "兑换或获赠的优惠券会显示在这里。"
   },
   "questionnaire": {
-    "eyebrow": "成员调研",
     "title": "问卷",
-    "copy": "分享反馈并保管好你的验证代码。",
     "none": "暂无进行中的问卷",
     "noneHint": "下一份问卷会显示在这里。",
     "reward": "奖励 {amount} TXB",

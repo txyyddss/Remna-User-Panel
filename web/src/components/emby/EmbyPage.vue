@@ -10,7 +10,7 @@ const { overview, loading, busy, error, message, load, setup, updatePreferences,
 
 <template>
   <div class="page page--emby">
-    <header class="page-header"><p class="eyebrow">{{ $t('emby.eyebrow') }}</p><h1>{{ $t('emby.title') }}</h1><p>{{ $t('emby.copy') }}</p></header>
+    <header class="page-header"><h1>{{ $t('emby.title') }}</h1></header>
     <SkeletonBlock v-if="loading" height="28rem" />
     <template v-else-if="overview">
       <InlineNotice v-if="message" tone="success">{{ message }}</InlineNotice>

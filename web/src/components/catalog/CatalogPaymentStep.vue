@@ -2,7 +2,7 @@
 import type { DeepReadonly } from 'vue'
 import { useRouter } from 'vue-router'
 
-import type { Combo, Money, Purchase, PurchaseQuote } from '@/api/types'
+import type { Combo, Purchase, PurchaseQuote } from '@/api/types'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import { formatMoney } from '@/utils/format'
 
@@ -10,7 +10,6 @@ const router = useRouter()
 
 defineProps<{
   combo?: Combo
-  balance: Money
   quote: DeepReadonly<PurchaseQuote> | null
   purchase: DeepReadonly<Purchase> | null
   purchasing: boolean
@@ -43,7 +42,6 @@ function goToBalance(): void {
       <div class="catalog-payment-total">
         <span>{{ $t('catalog.serverTotal') }}</span>
         <strong>{{ quote ? formatMoney(quote.netPrice) : $t('common.notAvailable') }}</strong>
-        <small>{{ $t('catalog.paymentBalance', { amount: formatMoney(balance) }) }}</small>
       </div>
       <UAlert v-if="error" color="warning" variant="soft" icon="i-ph-warning-circle" :description="error" />
       <UButton v-if="needsBalance" block trailing-icon="i-ph-plus" :label="$t('catalog.addBalance')" data-haptic @click="goToBalance" />

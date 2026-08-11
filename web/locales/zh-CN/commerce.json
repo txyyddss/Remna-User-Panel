@@ -1,12 +1,10 @@
 {
   "billing": {
-    "availableBalance": "可用余额",
     "addBalance": "充值"
   },
   "catalog": {
     "browsePlans": "浏览套餐",
     "viewCombos": "查看套餐",
-    "eyebrow": "套餐与地区",
     "title": "选择你的套餐",
     "purchaseConfirmed": "购买已确认",
     "purchaseScheduled": "{name} 已排期。Remnawave 激活可能需要片刻。",
@@ -62,7 +60,6 @@
     "noCouponHint": "不使用优惠券，按服务器报价结算。",
     "noEligibleCoupons": "当前选择没有可用的钱包优惠券。",
     "couponIneligible": "当前选择不适用",
-    "paymentBalance": "可用余额：{amount}",
     "paymentHint": "使用 TXB 余额确认服务器报价。",
     "returnHome": "返回首页"
   },

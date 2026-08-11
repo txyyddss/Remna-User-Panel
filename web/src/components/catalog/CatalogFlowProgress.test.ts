@@ -30,8 +30,9 @@ describe('CatalogFlowProgress', () => {
 
   it('marks only completed step icons for the success color', () => {
     const wrapper = mountProgress(3)
+    const icons = wrapper.findAll('[data-slot="icon"]')
 
-    expect(wrapper.findAll('[data-slot="icon"]').map((icon) => icon.classes().includes('catalog-progress__icon--completed'))).toEqual([
+    expect(icons.map((icon) => icon.classes().includes('catalog-progress__icon--completed'))).toEqual([
       true,
       true,
       false,
@@ -39,5 +40,6 @@ describe('CatalogFlowProgress', () => {
       false,
       false,
     ])
+    expect(icons.slice(0, 2).every((icon) => icon.attributes('style')?.includes('color: var(--success)'))).toBe(true)
   })
 })

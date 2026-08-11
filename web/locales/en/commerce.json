@@ -1,12 +1,10 @@
 {
   "billing": {
-    "availableBalance": "Available balance",
     "addBalance": "Add balance"
   },
   "catalog": {
     "browsePlans": "Browse plans",
     "viewCombos": "View combos",
-    "eyebrow": "Plans and regions",
     "title": "Choose your combo.",
     "purchaseConfirmed": "Purchase confirmed",
     "purchaseScheduled": "{name} was scheduled. Remnawave activation may take a moment.",
@@ -62,7 +60,6 @@
     "noCouponHint": "Use the server price without a coupon.",
     "noEligibleCoupons": "No eligible wallet coupons for this selection.",
     "couponIneligible": "Not eligible for this selection",
-    "paymentBalance": "Available balance: {amount}",
     "paymentHint": "Confirm the server-priced selection with your TXB balance.",
     "returnHome": "Return home"
   },

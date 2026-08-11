@@ -15,9 +15,7 @@ const { overview, result, loading, busy, error, load, checkIn, placeBet, draw, c
 <template>
   <div class="page page--activity">
     <header class="page-header">
-      <p class="eyebrow">{{ $t('activity.eyebrow') }}</p>
       <h1>{{ $t('activity.title') }}</h1>
-      <p>{{ $t('activity.copy') }}</p>
     </header>
     <template v-if="loading">
       <SkeletonBlock height="9rem" />

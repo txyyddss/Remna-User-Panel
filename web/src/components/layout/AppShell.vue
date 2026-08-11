@@ -5,7 +5,6 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
 import { useSessionStore } from '@/stores/session'
 import { focusWithoutScrolling } from '@/utils/dom'
-import LanguageControl from './LanguageControl.vue'
 
 interface NavItem {
   labelKey: string
@@ -84,7 +83,6 @@ function isActive(to: string): boolean {
           <span>{{ $t(adminItem.labelKey) }}</span>
         </RouterLink>
       </nav>
-      <div class="side-rail__footer"><LanguageControl /></div>
     </aside>
 
     <div class="app-frame__content">
@@ -109,10 +107,6 @@ function isActive(to: string): boolean {
         <UIcon :name="item.icon" />
         <span>{{ $t(item.labelKey) }}</span>
       </UButton>
-      <div class="bottom-nav__locale">
-        <LanguageControl />
-        <span class="sr-only">{{ $t('app.language') }}</span>
-      </div>
     </nav>
   </div>
 </template>

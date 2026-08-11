@@ -10,9 +10,7 @@ const { questionnaire, participation, loading, joining, error, load, openQuestio
 <template>
   <div class="page page--questionnaire">
     <header class="page-header">
-      <p class="eyebrow">{{ $t('questionnaire.eyebrow') }}</p>
       <h1>{{ $t('questionnaire.title') }}</h1>
-      <p>{{ $t('questionnaire.copy') }}</p>
     </header>
     <SkeletonBlock v-if="loading" height="24rem" />
     <template v-else-if="questionnaire">

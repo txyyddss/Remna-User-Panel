@@ -11,7 +11,6 @@ defineEmits<{ submit: []; toggle: [id: string] }>()
     <header class="onboarding-panel__header">
       <span class="feature-icon feature-icon--warning"><UIcon name="i-ph-shield-warning-fill" /></span>
       <h1>{{ agreements[0]?.pageTitle || $t('onboarding.agreementTitle') }}</h1>
-      <p>{{ $t('onboarding.agreementCopy') }}</p>
     </header>
 
     <div class="agreement-list">

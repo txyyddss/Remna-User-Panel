@@ -43,9 +43,7 @@
   "emby": {
     "disabledLibraries": "禁用的媒体库",
     "disabledLibrariesHint": "默认启用全部媒体库。仅勾选此账户不得访问的媒体库。",
-    "eyebrow": "共享媒体",
     "title": "你的 Emby 访问",
-    "copy": "选择媒体库和年龄分级，账户安全控制始终保持锁定。",
     "notConfigured": "尚未配置 Emby",
     "notConfiguredHint": "管理员连接 Emby 后才能开始设置。",
     "unavailable": "Emby 暂时不可用。",

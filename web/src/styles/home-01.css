@@ -8,6 +8,19 @@
   margin-top: 0.9rem;
 }
 
+.home-footer {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.home-footer .language-control {
+  min-height: 40px;
+  color: var(--text-faint);
+}
+
 .home-balance {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

@@ -66,7 +66,6 @@ watch(() => props.reissueOrderId, (orderId) => {
 <template>
   <section class="home-balance">
     <div class="home-balance__copy">
-      <p>{{ $t('billing.availableBalance') }}</p>
       <strong>{{ formatMoney(balance) }}</strong>
     </div>
     <div class="home-balance__action">

@@ -4,6 +4,14 @@ import { shallowRef } from 'vue'
 import { useI18n } from '@/i18n'
 import type { Locale } from '@/i18n/generated'
 
+interface Props {
+  showLabel?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  showLabel: false,
+})
+
 const open = shallowRef(false)
 const { locale, locales, setLocale, t } = useI18n()
 
@@ -27,6 +35,7 @@ function selectLocale(value: Locale): void {
       color="neutral"
       variant="ghost"
       icon="i-ph-translate"
+      :label="props.showLabel ? $t('app.language') : undefined"
       :aria-label="$t('app.language')"
     />
     <template #content>

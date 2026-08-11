@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
+import LanguageControl from '@/components/layout/LanguageControl.vue'
 import { useDashboard } from '@/composables/useDashboard'
 import BalanceHero from './BalanceHero.vue'
 import ComingSoonLinks from './ComingSoonLinks.vue'
@@ -87,5 +88,8 @@ function consumeReissueRequest(): void {
       <p>{{ error ?? $t('dashboard.loadFailed') }}</p>
       <UButton :label="$t('common.tryAgain')" data-haptic @click="load()" />
     </div>
+    <footer class="home-footer">
+      <LanguageControl show-label />
+    </footer>
   </div>
 </template>

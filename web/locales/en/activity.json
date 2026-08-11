@@ -1,9 +1,7 @@
 {
   "activity": {
     "stakeRange": "{minimum} to {maximum} TXB",
-    "eyebrow": "Community activity",
     "title": "Play with clear odds.",
-    "copy": "Every fee, chance, and return is shown before you confirm.",
     "balance": "Balance {amount}",
     "unavailable": "Activity is unavailable.",
     "resultRecorded": "Result recorded",

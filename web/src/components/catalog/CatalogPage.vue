@@ -71,7 +71,6 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
 <template>
   <div class="page page--catalog">
     <header class="page-header">
-      <p class="eyebrow">{{ $t('catalog.eyebrow') }}</p>
       <h1>{{ $t('catalog.title') }}</h1>
     </header>
 
@@ -96,8 +95,8 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
           <SquadSelector v-else-if="activeStep === 2" :squads="visibleSquads" :selected-ids="selectedSquadIds" :included-ids="includedSquadIds" @toggle="toggleSquad" />
           <CatalogNodes v-else-if="activeStep === 3" :quote="quote" :loading="quoting" />
           <CatalogCouponStep v-else-if="activeStep === 4" v-model:coupon-grant-id="selectedCouponGrantId" :coupons="couponGrants" :eligible-ids="eligibleCoupons.map((grant) => grant.id)" :discarding="couponDiscarding" :discard-coupon="discardCoupon" @redeemed="handleCouponRedeemed" />
-          <CatalogCheckout v-else-if="activeStep === 5" :combo="selectedCombo" :squads="selectedSquads" :coupon="selectedCoupon" :balance="balance" :quote="quote" :quoting="quoting" :error="error" />
-          <CatalogPaymentStep v-else :combo="selectedCombo" :balance="balance" :quote="quote" :purchase="purchase" :purchasing="purchasing" :needs-balance="needsBalance" :error="error" @confirm="confirmPurchase" />
+          <CatalogCheckout v-else-if="activeStep === 5" :combo="selectedCombo" :squads="selectedSquads" :coupon="selectedCoupon" :quote="quote" :quoting="quoting" :error="error" />
+          <CatalogPaymentStep v-else :combo="selectedCombo" :quote="quote" :purchase="purchase" :purchasing="purchasing" :needs-balance="needsBalance" :error="error" @confirm="confirmPurchase" />
         </section>
       </Transition>
       <CatalogFlowControls v-if="activeStep < 6" :show-back="activeStep > 1" :next-disabled="nextDisabled" :loading="quoting" :next-label="nextLabel" @back="goBack" @next="advance" />

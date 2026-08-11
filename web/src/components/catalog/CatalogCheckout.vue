@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DeepReadonly } from 'vue'
 
-import type { Combo, Money, PurchaseQuote, SquadProduct } from '@/api/types'
+import type { Combo, PurchaseQuote, SquadProduct } from '@/api/types'
 import type { CouponGrant } from '@/api/features'
 import { formatMoney } from '@/utils/format'
 
@@ -9,7 +9,6 @@ defineProps<{
   combo?: Combo
   squads: readonly SquadProduct[]
   coupon: CouponGrant | null
-  balance: Money
   quote: DeepReadonly<PurchaseQuote> | null
   quoting: boolean
   error?: string | null
@@ -34,10 +33,6 @@ defineProps<{
       <div class="catalog-checkout__line">
         <span>{{ $t('catalog.coupon') }}</span>
         <strong>{{ coupon?.coupon.name ?? $t('catalog.noCoupon') }}</strong>
-      </div>
-      <div class="catalog-checkout__line">
-        <span>{{ $t('catalog.paymentBalance') }}</span>
-        <strong>{{ formatMoney(balance) }}</strong>
       </div>
       <div class="catalog-checkout__total">
         <span>{{ $t('catalog.serverTotal') }}</span>

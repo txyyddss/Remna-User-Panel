@@ -29,9 +29,7 @@
     "emptyHint": "Redeemed and awarded coupons appear here."
   },
   "questionnaire": {
-    "eyebrow": "Member research",
     "title": "Questionnaire",
-    "copy": "Share feedback and keep your private validation code.",
     "none": "No active questionnaire",
     "noneHint": "The next questionnaire will appear here.",
     "reward": "Reward {amount} TXB",

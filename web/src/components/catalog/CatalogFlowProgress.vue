@@ -27,6 +27,7 @@ const items = computed(() => [
         <UIcon
           :name="indicatorIcon(item.value, step, item.icon)"
           :class="{ 'catalog-progress__icon--completed': item.value < step }"
+          :style="{ color: item.value < step ? 'var(--success)' : undefined }"
           data-slot="icon"
         />
       </template>
