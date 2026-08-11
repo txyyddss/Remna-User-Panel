@@ -122,6 +122,7 @@ func TestPaymentTerminalTransitionsMinimizeProviderData(t *testing.T) {
 	}
 
 	for index, test := range tests {
+		index, test := index, test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 

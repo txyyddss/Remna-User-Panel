@@ -23,6 +23,7 @@ func TestActivityBetAtomicOutcomeAndReplay(t *testing.T) {
 		{name: "loss keeps stake debited", roll: 9_999, wantWon: false, wantPayout: 0, wantBalance: "900", wantLedger: 1},
 	}
 	for index, test := range tests {
+		index, test := index, test
 		t.Run(test.name, func(t *testing.T) {
 			ctx := context.Background()
 			store := newTestStore(t)

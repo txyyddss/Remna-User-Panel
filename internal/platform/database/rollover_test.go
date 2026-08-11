@@ -22,6 +22,7 @@ func TestFinalizeRolloverFormulaThresholdCapAndIdempotency(t *testing.T) {
 		{name: "zero limit is zero", limit: 0, used: 0, threshold: 0, maximum: 1000, wantCredit: 0},
 	}
 	for index, test := range tests {
+		index, test := index, test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
