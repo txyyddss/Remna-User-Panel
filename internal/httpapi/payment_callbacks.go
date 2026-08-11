@@ -145,7 +145,7 @@ func (s *Server) validPaymentReturnCapability(provider, orderID, capability stri
 		return false
 	}
 	expiresAt, err := strconv.ParseInt(expiresText, 10, 64)
-	if err != nil || expiresAt < now.Unix() {
+	if err != nil || expiresAt <= now.Unix() {
 		return false
 	}
 	payload := provider + "\x00" + orderID + "\x00" + expiresText
