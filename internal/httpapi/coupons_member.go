@@ -114,3 +114,15 @@ func (s *Server) couponRedeem(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, response)
 }
+
+func (s *Server) couponDiscard(w http.ResponseWriter, r *http.Request) {
+	user := currentUser(r)
+	if !s.requireOnboarded(w, r, user) {
+		return
+	}
+	if err := s.deps.Coupons.Discard(r.Context(), user.ID, chiURLParam(r, "id")); err != nil {
+		s.communityFailure(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}

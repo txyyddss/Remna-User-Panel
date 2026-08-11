@@ -3,20 +3,23 @@
 - `useActivity.ts` loads games, draws, and check-in actions.
 - `useAdminDatabase.ts` coordinates protected database review and mutation flows.
 - `useAdminSection.ts` provides reusable administrator list operations.
-- `useBalance.ts` loads balance and ledger state.
 - `useCatalog.ts` prepares catalog selection and purchase quotes.
 - `useCatalog.test.ts` covers catalog selection behavior.
+- `useCouponRedemption.ts` redeems a coupon code for the guided purchase flow.
+- `useCouponRedemption.test.ts` covers guided redemption normalization and idempotency reuse.
 - `useClipboard.ts` provides safe clipboard feedback.
-- `useCoupons.ts` manages coupon wallet and redemption state.
-- `useDashboard.ts` loads dashboard summaries.
+- `useCoupons.ts` manages coupon-wallet redemption and server-confirmed grant discards.
+- `useCoupons.test.ts` covers confirmed and failed coupon-wallet discards.
+- `useDashboard.ts` loads dashboard summaries and provides bounded per-node UTC traffic state to its Home descendants.
 - `useEmby.ts` manages Emby setup and preferences.
 - `useIntroSequence.ts` drives the onboarding intro sequence.
 - `useIntroSequence.test.ts` covers intro timing and completion.
 - `useOnboarding.ts` coordinates onboarding steps and persistence.
-- `usePaymentOrder.ts` manages payment-order polling and cancellation.
+- `usePaymentOrder.ts` manages payment-order polling, cancellation, and validated failed/expired replacement orders.
 - `usePaymentOrder.test.ts` covers payment-order state transitions.
+- `usePaymentReturn.ts` polls a provider-returned payment order until it is confirmed or terminal.
+- `usePaymentReturn.test.ts` covers durable payment-return confirmation and pending polling.
 - `useQuestionnaireImport.ts` previews and settles questionnaire imports.
 - `useQuestionnaireImport.test.ts` covers import analysis and settlement.
 - `useQuestionnaires.ts` manages member questionnaire participation.
 - `useTelegramBackButton.ts` synchronizes Telegram back navigation.
-

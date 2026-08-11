@@ -95,6 +95,7 @@ export default defineConfig({
     },
   },
   build: {
+    target: 'es2020',
     outDir: '../internal/webui/dist',
     emptyOutDir: true,
     sourcemap: false,

@@ -1,0 +1,31 @@
+get:
+  tags: [Dashboard]
+  operationId: getDashboardNodeUsage
+  summary: Get per-node traffic usage for a UTC date range
+  description: Returns the upstream top 20 nodes and their daily traffic totals for an inclusive range of at most 31 UTC dates.
+  parameters:
+    - name: start
+      in: query
+      required: true
+      description: Inclusive UTC start date.
+      schema: { type: string, format: date }
+    - name: end
+      in: query
+      required: true
+      description: Inclusive UTC end date.
+      schema: { type: string, format: date }
+  responses:
+    '200':
+      description: Date-bounded node usage projection.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/DashboardNodeUsage'
+    '400':
+      $ref: '../openapi.yaml#/components/responses/BadRequest'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '409':
+      $ref: '../openapi.yaml#/components/responses/Conflict'
+    '502':
+      $ref: '../openapi.yaml#/components/responses/UpstreamFailure'

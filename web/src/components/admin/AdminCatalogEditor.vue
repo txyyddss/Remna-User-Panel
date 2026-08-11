@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 
 import type { Combo, Money, ResetCadence, SquadProduct } from '@/api/types'
 import MarkdownEditorField from '@/components/common/MarkdownEditorField.vue'
 import SwitchField from '@/components/common/SwitchField.vue'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
 import { useI18n } from '@/i18n'
-import { moneyFromTxbInput, txbInputFromMinor } from '@/utils/format'
+import { moneyFromTxbInput, trafficBytesFromInput, txbInputFromMinor } from '@/utils/format'
 
 type RolloverCombo = Combo & { rolloverMinRemainingBps?: number; rolloverMaxTxbMinor?: string; rolloverMax?: Money }
 
@@ -20,6 +20,7 @@ const draft = reactive({
   resetStrategy: 'MONTH' as ResetCadence, squadProductIds: [] as string[],
   rolloverMinRemainingPercent: 0, rolloverMaxTxb: '0.00', active: true,
 })
+const trafficInvalid = ref(false)
 
 watch(() => props.combo, (combo) => {
   const rollover = combo as RolloverCombo | undefined
@@ -44,14 +45,23 @@ watch(() => props.combo, (combo) => {
 function submit(): void {
   const priceTxbMinor = moneyFromTxbInput(draft.priceTxb)
   const rolloverMaxTxbMinor = moneyFromTxbInput(draft.rolloverMaxTxb)
-  if (!priceTxbMinor || rolloverMaxTxbMinor === '') return
+  const trafficLimitBytes = trafficBytesFromInput(draft.trafficLimitBytes)
+  trafficInvalid.value = trafficLimitBytes === ''
+  if (!priceTxbMinor || rolloverMaxTxbMinor === '' || trafficInvalid.value) return
+  draft.trafficLimitBytes = trafficLimitBytes
   emit('save', {
     name: draft.name, description: draft.description, priceTxbMinor,
-    validityDays: draft.validityDays, trafficLimitBytes: draft.trafficLimitBytes,
+    validityDays: draft.validityDays, trafficLimitBytes,
     resetStrategy: draft.resetStrategy, squadProductIds: [...draft.squadProductIds],
     rolloverMinRemainingBps: Math.round(draft.rolloverMinRemainingPercent * 100),
     rolloverMaxTxbMinor, active: draft.active,
   })
+}
+
+function normalizeTrafficLimit(): void {
+  const trafficLimitBytes = trafficBytesFromInput(draft.trafficLimitBytes)
+  trafficInvalid.value = trafficLimitBytes === ''
+  if (trafficLimitBytes) draft.trafficLimitBytes = trafficLimitBytes
 }
 
 function setSquad(id: string, selected: boolean): void {
@@ -71,7 +81,7 @@ function setSquad(id: string, selected: boolean): void {
     <MarkdownEditorField v-model="draft.description" class="catalog-editor__wide" :label="t('adminCatalogEditor.description')" :placeholder="t('adminCatalogEditor.descriptionPlaceholder')" required :maxlength="2000" />
     <TxbAmountField id="combo-price" v-model="draft.priceTxb" :label="t('adminCatalogEditor.price')" min-minor="1" required />
     <UFormField name="validity-days" :label="t('adminCatalogEditor.validityDays')" required><UInput v-model.number="draft.validityDays" class="w-full" type="number" :min="1" /></UFormField>
-    <UFormField name="traffic-limit" :label="t('adminCatalogEditor.trafficLimit')" required><UInput v-model="draft.trafficLimitBytes" class="w-full" inputmode="numeric" pattern="[0-9]+" /></UFormField>
+    <UFormField name="traffic-limit" :label="t('adminCatalogEditor.trafficLimit')" :hint="t('adminCatalogEditor.trafficLimitHint')" :error="trafficInvalid ? t('adminCatalogEditor.trafficLimitInvalid') : undefined" required><UInput v-model="draft.trafficLimitBytes" class="w-full" inputmode="text" @blur="normalizeTrafficLimit" /></UFormField>
     <UFormField name="reset-cadence" :label="t('adminCatalogEditor.resetCadence')"><USelect v-model="draft.resetStrategy" class="w-full" :items="resetItems" /></UFormField>
     <UFormField name="rollover-minimum" :label="t('adminCatalogEditor.rolloverMinimum')" required><UInput v-model.number="draft.rolloverMinRemainingPercent" class="w-full" type="number" :min="0" :max="100" :step="0.01" /></UFormField>
     <TxbAmountField id="combo-rollover-max" v-model="draft.rolloverMaxTxb" :label="t('adminCatalogEditor.rolloverMaximum')" min-minor="0" required />

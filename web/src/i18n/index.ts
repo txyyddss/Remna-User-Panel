@@ -5,8 +5,16 @@ import { localeMessages, type Locale, type LocaleKey } from './generated'
 const storageKey = 'tx-carpool-locale'
 const supportedLocales = Object.keys(localeMessages) as Locale[]
 
+function storedLocale(): string | null {
+  try {
+    return globalThis.localStorage?.getItem(storageKey) ?? null
+  } catch {
+    return null
+  }
+}
+
 function detectLocale(): Locale {
-  const stored = globalThis.localStorage?.getItem(storageKey)
+  const stored = storedLocale()
   if (stored && supportedLocales.includes(stored as Locale)) return stored as Locale
   const telegramLanguage = window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code?.toLowerCase()
   if (telegramLanguage?.startsWith('zh')) return 'zh-CN'
@@ -16,7 +24,6 @@ function detectLocale(): Locale {
 const locale = shallowRef<Locale>(detectLocale())
 if (typeof document !== 'undefined') {
   document.documentElement.lang = locale.value
-  document.title = t('app.name')
 }
 
 function lookup(key: string, source: unknown): unknown {
@@ -29,9 +36,12 @@ function lookup(key: string, source: unknown): unknown {
 export function setLocale(next: Locale): void {
   if (!supportedLocales.includes(next)) return
   locale.value = next
-  globalThis.localStorage?.setItem(storageKey, next)
-  document.documentElement.lang = next
-  document.title = t('app.name')
+  try {
+    globalThis.localStorage?.setItem(storageKey, next)
+  } catch {
+    // Locale choice remains available for this session in restricted WebViews.
+  }
+  if (typeof document !== 'undefined') document.documentElement.lang = next
 }
 
 export function getLocale(): Locale {

@@ -1,12 +1,11 @@
 # Frontend API
 
-- `client.ts` exposes typed member and administrator API operations.
+- `client.ts` exposes typed member and administrator API operations, including date-bounded dashboard node usage.
 - `client.test.ts` covers client request behavior.
-- `features.ts` exposes feature-specific endpoints and contract types.
+- `features.ts` exposes feature-specific endpoints and contract types, including member coupon soft-discard and the administrator terminal-payment courtesy credit.
 - `features.test.ts` verifies feature request construction.
 - `generated.ts` contains the compact generated OpenAPI contract.
 - `http.ts` provides authenticated HTTP and error handling primitives.
-- `request-signing.ts` signs mutation requests when required.
-- `request-signing.test.ts` covers signing and nonce behavior.
+- `request-signing.ts` signs every protected request with Web Crypto or the audited pure-JS HMAC/SHA-256 fallback; it never sends an unsigned fallback.
+- `request-signing.test.ts` covers signing, nonce behavior, and missing-Web-Crypto behavior.
 - `types.ts` exports stable aliases over generated schema types.
-

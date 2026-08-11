@@ -32,7 +32,9 @@
     "descriptionPlaceholder": "Describe the combo",
     "price": "Price",
     "validityDays": "Validity days",
-    "trafficLimit": "Traffic limit, bytes",
+    "trafficLimit": "Traffic limit",
+    "trafficLimitHint": "Use bytes or B, KB, MB, GB, or TB. It is saved as exact bytes.",
+    "trafficLimitInvalid": "Enter bytes or a value such as 10 GB.",
     "resetCadence": "Reset cadence",
     "reset": {
       "DAY": "Daily",

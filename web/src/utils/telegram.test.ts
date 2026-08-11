@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { getTelegramInitData, isTelegramWebAppDetected } from './telegram'
+import { getTelegramInitData, isTelegramWebAppDetected, openExternalLink, supportsTelegramVersion } from './telegram'
 
 describe('Telegram bootstrap', () => {
   afterEach(() => {
@@ -10,21 +10,21 @@ describe('Telegram bootstrap', () => {
   })
 
   it('reads standard WebApp data from the launch hash', async () => {
-    window.Telegram = { WebApp: { initData: '', initDataUnsafe: {}, colorScheme: 'dark', ready: vi.fn(), expand: vi.fn(), close: vi.fn(), openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn() } }
+    window.Telegram = { WebApp: { version: '9.0', initData: '', initDataUnsafe: {}, colorScheme: 'dark', ready: vi.fn(), expand: vi.fn(), close: vi.fn(), openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn() } }
     window.history.replaceState({}, '', '/#tgWebAppData=query_id%3Ddelayed')
     await expect(getTelegramInitData(100)).resolves.toBe('query_id=delayed')
     expect(isTelegramWebAppDetected()).toBe(true)
   })
 
   it('preserves an unencoded nested launch query', async () => {
-    window.Telegram = { WebApp: { initData: '', initDataUnsafe: {}, colorScheme: 'dark', ready: vi.fn(), expand: vi.fn(), close: vi.fn(), openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn() } }
+    window.Telegram = { WebApp: { version: '9.0', initData: '', initDataUnsafe: {}, colorScheme: 'dark', ready: vi.fn(), expand: vi.fn(), close: vi.fn(), openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn() } }
     window.history.replaceState({}, '', '/#tgWebAppData=query_id=abc&auth_date=1&hash=deadbeef&tgWebAppVersion=7.0')
     await expect(getTelegramInitData(100)).resolves.toBe('query_id=abc&auth_date=1&hash=deadbeef')
   })
 
   it('waits for delayed initData when Telegram has already created WebApp', async () => {
     vi.useFakeTimers()
-    const app = { initData: '', initDataUnsafe: {}, colorScheme: 'dark' as const, ready: vi.fn(), expand: vi.fn(), close: vi.fn(), openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn() }
+    const app = { version: '9.0', initData: '', initDataUnsafe: {}, colorScheme: 'dark' as const, ready: vi.fn(), expand: vi.fn(), close: vi.fn(), openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn() }
     window.Telegram = { WebApp: app }
     const pending = getTelegramInitData(500)
     await vi.advanceTimersByTimeAsync(100)
@@ -35,5 +35,20 @@ describe('Telegram bootstrap', () => {
 
   it('distinguishes an absent Telegram context', () => {
     expect(isTelegramWebAppDetected()).toBe(false)
+  })
+
+  it('uses browser navigation rather than unsupported native bridge methods', () => {
+    const openLink = vi.fn()
+    const browserOpen = vi.spyOn(window, 'open').mockReturnValue(null)
+    window.Telegram = { WebApp: {
+      version: '6.0', initData: '', initDataUnsafe: {}, colorScheme: 'dark', ready: vi.fn(), expand: vi.fn(), close: vi.fn(),
+      openLink, openTelegramLink: vi.fn(), openInvoice: vi.fn(),
+    } }
+
+    openExternalLink('https://example.com')
+
+    expect(supportsTelegramVersion('6.1')).toBe(false)
+    expect(openLink).not.toHaveBeenCalled()
+    expect(browserOpen).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer')
   })
 })

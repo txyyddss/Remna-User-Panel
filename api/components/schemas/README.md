@@ -14,3 +14,5 @@ Schema definitions are grouped into bounded sequential shards. The root componen
 - `schemas-10.yaml`: `PaymentPage`, `AdminPaymentOrder`, `RefundRequest`, `Refund`, `RefundPage`, `DatabaseColumn`, `DatabaseTable`, `DatabaseTableList`, `DatabaseBlobValue`, `DatabaseValue`, `DatabaseKey`, `DatabaseValues`, `DatabaseRow`, `DatabaseRowPage`, `DatabaseFilterOperator`
 - `schemas-11.yaml`: `DatabaseFilter`, `DatabaseQueryRequest`, `DatabaseMutationAction`, `DatabaseMutationReviewRequest`, `DatabaseMutationApplyRequest`, `DatabaseCompatibilityUpdate`, `DatabaseMutationReview`, `DatabaseMutationResult`, `RestoreRequest`, `RestoreOperation`, `BackupRun`, `JobStatus`, `Job`, `JobPage`
 - `schemas-12.yaml`: `AuditEvent`, `AuditPage`, `TelegramUpdate`, `FlexibleDecimal`, `BEPusdtNotification`, `BEPusdtUnsignedNotification`, `HealthStatus`, `RuntimeReadiness`
+- `schemas-13.yaml`: `CourtesyCredit`
+- `schemas-14.yaml`: `DashboardNodeUsage`

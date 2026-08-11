@@ -204,6 +204,13 @@ OnboardingAgreement:
     icon:
       type: string
       enum: [link-break, shield-check, users-three, warning, lock-key, heart, scales]
+    color:
+      type: string
+      enum: [accent, success, warning, danger, neutral]
+    pageTitle:
+      type: string
+      minLength: 1
+      maxLength: 200
     title:
       type: string
       minLength: 1

@@ -4,7 +4,7 @@
 
 This module owns live combo definitions, sparse per-Remnawave-squad merchandising overrides, server-side quotes/pricing, coupon-aware purchases, active/queued access terms, rollover settlement, statistics, and durable commands that make Remnawave match local entitlement state. It consumes the transactional balance interface and a narrow access-synchronization interface; it does not call HTTP providers directly.
 
-Members read `/api/v1/catalog`, quote at `/api/v1/purchases/quote`, create/list `/api/v1/purchases`, and see entitlement projections on `/api/v1/dashboard`. Administrators manage combos and sparse squad overrides, inspect combo/squad statistics, assign upstream nodes, inspect entitlements, and issue audited cancellation commands.
+Members read `/api/v1/catalog`, quote at `/api/v1/purchases/quote`, create/list `/api/v1/purchases`, see entitlement projections on `/api/v1/dashboard`, and can read bounded per-node traffic at `/api/v1/dashboard/node-usage` with inclusive UTC `start`/`end` dates. Administrators manage combos and sparse squad overrides, inspect combo/squad statistics, assign upstream nodes, inspect entitlements, and issue audited cancellation commands.
 
 ## Catalog and pricing invariants
 

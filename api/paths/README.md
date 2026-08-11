@@ -10,6 +10,7 @@ Each YAML file is one complete OpenAPI Path Item Object. `../openapi.yaml` regis
 - `api-v1-onboarding-agreement.yaml`: `/api/v1/onboarding/agreement`
 - `api-v1-onboarding-content.yaml`: `/api/v1/onboarding/content`
 - `api-v1-dashboard.yaml`: `/api/v1/dashboard`
+- `api-v1-dashboard-node-usage.yaml`: `/api/v1/dashboard/node-usage`
 - `api-v1-catalog.yaml`: `/api/v1/catalog`
 - `api-v1-purchases-quote.yaml`: `/api/v1/purchases/quote`
 - `api-v1-purchases.yaml`: `/api/v1/purchases`
@@ -28,6 +29,7 @@ Each YAML file is one complete OpenAPI Path Item Object. `../openapi.yaml` regis
 - `api-v1-activity-bets.yaml`: `/api/v1/activity/bets`
 - `api-v1-activity-draws.yaml`: `/api/v1/activity/draws`
 - `api-v1-coupons-wallet.yaml`: `/api/v1/coupons/wallet`
+- `api-v1-coupons-wallet-id.yaml`: `/api/v1/coupons/wallet/{id}`
 - `api-v1-coupons-redeem.yaml`: `/api/v1/coupons/redeem`
 - `api-v1-questionnaires-active.yaml`: `/api/v1/questionnaires/active`
 - `api-v1-questionnaires-history.yaml`: `/api/v1/questionnaires/history`
@@ -68,6 +70,7 @@ Each YAML file is one complete OpenAPI Path Item Object. `../openapi.yaml` regis
 - `api-v1-admin-entitlements-id-cancel.yaml`: `/api/v1/admin/entitlements/{id}/cancel`
 - `api-v1-admin-payments.yaml`: `/api/v1/admin/payments`
 - `api-v1-admin-payments-id-refund.yaml`: `/api/v1/admin/payments/{id}/refund`
+- `api-v1-admin-payments-id-courtesy-credit.yaml`: `/api/v1/admin/payments/{id}/courtesy-credit`
 - `api-v1-admin-refunds.yaml`: `/api/v1/admin/refunds`
 - `api-v1-admin-database-tables.yaml`: `/api/v1/admin/database/tables`
 - `api-v1-admin-database-tables-table-rows.yaml`: `/api/v1/admin/database/tables/{table}/rows`

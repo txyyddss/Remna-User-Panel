@@ -3,30 +3,34 @@ import enAdminCatalog from '../../locales/en/admin-catalog.json'
 import enAdminCommunity from '../../locales/en/admin-community.json'
 import enAdminCore from '../../locales/en/admin-core.json'
 import enAdminData from '../../locales/en/admin-data.json'
+import enAdminOnboarding from '../../locales/en/admin-onboarding.json'
 import enAdminOperations from '../../locales/en/admin-operations.json'
 import enActivity from '../../locales/en/activity.json'
 import enCommerce from '../../locales/en/commerce.json'
 import enCommunity from '../../locales/en/community.json'
 import enCore from '../../locales/en/core.json'
+import enHome from '../../locales/en/home.json'
 import enMember from '../../locales/en/member.json'
 import zhAdminActivity from '../../locales/zh-CN/admin-activity.json'
 import zhAdminCatalog from '../../locales/zh-CN/admin-catalog.json'
 import zhAdminCommunity from '../../locales/zh-CN/admin-community.json'
 import zhAdminCore from '../../locales/zh-CN/admin-core.json'
 import zhAdminData from '../../locales/zh-CN/admin-data.json'
+import zhAdminOnboarding from '../../locales/zh-CN/admin-onboarding.json'
 import zhAdminOperations from '../../locales/zh-CN/admin-operations.json'
 import zhActivity from '../../locales/zh-CN/activity.json'
 import zhCommerce from '../../locales/zh-CN/commerce.json'
 import zhCommunity from '../../locales/zh-CN/community.json'
 import zhCore from '../../locales/zh-CN/core.json'
+import zhHome from '../../locales/zh-CN/home.json'
 import zhMember from '../../locales/zh-CN/member.json'
 
 const en = {
-  ...enCore, ...enActivity, ...enCommerce, ...enCommunity, ...enMember, ...enAdminCore, ...enAdminData,
+  ...enCore, ...enActivity, ...enCommerce, ...enCommunity, ...enMember, ...enHome, ...enAdminCore, ...enAdminOnboarding, ...enAdminData,
   ...enAdminActivity, ...enAdminCommunity, ...enAdminCatalog, ...enAdminOperations,
 }
 const zhCN: typeof en = {
-  ...zhCore, ...zhActivity, ...zhCommerce, ...zhCommunity, ...zhMember, ...zhAdminCore, ...zhAdminData,
+  ...zhCore, ...zhActivity, ...zhCommerce, ...zhCommunity, ...zhMember, ...zhHome, ...zhAdminCore, ...zhAdminOnboarding, ...zhAdminData,
   ...zhAdminActivity, ...zhAdminCommunity, ...zhAdminCatalog, ...zhAdminOperations,
 }
 

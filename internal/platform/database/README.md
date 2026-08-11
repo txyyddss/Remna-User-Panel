@@ -25,11 +25,14 @@ depend on the `Store` methods; provider network calls do not belong here.
   and row scanning.
 - `billing_payment_settlement.go` — customer cancellation and idempotent provider
   settlement transitions.
+- `billing_courtesy.go` — atomic terminal-payment courtesy credits with linked
+  immutable ledger and audit records.
 - `billing_refunds.go` — transactional refunds, compensating ledger entries, and
   refund history.
 - `balance_transactions.go` — shared checked balance mutation helpers used inside
   larger transactions.
-- `coupons.go` — coupon definitions, direct redemption, grants, and wallet reads.
+- `coupons.go` — coupon definitions, direct redemption, grants, wallet reads, and
+  durable member soft-discard records.
 - `coupon_purchase.go` — purchase discount quoting, grant consumption, limits,
   and coupon scans.
 - `coupon_records.go` — grant/redemption lookup and scan helpers.
@@ -51,12 +54,14 @@ depend on the `Store` methods; provider network calls do not belong here.
   and provider-error normalization.
 - `operations.go` — durable job insertion, entitlement-transition enqueueing, and
   purchase expiry.
+- `expansion_backup.go` — expansion-state backup and restore helpers.
 - `outbox_jobs.go` — outbox claim, completion, retry, deletion, recovery, listing,
   scanning, and persisted-error sanitization.
 - `purchase_sync.go` — entitlement synchronization and traffic-reset phase state.
 - `administration_records.go` — audit events, administrator user lists, and backup
   run records.
 - `rollover.go` — durable rollover processing and finalization.
+- `retention.go` — bounded cleanup of aged operational records.
 - `statistics.go` — catalog and activity administrator statistics.
 - `destructive.go` — audited feature deletion transactions.
 - `restore.go` — restore snapshot preparation and high-level validation.
@@ -87,3 +92,6 @@ depend on the `Store` methods; provider network calls do not belong here.
 
 The `migrations/` directory contains the ordered embedded schema history. New
 schema changes must be additive migrations; deployed migration files are immutable.
+
+`billing_courtesy_test.go` covers terminal-payment courtesy-credit atomicity,
+idempotent replay, and late-provider-callback blocking.

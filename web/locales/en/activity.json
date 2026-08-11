@@ -63,6 +63,8 @@
     "calendarTimezone": "Calendar timezone",
     "timezoneHint": "Use an IANA timezone name.",
     "dailyReward": "Daily reward",
+    "dailyRewardMinimum": "Minimum daily reward",
+    "dailyRewardMaximum": "Maximum daily reward",
     "groupMessageThreshold": "Messages per reward",
     "groupMessageThresholdHint": "Set to 0 to disable group-message rewards.",
     "groupMessageReward": "Group-message reward",

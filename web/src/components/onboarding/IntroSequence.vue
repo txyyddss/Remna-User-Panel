@@ -2,6 +2,7 @@
 import { onMounted } from 'vue'
 
 import type { OnboardingWelcomeMessage } from '@/api/features'
+import LanguageControl from '@/components/layout/LanguageControl.vue'
 import { useIntroSequence } from '@/composables/useIntroSequence'
 
 const emit = defineEmits<{ complete: [] }>()
@@ -16,19 +17,15 @@ onMounted(start)
 
 <template>
   <section class="intro-sequence">
-    <UButton
-      class="intro-sequence__skip"
-      color="neutral"
-      variant="ghost"
-      trailing-icon="i-ph-arrow-right"
-      :label="$t('common.skip')"
-      @click="skip"
-    />
     <div class="intro-sequence__center">
       <Transition name="intro-copy" mode="out-in">
         <h1 :key="index">{{ message }}</h1>
       </Transition>
     </div>
+    <footer class="intro-sequence__footer">
+      <LanguageControl />
+      <UButton color="neutral" variant="ghost" trailing-icon="i-ph-arrow-right" :label="$t('common.skip')" @click="skip" />
+    </footer>
     <UProgress class="intro-sequence__progress" :model-value="progress" :max="100" aria-hidden="true" />
   </section>
 </template>

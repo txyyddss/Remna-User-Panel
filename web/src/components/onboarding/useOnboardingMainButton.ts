@@ -1,7 +1,7 @@
 import type { ComputedRef } from 'vue'
 import { onMounted, onUnmounted, shallowRef, watch } from 'vue'
 
-import { getTelegramWebApp } from '@/utils/telegram'
+import { getTelegramWebApp, supportsTelegramVersion, tryTelegramCall } from '@/utils/telegram'
 
 interface TelegramMainButton {
   show(): void
@@ -23,6 +23,7 @@ export interface OnboardingMainAction {
 }
 
 function readMainButton(): TelegramMainButton | undefined {
+  if (!supportsTelegramVersion('6.1')) return undefined
   return (getTelegramWebApp() as TelegramWebApp & { MainButton?: TelegramMainButton } | undefined)?.MainButton
 }
 
@@ -39,31 +40,39 @@ export function useOnboardingMainButton(action: ComputedRef<OnboardingMainAction
   function sync(): void {
     const next = readMainButton()
     if (next && next !== button) {
-      button?.offClick(handleClick)
+      if (button) tryTelegramCall(() => button?.offClick(handleClick))
       button = next
-      button.onClick(handleClick)
+      if (!tryTelegramCall(() => next.onClick(handleClick))) {
+        button = undefined
+        return
+      }
       available.value = true
     }
     if (!button) return
     const current = action.value
     if (!current) {
-      button.hideProgress()
-      button.hide()
+      tryTelegramCall(() => button?.hideProgress())
+      tryTelegramCall(() => button?.hide())
       return
     }
-    button.setText(current.text)
-    if (current.disabled) button.disable()
-    else button.enable()
-    if (current.loading) button.showProgress(true)
-    else button.hideProgress()
-    button.show()
+    tryTelegramCall(() => button?.setText(current.text))
+    tryTelegramCall(() => current.disabled ? button?.disable() : button?.enable())
+    tryTelegramCall(() => current.loading ? button?.showProgress(true) : button?.hideProgress())
+    tryTelegramCall(() => button?.show())
   }
 
   function bind(): void {
     if (retry !== undefined) window.clearTimeout(retry)
     retry = undefined
+    if (!getTelegramWebApp()) {
+      if (attempts < 20) {
+        attempts += 1
+        retry = window.setTimeout(bind, 100)
+      }
+      return
+    }
     sync()
-    if (!button && attempts < 20) {
+    if (!button && supportsTelegramVersion('6.1') && attempts < 20) {
       attempts += 1
       retry = window.setTimeout(bind, 100)
     }
@@ -73,9 +82,11 @@ export function useOnboardingMainButton(action: ComputedRef<OnboardingMainAction
   watch(action, sync, { immediate: true })
   onUnmounted(() => {
     if (retry !== undefined) window.clearTimeout(retry)
-    button?.offClick(handleClick)
-    button?.hideProgress()
-    button?.hide()
+    if (button) {
+      tryTelegramCall(() => button?.offClick(handleClick))
+      tryTelegramCall(() => button?.hideProgress())
+      tryTelegramCall(() => button?.hide())
+    }
   })
 
   return { available }

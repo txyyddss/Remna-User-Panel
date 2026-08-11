@@ -86,7 +86,13 @@
     "noRefundsHint": "Immutable reversal records will remain visible here.",
     "refundTitle": "Refund this payment?",
     "refundDescription": "The TXB credit will be reversed. Entitlements may be cancelled if the account becomes negative.",
-    "issueRefund": "Issue refund"
+    "issueRefund": "Issue refund",
+    "courtesyCredit": "Grant courtesy credit",
+    "courtesyCreditTitle": "Grant courtesy credit?",
+    "courtesyCreditDescription": "This adds a local TXB credit for a failed or expired payment. It does not change the payment record or mark it paid.",
+    "issueCourtesyCredit": "Grant courtesy credit",
+    "courtesyCreditSuccess": "Courtesy credit of {amount} was recorded.",
+    "courtesyCreditAlreadyRecorded": "A courtesy credit is already recorded. No additional TXB was added."
   },
   "adminEntitlements": {
     "title": "Entitlements",

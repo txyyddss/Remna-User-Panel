@@ -32,7 +32,9 @@
     "descriptionPlaceholder": "描述此套餐",
     "price": "价格",
     "validityDays": "有效天数",
-    "trafficLimit": "流量上限（字节）",
+    "trafficLimit": "流量上限",
+    "trafficLimitHint": "可使用字节或 B、KB、MB、GB、TB，保存时会换算为精确字节数。",
+    "trafficLimitInvalid": "请输入字节数或类似 10 GB 的值。",
     "resetCadence": "重置周期",
     "reset": {
       "DAY": "每天",

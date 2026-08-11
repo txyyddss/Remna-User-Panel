@@ -3,13 +3,10 @@ info:
   title: TX Carpool API
   version: 1.0.0
   description: |
-    HTTP contract for the TX Carpool Telegram Mini App. User and admin endpoints
-    use a Secure, HttpOnly session cookie established from validated Telegram
-    Mini App `initData`. Every authenticated browser request also carries a
-    five-minute HMAC timestamp, unique nonce, and signature derived from a
+    HTTP contract for the TX Carpool Telegram Mini App. User and admin endpoints use a Secure, HttpOnly session cookie established from validated Telegram Mini App `initData`.
+    Every authenticated browser request also carries a five-minute HMAC timestamp, unique nonce, and signature derived from a
     same-origin companion key. Provider callbacks use provider-specific
     signatures and are never authenticated by the browser session.
-
     All identifiers and timestamps are strings. TXB values use integer hundredths
     encoded as decimal strings. Traffic byte counts are decimal strings. The
     server is authoritative for prices, exchange rates, entitlement dates, and
@@ -18,7 +15,6 @@ info:
 servers: [{ url: /, description: Same-origin API }]
 tags: [{ name: Authentication }, { name: Onboarding }, { name: Dashboard }, { name: Catalog }, { name: Billing }, { name: Activity }, { name: Coupons }, { name: Questionnaires }, { name: Emby }, { name: Admin }, { name: Database Administration }, { name: Webhooks }, { name: Operations }]
 security: [{ cookieSession: [], requestTimestamp: [], requestNonce: [], requestSignature: [] }]
-
 paths:
   /api/v1/auth/telegram: { $ref: './paths/api-v1-auth-telegram.yaml' }
   /api/v1/me: { $ref: './paths/api-v1-me.yaml' }
@@ -28,6 +24,7 @@ paths:
   /api/v1/onboarding/agreement: { $ref: './paths/api-v1-onboarding-agreement.yaml' }
   /api/v1/onboarding/content: { $ref: './paths/api-v1-onboarding-content.yaml' }
   /api/v1/dashboard: { $ref: './paths/api-v1-dashboard.yaml' }
+  /api/v1/dashboard/node-usage: { $ref: './paths/api-v1-dashboard-node-usage.yaml' }
   /api/v1/catalog: { $ref: './paths/api-v1-catalog.yaml' }
   /api/v1/purchases/quote: { $ref: './paths/api-v1-purchases-quote.yaml' }
   /api/v1/purchases: { $ref: './paths/api-v1-purchases.yaml' }
@@ -46,6 +43,7 @@ paths:
   /api/v1/activity/bets: { $ref: './paths/api-v1-activity-bets.yaml' }
   /api/v1/activity/draws: { $ref: './paths/api-v1-activity-draws.yaml' }
   /api/v1/coupons/wallet: { $ref: './paths/api-v1-coupons-wallet.yaml' }
+  /api/v1/coupons/wallet/{id}: { $ref: './paths/api-v1-coupons-wallet-id.yaml' }
   /api/v1/coupons/redeem: { $ref: './paths/api-v1-coupons-redeem.yaml' }
   /api/v1/questionnaires/active: { $ref: './paths/api-v1-questionnaires-active.yaml' }
   /api/v1/questionnaires/history: { $ref: './paths/api-v1-questionnaires-history.yaml' }
@@ -86,6 +84,7 @@ paths:
   /api/v1/admin/entitlements/{id}/cancel: { $ref: './paths/api-v1-admin-entitlements-id-cancel.yaml' }
   /api/v1/admin/payments: { $ref: './paths/api-v1-admin-payments.yaml' }
   /api/v1/admin/payments/{id}/refund: { $ref: './paths/api-v1-admin-payments-id-refund.yaml' }
+  /api/v1/admin/payments/{id}/courtesy-credit: { $ref: './paths/api-v1-admin-payments-id-courtesy-credit.yaml' }
   /api/v1/admin/refunds: { $ref: './paths/api-v1-admin-refunds.yaml' }
   /api/v1/admin/database/tables: { $ref: './paths/api-v1-admin-database-tables.yaml' }
   /api/v1/admin/database/tables/{table}/rows: { $ref: './paths/api-v1-admin-database-tables-table-rows.yaml' }
@@ -112,7 +111,6 @@ paths:
   /api/v1/payments/return/{provider}/{orderID}: { $ref: './paths/api-v1-payments-return-provider-orderid.yaml' }
   /healthz: { $ref: './paths/healthz.yaml' }
   /readyz: { $ref: './paths/readyz.yaml' }
-
 components:
   securitySchemes:
     cookieSession: { $ref: './components/security-schemes.yaml#/cookieSession' }
@@ -185,6 +183,7 @@ components:
     SubscriptionRotation: { $ref: './components/schemas/schemas-03.yaml#/SubscriptionRotation' }
     TopNode: { $ref: './components/schemas/schemas-03.yaml#/TopNode' }
     Statistics: { $ref: './components/schemas/schemas-03.yaml#/Statistics' }
+    DashboardNodeUsage: { $ref: './components/schemas/schemas-14.yaml#/DashboardNodeUsage' }
     StatisticPoint: { $ref: './components/schemas/schemas-03.yaml#/StatisticPoint' }
     StatisticSlice: { $ref: './components/schemas/schemas-04.yaml#/StatisticSlice' }
     AdminStatistics: { $ref: './components/schemas/schemas-04.yaml#/AdminStatistics' }
@@ -265,6 +264,7 @@ components:
     RefundRequest: { $ref: './components/schemas/schemas-10.yaml#/RefundRequest' }
     Refund: { $ref: './components/schemas/schemas-10.yaml#/Refund' }
     RefundPage: { $ref: './components/schemas/schemas-10.yaml#/RefundPage' }
+    CourtesyCredit: { $ref: './components/schemas/schemas-13.yaml#/CourtesyCredit' }
     DatabaseColumn: { $ref: './components/schemas/schemas-10.yaml#/DatabaseColumn' }
     DatabaseTable: { $ref: './components/schemas/schemas-10.yaml#/DatabaseTable' }
     DatabaseTableList: { $ref: './components/schemas/schemas-10.yaml#/DatabaseTableList' }

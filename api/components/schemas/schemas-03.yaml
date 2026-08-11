@@ -57,7 +57,7 @@ PurchaseRequest:
 PurchaseQuote:
   type: object
   additionalProperties: false
-  required: [comboId, comboName, grossPrice, discount, netPrice, effectiveAt, expiresAt, queued, addonSquadUuids]
+  required: [comboId, comboName, grossPrice, discount, netPrice, effectiveAt, expiresAt, queued, addonSquadUuids, accessibleNodes]
   properties:
     comboId: { $ref: '../../openapi.yaml#/components/schemas/ID' }
     comboName: { type: string }
@@ -71,6 +71,9 @@ PurchaseQuote:
       type: array
       uniqueItems: true
       items: { type: string, format: uuid }
+    accessibleNodes:
+      type: array
+      items: { $ref: '../../openapi.yaml#/components/schemas/RemnaNode' }
 
 EntitlementStatus:
   type: string

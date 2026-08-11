@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, shallowRef } from 'vue'
 
-import type { AdminPaymentOrder, Refund } from '@/api/types'
+import { featuresApi } from '@/api/features'
+import type { AdminPaymentOrder, CourtesyCredit, Refund } from '@/api/types'
+import InlineNotice from '@/components/common/InlineNotice.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import { useAdminSection } from '@/composables/useAdminSection'
 import { useI18n } from '@/i18n'
@@ -11,8 +13,10 @@ import AdminSectionState from './AdminSectionState.vue'
 
 const payments = useAdminSection<AdminPaymentOrder>('payments')
 const refunds = useAdminSection<Refund>('refunds')
-const selected = shallowRef<AdminPaymentOrder | null>(null)
+const refundPayment = shallowRef<AdminPaymentOrder | null>(null)
+const courtesyPayment = shallowRef<AdminPaymentOrder | null>(null)
 const reason = shallowRef('')
+const courtesyMessage = shallowRef<string | null>(null)
 const statusFilter = shallowRef<'all' | AdminPaymentOrder['status']>('all')
 const { t } = useI18n()
 
@@ -31,16 +35,62 @@ function tone(status: AdminPaymentOrder['status']): 'neutral' | 'success' | 'war
   return 'neutral'
 }
 
+function canIssueCourtesyCredit(payment: AdminPaymentOrder): boolean {
+  return payment.status === 'failed' || payment.status === 'expired'
+}
+
+function openRefund(payment: AdminPaymentOrder): void {
+  reason.value = ''
+  refundPayment.value = payment
+}
+
+function openCourtesyCredit(payment: AdminPaymentOrder): void {
+  reason.value = ''
+  courtesyPayment.value = payment
+}
+
 async function refund(): Promise<void> {
-  if (!selected.value) return
-  const id = selected.value.id
+  if (!refundPayment.value) return
+  const id = refundPayment.value.id
   const { api } = await import('@/api/client')
   const ok = await payments.perform(() => api.refundPayment(id, reason.value))
-  if (ok) { selected.value = null; reason.value = ''; await refunds.load() }
+  if (ok) {
+    refundPayment.value = null
+    reason.value = ''
+    await refunds.load()
+  }
+}
+
+async function issueCourtesyCredit(): Promise<void> {
+  const payment = courtesyPayment.value
+  if (!payment || !canIssueCourtesyCredit(payment)) return
+
+  const credit = shallowRef<CourtesyCredit | null>(null)
+  const ok = await payments.perform(async () => {
+    credit.value = await featuresApi.creditAdminTerminalPayment(payment.id, reason.value)
+  })
+  const completedCredit = credit.value
+  if (!ok || !completedCredit) return
+
+  courtesyMessage.value = completedCredit.replayed
+    ? t('adminPayments.courtesyCreditAlreadyRecorded')
+    : t('adminPayments.courtesyCreditSuccess', { amount: formatMoney(completedCredit.txb) })
+  courtesyPayment.value = null
+  reason.value = ''
 }
 
 function setRefundOpen(open: boolean): void {
-  if (!open) { selected.value = null; reason.value = '' }
+  if (!open) {
+    refundPayment.value = null
+    reason.value = ''
+  }
+}
+
+function setCourtesyCreditOpen(open: boolean): void {
+  if (!open) {
+    courtesyPayment.value = null
+    reason.value = ''
+  }
 }
 </script>
 
@@ -50,6 +100,7 @@ function setRefundOpen(open: boolean): void {
       <div><h2>{{ t('adminPayments.title') }}</h2><p>{{ t('adminPayments.copy') }}</p></div>
       <USelect v-model="statusFilter" :items="statusItems" value-key="value" :aria-label="t('adminPayments.filter')" />
     </div>
+    <InlineNotice v-if="courtesyMessage" tone="success">{{ courtesyMessage }}</InlineNotice>
     <AdminSectionState :loading="payments.loading.value" :error="payments.error.value" @retry="payments.load()">
       <div v-auto-animate class="admin-list">
         <article v-for="payment in filtered" :key="payment.id" class="admin-list-row admin-list-row--payment">
@@ -57,7 +108,10 @@ function setRefundOpen(open: boolean): void {
           <div><strong>{{ payment.provider }} {{ payment.id }}</strong><small>{{ t('adminPayments.paymentSummary', { user: payment.userId, date: formatDateTime(payment.createdAt), amount: formatMoney(payment.txb) }) }}</small></div>
           <strong>{{ payment.payableAmount }} {{ payment.payableCurrency }}</strong>
           <StatusBadge :tone="tone(payment.status)" :label="t(`adminPayments.${payment.status}`)" />
-          <UButton v-if="payment.status === 'paid'" size="sm" color="neutral" variant="outline" icon="i-ph-arrow-counter-clockwise" :label="t('adminPayments.refund')" @click="selected = payment" />
+          <div class="row-actions">
+            <UButton v-if="payment.status === 'paid'" size="sm" color="neutral" variant="outline" icon="i-ph-arrow-counter-clockwise" :disabled="payments.busy.value" :label="t('adminPayments.refund')" @click="openRefund(payment)" />
+            <UButton v-if="canIssueCourtesyCredit(payment)" size="sm" color="primary" variant="outline" icon="i-ph-heart" :disabled="payments.busy.value" :label="t('adminPayments.courtesyCredit')" @click="openCourtesyCredit(payment)" />
+          </div>
         </article>
         <div v-if="!filtered.length" class="empty-inline"><div><h3>{{ t('adminPayments.none') }}</h3><p>{{ t('adminPayments.noneHint') }}</p></div></div>
       </div>
@@ -75,6 +129,8 @@ function setRefundOpen(open: boolean): void {
         <div v-if="!refunds.items.value.length" class="empty-inline"><div><h3>{{ t('adminPayments.noRefunds') }}</h3><p>{{ t('adminPayments.noRefundsHint') }}</p></div></div>
       </div>
     </AdminSectionState>
-    <AdminReasonDialog :open="selected !== null" v-model:reason="reason" :title="t('adminPayments.refundTitle')" :description="t('adminPayments.refundDescription')" :confirm-label="t('adminPayments.issueRefund')" :busy="payments.busy.value" danger @update:open="setRefundOpen" @confirm="refund" />
+
+    <AdminReasonDialog :open="refundPayment !== null" v-model:reason="reason" :title="t('adminPayments.refundTitle')" :description="t('adminPayments.refundDescription')" :confirm-label="t('adminPayments.issueRefund')" :busy="payments.busy.value" :error="payments.error.value" danger @update:open="setRefundOpen" @confirm="refund" />
+    <AdminReasonDialog :open="courtesyPayment !== null" v-model:reason="reason" :title="t('adminPayments.courtesyCreditTitle')" :description="t('adminPayments.courtesyCreditDescription')" :confirm-label="t('adminPayments.issueCourtesyCredit')" :busy="payments.busy.value" :error="payments.error.value" @update:open="setCourtesyCreditOpen" @confirm="issueCourtesyCredit" />
   </section>
 </template>

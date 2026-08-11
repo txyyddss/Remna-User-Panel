@@ -6,7 +6,7 @@ Audited administrative operations for catalog data, settings, balances, refunds,
 
 - `service.go` defines admin-facing dependency contracts, service construction, backup deletion, and settings forwarding.
 - `catalog.go` manages combos, squad products, upstream squad imports, and squad-node assignments.
-- `finance.go` manages balance adjustments, deductions, refunds, entitlement cancellation, backups, job retries, and audit recording.
+- `finance.go` manages balance adjustments, deductions, refunds, terminal-payment courtesy credits, entitlement cancellation, backups, job retries, and audit recording.
 - `settings.go` defines editable settings, encrypted storage access, safe listing, and readiness checks.
 - `setting_validators.go` contains the individual setting-value validators.
 - `service_test.go` covers settings forwarding and catalog operations.

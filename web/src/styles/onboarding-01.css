@@ -60,15 +60,22 @@
 .auth-screen__skeleton span:nth-child(2) { animation-delay: 140ms; }
 .auth-screen__skeleton span:nth-child(3) { animation-delay: 280ms; }
 
+.auth-screen__locale {
+  position: absolute;
+  bottom: max(1rem, var(--tg-content-safe-area-inset-bottom, env(safe-area-inset-bottom)));
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.browser-capability-gate {
+  justify-content: center;
+}
+
 .intro-sequence {
   min-height: var(--tg-viewport-stable-height, 100dvh);
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: 1fr auto auto;
   padding: max(1rem, var(--tg-content-safe-area-inset-top, env(safe-area-inset-top))) 1.25rem max(1.25rem, var(--tg-content-safe-area-inset-bottom, env(safe-area-inset-bottom)));
-}
-
-.intro-sequence__skip {
-  justify-self: end;
 }
 
 .intro-sequence__center {
@@ -85,6 +92,14 @@
   font-weight: 650;
   line-height: 0.98;
   letter-spacing: -0.065em;
+}
+
+.intro-sequence__footer,
+.onboarding-shell__locale {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .intro-sequence__progress,
@@ -108,35 +123,8 @@
 .onboarding-shell {
   min-height: var(--tg-viewport-stable-height, 100dvh);
   display: grid;
-  grid-template-rows: auto auto 1fr;
+  grid-template-rows: auto 1fr auto;
   padding: max(1rem, var(--tg-content-safe-area-inset-top, env(safe-area-inset-top))) 1rem max(1rem, var(--tg-content-safe-area-inset-bottom, env(safe-area-inset-bottom)));
-}
-
-.onboarding-shell__top {
-  width: 100%;
-  max-width: 760px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 0 auto 0.85rem;
-}
-
-.onboarding-shell__brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  font-size: 0.83rem;
-  font-weight: 800;
-}
-
-.onboarding-shell__brand svg {
-  color: var(--accent);
-}
-
-.onboarding-shell__percent {
-  color: var(--text-faint);
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
 }
 
 .onboarding-shell__track {
@@ -155,6 +143,8 @@
   margin: 0 auto;
   padding: 2.5rem 0;
 }
+
+.onboarding-shell__locale { width: 100%; max-width: 760px; margin: 0.85rem auto 0; justify-content: center; }
 
 .onboarding-panel {
   display: flex;

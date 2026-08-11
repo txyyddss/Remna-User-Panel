@@ -213,11 +213,14 @@ func (s *Store) GrantCoupon(ctx context.Context, userID, couponID, sourceType, s
 // ListCouponGrants returns currently usable purchase-discount grants.
 func (s *Store) ListCouponGrants(ctx context.Context, userID string, now time.Time) ([]coupons.Grant, error) {
 	if _, err := s.db.ExecContext(ctx, `UPDATE coupon_grants SET status='expired' WHERE user_id=? AND status='active'
-		AND coupon_id IN (SELECT id FROM coupon_definitions WHERE expires_at IS NOT NULL AND expires_at<=?)`, userID, stamp(now)); err != nil {
+		AND coupon_id IN (SELECT id FROM coupon_definitions WHERE expires_at IS NOT NULL AND expires_at<=?)
+		AND NOT EXISTS (SELECT 1 FROM coupon_grant_discards WHERE coupon_grant_discards.grant_id=coupon_grants.id)`, userID, stamp(now)); err != nil {
 		return nil, fmt.Errorf("expire coupon grants: %w", err)
 	}
 	rows, err := s.db.QueryContext(ctx, grantSelect+` WHERE coupon_grants.user_id=? AND coupon_grants.status='active'
-		AND coupon_definitions.active=1 AND (coupon_definitions.expires_at IS NULL OR coupon_definitions.expires_at>?) ORDER BY coupon_grants.created_at DESC`, userID, stamp(now))
+		AND coupon_definitions.active=1 AND (coupon_definitions.expires_at IS NULL OR coupon_definitions.expires_at>?)
+		AND NOT EXISTS (SELECT 1 FROM coupon_grant_discards WHERE coupon_grant_discards.grant_id=coupon_grants.id)
+		ORDER BY coupon_grants.created_at DESC`, userID, stamp(now))
 	if err != nil {
 		return nil, fmt.Errorf("list coupon grants: %w", err)
 	}
@@ -231,4 +234,45 @@ func (s *Store) ListCouponGrants(ctx context.Context, userID string, now time.Ti
 		result = append(result, grant)
 	}
 	return result, rows.Err()
+}
+
+// DiscardCouponGrant hides one active grant while preserving its immutable
+// redemption and purchase links. Replaying a member's own discard is a no-op.
+func (s *Store) DiscardCouponGrant(ctx context.Context, userID, grantID string, now time.Time) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin coupon discard: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	var existingGrantID string
+	err = tx.QueryRowContext(ctx, `SELECT grant_id FROM coupon_grant_discards WHERE grant_id=? AND user_id=?`, grantID, userID).Scan(&existingGrantID)
+	if err == nil {
+		return nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("load coupon discard: %w", err)
+	}
+	var status string
+	err = tx.QueryRowContext(ctx, `SELECT status FROM coupon_grants WHERE id=? AND user_id=?`, grantID, userID).Scan(&status)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("load coupon grant for discard: %w", err)
+	}
+	if status != "active" {
+		return ErrConflict
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO coupon_grant_discards(grant_id,user_id,discarded_at) VALUES(?,?,?)`, grantID, userID, stamp(now.UTC())); err != nil {
+		if isUniqueConstraint(err) {
+			return nil
+		}
+		return fmt.Errorf("record coupon discard: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit coupon discard: %w", err)
+	}
+	return nil
 }

@@ -1,7 +1,7 @@
 # Dashboard components
 
-- `UserHome.vue` composes the member dashboard and request states.
-- `BalanceHero.vue`, `EntitlementSummary.vue`, `UsagePanel.vue`, and `SubscriptionPanel.vue` render account facts and actions.
-- `ComingSoonLinks.vue` links to secondary member tools.
+- `UserHome.vue` composes the ordered Home experience and its request states; it resolves active squad UUIDs against the current catalog without persisting duplicated squad data.
+- `BalanceHero.vue` opens the real funding sheet from Home and refetches a provider-returned reissue order before prepopulating it; `SubscriptionPanel.vue` displays and copies the active subscription URL.
+- `UsagePanel.vue` shows current-term traffic and opens the date-bounded per-node detail; `TrafficUsageDetails.vue` owns its UTC range controls and node/day breakdown. `EntitlementSummary.vue` presents the active ride and reset cadence.
+- `ComingSoonLinks.vue` links to Questionnaire and Emby under Around TX.
 - `UsagePanel.test.ts` verifies stale upstream data disclosure.
-

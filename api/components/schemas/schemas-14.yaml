@@ -1,0 +1,33 @@
+DashboardNodeUsage:
+  type: object
+  additionalProperties: false
+  required: [startDate, endDate, categories, nodes]
+  properties:
+    startDate:
+      type: string
+      format: date
+    endDate:
+      type: string
+      format: date
+    categories:
+      description: UTC dates aligned with every node's `dailyBytes` values.
+      type: array
+      maxItems: 31
+      items: { type: string, format: date }
+    nodes:
+      description: Remnawave's highest-traffic nodes for the selected range.
+      type: array
+      maxItems: 20
+      items:
+        type: object
+        additionalProperties: false
+        required: [uuid, name, countryCode, totalBytes, dailyBytes]
+        properties:
+          uuid: { type: string }
+          name: { type: string }
+          countryCode: { type: string }
+          totalBytes: { $ref: '../../openapi.yaml#/components/schemas/DecimalInteger' }
+          dailyBytes:
+            type: array
+            maxItems: 31
+            items: { $ref: '../../openapi.yaml#/components/schemas/DecimalInteger' }

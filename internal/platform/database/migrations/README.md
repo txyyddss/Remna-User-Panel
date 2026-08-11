@@ -19,3 +19,9 @@ file instead.
   snapshot cleanup.
 - `010_clear_subscription_cache.sql` — clears legacy Remnawave subscription bearer
   values while retaining the nullable column for backup/restore schema compatibility.
+- `011_minimize_payment_payloads.sql` — clears terminal provider display payloads
+  that are not required for settlement.
+- `012_minimize_questionnaire_imports.sql` — removes settled CSV payloads and
+  aligns exhausted questionnaire jobs with the retry lifecycle.
+- `013_coupon_discards_and_courtesy_credits.sql` — adds durable wallet-discard
+  evidence and exactly-once terminal-payment courtesy-credit records.

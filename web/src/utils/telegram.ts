@@ -2,6 +2,40 @@ export function getTelegramWebApp(): TelegramWebApp | undefined {
   return window.Telegram?.WebApp
 }
 
+function versionParts(value: string | undefined): number[] | undefined {
+  if (!value || !/^\d+(?:\.\d+)*$/.test(value)) return undefined
+  return value.split('.').map(Number)
+}
+
+export function supportsTelegramVersion(minimum: string): boolean {
+  const app = getTelegramWebApp()
+  if (!app) return false
+  try {
+    if (typeof app.isVersionAtLeast === 'function') return app.isVersionAtLeast(minimum)
+  } catch {
+    return false
+  }
+  const current = versionParts(app.version)
+  const required = versionParts(minimum)
+  if (!current || !required) return false
+  const length = Math.max(current.length, required.length)
+  for (let index = 0; index < length; index += 1) {
+    const actual = current[index] ?? 0
+    const expected = required[index] ?? 0
+    if (actual !== expected) return actual > expected
+  }
+  return true
+}
+
+export function tryTelegramCall(callback: () => void): boolean {
+  try {
+    callback()
+    return true
+  } catch {
+    return false
+  }
+}
+
 export function isTelegramWebAppDetected(): boolean {
   if (getTelegramWebApp()) return true
   return [window.location.hash, window.location.search].some((source) => new URLSearchParams(source.replace(/^#/, '').replace(/^\?/, '')).has('tgWebAppData'))
@@ -50,7 +84,8 @@ export async function getTelegramInitData(timeoutMs = 8000): Promise<string | un
   return undefined
 }
 
-const telegramEvents = ['themeChanged', 'safeAreaChanged', 'contentSafeAreaChanged', 'viewportChanged']
+const telegramEvents = ['themeChanged', 'viewportChanged']
+const safeAreaEvents = ['safeAreaChanged', 'contentSafeAreaChanged']
 
 function syncTelegramEnvironment(): void {
   const app = getTelegramWebApp()
@@ -58,7 +93,7 @@ function syncTelegramEnvironment(): void {
   const root = document.documentElement
   root.classList.add('dark')
   for (const [key, value] of Object.entries(app.themeParams ?? {})) {
-    if (value) root.style.setProperty(`--tg-theme-${key.replaceAll('_', '-')}`, value)
+    if (value) root.style.setProperty(`--tg-theme-${key.replace(/_/g, '-')}`, value)
   }
   if (app.colorScheme === 'dark') {
     const theme = app.themeParams ?? {}
@@ -81,38 +116,51 @@ function syncTelegramEnvironment(): void {
 
 export function initializeTelegram(): () => void {
   const app = getTelegramWebApp()
-  app?.expand()
+  if (app) tryTelegramCall(() => app.expand())
   syncTelegramEnvironment()
-  for (const event of telegramEvents) app?.onEvent?.(event, syncTelegramEnvironment)
+  const events = supportsTelegramVersion('8.0') ? [...telegramEvents, ...safeAreaEvents] : telegramEvents
+  for (const event of events) {
+    if (app?.onEvent) tryTelegramCall(() => app.onEvent?.(event, syncTelegramEnvironment))
+  }
   window.addEventListener('resize', syncTelegramEnvironment)
   return () => {
-    for (const event of telegramEvents) app?.offEvent?.(event, syncTelegramEnvironment)
+    for (const event of events) {
+      if (app?.offEvent) tryTelegramCall(() => app.offEvent?.(event, syncTelegramEnvironment))
+    }
     window.removeEventListener('resize', syncTelegramEnvironment)
   }
 }
 
 export function markTelegramReady(): void {
   syncTelegramEnvironment()
-  getTelegramWebApp()?.ready()
+  const app = getTelegramWebApp()
+  if (app) tryTelegramCall(() => app.ready())
 }
 
 export function openExternalLink(url: string): void {
   const app = getTelegramWebApp()
-  if (url.startsWith('https://t.me/') && app) {
-    app.openTelegramLink(url)
-    return
+  if (app && supportsTelegramVersion('6.1')) {
+    if (url.startsWith('https://t.me/') && tryTelegramCall(() => app.openTelegramLink(url))) return
+    if (tryTelegramCall(() => app.openLink(url))) return
   }
-  if (app) {
-    app.openLink(url)
-    return
-  }
-  window.open(url, '_blank', 'noopener,noreferrer')
+  tryTelegramCall(() => window.open(url, '_blank', 'noopener,noreferrer'))
+}
+
+export function openTelegramInvoice(url: string): boolean {
+  const app = getTelegramWebApp()
+  return Boolean(app && supportsTelegramVersion('6.1') && tryTelegramCall(() => app.openInvoice(url)))
 }
 
 export function haptic(type: 'light' | 'medium' | 'heavy' = 'light'): void {
-  getTelegramWebApp()?.HapticFeedback?.impactOccurred(type)
+  const app = getTelegramWebApp()
+  if (app?.HapticFeedback && supportsTelegramVersion('6.1')) {
+    tryTelegramCall(() => app.HapticFeedback?.impactOccurred(type))
+  }
 }
 
 export function notifyHaptic(type: 'error' | 'success' | 'warning'): void {
-  getTelegramWebApp()?.HapticFeedback?.notificationOccurred(type)
+  const app = getTelegramWebApp()
+  if (app?.HapticFeedback && supportsTelegramVersion('6.1')) {
+    tryTelegramCall(() => app.HapticFeedback?.notificationOccurred(type))
+  }
 }

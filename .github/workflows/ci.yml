@@ -33,9 +33,9 @@ jobs:
         run: npm run generate:api
       - name: Require committed generated contract
         run: git diff --exit-code -- web/src/api/generated.ts
-#       - name: Enforce repository structure and localization
-#         working-directory: web
-#        run: npm run audit:structure
+      - name: Enforce repository structure and localization
+        working-directory: web
+        run: npm run audit:structure
       - name: Lint frontend
         working-directory: web
         run: npm run lint
@@ -82,7 +82,7 @@ jobs:
   go-race-coverage:
     name: Go race and coverage
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 50
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -92,8 +92,20 @@ jobs:
           go-version: 1.26.5
           cache: true
           cache-dependency-path: go.sum
-#       - name: Test all packages with race detector
-#         run: go test -race ./...
+      - name: Test all packages with race detector
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout --signal=TERM --kill-after=2m 35m \
+            go test -race -timeout 20m -json ./... | tee race-results.json
+      - name: Upload race diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-race-diagnostics
+          path: race-results.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: Enforce domain coverage
         shell: bash
         run: |
@@ -107,7 +119,7 @@ jobs:
           go test -covermode=atomic -coverprofile=domain-coverage.out "${packages[@]}"
           go tool cover -func=domain-coverage.out
           total="$(go tool cover -func=domain-coverage.out | awk '/^total:/ {gsub(/%/, "", $3); print $3}')"
-          awk -v total="$total" 'BEGIN { if ((total + 0) < 60) { printf "coverage %.1f%% is below 80%%\n", total; exit 1 } }'
+          awk -v total="$total" 'BEGIN { if ((total + 0) < 80) { printf "coverage %.1f%% is below 80%%\n", total; exit 1 } }'
 
   image-validation:
     name: Production image validation

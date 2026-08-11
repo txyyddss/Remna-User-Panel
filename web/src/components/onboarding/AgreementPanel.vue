@@ -10,12 +10,12 @@ defineEmits<{ submit: []; toggle: [id: string] }>()
   <section class="onboarding-panel">
     <header class="onboarding-panel__header">
       <span class="feature-icon feature-icon--warning"><UIcon name="i-ph-shield-warning-fill" /></span>
-      <h1>{{ $t('onboarding.agreementTitle') }}</h1>
+      <h1>{{ agreements[0]?.pageTitle || $t('onboarding.agreementTitle') }}</h1>
       <p>{{ $t('onboarding.agreementCopy') }}</p>
     </header>
 
     <div class="agreement-list">
-      <label v-for="agreement in agreements" :key="agreement.id" class="agreement-callout agreement-callout--selectable">
+      <label v-for="agreement in agreements" :key="agreement.id" class="agreement-callout agreement-callout--selectable" :class="`agreement-callout--${agreement.color || 'warning'}`">
         <UIcon :name="agreementIcon(agreement.icon)" aria-hidden="true" />
         <span><strong>{{ agreement.title }}</strong><small>{{ agreement.body }}</small></span>
         <UCheckbox

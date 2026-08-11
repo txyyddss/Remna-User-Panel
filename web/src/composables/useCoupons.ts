@@ -3,12 +3,14 @@ import { onMounted, readonly, shallowRef } from 'vue'
 import type { CouponGrant } from '@/api/features'
 import { featuresApi } from '@/api/features'
 import { localizedError, t } from '@/i18n'
+import { createUuid } from '@/utils/browserCompatibility'
 import { notifyHaptic } from '@/utils/telegram'
 
 export function useCoupons() {
   const grants = shallowRef<CouponGrant[]>([])
   const loading = shallowRef(true)
   const redeeming = shallowRef(false)
+  const discarding = shallowRef(false)
   const error = shallowRef<string | null>(null)
   const message = shallowRef<string | null>(null)
   const redemptionKeys = new Map<string, string>()
@@ -26,7 +28,7 @@ export function useCoupons() {
     message.value = null
     try {
       const canonicalCode = code.trim().toUpperCase()
-      const key = redemptionKeys.get(canonicalCode) ?? globalThis.crypto.randomUUID()
+      const key = redemptionKeys.get(canonicalCode) ?? createUuid()
       redemptionKeys.set(canonicalCode, key)
       const result = await featuresApi.redeemCoupon(canonicalCode, key)
       redemptionKeys.delete(canonicalCode)
@@ -45,7 +47,39 @@ export function useCoupons() {
     }
   }
 
+  async function discard(grantID: string): Promise<boolean> {
+    const grant = grants.value.find((item) => item.id === grantID)
+    if (discarding.value || !grant) return false
+
+    discarding.value = true
+    error.value = null
+    message.value = null
+    try {
+      await featuresApi.discardCouponWalletGrant(grantID)
+      grants.value = grants.value.filter((item) => item.id !== grantID)
+      message.value = t('coupons.discarded', { name: grant.coupon.name })
+      notifyHaptic('success')
+      return true
+    } catch (caught) {
+      error.value = localizedError(caught, 'coupons.discardFailed')
+      notifyHaptic('error')
+      return false
+    } finally {
+      discarding.value = false
+    }
+  }
+
   onMounted(() => void load())
 
-  return { grants: readonly(grants), loading: readonly(loading), redeeming: readonly(redeeming), error: readonly(error), message: readonly(message), load, redeem }
+  return {
+    grants: readonly(grants),
+    loading: readonly(loading),
+    redeeming: readonly(redeeming),
+    discarding: readonly(discarding),
+    error: readonly(error),
+    message: readonly(message),
+    load,
+    redeem,
+    discard,
+  }
 }

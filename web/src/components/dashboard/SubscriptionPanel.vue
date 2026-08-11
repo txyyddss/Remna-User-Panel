@@ -3,7 +3,6 @@ import { shallowRef, watch } from 'vue'
 
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { useClipboard } from '@/composables/useClipboard'
-import { openExternalLink } from '@/utils/telegram'
 
 const props = defineProps<{
   subscriptionUrl?: string | null
@@ -21,24 +20,20 @@ watch(() => props.revoking, (next, previous) => {
 function copyLink(): void {
   if (props.subscriptionUrl) void copy(props.subscriptionUrl)
 }
-
-function openLink(): void {
-  if (props.subscriptionUrl) openExternalLink(props.subscriptionUrl)
-}
 </script>
 
 <template>
-  <section class="section-block subscription-section">
+  <section class="section-block home-subscription">
     <div class="section-heading">
       <h2>{{ $t('dashboard.subscriptionLink') }}</h2>
       <span class="feature-icon feature-icon--small"><UIcon name="i-ph-key" /></span>
     </div>
     <template v-if="subscriptionUrl">
-      <p class="subscription-section__lead">{{ $t('dashboard.subscriptionHint') }}</p>
-      <div class="secret-field">
-        <span aria-hidden="true">••••••••••••••••••••••••</span>
+      <p class="home-subscription__lead">{{ $t('dashboard.subscriptionHint') }}</p>
+      <div class="home-subscription__value">
+        <code>{{ subscriptionUrl }}</code>
         <UButton
-          class="icon-button"
+          class="home-subscription__copy"
           color="neutral"
           variant="ghost"
           :icon="copied ? 'i-ph-check-bold' : 'i-ph-copy'"
@@ -46,22 +41,14 @@ function openLink(): void {
           @click="copyLink"
         />
       </div>
-      <div class="button-row">
-        <UButton
-          color="neutral"
-          variant="outline"
-          icon="i-ph-arrow-square-out"
-          :label="$t('common.open')"
-          @click="openLink"
-        />
-        <UButton
-          color="error"
-          variant="ghost"
-          icon="i-ph-trash"
-          :label="$t('common.revoke')"
-          @click="confirmOpen = true"
-        />
-      </div>
+      <UButton
+        class="home-subscription__revoke"
+        color="error"
+        variant="ghost"
+        icon="i-ph-trash"
+        :label="$t('common.revoke')"
+        @click="confirmOpen = true"
+      />
     </template>
     <div v-else class="empty-inline">
       <div>

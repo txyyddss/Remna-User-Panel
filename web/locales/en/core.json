@@ -25,7 +25,9 @@
     "telegramLoading": "Telegram authentication is still loading. Try again in a moment.",
     "tryAgain": "Try again",
     "securingRide": "Securing your ride",
-    "authenticationFailed": "Authentication could not be completed."
+    "authenticationFailed": "Authentication could not be completed.",
+    "browserUnsupportedTitle": "Update Telegram to continue.",
+    "browserUnsupportedDescription": "This browser cannot safely complete secure requests. Update Telegram or open the Mini App in a current browser."
   },
   "onboarding": {
     "setupProgress": "Setup progress",
@@ -101,6 +103,7 @@
     "couponWallet": "Coupon wallet is unavailable.",
     "couponRedeem": "Code could not be redeemed.",
     "dashboardUnavailable": "Dashboard is unavailable.",
+    "nodeUsageUnavailable": "Per-node traffic is temporarily unavailable.",
     "subscriptionRevoke": "Link could not be revoked.",
     "embyUnavailable": "Emby account is unavailable.",
     "embyUpdate": "Emby update failed.",
@@ -121,9 +124,12 @@
       "REQUEST_SIGNATURE_REQUIRED": "Your secure session needs to be refreshed.",
       "REQUEST_SIGNATURE_INVALID": "Your secure session could not be verified.",
       "REQUEST_SIGNATURE_STALE": "Refresh the app, then try again.",
+      "BROWSER_CAPABILITY_UNSUPPORTED": "This Telegram version cannot complete secure requests. Update Telegram and try again.",
       "REQUEST_REPLAYED": "This request was already received.",
       "REQUEST_BODY_TOO_LARGE": "This upload is too large.",
       "INVALID_REQUEST_INPUT": "Some request data is invalid.",
+      "INVALID_USAGE_RANGE": "Choose a usage range of up to 31 days.",
+      "NODE_USAGE_UNAVAILABLE": "Per-node traffic is temporarily unavailable.",
       "SESSION_CREATE_FAILED": "A secure session could not be created.",
       "ADMIN_REQUIRED": "Administrator access is required.",
       "INVALID_REWARD": "Daily reward must be a non-negative TXB amount with at most two decimals.",

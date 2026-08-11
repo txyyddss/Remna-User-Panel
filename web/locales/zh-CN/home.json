@@ -1,0 +1,23 @@
+{
+  "home": {
+    "currentTerm": "当前周期",
+    "trafficDetails": "流量明细",
+    "noNodeUsage": "所选范围暂无节点流量数据。",
+    "trafficStart": "开始日期",
+    "trafficEnd": "结束日期",
+    "trafficApply": "显示流量",
+    "trafficRangeHint": "日期按 UTC 计算，最多可选择 31 天。",
+    "trafficRangeInvalid": "请选择有效且按时间顺序排列的日期。",
+    "trafficLoadHint": "选择日期后加载节点流量。",
+    "trafficPeriod": "{start} 至 {end}（UTC）",
+    "trafficTopNodes": "显示流量最高的最多 {count} 个节点。",
+    "trafficNode": "{name} · {country}",
+    "trafficTotal": "总计",
+    "resetCadence": "重置周期",
+    "reset": {
+      "DAY": "每日",
+      "WEEK": "每周",
+      "MONTH": "每月"
+    }
+  }
+}

@@ -5,7 +5,7 @@
 
   .side-rail {
     width: 250px;
-    padding: 1.2rem;
+    padding: calc(var(--shell-safe-top) + 1.2rem) 1.2rem max(1.2rem, var(--shell-safe-bottom));
   }
 
   .content-grid--dashboard {
@@ -43,7 +43,6 @@
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  .mobile-header,
   .bottom-nav,
   .catalog-action,
   .dialog-overlay {

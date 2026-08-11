@@ -40,6 +40,11 @@ type adminCatalogRepository struct {
 	refundedOrder     model.PaymentOrder
 	refundActor       *string
 	refundErr         error
+	courtesyCredit    model.CourtesyCredit
+	courtesyActor     string
+	courtesyOrderID   string
+	courtesyReason    string
+	courtesyErr       error
 	cancelledPurchase model.Purchase
 	cancelledID       string
 	cancelErr         error
@@ -121,6 +126,10 @@ func (r *adminCatalogRepository) PaymentOrderByID(context.Context, string) (mode
 func (r *adminCatalogRepository) RefundPayment(_ context.Context, actor *string, _ string, _ string, _ time.Time) (model.PaymentOrder, error) {
 	r.refundActor = actor
 	return r.refundedOrder, r.refundErr
+}
+func (r *adminCatalogRepository) CourtesyCreditPayment(_ context.Context, actorID, orderID, reason string, _ time.Time) (model.CourtesyCredit, error) {
+	r.courtesyActor, r.courtesyOrderID, r.courtesyReason = actorID, orderID, reason
+	return r.courtesyCredit, r.courtesyErr
 }
 func (r *adminCatalogRepository) ListRefunds(context.Context, int) ([]model.Refund, error) {
 	return nil, nil

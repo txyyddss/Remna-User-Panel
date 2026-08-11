@@ -20,6 +20,7 @@ var (
 	ErrInvalidContent = errors.New("invalid onboarding content")
 	contentIDPattern  = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,63}$`)
 	agreementIcons    = map[string]struct{}{"link-break": {}, "shield-check": {}, "users-three": {}, "warning": {}, "lock-key": {}, "heart": {}, "scales": {}}
+	agreementColors   = map[string]struct{}{"accent": {}, "success": {}, "warning": {}, "danger": {}, "neutral": {}}
 )
 
 type WelcomeMessage struct {
@@ -29,10 +30,12 @@ type WelcomeMessage struct {
 }
 
 type Agreement struct {
-	ID    string `json:"id"`
-	Icon  string `json:"icon"`
-	Title string `json:"title"`
-	Body  string `json:"body"`
+	ID        string `json:"id"`
+	Icon      string `json:"icon"`
+	Color     string `json:"color,omitempty"`
+	PageTitle string `json:"pageTitle,omitempty"`
+	Title     string `json:"title"`
+	Body      string `json:"body"`
 }
 
 type Content map[string]json.RawMessage
@@ -94,11 +97,30 @@ func Validate(kind string, content Content) error {
 		for index := range english {
 			_, iconOK := agreementIcons[english[index].Icon]
 			_, translatedIconOK := agreementIcons[chinese[index].Icon]
+			if english[index].Color == "" {
+				english[index].Color = "warning"
+			}
+			if chinese[index].Color == "" {
+				chinese[index].Color = "warning"
+			}
+			_, colorOK := agreementColors[english[index].Color]
+			_, translatedColorOK := agreementColors[chinese[index].Color]
 			if !contentIDPattern.MatchString(english[index].ID) || english[index].ID != chinese[index].ID || english[index].Icon != chinese[index].Icon ||
-				!iconOK || !translatedIconOK || strings.TrimSpace(english[index].Title) == "" || strings.TrimSpace(chinese[index].Title) == "" ||
+				!iconOK || !translatedIconOK || english[index].Color != chinese[index].Color || !colorOK || !translatedColorOK ||
+				strings.TrimSpace(english[index].Title) == "" || strings.TrimSpace(chinese[index].Title) == "" ||
 				strings.TrimSpace(english[index].Body) == "" || strings.TrimSpace(chinese[index].Body) == "" ||
 				len(english[index].Title) > 200 || len(chinese[index].Title) > 200 || len(english[index].Body) > 2000 || len(chinese[index].Body) > 2000 {
 				return fmt.Errorf("%w: invalid agreement", ErrInvalidContent)
+			}
+			if index == 0 {
+				english[index].PageTitle = strings.TrimSpace(english[index].PageTitle)
+				chinese[index].PageTitle = strings.TrimSpace(chinese[index].PageTitle)
+				if (english[index].PageTitle == "") != (chinese[index].PageTitle == "") ||
+					len(english[index].PageTitle) > 200 || len(chinese[index].PageTitle) > 200 {
+					return fmt.Errorf("%w: invalid agreement page title", ErrInvalidContent)
+				}
+			} else if english[index].PageTitle != "" || chinese[index].PageTitle != "" {
+				return fmt.Errorf("%w: agreement page title must be first", ErrInvalidContent)
 			}
 			if _, duplicate := seen[english[index].ID]; duplicate {
 				return fmt.Errorf("%w: duplicate agreement id", ErrInvalidContent)

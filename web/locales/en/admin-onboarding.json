@@ -1,0 +1,48 @@
+{
+  "adminOnboarding": {
+    "title": "Onboarding content",
+    "copy": "Edit every localized screen visually, then publish one validated revision.",
+    "bundle": "Bundle",
+    "welcome": "Welcome messages",
+    "agreements": "Agreements",
+    "saved": "Draft saved.",
+    "published": "Draft published.",
+    "draftRevision": "Draft revision {revision}",
+    "publishedRevision": "Published revision {revision}",
+    "welcomeHint": "Keep message IDs in order; reading time is calculated when the app displays each message.",
+    "agreementHint": "Changes to published agreements require members to give consent again.",
+    "saveDraft": "Save draft",
+    "publishing": "Publishing",
+    "publish": "Publish",
+    "cardNumber": "Card {number}",
+    "identifier": "Identifier",
+    "moveUp": "Move card up",
+    "moveDown": "Move card down",
+    "removeCard": "Remove card",
+    "addWelcome": "Add welcome message",
+    "addAgreement": "Add agreement",
+    "icon": "Icon",
+    "color": "Color",
+    "pageTitle": "Page title",
+    "englishPageTitle": "English page title",
+    "chinesePageTitle": "Simplified Chinese page title",
+    "englishBody": "English agreement text",
+    "chineseBody": "Simplified Chinese agreement text",
+    "icons": {
+      "link-break": "Disconnect link",
+      "shield-check": "Shield check",
+      "users-three": "People",
+      "warning": "Warning",
+      "lock-key": "Lock and key",
+      "heart": "Heart",
+      "scales": "Scales"
+    },
+    "colors": {
+      "accent": "Accent",
+      "success": "Success",
+      "warning": "Warning",
+      "danger": "Danger",
+      "neutral": "Neutral"
+    }
+  }
+}

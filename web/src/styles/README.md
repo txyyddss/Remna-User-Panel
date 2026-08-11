@@ -11,10 +11,12 @@
 - `onboarding-03.css` styles onboarding completion and supporting states.
 - `dashboard-01.css` styles dashboard summaries and account details.
 - `dashboard-02.css` styles dashboard lists, actions, and secondary states.
+- `home-01.css` styles the compact balance, subscription, and traffic surfaces on Home.
+- `home-02.css` styles traffic details, ride facts, and Around TX links on Home.
 - `catalog-01.css` styles catalog browsing and plan presentation.
 - `catalog-02.css` styles catalog selection and checkout details.
-- `billing-01.css` styles wallet balances and funding controls.
-- `billing-02.css` styles billing history and transaction details.
+- `billing-01.css` styles funding controls.
+- `billing-02.css` styles provider-payment details.
 - `feedback-01.css` styles feedback, empty, and loading states.
 - `admin-01.css` styles administrative navigation and section layouts.
 - `admin-02.css` styles administrative forms, lists, and data surfaces.

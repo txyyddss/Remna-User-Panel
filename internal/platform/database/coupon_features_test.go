@@ -97,3 +97,43 @@ func TestCouponPurchaseGrantQuoteAndConsumption(t *testing.T) {
 		t.Fatalf("recurring quote = (%+v, %v)", recurringQuote, err)
 	}
 }
+
+func TestCouponGrantDiscardPreservesHistory(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := newTestStore(t)
+	user := createTestUser(t, store, 32_200)
+	coupon, err := store.SaveCoupon(ctx, coupons.CouponInput{Code: "DISCARD20", Name: "Discard", Kind: coupons.KindPurchaseRecurring,
+		DiscountMode: coupons.DiscountFixed, ValueMinorOrBPS: 20, Active: true}, time.Now())
+	if err != nil {
+		t.Fatalf("SaveCoupon(): %v", err)
+	}
+	redeemed, err := store.RedeemCoupon(ctx, user.ID, coupon.Code, "discard-redeem", time.Now())
+	if err != nil || redeemed.Grant == nil {
+		t.Fatalf("RedeemCoupon() = (%+v, %v)", redeemed, err)
+	}
+	if err := store.DiscardCouponGrant(ctx, user.ID, redeemed.Grant.ID, time.Now()); err != nil {
+		t.Fatalf("DiscardCouponGrant(): %v", err)
+	}
+	if err := store.DiscardCouponGrant(ctx, user.ID, redeemed.Grant.ID, time.Now()); err != nil {
+		t.Fatalf("DiscardCouponGrant(replay): %v", err)
+	}
+	wallet, err := store.ListCouponGrants(ctx, user.ID, time.Now())
+	if err != nil || len(wallet) != 0 {
+		t.Fatalf("ListCouponGrants() = (%+v, %v), want no active grants", wallet, err)
+	}
+	if _, err := store.QuotePurchaseCoupon(ctx, coupons.PurchaseContext{UserID: user.ID, GrantID: redeemed.Grant.ID, ComboID: "combo-a", GrossPriceMinor: 100}, time.Now()); !errors.Is(err, ErrConflict) {
+		t.Fatalf("QuotePurchaseCoupon(discarded) = %v, want conflict", err)
+	}
+	var discards, redemptions int
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM coupon_grant_discards WHERE grant_id=?`, redeemed.Grant.ID).Scan(&discards); err != nil {
+		t.Fatalf("count coupon discards: %v", err)
+	}
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM coupon_redemptions WHERE grant_id=?`, redeemed.Grant.ID).Scan(&redemptions); err != nil {
+		t.Fatalf("count coupon redemptions: %v", err)
+	}
+	if discards != 1 || redemptions != 1 {
+		t.Fatalf("discard/history rows = (%d, %d), want (1, 1)", discards, redemptions)
+	}
+}

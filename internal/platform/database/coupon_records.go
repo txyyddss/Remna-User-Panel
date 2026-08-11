@@ -25,6 +25,18 @@ func grantBySourceTx(ctx context.Context, tx *sql.Tx, userID, couponID, sourceTy
 	return scanGrant(tx.QueryRowContext(ctx, grantSelect+` WHERE coupon_grants.user_id=? AND coupon_grants.coupon_id=? AND coupon_grants.source_type=? AND coupon_grants.source_id=?`, userID, couponID, sourceType, sourceID))
 }
 
+func grantDiscardedTx(ctx context.Context, tx *sql.Tx, grantID string) (bool, error) {
+	var matched int
+	err := tx.QueryRowContext(ctx, `SELECT 1 FROM coupon_grant_discards WHERE grant_id=?`, grantID).Scan(&matched)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("load coupon discard: %w", err)
+	}
+	return true, nil
+}
+
 func scanGrant(row rowScanner) (coupons.Grant, error) {
 	var grant coupons.Grant
 	var consumed sql.NullString

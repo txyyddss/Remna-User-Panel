@@ -37,6 +37,14 @@ export interface ActivitySettings {
   groupMessageRewardTxbMinor: string
 }
 
+export interface ActivitySettingsWrite {
+  timezone: string
+  dailyRewardMinTxb: string
+  dailyRewardMaxTxb: string
+  groupMessageThreshold: number
+  groupMessageRewardTxb: string
+}
+
 export interface GroupMessageRewardStatus {
   enabled: boolean
   localDate: string

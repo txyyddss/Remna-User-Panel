@@ -1,6 +1,20 @@
-const encoder = new TextEncoder()
+import { hmac } from '@noble/hashes/hmac.js'
+import { sha256 } from '@noble/hashes/sha2.js'
+
+import { BrowserCapabilityError, secureRandomBytes } from '@/utils/browserCompatibility'
+
 const requestKeyCookie = 'txc_request_key'
 const keyPattern = /^[A-Za-z0-9_-]{43}$/
+
+function encodeText(value: string): Uint8Array {
+  try {
+    if (typeof TextEncoder !== 'function') throw new BrowserCapabilityError()
+    return new TextEncoder().encode(value)
+  } catch (caught) {
+    if (caught instanceof BrowserCapabilityError) throw caught
+    throw new BrowserCapabilityError()
+  }
+}
 
 function readCookie(name: string): string | undefined {
   const prefix = `${name}=`
@@ -12,7 +26,7 @@ function readCookie(name: string): string | undefined {
 }
 
 function decodeBase64Url(value: string): Uint8Array {
-  const standard = value.replaceAll('-', '+').replaceAll('_', '/')
+  const standard = value.replace(/-/g, '+').replace(/_/g, '/')
   const padded = standard.padEnd(Math.ceil(standard.length / 4) * 4, '=')
   return Uint8Array.from(atob(padded), (character) => character.charCodeAt(0))
 }
@@ -20,15 +34,51 @@ function decodeBase64Url(value: string): Uint8Array {
 function encodeBase64Url(value: Uint8Array): string {
   let binary = ''
   for (const byte of value) binary += String.fromCharCode(byte)
-  return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
-function hex(value: ArrayBuffer): string {
-  return [...new Uint8Array(value)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+function hex(value: Uint8Array): string {
+  return [...value].map((byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
 function buffer(value: Uint8Array): ArrayBuffer {
   return value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength) as ArrayBuffer
+}
+
+function webCrypto(): SubtleCrypto | undefined {
+  try {
+    const subtle = globalThis.crypto?.subtle
+    return subtle && typeof subtle.digest === 'function' && typeof subtle.importKey === 'function' && typeof subtle.sign === 'function'
+      ? subtle
+      : undefined
+  } catch {
+    return undefined
+  }
+}
+
+async function digest(value: Uint8Array): Promise<Uint8Array> {
+  const subtle = webCrypto()
+  if (subtle) {
+    try {
+      return new Uint8Array(await subtle.digest('SHA-256', buffer(value)))
+    } catch {
+      // Some Telegram WebViews expose Web Crypto but reject it in their context.
+    }
+  }
+  return sha256(value)
+}
+
+async function sign(keyBytes: Uint8Array, value: Uint8Array): Promise<Uint8Array> {
+  const subtle = webCrypto()
+  if (subtle) {
+    try {
+      const key = await subtle.importKey('raw', buffer(keyBytes), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+      return new Uint8Array(await subtle.sign('HMAC', key, buffer(value)))
+    } catch {
+      // The signed pure-JS fallback below keeps protected requests authenticated.
+    }
+  }
+  return hmac(sha256, keyBytes, value)
 }
 
 function canonicalTarget(url: string): string {
@@ -52,19 +102,16 @@ export async function applyRequestSignature(
   if (!encodedKey || !keyPattern.test(encodedKey)) return
 
   const timestamp = Math.floor(Date.now() / 1000).toString()
-  const nonceBytes = crypto.getRandomValues(new Uint8Array(16))
+  const nonceBytes = secureRandomBytes(16)
   const nonce = encodeBase64Url(nonceBytes)
-  const bodyHash = hex(await crypto.subtle.digest('SHA-256', buffer(body)))
+  const bodyHash = hex(await digest(body))
   const canonical = [method.toUpperCase(), target, timestamp, nonce, bodyHash].join('\n')
-  const key = await crypto.subtle.importKey(
-    'raw', buffer(decodeBase64Url(encodedKey)), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
-  )
-  const signature = hex(await crypto.subtle.sign('HMAC', key, buffer(encoder.encode(canonical))))
+  const signature = hex(await sign(decodeBase64Url(encodedKey), encodeText(canonical)))
   headers.set('X-TXC-Timestamp', timestamp)
   headers.set('X-TXC-Nonce', nonce)
   headers.set('X-TXC-Signature', signature)
 }
 
 export function requestBodyBytes(body?: string): Uint8Array {
-  return encoder.encode(body ?? '')
+  return encodeText(body ?? '')
 }

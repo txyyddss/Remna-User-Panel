@@ -1,10 +1,10 @@
 import { computed, getCurrentInstance, onMounted, readonly, shallowRef, watch } from 'vue'
 
 import { api, ApiError } from '@/api/client'
-import { featuresApi } from '@/api/features'
-import type { CouponGrant } from '@/api/features'
+import { featuresApi, type CouponGrant } from '@/api/features'
 import type { Catalog, Combo, Purchase, PurchaseQuote, SquadProduct } from '@/api/types'
 import { localizedError, t } from '@/i18n'
+import { createUuid } from '@/utils/browserCompatibility'
 import { notifyHaptic } from '@/utils/telegram'
 
 export function useCatalog() {
@@ -20,14 +20,11 @@ export function useCatalog() {
   const selectedSquadIds = shallowRef<string[]>([])
   const couponGrants = shallowRef<CouponGrant[]>([])
   const selectedCouponGrantId = shallowRef<string | null>(null)
-  const checkoutOpen = shallowRef(false)
+  const couponDiscarding = shallowRef(false)
   const needsBalance = shallowRef(false)
   const purchaseIdempotencyKey = shallowRef<string | null>(null)
-
   const visibleCombos = computed(() => catalog.value?.combos.filter((combo) => combo.active) ?? [])
-  const selectedCombo = computed<Combo | undefined>(() =>
-    visibleCombos.value.find((combo) => combo.id === selectedComboId.value),
-  )
+  const selectedCombo = computed<Combo | undefined>(() => visibleCombos.value.find((combo) => combo.id === selectedComboId.value))
   const includedSquadIds = computed(() => selectedCombo.value?.includedSquads.map((squad) => squad.id) ?? [])
   const visibleSquads = computed(() => {
     const squads = [
@@ -36,9 +33,7 @@ export function useCatalog() {
     ]
     return squads.filter((squad, index) => squads.findIndex((candidate) => candidate.id === squad.id) === index)
   })
-  const selectedSquads = computed<SquadProduct[]>(() =>
-    visibleSquads.value.filter((squad) => selectedSquadIds.value.includes(squad.id)),
-  )
+  const selectedSquads = computed<SquadProduct[]>(() => visibleSquads.value.filter((squad) => selectedSquadIds.value.includes(squad.id)))
   const eligibleCoupons = computed(() => couponGrants.value.filter((grant) => {
     const coupon = grant.coupon
     if (!selectedCombo.value || grant.status !== 'active' || !coupon.active) return false
@@ -55,11 +50,9 @@ export function useCatalog() {
     [...selectedSquadIds.value].sort(),
     selectedCouponGrantId.value,
   ]))
-
   watch(purchaseFingerprint, () => {
     purchaseIdempotencyKey.value = null
     quote.value = null
-    if (checkoutOpen.value) void refreshQuote()
   })
 
   async function load(): Promise<void> {
@@ -75,7 +68,7 @@ export function useCatalog() {
       balance.value = balanceResponse.balance
       couponGrants.value = couponResponse.items
       const preferred = catalog.value.combos.find((combo) => combo.active)
-      selectedComboId.value = preferred?.id ?? null
+      if (!selectedComboId.value || !catalog.value.combos.some((combo) => combo.active && combo.id === selectedComboId.value)) selectedComboId.value = preferred?.id ?? null
     } catch (caught) {
       error.value = localizedError(caught, 'errors.catalogUnavailable')
     } finally {
@@ -120,10 +113,23 @@ export function useCatalog() {
     }
   }
 
-  async function reviewPurchase(): Promise<void> {
-    if (!selectedCombo.value) return
-    purchaseIdempotencyKey.value ??= globalThis.crypto.randomUUID()
-    if (await refreshQuote()) checkoutOpen.value = true
+  async function discardCoupon(grantID: string): Promise<boolean> {
+    if (couponDiscarding.value || !couponGrants.value.some((grant) => grant.id === grantID)) return false
+    couponDiscarding.value = true
+    error.value = null
+    try {
+      await featuresApi.discardCouponWalletGrant(grantID)
+      couponGrants.value = couponGrants.value.filter((grant) => grant.id !== grantID)
+      if (selectedCouponGrantId.value === grantID) selectedCouponGrantId.value = null
+      notifyHaptic('success')
+      return true
+    } catch (caught) {
+      error.value = localizedError(caught, 'coupons.discardFailed')
+      notifyHaptic('error')
+      return false
+    } finally {
+      couponDiscarding.value = false
+    }
   }
 
   async function confirmPurchase(): Promise<boolean> {
@@ -132,7 +138,7 @@ export function useCatalog() {
     error.value = null
     needsBalance.value = false
     try {
-      purchaseIdempotencyKey.value ??= globalThis.crypto.randomUUID()
+      purchaseIdempotencyKey.value ??= createUuid()
       purchase.value = await api.createPurchase(
         selectedCombo.value.id,
         selectedSquadIds.value,
@@ -140,7 +146,6 @@ export function useCatalog() {
         purchaseIdempotencyKey.value,
       )
       notifyHaptic('success')
-      checkoutOpen.value = false
       purchaseIdempotencyKey.value = null
       selectedSquadIds.value = []
       selectedCouponGrantId.value = null
@@ -174,19 +179,20 @@ export function useCatalog() {
     selectedComboId,
     selectedSquadIds: readonly(selectedSquadIds),
     selectedCouponGrantId,
-    checkoutOpen,
     needsBalance: readonly(needsBalance),
     visibleCombos,
     visibleSquads,
     selectedCombo,
     selectedSquads,
     includedSquadIds,
+    couponGrants: readonly(couponGrants),
     eligibleCoupons,
+    couponDiscarding: readonly(couponDiscarding),
     load,
     selectCombo,
     toggleSquad,
-    reviewPurchase,
     refreshQuote,
+    discardCoupon,
     confirmPurchase,
   }
 }

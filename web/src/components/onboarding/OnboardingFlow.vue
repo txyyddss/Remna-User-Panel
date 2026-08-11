@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 
 import InlineNotice from '@/components/common/InlineNotice.vue'
-import LanguageSwitcher from '@/components/common/LanguageSwitcher.vue'
+import LanguageControl from '@/components/layout/LanguageControl.vue'
 import { useOnboarding } from '@/composables/useOnboarding'
 import { useI18n } from '@/i18n'
 import AgreementPanel from './AgreementPanel.vue'
@@ -59,11 +59,6 @@ const { available: mainButtonAvailable } = useOnboardingMainButton(mainAction)
 <template>
   <IntroSequence v-if="step === 'intro' && content" :messages="content.welcome" @complete="finishIntro" />
   <main v-else class="onboarding-shell">
-    <header class="onboarding-shell__top">
-      <span class="onboarding-shell__brand"><UIcon name="i-ph-circles-four-fill" /> {{ $t('app.name') }}</span>
-      <LanguageSwitcher />
-      <span class="onboarding-shell__percent">{{ Math.round(progress * 100) }}%</span>
-    </header>
     <UProgress
       class="onboarding-shell__track"
       :aria-label="$t('onboarding.setupProgress')"
@@ -107,5 +102,6 @@ const { available: mainButtonAvailable } = useOnboardingMainButton(mainAction)
       </Transition>
       <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
     </div>
+    <footer class="onboarding-shell__locale"><LanguageControl /></footer>
   </main>
 </template>

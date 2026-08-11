@@ -1,0 +1,35 @@
+post:
+  tags: [Admin, Billing]
+  operationId: creditAdminTerminalPayment
+  summary: Append an audited courtesy credit for one terminal failed or expired payment
+  description: |
+    Credits the original TXB amount locally exactly once, with a mandatory
+    administrator reason. It does not call a provider or change the original
+    payment order from failed or expired to paid.
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/ReasonRequest'
+  responses:
+    '200':
+      description: Immutable courtesy-credit ledger and audit records.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/CourtesyCredit'
+    '400':
+      $ref: '../openapi.yaml#/components/responses/BadRequest'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../openapi.yaml#/components/responses/Forbidden'
+    '404':
+      $ref: '../openapi.yaml#/components/responses/NotFound'
+    '409':
+      $ref: '../openapi.yaml#/components/responses/Conflict'
+    '422':
+      $ref: '../openapi.yaml#/components/responses/Unprocessable'

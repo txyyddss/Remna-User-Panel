@@ -30,6 +30,7 @@ func (s *Server) mountAdmin(router chi.Router) {
 	router.Post("/entitlements/{id}/cancel", s.adminCancelEntitlement)
 	router.Get("/payments", s.adminPayments)
 	router.Post("/payments/{id}/refund", s.adminRefundPayment)
+	router.Post("/payments/{id}/courtesy-credit", s.adminCourtesyCreditPayment)
 	router.Get("/refunds", s.adminRefunds)
 	router.Get("/backups", s.adminBackups)
 	router.Post("/backups", s.adminCreateBackup)

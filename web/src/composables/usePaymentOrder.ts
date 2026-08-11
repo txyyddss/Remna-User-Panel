@@ -4,8 +4,8 @@ import QRCode from 'qrcode'
 import type { FeaturePaymentMethod, FeaturePaymentOrder } from '@/api/features'
 import { api } from '@/api/client'
 import { localizedError, t } from '@/i18n'
-import { moneyFromTxbInput } from '@/utils/format'
-import { getTelegramWebApp, notifyHaptic, openExternalLink } from '@/utils/telegram'
+import { moneyFromTxbInput, txbInputFromMinor } from '@/utils/format'
+import { notifyHaptic, openExternalLink, openTelegramInvoice } from '@/utils/telegram'
 
 export type PaymentStage = 'configure' | 'creating' | 'pending' | 'cancelling' | 'cancelled' | 'paid'
 
@@ -20,6 +20,7 @@ export function usePaymentOrder(options: { onPaid: () => void }) {
   const order = shallowRef<FeaturePaymentOrder | null>(null)
   const qrDataUrl = shallowRef<string | null>(null)
   const error = shallowRef<string | null>(null)
+  const canReissue = shallowRef(false)
   let pollTimer: ReturnType<typeof setTimeout> | undefined
   let closeTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -38,8 +39,32 @@ export function usePaymentOrder(options: { onPaid: () => void }) {
     order.value = null
     qrDataUrl.value = null
     error.value = null
+    canReissue.value = false
     stage.value = 'configure'
     selectedMethodId.value = methods.find((method) => method.available)?.id ?? null
+  }
+
+  function hydrateReissueOrder(candidate: FeaturePaymentOrder, methods: readonly FeaturePaymentMethod[]): boolean {
+    const method = methods.find((item) => item.id === candidate.methodId && item.available)
+    const restoredAmount = candidate.txb.currency === 'TXB' ? txbInputFromMinor(candidate.txb.minor) : ''
+    const restoredMinor = moneyFromTxbInput(restoredAmount)
+    if (
+      (candidate.status !== 'expired' && candidate.status !== 'failed')
+      || !method || method.provider !== candidate.provider || method.rail !== candidate.providerRail
+      || restoredMinor === '' || BigInt(restoredMinor) < 100n
+    ) {
+      error.value = t('payment.reissueUnavailable')
+      return false
+    }
+    amount.value = restoredAmount
+    selectedMethodId.value = method.id
+    order.value = candidate
+    qrDataUrl.value = null
+    canReissue.value = true
+    error.value = candidate.status === 'expired'
+      ? t('payment.orderExpired')
+      : t('payment.terminalStatus', { status: t(`payment.status.${candidate.status}`) })
+    return true
   }
 
   function chooseMethod(methodId: string): void {
@@ -51,6 +76,7 @@ export function usePaymentOrder(options: { onPaid: () => void }) {
     if (!canCreate.value || !selectedMethodId.value) return
     stage.value = 'creating'
     error.value = null
+    canReissue.value = false
     try {
       order.value = await api.createPaymentOrder(selectedMethodId.value, amountMinor.value)
       qrDataUrl.value = order.value.qrPayload
@@ -70,13 +96,14 @@ export function usePaymentOrder(options: { onPaid: () => void }) {
       stage.value = order.value.status === 'paid' ? 'paid' : 'pending'
 
       if (order.value.provider === 'stars' && order.value.paymentUrl) {
-        getTelegramWebApp()?.openInvoice(order.value.paymentUrl)
+        if (!openTelegramInvoice(order.value.paymentUrl)) openExternalLink(order.value.paymentUrl)
       }
 
       if (stage.value === 'paid') handlePaid()
       else schedulePoll()
     } catch (caught) {
       stage.value = 'configure'
+      canReissue.value = true
       error.value = localizedError(caught, 'errors.paymentCreate')
       notifyHaptic('error')
     }
@@ -97,6 +124,7 @@ export function usePaymentOrder(options: { onPaid: () => void }) {
         return
       }
       if (isTerminalPaymentStatus(refreshed.status)) {
+        canReissue.value = refreshed.status === 'expired' || refreshed.status === 'failed'
         error.value = refreshed.status === 'expired'
           ? t('payment.orderExpired')
           : t('payment.terminalStatus', { status: t(`payment.status.${refreshed.status}`) })
@@ -150,10 +178,12 @@ export function usePaymentOrder(options: { onPaid: () => void }) {
     order: readonly(order),
     qrDataUrl: readonly(qrDataUrl),
     error: readonly(error),
+    canReissue: readonly(canReissue),
     amountMinor,
     amountValid,
     canCreate,
     reset,
+    hydrateReissueOrder,
     chooseMethod,
     createOrder,
     cancelOrder,

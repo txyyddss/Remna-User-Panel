@@ -54,6 +54,7 @@ export interface PurchaseQuote {
   expiresAt: RFC3339
   queued: boolean
   addonSquadUuids: string[]
+  accessibleNodes: RemnaNode[]
 }
 export interface RemnaNode {
   uuid: string
@@ -66,6 +67,7 @@ export interface RemnaNode {
 export type TopNode = DeepReadonly<components['schemas']['TopNode']>
 export type UsageStatistics = DeepReadonly<components['schemas']['Statistics']>
 export type Dashboard = DeepReadonly<components['schemas']['Dashboard']>
+export type DashboardNodeUsage = DeepReadonly<components['schemas']['DashboardNodeUsage']>
 export type PaymentProvider = components['schemas']['PaymentProvider']
 export type PaymentStatus = components['schemas']['PaymentStatus']
 export type PaymentMethod = DeepReadonly<components['schemas']['PaymentMethod']>
@@ -73,6 +75,7 @@ export type PaymentOrder = DeepReadonly<components['schemas']['PaymentOrder']>
 export type AdminPaymentOrder = DeepReadonly<components['schemas']['AdminPaymentOrder']>
 export type AdminEntitlement = DeepReadonly<components['schemas']['AdminEntitlement']>
 export type Refund = DeepReadonly<components['schemas']['Refund']>
+export type CourtesyCredit = DeepReadonly<components['schemas']['CourtesyCredit']>
 export type LedgerEntry = DeepReadonly<components['schemas']['LedgerEntry']>
 export type AdminSetting = DeepReadonly<components['schemas']['AdminSetting']>
 export type AdminUserSummary = DeepReadonly<components['schemas']['AdminUserSummary']>

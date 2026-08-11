@@ -96,16 +96,17 @@ type Catalog struct {
 
 // PurchaseQuote is a server-priced, non-mutating checkout preview.
 type PurchaseQuote struct {
-	ComboID            string    `json:"comboId"`
-	ComboName          string    `json:"comboName"`
-	GrossPriceTXBMinor int64     `json:"-"`
-	DiscountTXBMinor   int64     `json:"-"`
-	NetPriceTXBMinor   int64     `json:"-"`
-	GrossPrice         Money     `json:"grossPrice"`
-	Discount           Money     `json:"discount"`
-	NetPrice           Money     `json:"netPrice"`
-	EffectiveAt        time.Time `json:"effectiveAt"`
-	ExpiresAt          time.Time `json:"expiresAt"`
-	Queued             bool      `json:"queued"`
-	AddonSquadUUIDs    []string  `json:"addonSquadUuids"`
+	ComboID            string      `json:"comboId"`
+	ComboName          string      `json:"comboName"`
+	GrossPriceTXBMinor int64       `json:"-"`
+	DiscountTXBMinor   int64       `json:"-"`
+	NetPriceTXBMinor   int64       `json:"-"`
+	GrossPrice         Money       `json:"grossPrice"`
+	Discount           Money       `json:"discount"`
+	NetPrice           Money       `json:"netPrice"`
+	EffectiveAt        time.Time   `json:"effectiveAt"`
+	ExpiresAt          time.Time   `json:"expiresAt"`
+	Queued             bool        `json:"queued"`
+	AddonSquadUUIDs    []string    `json:"addonSquadUuids"`
+	AccessibleNodes    []RemnaNode `json:"accessibleNodes"`
 }

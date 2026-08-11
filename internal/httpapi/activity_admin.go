@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/activity"
+	"github.com/txyyddss/Remna-User-Panel/internal/billing"
 )
 
 func (s *Server) adminActivitySettings(w http.ResponseWriter, r *http.Request) {
@@ -30,19 +31,45 @@ func (s *Server) adminActivitySettings(w http.ResponseWriter, r *http.Request) {
 func (s *Server) adminUpdateActivitySettings(w http.ResponseWriter, r *http.Request) {
 	var request struct {
 		Timezone              string `json:"timezone"`
+		DailyRewardMinTXB     string `json:"dailyRewardMinTxb"`
+		DailyRewardMaxTXB     string `json:"dailyRewardMaxTxb"`
 		GroupMessageThreshold int    `json:"groupMessageThreshold"`
+		GroupMessageRewardTXB string `json:"groupMessageRewardTxb"`
 	}
 	if err := decodeJSON(w, r, &request); err != nil {
-		s.writeError(w, r, http.StatusBadRequest, "INVALID_ACTIVITY_SETTINGS", "Timezone and message threshold are required.")
+		s.writeError(w, r, http.StatusBadRequest, "INVALID_ACTIVITY_SETTINGS", "All activity settings are required.")
 		return
 	}
 	request.Timezone = strings.TrimSpace(request.Timezone)
+	request.DailyRewardMinTXB = strings.TrimSpace(request.DailyRewardMinTXB)
+	request.DailyRewardMaxTXB = strings.TrimSpace(request.DailyRewardMaxTXB)
+	request.GroupMessageRewardTXB = strings.TrimSpace(request.GroupMessageRewardTXB)
 	if _, err := time.LoadLocation(request.Timezone); err != nil {
 		s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_TIMEZONE", "Use a valid IANA timezone such as Asia/Shanghai.")
 		return
 	}
 	if request.GroupMessageThreshold < 0 {
 		s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_GROUP_MESSAGE_THRESHOLD", "Message threshold must be a non-negative integer.")
+		return
+	}
+	dailyRewardMinMinor, err := billing.ParseTXBMajor(request.DailyRewardMinTXB)
+	if err != nil || dailyRewardMinMinor < 0 {
+		s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_DAILY_REWARD_MINIMUM", "Daily reward minimum must be a non-negative TXB amount.")
+		return
+	}
+	dailyRewardMaxMinor, err := billing.ParseTXBMajor(request.DailyRewardMaxTXB)
+	if err != nil || dailyRewardMaxMinor < dailyRewardMinMinor {
+		s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_DAILY_REWARD_RANGE", "Daily reward maximum must be at least the minimum.")
+		return
+	}
+	groupMessageRewardMinor, err := billing.ParseTXBMajor(request.GroupMessageRewardTXB)
+	if err != nil || groupMessageRewardMinor < 0 {
+		s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_GROUP_MESSAGE_REWARD", "Group message reward must be a non-negative TXB amount.")
+		return
+	}
+	config, err := s.activityConfig(r.Context())
+	if err != nil {
+		s.communityFailure(w, r, err)
 		return
 	}
 	actorID := currentUser(r).ID
@@ -54,7 +81,30 @@ func (s *Server) adminUpdateActivitySettings(w http.ResponseWriter, r *http.Requ
 		s.communityFailure(w, r, err)
 		return
 	}
-	config, err := s.activityConfig(r.Context())
+	if dailyRewardMaxMinor < config.RewardMinMinor {
+		if err := s.deps.Admin.PutSetting(r.Context(), actorID, activityRewardMinSetting, request.DailyRewardMinTXB); err != nil {
+			s.communityFailure(w, r, err)
+			return
+		}
+		if err := s.deps.Admin.PutSetting(r.Context(), actorID, activityRewardMaxSetting, request.DailyRewardMaxTXB); err != nil {
+			s.communityFailure(w, r, err)
+			return
+		}
+	} else {
+		if err := s.deps.Admin.PutSetting(r.Context(), actorID, activityRewardMaxSetting, request.DailyRewardMaxTXB); err != nil {
+			s.communityFailure(w, r, err)
+			return
+		}
+		if err := s.deps.Admin.PutSetting(r.Context(), actorID, activityRewardMinSetting, request.DailyRewardMinTXB); err != nil {
+			s.communityFailure(w, r, err)
+			return
+		}
+	}
+	if err := s.deps.Admin.PutSetting(r.Context(), actorID, groupMessageRewardSetting, request.GroupMessageRewardTXB); err != nil {
+		s.communityFailure(w, r, err)
+		return
+	}
+	config, err = s.activityConfig(r.Context())
 	if err != nil {
 		s.communityFailure(w, r, err)
 		return

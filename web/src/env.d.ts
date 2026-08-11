@@ -12,6 +12,7 @@ interface TelegramWebAppUser {
 }
 
 interface TelegramWebApp {
+  version?: string
   initData: string
   initDataUnsafe: { user?: TelegramWebAppUser }
   colorScheme: 'light' | 'dark'
@@ -26,6 +27,7 @@ interface TelegramWebApp {
   openLink(url: string): void
   openTelegramLink(url: string): void
   openInvoice(url: string, callback?: (status: string) => void): void
+  isVersionAtLeast?(version: string): boolean
   onEvent?(eventType: string, callback: (...args: unknown[]) => void): void
   offEvent?(eventType: string, callback: (...args: unknown[]) => void): void
   BackButton?: {

@@ -1,6 +1,3 @@
 # Billing components
 
-- `BalancePage.vue` composes wallet, coupon, ledger, and top-up features.
-- `BalancePaymentSheet.vue` drives the provider order lifecycle.
-- `LedgerList.vue` renders recent immutable balance entries.
-
+- `BalancePaymentSheet.vue` drives the provider order lifecycle from Home, including a verified failed/expired-order reissue that creates a replacement order.

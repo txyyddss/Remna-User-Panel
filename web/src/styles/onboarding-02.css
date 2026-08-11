@@ -131,6 +131,11 @@ textarea::placeholder {
   background: var(--warning-soft);
 }
 
+.agreement-callout--accent { color: var(--accent); border-color: #304138; background: var(--accent-soft); }
+.agreement-callout--success { color: var(--success); border-color: #28543c; background: var(--success-soft); }
+.agreement-callout--danger { color: var(--danger); border-color: #5b3030; background: var(--danger-soft); }
+.agreement-callout--neutral { color: var(--text-muted); border-color: var(--line); background: var(--surface); }
+
 .agreement-callout p {
   margin: 0;
   font-size: 0.86rem;

@@ -1,0 +1,23 @@
+CourtesyCredit:
+  type: object
+  additionalProperties: false
+  required: [id, paymentOrderId, actorUserId, txb, ledgerEntryId, reason, createdAt, replayed]
+  properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    paymentOrderId:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    actorUserId:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    txb:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    ledgerEntryId:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    reason:
+      type: string
+      minLength: 3
+      maxLength: 500
+    createdAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+    replayed:
+      type: boolean

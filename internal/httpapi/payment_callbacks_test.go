@@ -35,7 +35,7 @@ func TestPaymentReturnAcceptsOnlyDocumentedProviders(t *testing.T) {
 			if err != nil {
 				t.Fatalf("parse redirect: %v", err)
 			}
-			if location.Path != "/miniapp/balance" || location.Query().Get("provider") != provider || location.Query().Get("paymentOrder") != "payment-1" {
+			if location.Path != "/miniapp/payment-result" || location.Query().Get("provider") != provider || location.Query().Get("paymentOrder") != "payment-1" {
 				t.Fatalf("redirect location = %q", location.String())
 			}
 		})

@@ -63,6 +63,8 @@
     "calendarTimezone": "日历时区",
     "timezoneHint": "请使用有效的 IANA 时区名。",
     "dailyReward": "每日奖励",
+    "dailyRewardMinimum": "每日奖励最低值",
+    "dailyRewardMaximum": "每日奖励最高值",
     "groupMessageThreshold": "每次奖励所需消息数",
     "groupMessageThresholdHint": "设为 0 可关闭群消息奖励。",
     "groupMessageReward": "群消息奖励",

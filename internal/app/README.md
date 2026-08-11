@@ -22,6 +22,7 @@ stopped.
 - `remna_adapter.go` owns queued Remnawave client creation, shared call helpers, user-ID validation, and domain mapping.
 - `remna_accounts_adapter.go` implements queued Remnawave account lookup and creation operations.
 - `remna_catalog_adapter.go` implements queued dashboard reads and subscription revocation for catalog workflows.
+- `remna_usage_adapter.go` implements queued date-bounded per-node usage reads for the member dashboard.
 - `remna_admin_adapter.go` implements queued squad, node, accessibility, and inbound-assignment administration.
 - `remna_entitlements_adapter.go` implements queued entitlement, traffic reset, removal, and rollover operations.
 - `emby_adapter.go` implements queued Emby client creation, account operations, policy updates, and metadata lookups.

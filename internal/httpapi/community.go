@@ -10,6 +10,7 @@ func (s *Server) mountCommunity(router chi.Router) {
 	router.Post("/api/v1/activity/bets", s.activityBet)
 	router.Post("/api/v1/activity/draws", s.activityDraw)
 	router.Get("/api/v1/coupons/wallet", s.couponWallet)
+	router.Delete("/api/v1/coupons/wallet/{id}", s.couponDiscard)
 	router.Post("/api/v1/coupons/redeem", s.couponRedeem)
 	router.Get("/api/v1/questionnaires/active", s.activeQuestionnaire)
 	router.Get("/api/v1/questionnaires/history", s.questionnaireHistory)

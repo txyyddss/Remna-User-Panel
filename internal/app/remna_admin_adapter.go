@@ -32,6 +32,23 @@ func (a remnaAdapter) ListCatalogSquads(ctx context.Context) ([]catalog.RemoteSq
 	return result, nil
 }
 
+func (a remnaAdapter) ListCatalogNodes(ctx context.Context) ([]catalog.RemoteNode, error) {
+	nodes, err := a.ListNodes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]catalog.RemoteNode, 0, len(nodes))
+	for _, node := range nodes {
+		result = append(result, catalog.RemoteNode{UUID: node.UUID, Name: node.Name, CountryCode: node.CountryCode,
+			ConsumptionMultiplier: node.ConsumptionMultiplier, ActiveInboundUUIDs: node.ActiveInboundUUIDs, Disabled: node.Disabled})
+	}
+	return result, nil
+}
+
+func (a remnaAdapter) AccessibleCatalogNodeUUIDs(ctx context.Context, squadUUID string) ([]string, error) {
+	return a.AccessibleNodeUUIDs(ctx, squadUUID)
+}
+
 func (a remnaAdapter) listSquads(ctx context.Context) ([]remnawave.InternalSquad, error) {
 	return remnaCall(ctx, a, func(callCtx context.Context, client remnaClient) ([]remnawave.InternalSquad, error) {
 		return client.ListInternalSquads(callCtx)

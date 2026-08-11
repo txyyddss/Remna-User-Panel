@@ -16,7 +16,7 @@ describe('useOnboardingMainButton', () => {
       onClick: vi.fn(), offClick: vi.fn(),
     }
     window.Telegram = { WebApp: {
-      initData: '', initDataUnsafe: {}, colorScheme: 'dark',
+      version: '9.0', initData: '', initDataUnsafe: {}, colorScheme: 'dark',
       ready: vi.fn(), expand: vi.fn(), close: vi.fn(), openLink: vi.fn(),
       openTelegramLink: vi.fn(), openInvoice: vi.fn(), MainButton: button,
     } as TelegramWebApp }

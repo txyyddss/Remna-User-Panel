@@ -6,10 +6,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
-	"strings"
 )
+
+type courtesyCreditRepository interface {
+	CourtesyCreditPayment(context.Context, string, string, string, time.Time) (model.CourtesyCredit, error)
+}
 
 // AdjustBalance appends an audited immutable ledger entry.
 func (s *Service) AdjustBalance(ctx context.Context, actorID, userID string, delta int64, reason string) (model.LedgerEntry, error) {
@@ -71,6 +77,20 @@ func (s *Service) Refund(ctx context.Context, actorID, orderID, reason string) (
 		return model.PaymentOrder{}, err
 	}
 	return order, nil
+}
+
+// CourtesyCredit credits a terminal failed or expired order locally without
+// claiming that a provider payment succeeded.
+func (s *Service) CourtesyCredit(ctx context.Context, actorID, orderID, reason string) (model.CourtesyCredit, error) {
+	reason = strings.TrimSpace(reason)
+	if strings.TrimSpace(actorID) == "" || len(reason) < 3 || len(reason) > 500 {
+		return model.CourtesyCredit{}, errors.New("a courtesy-credit reason of 3 to 500 bytes is required")
+	}
+	creditor, ok := s.repository.(courtesyCreditRepository)
+	if !ok {
+		return model.CourtesyCredit{}, errors.New("courtesy credits are unavailable")
+	}
+	return creditor.CourtesyCreditPayment(ctx, actorID, orderID, reason, s.now().UTC())
 }
 
 // CancelEntitlement applies a compensating credit and revokes active upstream access.

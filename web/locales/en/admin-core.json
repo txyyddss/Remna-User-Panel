@@ -52,23 +52,6 @@
     "none": "No Emby accounts",
     "noneHint": "Member setup records will appear here."
   },
-  "adminOnboarding": {
-    "title": "Onboarding content",
-    "copy": "Save complete localized drafts, then publish them as one validated revision.",
-    "bundle": "Bundle",
-    "welcome": "Welcome messages",
-    "agreements": "Agreements",
-    "arrayRequired": "Each locale must be a JSON array.",
-    "saved": "Draft saved.",
-    "published": "Draft published.",
-    "draftRevision": "Draft revision {revision}",
-    "publishedRevision": "Published revision {revision}",
-    "welcomeHint": "Locale arrays must have matching IDs and order. Display timing is computed when content is read.",
-    "agreementHint": "Locale arrays must have matching IDs, icons, and order. Publishing a change requires renewed consent.",
-    "saveDraft": "Save draft",
-    "publishing": "Publishing",
-    "publish": "Publish"
-  },
   "markdown": {
     "text": "text",
     "toolbar": "Safe text styling",

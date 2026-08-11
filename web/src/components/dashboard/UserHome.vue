@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
@@ -10,9 +11,12 @@ import EntitlementSummary from './EntitlementSummary.vue'
 import SubscriptionPanel from './SubscriptionPanel.vue'
 import UsagePanel from './UsagePanel.vue'
 
-const { dashboard, loading, refreshing, revoking, error, usageRatio, load, revokeSubscription } = useDashboard()
+const { dashboard, loading, revoking, error, usageRatio, activeSquadNames, load, revokeSubscription } = useDashboard()
 const revoked = shallowRef(false)
-const firstName = computed(() => dashboard.value?.user.firstName || '')
+const route = useRoute()
+const router = useRouter()
+const reissueOrderId = computed(() => typeof route.query.reissue === 'string' && route.query.reissue ? route.query.reissue : undefined)
+const topUpRequested = computed(() => route.query.topUp === '1' && !reissueOrderId.value)
 
 watch(revoking, (next, previous) => {
   if (previous && !next) revoked.value = true
@@ -20,6 +24,20 @@ watch(revoking, (next, previous) => {
 
 async function confirmRevoke(): Promise<void> {
   revoked.value = await revokeSubscription()
+}
+
+function consumeTopUpRequest(): void {
+  if (!topUpRequested.value) return
+  const query = { ...route.query }
+  delete query.topUp
+  void router.replace({ name: 'home', query })
+}
+
+function consumeReissueRequest(): void {
+  if (!reissueOrderId.value) return
+  const query = { ...route.query }
+  delete query.reissue
+  void router.replace({ name: 'home', query })
 }
 </script>
 
@@ -33,38 +51,35 @@ async function confirmRevoke(): Promise<void> {
       </div>
     </template>
     <template v-else-if="dashboard">
-      <BalanceHero :balance="dashboard.balance" :first-name="firstName || $t('dashboard.friend')" />
-      <ComingSoonLinks />
-      <div class="page-toolbar page-toolbar--end">
-        <UButton
-          class="text-button"
-          color="neutral"
-          variant="ghost"
-          icon="i-ph-arrow-clockwise"
-          :label="$t('common.refresh')"
-          :loading="refreshing"
-          @click="load({ quiet: true })"
-        />
-      </div>
+      <BalanceHero
+        :balance="dashboard.balance"
+        :open-top-up="topUpRequested"
+        :reissue-order-id="reissueOrderId"
+        @paid="load({ quiet: true })"
+        @top-up-request-consumed="consumeTopUpRequest"
+        @reissue-request-consumed="consumeReissueRequest"
+      />
       <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
-      <InlineNotice v-if="revoked" tone="success" :title="$t('dashboard.linkReplaced')">{{ $t('dashboard.previousLinkInvalid') }}</InlineNotice>
-      <div class="content-grid content-grid--dashboard">
-        <EntitlementSummary :active="dashboard.activePurchase" :queued="dashboard.queuedPurchase" />
+      <div class="home-stack">
+        <SubscriptionPanel
+          :subscription-url="dashboard.subscriptionUrl"
+          :revoking="revoking"
+          @revoke="confirmRevoke"
+        />
+        <InlineNotice v-if="revoked" tone="success" :title="$t('dashboard.linkReplaced')">{{ $t('dashboard.previousLinkInvalid') }}</InlineNotice>
         <UsagePanel
           v-if="dashboard.statistics"
           :statistics="dashboard.statistics"
           :ratio="usageRatio"
           :stale="dashboard.statisticsStale"
           :fetched-at="dashboard.fetchedAt"
+          :term="dashboard.activePurchase"
         />
-        <section v-else class="section-block empty-inline">
+        <section v-else class="section-block home-usage home-usage--empty empty-inline">
           <div><h3>{{ $t('dashboard.noStatistics') }}</h3><p>{{ $t('dashboard.statisticsPending') }}</p></div>
         </section>
-        <SubscriptionPanel
-          :subscription-url="dashboard.subscriptionUrl"
-          :revoking="revoking"
-          @revoke="confirmRevoke"
-        />
+        <EntitlementSummary :active="dashboard.activePurchase" :queued="dashboard.queuedPurchase" :squad-names="activeSquadNames" />
+        <ComingSoonLinks />
       </div>
     </template>
     <div v-else class="error-state">

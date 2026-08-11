@@ -94,7 +94,7 @@ func (s *Server) paymentReturn(w http.ResponseWriter, r *http.Request) {
 		orderID = pathOrderID
 	}
 	target := *s.deps.PublicURL
-	target.Path = strings.TrimRight(target.Path, "/") + "/balance"
+	target.Path = strings.TrimRight(target.Path, "/") + "/payment-result"
 	target.RawQuery = url.Values{"paymentOrder": {orderID}, "provider": {provider}}.Encode()
 	http.Redirect(w, r, target.String(), http.StatusSeeOther)
 }

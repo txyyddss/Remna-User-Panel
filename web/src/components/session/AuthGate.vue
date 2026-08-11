@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import LanguageSwitcher from '@/components/common/LanguageSwitcher.vue'
+import LanguageControl from '@/components/layout/LanguageControl.vue'
 import { isTelegramWebAppDetected } from '@/utils/telegram'
 
 const props = defineProps<{ message: string }>()
@@ -11,10 +11,6 @@ const authRequestFailed = computed(() => isTelegramWebAppDetected() && props.mes
 
 <template>
   <main class="auth-screen">
-    <LanguageSwitcher />
-    <div class="brand-mark brand-mark--large" aria-hidden="true">
-      <UIcon name="i-ph-telegram-logo-fill" />
-    </div>
     <div class="auth-screen__copy">
       <p class="eyebrow">{{ $t('auth.telegramAccess') }}</p>
       <h1>{{ authRequestFailed ? $t('auth.authenticationFailed') : $t('auth.openInTelegram') }}</h1>
@@ -25,5 +21,6 @@ const authRequestFailed = computed(() => isTelegramWebAppDetected() && props.mes
       icon="i-ph-arrow-clockwise"
       @click="$emit('retry')"
     />
+    <footer class="auth-screen__locale"><LanguageControl /></footer>
   </main>
 </template>

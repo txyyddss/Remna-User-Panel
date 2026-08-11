@@ -1,0 +1,23 @@
+{
+  "home": {
+    "currentTerm": "Current term",
+    "trafficDetails": "Traffic details",
+    "noNodeUsage": "No per-node traffic is available for this range.",
+    "trafficStart": "Start date",
+    "trafficEnd": "End date",
+    "trafficApply": "Show traffic",
+    "trafficRangeHint": "UTC dates, up to 31 days.",
+    "trafficRangeInvalid": "Choose valid dates in chronological order.",
+    "trafficLoadHint": "Choose dates to load per-node traffic.",
+    "trafficPeriod": "{start} to {end} (UTC)",
+    "trafficTopNodes": "Up to {count} busiest nodes are shown.",
+    "trafficNode": "{name} · {country}",
+    "trafficTotal": "Total",
+    "resetCadence": "Reset cadence",
+    "reset": {
+      "DAY": "Daily",
+      "WEEK": "Weekly",
+      "MONTH": "Monthly"
+    }
+  }
+}

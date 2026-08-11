@@ -106,14 +106,23 @@ ActivitySettings:
 ActivitySettingsWrite:
   type: object
   additionalProperties: false
-  required: [timezone, groupMessageThreshold]
+  required: [timezone, dailyRewardMinTxb, dailyRewardMaxTxb, groupMessageThreshold, groupMessageRewardTxb]
   properties:
     timezone:
       type: string
       examples: [Asia/Shanghai]
+    dailyRewardMinTxb:
+      type: string
+      pattern: '^\d+\.\d{2}$'
+    dailyRewardMaxTxb:
+      type: string
+      pattern: '^\d+\.\d{2}$'
     groupMessageThreshold:
       type: integer
       minimum: 0
+    groupMessageRewardTxb:
+      type: string
+      pattern: '^\d+\.\d{2}$'
 
 LuckyDrawPrize:
   type: object

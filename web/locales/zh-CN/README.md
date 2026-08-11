@@ -7,10 +7,12 @@ than in Vue templates, composables, or API clients.
 - `admin-activity.json` contains activity-management and lucky-draw copy.
 - `admin-catalog.json` contains catalog, squad, and coupon administration copy.
 - `admin-community.json` contains questionnaire administration and import copy.
-- `admin-core.json` contains admin navigation, users, Emby, and onboarding copy.
+- `admin-core.json` contains admin navigation, users, and Emby copy.
+- `admin-onboarding.json` contains visual onboarding-editor copy.
 - `admin-data.json` contains database editor and backup-management copy.
 - `admin-operations.json` contains settings, audit, payment, and entitlement copy.
-- `commerce.json` contains wallet, billing, catalog, and checkout copy.
+- `commerce.json` contains funding, payment, catalog, and checkout copy.
 - `community.json` contains coupon and questionnaire participation copy.
 - `core.json` contains application, navigation, status, and shared action copy.
+- `home.json` contains member Home traffic, UTC range, term, and reset labels.
 - `member.json` contains dashboard, onboarding, account, and Emby member copy.

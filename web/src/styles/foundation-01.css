@@ -40,6 +40,8 @@
   --accent-soft: #1d3025;
   --warning: #d8c18f;
   --warning-soft: #2b261b;
+  --success: #87d6a2;
+  --success-soft: #1c3425;
   --danger: #e2a29e;
   --danger-soft: #321f1e;
   --radius-panel: 16px;
@@ -99,8 +101,8 @@ a {
 
 .skip-link {
   position: fixed;
-  top: 0.75rem;
-  left: 0.75rem;
+  top: calc(var(--shell-safe-top, env(safe-area-inset-top, 0px)) + 0.75rem);
+  left: calc(var(--shell-safe-left, env(safe-area-inset-left, 0px)) + 0.75rem);
   z-index: 100;
   padding: 0.7rem 0.9rem;
   border-radius: var(--radius-control);

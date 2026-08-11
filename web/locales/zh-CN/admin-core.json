@@ -52,23 +52,6 @@
     "none": "暂无 Emby 账户",
     "noneHint": "成员设置记录会显示在这里。"
   },
-  "adminOnboarding": {
-    "title": "引导内容",
-    "copy": "保存完整的双语草稿，然后作为一个经过验证的版本发布。",
-    "bundle": "内容包",
-    "welcome": "欢迎消息",
-    "agreements": "协议",
-    "arrayRequired": "每种语言都必须是 JSON 数组。",
-    "saved": "草稿已保存。",
-    "published": "草稿已发布。",
-    "draftRevision": "草稿版本 {revision}",
-    "publishedRevision": "发布版本 {revision}",
-    "welcomeHint": "两种语言的 ID 与顺序必须一致。读取内容时会自动计算展示时长。",
-    "agreementHint": "两种语言的 ID、图标与顺序必须一致。协议变更发布后需要重新同意。",
-    "saveDraft": "保存草稿",
-    "publishing": "正在发布",
-    "publish": "发布"
-  },
   "markdown": {
     "text": "文本",
     "toolbar": "安全文本样式",

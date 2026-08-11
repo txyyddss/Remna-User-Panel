@@ -173,7 +173,15 @@ func (s *Service) Quote(ctx context.Context, user model.User, comboID string, ad
 	if !ok {
 		return model.PurchaseQuote{}, errors.New("purchase quotes are unavailable")
 	}
-	return repository.QuotePurchase(ctx, database.PurchaseInput{UserID: user.ID, ComboID: comboID, AddonSquadIDs: addonIDs, CouponGrantID: couponGrantID}, s.now().UTC())
+	quote, err := repository.QuotePurchase(ctx, database.PurchaseInput{UserID: user.ID, ComboID: comboID, AddonSquadIDs: addonIDs, CouponGrantID: couponGrantID}, s.now().UTC())
+	if err != nil {
+		return model.PurchaseQuote{}, err
+	}
+	quote.AccessibleNodes, err = s.quoteAccessibleNodes(ctx, comboID, addonIDs)
+	if err != nil {
+		return model.PurchaseQuote{}, err
+	}
+	return quote, nil
 }
 
 func (s *Service) validateLiveSelection(ctx context.Context, comboID string, addonIDs []string) error {

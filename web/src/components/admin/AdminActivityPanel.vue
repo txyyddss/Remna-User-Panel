@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, shallowRef } from 'vue'
 
-import type { ActivitySettings, AdminStatistics, BetGame, CouponDefinition, LuckyDrawAdmin, LuckyDrawWrite, StatisticsQuery } from '@/api/features'
+import type { AdminStatistics, BetGame, CouponDefinition, LuckyDrawAdmin, LuckyDrawWrite, StatisticsQuery } from '@/api/features'
 import { featuresApi } from '@/api/features'
-import AdminActivitySettings from '@/components/admin/activity/AdminActivitySettings.vue'
 import AdminLuckyDrawEditor from '@/components/admin/activity/AdminLuckyDrawEditor.vue'
 import SwitchField from '@/components/common/SwitchField.vue'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
@@ -15,7 +14,6 @@ import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 const games = shallowRef<BetGame[]>([])
 const draws = shallowRef<LuckyDrawAdmin[]>([])
 const coupons = shallowRef<CouponDefinition[]>([])
-const settings = shallowRef<ActivitySettings | null>(null)
 const editingGameId = shallowRef<string | null | undefined>(undefined)
 const editingDraw = shallowRef<LuckyDrawAdmin | null | undefined>(undefined)
 const loading = shallowRef(true)
@@ -54,13 +52,11 @@ async function load(): Promise<void> {
   loading.value = true
   error.value = null
   try {
-    const [settingsResponse, gameResponse, drawResponse, couponResponse] = await Promise.all([
-      featuresApi.getAdminActivitySettings(),
+    const [gameResponse, drawResponse, couponResponse] = await Promise.all([
       featuresApi.getAdminActivityGames(),
       featuresApi.getAdminLuckyDraws(),
       featuresApi.getAdminCoupons(),
     ])
-    settings.value = settingsResponse
     games.value = gameResponse.items
     draws.value = drawResponse.items
     coupons.value = couponResponse.items
@@ -83,19 +79,6 @@ function editGame(game?: BetGame): void {
     returnMultiplier: game.returnMultiplierBps / 10000,
     enabled: game.enabled,
   } : { name: '', icon: 'dice', description: '', winChancePercent: 50, minStake: '1.00', maxStake: '20.00', returnMultiplier: 2, enabled: true })
-}
-
-async function saveSettings(value: { timezone: string; groupMessageThreshold: number }): Promise<void> {
-  busy.value = true
-  error.value = null
-  try {
-    const saved = await featuresApi.saveAdminActivitySettings(value)
-    if (settings.value) settings.value = { ...settings.value, ...saved }
-  } catch (caught) {
-    error.value = localizedError(caught, 'adminActivityManagement.settingsFailed')
-  } finally {
-    busy.value = false
-  }
 }
 
 async function saveGame(): Promise<void> {
@@ -146,8 +129,6 @@ onMounted(() => void load())
     <div class="admin-panel__heading">
       <div><h2>{{ t('adminActivityManagement.title') }}</h2><p>{{ t('adminActivityManagement.copy') }}</p></div>
     </div>
-
-    <AdminActivitySettings :settings="settings" :busy="busy" @save="saveSettings" />
 
     <section class="activity-admin-section">
       <div class="activity-admin-section__heading"><div><h3>{{ t('adminActivityManagement.games') }}</h3><p>{{ t('adminActivityManagement.gamesHint') }}</p></div><UButton icon="i-ph-plus" :label="t('adminActivityManagement.newGame')" @click="editGame()" /></div>

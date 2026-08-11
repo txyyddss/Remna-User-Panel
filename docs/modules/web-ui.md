@@ -18,7 +18,9 @@ Localization is embedded from matching domain shards under `locales/en/` and `lo
 
 ## Routes and state behavior
 
-The canonical member routes are `/home`, `/catalog`, `/balance`, `/activity`, `/questionnaire`, and `/emby`. `/games` redirects to `/activity`. The three expanded product areas are real data-backed routes; they no longer share a placeholder view.
+The canonical member routes are `/home`, `/catalog`, `/activity`, `/questionnaire`, `/emby`, and `/payment-result`. `/balance` is retained only as a compatibility redirect to Home's funding sheet, and `/games` redirects to `/activity`. The provider-return route verifies the durable order before rendering; only failed or expired orders may hand their ID to Home, which refetches it before presenting a replacement payment. The three expanded product areas are real data-backed routes; they no longer share a placeholder view.
+
+Home's traffic detail opens on demand, defaults to the latest seven inclusive UTC dates, lets the member choose a start and end date within 31 dates, and displays Remnawave's top 20 returned nodes with daily byte totals. The date-range request is independent of the cached home summary and preserves an explicit upstream-unavailable state.
 
 Activity shows daily check-in, group-message reward progress/claimed state, enabled betting games, lucky draws, recent outcomes, exact stakes/fees, and resulting balance. It does not use streak pressure, near-miss animation, celebratory loops, or other manipulative gambling cues. Every financial action is disabled while pending and displays the server result.
 

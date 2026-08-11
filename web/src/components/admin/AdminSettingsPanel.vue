@@ -1,19 +1,30 @@
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { computed, onMounted, reactive, shallowRef, watch } from 'vue'
 
 import type { AdminSetting } from '@/api/types'
+import type { ActivitySettings, ActivitySettingsWrite } from '@/api/features'
+import { featuresApi } from '@/api/features'
+import AdminActivitySettings from '@/components/admin/activity/AdminActivitySettings.vue'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import SwitchField from '@/components/common/SwitchField.vue'
 import { useAdminSection } from '@/composables/useAdminSection'
-import { useI18n } from '@/i18n'
+import { localizedError, useI18n } from '@/i18n'
+import { notifyHaptic } from '@/utils/telegram'
 import AdminSectionState from './AdminSectionState.vue'
 
 const { items, loading, busy, error, load, perform } = useAdminSection<AdminSetting>('settings')
 const draft = reactive<Record<string, string>>({})
 const saved = reactive({ visible: false })
+const activitySettings = shallowRef<ActivitySettings | null>(null)
+const activityBusy = shallowRef(false)
+const activityError = shallowRef<string | null>(null)
 const { t } = useI18n()
+const activitySettingKeys = new Set([
+  'activity.timezone', 'activity.daily_reward_min_txb', 'activity.daily_reward_max_txb',
+  'activity.group_message_threshold', 'activity.group_message_reward_txb',
+])
 
-const grouped = computed(() => items.value.reduce<Record<string, AdminSetting[]>>((groups, item) => {
+const grouped = computed(() => items.value.filter((item) => !activitySettingKeys.has(item.key)).reduce<Record<string, AdminSetting[]>>((groups, item) => {
   const category = item.category
   groups[category] ??= []
   groups[category].push(item)
@@ -25,7 +36,7 @@ watch(items, (next) => {
 }, { immediate: true })
 
 function settingLabel(setting: AdminSetting): string {
-  const key = `adminSettings.settingLabels.${setting.key.replaceAll('.', '_')}`
+  const key = `adminSettings.settingLabels.${setting.key.replace(/\./g, '_')}`
   const translated = t(key)
   if (translated !== key) return translated
   return setting.key
@@ -54,10 +65,36 @@ function setBoolean(key: string, value: boolean): void {
 }
 
 async function save(): Promise<void> {
-  const values = Object.entries(draft).filter(([, value]) => value !== '')
+  const values = Object.entries(draft).filter(([key, value]) => !activitySettingKeys.has(key) && value !== '')
   const { api } = await import('@/api/client')
   saved.visible = await perform(() => Promise.all(values.map(([key, value]) => api.updateAdminSetting(key, value))))
 }
+
+async function loadActivitySettings(): Promise<void> {
+  activityError.value = null
+  try {
+    activitySettings.value = await featuresApi.getAdminActivitySettings()
+  } catch (caught) {
+    activityError.value = localizedError(caught, 'errors.adminLoad')
+  }
+}
+
+async function saveActivitySettings(value: ActivitySettingsWrite): Promise<void> {
+  if (activityBusy.value) return
+  activityBusy.value = true
+  activityError.value = null
+  try {
+    activitySettings.value = await featuresApi.saveAdminActivitySettings(value)
+    notifyHaptic('success')
+  } catch (caught) {
+    activityError.value = localizedError(caught, 'errors.adminAction')
+    notifyHaptic('error')
+  } finally {
+    activityBusy.value = false
+  }
+}
+
+onMounted(() => void loadActivitySettings())
 </script>
 
 <template>
@@ -67,6 +104,10 @@ async function save(): Promise<void> {
       <UButton icon="i-ph-floppy-disk" :disabled="busy" :loading="busy" :label="busy ? t('common.saving') : t('adminSettings.save')" @click="save" />
     </div>
     <InlineNotice v-if="saved.visible" tone="success" :title="t('adminSettings.saved')">{{ t('adminSettings.savedHint') }}</InlineNotice>
+    <section class="settings-activity">
+      <AdminActivitySettings :settings="activitySettings" :busy="activityBusy" @save="saveActivitySettings" />
+      <InlineNotice v-if="activityError" tone="warning">{{ activityError }}</InlineNotice>
+    </section>
     <AdminSectionState :loading="loading" :error="error" @retry="load()">
       <form class="settings-groups" @submit.prevent="save">
         <fieldset v-for="(settings, category) in grouped" :key="category" class="settings-group">
@@ -99,3 +140,10 @@ async function save(): Promise<void> {
     </AdminSectionState>
   </section>
 </template>
+
+<style scoped>
+.settings-activity { display: grid; gap: 0.75rem; padding: 1rem; border-bottom: 1px solid var(--line); }
+.settings-activity h3, .settings-activity p { margin: 0; }
+.settings-activity p { margin-top: 0.2rem; color: var(--text-muted); font-size: 0.8rem; }
+.settings-activity :deep(.activity-settings) { margin: 0; }
+</style>

@@ -41,6 +41,13 @@ func applyPurchaseCouponTx(ctx context.Context, tx *sql.Tx, input coupons.Purcha
 	if err != nil {
 		return coupons.Discount{}, err
 	}
+	discarded, err := grantDiscardedTx(ctx, tx, grant.ID)
+	if err != nil {
+		return coupons.Discount{}, err
+	}
+	if discarded {
+		return coupons.Discount{}, ErrConflict
+	}
 	if err := ensureCouponUseAvailableTx(ctx, tx, grant.Coupon, input.UserID); err != nil {
 		return coupons.Discount{}, err
 	}
@@ -61,7 +68,8 @@ func applyPurchaseCouponTx(ctx context.Context, tx *sql.Tx, input coupons.Purcha
 		status = "consumed"
 		consumed = stamp(now)
 	}
-	result, err := tx.ExecContext(ctx, `UPDATE coupon_grants SET use_count=use_count+1,status=?,consumed_at=? WHERE id=? AND status='active'`, status, consumed, grant.ID)
+	result, err := tx.ExecContext(ctx, `UPDATE coupon_grants SET use_count=use_count+1,status=?,consumed_at=?
+		WHERE id=? AND status='active' AND NOT EXISTS (SELECT 1 FROM coupon_grant_discards WHERE grant_id=?)`, status, consumed, grant.ID, grant.ID)
 	if err != nil {
 		return coupons.Discount{}, fmt.Errorf("consume coupon grant: %w", err)
 	}
@@ -82,6 +90,13 @@ func quoteCouponGrantTx(ctx context.Context, tx *sql.Tx, input coupons.PurchaseC
 		return coupons.Discount{}, err
 	}
 	if grant.UserID != input.UserID || grant.Status != "active" {
+		return coupons.Discount{}, ErrConflict
+	}
+	discarded, err := grantDiscardedTx(ctx, tx, grant.ID)
+	if err != nil {
+		return coupons.Discount{}, err
+	}
+	if discarded {
 		return coupons.Discount{}, ErrConflict
 	}
 	if err := couponAvailable(grant.Coupon, now); err != nil {

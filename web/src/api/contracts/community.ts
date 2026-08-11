@@ -8,8 +8,8 @@ export interface CouponDefinition {
   discountMode?: 'fixed' | 'percent'
   valueMinorOrBps: string
   percentCapMinor?: string | null
-  eligibleComboIds: string[]
-  eligibleSquadIds: string[]
+  eligibleComboIds: readonly string[]
+  eligibleSquadIds: readonly string[]
   expiresAt: RFC3339 | null
   globalUseLimit: number | null
   perUserUseLimit: number | null

@@ -3,6 +3,7 @@ import { onMounted, readonly, shallowRef } from 'vue'
 import { featuresApi } from '@/api/features'
 import type { ActivityOverview, ActivityResult } from '@/api/features'
 import { localizedError } from '@/i18n'
+import { createUuid } from '@/utils/browserCompatibility'
 import { notifyHaptic } from '@/utils/telegram'
 
 export function useActivity() {
@@ -16,7 +17,7 @@ export function useActivity() {
   function idempotencyKey(action: string): string {
     const existing = actionKeys.get(action)
     if (existing) return existing
-    const created = globalThis.crypto.randomUUID()
+    const created = createUuid()
     actionKeys.set(action, created)
     return created
   }

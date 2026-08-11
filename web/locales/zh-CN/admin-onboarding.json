@@ -1,0 +1,48 @@
+{
+  "adminOnboarding": {
+    "title": "引导内容",
+    "copy": "以可视方式编辑所有本地化页面，再发布一个经过验证的版本。",
+    "bundle": "内容组",
+    "welcome": "欢迎消息",
+    "agreements": "协议",
+    "saved": "草稿已保存。",
+    "published": "草稿已发布。",
+    "draftRevision": "草稿版本 {revision}",
+    "publishedRevision": "发布版本 {revision}",
+    "welcomeHint": "请保持消息 ID 的顺序；应用展示消息时会计算阅读时长。",
+    "agreementHint": "已发布协议的变更会要求成员再次同意。",
+    "saveDraft": "保存草稿",
+    "publishing": "正在发布",
+    "publish": "发布",
+    "cardNumber": "卡片 {number}",
+    "identifier": "标识符",
+    "moveUp": "上移卡片",
+    "moveDown": "下移卡片",
+    "removeCard": "移除卡片",
+    "addWelcome": "添加欢迎消息",
+    "addAgreement": "添加协议",
+    "icon": "图标",
+    "color": "颜色",
+    "pageTitle": "页面标题",
+    "englishPageTitle": "英文页面标题",
+    "chinesePageTitle": "简体中文页面标题",
+    "englishBody": "英文协议内容",
+    "chineseBody": "简体中文协议内容",
+    "icons": {
+      "link-break": "断开链接",
+      "shield-check": "盾牌验证",
+      "users-three": "用户",
+      "warning": "警告",
+      "lock-key": "锁与钥匙",
+      "heart": "爱心",
+      "scales": "天平"
+    },
+    "colors": {
+      "accent": "强调",
+      "success": "成功",
+      "warning": "警告",
+      "danger": "危险",
+      "neutral": "中性"
+    }
+  }
+}

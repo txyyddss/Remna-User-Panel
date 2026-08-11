@@ -8,6 +8,7 @@
 - `request_validation.go` applies shared request validation, strict JSON decoding, and URL parameter normalization.
 - `authentication.go` exchanges verified Telegram init data for session and request-signing cookies.
 - `handlers.go` serves onboarding actions, dashboard, catalog, purchases, balance, and ledger history.
+- `dashboard_usage.go` validates the authenticated member's UTC traffic range and serves the bounded per-node usage projection.
 - `billing_orders.go` creates, polls, and cancels member payment orders.
 - `onboarding.go` serves and administers localized onboarding content.
 - `emby.go` serves member and administrator Emby account operations.
@@ -22,7 +23,7 @@
 - `activity_member.go` serves member Activity overview, check-in, bet, draw, and configuration behavior.
 - `activity_admin.go` serves Activity settings and game administration.
 - `activity_draw_admin.go` serves lucky-draw administration and prize mapping.
-- `coupons_member.go` serves wallet and redemption behavior plus coupon response mapping.
+- `coupons_member.go` serves wallet, soft-discard, and redemption behavior plus coupon response mapping.
 - `coupons_admin.go` serves coupon creation, updates, deactivation, and partial-input merging.
 - `questionnaire_types.go` maps questionnaire, participation, import, and settlement responses.
 - `questionnaire_member.go` serves active questionnaire, history, and participation behavior.
@@ -35,7 +36,7 @@
 - `admin_settings.go` lists, creates, and updates deployment settings.
 - `admin_catalog.go` manages combos, squad products, nodes, and statistics windows.
 - `admin_accounts.go` manages users, balance adjustments, and entitlements.
-- `admin_payments.go` lists administrator payment and refund projections and applies refunds.
+- `admin_payments.go` lists administrator payment and refund projections, applies refunds, and grants terminal-payment courtesy credits.
 - `admin_operations.go` manages backups, durable jobs, and audit-event listings.
 - `admin_errors.go` maps administrator domain and upstream failures to transport errors.
 

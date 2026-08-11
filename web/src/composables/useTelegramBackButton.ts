@@ -1,7 +1,7 @@
 import type { ComputedRef } from 'vue'
 import { onMounted, onUnmounted, watch } from 'vue'
 
-import { getTelegramWebApp } from '@/utils/telegram'
+import { getTelegramWebApp, supportsTelegramVersion, tryTelegramCall } from '@/utils/telegram'
 
 export function useTelegramBackButton(visible: ComputedRef<boolean>, onBack: () => void): void {
   let backButton: TelegramWebApp['BackButton']
@@ -11,13 +11,24 @@ export function useTelegramBackButton(visible: ComputedRef<boolean>, onBack: () 
   function bind(): void {
     if (retry !== undefined) window.clearTimeout(retry)
     retry = undefined
-    const next = getTelegramWebApp()?.BackButton
+    const app = getTelegramWebApp()
+    if (!app) {
+      if (attempts < 20) {
+        attempts += 1
+        retry = window.setTimeout(bind, 100)
+      }
+      return
+    }
+    if (!supportsTelegramVersion('6.1')) return
+    const next = app.BackButton
     if (next && next !== backButton) {
-      backButton?.offClick(onBack)
+      if (backButton) tryTelegramCall(() => backButton?.offClick(onBack))
       backButton = next
-      backButton.onClick(onBack)
-      if (visible.value) backButton.show()
-      else backButton.hide()
+      if (!tryTelegramCall(() => next.onClick(onBack))) {
+        backButton = undefined
+        return
+      }
+      tryTelegramCall(() => visible.value ? next.show() : next.hide())
       return
     }
     if (!next && attempts < 20) {
@@ -32,13 +43,14 @@ export function useTelegramBackButton(visible: ComputedRef<boolean>, onBack: () 
 
   watch(visible, (show) => {
     bind()
-    if (show) backButton?.show()
-    else backButton?.hide()
+    if (backButton) tryTelegramCall(() => show ? backButton?.show() : backButton?.hide())
   }, { immediate: true })
 
   onUnmounted(() => {
     if (retry !== undefined) window.clearTimeout(retry)
-    backButton?.offClick(onBack)
-    backButton?.hide()
+    if (backButton) {
+      tryTelegramCall(() => backButton?.offClick(onBack))
+      tryTelegramCall(() => backButton?.hide())
+    }
   })
 }

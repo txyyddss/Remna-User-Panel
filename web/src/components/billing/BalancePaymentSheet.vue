@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue'
 
-import type { FeaturePaymentMethod } from '@/api/features'
+import type { FeaturePaymentMethod, FeaturePaymentOrder } from '@/api/features'
 import type { PaymentProvider } from '@/api/types'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
 import { usePaymentOrder } from '@/composables/usePaymentOrder'
 import { useI18n } from '@/i18n'
 import { formatDateTime, formatMoney } from '@/utils/format'
 
-const props = defineProps<{ methods: readonly FeaturePaymentMethod[] }>()
+const props = defineProps<{
+  methods: readonly FeaturePaymentMethod[]
+  reissueOrder?: FeaturePaymentOrder | null
+}>()
 const emit = defineEmits<{ paid: [] }>()
 const open = defineModel<boolean>('open', { required: true })
 const selectedProvider = shallowRef<PaymentProvider | null>(null)
@@ -32,9 +35,11 @@ const {
   order,
   qrDataUrl,
   error,
+  canReissue,
   amountValid,
   canCreate,
   reset,
+  hydrateReissueOrder,
   chooseMethod,
   createOrder,
   cancelOrder,
@@ -74,11 +79,15 @@ function methodNote(method: FeaturePaymentMethod): string {
   return method.available ? '' : t('payment.rateUnavailable')
 }
 
+function prepareOrder(): void {
+  reset(methods.value)
+  if (props.reissueOrder && hydrateReissueOrder(props.reissueOrder, methods.value)) selectedProvider.value = props.reissueOrder.provider
+  else selectedProvider.value = methods.value.find((method) => method.available)?.provider ?? null
+}
+
 watch(open, (next) => {
-  if (next) {
-    reset(methods.value)
-    selectedProvider.value = methods.value.find((method) => method.available)?.provider ?? null
-  } else stopPolling()
+  if (next) prepareOrder()
+  else stopPolling()
 })
 </script>
 
@@ -151,7 +160,7 @@ watch(open, (next) => {
           block
           :disabled="!canCreate || stage === 'creating' || !amountValid"
           :loading="stage === 'creating'"
-          :label="stage === 'creating' ? $t('payment.creating') : $t('payment.continue')"
+          :label="stage === 'creating' ? $t('payment.creating') : canReissue ? $t('payment.reissue') : $t('payment.continue')"
           @click="createOrder"
         />
       </template>

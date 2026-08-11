@@ -17,10 +17,10 @@ npm run dev
 ## Application boundaries
 
 - `src/App.vue` provides Nuxt UI's `UApp` context and locale binding.
-- `src/main.ts` initializes Telegram, Pinia, Vue Router, Nuxt UI, AutoAnimate, and global styles before signaling readiness.
+- `src/main.ts` bootstraps compatibility before loading the app bundle, then either mounts a localized capability gate or initializes Telegram, Pinia, Vue Router, Nuxt UI, AutoAnimate, and global styles.
 - `src/router/` lazy-loads member and administrator views and enforces onboarding/role access.
 - `src/stores/` holds only session-wide authenticated identity state.
-- `src/api/` contains generated OpenAPI types, focused contracts, and one same-origin transport. Authenticated calls use the companion request key to sign the exact method, path/query, timestamp, nonce, and body bytes.
+- `src/api/` contains generated OpenAPI types, focused contracts, and one same-origin transport. Authenticated calls use the companion request key to sign the exact method, path/query, timestamp, nonce, and body bytes, including a secure HMAC fallback when Web Crypto is unavailable.
 - `src/i18n/` merges parity-checked locale shards from `locales/en/` and `locales/zh-CN/`; user-facing copy belongs there rather than in components or composables.
 - `src/composables/` owns remote state, polling, cancellation, idempotency, and mutations.
 - `src/components/` composes Nuxt UI controls into domain features; Iconify supplies all Phosphor and country icons, so no local icon assets are shipped.
@@ -33,8 +33,9 @@ Each source folder has its own `README.md` file map. Start with [the source map]
 
 - Resumable Telegram membership, immutable username, and agreement onboarding; decisive onboarding actions mirror to Telegram's native MainButton when available.
 - Dashboard balance, entitlement, Remnawave traffic, node summaries, and subscription-link rotation.
-- Live Remnawave catalog, server quotes, coupon selection, add-on squads, and idempotent purchases.
+- A six-step catalog journey for core combos, optional squads, accessible nodes, coupon redemption, review, and idempotent purchase confirmation.
 - Provider/rail selection, exact payment instructions, QR/address rendering, cancellation, and authoritative settlement polling.
+- Provider redirects land on `/payment-result`, which verifies durable payment state: paid orders show the green confirmation, while failed or expired orders offer an owner-verified replacement handoff to Home.
 - Daily check-in, group-message progress, betting games, lucky draws, and bounded outcome history.
 - Coupon wallet/redeem flow, active questionnaire participation, and durable validation codes.
 - Emby account setup, retry, password change, parental rating, and library preferences.

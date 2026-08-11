@@ -25,7 +25,9 @@
     "telegramLoading": "Telegram 身份验证仍在加载，请稍后重试。",
     "tryAgain": "重试",
     "securingRide": "正在保护你的行程",
-    "authenticationFailed": "身份验证未完成。"
+    "authenticationFailed": "身份验证未完成。",
+    "browserUnsupportedTitle": "请更新 Telegram 后继续。",
+    "browserUnsupportedDescription": "当前浏览器无法安全完成请求。请更新 Telegram，或在较新的浏览器中打开小程序。"
   },
   "onboarding": {
     "setupProgress": "设置进度",
@@ -101,6 +103,7 @@
     "couponWallet": "优惠券包暂不可用。",
     "couponRedeem": "无法兑换此代码。",
     "dashboardUnavailable": "仪表盘暂不可用。",
+    "nodeUsageUnavailable": "节点流量暂时不可用。",
     "subscriptionRevoke": "无法撤销链接。",
     "embyUnavailable": "Emby 账户暂不可用。",
     "embyUpdate": "Emby 更新失败。",
@@ -122,9 +125,12 @@
       "REQUEST_SIGNATURE_REQUIRED": "安全会话需要刷新。",
       "REQUEST_SIGNATURE_INVALID": "无法验证安全会话。",
       "REQUEST_SIGNATURE_STALE": "请刷新应用后重试。",
+      "BROWSER_CAPABILITY_UNSUPPORTED": "此 Telegram 版本无法完成安全请求。请更新 Telegram 后重试。",
       "REQUEST_REPLAYED": "该请求已被接收。",
       "REQUEST_BODY_TOO_LARGE": "上传内容过大。",
       "INVALID_REQUEST_INPUT": "部分请求数据无效。",
+      "INVALID_USAGE_RANGE": "请选择最多 31 天的流量范围。",
+      "NODE_USAGE_UNAVAILABLE": "节点流量暂时不可用。",
       "SESSION_CREATE_FAILED": "无法创建安全会话。",
       "ADMIN_REQUIRED": "需要管理员权限。",
       "INVALID_GROUP_MESSAGE_THRESHOLD": "消息数量必须是非负整数。",

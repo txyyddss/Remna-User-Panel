@@ -95,6 +95,8 @@ export interface OnboardingWelcomeMessage {
 export interface OnboardingAgreement {
   id: string
   icon: 'link-break' | 'shield-check' | 'users-three' | 'warning' | 'lock-key' | 'heart' | 'scales'
+  color?: 'accent' | 'success' | 'warning' | 'danger' | 'neutral'
+  pageTitle?: string
   title: string
   body: string
 }

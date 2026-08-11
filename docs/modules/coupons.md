@@ -2,7 +2,7 @@
 
 ## Ownership and interfaces
 
-Coupons owns canonical definitions, redemption quotas, member wallet grants, purchase eligibility, discount quoting, one-time consumption, and immediate balance effects. Members list their wallet with `GET /api/v1/coupons/wallet` and redeem a code with idempotent `POST /api/v1/coupons/redeem`. Administrators create, update, list, and deactivate definitions under `/api/v1/admin/coupons`.
+Coupons owns canonical definitions, redemption quotas, member wallet grants, purchase eligibility, discount quoting, one-time consumption, and immediate balance effects. Members list their wallet with `GET /api/v1/coupons/wallet`, soft-discard a wallet grant with `DELETE /api/v1/coupons/wallet/{id}`, and redeem a code with idempotent `POST /api/v1/coupons/redeem`. Administrators create, update, list, and deactivate definitions under `/api/v1/admin/coupons`.
 
 Codes are trimmed, uppercased, and restricted to 4–64 ASCII letters, digits, `_`, or `-`. A coupon may expire, have global and per-user redemption limits, and optionally target combo and squad product IDs. Eligibility is checked from the server-owned catalog snapshot rather than browser labels.
 
@@ -20,6 +20,12 @@ Purchase grants use either a fixed minor-unit discount or a basis-point percenta
 The coupon applicability check, quota/consumption update, purchase insert, TXB debit, and ledger entry share one SQLite transaction. A one-time grant is consumed only when that transaction succeeds. Recurring grants remain available subject to expiry and limits. Rollover snapshots use the net TXB actually debited after discount.
 
 Immediate balance coupons use immutable semantic ledger references and idempotent redemption records. Concurrent redemption cannot exceed a global or per-user quota. Deactivated or expired definitions cannot issue new grants; an existing grant remains subject to its snapshotted/linked definition rules at use time.
+
+Member discard is an idempotent soft state stored separately from a grant. It
+removes the grant from wallet, quote, and checkout surfaces without deleting
+redemption or purchase records. An administrator's DELETE action remains
+definition deactivation rather than destructive deletion, preserving the same
+historical references.
 
 ## Verification
 

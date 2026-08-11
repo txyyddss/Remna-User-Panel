@@ -81,6 +81,26 @@ func TestAdminRefund(t *testing.T) {
 	}
 }
 
+func TestAdminCourtesyCredit(t *testing.T) {
+	t.Parallel()
+
+	repository := &adminCatalogRepository{courtesyCredit: model.CourtesyCredit{ID: "credit-1", PaymentOrderID: "order-1"}}
+	service := newAdminServiceForTest(repository, nil, &adminSquadImporter{}, &adminBackupRunner{}, &adminRefunder{})
+	for _, reason := range []string{" ", "ok"} {
+		if _, err := service.CourtesyCredit(context.Background(), "admin", "order-1", reason); err == nil {
+			t.Fatalf("CourtesyCredit(%q) unexpectedly succeeded", reason)
+		}
+	}
+	credit, err := service.CourtesyCredit(context.Background(), "admin", "order-1", "provider failure confirmed")
+	if err != nil || credit.ID != "credit-1" || repository.courtesyActor != "admin" || repository.courtesyOrderID != "order-1" || repository.courtesyReason != "provider failure confirmed" {
+		t.Fatalf("CourtesyCredit() = (%+v, %v), repository = %+v", credit, err, repository)
+	}
+	repository.courtesyErr = errors.New("credit failure")
+	if _, err := service.CourtesyCredit(context.Background(), "admin", "order-1", "provider failure confirmed"); err == nil {
+		t.Fatal("CourtesyCredit() ignored repository failure")
+	}
+}
+
 func TestAdminCancelBackupAndRetry(t *testing.T) {
 	t.Parallel()
 

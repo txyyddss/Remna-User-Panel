@@ -29,7 +29,7 @@ describe('AppShell accessibility', () => {
     const onClick = vi.fn()
     const offClick = vi.fn()
     window.Telegram = { WebApp: {
-      initData: '', initDataUnsafe: {}, colorScheme: 'dark', ready: vi.fn(), expand: vi.fn(), close: vi.fn(),
+      version: '9.0', initData: '', initDataUnsafe: {}, colorScheme: 'dark', ready: vi.fn(), expand: vi.fn(), close: vi.fn(),
       openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn(),
       BackButton: { isVisible: false, show, hide, onClick, offClick },
     } }

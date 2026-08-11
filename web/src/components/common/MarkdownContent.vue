@@ -83,7 +83,22 @@ const html = computed(() => DOMPurify.sanitize(markdown.render(props.source), {
   text-underline-offset: 0.18em;
 }
 
+.markdown-content :deep(h1), .markdown-content :deep(h2), .markdown-content :deep(h3) {
+  margin: 1.1em 0 0.45em;
+  color: var(--text);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.markdown-content :deep(h1) { font-size: 1.3em; }
+.markdown-content :deep(h2) { font-size: 1.15em; }
+.markdown-content :deep(h3) { font-size: 1.02em; }
+.markdown-content :deep(ul), .markdown-content :deep(ol) { margin: 0.7em 0; padding-left: 1.25em; }
+.markdown-content :deep(li + li) { margin-top: 0.28em; }
+.markdown-content :deep(strong) { color: var(--text); }
+.markdown-content :deep(blockquote) { margin: 0.8em 0; padding-left: 0.8em; border-left: 2px solid var(--accent); color: var(--text); }
 .markdown-content :deep(code) { font-family: var(--font-mono); }
+.markdown-content :deep(pre) { overflow-x: auto; padding: 0.7em; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface); }
 
 .markdown-content :deep(.md-color-default) { color: var(--text); }
 .markdown-content :deep(.md-color-muted) { color: var(--text-muted); }

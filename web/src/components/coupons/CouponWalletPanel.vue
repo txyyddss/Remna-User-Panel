@@ -1,15 +1,27 @@
 <script setup lang="ts">
-import { shallowRef } from 'vue'
+import { computed, shallowRef } from 'vue'
 
+import type { CouponGrant } from '@/api/features'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import { useCoupons } from '@/composables/useCoupons'
-import { formatDate } from '@/utils/format'
+import CouponGrantList from './CouponGrantList.vue'
 
-const { grants, loading, redeeming, error, message, redeem } = useCoupons()
+const { grants, loading, redeeming, discarding, error, message, redeem, discard } = useCoupons()
 const code = shallowRef('')
+const selectedGrant = shallowRef<CouponGrant | null>(null)
+const discardingGrantId = computed(() => discarding.value ? selectedGrant.value?.id ?? null : null)
 
 async function submit(): Promise<void> {
   if (await redeem(code.value)) code.value = ''
+}
+
+function setDiscardOpen(open: boolean): void {
+  if (!open) selectedGrant.value = null
+}
+
+async function confirmDiscard(): Promise<void> {
+  if (!selectedGrant.value) return
+  if (await discard(selectedGrant.value.id)) selectedGrant.value = null
 }
 </script>
 
@@ -42,30 +54,29 @@ async function submit(): Promise<void> {
     <InlineNotice v-if="message" tone="success">{{ message }}</InlineNotice>
     <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
     <USkeleton v-if="loading" class="h-10" />
-    <div v-else-if="grants.length" v-auto-animate class="coupon-list">
-      <article v-for="grant in grants" :key="grant.id">
-        <span class="feature-icon feature-icon--small"><UIcon name="i-ph-ticket" /></span>
-        <div>
-          <strong>{{ grant.coupon.name }}</strong>
-          <small>
-            {{ grant.coupon.code }} · {{ $t(`coupons.kind.${grant.coupon.kind}`) }} ·
-            {{ grant.coupon.expiresAt ? $t('coupons.expires', { date: formatDate(grant.coupon.expiresAt) }) : $t('coupons.noExpiry') }}
-          </small>
-        </div>
-        <span>{{ $t('coupons.uses', { count: grant.coupon.perUserUseLimit === null ? '∞' : Math.max(0, grant.coupon.perUserUseLimit - grant.useCount) }) }}</span>
-      </article>
-    </div>
+    <CouponGrantList v-else-if="grants.length" :grants="grants" :discarding-id="discardingGrantId" @discard="selectedGrant = $event" />
     <div v-else class="empty-inline"><div><h3>{{ $t('coupons.empty') }}</h3><p>{{ $t('coupons.emptyHint') }}</p></div></div>
+
+    <UModal
+      :open="selectedGrant !== null"
+      :title="$t('coupons.discardTitle', { name: selectedGrant?.coupon.name ?? '' })"
+      :description="$t('coupons.discardDescription')"
+      :dismissible="!discarding"
+      :ui="{ footer: 'justify-end' }"
+      @update:open="setDiscardOpen"
+    >
+      <template #body>
+        <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
+      </template>
+      <template #footer="{ close }">
+        <UButton color="neutral" variant="outline" :label="$t('common.cancel')" :disabled="discarding" @click="close" />
+        <UButton color="error" icon="i-ph-trash" :loading="discarding" :disabled="discarding" :label="$t('coupons.discardConfirm')" @click="confirmDiscard" />
+      </template>
+    </UModal>
   </section>
 </template>
 
 <style scoped>
 .coupon-wallet { display: grid; gap: 0.8rem; }
 .coupon-redeem { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.55rem; }
-.coupon-list { display: grid; gap: 0.5rem; }
-.coupon-list article { min-height: 58px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.65rem; padding: 0.55rem; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface-raised); }
-.coupon-list strong, .coupon-list small { display: block; }
-.coupon-list strong { font-size: 0.78rem; }
-.coupon-list small { margin-top: 0.2rem; color: var(--text-faint); font-size: 0.62rem; }
-.coupon-list article > span:last-child { color: var(--accent); font-family: var(--font-mono); font-size: 0.65rem; }
 </style>

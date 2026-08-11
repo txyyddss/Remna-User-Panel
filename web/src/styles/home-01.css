@@ -1,0 +1,159 @@
+.page--home {
+  max-width: 760px;
+}
+
+.home-stack {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 0.9rem;
+}
+
+.home-balance {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 1rem;
+  padding: 1.15rem;
+  border: 1px solid #355242;
+  border-radius: var(--radius-panel);
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
+.home-balance__copy p,
+.home-balance__copy strong {
+  display: block;
+  margin: 0;
+}
+
+.home-balance__copy p {
+  color: #34513e;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.home-balance__copy strong {
+  margin-top: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: clamp(2rem, 9vw, 3.4rem);
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+.home-balance__notice {
+  grid-column: 1 / -1;
+}
+
+.home-subscription__lead {
+  margin: 0 0 0.85rem;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.home-subscription__value {
+  min-height: 50px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: #0e110f;
+}
+
+.home-subscription__value code {
+  min-width: 0;
+  padding: 0.8rem 0.85rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.home-subscription__copy {
+  width: 48px;
+  border-left: 1px solid var(--line);
+  border-radius: 0;
+}
+
+.home-subscription__revoke {
+  margin-top: 0.55rem;
+}
+
+.home-usage .notice {
+  margin-bottom: 1rem;
+}
+
+.home-usage__heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.home-usage__summary {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.home-usage__summary span,
+.home-usage__summary small {
+  display: block;
+  color: var(--text-faint);
+  font-size: 0.7rem;
+}
+
+.home-usage__summary strong {
+  display: block;
+  margin-top: 0.3rem;
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+}
+
+.home-usage__summary small {
+  margin-top: 0.18rem;
+}
+
+.home-usage__percentage {
+  color: var(--accent);
+  font-size: 1.8rem !important;
+  line-height: 1;
+}
+
+.home-usage--warning .home-usage__percentage {
+  color: var(--warning);
+}
+
+.home-usage--danger .home-usage__percentage {
+  color: var(--danger);
+}
+
+.home-usage__meter {
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  margin-top: 1rem;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.home-usage__meter span {
+  width: var(--usage);
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 220ms var(--ease-out), background-color 220ms var(--ease-out);
+}
+
+.home-usage--warning .home-usage__meter span {
+  background: var(--warning);
+}
+
+.home-usage--danger .home-usage__meter span {
+  background: var(--danger);
+}

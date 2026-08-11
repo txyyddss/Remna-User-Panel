@@ -86,7 +86,13 @@
     "noRefundsHint": "不可变撤销记录会保留在这里。",
     "refundTitle": "退款此支付？",
     "refundDescription": "TXB 入账会被撤销。如果账户变为负数，相关权益可能被取消。",
-    "issueRefund": "发起退款"
+    "issueRefund": "发起退款",
+    "courtesyCredit": "发放补偿额度",
+    "courtesyCreditTitle": "发放补偿额度？",
+    "courtesyCreditDescription": "这会为失败或过期支付添加本地 TXB 补偿额度，不会更改支付记录，也不会将其标记为已支付。",
+    "issueCourtesyCredit": "发放补偿额度",
+    "courtesyCreditSuccess": "已记录 {amount} 的补偿额度。",
+    "courtesyCreditAlreadyRecorded": "补偿额度已记录，未新增额外 TXB。"
   },
   "adminEntitlements": {
     "title": "权益",

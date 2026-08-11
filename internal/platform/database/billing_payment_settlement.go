@@ -86,6 +86,13 @@ func (s *Store) SettlePayment(ctx context.Context, provider, dedupeKey, payloadH
 	if order.ProviderChargeID != nil && chargeID != "" && *order.ProviderChargeID != chargeID {
 		return model.PaymentOrder{}, false, ErrConflict
 	}
+	courtesyCredited, creditErr := courtesyCreditExistsTx(ctx, tx, order.ID)
+	if creditErr != nil {
+		return model.PaymentOrder{}, false, creditErr
+	}
+	if courtesyCredited {
+		return model.PaymentOrder{}, false, ErrConflict
+	}
 	if order.Status == "paid" || order.Status == "refunded" {
 		return order, false, nil
 	}

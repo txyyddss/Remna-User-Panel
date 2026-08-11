@@ -71,6 +71,19 @@ type Refund struct {
 	CreatedAt      time.Time `json:"createdAt"`
 }
 
+// CourtesyCredit is an immutable administrator-authorized local credit for a
+// payment order that has already failed or expired without being provider-paid.
+type CourtesyCredit struct {
+	ID             string    `json:"id"`
+	PaymentOrderID string    `json:"paymentOrderId"`
+	ActorUserID    string    `json:"actorUserId"`
+	TXB            Money     `json:"txb"`
+	LedgerEntryID  string    `json:"ledgerEntryId"`
+	Reason         string    `json:"reason"`
+	CreatedAt      time.Time `json:"createdAt"`
+	Replayed       bool      `json:"replayed"`
+}
+
 // TXBMoney formats integer hundredths of TXB.
 func TXBMoney(minor int64) Money {
 	sign := ""

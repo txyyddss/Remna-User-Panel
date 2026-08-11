@@ -1,5 +1,6 @@
 import { request, requestBlob } from './http'
-import type { ActivityOverview, ActivityResult, ActivitySettings, BetGame, LuckyDrawAdmin, LuckyDrawWrite } from './contracts/activity'
+import type { CourtesyCredit } from './types'
+import type { ActivityOverview, ActivityResult, ActivitySettings, ActivitySettingsWrite, BetGame, LuckyDrawAdmin, LuckyDrawWrite } from './contracts/activity'
 import type { ActiveQuestionnaire, CouponDefinition, CouponGrant, CouponRedemption, QuestionnaireAdminRecord, QuestionnaireImportPreview, QuestionnaireImportState, QuestionnaireImportSummary, QuestionnaireParticipation } from './contracts/community'
 import type { EmbyAccount, EmbyOverview } from './contracts/commerce'
 import type { AdminStatistics, DatabaseMutationInput, DatabaseMutationResult, DatabaseMutationReview, DatabaseQueryInput, DatabaseRowsPage, DatabaseTable, OnboardingBundle, OnboardingLocalizedContent, PublishedOnboarding, RestoreOperation, StatisticsQuery } from './contracts/admin'
@@ -8,6 +9,7 @@ export type * from './contracts/activity'
 export type * from './contracts/community'
 export type * from './contracts/commerce'
 export type * from './contracts/admin'
+export type { CourtesyCredit } from './types'
 
 const featureRequest = request
 
@@ -21,6 +23,7 @@ export const featuresApi = {
     method: 'POST', body: { drawId }, headers: { 'Idempotency-Key': idempotencyKey },
   }),
   getCouponWallet: () => featureRequest<{ items: CouponGrant[] }>('/api/v1/coupons/wallet'),
+  discardCouponWalletGrant: (id: string) => featureRequest<void>(`/api/v1/coupons/wallet/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   redeemCoupon: (code: string, idempotencyKey: string) => featureRequest<CouponRedemption>('/api/v1/coupons/redeem', {
     method: 'POST', body: { code }, headers: { 'Idempotency-Key': idempotencyKey },
   }),
@@ -38,7 +41,7 @@ export const featuresApi = {
   }),
   getAdminActivityGames: () => featureRequest<{ items: BetGame[] }>('/api/v1/admin/activity-games'),
   getAdminActivitySettings: () => featureRequest<ActivitySettings>('/api/v1/admin/activity-settings'),
-  saveAdminActivitySettings: (body: { timezone: string; groupMessageThreshold: number }) =>
+  saveAdminActivitySettings: (body: ActivitySettingsWrite) =>
     featureRequest<ActivitySettings>('/api/v1/admin/activity-settings', { method: 'PUT', body }),
   saveAdminActivityGame: (id: string | null, body: Omit<BetGame, 'id'>) => featureRequest<BetGame>(
     id ? `/api/v1/admin/activity-games/${encodeURIComponent(id)}` : '/api/v1/admin/activity-games',
@@ -65,6 +68,9 @@ export const featuresApi = {
     { method: id ? 'PUT' : 'POST', body },
   ),
   deactivateAdminCoupon: (id: string) => featureRequest<void>(`/api/v1/admin/coupons/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  creditAdminTerminalPayment: (id: string, reason: string) => featureRequest<CourtesyCredit>(
+    `/api/v1/admin/payments/${encodeURIComponent(id)}/courtesy-credit`, { method: 'POST', body: { reason } },
+  ),
   getAdminQuestionnaires: () => featureRequest<{ items: QuestionnaireAdminRecord[] }>('/api/v1/admin/questionnaires'),
   saveAdminQuestionnaire: (id: string | null, body: Partial<QuestionnaireAdminRecord>) => featureRequest<QuestionnaireAdminRecord>(
     id ? `/api/v1/admin/questionnaires/${encodeURIComponent(id)}` : '/api/v1/admin/questionnaires',

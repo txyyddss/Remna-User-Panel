@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import InlineNotice from '@/components/common/InlineNotice.vue'
 import { useI18n } from '@/i18n'
 
 const open = defineModel<boolean>('open', { required: true })
@@ -10,7 +11,8 @@ withDefaults(defineProps<{
   confirmLabel: string
   busy?: boolean
   danger?: boolean
-}>(), { busy: false, danger: false })
+  error?: string | null
+}>(), { busy: false, danger: false, error: null })
 
 defineEmits<{ confirm: [] }>()
 const { t } = useI18n()
@@ -22,6 +24,7 @@ const { t } = useI18n()
       <UFormField name="reason" :label="t('adminReason.reason')" required>
         <UTextarea v-model.trim="reason" :rows="3" :minlength="4" :maxlength="300" :placeholder="t('adminReason.placeholder')" />
       </UFormField>
+      <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
     </template>
     <template #footer="{ close }">
       <UButton color="neutral" variant="outline" :label="t('common.cancel')" :disabled="busy" @click="close" />

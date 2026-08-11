@@ -24,12 +24,38 @@ export function formatMoney(money: Money): string {
 }
 
 export function formatBytes(raw: string | number): string {
-  const bytes = Number(raw)
-  if (!Number.isFinite(bytes) || bytes <= 0) return '0 GB'
+  const normalized = typeof raw === 'number' ? String(Math.trunc(raw)) : raw.trim()
+  if (!/^\d+$/.test(normalized)) return '0 GB'
+  const bytes = BigInt(normalized)
+  if (bytes <= 0n) return '0 GB'
   const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
-  const value = bytes / 1024 ** index
-  return `${value >= 100 ? value.toFixed(0) : value.toFixed(1)} ${units[index]}`
+  let index = 0
+  let divisor = 1n
+  while (index < units.length - 1 && bytes >= divisor * 1024n) {
+    divisor *= 1024n
+    index += 1
+  }
+  const whole = bytes / divisor
+  const hundredths = (bytes % divisor) * 100n / divisor
+  const fraction = hundredths === 0n
+    ? '0'
+    : hundredths.toString().padStart(2, '0').replace(/0$/, '')
+  return `${whole}.${fraction} ${units[index]}`
+}
+
+export function trafficBytesFromInput(value: string): string {
+  const match = /^\s*(\d+)(?:\.(\d+))?\s*(B|KB|MB|GB|TB)?\s*$/i.exec(value)
+  if (!match) return ''
+  const whole = BigInt(match[1])
+  const fraction = match[2] ?? ''
+  const scale = 10n ** BigInt(fraction.length)
+  const unit = (match[3] ?? 'B').toUpperCase()
+  const powers: Record<string, bigint> = { B: 1n, KB: 1024n, MB: 1024n ** 2n, GB: 1024n ** 3n, TB: 1024n ** 4n }
+  const multiplier = powers[unit]
+  if (!multiplier) return ''
+  const numerator = (whole * scale + BigInt(fraction || '0')) * multiplier
+  if (numerator % scale !== 0n) return ''
+  return (numerator / scale).toString()
 }
 
 export function formatDate(value?: RFC3339): string {

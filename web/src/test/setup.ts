@@ -26,6 +26,7 @@ Object.defineProperty(navigator, 'clipboard', {
 
 window.Telegram = {
   WebApp: {
+    version: '9.0',
     initData: 'query_id=test',
     initDataUnsafe: {},
     colorScheme: 'dark',

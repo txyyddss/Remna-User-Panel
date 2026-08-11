@@ -4,7 +4,7 @@
 
 Billing owns TXB balances, the immutable ledger, fixed-decimal exchange rates, durable payment orders, provider event deduplication, successful top-up credit, manual adjustments, refunds, and debt enforcement. Provider adapters create external checkouts and validate callbacks; billing decides whether durable business state may change.
 
-User operations are `GET /api/v1/balance`, `GET /api/v1/ledger`, `POST /api/v1/payments/orders`, order polling by ID, and user-owned cancellation. Payment creation receives a stable `methodId` such as `ezpay:alipay`, `bepusdt:usdt.trc20`, or `stars`; the provider name is never sufficient to select a rail. Administrative operations append balance adjustments and refunds and inspect payments/refunds. No endpoint edits a balance, ledger row, or provider event in place.
+User operations are `GET /api/v1/balance`, `GET /api/v1/ledger`, `POST /api/v1/payments/orders`, order polling by ID, and user-owned cancellation. Payment creation receives a stable `methodId` such as `ezpay:alipay`, `bepusdt:usdt.trc20`, or `stars`; the provider name is never sufficient to select a rail. Administrative operations append balance adjustments, refunds, and terminal-payment courtesy credits, and inspect payments/refunds. No endpoint edits a balance, ledger row, or provider event in place.
 
 ## Amount invariants
 
@@ -26,11 +26,26 @@ EZPay checkout uses a signed CNY URL and signed GET notification. BEPusdt calls 
 
 Redirects and invoice-close UI events are navigation signals only. Settlement requires verified EZPay `TRADE_SUCCESS`, signed BEPusdt status `2`, or Telegram `successful_payment`. Order polling closes the payment sheet only after persisted state is `paid`.
 
+Failed or expired member orders retain their amount and method selection in the
+payment sheet. Its localized **Reissue payment** action creates a distinct
+replacement order; it never revives or rewrites the terminal original. A
+provider-return page exposes that action only for a durable failed or expired
+order, passes its order ID to Home, and Home refetches the owner-scoped record
+before restoring its valid TXB amount and still-enabled payment method.
+
 ## Refund and debt behavior
 
 A refund appends one reversal against one paid order and cannot be applied twice. If reversal makes the TXB balance negative, reconciliation cancels queued purchases first, then active purchases newest-first, appending compensating ledger records and durable Remnawave revocation jobs. Any debt left after cancellable value is exhausted remains visible and blocks new purchases; it never rewrites previous entries.
 
 Manual adjustments require an administrator, a nonzero bounded delta, and a non-empty reason. A negative resulting balance blocks subsequent purchases; payment refunds additionally run the queued-first/active-newest entitlement cancellation policy described above.
+
+`POST /api/v1/admin/payments/{id}/courtesy-credit` is restricted to failed or
+expired orders and requires a 3-500 byte administrator reason. It credits the
+order's immutable TXB amount exactly once, commits a linked ledger entry and
+audit event in the same transaction, and leaves the order failed or expired.
+Once present, the courtesy record blocks a late provider callback from changing
+that order to paid or adding a second credit. It makes no provider call; use
+the refund path only for an already provider-paid order.
 
 ## Failure behavior
 

@@ -3,6 +3,7 @@ import { onMounted, readonly, shallowRef } from 'vue'
 import type { ActiveQuestionnaire, QuestionnaireParticipation } from '@/api/features'
 import { featuresApi } from '@/api/features'
 import { localizedError } from '@/i18n'
+import { createUuid } from '@/utils/browserCompatibility'
 import { notifyHaptic, openExternalLink } from '@/utils/telegram'
 
 export function useQuestionnaires() {
@@ -33,7 +34,7 @@ export function useQuestionnaires() {
     try {
       if (!participation.value) {
         const id = questionnaire.value.id
-        const key = joinKeys.get(id) ?? globalThis.crypto.randomUUID()
+        const key = joinKeys.get(id) ?? createUuid()
         joinKeys.set(id, key)
         participation.value = await featuresApi.joinQuestionnaire(id, key)
         joinKeys.delete(id)

@@ -14,6 +14,7 @@ type Store interface {
 	RedeemCoupon(context.Context, string, string, string, time.Time) (RedemptionResult, error)
 	GrantCoupon(context.Context, string, string, string, string, time.Time) (Grant, error)
 	ListCouponGrants(context.Context, string, time.Time) ([]Grant, error)
+	DiscardCouponGrant(context.Context, string, string, time.Time) error
 	QuotePurchaseCoupon(context.Context, PurchaseContext, time.Time) (Discount, error)
 }
 
@@ -63,6 +64,15 @@ func (service *Service) Wallet(ctx context.Context, userID string) ([]Grant, err
 		return nil, fmt.Errorf("%w: missing user", ErrInvalidInput)
 	}
 	return service.store.ListCouponGrants(ctx, userID, service.now().UTC())
+}
+
+// Discard hides one active member grant without deleting its redemption or
+// purchase history. Repeating the same discard is safe.
+func (service *Service) Discard(ctx context.Context, userID, grantID string) error {
+	if strings.TrimSpace(userID) == "" || strings.TrimSpace(grantID) == "" {
+		return fmt.Errorf("%w: missing coupon grant", ErrInvalidInput)
+	}
+	return service.store.DiscardCouponGrant(ctx, userID, grantID, service.now().UTC())
 }
 
 // Quote calculates one explicitly selected grant against a server-priced basket.

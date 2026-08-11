@@ -3,6 +3,7 @@ import type {
   BackupRecord,
   Catalog,
   Dashboard,
+  DashboardNodeUsage,
   InviteLink,
   LedgerEntry,
   MembershipState,
@@ -60,6 +61,8 @@ export const api = {
     body: { revision, agreementIds },
   }),
   getDashboard: () => request<Dashboard>('/api/v1/dashboard'),
+  getDashboardNodeUsage: (start: string, end: string) =>
+    request<DashboardNodeUsage>('/api/v1/dashboard/node-usage', { query: { start, end } }),
   getCatalog: () => request<Catalog>('/api/v1/catalog'),
   createPurchase: (comboId: string, squadProductIds: string[], couponGrantId: string | undefined, idempotencyKey: string) => request<Purchase>('/api/v1/purchases', {
     method: 'POST',
@@ -75,7 +78,6 @@ export const api = {
     method: 'POST',
   }),
   getBalance: () => request<{ balance: Dashboard['balance']; paymentMethods: FeaturePaymentMethod[] }>('/api/v1/balance'),
-  getLedger: (cursor?: string) => request<Paginated<LedgerEntry>>('/api/v1/ledger', { query: { cursor } }),
   createPaymentOrder: (methodId: string, txbMinorUnits: string) => request<FeaturePaymentOrder>('/api/v1/payments/orders', {
     method: 'POST',
     body: { methodId, txbMinor: txbMinorUnits },

@@ -80,3 +80,21 @@ type TopNode struct {
 	CountryCode string `json:"countryCode"`
 	TotalBytes  string `json:"totalBytes"`
 }
+
+// DashboardNodeUsage is the date-bounded, per-node traffic projection exposed
+// to an authenticated member. Categories retain Remnawave's UTC date labels.
+type DashboardNodeUsage struct {
+	StartDate  string                   `json:"startDate"`
+	EndDate    string                   `json:"endDate"`
+	Categories []string                 `json:"categories"`
+	Nodes      []DashboardNodeUsageNode `json:"nodes"`
+}
+
+// DashboardNodeUsageNode is one upstream node and its daily byte totals.
+type DashboardNodeUsageNode struct {
+	UUID        string   `json:"uuid"`
+	Name        string   `json:"name"`
+	CountryCode string   `json:"countryCode"`
+	TotalBytes  string   `json:"totalBytes"`
+	DailyBytes  []string `json:"dailyBytes"`
+}

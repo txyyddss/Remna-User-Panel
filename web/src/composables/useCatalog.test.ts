@@ -82,8 +82,6 @@ describe('catalog squad selection', () => {
     const scope = effectScope()
     const state = scope.run(() => useCatalog())!
     await state.load()
-    state.reviewPurchase()
-
     expect(await state.confirmPurchase()).toBe(false)
     expect(await state.confirmPurchase()).toBe(true)
     expect(createPurchase).toHaveBeenCalledTimes(2)

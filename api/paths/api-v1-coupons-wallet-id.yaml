@@ -1,0 +1,16 @@
+delete:
+  tags: [Coupons]
+  operationId: discardCouponWalletGrant
+  summary: Soft-discard one current user's coupon grant
+  description: Preserves the original redemption and any purchase history while preventing the grant from being quoted or consumed again.
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+  responses:
+    '204':
+      description: Grant discarded, or the member's prior discard was replayed.
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '404':
+      $ref: '../openapi.yaml#/components/responses/NotFound'
+    '409':
+      $ref: '../openapi.yaml#/components/responses/Conflict'
