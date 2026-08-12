@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
-import type { FeaturePaymentMethod, FeaturePaymentOrder } from '@/api/features'
+import { computed, shallowRef, watch } from 'vue'
+import type { CouponRedemption, FeaturePaymentMethod, FeaturePaymentOrder } from '@/api/features'
 import BalancePaymentConfiguration from '@/components/billing/BalancePaymentConfiguration.vue'
 import { usePaymentOrder } from '@/composables/usePaymentOrder'
+import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
 import { useI18n } from '@/i18n'
 import { formatDateTime, formatMoney } from '@/utils/format'
 
@@ -16,6 +17,7 @@ const { t } = useI18n()
 
 const methods = computed(() => props.methods)
 const externalMethods = computed(() => methods.value.filter((method) => method.mode === 'order'))
+const couponRedemption = shallowRef<CouponRedemption | null>(null)
 
 const {
   amount,
@@ -48,13 +50,24 @@ const description = computed(() => stage.value === 'configure'
     : t('payment.providerHint'))
 
 function prepareOrder(): void {
+  couponRedemption.value = null
   reset(externalMethods.value)
   if (props.reissueOrder) hydrateReissueOrder(props.reissueOrder, externalMethods.value)
 }
 
-watch(open, (next) => {
+function closeSheet(): void {
+  open.value = false
+}
+
+const showTelegramBack = computed(() => open.value)
+useTelegramBackButton(showTelegramBack, closeSheet)
+
+watch(open, (next, previous) => {
   if (next) prepareOrder()
-  else stopPolling()
+  else {
+    stopPolling()
+    if (previous && couponRedemption.value) emit('paid')
+  }
 })
 </script>
 
@@ -66,7 +79,7 @@ watch(open, (next) => {
     :dismissible="!['pending', 'cancelling'].includes(stage)"
   >
     <template #body>
-      <template v-if="stage === 'configure' || stage === 'creating'">
+      <template v-if="!couponRedemption && (stage === 'configure' || stage === 'creating')">
         <BalancePaymentConfiguration
           v-model:amount="amount"
           :methods="methods"
@@ -78,7 +91,7 @@ watch(open, (next) => {
           :can-reissue="canReissue"
           @choose-method="chooseMethod"
           @create-order="createOrder"
-          @paid="emit('paid')"
+          @coupon-redeemed="couponRedemption = $event"
         />
       </template>
 
@@ -98,8 +111,28 @@ watch(open, (next) => {
         <UAlert v-if="error" color="error" variant="soft" :description="error" />
       </template>
 
-      <div v-else-if="stage === 'cancelled'" class="payment-success" role="status"><UIcon name="i-ph-x" /><h2>{{ $t('payment.cancelled') }}</h2><p>{{ $t('payment.cancelledClose') }}</p></div>
+      <div v-else-if="couponRedemption" class="payment-success payment-success--coupon" role="status">
+        <UIcon name="i-ph-check-circle-fill" aria-hidden="true" />
+        <h2>{{ $t('payment.added') }}</h2>
+        <div class="payment-amount">
+          <span>{{ $t('payment.couponGain') }}</span>
+          <strong>{{ formatMoney({ currency: 'TXB', minor: couponRedemption.balanceDeltaMinor, display: '' }) }}</strong>
+          <small>{{ $t('payment.balanceAfter', { amount: formatMoney({ currency: 'TXB', minor: couponRedemption.balanceAfterMinor, display: '' }) }) }}</small>
+        </div>
+        <UButton block :label="$t('common.close')" data-haptic @click="closeSheet" />
+      </div>
+      <div v-else-if="stage === 'cancelled'" class="payment-success payment-success--cancelled" role="status">
+        <UIcon name="i-ph-x-circle-fill" class="payment-success__error-icon" aria-hidden="true" />
+        <h2>{{ $t('payment.cancelled') }}</h2>
+        <p>{{ $t('payment.cancelledClose') }}</p>
+      </div>
       <div v-else class="payment-success" role="status"><UIcon name="i-ph-check-circle-fill" /><h2>{{ $t('payment.added') }}</h2><p>{{ $t('payment.ready') }}</p></div>
     </template>
   </UModal>
 </template>
+
+<style scoped>
+.payment-success--coupon { gap: 0.8rem; }
+.payment-success--coupon > .payment-amount { width: 100%; }
+.payment-success__error-icon { width: 5rem; height: 5rem; color: var(--danger); font-size: 5rem; }
+</style>

@@ -24,7 +24,6 @@ type remnaClient interface {
 	ListInternalSquads(context.Context) ([]remnawave.InternalSquad, error)
 	ListNodes(context.Context) ([]remnawave.Node, error)
 	InternalSquadAccessibleNodes(context.Context, string) ([]remnawave.AccessibleNode, error)
-	UpdateInternalSquadInbounds(context.Context, string, []string) (*remnawave.InternalSquad, error)
 }
 
 type remnaClientFactory func(context.Context) (remnaClient, error)

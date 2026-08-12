@@ -4,7 +4,7 @@
 
 This module owns live combo definitions, sparse per-Remnawave-squad merchandising overrides, server-side quotes/pricing, coupon-aware purchases, active/queued access terms, rollover settlement, statistics, and durable commands that make Remnawave match local entitlement state. It consumes the transactional balance interface and a narrow access-synchronization interface; it does not call HTTP providers directly.
 
-Members read `/api/v1/catalog`, quote at `/api/v1/purchases/quote`, create/list `/api/v1/purchases`, see entitlement projections on `/api/v1/dashboard`, and can read bounded per-node traffic at `/api/v1/dashboard/node-usage` with inclusive UTC `start`/`end` dates. Administrators manage combos and sparse squad overrides, inspect combo/squad statistics, assign upstream nodes, inspect entitlements, and issue audited cancellation commands.
+Members read `/api/v1/catalog`, quote at `/api/v1/purchases/quote`, create/list `/api/v1/purchases`, see entitlement projections on `/api/v1/dashboard`, and can read bounded per-node traffic at `/api/v1/dashboard/node-usage` with inclusive UTC `start`/`end` dates. Administrators manage combos and sparse squad overrides, inspect combo/squad statistics, inspect entitlements, and issue audited cancellation commands. Remnawave owns accessible-node resolution.
 
 ## Catalog and pricing invariants
 
@@ -28,7 +28,7 @@ Combo and internal-squad statistics accept a bounded date range, IANA timezone, 
 
 When a term activates, synchronization persists three phases: remove all squads to quiesce access, reset usage while access is quiesced, then replace the complete internal-squad list and apply the account-wide limit/reset strategy. A crash or ambiguous reset response repeats only a phase safe while no traffic can accrue; a retry after final apply never resets again. At final expiry, synchronization sets the upstream identity DISABLED, clears squads and traffic entitlement, and only a later active term restores ACTIVE. The local term, not Remnawave's user expiry, is authoritative.
 
-Renewal uses the current ride's combo and add-ons, current server prices, and one idempotency key for a contiguous batch of 1-6 terms. Each selected squad is rechecked against an optional distinct-user reservation limit, including queued terms, before the single atomic debit.
+Renewal uses the current ride's combo and add-ons, current server prices, and one idempotency key for a contiguous batch of 1-6 terms. A valid recurring coupon attached to the source purchase is applied to each term; one-time discounts are ignored. Renewal reuses that recurring grant without writing `coupon_uses` or incrementing its use count, so renewal does not consume coupon limits. Each selected squad is rechecked against an optional distinct-user reservation limit, including queued terms, before the single atomic debit.
 
 Members may cancel only their own queued purchase through `POST /api/v1/purchases/{id}/cancel`. The local transaction requires `status='queued'`, marks the purchase cancelled, credits the snapshotted charged TXB amount, and appends one `purchase_cancellation` ledger entry. Because the entitlement has not reached Remnawave, this path performs no provider call and no upstream job is needed; cancellation also releases the local stock reservation while retaining immutable purchase history.
 

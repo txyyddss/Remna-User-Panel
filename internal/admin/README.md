@@ -5,7 +5,7 @@ Audited administrative operations for catalog data, settings, balances, refunds,
 ## Files
 
 - `service.go` defines admin-facing dependency contracts, service construction, backup deletion, and settings forwarding.
-- `catalog.go` manages combos, squad products, upstream squad imports, and squad-node assignments.
+- `catalog.go` manages combos, squad products, and upstream squad imports; Remnawave remains authoritative for node accessibility.
 - `finance.go` manages balance adjustments, deductions, refunds, terminal-payment courtesy credits, entitlement cancellation, backups, job retries, and audit recording.
 - `settings.go` defines editable settings, encrypted storage access, masked payment profiles, safe listing, and readiness checks.
 - `payment_profiles.go` validates, encrypts, and resolves multiple provider-account profiles with independently enabled channels.
@@ -16,7 +16,7 @@ Audited administrative operations for catalog data, settings, balances, refunds,
 - `service_test_helpers_test.go` contains shared admin service test doubles.
 - `settings_test.go` covers secret handling, safe listing, readiness, and validators.
 - `payment_profiles_test.go` covers provider profile validation, encryption, masking, and readiness behavior.
-- `catalog_test.go` covers live squad-node normalization, node updates, and optional setting validators.
+- `catalog_test.go` covers optional setting validators.
 - `README.md` documents the package layout.
 
 Provider profiles have stable IDs, separate endpoint, credential, merchant ID,

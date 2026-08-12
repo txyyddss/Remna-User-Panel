@@ -31,6 +31,7 @@
     "renewHint": "按当前服务器价格选择连续周期。",
     "renewTerms": "周期数",
     "renewPrice": "合计",
+    "renewDiscount": "循环优惠券优惠：{amount}",
     "renewAction": "确认续费",
     "renewSuccess": "续费已成功排队。",
     "cancelQueued": "取消排队套餐",

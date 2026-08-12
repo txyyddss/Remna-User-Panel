@@ -11,13 +11,16 @@ RenewalRequest:
 RenewalQuote:
   type: object
   additionalProperties: false
-  required: [purchaseId, comboId, termCount, pricePerTerm, totalPrice, effectiveAt, expiresAt, addonSquadUuids, accessibleNodes]
+  required: [purchaseId, comboId, termCount, grossPrice, discount, pricePerTerm, totalPrice, couponGrantId, effectiveAt, expiresAt, addonSquadUuids, accessibleNodes]
   properties:
     purchaseId: { $ref: '../../openapi.yaml#/components/schemas/ID' }
     comboId: { $ref: '../../openapi.yaml#/components/schemas/ID' }
     termCount: { type: integer, minimum: 1, maximum: 6 }
+    grossPrice: { $ref: '../../openapi.yaml#/components/schemas/Money' }
+    discount: { $ref: '../../openapi.yaml#/components/schemas/Money' }
     pricePerTerm: { $ref: '../../openapi.yaml#/components/schemas/Money' }
     totalPrice: { $ref: '../../openapi.yaml#/components/schemas/Money' }
+    couponGrantId: { type: [string, 'null'] }
     effectiveAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
     expiresAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
     addonSquadUuids:

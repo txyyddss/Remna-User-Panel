@@ -48,11 +48,8 @@ func TestRemnawaveAdapterMethodsEnterQueueBeforeClientCreation(t *testing.T) {
 		{name: "read rollover traffic", call: func() error { _, _, err := adapter.TrafficForRollover(context.Background(), "1"); return err }},
 		{name: "list admin squads", call: func() error { _, err := adapter.ListInternalSquads(context.Background()); return err }},
 		{name: "list catalog squads", call: func() error { _, err := adapter.ListCatalogSquads(context.Background()); return err }},
-		{name: "list nodes", call: func() error { _, err := adapter.ListNodes(context.Background()); return err }},
-		{name: "accessible nodes", call: func() error { _, err := adapter.AccessibleNodeUUIDs(context.Background(), "squad"); return err }},
-		{name: "update squad inbounds", call: func() error {
-			return adapter.UpdateInternalSquadInbounds(context.Background(), "squad", []string{"inbound"})
-		}},
+		{name: "list catalog nodes", call: func() error { _, err := adapter.ListCatalogNodes(context.Background()); return err }},
+		{name: "accessible catalog nodes", call: func() error { _, err := adapter.AccessibleCatalogNodeUUIDs(context.Background(), "squad"); return err }},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

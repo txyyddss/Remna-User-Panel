@@ -31,6 +31,7 @@
     "renewHint": "Choose contiguous terms at the current server price.",
     "renewTerms": "Terms",
     "renewPrice": "Total",
+    "renewDiscount": "Recurring coupon: {amount} saved",
     "renewAction": "Confirm renewal",
     "renewSuccess": "Renewal scheduled successfully.",
     "cancelQueued": "Cancel queued ride",

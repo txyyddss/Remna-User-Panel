@@ -36,6 +36,11 @@
     "publishDraw": "An administrator can publish a draw when it is ready.",
     "weightedPrize": "One weighted prize is selected and recorded.",
     "balanceAfter": "Balance after result",
+    "reward": "Reward",
+    "rewardTxb": "TXB reward: {amount}",
+    "rewardCoupon": "Coupon reward",
+    "rewardSubscription": "{days} days added",
+    "noReward": "No prize",
     "resultDescription": {
       "checkInRewarded": "Your daily check-in reward has been added.",
       "checkInRecorded": "Today's check-in was already recorded.",

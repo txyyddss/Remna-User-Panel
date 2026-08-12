@@ -149,6 +149,7 @@ function goToCatalog(): void {
         </div>
         <div v-if="renewalQuote" class="renewal-dialog__quote">
           <div class="renewal-dialog__total"><span>{{ $t('home.renewPrice') }}</span><strong>{{ formatMoney(renewalQuote.totalPrice) }}</strong></div>
+          <small v-if="renewalQuote.discount.minor !== '0'">{{ $t('home.renewDiscount', { amount: formatMoney(renewalQuote.discount) }) }}</small>
           <small>{{ formatDate(renewalQuote.effectiveAt) }} {{ t('common.rangeSeparator') }} {{ formatDate(renewalQuote.expiresAt) }}</small>
         </div>
         <InlineNotice v-if="renewalSuccess" tone="success">{{ $t('home.renewSuccess') }}</InlineNotice>

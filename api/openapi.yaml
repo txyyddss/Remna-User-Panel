@@ -80,7 +80,6 @@ paths:
   /api/v1/admin/squad-products: { $ref: './paths/api-v1-admin-squad-products.yaml' }
   /api/v1/admin/squad-products/import: { $ref: './paths/api-v1-admin-squad-products-import.yaml' }
   /api/v1/admin/squad-products/{id}: { $ref: './paths/api-v1-admin-squad-products-id.yaml' }
-  /api/v1/admin/squad-products/{id}/nodes: { $ref: './paths/api-v1-admin-squad-products-id-nodes.yaml' }
   /api/v1/admin/squad-products/{id}/statistics: { $ref: './paths/api-v1-admin-squad-products-id-statistics.yaml' }
   /api/v1/admin/users: { $ref: './paths/api-v1-admin-users.yaml' }
   /api/v1/admin/users/{id}: { $ref: './paths/api-v1-admin-users-id.yaml' }
@@ -180,8 +179,6 @@ components:
     ComboWrite: { $ref: './components/schemas/schemas-02.yaml#/ComboWrite' }
     SquadProductWrite: { $ref: './components/schemas/schemas-02.yaml#/SquadProductWrite' }
     RemnaNode: { $ref: './components/schemas/schemas-03.yaml#/RemnaNode' }
-    RemnaNodeList: { $ref: './components/schemas/schemas-03.yaml#/RemnaNodeList' }
-    SquadNodeWrite: { $ref: './components/schemas/schemas-03.yaml#/SquadNodeWrite' }
     PurchaseRequest: { $ref: './components/schemas/schemas-03.yaml#/PurchaseRequest' }
     PurchaseQuote: { $ref: './components/schemas/schemas-03.yaml#/PurchaseQuote' }
     EntitlementStatus: { $ref: './components/schemas/schemas-03.yaml#/EntitlementStatus' }

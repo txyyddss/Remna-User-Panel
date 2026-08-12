@@ -84,6 +84,8 @@
     "couponHint": "Redeem a balance coupon",
     "couponCode": "Coupon code",
     "redeemCoupon": "Redeem coupon",
+    "couponGain": "Balance gained",
+    "balanceAfter": "Balance after redemption: {amount}",
     "amount": "Amount",
     "minimumTopUp": "Minimum top-up applies.",
     "provider": "Provider",

@@ -22,8 +22,6 @@ func (s *Server) mountAdmin(router chi.Router) {
 	router.Get("/squad-products", s.adminSquadProducts)
 	router.Post("/squad-products", s.adminCreateSquadProduct)
 	router.Put("/squad-products/{id}", s.adminUpdateSquadProduct)
-	router.Get("/squad-products/{id}/nodes", s.adminSquadNodes)
-	router.Put("/squad-products/{id}/nodes", s.adminUpdateSquadNodes)
 	router.Get("/squad-products/{id}/statistics", s.adminSquadStatistics)
 	router.Post("/squad-products/import", s.adminImportSquads)
 	router.Get("/users", s.adminUsers)

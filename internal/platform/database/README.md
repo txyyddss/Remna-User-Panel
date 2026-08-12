@@ -109,3 +109,7 @@ profile record and preserve masked credentials.
 
 `billing_courtesy_test.go` covers terminal-payment courtesy-credit atomicity,
 idempotent replay, and late-provider-callback blocking.
+
+`renewal_coupon.go` provides read-only recurring coupon reuse for renewal pricing
+without coupon-use writes. `renewal_batch.go` projects renewal batches and their
+purchase records.

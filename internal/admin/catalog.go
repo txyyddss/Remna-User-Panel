@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
-	"sort"
 	"strings"
 )
 
@@ -130,106 +129,4 @@ func (s *Service) liveSquads(ctx context.Context) (map[string]string, error) {
 		live[strings.TrimSpace(squad.UUID)] = strings.TrimSpace(squad.Name)
 	}
 	return live, nil
-}
-
-// SquadNodes returns the selectable nodes together with Remnawave's actual
-// current accessibility for the squad.
-func (s *Service) SquadNodes(ctx context.Context, squadUUID string) ([]model.RemnaNode, error) {
-	manager, ok := s.importer.(SquadNodeManager)
-	if !ok {
-		return nil, errors.New("Remnawave node management is unavailable")
-	}
-	live, err := s.liveSquads(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if _, exists := live[strings.TrimSpace(squadUUID)]; !exists {
-		return nil, database.ErrNotFound
-	}
-	nodes, err := manager.ListNodes(ctx)
-	if err != nil {
-		return nil, err
-	}
-	accessibleUUIDs, err := manager.AccessibleNodeUUIDs(ctx, squadUUID)
-	if err != nil {
-		return nil, err
-	}
-	accessible := make(map[string]struct{}, len(accessibleUUIDs))
-	for _, nodeUUID := range accessibleUUIDs {
-		accessible[nodeUUID] = struct{}{}
-	}
-	result := make([]model.RemnaNode, 0, len(nodes))
-	for _, node := range nodes {
-		_, isAccessible := accessible[node.UUID]
-		result = append(result, model.RemnaNode{UUID: node.UUID, Name: node.Name, CountryCode: normalizedCountryCode(node.CountryCode),
-			ConsumptionMultiplier: node.ConsumptionMultiplier, ActiveInboundUUIDs: append([]string(nil), node.ActiveInboundUUIDs...), Accessible: isAccessible})
-	}
-	sort.Slice(result, func(i, j int) bool {
-		if result[i].Name == result[j].Name {
-			return result[i].UUID < result[j].UUID
-		}
-		return result[i].Name < result[j].Name
-	})
-	return result, nil
-}
-
-// UpdateSquadNodes validates node UUIDs, unions their current active inbounds,
-// patches Remnawave, then re-fetches accessibility instead of assuming the
-// selected node set equals the resulting state.
-func (s *Service) UpdateSquadNodes(ctx context.Context, actorID, squadUUID string, selectedNodeUUIDs []string) ([]model.RemnaNode, error) {
-	manager, ok := s.importer.(SquadNodeManager)
-	if !ok {
-		return nil, errors.New("Remnawave node management is unavailable")
-	}
-	live, err := s.liveSquads(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if _, exists := live[strings.TrimSpace(squadUUID)]; !exists {
-		return nil, database.ErrNotFound
-	}
-	nodes, err := manager.ListNodes(ctx)
-	if err != nil {
-		return nil, err
-	}
-	byUUID := make(map[string]UpstreamNode, len(nodes))
-	for _, node := range nodes {
-		byUUID[node.UUID] = node
-	}
-	inboundSet := make(map[string]struct{})
-	selectedSet := make(map[string]struct{}, len(selectedNodeUUIDs))
-	for _, rawUUID := range selectedNodeUUIDs {
-		nodeUUID := strings.TrimSpace(rawUUID)
-		if _, duplicate := selectedSet[nodeUUID]; duplicate {
-			continue
-		}
-		node, exists := byUUID[nodeUUID]
-		if !exists || node.Disabled {
-			return nil, database.ErrNotFound
-		}
-		selectedSet[nodeUUID] = struct{}{}
-		for _, inboundUUID := range node.ActiveInboundUUIDs {
-			inboundSet[inboundUUID] = struct{}{}
-		}
-	}
-	inbounds := make([]string, 0, len(inboundSet))
-	for inboundUUID := range inboundSet {
-		inbounds = append(inbounds, inboundUUID)
-	}
-	sort.Strings(inbounds)
-	if err := manager.UpdateInternalSquadInbounds(ctx, squadUUID, inbounds); err != nil {
-		return nil, err
-	}
-	if err := s.audit(ctx, actorID, "squad.nodes.update", "squad_product", squadUUID, map[string]any{"selectedNodeUuids": selectedNodeUUIDs}); err != nil {
-		return nil, err
-	}
-	return s.SquadNodes(ctx, squadUUID)
-}
-
-func normalizedCountryCode(value string) string {
-	value = strings.ToUpper(strings.TrimSpace(value))
-	if len(value) != 2 || value[0] < 'A' || value[0] > 'Z' || value[1] < 'A' || value[1] > 'Z' {
-		return ""
-	}
-	return value
 }

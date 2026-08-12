@@ -29,3 +29,16 @@ You may want to use the following projects for frontend:
 - Feel free to use other projects.
 
 ---
+
+## Fix bugs / Make adjustments
+
+- Show the amount of TXB gain for coupon redeem on add TXB interface similar to other payment methods
+- Move the page title of agreement to the right of warning icon on the top of the page
+- Renew ride price calculation should include the recurring coupon used for purchase the combo
+- DELETE acessible nodes editing as the porogram already gets accessible nodes directly from remnawave
+- The recurring coupon used for renew should not count in the use limit
+- One-time discount should not be calculated in combo renewal
+- Add a telegram native back button to add TXB interface as the close button may be covered because of too many channels/providers
+- Replace the black and small tick on Order cancelled interface of Add TXB to a big red error icon
+- The mask of progress bar of Choose your combo interface should be green but not gray
+- Show the reward in the popup of lucky draws

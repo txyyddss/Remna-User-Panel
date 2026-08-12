@@ -106,8 +106,11 @@ type RenewalQuote struct {
 	PurchaseID      string      `json:"purchaseId"`
 	ComboID         string      `json:"comboId"`
 	TermCount       int         `json:"termCount"`
+	GrossPrice      Money       `json:"grossPrice"`
+	Discount        Money       `json:"discount"`
 	PricePerTerm    Money       `json:"pricePerTerm"`
 	TotalPrice      Money       `json:"totalPrice"`
+	CouponGrantID   *string     `json:"couponGrantId"`
 	EffectiveAt     time.Time   `json:"effectiveAt"`
 	ExpiresAt       time.Time   `json:"expiresAt"`
 	AddonSquadUUIDs []string    `json:"addonSquadUuids"`

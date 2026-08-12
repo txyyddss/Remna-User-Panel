@@ -13,6 +13,14 @@ defineEmits<{ close: [] }>()
 const { t } = useI18n()
 const showFireworks = computed(() => isSuccessfulBet(props.result))
 
+const rewardLabel = computed(() => {
+  const reward = props.result?.kind === 'draw' ? props.result.reward : null
+  if (!reward || reward.kind === 'none') return t('activity.noReward')
+  if (reward.kind === 'txb_delta') return t('activity.rewardTxb', { amount: formatMoney({ currency: 'TXB', minor: reward.txbDeltaMinor, display: '' }) })
+  if (reward.kind === 'coupon_grant') return t('activity.rewardCoupon')
+  return t('activity.rewardSubscription', { days: reward.extensionDays })
+})
+
 const description = computed(() => {
   const result = props.result
   if (!result) return ''
@@ -45,6 +53,10 @@ const description = computed(() => {
           <span>{{ $t('activity.balanceAfter') }}</span>
           <strong>{{ formatMoney(result.balanceAfter) }}</strong>
         </div>
+        <div v-if="result.kind === 'draw'" class="result-reward">
+          <span>{{ $t('activity.reward') }}</span>
+          <strong>{{ rewardLabel }}</strong>
+        </div>
       </div>
     </template>
     <template #footer="{ close }">
@@ -59,4 +71,7 @@ const description = computed(() => {
 .result-balance { display: flex; align-items: baseline; justify-content: space-between; padding: 0.8rem; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface-raised); }
 .result-balance span { color: var(--text-muted); font-size: 0.74rem; }
 .result-balance strong { font-size: 1rem; }
+.result-reward { display: flex; align-items: baseline; justify-content: space-between; gap: 0.8rem; margin-top: 0.55rem; padding: 0.8rem; border: 1px solid #304138; border-radius: var(--radius-control); color: var(--accent); background: var(--accent-soft); }
+.result-reward span { color: var(--text-muted); font-size: 0.74rem; }
+.result-reward strong { text-align: right; }
 </style>

@@ -21,7 +21,7 @@ Localized route-level panels and shared admin-only Nuxt UI.
 - `AdminSettingsPanel.vue` edits runtime settings and specialized calendar/reward controls.
 - `AdminShell.vue` provides admin section navigation and sends optional signup through Vue Router without native anchor navigation.
 - `AdminShell.test.ts` covers shell navigation and onboarding actions.
-- `AdminSquadEditor.vue` edits squad overrides and node access.
+- `AdminSquadEditor.vue` edits sparse squad overrides; node access remains a live Remnawave projection.
 - `AdminStatisticsPanel.vue` presents resource statistics with narrow-screen overflow protection.
 - `AdminUsersPanel.vue` searches users and adjusts balances.
 

@@ -13,7 +13,6 @@ import type {
   PurchaseQuote,
 	RenewalBatch,
 	RenewalQuote,
-  RemnaNode,
   Session,
   SquadProduct,
   SquadProductWrite,
@@ -136,10 +135,6 @@ export const api = {
       method: 'PUT',
       body: body satisfies GeneratedSquadProductWrite,
     }),
-  getAdminSquadNodes: (id: string) =>
-    request<{ items: RemnaNode[] }>(`/api/v1/admin/squad-products/${encodeURIComponent(id)}/nodes`),
-  updateAdminSquadNodes: (id: string, nodeUuids: string[]) =>
-    request<{ items: RemnaNode[] }>(`/api/v1/admin/squad-products/${encodeURIComponent(id)}/nodes`, { method: 'PUT', body: { nodeUuids } }),
   createAdminResource: <T>(resource: AdminResource, body: unknown) =>
     request<T>(`/api/v1/admin/${resource}`, { method: 'POST', body }),
   updateAdminResource: <T>(resource: AdminResource, id: string, body: unknown) =>

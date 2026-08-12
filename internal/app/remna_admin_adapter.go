@@ -33,51 +33,25 @@ func (a remnaAdapter) ListCatalogSquads(ctx context.Context) ([]catalog.RemoteSq
 }
 
 func (a remnaAdapter) ListCatalogNodes(ctx context.Context) ([]catalog.RemoteNode, error) {
-	nodes, err := a.ListNodes(ctx)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]catalog.RemoteNode, 0, len(nodes))
-	for _, node := range nodes {
-		result = append(result, catalog.RemoteNode{UUID: node.UUID, Name: node.Name, CountryCode: node.CountryCode,
-			ConsumptionMultiplier: node.ConsumptionMultiplier, ActiveInboundUUIDs: node.ActiveInboundUUIDs, Disabled: node.Disabled})
-	}
-	return result, nil
-}
-
-func (a remnaAdapter) AccessibleCatalogNodeUUIDs(ctx context.Context, squadUUID string) ([]string, error) {
-	return a.AccessibleNodeUUIDs(ctx, squadUUID)
-}
-
-func (a remnaAdapter) listSquads(ctx context.Context) ([]remnawave.InternalSquad, error) {
-	return remnaCall(ctx, a, func(callCtx context.Context, client remnaClient) ([]remnawave.InternalSquad, error) {
-		return client.ListInternalSquads(callCtx)
-	})
-}
-
-func (a remnaAdapter) ListNodes(ctx context.Context) ([]admin.UpstreamNode, error) {
 	nodes, err := remnaCall(ctx, a, func(callCtx context.Context, client remnaClient) ([]remnawave.Node, error) {
 		return client.ListNodes(callCtx)
 	})
 	if err != nil {
 		return nil, err
 	}
-	result := make([]admin.UpstreamNode, 0, len(nodes))
+	result := make([]catalog.RemoteNode, 0, len(nodes))
 	for _, node := range nodes {
 		inbounds := make([]string, 0, len(node.ConfigProfile.ActiveInbounds))
 		for _, inbound := range node.ConfigProfile.ActiveInbounds {
 			inbounds = append(inbounds, inbound.UUID)
 		}
-		result = append(result, admin.UpstreamNode{
-			UUID: node.UUID, Name: node.Name, CountryCode: node.CountryCode,
-			ConsumptionMultiplier: node.ConsumptionMultiplier,
-			ActiveInboundUUIDs:    inbounds, Disabled: node.IsDisabled,
-		})
+		result = append(result, catalog.RemoteNode{UUID: node.UUID, Name: node.Name, CountryCode: node.CountryCode,
+			ConsumptionMultiplier: node.ConsumptionMultiplier, ActiveInboundUUIDs: inbounds, Disabled: node.IsDisabled})
 	}
 	return result, nil
 }
 
-func (a remnaAdapter) AccessibleNodeUUIDs(ctx context.Context, squadUUID string) ([]string, error) {
+func (a remnaAdapter) AccessibleCatalogNodeUUIDs(ctx context.Context, squadUUID string) ([]string, error) {
 	nodes, err := remnaCall(ctx, a, func(callCtx context.Context, client remnaClient) ([]remnawave.AccessibleNode, error) {
 		return client.InternalSquadAccessibleNodes(callCtx, squadUUID)
 	})
@@ -91,13 +65,10 @@ func (a remnaAdapter) AccessibleNodeUUIDs(ctx context.Context, squadUUID string)
 	return result, nil
 }
 
-func (a remnaAdapter) UpdateInternalSquadInbounds(ctx context.Context, squadUUID string, inbounds []string) error {
-	input := append([]string(nil), inbounds...)
-	return remnaExecute(ctx, a, func(callCtx context.Context, client remnaClient) error {
-		_, err := client.UpdateInternalSquadInbounds(callCtx, squadUUID, input)
-		return err
+func (a remnaAdapter) listSquads(ctx context.Context) ([]remnawave.InternalSquad, error) {
+	return remnaCall(ctx, a, func(callCtx context.Context, client remnaClient) ([]remnawave.InternalSquad, error) {
+		return client.ListInternalSquads(callCtx)
 	})
 }
 
 var _ admin.SquadImporter = remnaAdapter{}
-var _ admin.SquadNodeManager = remnaAdapter{}

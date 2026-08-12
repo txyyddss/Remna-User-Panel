@@ -50,23 +50,6 @@ type SquadImporter interface {
 	ListInternalSquads(context.Context) ([]UpstreamSquad, error)
 }
 
-// UpstreamNode contains only the volatile fields needed to present and apply a
-// squad node selection. It is never written to SQLite.
-type UpstreamNode struct {
-	UUID                  string
-	Name                  string
-	CountryCode           string
-	ConsumptionMultiplier float64
-	ActiveInboundUUIDs    []string
-	Disabled              bool
-}
-
-type SquadNodeManager interface {
-	ListNodes(context.Context) ([]UpstreamNode, error)
-	AccessibleNodeUUIDs(context.Context, string) ([]string, error)
-	UpdateInternalSquadInbounds(context.Context, string, []string) error
-}
-
 // BackupRunner creates and verifies one online backup.
 type BackupRunner interface {
 	Run(context.Context) (model.BackupRun, error)

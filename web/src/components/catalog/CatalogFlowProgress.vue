@@ -21,7 +21,7 @@ const items = computed(() => [
 
 <template>
   <section class="catalog-progress" :aria-label="$t('catalog.steps.progress')">
-    <UStepper :model-value="stepperIndex" color="neutral" size="xs" :items="items" disabled>
+    <UStepper :model-value="stepperIndex" color="success" size="xs" :items="items" disabled>
       <template #indicator="{ item }">
         <UIcon
           :name="indicatorIcon(item.value, step, item.icon)"

@@ -38,23 +38,8 @@ type RemnawaveClient interface {
 	RevokeSubscription(context.Context, string) (string, error)
 }
 
-// RemoteSquad is the live identity portion of a Remnawave internal squad.
-type RemoteSquad struct {
-	UUID string
-	Name string
-}
-
-type remoteSquadLister interface {
-	ListCatalogSquads(context.Context) ([]RemoteSquad, error)
-}
-
 type quoteRepository interface {
 	QuotePurchase(context.Context, database.PurchaseInput, time.Time) (model.PurchaseQuote, error)
-}
-
-type renewalRepository interface {
-	RenewalQuote(context.Context, string, string, int, time.Time) (model.RenewalQuote, error)
-	Renew(context.Context, database.RenewalInput, time.Time) (model.RenewalBatch, error)
 }
 
 type cachedDashboard struct {
@@ -75,80 +60,6 @@ type Service struct {
 // NewService creates a catalog service.
 func NewService(repository Repository, remnawave RemnawaveClient, cacheTTL time.Duration) *Service {
 	return &Service{repository: repository, remnawave: remnawave, cacheTTL: cacheTTL, now: time.Now, cache: make(map[string]cachedDashboard)}
-}
-
-// Catalog overlays local merchandising on the live Remnawave squad list. A
-// combo with a stale included UUID is omitted until the upstream identity is
-// restored, preventing checkout against a locally cached catalog.
-func (s *Service) Catalog(ctx context.Context) (model.Catalog, error) {
-	combos, err := s.repository.ListCombos(ctx, true)
-	if err != nil {
-		return model.Catalog{}, err
-	}
-	addons, err := s.repository.ListSquadProducts(ctx, true)
-	if err != nil {
-		return model.Catalog{}, err
-	}
-	return s.hydrateLiveCatalog(ctx, combos, addons)
-}
-
-func (s *Service) hydrateLiveCatalog(ctx context.Context, combos []model.Combo, overrides []model.SquadProduct) (model.Catalog, error) {
-	lister, ok := s.remnawave.(remoteSquadLister)
-	if !ok {
-		return model.Catalog{Combos: combos, Addons: overrides, Nodes: []model.CatalogNode{}}, nil
-	}
-	remote, err := lister.ListCatalogSquads(ctx)
-	if err != nil {
-		return model.Catalog{}, err
-	}
-	live := make(map[string]string, len(remote))
-	for _, squad := range remote {
-		live[strings.TrimSpace(squad.UUID)] = strings.TrimSpace(squad.Name)
-	}
-	overrideByUUID := make(map[string]model.SquadProduct, len(overrides))
-	addons := make([]model.SquadProduct, 0, len(overrides))
-	for _, override := range overrides {
-		name, present := live[override.RemnaSquadUUID]
-		if !present {
-			continue
-		}
-		override.Name = name
-		override.UpstreamPresent = true
-		overrideByUUID[override.RemnaSquadUUID] = override
-		if override.Visible {
-			addons = append(addons, override)
-		}
-	}
-	liveCombos := make([]model.Combo, 0, len(combos))
-	for _, combo := range combos {
-		included := make([]model.SquadProduct, 0, len(combo.IncludedSquads))
-		valid := true
-		for _, placeholder := range combo.IncludedSquads {
-			name, present := live[placeholder.RemnaSquadUUID]
-			if !present {
-				valid = false
-				break
-			}
-			product, hasOverride := overrideByUUID[placeholder.RemnaSquadUUID]
-			if !hasOverride {
-				product = model.SquadProduct{ID: placeholder.RemnaSquadUUID, RemnaSquadUUID: placeholder.RemnaSquadUUID, Visible: true}
-			}
-			product.Name = name
-			product.UpstreamPresent = true
-			included = append(included, product)
-		}
-		if valid {
-			combo.IncludedSquads = included
-			liveCombos = append(liveCombos, combo)
-		}
-	}
-	catalogNodes := make([]model.CatalogNode, 0)
-	if nodeLister, ok := s.remnawave.(remoteNodeLister); ok {
-		if remoteNodes, nodeErr := nodeLister.ListCatalogNodes(ctx); nodeErr == nil {
-			catalogNodes = projectCatalogNodes(remoteNodes)
-		}
-	}
-	return model.Catalog{Combos: liveCombos, Addons: addons, Nodes: catalogNodes}, nil
 }
 
 // Purchase delegates all pricing and balance work to one SQLite transaction.
@@ -207,47 +118,6 @@ func (s *Service) Quote(ctx context.Context, user model.User, comboID string, ad
 		return model.PurchaseQuote{}, ErrNoAccessibleNodes
 	}
 	return quote, nil
-}
-
-// RenewalQuote previews a contiguous renewal using the current combo and add-on prices.
-func (s *Service) RenewalQuote(ctx context.Context, user model.User, purchaseID string, termCount int) (model.RenewalQuote, error) {
-	if user.OnboardingState != "complete" || strings.TrimSpace(purchaseID) == "" || termCount < 1 || termCount > 6 {
-		return model.RenewalQuote{}, errors.New("invalid renewal selection")
-	}
-	repository, ok := s.repository.(renewalRepository)
-	if !ok {
-		return model.RenewalQuote{}, errors.New("renewal is unavailable")
-	}
-	quote, err := repository.RenewalQuote(ctx, user.ID, purchaseID, termCount, s.now().UTC())
-	if err != nil {
-		return model.RenewalQuote{}, err
-	}
-	quote.AccessibleNodes, err = s.quoteAccessibleNodes(ctx, quote.ComboID, quote.AddonSquadUUIDs)
-	if err != nil {
-		return model.RenewalQuote{}, err
-	}
-	if len(quote.AccessibleNodes) == 0 {
-		return model.RenewalQuote{}, ErrNoAccessibleNodes
-	}
-	return quote, nil
-}
-
-// Renew commits one atomic debit for 1-6 contiguous current-ride terms.
-func (s *Service) Renew(ctx context.Context, user model.User, purchaseID string, termCount int, idempotencyKey string) (model.RenewalBatch, error) {
-	if user.OnboardingState != "complete" || strings.TrimSpace(purchaseID) == "" || termCount < 1 || termCount > 6 {
-		return model.RenewalBatch{}, errors.New("invalid renewal selection")
-	}
-	if strings.TrimSpace(idempotencyKey) == "" || len(idempotencyKey) > 128 {
-		return model.RenewalBatch{}, errors.New("invalid idempotency key")
-	}
-	if _, err := s.RenewalQuote(ctx, user, purchaseID, termCount); err != nil {
-		return model.RenewalBatch{}, err
-	}
-	repository, ok := s.repository.(renewalRepository)
-	if !ok {
-		return model.RenewalBatch{}, errors.New("renewal is unavailable")
-	}
-	return repository.Renew(ctx, database.RenewalInput{UserID: user.ID, PurchaseID: purchaseID, TermCount: termCount, IdempotencyKey: idempotencyKey}, s.now().UTC())
 }
 
 func (s *Service) validateLiveSelection(ctx context.Context, comboID string, addonIDs []string) error {

@@ -17,26 +17,6 @@ RemnaNode:
       items: { type: string, format: uuid }
     accessible: { type: boolean }
 
-RemnaNodeList:
-  type: object
-  additionalProperties: false
-  required: [items]
-  properties:
-    items:
-      type: array
-      items: { $ref: '../../openapi.yaml#/components/schemas/RemnaNode' }
-
-SquadNodeWrite:
-  type: object
-  additionalProperties: false
-  required: [nodeUuids]
-  properties:
-    nodeUuids:
-      type: array
-      maxItems: 500
-      uniqueItems: true
-      items: { type: string, format: uuid }
-
 PurchaseRequest:
   type: object
   additionalProperties: false

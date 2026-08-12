@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, shallowRef } from 'vue'
 
-import type { FeaturePaymentMethod } from '@/api/features'
+import type { CouponRedemption, FeaturePaymentMethod } from '@/api/features'
 import { featuresApi } from '@/api/features'
 import type { PaymentProvider } from '@/api/types'
 import type { PaymentStage } from '@/composables/usePaymentOrder'
@@ -21,7 +21,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   chooseMethod: [id: string]
   createOrder: []
-  paid: []
+  couponRedeemed: [redemption: CouponRedemption]
 }>()
 const amount = defineModel<string>('amount', { required: true })
 const { t } = useI18n()
@@ -115,8 +115,8 @@ async function redeemCoupon(): Promise<void> {
   couponBusy.value = true
   couponError.value = null
   try {
-    await featuresApi.redeemCoupon(couponCode.value, createUuid())
-    emit('paid')
+    const redemption = await featuresApi.redeemCoupon(couponCode.value, createUuid())
+    emit('couponRedeemed', redemption)
   } catch (caught) {
     couponError.value = localizedError(caught, 'errors.couponRedeem')
   } finally {

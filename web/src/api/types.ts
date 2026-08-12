@@ -61,8 +61,11 @@ export interface RenewalQuote {
   purchaseId: string
   comboId: string
   termCount: number
+  grossPrice: Money
+  discount: Money
   pricePerTerm: Money
   totalPrice: Money
+  couponGrantId: string | null
   effectiveAt: RFC3339
   expiresAt: RFC3339
   addonSquadUuids: string[]

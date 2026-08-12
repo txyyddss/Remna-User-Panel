@@ -5,13 +5,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/txyyddss/Remna-User-Panel/internal/coupons"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 	"strings"
 	"time"
 )
 
-// RenewalInput describes one contiguous, no-coupon renewal batch.
+// RenewalInput describes one contiguous renewal batch.
 type RenewalInput struct {
 	UserID, PurchaseID, IdempotencyKey string
 	TermCount                          int
@@ -79,13 +80,25 @@ func renewalQuoteTx(ctx context.Context, tx *sql.Tx, userID, purchaseID string, 
 	if err != nil {
 		return model.RenewalQuote{}, model.Combo{}, nil, err
 	}
-	perTerm := combo.PriceTXBMinor
+	grossPerTerm := combo.PriceTXBMinor
 	addonIDs := make([]string, 0, len(addons))
 	for _, addon := range addons {
-		perTerm += addon.PriceTXBMinor
+		grossPerTerm += addon.PriceTXBMinor
 		addonIDs = append(addonIDs, addon.RemnaSquadUUID)
 	}
-	return model.RenewalQuote{PurchaseID: purchaseID, ComboID: combo.ID, TermCount: termCount, PricePerTerm: model.TXBMoney(perTerm), TotalPrice: model.TXBMoney(perTerm * int64(termCount)), EffectiveAt: start,
+	discount := coupons.Discount{GrossMinor: grossPerTerm, NetMinor: grossPerTerm}
+	if purchase.CouponGrantID != nil {
+		discount, err = quoteRecurringRenewalCouponTx(ctx, tx, coupons.PurchaseContext{UserID: userID, GrantID: *purchase.CouponGrantID,
+			ComboID: combo.ID, AddonSquadIDs: addonIDs, GrossPriceMinor: grossPerTerm}, now)
+		if err != nil {
+			return model.RenewalQuote{}, model.Combo{}, nil, err
+		}
+	}
+	var couponGrantID *string
+	if discount.Recurring && discount.GrantID != "" {
+		couponGrantID = &discount.GrantID
+	}
+	return model.RenewalQuote{PurchaseID: purchaseID, ComboID: combo.ID, TermCount: termCount, GrossPrice: model.TXBMoney(grossPerTerm), Discount: model.TXBMoney(discount.DiscountMinor), PricePerTerm: model.TXBMoney(discount.NetMinor), TotalPrice: model.TXBMoney(discount.NetMinor * int64(termCount)), CouponGrantID: couponGrantID, EffectiveAt: start,
 		ExpiresAt: start.AddDate(0, 0, combo.ValidityDays*termCount), AddonSquadUUIDs: addonIDs}, combo, addons, nil
 }
 
@@ -148,7 +161,7 @@ func (s *Store) Renew(ctx context.Context, input RenewalInput, now time.Time) (m
 		if index == 0 {
 			requestKey = input.IdempotencyKey
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO purchases(id,user_id,combo_id,charged_txb_minor,valid_from,valid_until,status,coupon_grant_id,gross_price_txb_minor,coupon_discount_txb_minor,idempotency_key,request_fingerprint,renewal_batch_id,renewal_index,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, purchaseID, input.UserID, combo.ID, quote.PricePerTerm.MinorInt64(), stamp(from), stamp(until), status, nil, quote.PricePerTerm.MinorInt64(), 0, requestKey, fingerprint, batchID, index, stamp(now), stamp(now)); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO purchases(id,user_id,combo_id,charged_txb_minor,valid_from,valid_until,status,coupon_grant_id,gross_price_txb_minor,coupon_discount_txb_minor,idempotency_key,request_fingerprint,renewal_batch_id,renewal_index,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, purchaseID, input.UserID, combo.ID, quote.PricePerTerm.MinorInt64(), stamp(from), stamp(until), status, quote.CouponGrantID, quote.GrossPrice.MinorInt64(), quote.Discount.MinorInt64(), requestKey, fingerprint, batchID, index, stamp(now), stamp(now)); err != nil {
 			return model.RenewalBatch{}, err
 		}
 		for _, addon := range addons {
@@ -170,30 +183,4 @@ func (s *Store) Renew(ctx context.Context, input RenewalInput, now time.Time) (m
 		return model.RenewalBatch{}, err
 	}
 	return s.loadRenewalBatch(ctx, batchID)
-}
-
-func (s *Store) loadRenewalBatch(ctx context.Context, batchID string) (model.RenewalBatch, error) {
-	var batch model.RenewalBatch
-	var total int64
-	if err := s.db.QueryRowContext(ctx, `SELECT id,source_purchase_id,term_count,charged_txb_minor FROM renewal_batches WHERE id=?`, batchID).Scan(&batch.ID, &batch.PurchaseID, &batch.TermCount, &total); err != nil {
-		return batch, err
-	}
-	batch.TotalPrice = model.TXBMoney(total)
-	rows, err := s.db.QueryContext(ctx, `SELECT id FROM purchases WHERE renewal_batch_id=? ORDER BY renewal_index`, batchID)
-	if err != nil {
-		return batch, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return batch, err
-		}
-		purchase, err := s.PurchaseByID(ctx, id)
-		if err != nil {
-			return batch, err
-		}
-		batch.Purchases = append(batch.Purchases, purchase)
-	}
-	return batch, rows.Err()
 }

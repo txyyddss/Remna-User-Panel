@@ -66,7 +66,6 @@ Each YAML file is one complete OpenAPI Path Item Object. `../openapi.yaml` regis
 - `api-v1-admin-squad-products.yaml`: `/api/v1/admin/squad-products`
 - `api-v1-admin-squad-products-import.yaml`: `/api/v1/admin/squad-products/import`
 - `api-v1-admin-squad-products-id.yaml`: `/api/v1/admin/squad-products/{id}`
-- `api-v1-admin-squad-products-id-nodes.yaml`: `/api/v1/admin/squad-products/{id}/nodes`
 - `api-v1-admin-squad-products-id-statistics.yaml`: `/api/v1/admin/squad-products/{id}/statistics`
 - `api-v1-admin-users.yaml`: `/api/v1/admin/users`
 - `api-v1-admin-users-id.yaml`: `/api/v1/admin/users/{id}`

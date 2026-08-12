@@ -36,6 +36,11 @@
     "publishDraw": "管理员准备好后可以发布抽奖。",
     "weightedPrize": "系统会选择并记录一个加权奖品。",
     "balanceAfter": "结果后的余额",
+    "reward": "奖励",
+    "rewardTxb": "TXB 奖励：{amount}",
+    "rewardCoupon": "优惠券奖励",
+    "rewardSubscription": "增加 {days} 天",
+    "noReward": "无奖品",
     "resultDescription": {
       "checkInRewarded": "每日签到奖励已记入账户。",
       "checkInRecorded": "今天的签到已记录，无需重复操作。",

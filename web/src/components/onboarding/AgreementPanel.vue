@@ -39,6 +39,8 @@ defineEmits<{ submit: []; toggle: [id: string] }>()
 </template>
 
 <style scoped>
+.onboarding-panel__header { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 0.75rem; }
+.onboarding-panel__header h1 { min-width: 0; margin: 0; }
 .agreement-list { display: grid; gap: 0.65rem; }
 .agreement-callout--selectable { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; cursor: pointer; }
 .agreement-callout--selectable strong, .agreement-callout--selectable small { display: block; }

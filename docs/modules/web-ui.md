@@ -37,7 +37,9 @@ traffic/reset and rollover details, accessible-node count, add-ons, coupon
 effect, and total. Combo/add-on/coupon selections and the current step are
 stored in user-scoped `sessionStorage` and cleared after successful purchase;
 progress is blocked when the quote has no accessible nodes. Home's ride summary
-offers a 1-6 term renewal quote and confirmation flow. Usage also includes a
+offers a 1-6 term renewal quote and confirmation flow; a recurring coupon carried
+by the current ride is reflected in the quote total and displayed discount.
+Usage also includes a
 responsive native SVG graph with a textual fallback, while Activity preserves
 a selected game's entered stake across refreshes and has no refresh button.
 
