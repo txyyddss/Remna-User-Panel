@@ -114,7 +114,7 @@ func TestServiceCreateOrderFailures(t *testing.T) {
 		{name: "disabled", provider: "ezpay", txbMinor: 100, want: ErrProviderDisabled},
 		{name: "enabled lookup error", provider: "ezpay", txbMinor: 100, configure: func(_ *billingRepository, settings *billingSettings, _ *billingGateway) {
 			settings.errs["billing.ezpay.enabled"] = testError
-		}, want: ErrProviderDisabled},
+		}, want: testError},
 		{name: "rate lookup error", provider: "ezpay", txbMinor: 100, configure: func(_ *billingRepository, settings *billingSettings, _ *billingGateway) {
 			settings.values["billing.ezpay.enabled"] = "true"
 			settings.errs["billing.rate.txb_per_cny"] = testError

@@ -4,15 +4,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Catalog, SquadProduct } from '@/api/types'
 
-const { getCatalog, getBalance, getCouponWallet, createPurchase } = vi.hoisted(() => ({
+const { getCatalog, getBalance, getCouponWallet, quotePurchase, createPurchase } = vi.hoisted(() => ({
   getCatalog: vi.fn(),
   getBalance: vi.fn(),
   getCouponWallet: vi.fn(),
+  quotePurchase: vi.fn(),
   createPurchase: vi.fn(),
 }))
 
 vi.mock('@/api/client', () => ({
-  api: { getCatalog, getBalance, createPurchase },
+  api: { getCatalog, getBalance, quotePurchase, createPurchase },
   ApiError: class ApiError extends Error {},
 }))
 
@@ -77,6 +78,18 @@ describe('catalog squad selection', () => {
     getCatalog.mockResolvedValue(catalog)
     getBalance.mockResolvedValue({ balance: money('5000'), paymentMethods: [] })
     getCouponWallet.mockResolvedValue({ items: [] })
+    quotePurchase.mockResolvedValue({
+      comboId: 'combo-a',
+      comboName: 'A',
+      grossPrice: money('1000'),
+      discount: money('0'),
+      netPrice: money('1000'),
+      effectiveAt: '2026-08-08T00:00:00Z',
+      expiresAt: '2026-09-07T00:00:00Z',
+      queued: false,
+      addonSquadUuids: [],
+      accessibleNodes: [],
+    })
     createPurchase
       .mockRejectedValueOnce(new Error('connection closed after commit'))
       .mockResolvedValueOnce({ id: 'purchase-1' })
