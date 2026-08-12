@@ -54,7 +54,10 @@
   },
   "adminPaymentProfiles": {
     "title": "Payment profiles",
-    "copy": "Configure one provider profile, then enable its payment channels separately.",
+    "copy": "Add one or more provider accounts, then enable their payment channels separately.",
+    "add": "Add provider",
+    "provider": "Provider",
+    "unnamed": "New provider",
     "saved": "Payment profile saved.",
     "providerName": "Provider name",
     "channels": "Enabled channels",

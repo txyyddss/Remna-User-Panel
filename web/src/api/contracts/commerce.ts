@@ -32,6 +32,7 @@ export interface EmbyOverview {
 export interface FeaturePaymentMethod {
   id: string
   provider: PaymentProvider
+  profileId: string
   providerName?: string
   rail: string
   name: string

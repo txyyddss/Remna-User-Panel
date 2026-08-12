@@ -30,3 +30,5 @@ file instead.
 - `015_payment_provider_profiles.sql` consolidates each provider into one
   profile row with independently enabled channels and removes the temporary
   per-rail table.
+- `016_multiple_payment_profiles.sql` allows multiple independent EZPay and
+  BEPusdt accounts while preserving the existing provider profile rows.

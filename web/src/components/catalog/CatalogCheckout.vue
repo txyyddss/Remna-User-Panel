@@ -76,7 +76,7 @@ function goToBalance(): void { void router.push({ path: '/home', query: { topUp:
       </div>
       <div class="catalog-checkout__total">
         <span>{{ $t('catalog.serverTotal') }}</span>
-        <strong>{{ quote ? formatMoney(quote.netPrice) : $t('catalog.quoting') }}</strong>
+        <strong>{{ quote ? formatMoney(quote.netPrice) : quoting ? $t('catalog.quoting') : $t('common.notAvailable') }}</strong>
         <small v-if="quote">{{ quote.queued ? $t('catalog.queuedEffectiveHint') : $t('catalog.immediateEffectiveHint') }}</small>
       </div>
     </div>

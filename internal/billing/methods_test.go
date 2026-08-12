@@ -55,6 +55,18 @@ func TestPaymentMethodIDRejectsUnknownAndAmbiguousRails(t *testing.T) {
 	}
 }
 
+func TestProfileScopedPaymentMethodID(t *testing.T) {
+	t.Parallel()
+
+	provider, profileID, rail, err := ParseMethodSelection("ezpay:backup-account:alipay")
+	if err != nil || provider != "ezpay" || profileID != "backup-account" || rail != "alipay" {
+		t.Fatalf("ParseMethodSelection() = %q, %q, %q, %v", provider, profileID, rail, err)
+	}
+	if !CanonicalMethodID("ezpay:backup-account:alipay") {
+		t.Fatal("CanonicalMethodID(profile-scoped) = false")
+	}
+}
+
 func TestEnabledPaymentRailsPreserveAdministratorOrder(t *testing.T) {
 	t.Parallel()
 

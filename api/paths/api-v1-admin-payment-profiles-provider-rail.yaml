@@ -2,10 +2,10 @@ put:
   tags: [Admin]
   operationId: updateAdminPaymentProfile
   parameters:
-    - name: provider
+    - name: id
       in: path
       required: true
-      schema: { type: string, enum: [ezpay, bepusdt] }
+      schema: { $ref: '../openapi.yaml#/components/schemas/ID' }
   requestBody:
     required: true
     content:
@@ -13,7 +13,7 @@ put:
         schema: { $ref: '../openapi.yaml#/components/schemas/PaymentProfileWrite' }
   responses:
     '200':
-      description: Saved masked profile.
+      description: Saved masked provider profile.
       content:
         application/json:
           schema: { $ref: '../openapi.yaml#/components/schemas/PaymentProfile' }

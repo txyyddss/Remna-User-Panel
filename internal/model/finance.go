@@ -60,6 +60,7 @@ type PaymentOrder struct {
 type PaymentMethod struct {
 	ID           string `json:"id"`
 	Provider     string `json:"provider"`
+	ProfileID    string `json:"profileId"`
 	ProviderName string `json:"providerName"`
 	Rail         string `json:"rail"`
 	Name         string `json:"name"`
@@ -69,7 +70,7 @@ type PaymentMethod struct {
 	Mode         string `json:"mode"`
 }
 
-// PaymentProfile is the masked administrative representation of one provider.
+// PaymentProfile is the masked administrative representation of one provider account.
 type PaymentProfile struct {
 	ID              string   `json:"id"`
 	Provider        string   `json:"provider"`

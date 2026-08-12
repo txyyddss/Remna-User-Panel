@@ -37,7 +37,7 @@
 
 - `admin.go` registers administrator routes and delegates community administration registration.
 - `admin_settings.go` lists, creates, and updates deployment settings.
-- `admin_payment_profiles.go` lists and updates one masked EZPay/BEPusdt provider profile with independently enabled channels.
+- `admin_payment_profiles.go` lists, creates, and updates masked EZPay/BEPusdt account profiles with independently enabled channels.
 - `admin_catalog.go` manages combos, squad products, nodes, and statistics windows.
 - `admin_accounts.go` manages users, balance adjustments, and entitlements.
 - `admin_payments.go` lists administrator payment and refund projections, applies refunds, and grants terminal-payment courtesy credits.

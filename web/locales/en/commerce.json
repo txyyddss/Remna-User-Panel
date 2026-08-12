@@ -87,6 +87,7 @@
     "amount": "Amount",
     "minimumTopUp": "Minimum top-up applies.",
     "provider": "Provider",
+    "chooseProvider": "Choose a payment provider",
     "providers": {
       "ezpay": "EZPay",
       "bepusdt": "BEPUSDT",

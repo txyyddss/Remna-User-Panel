@@ -90,7 +90,7 @@ func (a paymentAdapter) RefundProvider(ctx context.Context, order model.PaymentO
 }
 
 func (a paymentAdapter) createEZPay(ctx context.Context, request billing.ProviderCreateRequest) (billing.ProviderCheckout, error) {
-	client, err := a.ezpayClient(ctx, request.Rail)
+	client, err := a.ezpayClient(ctx, request.ProfileID, request.Rail)
 	if err != nil {
 		return billing.ProviderCheckout{}, err
 	}
@@ -104,7 +104,7 @@ func (a paymentAdapter) createEZPay(ctx context.Context, request billing.Provide
 }
 
 func (a paymentAdapter) createBEPusdt(ctx context.Context, request billing.ProviderCreateRequest) (billing.ProviderCheckout, error) {
-	client, err := a.bepusdtClient(ctx, request.Rail)
+	client, err := a.bepusdtClient(ctx, request.ProfileID, request.Rail)
 	if err != nil {
 		return billing.ProviderCheckout{}, err
 	}
@@ -129,7 +129,11 @@ func (a paymentAdapter) Cancel(ctx context.Context, order model.PaymentOrder) er
 	if order.Provider != "bepusdt" || order.ProviderTradeID == nil || *order.ProviderTradeID == "" {
 		return nil
 	}
-	client, err := a.bepusdtClient(ctx, order.ProviderRail)
+	_, profileID, rail, parseErr := billing.ParseMethodSelection(order.MethodID)
+	if parseErr != nil {
+		profileID, rail = "", order.ProviderRail
+	}
+	client, err := a.bepusdtClient(ctx, profileID, rail)
 	if err != nil {
 		return err
 	}
@@ -150,8 +154,14 @@ func (a paymentAdapter) createStars(ctx context.Context, request billing.Provide
 		PayableCurrency: "XTR", ExpiresAt: time.Now().UTC().Add(30 * time.Minute)}, nil
 }
 
-func (a paymentAdapter) ezpayClient(ctx context.Context, rail string) (*ezpay.Client, error) {
-	profile, err := a.settings.PaymentProfile(ctx, "ezpay", rail)
+func (a paymentAdapter) ezpayClient(ctx context.Context, profileID, rail string) (*ezpay.Client, error) {
+	var profile model.PaymentProfileRuntime
+	var err error
+	if profileID != "" {
+		profile, err = a.settings.PaymentProfileByID(ctx, profileID, rail)
+	} else {
+		profile, err = a.settings.PaymentProfile(ctx, "ezpay", rail)
+	}
 	if err != nil {
 		baseURL, fallbackErr := a.settings.Plaintext(ctx, "billing.ezpay.base_url")
 		if fallbackErr != nil {
@@ -170,8 +180,14 @@ func (a paymentAdapter) ezpayClient(ctx context.Context, rail string) (*ezpay.Cl
 	return ezpay.NewClient(profile.Endpoint, profile.MerchantID, profile.CredentialPlaintext)
 }
 
-func (a paymentAdapter) bepusdtClient(ctx context.Context, rail string) (*bepusdt.Client, error) {
-	profile, err := a.settings.PaymentProfile(ctx, "bepusdt", rail)
+func (a paymentAdapter) bepusdtClient(ctx context.Context, profileID, rail string) (*bepusdt.Client, error) {
+	var profile model.PaymentProfileRuntime
+	var err error
+	if profileID != "" {
+		profile, err = a.settings.PaymentProfileByID(ctx, profileID, rail)
+	} else {
+		profile, err = a.settings.PaymentProfile(ctx, "bepusdt", rail)
+	}
 	if err != nil {
 		baseURL, fallbackErr := a.settings.Plaintext(ctx, "billing.bepusdt.base_url")
 		if fallbackErr != nil {
@@ -187,7 +203,26 @@ func (a paymentAdapter) bepusdtClient(ctx context.Context, rail string) (*bepusd
 }
 
 func (a paymentAdapter) VerifyEZPay(ctx context.Context, values url.Values) (billing.ProviderEvent, bool, error) {
-	client, err := a.ezpayClient(ctx, values.Get("type"))
+	if profiles, profilesErr := a.settings.PaymentProfileRuntimes(ctx, "ezpay"); profilesErr == nil && len(profiles) > 0 {
+		var lastErr error
+		for _, profile := range profiles {
+			client, clientErr := ezpay.NewClient(profile.Endpoint, profile.MerchantID, profile.CredentialPlaintext)
+			if clientErr != nil {
+				lastErr = clientErr
+				continue
+			}
+			notification, parseErr := client.ParseNotification(values)
+			if parseErr != nil {
+				lastErr = parseErr
+				continue
+			}
+			return ezpayEvent(notification, values, profile.ID), notification.Successful(), nil
+		}
+		if lastErr != nil {
+			return billing.ProviderEvent{}, false, lastErr
+		}
+	}
+	client, err := a.ezpayClient(ctx, "", values.Get("type"))
 	if err != nil {
 		return billing.ProviderEvent{}, false, err
 	}
@@ -195,10 +230,13 @@ func (a paymentAdapter) VerifyEZPay(ctx context.Context, values url.Values) (bil
 	if err != nil {
 		return billing.ProviderEvent{}, false, err
 	}
+	return ezpayEvent(notification, values, ""), notification.Successful(), nil
+}
+
+func ezpayEvent(notification *ezpay.Notification, values url.Values, profileID string) billing.ProviderEvent {
 	digest := sha256.Sum256([]byte(values.Encode()))
-	event := billing.ProviderEvent{Provider: "ezpay", Rail: string(notification.Type), OrderID: notification.OutTradeNo, TradeID: notification.TradeNo,
+	return billing.ProviderEvent{Provider: "ezpay", ProfileID: profileID, Rail: string(notification.Type), OrderID: notification.OutTradeNo, TradeID: notification.TradeNo,
 		PayableAmount: notification.Money, PayableCurrency: "CNY", DedupeKey: notification.TradeNo, PayloadHash: hex.EncodeToString(digest[:])}
-	return event, notification.Successful(), nil
 }
 
 func (a paymentAdapter) VerifyBEPusdt(ctx context.Context, body []byte) (billing.ProviderEvent, int, error) {
@@ -215,13 +253,13 @@ func (a paymentAdapter) VerifyBEPusdt(ctx context.Context, body []byte) (billing
 				lastErr = verifyErr
 				continue
 			}
-			return bepusdtEvent(webhook, body, profile.Rail)
+			return bepusdtEvent(webhook, body, profile.ID)
 		}
 		if lastErr != nil {
 			return billing.ProviderEvent{}, 0, lastErr
 		}
 	}
-	client, err := a.bepusdtClient(ctx, "usdt.trc20")
+	client, err := a.bepusdtClient(ctx, "", "usdt.trc20")
 	if err != nil {
 		return billing.ProviderEvent{}, 0, err
 	}
@@ -229,16 +267,16 @@ func (a paymentAdapter) VerifyBEPusdt(ctx context.Context, body []byte) (billing
 	if err != nil {
 		return billing.ProviderEvent{}, 0, err
 	}
-	return bepusdtEvent(webhook, body, "usdt.trc20")
+	return bepusdtEvent(webhook, body, "")
 }
 
-func bepusdtEvent(webhook *bepusdt.Webhook, body []byte, rail string) (billing.ProviderEvent, int, error) {
+func bepusdtEvent(webhook *bepusdt.Webhook, body []byte, profileID string) (billing.ProviderEvent, int, error) {
 	digest := sha256.Sum256(body)
 	dedupe := webhook.BlockTransactionID
 	if dedupe == "" {
 		dedupe = webhook.TradeID + ":" + strconv.Itoa(webhook.Status)
 	}
-	event := billing.ProviderEvent{Provider: "bepusdt", Rail: rail, OrderID: webhook.OrderID, TradeID: webhook.TradeID,
+	event := billing.ProviderEvent{Provider: "bepusdt", ProfileID: profileID, OrderID: webhook.OrderID, TradeID: webhook.TradeID,
 		ChargeID: webhook.BlockTransactionID, PayableAmount: webhook.ActualAmount, PayableCurrency: "USDT",
 		FiatAmount: webhook.Amount, FiatCurrency: "USD", Recipient: webhook.Token, DedupeKey: dedupe, PayloadHash: hex.EncodeToString(digest[:])}
 	return event, webhook.Status, nil

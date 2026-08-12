@@ -47,8 +47,8 @@ const {
   confirmPurchase,
 } = useCatalog()
 
-async function restoreReviewQuote(): Promise<void> {
-  if (activeStep.value !== 5 || loading.value || quoting.value || quote.value || !selectedCombo.value) return
+async function restoreStepQuote(): Promise<void> {
+  if (![3, 5].includes(activeStep.value) || loading.value || quoting.value || quote.value || purchase.value || !selectedCombo.value) return
   await refreshQuote()
 }
 
@@ -57,12 +57,12 @@ onMounted(() => {
     const value = Number(globalThis.sessionStorage?.getItem(stepKey() ?? ''))
     if (value >= 1 && value <= 5) activeStep.value = value
   } catch { /* Storage is optional in restricted WebViews. */ }
-  void restoreReviewQuote()
+  void restoreStepQuote()
 })
 watch(activeStep, (value) => {
   try { const key = stepKey(); if (key) globalThis.sessionStorage?.setItem(key, String(value)) } catch { /* Ignore unavailable storage. */ }
 })
-watch([activeStep, loading, selectedCombo, selectedSquadIds, selectedCouponGrantId], () => { void restoreReviewQuote() }, { deep: true })
+watch([activeStep, loading, selectedCombo, selectedSquadIds, selectedCouponGrantId], () => { void restoreStepQuote() }, { deep: true })
 
 const selectedCoupon = computed(() => eligibleCoupons.value.find((grant) => grant.id === selectedCouponGrantId.value) ?? null)
 const nextDisabled = computed(() => {

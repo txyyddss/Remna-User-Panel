@@ -14,7 +14,7 @@ Localized route-level panels and shared admin-only Nuxt UI.
 - `AdminOnboardingPanel.vue` loads, saves, and publishes visual onboarding drafts.
 - `onboarding/` contains visual bilingual welcome and agreement card editors.
 - `AdminPaymentsPanel.vue` manages payment records, refunds, and safe courtesy credits for failed or expired orders.
-- `AdminPaymentProfiles.vue` edits one masked provider profile per EZPay/BEPusdt provider, with independently enabled channels and a custom provider name.
+- `AdminPaymentProfiles.vue` lists and edits multiple masked EZPay/BEPusdt account profiles, adds new accounts, and saves their independent Nuxt UI channel selections and custom names.
 - `AdminQuestionnairesPanel.vue` manages questionnaire lifecycles.
 - `AdminReasonDialog.vue` collects audited reasons and keeps action failures visible in the dialog.
 - `AdminSectionState.vue` renders loading and error states.

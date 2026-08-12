@@ -137,7 +137,8 @@ export const api = {
     body: { reason } satisfies RefundRequest,
   }),
   getAdminPaymentProfiles: () => request<{ items: AdminPaymentProfile[] }>('/api/v1/admin/payment-profiles'),
-  updateAdminPaymentProfile: (provider: string, body: AdminPaymentProfileWrite) => request<AdminPaymentProfile>(`/api/v1/admin/payment-profiles/${encodeURIComponent(provider)}`, { method: 'PUT', body }),
+  createAdminPaymentProfile: (body: AdminPaymentProfileWrite) => request<AdminPaymentProfile>('/api/v1/admin/payment-profiles', { method: 'POST', body }),
+  updateAdminPaymentProfile: (id: string, body: AdminPaymentProfileWrite) => request<AdminPaymentProfile>(`/api/v1/admin/payment-profiles/${encodeURIComponent(id)}`, { method: 'PUT', body }),
   cancelAdminEntitlement: (entitlementId: string, reason: string) => request<Purchase>(`/api/v1/admin/entitlements/${encodeURIComponent(entitlementId)}/cancel`, {
     method: 'POST',
     body: { reason } satisfies ReasonRequest,

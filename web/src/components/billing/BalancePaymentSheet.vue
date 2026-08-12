@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed, shallowRef, watch } from 'vue'
+import { computed, watch } from 'vue'
 import type { FeaturePaymentMethod, FeaturePaymentOrder } from '@/api/features'
-import type { PaymentProvider } from '@/api/types'
 import BalancePaymentConfiguration from '@/components/billing/BalancePaymentConfiguration.vue'
 import { usePaymentOrder } from '@/composables/usePaymentOrder'
 import { useI18n } from '@/i18n'
@@ -13,12 +12,10 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ paid: [] }>()
 const open = defineModel<boolean>('open', { required: true })
-const selectedProvider = shallowRef<PaymentProvider | null>(null)
 const { t } = useI18n()
 
 const methods = computed(() => props.methods)
 const externalMethods = computed(() => methods.value.filter((method) => method.mode === 'order'))
-const couponMethod = computed(() => methods.value.find((method) => method.mode === 'coupon_redemption'))
 
 const {
   amount,
@@ -52,8 +49,7 @@ const description = computed(() => stage.value === 'configure'
 
 function prepareOrder(): void {
   reset(externalMethods.value)
-  if (props.reissueOrder && hydrateReissueOrder(props.reissueOrder, externalMethods.value)) selectedProvider.value = props.reissueOrder.provider
-  else selectedProvider.value = externalMethods.value.find((method) => method.available)?.provider ?? couponMethod.value?.provider ?? null
+  if (props.reissueOrder) hydrateReissueOrder(props.reissueOrder, externalMethods.value)
 }
 
 watch(open, (next) => {
@@ -73,7 +69,6 @@ watch(open, (next) => {
       <template v-if="stage === 'configure' || stage === 'creating'">
         <BalancePaymentConfiguration
           v-model:amount="amount"
-          v-model:selected-provider="selectedProvider"
           :methods="methods"
           :selected-method-id="selectedMethodId"
           :stage="stage"
@@ -108,13 +103,3 @@ watch(open, (next) => {
     </template>
   </UModal>
 </template>
-
-<style scoped>
-.channel-picker { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; margin: 0 0 1rem; padding: 0; border: 0; }
-.channel-picker legend { grid-column: 1 / -1; margin-bottom: 0.1rem; color: var(--text-muted); font-size: 0.78rem; font-weight: 700; }
-.channel-option { min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.55rem; border: 1px solid var(--line); border-radius: var(--radius-control); color: var(--text); background: var(--surface-raised); text-align: left; cursor: pointer; }
-.channel-option--selected { border-color: #557763; background: var(--accent-soft); }
-.channel-option strong, .channel-option small { display: block; }
-.channel-option strong { font-size: 0.75rem; }
-.channel-option small { margin-top: 0.2rem; color: var(--text-faint); font-size: 0.62rem; }
-</style>

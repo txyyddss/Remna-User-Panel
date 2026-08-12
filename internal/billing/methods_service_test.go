@@ -32,6 +32,34 @@ func TestMethodsReturnsOrderedAvailability(t *testing.T) {
 	}
 }
 
+func TestMethodsReturnsEveryConfiguredProviderAccount(t *testing.T) {
+	t.Parallel()
+
+	settings := &billingProfileSettings{
+		billingSettings: &billingSettings{values: map[string]string{"billing.rate.txb_per_cny": "10"}},
+		profiles: []model.PaymentProfile{
+			{ID: "ezpay-main", Provider: "ezpay", ProviderName: "Main EZPay", EnabledChannels: []string{"alipay"}, Enabled: true, Configured: true},
+			{ID: "ezpay-backup", Provider: "ezpay", ProviderName: "Backup EZPay", EnabledChannels: []string{"wxpay"}, Enabled: true, Configured: true},
+		},
+	}
+	methods, err := newBillingServiceForTest(newBillingRepository(), settings, &billingGateway{}).Methods(context.Background())
+	if err != nil {
+		t.Fatalf("Methods(): %v", err)
+	}
+	if len(methods) != 3 || methods[1].ID != "ezpay:ezpay-main:alipay" || methods[1].ProviderName != "Main EZPay" || methods[2].ID != "ezpay:ezpay-backup:wxpay" || methods[2].ProviderName != "Backup EZPay" {
+		t.Fatalf("Methods() = %+v", methods)
+	}
+}
+
+type billingProfileSettings struct {
+	*billingSettings
+	profiles []model.PaymentProfile
+}
+
+func (s *billingProfileSettings) PaymentProfiles(context.Context) ([]model.PaymentProfile, error) {
+	return s.profiles, nil
+}
+
 func TestMethodsRejectsInvalidConfiguration(t *testing.T) {
 	t.Parallel()
 	settings := &billingSettings{values: map[string]string{

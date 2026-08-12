@@ -50,10 +50,12 @@ func (s *Server) bepusdtWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		event, status, err = unsigned.VerifyBEPusdtUnsigned(r.Context(), body)
-		if err != nil || !s.deps.Billing.VerifyBEPusdtCallbackCapability(r.Context(), event.OrderID, capability) {
+		profileID, validCapability := s.deps.Billing.BEPusdtCallbackProfile(r.Context(), event.OrderID, capability)
+		if err != nil || !validCapability {
 			s.writeError(w, r, http.StatusUnauthorized, "INVALID_CAPABILITY", "Webhook authentication failed.")
 			return
 		}
+		event.ProfileID = profileID
 	}
 	if status < 1 || status > 3 {
 		s.writeError(w, r, http.StatusBadRequest, "INVALID_PAYMENT_STATUS", "Payment status is invalid.")
@@ -81,7 +83,11 @@ func (s *Server) bepusdtWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	ack := ""
-	if profile, profileErr := s.deps.Settings.PaymentProfile(r.Context(), "bepusdt", event.Rail); profileErr == nil {
+	if event.ProfileID != "" {
+		if profile, profileErr := s.deps.Settings.PaymentProfileByID(r.Context(), event.ProfileID, event.Rail); profileErr == nil {
+			ack = profile.Acknowledgement
+		}
+	} else if profile, profileErr := s.deps.Settings.PaymentProfile(r.Context(), "bepusdt", event.Rail); profileErr == nil {
 		ack = profile.Acknowledgement
 	}
 	if ack == "" {

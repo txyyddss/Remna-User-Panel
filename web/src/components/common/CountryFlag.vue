@@ -23,6 +23,6 @@ const flagIcon = computed(() => flags[normalizedCode.value.toUpperCase() as keyo
 </template>
 
 <style scoped>
-.country-flag { width: 28px; height: 20px; display: inline-grid; place-items: center; overflow: hidden; border: 1px solid var(--line); border-radius: 5px; color: var(--text-muted); background: var(--surface); font-family: var(--font-mono); font-size: 0.58rem; }
+.country-flag { width: 28px; height: 20px; display: inline-grid; place-items: center; overflow: hidden; color: var(--text-muted); font-family: var(--font-mono); font-size: 0.58rem; }
 .country-flag :deep(svg) { width: 100%; height: 100%; }
 </style>

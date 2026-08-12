@@ -65,7 +65,7 @@ depend on the `Store` methods; provider network calls do not belong here.
 - `administration_records.go` — audit events, administrator user lists, and backup
   run records.
 - `rollover.go` — durable rollover processing and finalization.
-- `payment_profiles.go` — provider-level payment profile masking and encrypted credential persistence with a channel list.
+- `payment_profiles.go` — provider-account profile masking and encrypted credential persistence with per-account channel lists.
 - `retention.go` — bounded cleanup of aged operational records.
 - `statistics.go` — catalog and activity administrator statistics.
 - `destructive.go` — audited feature deletion transactions.
@@ -95,13 +95,17 @@ depend on the `Store` methods; provider network calls do not belong here.
 - `restore_test.go` — restore validation and schema compatibility.
 - `ledger_page_test.go` — cursor pagination order and validation.
 
+`payment_profiles_test.go` covers independent provider-account persistence and stable-ID lookup.
+
 The `migrations/` directory contains the ordered embedded schema history. New
 schema changes must be additive migrations; deployed migration files are immutable.
 
 Migration `015_payment_provider_profiles.sql` consolidates the temporary
-per-rail profile table into one row per provider. Legacy settings remain
-available for decryption fallback, while new writes use the provider profile
-record and preserve a single credential source.
+per-rail profile table into one row per provider. Migration
+`016_multiple_payment_profiles.sql` removes the provider-wide uniqueness
+constraint so additional independent accounts can be stored. Legacy settings
+remain available for decryption fallback, while new writes use the stable
+profile record and preserve masked credentials.
 
 `billing_courtesy_test.go` covers terminal-payment courtesy-credit atomicity,
 idempotent replay, and late-provider-callback blocking.

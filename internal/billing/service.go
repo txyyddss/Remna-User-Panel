@@ -31,6 +31,10 @@ type paymentProfileRuntimeReader interface {
 	PaymentProfile(context.Context, string, string) (model.PaymentProfileRuntime, error)
 }
 
+type paymentProfileByIDRuntimeReader interface {
+	PaymentProfileByID(context.Context, string, string) (model.PaymentProfileRuntime, error)
+}
+
 // Repository is the transactional billing persistence contract.
 type Repository interface {
 	CreatePaymentOrder(context.Context, model.PaymentOrder) (model.PaymentOrder, error)
@@ -67,7 +71,7 @@ func NewService(repository Repository, settings Settings, gateway Gateway, publi
 
 // CreateOrder computes authoritative pricing, persists the attempt, then requests checkout data.
 func (s *Service) CreateOrder(ctx context.Context, user model.User, methodID string, txbMinor int64) (model.PaymentOrder, error) {
-	provider, rail, err := ParseMethodID(methodID)
+	provider, profileID, rail, err := ParseMethodSelection(methodID)
 	if err != nil {
 		return model.PaymentOrder{}, err
 	}
@@ -77,7 +81,7 @@ func (s *Service) CreateOrder(ctx context.Context, user model.User, methodID str
 	if txbMinor <= 0 || txbMinor > 100_000_000_00 {
 		return model.PaymentOrder{}, fmt.Errorf("%w: TXB amount is out of range", ErrInvalidOrder)
 	}
-	providerEnabled, settingsErr := s.providerMethodEnabled(ctx, provider, rail)
+	providerEnabled, settingsErr := s.providerMethodEnabled(ctx, provider, profileID, rail)
 	if settingsErr != nil {
 		return model.PaymentOrder{}, settingsErr
 	}
@@ -99,6 +103,9 @@ func (s *Service) CreateOrder(ctx context.Context, user model.User, methodID str
 	now := s.now().UTC()
 	canonicalMethodID := provider
 	if rail != "" {
+		if profileID != "" {
+			canonicalMethodID += ":" + profileID
+		}
 		canonicalMethodID += ":" + rail
 	}
 	order := model.PaymentOrder{
@@ -111,14 +118,14 @@ func (s *Service) CreateOrder(ctx context.Context, user model.User, methodID str
 		return model.PaymentOrder{}, err
 	}
 	request := ProviderCreateRequest{
-		Provider: provider, MethodID: order.MethodID, Rail: rail, OrderID: order.ID, TelegramID: user.TelegramID, TXBMinor: txbMinor,
+		Provider: provider, ProfileID: profileID, MethodID: order.MethodID, Rail: rail, OrderID: order.ID, TelegramID: user.TelegramID, TXBMinor: txbMinor,
 		PayableAmount: payable, PayableCurrency: order.PayableCurrency,
 		NotifyURL:   s.absolute("/api/v1/webhooks/" + provider),
 		ReturnURL:   s.absolute("/api/v1/payments/return/" + provider + "/" + url.PathEscape(order.ID)),
 		RedirectURL: s.absolute("/api/v1/payments/return/" + provider + "/" + url.PathEscape(order.ID)),
 	}
 	if provider == "bepusdt" {
-		secret, secretErr := s.providerCredential(ctx, "bepusdt")
+		secret, secretErr := s.providerCredential(ctx, "bepusdt", profileID)
 		if secretErr != nil {
 			_ = s.repository.FailPaymentOrder(ctx, order.ID)
 			return model.PaymentOrder{}, fmt.Errorf("create callback capability: %w", secretErr)

@@ -1,69 +1,51 @@
 import { mount } from '@vue/test-utils'
-import { nextTick, shallowRef } from 'vue'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import type { FeaturePaymentMethod } from '@/api/features'
 import { setLocale } from '@/i18n'
 
-const chooseMethod = vi.hoisted(() => vi.fn())
-
-vi.mock('@/composables/usePaymentOrder', () => ({
-  usePaymentOrder: () => ({
-    amount: shallowRef('20.00'),
-    selectedMethodId: shallowRef('ezpay:alipay'),
-    stage: shallowRef('configure'),
-    order: shallowRef(null),
-    qrDataUrl: shallowRef(null),
-    error: shallowRef(null),
-    canReissue: shallowRef(false),
-    amountValid: shallowRef(true),
-    canCreate: shallowRef(true),
-    reset: vi.fn(),
-    hydrateReissueOrder: vi.fn(() => false),
-    chooseMethod,
-    createOrder: vi.fn(),
-    cancelOrder: vi.fn(),
-    openPaymentTarget: vi.fn(),
-    stopPolling: vi.fn(),
-  }),
-}))
-
-import BalancePaymentSheet from './BalancePaymentSheet.vue'
+import BalancePaymentConfiguration from './BalancePaymentConfiguration.vue'
 
 const methods: FeaturePaymentMethod[] = [
-  { id: 'ezpay:alipay', provider: 'ezpay', rail: 'alipay', name: 'Alipay', currency: 'CNY', available: true, note: '', mode: 'order' },
-  { id: 'ezpay:wxpay', provider: 'ezpay', rail: 'wxpay', name: 'WeChat Pay', currency: 'CNY', available: true, note: '', mode: 'order' },
-  { id: 'bepusdt:usdt.trc20', provider: 'bepusdt', rail: 'usdt.trc20', name: 'USDT 路 TRC20', currency: 'USDT', available: true, note: '', mode: 'order' },
+  { id: 'ezpay:profile-one:alipay', provider: 'ezpay', profileId: 'profile-one', providerName: 'Main EZPay', rail: 'alipay', name: 'Alipay', currency: 'CNY', available: true, note: '', mode: 'order' },
+  { id: 'ezpay:profile-one:wxpay', provider: 'ezpay', profileId: 'profile-one', providerName: 'Main EZPay', rail: 'wxpay', name: 'WeChat Pay', currency: 'CNY', available: true, note: '', mode: 'order' },
+  { id: 'bepusdt:profile-two:usdt.trc20', provider: 'bepusdt', profileId: 'profile-two', providerName: 'USDT Account', rail: 'usdt.trc20', name: 'USDT TRC20', currency: 'USDT', available: true, note: '', mode: 'order' },
 ]
 
-describe('BalancePaymentSheet', () => {
+describe('BalancePaymentConfiguration', () => {
   afterEach(() => {
     setLocale('en')
-    vi.clearAllMocks()
     document.body.innerHTML = ''
   })
 
-  it('keeps the EZPay provider label separate from its Alipay channel', async () => {
-    const wrapper = mount(BalancePaymentSheet, {
-      props: { open: false, methods },
+  it('keeps the provider account selector separate from its channels', async () => {
+    const wrapper = mount(BalancePaymentConfiguration, {
+      props: {
+        amount: '20.00',
+        methods,
+        selectedMethodId: 'ezpay:profile-one:alipay',
+        stage: 'configure',
+        error: null,
+        amountValid: true,
+        canCreate: true,
+        canReissue: false,
+      },
       global: {
         stubs: {
-          Alert: true,
-          Badge: true,
-          Icon: true,
-          Modal: { template: '<div><slot name="body" /></div>' },
-          Button: { template: '<span v-bind="$attrs"><slot /></span>' },
           TxbAmountField: true,
+          UAlert: { template: '<div><slot /></div>' },
+          UFormField: { template: '<div><slot /></div>' },
+          UInput: true,
         },
       },
     })
 
-    await wrapper.setProps({ open: true })
     await nextTick()
 
-    const providerPicker = wrapper.get('.provider-picker')
-    const channelPicker = wrapper.get('.channel-picker')
-    expect(providerPicker.text()).toContain('EZPay')
+    const providerPicker = wrapper.get('button[aria-haspopup="listbox"]')
+    const channelPicker = wrapper.get('[role="radiogroup"]')
+    expect(providerPicker.text()).toContain('Main EZPay')
     expect(providerPicker.text()).not.toContain('Alipay')
     expect(channelPicker.text()).toContain('Alipay')
   })

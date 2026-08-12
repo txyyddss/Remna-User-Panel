@@ -17,6 +17,10 @@ type PaymentProfileRepository interface {
 	PaymentProfileRecord(context.Context, string, string) (database.PaymentProfileRecord, error)
 }
 
+type paymentProfileByIDRepository interface {
+	PaymentProfileRecordByID(context.Context, string, string) (database.PaymentProfileRecord, error)
+}
+
 // SetPaymentProfileRepository attaches the durable profile store after bootstrap.
 func (s *SettingsService) SetPaymentProfileRepository(repository PaymentProfileRepository) {
 	s.profiles = repository
@@ -57,6 +61,53 @@ func (s *SettingsService) PaymentProfile(ctx context.Context, provider, rail str
 	return model.PaymentProfileRuntime{PaymentProfile: record.PaymentProfile, CredentialPlaintext: plaintext}, nil
 }
 
+// PaymentProfileByID returns one decrypted profile selected by its stable ID.
+// The ID is what lets several accounts for the same provider coexist.
+func (s *SettingsService) PaymentProfileByID(ctx context.Context, id, rail string) (model.PaymentProfileRuntime, error) {
+	if s.profiles == nil {
+		return model.PaymentProfileRuntime{}, database.ErrNotFound
+	}
+	var record database.PaymentProfileRecord
+	var err error
+	if repository, ok := s.profiles.(paymentProfileByIDRepository); ok {
+		record, err = repository.PaymentProfileRecordByID(ctx, id, rail)
+	} else {
+		profiles, listErr := s.profiles.ListPaymentProfiles(ctx)
+		if listErr != nil {
+			return model.PaymentProfileRuntime{}, listErr
+		}
+		for _, profile := range profiles {
+			if profile.ID == id {
+				record, err = s.profiles.PaymentProfileRecord(ctx, profile.Provider, rail)
+				break
+			}
+		}
+		if record.ID == "" && err == nil {
+			err = database.ErrNotFound
+		}
+	}
+	if err != nil {
+		return model.PaymentProfileRuntime{}, err
+	}
+	if rail != "" && !containsPaymentChannel(record.EnabledChannels, rail) {
+		return model.PaymentProfileRuntime{}, database.ErrNotFound
+	}
+	plaintext, decryptErr := s.vault.Decrypt("payment-profile:"+record.ID, record.CredentialCiphertext)
+	if decryptErr != nil {
+		legacyKey := "billing." + record.Provider + "."
+		if record.Provider == "ezpay" {
+			legacyKey += "key"
+		} else {
+			legacyKey += "api_token"
+		}
+		plaintext, decryptErr = s.Plaintext(ctx, legacyKey)
+		if decryptErr != nil {
+			return model.PaymentProfileRuntime{}, decryptErr
+		}
+	}
+	return model.PaymentProfileRuntime{PaymentProfile: record.PaymentProfile, CredentialPlaintext: plaintext}, nil
+}
+
 // PaymentProfileRuntimes returns configured profiles for callback verification.
 func (s *SettingsService) PaymentProfileRuntimes(ctx context.Context, provider string) ([]model.PaymentProfileRuntime, error) {
 	profiles, err := s.PaymentProfiles(ctx)
@@ -68,7 +119,7 @@ func (s *SettingsService) PaymentProfileRuntimes(ctx context.Context, provider s
 		if profile.Provider != provider || !profile.Configured {
 			continue
 		}
-		runtime, runtimeErr := s.PaymentProfile(ctx, profile.Provider, "")
+		runtime, runtimeErr := s.PaymentProfileByID(ctx, profile.ID, "")
 		if runtimeErr != nil {
 			continue
 		}

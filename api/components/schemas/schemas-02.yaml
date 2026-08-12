@@ -31,12 +31,15 @@ Money:
 PaymentMethod:
   type: object
   additionalProperties: false
-  required: [id, provider, providerName, rail, name, currency, available, note, mode]
+  required: [id, provider, profileId, providerName, rail, name, currency, available, note, mode]
   properties:
     id:
       $ref: '../../openapi.yaml#/components/schemas/PaymentMethodID'
     provider:
       $ref: '../../openapi.yaml#/components/schemas/PaymentProvider'
+    profileId:
+      type: string
+      description: Stable provider profile ID; empty for Telegram Stars and coupons.
     providerName:
       type: string
       description: Administrator-defined provider display name.

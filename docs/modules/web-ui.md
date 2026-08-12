@@ -30,7 +30,7 @@ Questionnaire participation retrieves the same durable validation code on repeat
 
 Emby setup collects a write-only password, parental rating, and libraries before debit and shows the exact TXB setup price. Linked accounts expose only approved password and preference controls; raw policy fields are never presented. Failed retryable provisioning shows a bounded retry action.
 
-The payment sheet selects a canonical method ID in two stages: provider, then rail. It separately renders provider URL, QR payload, receiving address, actual crypto amount, and currency when supplied. Pending orders can be cancelled; cancellation stops polling, while the UI still accepts a later authoritative `paid` projection and refreshes the balance exactly once.
+The payment sheet selects a canonical method ID in two stages: provider account, then rail. It uses Nuxt UI's select-menu and card radio-group controls, separately renders provider URL, QR payload, receiving address, actual crypto amount, and currency when supplied. Pending orders can be cancelled; cancellation stops polling, while the UI still accepts a later authoritative `paid` projection and refreshes the balance exactly once.
 
 Catalog review is the final purchase step and includes authoritative validity,
 traffic/reset and rollover details, accessible-node count, add-ons, coupon
@@ -49,13 +49,13 @@ The database editor lists allowlisted application tables, debounces broad search
 
 Backup downloads use an authenticated binary response. Restore requires `RESTORE <filename>`, describes the automatic rescue backup, submits a staged restore, polls its operation, and enters reconnect/reauthentication state after the server begins its graceful restart.
 
-Encrypted settings render as masked values and only permit write-only replacement. Financial and destructive actions retain visible text labels even when icons are present. Payment administration uses one visual profile per provider with a custom provider name, shared endpoint and credential fields, independent channel toggles, enabled state, acknowledgement, and masked credentials. Catalog review restores its quote when revisited, and purchase controls remain in normal mobile flow.
+Encrypted settings render as masked values and only permit write-only replacement. Financial and destructive actions retain visible text labels and Nuxt UI controls. Payment administration renders one visual card per configured provider account, supports adding multiple EZPay/BEPusdt accounts, uses Nuxt UI checkbox groups for independent channel selection, and preserves enabled state, acknowledgement, custom name, and masked credentials. Catalog review restores its quote when revisited, and purchase controls remain in normal mobile flow.
 
 ## Visual and accessibility contract
 
 The visual system preserves the existing premium-dark graphite/mint identity: graphite canvas, layered charcoal surfaces, off-white text, one muted mint accent, 16 px panels, and 12 px controls. Member density remains lower than administrator density, copy is task-oriented, and motion is restrained.
 
-The Home ride summary exposes cancellation only for the authenticated user's queued entitlement. Cancellation refreshes the dashboard after the server atomically marks the purchase cancelled, refunds its charged TXB amount, and records the immutable ledger entry.
+The Home ride summary exposes cancellation only for the authenticated user's queued entitlement. Cancellation and successful renewal refresh the dashboard after the server atomically changes the ride and records the corresponding immutable ledger entry.
 
 Interactive targets are at least 44 px. Keyboard focus is visible and restored to the main landmark after route changes. The skip link, semantic fieldsets, status live regions, Nuxt UI overlay focus management, Telegram BackButton/MainButton integration, safe-area variables, and 320 px layouts are part of the acceptance contract. Faint text meets usable contrast, and `prefers-reduced-motion` disables nonessential transitions.
 

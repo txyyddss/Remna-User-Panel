@@ -136,25 +136,28 @@ LedgerPage:
       $ref: '../../openapi.yaml#/components/schemas/PageInfo'
 
 PaymentMethodID:
-  type: string
-  enum:
-    - ezpay:alipay
-    - ezpay:wxpay
-    - ezpay:qqpay
-    - ezpay:bank
-    - ezpay:jdpay
-    - bepusdt:usdt.trc20
-    - bepusdt:usdt.erc20
-    - bepusdt:usdt.polygon
-    - bepusdt:usdt.bep20
-    - bepusdt:usdt.aptos
-    - bepusdt:usdt.solana
-    - bepusdt:usdt.xlayer
-    - bepusdt:usdt.arbitrum
-    - bepusdt:usdt.plasma
-    - bepusdt:usdt.ton
-    - stars
-    - coupon
+  oneOf:
+    - type: string
+      enum:
+        - ezpay:alipay
+        - ezpay:wxpay
+        - ezpay:qqpay
+        - ezpay:bank
+        - ezpay:jdpay
+        - bepusdt:usdt.trc20
+        - bepusdt:usdt.erc20
+        - bepusdt:usdt.polygon
+        - bepusdt:usdt.bep20
+        - bepusdt:usdt.aptos
+        - bepusdt:usdt.solana
+        - bepusdt:usdt.xlayer
+        - bepusdt:usdt.arbitrum
+        - bepusdt:usdt.plasma
+        - bepusdt:usdt.ton
+        - stars
+        - coupon
+    - type: string
+      pattern: '^(ezpay|bepusdt):[^:]+:(alipay|wxpay|qqpay|bank|jdpay|usdt\.trc20|usdt\.erc20|usdt\.polygon|usdt\.bep20|usdt\.aptos|usdt\.solana|usdt\.xlayer|usdt\.arbitrum|usdt\.plasma|usdt\.ton)$'
 
 PaymentOrderMethodID:
   description: Stable method ID for new orders; legacy pending snapshots may expose an empty value or provider alias.

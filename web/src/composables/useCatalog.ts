@@ -60,7 +60,7 @@ export function useCatalog() {
   ]))
 	watch(purchaseFingerprint, () => {
 		purchaseIdempotencyKey.value = null
-		quote.value = null
+		if (!purchase.value) quote.value = null
 		persistDraft()
 	})
 	watch([selectedSquadIds, selectedCouponGrantId], persistDraft, { deep: true })
@@ -126,7 +126,7 @@ export function useCatalog() {
   }
 
   async function confirmPurchase(): Promise<boolean> {
-    if (!selectedCombo.value) return false
+    if (!selectedCombo.value || purchase.value || purchasing.value) return false
     if (!quote.value && !(await refreshQuote())) return false
     purchasing.value = true
     error.value = null

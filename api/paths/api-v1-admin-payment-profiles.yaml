@@ -14,3 +14,20 @@ get:
                 type: array
                 items: { $ref: '../openapi.yaml#/components/schemas/PaymentProfile' }
     '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+post:
+  tags: [Admin]
+  operationId: createAdminPaymentProfile
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema: { $ref: '../openapi.yaml#/components/schemas/PaymentProfileWrite' }
+  responses:
+    '201':
+      description: Created masked payment profile.
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/PaymentProfile' }
+    '400': { $ref: '../openapi.yaml#/components/responses/BadRequest' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }

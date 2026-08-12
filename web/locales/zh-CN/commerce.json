@@ -85,6 +85,7 @@
     "amount": "金额",
     "minimumTopUp": "有最低充值金额。",
     "provider": "支付方",
+    "chooseProvider": "选择支付方",
     "providers": {
       "ezpay": "EZPay",
       "bepusdt": "BEPUSDT",

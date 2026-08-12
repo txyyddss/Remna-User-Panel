@@ -21,6 +21,12 @@ func (s *Service) ValidateEvent(ctx context.Context, event ProviderEvent) (model
 	if order.Provider != event.Provider {
 		return model.PaymentOrder{}, database.ErrConflict
 	}
+	if order.MethodID != "" {
+		methodProvider, profileID, _, parseErr := ParseMethodSelection(order.MethodID)
+		if parseErr != nil || methodProvider != order.Provider || profileID != event.ProfileID {
+			return model.PaymentOrder{}, database.ErrConflict
+		}
+	}
 	if event.Rail != "" && order.ProviderRail != "" && !strings.EqualFold(order.ProviderRail, event.Rail) {
 		return model.PaymentOrder{}, database.ErrConflict
 	}

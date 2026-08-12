@@ -73,7 +73,7 @@ paths:
   /api/v1/admin/settings: { $ref: './paths/api-v1-admin-settings.yaml' }
   /api/v1/admin/settings/{key}: { $ref: './paths/api-v1-admin-settings-key.yaml' }
   /api/v1/admin/payment-profiles: { $ref: './paths/api-v1-admin-payment-profiles.yaml' }
-  /api/v1/admin/payment-profiles/{provider}: { $ref: './paths/api-v1-admin-payment-profiles-provider-rail.yaml' }
+  /api/v1/admin/payment-profiles/{id}: { $ref: './paths/api-v1-admin-payment-profiles-provider-rail.yaml' }
   /api/v1/admin/combos: { $ref: './paths/api-v1-admin-combos.yaml' }
   /api/v1/admin/combos/{id}: { $ref: './paths/api-v1-admin-combos-id.yaml' }
   /api/v1/admin/combos/{id}/statistics: { $ref: './paths/api-v1-admin-combos-id-statistics.yaml' }

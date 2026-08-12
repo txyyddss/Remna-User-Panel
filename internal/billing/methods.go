@@ -64,48 +64,68 @@ func ValidatePaymentChannels(provider string, channels []string) error {
 	return nil
 }
 
-// ParseMethodID validates a stable payment method identifier and returns its
-// provider-owned rail. Stars intentionally has no sub-rail.
-func ParseMethodID(methodID string) (provider, rail string, err error) {
+// ParseMethodSelection validates a payment method identifier and returns its
+// provider, optional profile, and provider-owned rail. The two-part form is
+// retained for legacy orders; new profile-backed methods use
+// provider:profileID:rail so multiple provider accounts can coexist.
+func ParseMethodSelection(methodID string) (provider, profileID, rail string, err error) {
 	methodID = strings.ToLower(strings.TrimSpace(methodID))
 	// Internal compatibility aliases keep older workers/tests readable. The HTTP
 	// transport accepts only canonical IDs and never exposes these aliases.
 	if methodID == "ezpay" {
-		return "ezpay", "alipay", nil
+		return "ezpay", "", "alipay", nil
 	}
 	if methodID == "bepusdt" {
-		return "bepusdt", "usdt.trc20", nil
+		return "bepusdt", "", "usdt.trc20", nil
 	}
 	if methodID == "stars" {
-		return "stars", "", nil
+		return "stars", "", "", nil
 	}
 	if methodID == "coupon" {
-		return "coupon", "", nil
+		return "coupon", "", "", nil
 	}
 	parts := strings.Split(methodID, ":")
-	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-		return "", "", fmt.Errorf("%w: malformed method id", ErrInvalidOrder)
+	if (len(parts) != 2 && len(parts) != 3) || parts[0] == "" || parts[len(parts)-1] == "" || (len(parts) == 3 && parts[1] == "") {
+		return "", "", "", fmt.Errorf("%w: malformed method id", ErrInvalidOrder)
 	}
+	profileID = ""
+	railIndex := 1
+	if len(parts) == 3 {
+		profileID = parts[1]
+		railIndex = 2
+	}
+	rail = parts[railIndex]
 	switch parts[0] {
 	case "ezpay":
-		if _, ok := ezpayRails[parts[1]]; !ok {
-			return "", "", fmt.Errorf("%w: unsupported EZPay rail", ErrInvalidOrder)
+		if _, ok := ezpayRails[rail]; !ok {
+			return "", "", "", fmt.Errorf("%w: unsupported EZPay rail", ErrInvalidOrder)
 		}
 	case "bepusdt":
-		if _, ok := bepusdtRails[parts[1]]; !ok {
-			return "", "", fmt.Errorf("%w: unsupported BEPusdt rail", ErrInvalidOrder)
+		if _, ok := bepusdtRails[rail]; !ok {
+			return "", "", "", fmt.Errorf("%w: unsupported BEPusdt rail", ErrInvalidOrder)
 		}
 	default:
-		return "", "", fmt.Errorf("%w: unsupported provider", ErrInvalidOrder)
+		return "", "", "", fmt.Errorf("%w: unsupported provider", ErrInvalidOrder)
 	}
-	return parts[0], parts[1], nil
+	return parts[0], profileID, rail, nil
+}
+
+// ParseMethodID validates a stable payment method identifier and returns its
+// provider-owned rail. Stars intentionally has no sub-rail.
+func ParseMethodID(methodID string) (provider, rail string, err error) {
+	provider, _, rail, err = ParseMethodSelection(methodID)
+	return provider, rail, err
 }
 
 // CanonicalMethodID reports whether the public identifier is stable and fully
 // qualifies its provider rail.
 func CanonicalMethodID(methodID string) bool {
 	methodID = strings.ToLower(strings.TrimSpace(methodID))
-	return methodID == "stars" || methodID == "coupon" || strings.HasPrefix(methodID, "ezpay:") || strings.HasPrefix(methodID, "bepusdt:")
+	if methodID == "stars" || methodID == "coupon" {
+		return true
+	}
+	_, _, _, err := ParseMethodSelection(methodID)
+	return err == nil && (strings.HasPrefix(methodID, "ezpay:") || strings.HasPrefix(methodID, "bepusdt:"))
 }
 
 func parseEnabledRails(raw string, allowed map[string]string) ([]string, error) {
@@ -141,13 +161,16 @@ func methodName(provider, rail string) string {
 	return bepusdtRails[rail]
 }
 
-func methodModel(provider, rail string, available bool, note string) model.PaymentMethod {
+func methodModel(provider, profileID, rail string, available bool, note string) model.PaymentMethod {
 	id := provider
 	if rail != "" {
+		if profileID != "" {
+			id += ":" + profileID
+		}
 		id += ":" + rail
 	}
 	return model.PaymentMethod{
-		ID: id, Provider: provider, Rail: rail, Name: methodName(provider, rail),
+		ID: id, Provider: provider, ProfileID: profileID, Rail: rail, Name: methodName(provider, rail),
 		Currency: strings.ToUpper(currencyCode(provider)), Available: available, Note: note, Mode: "order",
 	}
 }

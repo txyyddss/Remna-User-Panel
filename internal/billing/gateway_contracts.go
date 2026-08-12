@@ -10,6 +10,7 @@ import (
 // ProviderCreateRequest is the server-owned checkout input passed to an adapter.
 type ProviderCreateRequest struct {
 	Provider        string
+	ProfileID       string
 	MethodID        string
 	Rail            string
 	OrderID         string
@@ -38,6 +39,7 @@ type ProviderCheckout struct {
 // ProviderEvent is a verified, normalized authoritative payment event.
 type ProviderEvent struct {
 	Provider        string
+	ProfileID       string
 	Rail            string
 	OrderID         string
 	TradeID         string

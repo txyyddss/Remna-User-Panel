@@ -54,7 +54,10 @@
   },
   "adminPaymentProfiles": {
     "title": "支付配置档案",
-    "copy": "配置一份支付方档案，再单独启用可用支付渠道。",
+    "copy": "添加一个或多个支付账户，再分别启用可用支付渠道。",
+    "add": "添加供应商",
+    "provider": "供应商",
+    "unnamed": "新供应商",
     "saved": "支付档案已保存。",
     "providerName": "支付方名称",
     "channels": "启用渠道",

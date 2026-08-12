@@ -25,7 +25,7 @@ func (s *Service) Methods(ctx context.Context) ([]model.PaymentMethod, error) {
 				rate, rateErr := s.loadNewRate(ctx, profile.Provider)
 				available := profile.Enabled && profile.Configured && rateErr == nil && rate.Positive()
 				for _, rail := range profile.EnabledChannels {
-					result = append(result, model.PaymentMethod{ID: profile.Provider + ":" + rail, Provider: profile.Provider, ProviderName: profile.ProviderName, Rail: rail,
+					result = append(result, model.PaymentMethod{ID: profile.Provider + ":" + profile.ID + ":" + rail, Provider: profile.Provider, ProfileID: profile.ID, ProviderName: profile.ProviderName, Rail: rail,
 						Name: methodName(profile.Provider, rail), Currency: strings.ToUpper(currencyCode(profile.Provider)), Available: available, Mode: "order"})
 				}
 			}
@@ -35,7 +35,7 @@ func (s *Service) Methods(ctx context.Context) ([]model.PaymentMethod, error) {
 			}
 			if starsEnabled == "true" {
 				rate, rateErr := s.loadNewRate(ctx, "stars")
-				result = append(result, methodModel("stars", "", rateErr == nil && rate.Positive(), ""))
+				result = append(result, methodModel("stars", "", "", rateErr == nil && rate.Positive(), ""))
 			}
 			return result, nil
 		}
@@ -55,7 +55,7 @@ func (s *Service) Methods(ctx context.Context) ([]model.PaymentMethod, error) {
 			note = "Administrator must enter the TXB rate"
 		}
 		if provider == "stars" {
-			result = append(result, methodModel(provider, "", available, note))
+			result = append(result, methodModel(provider, "", "", available, note))
 			continue
 		}
 		raw, err := s.settings.Optional(ctx, "billing."+provider+".methods")
@@ -71,7 +71,7 @@ func (s *Service) Methods(ctx context.Context) ([]model.PaymentMethod, error) {
 			return nil, fmt.Errorf("load %s methods: %w", provider, err)
 		}
 		for _, rail := range rails {
-			result = append(result, methodModel(provider, rail, available, note))
+			result = append(result, methodModel(provider, "", rail, available, note))
 		}
 	}
 	return result, nil

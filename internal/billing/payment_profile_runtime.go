@@ -16,15 +16,37 @@ func callbackCapability(secret, orderID string) string {
 // VerifyBEPusdtCallbackCapability authenticates unsigned v1.19-style callback
 // URLs without exposing the configured API token.
 func (s *Service) VerifyBEPusdtCallbackCapability(ctx context.Context, orderID, capability string) bool {
-	secret, err := s.providerCredential(ctx, "bepusdt")
-	if err != nil {
-		return false
-	}
-	expected := callbackCapability(secret, orderID)
-	return len(capability) == len(expected) && hmac.Equal([]byte(capability), []byte(expected))
+	_, valid := s.BEPusdtCallbackProfile(ctx, orderID, capability)
+	return valid
 }
 
-func (s *Service) providerMethodEnabled(ctx context.Context, provider, rail string) (bool, error) {
+// BEPusdtCallbackProfile validates an unsigned callback capability and returns
+// the provider profile selected by the durable order.
+func (s *Service) BEPusdtCallbackProfile(ctx context.Context, orderID, capability string) (string, bool) {
+	order, err := s.repository.PaymentOrderByID(ctx, orderID)
+	if err != nil {
+		return "", false
+	}
+	profileID := ""
+	if order.MethodID != "" {
+		provider, parsedProfileID, _, parseErr := ParseMethodSelection(order.MethodID)
+		if parseErr != nil || provider != "bepusdt" {
+			return "", false
+		}
+		profileID = parsedProfileID
+	}
+	secret, err := s.providerCredential(ctx, "bepusdt", profileID)
+	if err != nil {
+		return "", false
+	}
+	expected := callbackCapability(secret, orderID)
+	if len(capability) != len(expected) || !hmac.Equal([]byte(capability), []byte(expected)) {
+		return "", false
+	}
+	return profileID, true
+}
+
+func (s *Service) providerMethodEnabled(ctx context.Context, provider, profileID, rail string) (bool, error) {
 	if reader, ok := s.settings.(paymentProfileReader); ok {
 		profiles, err := reader.PaymentProfiles(ctx)
 		if err != nil {
@@ -32,7 +54,7 @@ func (s *Service) providerMethodEnabled(ctx context.Context, provider, rail stri
 		}
 		if len(profiles) > 0 && provider != "stars" {
 			for _, profile := range profiles {
-				if profile.Provider == provider {
+				if profile.Provider == provider && (profileID == "" || profile.ID == profileID) {
 					return profile.Enabled && profile.Configured && containsRail(profile.EnabledChannels, rail), nil
 				}
 			}
@@ -58,8 +80,18 @@ func (s *Service) providerMethodEnabled(ctx context.Context, provider, rail stri
 	return parseErr == nil && containsRail(enabledRails, rail), nil
 }
 
-func (s *Service) providerCredential(ctx context.Context, provider string) (string, error) {
-	if reader, ok := s.settings.(paymentProfileRuntimeReader); ok {
+func (s *Service) providerCredential(ctx context.Context, provider, profileID string) (string, error) {
+	if profileID != "" {
+		if reader, ok := s.settings.(paymentProfileByIDRuntimeReader); ok {
+			profile, err := reader.PaymentProfileByID(ctx, profileID, "")
+			if err != nil {
+				return "", err
+			}
+			if profile.CredentialPlaintext != "" {
+				return profile.CredentialPlaintext, nil
+			}
+		}
+	} else if reader, ok := s.settings.(paymentProfileRuntimeReader); ok {
 		profile, err := reader.PaymentProfile(ctx, provider, "")
 		if err == nil && profile.CredentialPlaintext != "" {
 			return profile.CredentialPlaintext, nil

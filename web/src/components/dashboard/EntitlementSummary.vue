@@ -18,7 +18,7 @@ const props = defineProps<{
   queued?: Purchase | null
   squadNames?: readonly string[]
 }>()
-const emit = defineEmits<{ queuedCancelled: [] }>()
+const emit = defineEmits<{ queuedCancelled: []; renewed: [] }>()
 
 const { active, queued } = toRefs(props)
 const { t } = useI18n()
@@ -43,7 +43,7 @@ async function renew(): Promise<void> {
   if (!props.active || !renewalQuote.value || renewalBusy.value) return
   renewalBusy.value = true
   renewalError.value = null
-  try { await api.renewPurchase(props.active.id, renewalTerms.value, createUuid()); renewalSuccess.value = true; notifyHaptic('success') } catch (caught) { renewalError.value = localizedError(caught, 'errors.renewalFailed'); notifyHaptic('error') } finally { renewalBusy.value = false }
+  try { await api.renewPurchase(props.active.id, renewalTerms.value, createUuid()); renewalSuccess.value = true; notifyHaptic('success'); emit('renewed') } catch (caught) { renewalError.value = localizedError(caught, 'errors.renewalFailed'); notifyHaptic('error') } finally { renewalBusy.value = false }
 }
 function openQueuedCancellation(): void {
   queuedCancelError.value = null

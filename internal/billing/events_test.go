@@ -58,6 +58,22 @@ func TestServiceValidateEvent(t *testing.T) {
 	}
 }
 
+func TestServiceValidateEventRejectsWrongPaymentProfile(t *testing.T) {
+	t.Parallel()
+
+	repository := newBillingRepository()
+	repository.orders["order-1"] = model.PaymentOrder{
+		ID: "order-1", UserID: "user-1", Provider: "ezpay", MethodID: "ezpay:main-account:alipay", ProviderRail: "alipay",
+		PayableAmount: "1.00", PayableCurrency: "CNY",
+	}
+	_, err := newBillingServiceForTest(repository, &billingSettings{}, &billingGateway{}).ValidateEvent(context.Background(), ProviderEvent{
+		Provider: "ezpay", ProfileID: "backup-account", Rail: "alipay", OrderID: "order-1", PayableAmount: "1.00", PayableCurrency: "CNY",
+	})
+	if !errors.Is(err, database.ErrConflict) {
+		t.Fatalf("ValidateEvent() error = %v, want profile conflict", err)
+	}
+}
+
 func TestServiceSettleAndOrderForwarding(t *testing.T) {
 	t.Parallel()
 

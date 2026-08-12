@@ -33,6 +33,10 @@ async function handleQueuedCancelled(): Promise<void> {
   await load({ quiet: true })
 }
 
+async function handleRenewed(): Promise<void> {
+  await load({ quiet: true })
+}
+
 function consumeTopUpRequest(): void {
   if (!topUpRequested.value) return
   const query = { ...route.query }
@@ -91,6 +95,7 @@ function consumeReissueRequest(): void {
           :queued="dashboard.queuedPurchase"
           :squad-names="activeSquadNames"
           @queued-cancelled="handleQueuedCancelled"
+          @renewed="handleRenewed"
         />
         <ComingSoonLinks />
       </div>

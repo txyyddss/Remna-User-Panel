@@ -62,7 +62,7 @@ PaymentProfile:
 PaymentProfileWrite:
   type: object
   additionalProperties: false
-  required: [providerName, enabledChannels, endpoint, enabled]
+  required: [provider, providerName, enabledChannels, endpoint, enabled]
   properties:
     id: { type: string }
     provider: { type: string, enum: [ezpay, bepusdt] }

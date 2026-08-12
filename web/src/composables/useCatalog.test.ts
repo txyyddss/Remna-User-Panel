@@ -1,4 +1,4 @@
-import { effectScope } from 'vue'
+import { effectScope, nextTick } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -69,8 +69,9 @@ describe('catalog squad selection', () => {
   })
 
   it('reuses one purchase idempotency key after an ambiguous failed attempt', async () => {
+    const addon = squad('1')
     const catalog = {
-      addons: [],
+      addons: [addon],
       combos: [
         { id: 'combo-a', name: 'A', description: '', price: money('1000'), validityDays: 30, trafficLimitBytes: '1', resetStrategy: 'MONTH', includedSquads: [], active: true, rolloverMinRemainingBps: 0, rolloverMaxTxbMinor: '0', rolloverMax: money('0'), createdAt: '2026-08-08T00:00:00Z', updatedAt: '2026-08-08T00:00:00Z' },
       ],
@@ -97,11 +98,16 @@ describe('catalog squad selection', () => {
     const scope = effectScope()
     const state = scope.run(() => useCatalog())!
     await state.load()
+    state.toggleSquad(addon.id)
     expect(await state.confirmPurchase()).toBe(false)
     expect(await state.confirmPurchase()).toBe(true)
+    await nextTick()
     expect(createPurchase).toHaveBeenCalledTimes(2)
     expect(createPurchase.mock.calls[0]?.[3]).toBeTruthy()
     expect(createPurchase.mock.calls[1]?.[3]).toBe(createPurchase.mock.calls[0]?.[3])
+    expect(state.quote.value?.netPrice.minor).toBe('1000')
+    expect(await state.confirmPurchase()).toBe(false)
+    expect(createPurchase).toHaveBeenCalledTimes(2)
     scope.stop()
   })
 })
