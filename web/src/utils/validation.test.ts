@@ -3,9 +3,10 @@ import { describe, expect, it } from 'vitest'
 import { adminReasonSchema, identifierSchema, isValid, txbInputSchema, usernameSchema } from './validation'
 
 describe('form validation schemas', () => {
-  it('accepts only canonical permanent usernames', () => {
+  it('accepts upstream-compatible permanent usernames', () => {
     expect(isValid(usernameSchema, 'member')).toBe(true)
-    expect(isValid(usernameSchema, 'Member_1')).toBe(false)
+    expect(isValid(usernameSchema, 'Member_1')).toBe(true)
+    expect(isValid(usernameSchema, 'member.name')).toBe(false)
   })
 
   it('accepts TXB input with at most two decimal places', () => {

@@ -1,5 +1,6 @@
 import { effectScope } from 'vue'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Catalog, SquadProduct } from '@/api/types'
 
@@ -35,6 +36,7 @@ const squad = (id: string): SquadProduct => ({
 })
 
 describe('catalog squad selection', () => {
+  beforeEach(() => setActivePinia(createPinia()))
   afterEach(() => vi.clearAllMocks())
 
   it('disables included squads and prunes newly included paid add-ons after a combo change', async () => {
