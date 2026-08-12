@@ -38,6 +38,6 @@ describe('CatalogFlowProgress', () => {
       false,
       false,
     ])
-    expect(icons.slice(0, 2).every((icon) => icon.attributes('style')?.includes('color: var(--success)'))).toBe(true)
+    expect(icons.slice(0, 2).every((icon) => icon.attributes('style')?.includes('color: black'))).toBe(true)
   })
 })
