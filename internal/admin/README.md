@@ -15,6 +15,7 @@ Audited administrative operations for catalog data, settings, balances, refunds,
 - `finance_test.go` covers balance, refund, cancellation, backup, and retry operations.
 - `service_test_helpers_test.go` contains shared admin service test doubles.
 - `settings_test.go` covers secret handling, safe listing, readiness, and validators.
+- `payment_profiles_test.go` covers provider profile validation, encryption, masking, and readiness behavior.
 - `catalog_test.go` covers live squad-node normalization, node updates, and optional setting validators.
 - `README.md` documents the package layout.
 
