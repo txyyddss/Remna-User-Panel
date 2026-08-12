@@ -103,6 +103,10 @@
   text-align: center;
 }
 
+.payment-submit {
+  margin-top: 0.75rem;
+}
+
 .payment-waiting {
   min-height: 44px;
   display: flex;

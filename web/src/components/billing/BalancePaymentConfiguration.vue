@@ -164,5 +164,5 @@ async function redeemCoupon(): Promise<void> {
     <UAlert v-if="couponError" color="error" variant="soft" :description="couponError" />
   </div>
   <UAlert v-if="error && selectedProvider !== 'coupon'" color="error" variant="soft" :description="error" />
-  <UButton v-if="selectedProvider !== 'coupon'" data-test="payment-submit" block :disabled="!canCreate || stage === 'creating' || !amountValid" :loading="stage === 'creating'" :label="stage === 'creating' ? $t('payment.creating') : canReissue ? $t('payment.reissue') : $t('payment.proceedToPayment')" data-haptic @click="emit('createOrder')" />
+  <UButton v-if="selectedProvider !== 'coupon'" class="payment-submit" data-test="payment-submit" block :disabled="!canCreate || stage === 'creating' || !amountValid" :loading="stage === 'creating'" :label="stage === 'creating' ? $t('payment.creating') : canReissue ? $t('payment.reissue') : $t('payment.proceedToPayment')" data-haptic @click="emit('createOrder')" />
 </template>
