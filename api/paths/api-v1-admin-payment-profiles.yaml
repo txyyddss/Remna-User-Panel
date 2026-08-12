@@ -3,7 +3,7 @@ get:
   operationId: listAdminPaymentProfiles
   responses:
     '200':
-      description: Masked payment rail profiles.
+      description: Masked provider payment profiles with independently enabled channels.
       content:
         application/json:
           schema:

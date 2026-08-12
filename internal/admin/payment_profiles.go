@@ -10,7 +10,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 )
 
-// PaymentProfileRepository persists masked rail profiles and encrypted credentials.
+// PaymentProfileRepository persists masked provider profiles and encrypted credentials.
 type PaymentProfileRepository interface {
 	ListPaymentProfiles(context.Context) ([]model.PaymentProfile, error)
 	SavePaymentProfile(context.Context, database.PaymentProfileInput) (model.PaymentProfile, error)
@@ -37,6 +37,9 @@ func (s *SettingsService) PaymentProfile(ctx context.Context, provider, rail str
 	record, err := s.profiles.PaymentProfileRecord(ctx, provider, rail)
 	if err != nil {
 		return model.PaymentProfileRuntime{}, err
+	}
+	if rail != "" && !containsPaymentChannel(record.EnabledChannels, rail) {
+		return model.PaymentProfileRuntime{}, database.ErrNotFound
 	}
 	plaintext, decryptErr := s.vault.Decrypt("payment-profile:"+record.ID, record.CredentialCiphertext)
 	if decryptErr != nil {
@@ -65,7 +68,7 @@ func (s *SettingsService) PaymentProfileRuntimes(ctx context.Context, provider s
 		if profile.Provider != provider || !profile.Configured {
 			continue
 		}
-		runtime, runtimeErr := s.PaymentProfile(ctx, profile.Provider, profile.Rail)
+		runtime, runtimeErr := s.PaymentProfile(ctx, profile.Provider, "")
 		if runtimeErr != nil {
 			continue
 		}
@@ -74,24 +77,29 @@ func (s *SettingsService) PaymentProfileRuntimes(ctx context.Context, provider s
 	return result, nil
 }
 
-// SavePaymentProfile validates and encrypts a complete rail profile. Blank
+// SavePaymentProfile validates and encrypts a complete provider profile. Blank
 // credentials deliberately preserve the existing ciphertext.
 func (s *SettingsService) SavePaymentProfile(ctx context.Context, actorID string, input model.PaymentProfile) (model.PaymentProfile, error) {
-	if s.profiles == nil || (input.Provider != "ezpay" && input.Provider != "bepusdt") || strings.TrimSpace(input.Rail) == "" {
+	if s.profiles == nil || (input.Provider != "ezpay" && input.Provider != "bepusdt") {
 		return model.PaymentProfile{}, database.ErrConflict
 	}
-	if _, _, err := billing.ParseMethodID(input.Provider + ":" + strings.TrimSpace(input.Rail)); err != nil {
+	if err := billing.ValidatePaymentChannels(input.Provider, input.EnabledChannels); err != nil {
 		return model.PaymentProfile{}, database.ErrConflict
 	}
 	if err := validateHTTPSURL(strings.TrimSpace(input.Endpoint)); err != nil {
 		return model.PaymentProfile{}, err
 	}
-	if strings.TrimSpace(input.ChannelName) == "" {
-		return model.PaymentProfile{}, errors.New("payment profile channel name is required")
-	}
 	id := strings.TrimSpace(input.ID)
 	if id == "" {
-		id = input.Provider + ":" + input.Rail
+		id = input.Provider
+	}
+	providerName := strings.TrimSpace(input.ProviderName)
+	if providerName == "" {
+		return model.PaymentProfile{}, errors.New("payment profile provider name is required")
+	}
+	channels := make([]string, 0, len(input.EnabledChannels))
+	for _, channel := range input.EnabledChannels {
+		channels = append(channels, strings.ToLower(strings.TrimSpace(channel)))
 	}
 	ciphertext := ""
 	credential := strings.TrimSpace(input.Credential)
@@ -102,7 +110,16 @@ func (s *SettingsService) SavePaymentProfile(ctx context.Context, actorID string
 			return model.PaymentProfile{}, err
 		}
 	}
-	return s.profiles.SavePaymentProfile(ctx, database.PaymentProfileInput{ID: id, Provider: input.Provider, Rail: input.Rail,
-		ChannelName: strings.TrimSpace(input.ChannelName), Endpoint: strings.TrimSpace(input.Endpoint), MerchantID: strings.TrimSpace(input.MerchantID),
+	return s.profiles.SavePaymentProfile(ctx, database.PaymentProfileInput{ID: id, Provider: input.Provider, ProviderName: providerName,
+		EnabledChannels: channels, Endpoint: strings.TrimSpace(input.Endpoint), MerchantID: strings.TrimSpace(input.MerchantID),
 		CredentialCiphertext: ciphertext, Acknowledgement: strings.TrimSpace(input.Acknowledgement), Enabled: input.Enabled})
+}
+
+func containsPaymentChannel(channels []string, wanted string) bool {
+	for _, channel := range channels {
+		if channel == wanted {
+			return true
+		}
+	}
+	return false
 }

@@ -4,7 +4,7 @@
 
 Billing owns TXB balances, the immutable ledger, fixed-decimal exchange rates, durable payment orders, provider event deduplication, successful top-up credit, manual adjustments, refunds, and debt enforcement. Provider adapters create external checkouts and validate callbacks; billing decides whether durable business state may change.
 
-User operations are `GET /api/v1/balance`, `GET /api/v1/ledger`, `POST /api/v1/payments/orders`, order polling by ID, and user-owned cancellation. Payment creation receives a stable `methodId` such as `ezpay:alipay`, `bepusdt:usdt.trc20`, or `stars`; the provider name is never sufficient to select a rail. Administrative operations append balance adjustments, refunds, and terminal-payment courtesy credits, and inspect payments/refunds. No endpoint edits a balance, ledger row, or provider event in place.
+User operations are `GET /api/v1/balance`, `GET /api/v1/ledger`, `POST /api/v1/payments/orders`, order polling by ID, and user-owned cancellation. Payment creation receives a stable `methodId` such as `ezpay:alipay`, `bepusdt:usdt.trc20`, or `stars`; the provider name is never sufficient to select a rail. The member-facing provider label comes from one provider-level profile, while channels remain separate selectable methods. Administrative operations append balance adjustments, refunds, and terminal-payment courtesy credits, and inspect payments/refunds. No endpoint edits a balance, ledger row, or provider event in place.
 
 ## Amount invariants
 
@@ -60,8 +60,8 @@ the refund path only for an already provider-paid order.
 Balance funding also exposes a `coupon` method. It redeems only `balance_add`
 and `balance_multiply` coupons; purchase-discount grants remain catalog-only.
 EZPay and BEPusdt settings migrate into one encrypted, masked visual profile
-per rail, preserving profile identity for checkout cancellation and callback
-signature verification. Renewal uses the current ride's combo and add-ons,
+per provider, with an administrator-defined provider name and independently
+enabled channels. Renewal uses the current ride's combo and add-ons,
 current prices, one atomic debit, and one idempotency key for a 1-6 term batch;
 it does not apply a purchase-discount coupon.
 

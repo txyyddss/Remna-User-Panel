@@ -9,6 +9,7 @@
     "appliedCopy": "Rescue backup {id} was created before the mutation.",
     "tables": "Application tables",
     "highRisk": "High risk",
+    "tableSearch": "Search table names",
     "rows": "Table rows",
     "searchPlaceholder": "Search non-secret columns",
     "search": "Search table rows",

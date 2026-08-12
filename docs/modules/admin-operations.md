@@ -16,8 +16,7 @@ The fixed registry defines each known key's validator, sensitivity, display cate
 | `telegram.webhook_secret` | Encrypted, URL-safe; generated at bootstrap |
 | `remnawave.base_url`, `remnawave.api_token` | Required HTTPS origin and encrypted bearer token |
 | `billing.rate.txb_per_cny`, `txb_per_usd`, `txb_per_xtr` | Required positive fixed decimals; legacy inverse rates are not converted |
-| `billing.ezpay.enabled`, `.base_url`, `.merchant_id`, `.key`, `.methods` | Boolean gate, HTTPS origin, merchant ID, encrypted key, ordered five-rail list |
-| `billing.bepusdt.enabled`, `.base_url`, `.api_token`, `.methods`, `.ack` | Boolean gate, HTTPS origin, encrypted token, ordered ten-rail list, `ok`/`success` ack |
+| `billing.ezpay.*`, `billing.bepusdt.*` | Legacy compatibility/readiness keys; new provider credentials and channel choices are edited through the provider-level payment profile endpoint |
 | `billing.stars.enabled` | Boolean Stars gate |
 | `emby.base_url`, `emby.api_token`, `emby.setup_price_txb` | Encrypted HTTPS origin/token and human-major setup price |
 | `activity.timezone`, `activity.daily_reward_min_txb`, `activity.daily_reward_max_txb` | IANA timezone and inclusive nonnegative daily reward range; minimum may not exceed maximum |
@@ -38,6 +37,12 @@ Readiness checks required settings, enabled-provider completeness, and at least 
 - Activity games/draws, coupons, questionnaires/imports, and Emby retries use their module services so validation, transactions, and idempotency remain centralized.
 - Job retry is allowed only for an eligible failed job and cannot change kind or typed payload. Pending, done, and failed jobs may be deleted; processing jobs return `409`.
 - Every audit insertion transactionally retains the newest 200 events. Sensitive values are redacted before persistence.
+
+Payment profiles are one durable record per provider. EZPay and BEPusdt each
+share their endpoint and encrypted credential across all channels, while the
+administrator independently enables the documented channel IDs. This prevents
+duplicate credentials and keeps the member method list aligned with the same
+provider-level source.
 
 ## Schema-aware database editor
 

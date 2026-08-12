@@ -16,6 +16,16 @@ These documents describe the implemented module boundaries. They are maintenance
 | Admin authorization and domain operations | [admin-operations.md](admin-operations.md) |
 | Vue Mini App and generated API client | [web-ui.md](web-ui.md) |
 
+## TX Carpool adjustment specification
+
+The current mobile-first adjustment set is covered by the existing module
+contracts: `web-ui.md` owns responsive catalog, renewal, traffic, admin, and
+payment surfaces; `billing-payments.md` owns provider-level payment profiles;
+`admin-operations.md` owns stock, balance, coupon, backup, and database-editor
+administration; and `integrations.md` owns shared provider credentials and
+callback capabilities. No Remnawave or Emby request bypasses the upstream queue
+boundary described in the integration specification.
+
 ## Source package maps
 
 These READMEs describe the direct files in each implementation package:

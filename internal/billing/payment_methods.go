@@ -17,24 +17,28 @@ func (s *Service) Methods(ctx context.Context) ([]model.PaymentMethod, error) {
 		if err != nil {
 			return nil, err
 		}
-		for _, profile := range items {
-			if profile.Provider != "ezpay" && profile.Provider != "bepusdt" {
-				continue
+		if len(items) > 0 {
+			for _, profile := range items {
+				if profile.Provider != "ezpay" && profile.Provider != "bepusdt" {
+					continue
+				}
+				rate, rateErr := s.loadNewRate(ctx, profile.Provider)
+				available := profile.Enabled && profile.Configured && rateErr == nil && rate.Positive()
+				for _, rail := range profile.EnabledChannels {
+					result = append(result, model.PaymentMethod{ID: profile.Provider + ":" + rail, Provider: profile.Provider, ProviderName: profile.ProviderName, Rail: rail,
+						Name: methodName(profile.Provider, rail), Currency: strings.ToUpper(currencyCode(profile.Provider)), Available: available, Mode: "order"})
+				}
 			}
-			rate, rateErr := s.loadNewRate(ctx, profile.Provider)
-			available := profile.Enabled && profile.Configured && rateErr == nil && rate.Positive()
-			result = append(result, model.PaymentMethod{ID: profile.ID, Provider: profile.Provider, Rail: profile.Rail,
-				Name: profile.ChannelName, Currency: strings.ToUpper(currencyCode(profile.Provider)), Available: available, Mode: "order"})
+			starsEnabled, starsErr := s.settings.Optional(ctx, "billing.stars.enabled")
+			if starsErr != nil {
+				return nil, starsErr
+			}
+			if starsEnabled == "true" {
+				rate, rateErr := s.loadNewRate(ctx, "stars")
+				result = append(result, methodModel("stars", "", rateErr == nil && rate.Positive(), ""))
+			}
+			return result, nil
 		}
-		starsEnabled, starsErr := s.settings.Optional(ctx, "billing.stars.enabled")
-		if starsErr != nil {
-			return nil, starsErr
-		}
-		if starsEnabled == "true" {
-			rate, rateErr := s.loadNewRate(ctx, "stars")
-			result = append(result, methodModel("stars", "", rateErr == nil && rate.Positive(), ""))
-		}
-		return result, nil
 	}
 	for _, provider := range []string{"ezpay", "bepusdt", "stars"} {
 		enabled, err := s.settings.Optional(ctx, "billing."+provider+".enabled")

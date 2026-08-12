@@ -24,8 +24,9 @@ const activitySettingKeys = new Set([
   'activity.timezone', 'activity.daily_reward_min_txb', 'activity.daily_reward_max_txb',
   'activity.group_message_threshold', 'activity.group_message_reward_txb',
 ])
+const legacyPaymentSetting = (key: string): boolean => key.startsWith('billing.ezpay.') || key.startsWith('billing.bepusdt.')
 
-const grouped = computed(() => items.value.filter((item) => !activitySettingKeys.has(item.key)).reduce<Record<string, AdminSetting[]>>((groups, item) => {
+const grouped = computed(() => items.value.filter((item) => !activitySettingKeys.has(item.key) && !legacyPaymentSetting(item.key)).reduce<Record<string, AdminSetting[]>>((groups, item) => {
   const category = item.category
   groups[category] ??= []
   groups[category].push(item)
@@ -66,7 +67,7 @@ function setBoolean(key: string, value: boolean): void {
 }
 
 async function save(): Promise<void> {
-  const values = Object.entries(draft).filter(([key, value]) => !activitySettingKeys.has(key) && value !== '')
+  const values = Object.entries(draft).filter(([key, value]) => !activitySettingKeys.has(key) && !legacyPaymentSetting(key) && value !== '')
   const { api } = await import('@/api/client')
   saved.visible = await perform(() => Promise.all(values.map(([key, value]) => api.updateAdminSetting(key, value))))
 }

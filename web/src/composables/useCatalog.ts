@@ -127,6 +127,7 @@ export function useCatalog() {
 
   async function confirmPurchase(): Promise<boolean> {
     if (!selectedCombo.value) return false
+    if (!quote.value && !(await refreshQuote())) return false
     purchasing.value = true
     error.value = null
     needsBalance.value = false

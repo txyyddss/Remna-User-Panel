@@ -29,7 +29,8 @@
     "emptyHint": "兑换或获赠的优惠券会显示在这里。",
     "selectorSummary": "{code} · {effect}",
     "effectFixed": "增加 {amount} TXB",
-    "effectPercent": "增加余额的 {value}%"
+    "effectPercent": "增加余额的 {value}%",
+    "effectPurchasePercent": "减免套餐价格的 {value}%"
   },
   "questionnaire": {
     "title": "问卷",

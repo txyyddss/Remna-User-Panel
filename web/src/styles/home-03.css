@@ -1,0 +1,44 @@
+.renewal-dialog {
+  display: grid;
+  min-width: 0;
+  gap: 0.9rem;
+}
+
+.renewal-dialog__terms,
+.renewal-dialog__quote {
+  display: grid;
+  min-width: 0;
+  gap: 0.65rem;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+}
+
+.renewal-dialog__terms-heading,
+.renewal-dialog__total {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.renewal-dialog__terms-heading span,
+.renewal-dialog__quote span,
+.renewal-dialog__quote small {
+  color: var(--text-faint);
+  font-size: 0.7rem;
+}
+
+.renewal-dialog__terms-heading strong,
+.renewal-dialog__total strong {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.renewal-dialog__quote small {
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}

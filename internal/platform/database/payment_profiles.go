@@ -5,39 +5,45 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 )
 
-// PaymentProfileInput contains already-encrypted rail credentials.
+// PaymentProfileInput contains one provider profile and its enabled channels.
 type PaymentProfileInput struct {
-	ID, Provider, Rail, ChannelName, Endpoint, MerchantID string
-	CredentialCiphertext, Acknowledgement                 string
-	Enabled                                               bool
+	ID, Provider, ProviderName, Endpoint, MerchantID string
+	EnabledChannels                                  []string
+	CredentialCiphertext, Acknowledgement            string
+	Enabled                                          bool
 }
 
-// PaymentProfileRecord is the private storage representation of a rail.
+// PaymentProfileRecord is the private storage representation of a provider.
 type PaymentProfileRecord struct {
 	model.PaymentProfile
 	CredentialCiphertext string
 }
 
 func (s *Store) SavePaymentProfile(ctx context.Context, input PaymentProfileInput) (model.PaymentProfile, error) {
-	if input.ID == "" || input.Provider == "" || input.Rail == "" || input.ChannelName == "" || input.Endpoint == "" {
+	if input.ID == "" || input.Provider == "" || input.Endpoint == "" {
 		return model.PaymentProfile{}, ErrConflict
 	}
-	_, err := s.db.ExecContext(ctx, `INSERT INTO payment_rail_profiles(id,provider,rail,channel_name,endpoint,merchant_id,credential_ciphertext,acknowledgement,enabled,created_at,updated_at)
-		VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(provider,rail) DO UPDATE SET id=excluded.id,channel_name=excluded.channel_name,endpoint=excluded.endpoint,merchant_id=excluded.merchant_id,credential_ciphertext=CASE WHEN excluded.credential_ciphertext='' THEN payment_rail_profiles.credential_ciphertext ELSE excluded.credential_ciphertext END,acknowledgement=excluded.acknowledgement,enabled=excluded.enabled,updated_at=excluded.updated_at`,
-		input.ID, input.Provider, input.Rail, input.ChannelName, input.Endpoint, input.MerchantID, input.CredentialCiphertext, input.Acknowledgement, boolInt(input.Enabled), stamp(nowUTC()), stamp(nowUTC()))
+	providerName := strings.TrimSpace(input.ProviderName)
+	if providerName == "" {
+		providerName = input.Provider
+	}
+	_, err := s.db.ExecContext(ctx, `INSERT INTO payment_profiles(id,provider,provider_name,enabled_channels,endpoint,merchant_id,credential_ciphertext,acknowledgement,enabled,created_at,updated_at)
+		VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(provider) DO UPDATE SET id=excluded.id,provider_name=excluded.provider_name,enabled_channels=excluded.enabled_channels,endpoint=excluded.endpoint,merchant_id=excluded.merchant_id,credential_ciphertext=CASE WHEN excluded.credential_ciphertext='' THEN payment_profiles.credential_ciphertext ELSE excluded.credential_ciphertext END,acknowledgement=excluded.acknowledgement,enabled=excluded.enabled,updated_at=excluded.updated_at`,
+		input.ID, input.Provider, providerName, strings.Join(input.EnabledChannels, ","), input.Endpoint, input.MerchantID, input.CredentialCiphertext, input.Acknowledgement, boolInt(input.Enabled), stamp(nowUTC()), stamp(nowUTC()))
 	if err != nil {
 		return model.PaymentProfile{}, fmt.Errorf("save payment profile: %w", err)
 	}
-	return s.PaymentProfile(ctx, input.Provider, input.Rail)
+	return s.PaymentProfile(ctx, input.Provider, "")
 }
 
 func (s *Store) ListPaymentProfiles(ctx context.Context) ([]model.PaymentProfile, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id,provider,rail,channel_name,endpoint,merchant_id,credential_ciphertext,acknowledgement,enabled FROM payment_rail_profiles ORDER BY provider,rail`)
+	rows, err := s.db.QueryContext(ctx, `SELECT id,provider,provider_name,enabled_channels,endpoint,merchant_id,credential_ciphertext,acknowledgement,enabled FROM payment_profiles ORDER BY provider`)
 	if err != nil {
 		return nil, err
 	}
@@ -63,19 +69,31 @@ func (s *Store) PaymentProfileRecord(ctx context.Context, provider, rail string)
 }
 
 func (s *Store) paymentProfileRecord(ctx context.Context, provider, rail string) (PaymentProfileRecord, error) {
-	return scanPaymentProfile(s.db.QueryRowContext(ctx, `SELECT id,provider,rail,channel_name,endpoint,merchant_id,credential_ciphertext,acknowledgement,enabled FROM payment_rail_profiles WHERE provider=? AND rail=?`, provider, rail))
+	record, err := scanPaymentProfile(s.db.QueryRowContext(ctx, `SELECT id,provider,provider_name,enabled_channels,endpoint,merchant_id,credential_ciphertext,acknowledgement,enabled FROM payment_profiles WHERE provider=?`, provider))
+	record.Rail = rail
+	return record, err
 }
 
 func scanPaymentProfile(row interface{ Scan(...any) error }) (PaymentProfileRecord, error) {
 	var record PaymentProfileRecord
+	var channels string
 	var enabled int
-	if err := row.Scan(&record.ID, &record.Provider, &record.Rail, &record.ChannelName, &record.Endpoint, &record.MerchantID, &record.CredentialCiphertext, &record.Acknowledgement, &enabled); err != nil {
+	if err := row.Scan(&record.ID, &record.Provider, &record.ProviderName, &channels, &record.Endpoint, &record.MerchantID, &record.CredentialCiphertext, &record.Acknowledgement, &enabled); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return PaymentProfileRecord{}, ErrNotFound
 		}
 		return PaymentProfileRecord{}, fmt.Errorf("scan payment profile: %w", err)
 	}
 	record.Enabled = enabled == 1
+	for _, channel := range strings.Split(channels, ",") {
+		channel = strings.TrimSpace(channel)
+		if channel != "" {
+			record.EnabledChannels = append(record.EnabledChannels, channel)
+		}
+	}
+	if record.ProviderName == "" {
+		record.ProviderName = record.Provider
+	}
 	record.Configured = record.Endpoint != "" && record.CredentialCiphertext != ""
 	if record.Configured {
 		record.Credential = "********"

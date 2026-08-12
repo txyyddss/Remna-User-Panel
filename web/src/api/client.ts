@@ -33,8 +33,8 @@ type GeneratedSquadProductWrite = components['schemas']['SquadProductWrite']
 export interface AdminPaymentProfile {
   id: string
   provider: 'ezpay' | 'bepusdt'
-  rail: string
-  channelName: string
+  providerName: string
+  enabledChannels: string[]
   endpoint: string
   merchantId: string
   credential: string
@@ -134,7 +134,7 @@ export const api = {
     body: { reason } satisfies RefundRequest,
   }),
   getAdminPaymentProfiles: () => request<{ items: AdminPaymentProfile[] }>('/api/v1/admin/payment-profiles'),
-  updateAdminPaymentProfile: (provider: string, rail: string, body: AdminPaymentProfileWrite) => request<AdminPaymentProfile>(`/api/v1/admin/payment-profiles/${encodeURIComponent(provider)}/${encodeURIComponent(rail)}`, { method: 'PUT', body }),
+  updateAdminPaymentProfile: (provider: string, body: AdminPaymentProfileWrite) => request<AdminPaymentProfile>(`/api/v1/admin/payment-profiles/${encodeURIComponent(provider)}`, { method: 'PUT', body }),
   cancelAdminEntitlement: (entitlementId: string, reason: string) => request<Purchase>(`/api/v1/admin/entitlements/${encodeURIComponent(entitlementId)}/cancel`, {
     method: 'POST',
     body: { reason } satisfies ReasonRequest,

@@ -13,6 +13,7 @@
 - `dashboard-02.css` styles dashboard lists, actions, and secondary states.
 - `home-01.css` styles the compact balance, subscription, and traffic surfaces on Home.
 - `home-02.css` styles traffic details, ride facts, and Around TX links on Home.
+- `home-03.css` styles the compact renewal term slider and separated quote total/date block.
 - `catalog-01.css` styles catalog browsing and plan presentation.
 - `catalog-02.css` styles catalog selection and checkout details.
 - `billing-01.css` styles funding controls.

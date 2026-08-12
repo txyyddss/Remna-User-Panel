@@ -58,7 +58,7 @@ Each YAML file is one complete OpenAPI Path Item Object. `../openapi.yaml` regis
 - `api-v1-admin-settings.yaml`: `/api/v1/admin/settings`
 - `api-v1-admin-settings-key.yaml`: `/api/v1/admin/settings/{key}`
 - `api-v1-admin-payment-profiles.yaml`: `/api/v1/admin/payment-profiles`
-- `api-v1-admin-payment-profiles-provider-rail.yaml`: `/api/v1/admin/payment-profiles/{provider}/{rail}`
+- `api-v1-admin-payment-profiles-provider-rail.yaml`: `/api/v1/admin/payment-profiles/{provider}`; the filename is retained for shard compatibility while the provider profile owns all enabled channels.
 - `api-v1-admin-combos.yaml`: `/api/v1/admin/combos`
 - `api-v1-admin-combos-id.yaml`: `/api/v1/admin/combos/{id}`
 - `api-v1-admin-combos-id-statistics.yaml`: `/api/v1/admin/combos/{id}/statistics`

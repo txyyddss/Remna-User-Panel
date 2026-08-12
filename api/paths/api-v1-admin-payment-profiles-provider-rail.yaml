@@ -6,10 +6,6 @@ put:
       in: path
       required: true
       schema: { type: string, enum: [ezpay, bepusdt] }
-    - name: rail
-      in: path
-      required: true
-      schema: { type: string }
   requestBody:
     required: true
     content:

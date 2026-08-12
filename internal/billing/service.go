@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/model"
 )
 
 // ErrProviderDisabled means the administrator has not enabled a payment method.
@@ -15,62 +16,6 @@ var ErrProviderDisabled = errors.New("payment provider is disabled")
 
 // ErrInvalidOrder means user-controlled checkout selection failed validation.
 var ErrInvalidOrder = errors.New("invalid payment order")
-
-// ProviderCreateRequest is the server-owned checkout input passed to an adapter.
-type ProviderCreateRequest struct {
-	Provider        string
-	MethodID        string
-	Rail            string
-	OrderID         string
-	TelegramID      int64
-	TXBMinor        int64
-	PayableAmount   string
-	PayableCurrency string
-	NotifyURL       string
-	ReturnURL       string
-	RedirectURL     string
-}
-
-// ProviderCheckout is the exact display contract returned by a provider.
-type ProviderCheckout struct {
-	TradeID              *string
-	PaymentURL           *string
-	QRPayload            *string
-	ReceivingAddress     *string
-	ActualCryptoAmount   *string
-	ActualCryptoCurrency *string
-	PayableAmount        string
-	PayableCurrency      string
-	ExpiresAt            time.Time
-}
-
-// ProviderEvent is a verified, normalized authoritative payment event.
-type ProviderEvent struct {
-	Provider        string
-	Rail            string
-	OrderID         string
-	TradeID         string
-	ChargeID        string
-	PayableAmount   string
-	PayableCurrency string
-	FiatAmount      string
-	FiatCurrency    string
-	Recipient       string
-	DedupeKey       string
-	PayloadHash     string
-	TelegramID      *int64
-}
-
-// Gateway creates provider-specific checkouts. It receives only server-owned values.
-type Gateway interface {
-	Create(context.Context, ProviderCreateRequest) (ProviderCheckout, error)
-}
-
-// CancellationGateway is implemented by providers that expose a signed order
-// cancellation operation. Absence is a valid best-effort outcome.
-type CancellationGateway interface {
-	Cancel(context.Context, model.PaymentOrder) error
-}
 
 // Settings is the trusted runtime configuration surface.
 type Settings interface {
@@ -80,6 +25,10 @@ type Settings interface {
 
 type paymentProfileReader interface {
 	PaymentProfiles(context.Context) ([]model.PaymentProfile, error)
+}
+
+type paymentProfileRuntimeReader interface {
+	PaymentProfile(context.Context, string, string) (model.PaymentProfileRuntime, error)
 }
 
 // Repository is the transactional billing persistence contract.
@@ -128,23 +77,12 @@ func (s *Service) CreateOrder(ctx context.Context, user model.User, methodID str
 	if txbMinor <= 0 || txbMinor > 100_000_000_00 {
 		return model.PaymentOrder{}, fmt.Errorf("%w: TXB amount is out of range", ErrInvalidOrder)
 	}
-	enabled, err := s.settings.Optional(ctx, "billing."+provider+".enabled")
-	if err != nil || enabled != "true" {
-		return model.PaymentOrder{}, ErrProviderDisabled
+	providerEnabled, settingsErr := s.providerMethodEnabled(ctx, provider, rail)
+	if settingsErr != nil {
+		return model.PaymentOrder{}, settingsErr
 	}
-	if provider != "stars" {
-		raw, settingsErr := s.settings.Optional(ctx, "billing."+provider+".methods")
-		if settingsErr != nil {
-			return model.PaymentOrder{}, settingsErr
-		}
-		allowed := ezpayRails
-		if provider == "bepusdt" {
-			allowed = bepusdtRails
-		}
-		enabledRails, parseErr := parseEnabledRails(raw, allowed)
-		if parseErr != nil || !containsRail(enabledRails, rail) {
-			return model.PaymentOrder{}, ErrProviderDisabled
-		}
+	if !providerEnabled {
+		return model.PaymentOrder{}, ErrProviderDisabled
 	}
 	rate, err := s.loadNewRate(ctx, provider)
 	if err != nil {
@@ -180,7 +118,7 @@ func (s *Service) CreateOrder(ctx context.Context, user model.User, methodID str
 		RedirectURL: s.absolute("/api/v1/payments/return/" + provider + "/" + url.PathEscape(order.ID)),
 	}
 	if provider == "bepusdt" {
-		secret, secretErr := s.settings.Plaintext(ctx, "billing.bepusdt.api_token")
+		secret, secretErr := s.providerCredential(ctx, "bepusdt")
 		if secretErr != nil {
 			_ = s.repository.FailPaymentOrder(ctx, order.ID)
 			return model.PaymentOrder{}, fmt.Errorf("create callback capability: %w", secretErr)

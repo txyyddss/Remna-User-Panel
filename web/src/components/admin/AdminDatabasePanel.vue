@@ -21,6 +21,7 @@ type EditorPayload = { action: EditorState['action']; row?: DatabaseRow; values:
 type DisplayRow = Record<string, unknown> & { __row: DatabaseRow }
 
 const editing = shallowRef<EditorState | null>(null)
+const tableSearch = shallowRef('')
 const search = shallowRef('')
 const filters = shallowRef<TextDatabaseFilter[]>([])
 const { t } = useI18n()
@@ -34,6 +35,10 @@ const operators = computed<DatabaseOperatorOption[]>(() => [
 const columnItems = computed<DatabaseColumnOption[]>(() => (selectedTable.value?.columns ?? [])
   .filter((item) => !item.sensitive && item.declaredType.toUpperCase() !== 'BLOB')
   .map((column) => ({ value: column.name, label: column.name })))
+const visibleTables = computed(() => {
+  const needle = tableSearch.value.trim().toLowerCase()
+  return needle ? tables.value.filter((table) => table.name.toLowerCase().includes(needle)) : tables.value
+})
 const tableData = computed<DisplayRow[]>(() => rows.value.map((row) => ({
   __row: row,
   ...Object.fromEntries((selectedTable.value?.columns ?? []).map((column) => [
@@ -102,7 +107,8 @@ async function chooseTable(name: string): Promise<void> { closeEditor(); search.
     <AdminSectionState :loading="loading" :error="error" @retry="loadTables">
       <div class="database-layout">
         <nav v-auto-animate class="database-tables" :aria-label="t('adminDatabase.tables')">
-          <UButton v-for="table in tables" :key="table.name" class="database-table-button" :class="{ 'database-table-button--active': selectedTableName === table.name }" color="neutral" variant="ghost" icon="i-ph-database" @click="chooseTable(table.name)"><span>{{ table.name }}</span><small>{{ t('adminDatabase.highRisk') }}</small></UButton>
+          <UInput v-model="tableSearch" icon="i-ph-magnifying-glass" :placeholder="t('adminDatabase.tableSearch')" :aria-label="t('adminDatabase.tableSearch')" />
+          <UButton v-for="table in visibleTables" :key="table.name" class="database-table-button" :class="{ 'database-table-button--active': selectedTableName === table.name }" color="neutral" variant="ghost" icon="i-ph-database" @click="chooseTable(table.name)"><span>{{ table.name }}</span><small>{{ t('adminDatabase.highRisk') }}</small></UButton>
         </nav>
         <div class="database-rows" :aria-label="t('adminDatabase.rows')">
           <DatabaseQueryControls

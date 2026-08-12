@@ -2,14 +2,14 @@ package billing
 
 import (
 	"context"
-	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
-	"strings"
 )
 
 // ValidateEvent checks stored provider, amount, identity, and trade ID before settlement.
@@ -170,23 +170,6 @@ func (s *Service) loadNewRate(ctx context.Context, provider string) (Decimal, er
 		return Decimal{}, errRateNotConfigured
 	}
 	return rate, nil
-}
-
-func callbackCapability(secret, orderID string) string {
-	mac := hmac.New(sha256.New, []byte(secret))
-	_, _ = mac.Write([]byte("bepusdt-callback\x00" + orderID))
-	return hex.EncodeToString(mac.Sum(nil))
-}
-
-// VerifyBEPusdtCallbackCapability authenticates unsigned v1.19-style callback
-// URLs without exposing the configured API token.
-func (s *Service) VerifyBEPusdtCallbackCapability(ctx context.Context, orderID, capability string) bool {
-	secret, err := s.settings.Plaintext(ctx, "billing.bepusdt.api_token")
-	if err != nil {
-		return false
-	}
-	expected := callbackCapability(secret, orderID)
-	return len(capability) == len(expected) && hmac.Equal([]byte(capability), []byte(expected))
 }
 
 func currencyCode(provider string) string {

@@ -83,6 +83,7 @@ onMounted(() => void refresh())
 
 <style scoped>
 .statistics-panel { min-width: 0; display: grid; gap: 0.8rem; margin: 0.8rem; padding: 0.9rem; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface-raised); }
+.statistics-content, .statistics-filters, .statistics-filters > * { min-width: 0; }
 .statistics-panel__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.8rem; }
 .statistics-panel__header > div { min-width: 0; }
 .statistics-panel__header h3, .statistics-panel__header p { margin: 0; }
@@ -94,7 +95,7 @@ onMounted(() => void refresh())
 .statistics-summary div { padding: 0.6rem; border: 1px solid var(--line); border-radius: var(--radius-control); }
 .statistics-summary dt { color: var(--text-faint); font-size: 0.62rem; }
 .statistics-summary dd { margin: 0.2rem 0 0; font-size: 0.8rem; font-weight: 750; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.statistics-chart { height: 150px; display: flex; align-items: end; gap: 3px; padding: 0.6rem; border: 1px solid var(--line); border-radius: var(--radius-control); }
+.statistics-chart { height: 150px; display: flex; min-width: 0; align-items: end; gap: 3px; overflow: hidden; padding: 0.6rem; border: 1px solid var(--line); border-radius: var(--radius-control); }
 .statistics-chart__bar { min-width: 4px; flex: 1; border-radius: 3px 3px 0 0; background: var(--accent); opacity: 0.78; }
 .statistics-table { min-width: 0; overflow-x: auto; }
 .statistics-table :deep(table) { min-width: 600px; }
@@ -104,4 +105,5 @@ onMounted(() => void refresh())
 .statistics-distribution li { display: flex; justify-content: space-between; padding: 0.45rem 0.6rem; background: var(--surface); }
 @media (min-width: 480px) and (max-width: 759px) { .statistics-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }.statistics-filters > .button { grid-column: 1 / -1; } }
 @media (min-width: 760px) { .statistics-filters { grid-template-columns: repeat(3, minmax(150px, 1fr)) auto; }.statistics-filters > .button { width: auto; }.statistics-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 360px) { .statistics-summary { grid-template-columns: minmax(0, 1fr); } }
 </style>

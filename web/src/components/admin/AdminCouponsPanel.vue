@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, shallowRef } from 'vue'
 
+import { api } from '@/api/client'
 import { featuresApi, type CouponDefinition } from '@/api/features'
+import type { Combo, SquadProduct } from '@/api/types'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import SwitchField from '@/components/common/SwitchField.vue'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
@@ -12,12 +14,14 @@ const items = shallowRef<CouponDefinition[]>([])
 const loading = shallowRef(true)
 const busy = shallowRef(false)
 const error = shallowRef<string | null>(null)
+const combos = shallowRef<Combo[]>([])
+const squads = shallowRef<SquadProduct[]>([])
 const editingId = shallowRef<string | null | undefined>(undefined)
 const deactivating = shallowRef<CouponDefinition | null>(null)
 const draft = reactive({
   code: '', name: '', kind: 'purchase_once' as CouponDefinition['kind'], discountMode: 'percent' as 'fixed' | 'percent',
   valueTxb: '5.00', percent: 10, factor: 2, capTxb: '', globalLimit: '', perUserLimit: '1',
-  eligibleComboIds: '', eligibleSquadIds: '', expiresAt: '', active: true,
+  eligibleComboIds: [] as string[], eligibleSquadIds: [] as string[], expiresAt: '', active: true,
 })
 const { t } = useI18n()
 const kindItems = computed(() => [
@@ -30,6 +34,8 @@ const discountItems = computed(() => [
   { value: 'percent', label: t('adminCoupons.percent') },
   { value: 'fixed', label: t('adminCoupons.fixed') },
 ])
+const comboItems = computed(() => combos.value.map((combo) => ({ value: combo.id, label: combo.name })))
+const squadItems = computed(() => squads.value.map((squad) => ({ value: squad.id, label: squad.name })))
 
 async function load(): Promise<void> {
   loading.value = true
@@ -37,6 +43,17 @@ async function load(): Promise<void> {
   try { items.value = (await featuresApi.getAdminCoupons()).items }
   catch (caught) { error.value = localizedError(caught, 'adminCoupons.loadFailed') }
   finally { loading.value = false }
+}
+
+async function loadOptions(): Promise<void> {
+  try {
+    const [comboResponse, squadResponse] = await Promise.all([
+      api.getAdminResource<{ items: Combo[] }>('combos'),
+      api.getAdminResource<{ items: SquadProduct[] }>('squad-products'),
+    ])
+    combos.value = comboResponse.items
+    squads.value = squadResponse.items
+  } catch { /* Coupon editing remains usable when option data is temporarily unavailable. */ }
 }
 
 function edit(coupon?: CouponDefinition): void {
@@ -49,11 +66,11 @@ function edit(coupon?: CouponDefinition): void {
     capTxb: coupon.percentCapMinor ? txbInputFromMinor(coupon.percentCapMinor) : '',
     globalLimit: coupon.globalUseLimit === null ? '' : String(coupon.globalUseLimit),
     perUserLimit: coupon.perUserUseLimit === null ? '' : String(coupon.perUserUseLimit),
-    eligibleComboIds: coupon.eligibleComboIds.join(', '), eligibleSquadIds: coupon.eligibleSquadIds.join(', '),
+    eligibleComboIds: [...coupon.eligibleComboIds], eligibleSquadIds: [...coupon.eligibleSquadIds],
     expiresAt: coupon.expiresAt?.slice(0, 10) ?? '', active: coupon.active,
   } : {
     code: '', name: '', kind: 'purchase_once', discountMode: 'percent', valueTxb: '5.00', percent: 10,
-    factor: 2, capTxb: '', globalLimit: '', perUserLimit: '1', eligibleComboIds: '', eligibleSquadIds: '', expiresAt: '', active: true,
+    factor: 2, capTxb: '', globalLimit: '', perUserLimit: '1', eligibleComboIds: [], eligibleSquadIds: [], expiresAt: '', active: true,
   })
 }
 
@@ -70,8 +87,8 @@ async function save(): Promise<void> {
       code: draft.code.trim().toUpperCase(), name: draft.name, kind: draft.kind,
       discountMode: purchase ? draft.discountMode : undefined, valueMinorOrBps,
       percentCapMinor: percentage && draft.capTxb ? moneyFromTxbInput(draft.capTxb) : null,
-      eligibleComboIds: purchase ? draft.eligibleComboIds.split(',').map((value) => value.trim()).filter(Boolean) : [],
-      eligibleSquadIds: purchase ? draft.eligibleSquadIds.split(',').map((value) => value.trim()).filter(Boolean) : [],
+      eligibleComboIds: purchase ? [...draft.eligibleComboIds] : [],
+      eligibleSquadIds: purchase ? [...draft.eligibleSquadIds] : [],
       expiresAt: draft.expiresAt ? new Date(`${draft.expiresAt}T23:59:59Z`).toISOString() : null,
       active: draft.active, globalUseLimit: draft.globalLimit ? Number(draft.globalLimit) : null,
       perUserUseLimit: draft.perUserLimit ? Number(draft.perUserLimit) : null,
@@ -98,7 +115,7 @@ function kindLabel(kind: CouponDefinition['kind']): string {
   return t(`adminCoupons.${kind === 'purchase_once' ? 'oneTime' : kind === 'purchase_recurring' ? 'recurring' : kind === 'balance_add' ? 'balanceAdd' : 'balanceMultiply'}`)
 }
 
-onMounted(() => void load())
+onMounted(() => { void load(); void loadOptions() })
 </script>
 
 <template>
@@ -114,8 +131,8 @@ onMounted(() => void load())
       <UFormField v-if="draft.kind === 'balance_multiply'" name="balance-multiplier" :label="t('adminCoupons.balanceMultiplier')"><UInput v-model.number="draft.factor" class="w-full" type="number" :min="1.01" :max="100" :step="0.01" /></UFormField>
       <TxbAmountField v-if="draft.kind === 'balance_add' || ((draft.kind === 'purchase_once' || draft.kind === 'purchase_recurring') && draft.discountMode === 'fixed')" id="coupon-value" v-model="draft.valueTxb" :label="t('adminCoupons.txbValue')" min-minor="1" required />
       <TxbAmountField v-if="(draft.kind === 'purchase_once' || draft.kind === 'purchase_recurring') && draft.discountMode === 'percent'" id="coupon-cap" v-model="draft.capTxb" :label="t('adminCoupons.cap')" :hint="t('adminCoupons.capHint')" />
-      <UFormField name="combo-ids" :label="t('adminCoupons.comboIds')"><UInput v-model="draft.eligibleComboIds" class="w-full" :disabled="draft.kind === 'balance_add' || draft.kind === 'balance_multiply'" /></UFormField>
-      <UFormField name="squad-ids" :label="t('adminCoupons.squadIds')"><UInput v-model="draft.eligibleSquadIds" class="w-full" :disabled="draft.kind === 'balance_add' || draft.kind === 'balance_multiply'" /></UFormField>
+      <UFormField name="combo-ids" :label="t('adminCoupons.comboIds')"><USelectMenu v-model="draft.eligibleComboIds" class="w-full" :items="comboItems" value-key="value" label-key="label" multiple :placeholder="t('adminCoupons.comboPlaceholder')" :disabled="draft.kind === 'balance_add' || draft.kind === 'balance_multiply'" /></UFormField>
+      <UFormField name="squad-ids" :label="t('adminCoupons.squadIds')"><USelectMenu v-model="draft.eligibleSquadIds" class="w-full" :items="squadItems" value-key="value" label-key="label" multiple :placeholder="t('adminCoupons.squadPlaceholder')" :disabled="draft.kind === 'balance_add' || draft.kind === 'balance_multiply'" /></UFormField>
       <UFormField name="coupon-expiry" :label="t('adminCoupons.expires')"><UInput v-model="draft.expiresAt" class="w-full" type="date" /></UFormField>
       <UFormField name="global-limit" :label="t('adminCoupons.globalLimit')"><UInput v-model="draft.globalLimit" class="w-full" inputmode="numeric" pattern="[0-9]*" /></UFormField>
       <UFormField name="user-limit" :label="t('adminCoupons.userLimit')"><UInput v-model="draft.perUserLimit" class="w-full" inputmode="numeric" pattern="[0-9]*" /></UFormField>
@@ -125,7 +142,7 @@ onMounted(() => void load())
     <UAlert v-if="error" class="admin-error" color="warning" variant="soft" icon="i-ph-warning" :description="error" />
     <USkeleton v-if="loading" class="m-4 h-24" />
     <div v-else v-auto-animate class="admin-list">
-      <article v-for="coupon in items" :key="coupon.id" class="admin-list-row"><span class="feature-icon feature-icon--small"><UIcon name="i-ph-ticket" /></span><div><strong>{{ coupon.code }} · {{ coupon.name }}</strong><small>{{ t('adminCoupons.summary', { kind: kindLabel(coupon.kind), status: coupon.active ? t('common.active') : t('adminCatalog.paused'), uses: coupon.usageCount, limit: coupon.globalUseLimit ?? t('adminCoupons.unlimited') }) }}</small></div><div class="row-actions"><UButton color="neutral" variant="ghost" square icon="i-ph-pencil-simple" :aria-label="t('adminCoupons.editNamed', { code: coupon.code })" @click="edit(coupon)" /><UButton v-if="coupon.active" size="sm" color="error" variant="ghost" icon="i-ph-pause" :disabled="busy" :label="t('adminCoupons.deactivate')" @click="deactivating = coupon" /></div></article>
+      <article v-for="coupon in items" :key="coupon.id" class="admin-list-row"><span class="feature-icon feature-icon--small"><UIcon name="i-ph-ticket" /></span><div><strong>{{ coupon.code }} {{ t('common.rangeSeparator') }} {{ coupon.name }}</strong><small>{{ t('adminCoupons.summary', { kind: kindLabel(coupon.kind), status: coupon.active ? t('common.active') : t('adminCatalog.paused'), uses: coupon.usageCount, limit: coupon.globalUseLimit ?? t('adminCoupons.unlimited') }) }}</small></div><div class="row-actions"><UButton color="neutral" variant="ghost" square icon="i-ph-pencil-simple" :aria-label="t('adminCoupons.editNamed', { code: coupon.code })" @click="edit(coupon)" /><UButton v-if="coupon.active" size="sm" color="error" variant="ghost" icon="i-ph-pause" :disabled="busy" :label="t('adminCoupons.deactivate')" @click="deactivating = coupon" /></div></article>
       <div v-if="!items.length" class="empty-inline"><div><h3>{{ t('adminCoupons.none') }}</h3><p>{{ t('adminCoupons.noneHint') }}</p></div></div>
     </div>
     <ConfirmDialog :open="Boolean(deactivating)" :title="t('adminCoupons.deactivate')" :description="t('adminCoupons.deactivateConfirm', { code: deactivating?.code ?? '' })" :confirm-label="t('adminCoupons.deactivate')" :busy="busy" danger @update:open="!$event && (deactivating = null)" @confirm="deactivate" />

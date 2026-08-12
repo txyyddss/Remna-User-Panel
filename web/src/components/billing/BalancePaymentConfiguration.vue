@@ -39,7 +39,7 @@ const icons: Record<PaymentProvider, string> = {
 }
 
 function providerLabel(provider: PaymentProvider): string {
-  return t(`payment.providers.${provider}`)
+  return externalMethods.value.find((method) => method.provider === provider)?.providerName || t(`payment.providers.${provider}`)
 }
 function providerNote(provider: PaymentProvider): string {
   if (provider === 'coupon') return t('payment.couponHint')
@@ -87,9 +87,11 @@ async function redeemCoupon(): Promise<void> {
     </UButton>
   </fieldset>
   <div v-if="selectedProvider === 'coupon'" class="coupon-redemption">
-    <UInput v-model="couponCode" :placeholder="$t('payment.couponCode')" :aria-label="$t('payment.couponCode')" />
+    <div class="coupon-redemption__form">
+      <UInput v-model="couponCode" :placeholder="$t('payment.couponCode')" :aria-label="$t('payment.couponCode')" />
+      <UButton block :disabled="!couponCode.trim() || couponBusy" :loading="couponBusy" :label="$t('payment.redeemCoupon')" data-haptic @click="redeemCoupon" />
+    </div>
     <UAlert v-if="couponError" color="error" variant="soft" :description="couponError" />
-    <UButton block :disabled="!couponCode.trim() || couponBusy" :loading="couponBusy" :label="$t('payment.redeemCoupon')" data-haptic @click="redeemCoupon" />
   </div>
   <UAlert v-if="error && selectedProvider !== 'coupon'" color="error" variant="soft" :description="error" />
   <UButton v-if="selectedProvider !== 'coupon'" block :disabled="!canCreate || stage === 'creating' || !amountValid" :loading="stage === 'creating'" :label="stage === 'creating' ? $t('payment.creating') : canReissue ? $t('payment.reissue') : $t('payment.continue')" data-haptic @click="emit('createOrder')" />

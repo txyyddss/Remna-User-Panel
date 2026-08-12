@@ -9,6 +9,7 @@
     "appliedCopy": "修改前已创建救援备份 {id}。",
     "tables": "应用数据表",
     "highRisk": "高风险",
+    "tableSearch": "搜索表名",
     "rows": "表记录",
     "searchPlaceholder": "搜索非敏感列",
     "search": "搜索表记录",

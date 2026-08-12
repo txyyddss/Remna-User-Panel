@@ -19,24 +19,22 @@ func (s *Server) adminPaymentProfiles(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) adminSavePaymentProfile(w http.ResponseWriter, r *http.Request) {
 	var profile struct {
-		ID              string `json:"id"`
-		Provider        string `json:"provider"`
-		Rail            string `json:"rail"`
-		ChannelName     string `json:"channelName"`
-		Endpoint        string `json:"endpoint"`
-		MerchantID      string `json:"merchantId"`
-		Credential      string `json:"credential"`
-		Acknowledgement string `json:"acknowledgement"`
-		Enabled         bool   `json:"enabled"`
+		ID              string   `json:"id"`
+		ProviderName    string   `json:"providerName"`
+		EnabledChannels []string `json:"enabledChannels"`
+		Endpoint        string   `json:"endpoint"`
+		MerchantID      string   `json:"merchantId"`
+		Credential      string   `json:"credential"`
+		Acknowledgement string   `json:"acknowledgement"`
+		Enabled         bool     `json:"enabled"`
 	}
 	if err := decodeJSON(w, r, &profile); err != nil {
 		s.writeError(w, r, http.StatusBadRequest, "INVALID_PAYMENT_PROFILE", "Payment profile fields are invalid.")
 		return
 	}
-	profile.Provider = chi.URLParam(r, "provider")
-	profile.Rail = chi.URLParam(r, "rail")
+	provider := chi.URLParam(r, "provider")
 	saved, err := s.deps.Settings.SavePaymentProfile(r.Context(), currentUser(r).ID, model.PaymentProfile{
-		ID: profile.ID, Provider: profile.Provider, Rail: profile.Rail, ChannelName: profile.ChannelName,
+		ID: profile.ID, Provider: provider, ProviderName: profile.ProviderName, EnabledChannels: profile.EnabledChannels,
 		Endpoint: profile.Endpoint, MerchantID: profile.MerchantID, Credential: profile.Credential,
 		Acknowledgement: profile.Acknowledgement, Enabled: profile.Enabled,
 	})

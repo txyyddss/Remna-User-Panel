@@ -212,6 +212,10 @@ func (s *SettingsService) Readiness(ctx context.Context, activeComboCount int) [
 		}
 	}
 	for _, provider := range []string{"ezpay", "bepusdt"} {
+		if profileIssues, handled := s.paymentProfileReadiness(ctx, provider); handled {
+			issues = append(issues, profileIssues...)
+			continue
+		}
 		enabled, _ := s.Optional(ctx, "billing."+provider+".enabled")
 		if enabled != "true" {
 			continue

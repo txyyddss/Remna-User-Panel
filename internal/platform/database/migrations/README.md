@@ -26,4 +26,7 @@ file instead.
 - `013_coupon_discards_and_courtesy_credits.sql` — adds durable wallet-discard
   evidence and exactly-once terminal-payment courtesy-credit records.
 - `014_goal_completion.sql` adds optional squad stock, renewal batches, bounded
-  rollover aggregates, and per-rail payment profiles.
+  rollover aggregates, and the temporary per-rail payment profile seed.
+- `015_payment_provider_profiles.sql` consolidates each provider into one
+  profile row with independently enabled channels and removes the temporary
+  per-rail table.

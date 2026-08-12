@@ -5,6 +5,7 @@
     "selectorSummary": "{code} · {effect}",
     "effectFixed": "Adds {amount} TXB",
     "effectPercent": "Adds {value}% of the balance",
+    "effectPurchasePercent": "Discounts {value}% from the combo price",
     "code": "Coupon code",
     "codePlaceholder": "Enter code",
     "redeeming": "Redeeming",

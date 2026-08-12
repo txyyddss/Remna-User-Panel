@@ -2,7 +2,6 @@ package admin
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,7 +21,10 @@ func (s *Service) AdjustBalance(ctx context.Context, actorID, userID string, del
 	if delta == 0 || delta < -1_000_000_000_000 || delta > 1_000_000_000_000 || strings.TrimSpace(reason) == "" {
 		return model.LedgerEntry{}, errors.New("non-zero delta and reason are required")
 	}
-	referenceID := fmt.Sprintf("telegram-deduct:%x", sha256.Sum256([]byte(reason)))
+	referenceID, err := ids.New()
+	if err != nil {
+		return model.LedgerEntry{}, err
+	}
 	entry, err := s.repository.AdjustBalance(ctx, userID, delta, referenceID, reason, s.now().UTC())
 	if err != nil {
 		return model.LedgerEntry{}, err

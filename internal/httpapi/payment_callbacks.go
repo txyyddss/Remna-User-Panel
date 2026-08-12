@@ -81,10 +81,8 @@ func (s *Server) bepusdtWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	ack := ""
-	if event.Rail != "" {
-		if profile, profileErr := s.deps.Settings.PaymentProfile(r.Context(), "bepusdt", event.Rail); profileErr == nil {
-			ack = profile.Acknowledgement
-		}
+	if profile, profileErr := s.deps.Settings.PaymentProfile(r.Context(), "bepusdt", event.Rail); profileErr == nil {
+		ack = profile.Acknowledgement
 	}
 	if ack == "" {
 		ack, _ = s.deps.Settings.Optional(r.Context(), "billing.bepusdt.ack")

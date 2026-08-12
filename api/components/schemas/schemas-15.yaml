@@ -44,12 +44,14 @@ RenewalBatch:
 PaymentProfile:
   type: object
   additionalProperties: false
-  required: [id, provider, rail, channelName, endpoint, merchantId, credential, acknowledgement, enabled, configured]
+  required: [id, provider, providerName, enabledChannels, endpoint, merchantId, credential, acknowledgement, enabled, configured]
   properties:
     id: { type: string }
     provider: { type: string, enum: [ezpay, bepusdt] }
-    rail: { type: string }
-    channelName: { type: string, minLength: 1, maxLength: 80 }
+    providerName: { type: string, minLength: 1, maxLength: 80 }
+    enabledChannels:
+      type: array
+      items: { type: string }
     endpoint: { type: string, format: uri }
     merchantId: { type: string }
     credential: { type: string, description: Masked write-only credential. }
@@ -60,12 +62,14 @@ PaymentProfile:
 PaymentProfileWrite:
   type: object
   additionalProperties: false
-  required: [channelName, endpoint, enabled]
+  required: [providerName, enabledChannels, endpoint, enabled]
   properties:
     id: { type: string }
     provider: { type: string, enum: [ezpay, bepusdt] }
-    rail: { type: string }
-    channelName: { type: string, minLength: 1, maxLength: 80 }
+    providerName: { type: string, minLength: 1, maxLength: 80 }
+    enabledChannels:
+      type: array
+      items: { type: string }
     endpoint: { type: string, format: uri }
     merchantId: { type: string }
     credential: { type: string, description: Leave blank to retain the masked credential. }

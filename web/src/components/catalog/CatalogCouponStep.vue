@@ -25,7 +25,10 @@ const { t } = useI18n()
 
 function couponEffect(grant: CouponGrant): string {
   if (grant.coupon.discountMode === 'percent') {
-    return t('coupons.effectPercent', { value: (Number(grant.coupon.valueMinorOrBps) / 100).toFixed(2) })
+    const key = grant.coupon.kind === 'purchase_once' || grant.coupon.kind === 'purchase_recurring'
+      ? 'coupons.effectPurchasePercent'
+      : 'coupons.effectPercent'
+    return t(key, { value: (Number(grant.coupon.valueMinorOrBps) / 100).toFixed(2) })
   }
   return t('coupons.effectFixed', { amount: formatMoney({ currency: 'TXB', minor: grant.coupon.valueMinorOrBps, display: '' }) })
 }

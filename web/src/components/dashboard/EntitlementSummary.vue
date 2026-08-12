@@ -28,7 +28,6 @@ const renewalQuote = shallowRef<import('@/api/types').RenewalQuote | null>(null)
 const renewalBusy = shallowRef(false)
 const renewalError = shallowRef<string | null>(null)
 const renewalSuccess = shallowRef(false)
-const renewalChoices = Array.from({ length: 6 }, (_, index) => ({ label: String(index + 1), value: index + 1 }))
 
 async function loadRenewalQuote(): Promise<void> {
   if (!props.active) return
@@ -105,9 +104,12 @@ function goToCatalog(): void {
   <UModal v-model:open="renewalOpen" :title="$t('home.renewTitle')" :description="$t('home.renewHint')">
     <template #body>
       <div class="renewal-dialog">
-        <USelect v-model="renewalTerms" :items="renewalChoices" value-key="value" label-key="label" :aria-label="$t('home.renewTerms')" />
+        <div class="renewal-dialog__terms">
+          <div class="renewal-dialog__terms-heading"><span>{{ $t('home.renewTerms') }}</span><strong>{{ renewalTerms }}</strong></div>
+          <USlider v-model="renewalTerms" :min="1" :max="6" :step="1" :aria-label="$t('home.renewTerms')" />
+        </div>
         <div v-if="renewalQuote" class="renewal-dialog__quote">
-          <span>{{ $t('home.renewPrice') }}</span><strong>{{ formatMoney(renewalQuote.totalPrice) }}</strong>
+          <div class="renewal-dialog__total"><span>{{ $t('home.renewPrice') }}</span><strong>{{ formatMoney(renewalQuote.totalPrice) }}</strong></div>
           <small>{{ formatDate(renewalQuote.effectiveAt) }} {{ t('common.rangeSeparator') }} {{ formatDate(renewalQuote.expiresAt) }}</small>
         </div>
         <InlineNotice v-if="renewalSuccess" tone="success">{{ $t('home.renewSuccess') }}</InlineNotice>

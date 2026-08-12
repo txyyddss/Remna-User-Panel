@@ -13,6 +13,8 @@
     "trafficTopNodes": "显示流量最高的最多 {count} 个节点。",
     "trafficNode": "{name} · {country}",
     "trafficTotal": "总计",
+    "trafficChartNode": "{name}，流量总计 {value}",
+    "trafficChartDay": "{date}：{value}",
     "squadSeparator": " · ",
     "renew": "续费当前套餐",
     "renewTitle": "续费当前套餐",

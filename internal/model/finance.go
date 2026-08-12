@@ -58,28 +58,30 @@ type PaymentOrder struct {
 
 // PaymentMethod is one selectable provider rail exposed to a member.
 type PaymentMethod struct {
-	ID        string `json:"id"`
-	Provider  string `json:"provider"`
-	Rail      string `json:"rail"`
-	Name      string `json:"name"`
-	Currency  string `json:"currency"`
-	Available bool   `json:"available"`
-	Note      string `json:"note"`
-	Mode      string `json:"mode"`
+	ID           string `json:"id"`
+	Provider     string `json:"provider"`
+	ProviderName string `json:"providerName"`
+	Rail         string `json:"rail"`
+	Name         string `json:"name"`
+	Currency     string `json:"currency"`
+	Available    bool   `json:"available"`
+	Note         string `json:"note"`
+	Mode         string `json:"mode"`
 }
 
-// PaymentProfile is the masked administrative representation of one rail.
+// PaymentProfile is the masked administrative representation of one provider.
 type PaymentProfile struct {
-	ID              string `json:"id"`
-	Provider        string `json:"provider"`
-	Rail            string `json:"rail"`
-	ChannelName     string `json:"channelName"`
-	Endpoint        string `json:"endpoint"`
-	MerchantID      string `json:"merchantId"`
-	Credential      string `json:"credential"`
-	Acknowledgement string `json:"acknowledgement"`
-	Enabled         bool   `json:"enabled"`
-	Configured      bool   `json:"configured"`
+	ID              string   `json:"id"`
+	Provider        string   `json:"provider"`
+	ProviderName    string   `json:"providerName"`
+	EnabledChannels []string `json:"enabledChannels"`
+	Endpoint        string   `json:"endpoint"`
+	MerchantID      string   `json:"merchantId"`
+	Credential      string   `json:"credential"`
+	Acknowledgement string   `json:"acknowledgement"`
+	Enabled         bool     `json:"enabled"`
+	Configured      bool     `json:"configured"`
+	Rail            string   `json:"-"`
 }
 
 // PaymentProfileRuntime is an internal-only profile with decrypted credentials.

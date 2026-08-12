@@ -5,6 +5,7 @@ import type { DashboardNodeUsage, Purchase } from '@/api/types'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import { t } from '@/i18n'
 import { formatBytes, formatDate } from '@/utils/format'
+import TrafficNodeChart from './TrafficNodeChart.vue'
 
 const props = defineProps<{
   startDate: string
@@ -76,12 +77,7 @@ function load(): void {
         <template #body="{ item }">
           <div class="traffic-usage__node-body">
             <p class="traffic-usage__total"><span>{{ $t('home.trafficTotal') }}</span><strong>{{ formatBytes(item.totalBytes) }}</strong></p>
-            <dl class="traffic-usage__days">
-              <template v-for="(date, index) in usage.categories" :key="`${item.uuid}-${date}`">
-                <dt>{{ date }}</dt>
-                <dd>{{ formatBytes(item.dailyBytes[index] ?? '0') }}</dd>
-              </template>
-            </dl>
+            <TrafficNodeChart :name="item.name" :total-bytes="item.totalBytes" :categories="usage.categories" :daily-bytes="item.dailyBytes" />
           </div>
         </template>
       </UAccordion>
@@ -103,8 +99,5 @@ function load(): void {
 .traffic-usage__node-body { display: grid; gap: 0.6rem; padding: 0 0.2rem 0.25rem; }
 .traffic-usage__total { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; margin: 0; font-size: 0.78rem; }
 .traffic-usage__total span { color: var(--text-faint); }
-.traffic-usage__total strong, .traffic-usage__days dd { font-family: var(--font-mono); }
-.traffic-usage__days { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.35rem 0.75rem; margin: 0; font-size: 0.72rem; }
-.traffic-usage__days dt { min-width: 0; color: var(--text-muted); }
-.traffic-usage__days dd { margin: 0; text-align: right; }
+.traffic-usage__total strong { font-family: var(--font-mono); }
 </style>

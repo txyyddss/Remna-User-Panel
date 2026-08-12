@@ -171,4 +171,12 @@ onScopeDispose(stopRestorePolling)
   padding-top: 0.6rem;
   border-top: 1px solid var(--line);
 }
+.backup-card > div { min-width: 0; }
+.backup-card__actions :deep(button) { min-width: 0; flex: 1 1 8rem; }
+@media (max-width: 639px) {
+  .backup-card { align-items: start; }
+  .backup-card strong { overflow-wrap: anywhere; white-space: normal; }
+  .backup-card__verified { min-width: 0; overflow-wrap: anywhere; }
+  .backup-card__actions :deep(button) { flex-basis: 100%; width: 100%; }
+}
 </style>

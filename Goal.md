@@ -30,29 +30,20 @@ You may want to use the following projects for frontend:
 
 ---
 
-## Fix bugs
+## I need you to fix bugs or make adjustments
 
-- Statistics displays wrongly on mobile
-- Blance display of user home page is not at the middle of the card, it appears lower than it should be
-- Bet wins appears same vibration as lose, they should be different
-
-## Adjustment / New Features
-- Could add several groups of EZPay and BEPusdt config with CUSTOMIZABLE channel name, the editor should be fully visualized
-- Add a payment provider: coupon, used to exchange coupons related to balance but not discount
-- Remove "Local payment rail" description of EZPay
-- Add renew button for "Your ride" with a confirmation pop-up and user-adjustable number of periods to buy
-- Show traffic should be displayed using graph, not just data
-- Remember the progress and choices of user on "Explore" page, resume when the user switch back from other pages
-- Remove refresh button on activity page
-- Do not reset user input of stake amount when after a bet confirmation popup
-- Apply different rollover algorithms for different Reset cadence and Validity days cases
-- Block user from continuing when theres no Accessible nodes for current choices
-- Add stock limit for Optional squads, count active instead of counting purchase numbers
-- Add reset strategy display for Core combos section for users
-- Add coupon content display for Coupon section for users
-- Add more details for review page like rollover strategy, etc.
-- Combine payments page into review
-- Relax username format request to -36 characters long, ^[a-zA-Z0-9_-]+$
-
-## Check
-- Check if the program will deactivate user's subscription when the subscription expires
+- On Add TXB interface, Coupon code input box conflicts with Redeem button
+- The per-node traffic view should be displayed in chart rather than datas
+- The terms number should be displayed as slider on "Renew your ride"
+- The total TXB diaplay seems weird with the date display on "Renew your ride"
+- The continue button on "Choose your combo." page should not be flowting
+- The coupon of 90% recurring discount displayed as "Adds 90% of the balance" on "Coupon" page of "Choose your combo."
+- When user come back from other page to "Review" of "Choose your combo.", it always displays "Calculating quote" and connot confirm purchase
+- "Term" of "Review" of "Choose your combo." contains translation errors
+- Catalog, internal squad, and bet statistics displays error on mobile devices
+- No stock limit settings on Internal squads editing, but it is implemented on backend, add this
+- Add dropdown menu for Eligible combo and squad ids of coupon editing selecting the items instead of filling in the id
+- Cannot deduct or add TXB for user on admin interface
+- Payment profiles SHOULD NOT be per-channel driven. It should be multi (or one) set(s) of EZPay and BEPUSDT Provider with customizable provider names. Admin can edit and choose to enable channels for the providers seperately. No duplicate configs should be made.
+- The "Backups" of admin interface displays weird on mobile devices
+- Add search for table names on "Database editor" interface

@@ -32,6 +32,7 @@ export interface EmbyOverview {
 export interface FeaturePaymentMethod {
   id: string
   provider: PaymentProvider
+  providerName?: string
   rail: string
   name: string
   currency: 'TXB' | 'CNY' | 'USD' | 'USDT' | 'XTR'

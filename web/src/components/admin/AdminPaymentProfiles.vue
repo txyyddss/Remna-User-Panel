@@ -13,12 +13,31 @@ const busy = shallowRef<string | null>(null)
 const error = shallowRef<string | null>(null)
 const saved = shallowRef(false)
 const drafts = reactive<Record<string, AdminPaymentProfile>>({})
+const channelIds: Record<AdminPaymentProfile['provider'], string[]> = {
+  ezpay: ['alipay', 'wxpay', 'qqpay', 'bank', 'jdpay'],
+  bepusdt: ['usdt.trc20', 'usdt.erc20', 'usdt.polygon', 'usdt.bep20', 'usdt.aptos', 'usdt.solana', 'usdt.xlayer', 'usdt.arbitrum', 'usdt.plasma', 'usdt.ton'],
+}
+
+function channelItems(provider: AdminPaymentProfile['provider']): string[] {
+  return channelIds[provider]
+}
+
+function channelLabel(channel: string): string {
+  return t(`adminPaymentProfiles.channelNames.${channel.replace('.', '_')}`)
+}
+
+function toggleChannel(profile: AdminPaymentProfile, channel: string, selected: boolean): void {
+  const current = drafts[profile.id].enabledChannels
+  drafts[profile.id].enabledChannels = selected
+    ? [...new Set([...current, channel])]
+    : current.filter((value) => value !== channel)
+}
 
 async function load(): Promise<void> {
   loading.value = true
   try {
     profiles.value = (await api.getAdminPaymentProfiles()).items
-    for (const profile of profiles.value) drafts[profile.id] = { ...profile }
+    for (const profile of profiles.value) drafts[profile.id] = { ...profile, enabledChannels: [...profile.enabledChannels] }
   } catch (caught) { error.value = localizedError(caught, 'errors.adminLoad') } finally { loading.value = false }
 }
 
@@ -27,7 +46,7 @@ async function save(profile: AdminPaymentProfile): Promise<void> {
   error.value = null
   saved.value = false
   try {
-    drafts[profile.id] = await api.updateAdminPaymentProfile(profile.provider, profile.rail, drafts[profile.id])
+    drafts[profile.id] = await api.updateAdminPaymentProfile(profile.provider, drafts[profile.id])
     saved.value = true
   } catch (caught) { error.value = localizedError(caught, 'errors.adminAction') } finally { busy.value = null }
 }
@@ -43,11 +62,18 @@ onMounted(() => void load())
     <div v-if="loading" class="payment-profiles__loading"><USkeleton v-for="index in 2" :key="index" class="h-32" /></div>
     <div v-else class="payment-profiles__grid">
       <article v-for="profile in profiles" :key="profile.id" class="payment-profile">
-        <div class="payment-profile__header"><div><span class="eyebrow">{{ profile.provider }}</span><h3>{{ profile.rail }}</h3></div><SwitchField :id="`payment-profile-${profile.id}`" v-model="drafts[profile.id].enabled" :label="t('common.enabled')" /></div>
-        <UFormField :label="t('adminPaymentProfiles.channelName')"><UInput v-model="drafts[profile.id].channelName" /></UFormField>
+        <div class="payment-profile__header"><div><span class="eyebrow">{{ t(`payment.providers.${profile.provider}`) }}</span><h3>{{ drafts[profile.id].providerName }}</h3></div><SwitchField :id="`payment-profile-${profile.id}`" v-model="drafts[profile.id].enabled" :label="t('common.enabled')" /></div>
+        <UFormField :label="t('adminPaymentProfiles.providerName')"><UInput v-model="drafts[profile.id].providerName" /></UFormField>
+        <fieldset class="payment-profile__channels">
+          <legend>{{ t('adminPaymentProfiles.channels') }}</legend>
+          <p>{{ t('adminPaymentProfiles.channelHint') }}</p>
+          <UCheckbox v-for="channel in channelItems(profile.provider)" :key="channel" :model-value="drafts[profile.id].enabledChannels.includes(channel)" :label="channelLabel(channel)" @update:model-value="toggleChannel(profile, channel, Boolean($event))" />
+        </fieldset>
+        <UAlert v-if="!drafts[profile.id].enabledChannels.length" color="warning" variant="soft" :description="t('adminPaymentProfiles.noChannels')" />
         <UFormField :label="t('adminPaymentProfiles.endpoint')"><UInput v-model="drafts[profile.id].endpoint" type="url" /></UFormField>
         <UFormField v-if="profile.provider === 'ezpay'" :label="t('adminPaymentProfiles.merchantId')"><UInput v-model="drafts[profile.id].merchantId" /></UFormField>
         <UFormField :label="t('adminPaymentProfiles.credential')"><UInput v-model="drafts[profile.id].credential" type="password" :placeholder="profile.configured ? t('adminPaymentProfiles.keepCredential') : ''" autocomplete="new-password" /></UFormField>
+        <UFormField :label="t('adminPaymentProfiles.acknowledgement')"><UInput v-model="drafts[profile.id].acknowledgement" /></UFormField>
         <UButton block :loading="busy === profile.id" :label="t('common.save')" data-haptic @click="save(profile)" />
       </article>
     </div>
@@ -61,4 +87,7 @@ onMounted(() => void load())
 .payment-profile__header { display: flex; align-items: start; justify-content: space-between; gap: 0.7rem; }
 .payment-profile h3, .payment-profile p { margin: 0; }
 .payment-profile h3 { font-size: 1rem; }
+.payment-profile__channels { display: grid; gap: 0.45rem; margin: 0; padding: 0.7rem; border: 1px solid var(--line); border-radius: var(--radius-control); }
+.payment-profile__channels legend { color: var(--text-muted); font-size: 0.76rem; font-weight: 700; }
+.payment-profile__channels p { color: var(--text-faint); font-size: 0.68rem; line-height: 1.4; }
 </style>

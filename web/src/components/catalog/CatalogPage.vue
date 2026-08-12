@@ -47,15 +47,22 @@ const {
   confirmPurchase,
 } = useCatalog()
 
+async function restoreReviewQuote(): Promise<void> {
+  if (activeStep.value !== 5 || loading.value || quoting.value || quote.value || !selectedCombo.value) return
+  await refreshQuote()
+}
+
 onMounted(() => {
   try {
     const value = Number(globalThis.sessionStorage?.getItem(stepKey() ?? ''))
     if (value >= 1 && value <= 5) activeStep.value = value
   } catch { /* Storage is optional in restricted WebViews. */ }
+  void restoreReviewQuote()
 })
 watch(activeStep, (value) => {
   try { const key = stepKey(); if (key) globalThis.sessionStorage?.setItem(key, String(value)) } catch { /* Ignore unavailable storage. */ }
 })
+watch([activeStep, loading, selectedCombo, selectedSquadIds, selectedCouponGrantId], () => { void restoreReviewQuote() }, { deep: true })
 
 const selectedCoupon = computed(() => eligibleCoupons.value.find((grant) => grant.id === selectedCouponGrantId.value) ?? null)
 const nextDisabled = computed(() => {

@@ -49,7 +49,7 @@ The database editor lists allowlisted application tables, debounces broad search
 
 Backup downloads use an authenticated binary response. Restore requires `RESTORE <filename>`, describes the automatic rescue backup, submits a staged restore, polls its operation, and enters reconnect/reauthentication state after the server begins its graceful restart.
 
-Encrypted settings render as masked values and only permit write-only replacement. Financial and destructive actions retain visible text labels even when icons are present. Payment administration uses a visual profile editor for rail, channel name, endpoint, enabled state, and masked credentials.
+Encrypted settings render as masked values and only permit write-only replacement. Financial and destructive actions retain visible text labels even when icons are present. Payment administration uses one visual profile per provider with a custom provider name, shared endpoint and credential fields, independent channel toggles, enabled state, acknowledgement, and masked credentials. Catalog review restores its quote when revisited, and purchase controls remain in normal mobile flow.
 
 ## Visual and accessibility contract
 

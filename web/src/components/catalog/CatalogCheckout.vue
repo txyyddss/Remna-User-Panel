@@ -23,7 +23,12 @@ const router = useRouter()
 const { t } = useI18n()
 function couponEffect(): string {
   if (!props.coupon) return ''
-  if (props.coupon.coupon.discountMode === 'percent') return t('coupons.effectPercent', { value: (Number(props.coupon.coupon.valueMinorOrBps) / 100).toFixed(2) })
+  if (props.coupon.coupon.discountMode === 'percent') {
+    const key = props.coupon.coupon.kind === 'purchase_once' || props.coupon.coupon.kind === 'purchase_recurring'
+      ? 'coupons.effectPurchasePercent'
+      : 'coupons.effectPercent'
+    return t(key, { value: (Number(props.coupon.coupon.valueMinorOrBps) / 100).toFixed(2) })
+  }
   return t('coupons.effectFixed', { amount: formatMoney({ currency: 'TXB', minor: props.coupon.coupon.valueMinorOrBps, display: '' }) })
 }
 function goToBalance(): void { void router.push({ path: '/home', query: { topUp: '1' } }) }

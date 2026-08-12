@@ -13,6 +13,8 @@
     "trafficTopNodes": "Up to {count} busiest nodes are shown.",
     "trafficNode": "{name} · {country}",
     "trafficTotal": "Total",
+    "trafficChartNode": "{name}, {value} total traffic",
+    "trafficChartDay": "{date}: {value}",
     "squadSeparator": " · ",
     "renew": "Renew ride",
     "renewTitle": "Renew your ride",

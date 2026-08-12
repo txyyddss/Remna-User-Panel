@@ -116,3 +116,22 @@
   background: var(--accent);
   animation: pulse-status 1.5s ease-in-out infinite;
 }
+.coupon-redemption {
+  display: grid;
+  min-width: 0;
+  gap: 0.6rem;
+}
+
+.coupon-redemption__form {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(8rem, auto);
+  gap: 0.55rem;
+  align-items: end;
+}
+
+@media (max-width: 420px) {
+  .coupon-redemption__form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

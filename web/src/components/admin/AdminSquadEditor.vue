@@ -25,6 +25,7 @@ const draft = reactive({
   description: '',
   priceTxb: '',
   visible: false,
+  stockLimit: '',
 })
 const nodes = shallowRef<RemnaNode[]>([])
 const selectedNodeUuids = shallowRef<string[]>([])
@@ -50,6 +51,7 @@ watch(() => props.squad, (squad) => {
     description: squad.description,
     priceTxb: txbInputFromMinor(squad.price.minor),
     visible: squad.visible,
+    stockLimit: squad.stockLimit === null ? '' : String(squad.stockLimit ?? ''),
   })
   void loadNodes()
 }, { immediate: true })
@@ -76,13 +78,15 @@ async function saveNodes(): Promise<void> {
 
 function submit(): void {
   const priceTxbMinor = moneyFromTxbInput(draft.priceTxb)
-  if (!priceTxbMinor) return
+  const stockLimit = draft.stockLimit.trim() === '' ? null : Number(draft.stockLimit)
+  if (!priceTxbMinor || (stockLimit !== null && (!Number.isInteger(stockLimit) || stockLimit < 0))) return
   emit('save', {
     remnaSquadUuid: props.squad.remnaSquadUuid,
     name: props.squad.name,
     description: draft.description.trim(),
     priceTxbMinor,
     visible: draft.visible,
+    stockLimit,
   })
 }
 </script>
@@ -98,6 +102,7 @@ function submit(): void {
     </div>
     <MarkdownEditorField v-model="draft.description" class="catalog-editor__wide" :label="t('adminSquad.description')" :placeholder="t('adminSquad.descriptionPlaceholder')" :maxlength="1000" />
     <TxbAmountField id="squad-price" v-model="draft.priceTxb" :label="t('adminSquad.price')" min-minor="0" required />
+    <UFormField name="squad-stock-limit" :label="t('adminSquad.stockLimit')" :hint="t('adminSquad.stockLimitHint')"><UInput v-model="draft.stockLimit" type="number" min="0" step="1" inputmode="numeric" :placeholder="t('adminSquad.stockUnlimited')" /></UFormField>
     <SwitchField id="squad-visible" v-model="draft.visible" :label="t('adminSquad.visible')" :help="t('adminSquad.visibleHint')" />
     <section class="node-assignment catalog-editor__wide">
       <div class="node-assignment__heading"><div><h4><UIcon name="i-ph-network" /> {{ t('adminSquad.nodes') }}</h4><p>{{ t('adminSquad.nodeHint') }}</p></div><UButton color="neutral" variant="outline" :loading="nodesBusy" :disabled="nodesBusy" :label="nodesBusy ? t('adminSquad.verifying') : t('adminSquad.saveNodes')" @click="saveNodes" /></div>
