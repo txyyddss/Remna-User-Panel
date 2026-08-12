@@ -17,7 +17,7 @@ const pointerScale = 1_000_000n
 const paletteSize = 5
 const hoveredKey = shallowRef<string | null>(null)
 const selectedKey = shallowRef<string | null>(null)
-const trackRef = shallowRef<HTMLElement | null>(null)
+const trackRef = shallowRef<globalThis.HTMLElement | null>(null)
 
 interface Segment { key: string; name: string; countryCode: string; bytes: bigint; startBytes: bigint; widthBasis: bigint; color: string; bytesLabel: string; percentageLabel: string; multiplierLabel: string; isOther: boolean; ariaLabel: string }
 
@@ -114,8 +114,8 @@ function segmentAt(clientX: number): Segment | null {
   return segments.value.find((segment) => position * total < (segment.startBytes + segment.bytes) * pointerScale) ?? null
 }
 
-function previewAt(event: PointerEvent): void { hoveredKey.value = segmentAt(event.clientX)?.key ?? null }
-function selectAt(event: MouseEvent): void { const segment = segmentAt(event.clientX); if (segment) toggleSelection(segment.key) }
+function previewAt(event: globalThis.PointerEvent): void { hoveredKey.value = segmentAt(event.clientX)?.key ?? null }
+function selectAt(event: globalThis.MouseEvent): void { const segment = segmentAt(event.clientX); if (segment) toggleSelection(segment.key) }
 function toggleSelection(key: string): void {
   if (selectedKey.value === key) { selectedKey.value = null; hoveredKey.value = null; return }
   selectedKey.value = key
