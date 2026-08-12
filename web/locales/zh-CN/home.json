@@ -23,6 +23,11 @@
     "renewPrice": "合计",
     "renewAction": "确认续费",
     "renewSuccess": "续费已成功排队。",
+    "cancelQueued": "取消排队套餐",
+    "cancelQueuedTitle": "取消此排队套餐？",
+    "cancelQueuedDescription": "此排队权益将被取消，已支付的 TXB 将退回你的余额。",
+    "cancelQueuedConfirm": "取消并退款",
+    "queuedCancelled": "排队套餐已取消，TXB 已退回。",
     "resetCadence": "重置周期",
     "reset": {
       "DAY": "每日",

@@ -89,6 +89,9 @@ export const api = {
     body: { comboId, addonSquadProductIds: squadProductIds, couponGrantId },
   }),
   getPurchases: () => request<Paginated<Purchase>>('/api/v1/purchases'),
+  cancelQueuedPurchase: (purchaseId: string) => request<Purchase>(`/api/v1/purchases/${encodeURIComponent(purchaseId)}/cancel`, {
+    method: 'POST',
+  }),
   quoteRenewal: (purchaseId: string, termCount: number) => request<RenewalQuote>(`/api/v1/purchases/${encodeURIComponent(purchaseId)}/renew/quote`, {
     method: 'POST', body: { termCount },
   }),

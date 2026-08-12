@@ -9,6 +9,7 @@
 - `request_validation.go` applies shared request validation, strict JSON decoding, and URL parameter normalization.
 - `authentication.go` exchanges verified Telegram init data for session and request-signing cookies.
 - `handlers.go` serves onboarding actions, dashboard, catalog, purchases, balance, and ledger history.
+- `purchases.go` serves the authenticated queued-purchase cancellation and TXB refund endpoint.
 - `dashboard_usage.go` validates the authenticated member's UTC traffic range and serves the bounded per-node usage projection.
 - `billing_orders.go` creates, polls, and cancels member payment orders.
 - `renewals.go` quotes and commits 1-6-term current-ride renewal batches.

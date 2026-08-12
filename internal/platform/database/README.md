@@ -25,6 +25,8 @@ depend on the `Store` methods; provider network calls do not belong here.
   active/queued selection.
 - `billing_payments.go` — payment-order creation, checkout updates, expiry, reads,
   and row scanning.
+- `billing_purchase_cancellation.go` — owner-scoped queued cancellation with
+  atomic status transition, TXB refund, and immutable ledger entry.
 - `billing_payment_settlement.go` — customer cancellation and idempotent provider
   settlement transitions.
 - `billing_courtesy.go` — atomic terminal-payment courtesy credits with linked

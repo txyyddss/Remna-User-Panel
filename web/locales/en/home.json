@@ -23,6 +23,11 @@
     "renewPrice": "Total",
     "renewAction": "Confirm renewal",
     "renewSuccess": "Renewal scheduled successfully.",
+    "cancelQueued": "Cancel queued ride",
+    "cancelQueuedTitle": "Cancel this queued ride?",
+    "cancelQueuedDescription": "The queued entitlement will be cancelled and its charged TXB price will be refunded to your balance.",
+    "cancelQueuedConfirm": "Cancel and refund",
+    "queuedCancelled": "Queued ride cancelled and TXB refunded.",
     "resetCadence": "Reset cadence",
     "reset": {
       "DAY": "Daily",

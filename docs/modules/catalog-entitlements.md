@@ -29,6 +29,8 @@ When a term activates, synchronization persists three phases: remove all squads 
 
 Renewal uses the current ride's combo and add-ons, current server prices, and one idempotency key for a contiguous batch of 1-6 terms. Each selected squad is rechecked against an optional distinct-user reservation limit, including queued terms, before the single atomic debit.
 
+Members may cancel only their own queued purchase through `POST /api/v1/purchases/{id}/cancel`. The local transaction requires `status='queued'`, marks the purchase cancelled, credits the snapshotted charged TXB amount, and appends one `purchase_cancellation` ledger entry. Because the entitlement has not reached Remnawave, this path performs no provider call and no upstream job is needed; cancellation also releases the local stock reservation while retaining immutable purchase history.
+
 ## Rollover ordering and formula
 
 Expiry first queues `rollover_finalize` and blocks renewal activation. The worker quiesces old access before fetching the upstream reset strategy, last reset timestamp, and bounded daily sparkline usage. It retains only aggregate allocation, used bytes, eligible unused bytes, and the algorithm version.

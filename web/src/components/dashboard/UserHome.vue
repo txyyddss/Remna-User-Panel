@@ -14,6 +14,7 @@ import UsagePanel from './UsagePanel.vue'
 
 const { dashboard, loading, revoking, error, usageRatio, activeSquadNames, load, revokeSubscription } = useDashboard()
 const revoked = shallowRef(false)
+const queuedCancellationNotice = shallowRef(false)
 const route = useRoute()
 const router = useRouter()
 const reissueOrderId = computed(() => typeof route.query.reissue === 'string' && route.query.reissue ? route.query.reissue : undefined)
@@ -25,6 +26,11 @@ watch(revoking, (next, previous) => {
 
 async function confirmRevoke(): Promise<void> {
   revoked.value = await revokeSubscription()
+}
+
+async function handleQueuedCancelled(): Promise<void> {
+  queuedCancellationNotice.value = true
+  await load({ quiet: true })
 }
 
 function consumeTopUpRequest(): void {
@@ -68,6 +74,7 @@ function consumeReissueRequest(): void {
           @revoke="confirmRevoke"
         />
         <InlineNotice v-if="revoked" tone="success" :title="$t('dashboard.linkReplaced')">{{ $t('dashboard.previousLinkInvalid') }}</InlineNotice>
+        <InlineNotice v-if="queuedCancellationNotice" tone="success">{{ $t('home.queuedCancelled') }}</InlineNotice>
         <UsagePanel
           v-if="dashboard.statistics"
           :statistics="dashboard.statistics"
@@ -79,7 +86,12 @@ function consumeReissueRequest(): void {
         <section v-else class="section-block home-usage home-usage--empty empty-inline">
           <div><h3>{{ $t('dashboard.noStatistics') }}</h3><p>{{ $t('dashboard.statisticsPending') }}</p></div>
         </section>
-        <EntitlementSummary :active="dashboard.activePurchase" :queued="dashboard.queuedPurchase" :squad-names="activeSquadNames" />
+        <EntitlementSummary
+          :active="dashboard.activePurchase"
+          :queued="dashboard.queuedPurchase"
+          :squad-names="activeSquadNames"
+          @queued-cancelled="handleQueuedCancelled"
+        />
         <ComingSoonLinks />
       </div>
     </template>

@@ -14,6 +14,7 @@ Each YAML file is one complete OpenAPI Path Item Object. `../openapi.yaml` regis
 - `api-v1-catalog.yaml`: `/api/v1/catalog`
 - `api-v1-purchases-quote.yaml`: `/api/v1/purchases/quote`
 - `api-v1-purchases.yaml`: `/api/v1/purchases`
+- `api-v1-purchases-id-cancel.yaml`: `/api/v1/purchases/{id}/cancel`, owner-only queued cancellation with atomic TXB refund
 - `api-v1-purchases-id-renew-quote.yaml`: `/api/v1/purchases/{id}/renew/quote`
 - `api-v1-purchases-id-renew.yaml`: `/api/v1/purchases/{id}/renew`
 - `api-v1-subscription-revoke.yaml`: `/api/v1/subscription/revoke`

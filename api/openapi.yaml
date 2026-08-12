@@ -28,6 +28,7 @@ paths:
   /api/v1/catalog: { $ref: './paths/api-v1-catalog.yaml' }
   /api/v1/purchases/quote: { $ref: './paths/api-v1-purchases-quote.yaml' }
   /api/v1/purchases: { $ref: './paths/api-v1-purchases.yaml' }
+  /api/v1/purchases/{id}/cancel: { $ref: './paths/api-v1-purchases-id-cancel.yaml' }
   /api/v1/purchases/{id}/renew/quote: { $ref: './paths/api-v1-purchases-id-renew-quote.yaml' }
   /api/v1/purchases/{id}/renew: { $ref: './paths/api-v1-purchases-id-renew.yaml' }
   /api/v1/subscription/revoke: { $ref: './paths/api-v1-subscription-revoke.yaml' }

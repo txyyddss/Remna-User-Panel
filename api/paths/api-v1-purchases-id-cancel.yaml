@@ -1,0 +1,20 @@
+post:
+  tags: [Catalog]
+  operationId: cancelQueuedPurchase
+  summary: Cancel a queued purchase and refund its TXB price
+  description: Only the authenticated owner can cancel a purchase while its status is queued. The charged TXB amount is credited back atomically and the cancelled purchase is retained as immutable history.
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema: { $ref: '../openapi.yaml#/components/schemas/ID' }
+  responses:
+    '200':
+      description: Queued purchase cancelled and refunded.
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/Purchase' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }
+    '500': { $ref: '../openapi.yaml#/components/responses/InternalFailure' }

@@ -99,6 +99,7 @@
     "catalogUnavailable": "目录暂不可用。",
     "quoteFailed": "无法加载报价。",
     "purchaseFailed": "购买失败。",
+    "purchaseCancelFailed": "排队套餐取消失败。",
     "purchaseBalance": "TXB 余额不足。",
     "couponWallet": "优惠券包暂不可用。",
     "couponRedeem": "无法兑换此代码。",
@@ -139,7 +140,8 @@
       "NO_ACCESSIBLE_NODES": "当前选择没有可访问的节点。",
       "SQUAD_STOCK_UNAVAILABLE": "所选线路暂时已满。",
       "RENEWAL_CONFLICT": "续费状态已变化，请刷新后重试。",
-      "PURCHASE_NOT_FOUND": "找不到当前套餐。"
+      "PURCHASE_NOT_FOUND": "找不到当前套餐。",
+      "PURCHASE_CANCEL_CONFLICT": "此排队套餐已无法取消，请刷新后重试。"
     },
     "renewalFailed": "续费报价或确认失败。"
   }

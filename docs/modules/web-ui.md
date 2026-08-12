@@ -55,6 +55,8 @@ Encrypted settings render as masked values and only permit write-only replacemen
 
 The visual system preserves the existing premium-dark graphite/mint identity: graphite canvas, layered charcoal surfaces, off-white text, one muted mint accent, 16 px panels, and 12 px controls. Member density remains lower than administrator density, copy is task-oriented, and motion is restrained.
 
+The Home ride summary exposes cancellation only for the authenticated user's queued entitlement. Cancellation refreshes the dashboard after the server atomically marks the purchase cancelled, refunds its charged TXB amount, and records the immutable ledger entry.
+
 Interactive targets are at least 44 px. Keyboard focus is visible and restored to the main landmark after route changes. The skip link, semantic fieldsets, status live regions, Nuxt UI overlay focus management, Telegram BackButton/MainButton integration, safe-area variables, and 320 px layouts are part of the acceptance contract. Faint text meets usable contrast, and `prefers-reduced-motion` disables nonessential transitions.
 
 ## Build, failure behavior, and verification
