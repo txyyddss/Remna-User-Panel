@@ -37,6 +37,6 @@ const items = computed(() => [
 <style scoped>
 .catalog-progress { overflow-x: auto; margin: 0.3rem 0 1.15rem; padding: 0.2rem 0; }
 .catalog-progress :deep([data-slot='title']) { font-size: 0.58rem; white-space: nowrap; }
-.catalog-progress :deep([data-slot='icon']) { order: -1; }
+.catalog-progress :deep([data-slot='icon']) { position: relative; z-index: 10; }
 .catalog-progress :deep(.catalog-progress__icon--completed) { color: black; }
 </style>
