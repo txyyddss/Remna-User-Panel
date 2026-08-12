@@ -1,10 +1,35 @@
 PaymentReturnStatus:
   type: object
   additionalProperties: false
-  required: [status]
+  required: [id, provider, providerRail, status, txb, payableAmount, payableCurrency, actualCryptoAmount, actualCryptoCurrency, createdAt, paidAt]
   properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    provider:
+      $ref: '../../openapi.yaml#/components/schemas/PaymentProvider'
+    providerRail:
+      type: string
     status:
       $ref: '../../openapi.yaml#/components/schemas/PaymentStatus'
+    txb:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    payableAmount:
+      type: string
+      pattern: '^\d+(\.\d+)?$'
+    payableCurrency:
+      type: string
+      enum: [CNY, USD, XTR, USDT]
+    actualCryptoAmount:
+      type: [string, 'null']
+      pattern: '^\d+(\.\d+)?$'
+    actualCryptoCurrency:
+      type: [string, 'null']
+      enum: [USDT, null]
+    createdAt:
+      $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+    paidAt:
+      type: [string, 'null']
+      format: date-time
 
 PaymentPage:
   type: object

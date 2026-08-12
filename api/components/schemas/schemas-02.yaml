@@ -172,10 +172,27 @@ Combo:
     updatedAt:
       $ref: '../../openapi.yaml#/components/schemas/Timestamp'
 
+CatalogNode:
+  type: object
+  additionalProperties: false
+  required: [uuid, name, countryCode, consumptionMultiplier]
+  properties:
+    uuid:
+      type: string
+      format: uuid
+    name:
+      type: string
+    countryCode:
+      type: string
+      pattern: '^[A-Z]{2}$'
+    consumptionMultiplier:
+      type: number
+      minimum: 0
+
 Catalog:
   type: object
   additionalProperties: false
-  required: [combos, addons]
+  required: [combos, addons, nodes]
   properties:
     combos:
       type: array
@@ -185,6 +202,10 @@ Catalog:
       type: array
       items:
         $ref: '../../openapi.yaml#/components/schemas/SquadProduct'
+    nodes:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/CatalogNode'
 
 ComboWrite:
   type: object

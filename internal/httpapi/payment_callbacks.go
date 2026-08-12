@@ -133,14 +133,12 @@ func (s *Server) paymentReturnStatus(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, http.StatusNotFound, "PAYMENT_NOT_FOUND", "Payment order not found.")
 		return
 	}
-	status, err := s.deps.Billing.ReturnStatus(r.Context(), provider, orderID)
+	details, err := s.deps.Billing.ReturnDetails(r.Context(), provider, orderID)
 	if err != nil {
 		s.writeError(w, r, http.StatusNotFound, "PAYMENT_NOT_FOUND", "Payment order not found.")
 		return
 	}
-	writeJSON(w, http.StatusOK, struct {
-		Status string `json:"status"`
-	}{Status: status})
+	writeJSON(w, http.StatusOK, details)
 }
 
 func (s *Server) paymentReturnCapability(provider, orderID string, now time.Time) string {

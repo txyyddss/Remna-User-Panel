@@ -3,9 +3,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { FeaturePaymentOrder } from '@/api/features'
 
-const { getPaymentOrder } = vi.hoisted(() => ({ getPaymentOrder: vi.fn() }))
+const { getPaymentOrder, getPaymentReturnStatus } = vi.hoisted(() => ({ getPaymentOrder: vi.fn(), getPaymentReturnStatus: vi.fn() }))
 
-vi.mock('@/api/client', () => ({ api: { getPaymentOrder } }))
+vi.mock('@/api/client', () => ({ api: { getPaymentOrder, getPaymentReturnStatus } }))
 
 import { usePaymentReturn } from './usePaymentReturn'
 
@@ -21,6 +21,27 @@ describe('payment return confirmation', () => {
   afterEach(() => {
     vi.useRealTimers()
     vi.clearAllMocks()
+  })
+
+  it('keeps the signed browser receipt projection alongside its status', async () => {
+    getPaymentReturnStatus.mockResolvedValue({
+      id: 'payment-1', provider: 'ezpay', providerRail: 'alipay', status: 'paid',
+      txb: { currency: 'TXB', minor: '2000', display: '20.00 TXB' }, payableAmount: '20.00', payableCurrency: 'CNY',
+      actualCryptoAmount: null, actualCryptoCurrency: null, createdAt: '2026-08-11T00:00:00Z', paidAt: '2026-08-11T00:01:00Z',
+    })
+    const scope = effectScope()
+    const payment = scope.run(() => usePaymentReturn(shallowRef('payment-1'), {
+      browserStatus: true,
+      provider: shallowRef('ezpay'),
+      capability: shallowRef('capability'),
+    }))!
+
+    await payment.refresh()
+
+    expect(payment.details.value?.id).toBe('payment-1')
+    expect(payment.details.value?.payableAmount).toBe('20.00')
+    expect(payment.state.value).toBe('confirmed')
+    scope.stop()
   })
 
   it('confirms only an authoritative paid order', async () => {

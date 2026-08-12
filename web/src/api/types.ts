@@ -41,6 +41,7 @@ export type ResetCadence = components['schemas']['ResetStrategy']
 export type SquadProduct = DeepReadonly<components['schemas']['SquadProduct']>
 export type SquadProductWrite = components['schemas']['SquadProductWrite']
 export type Combo = DeepReadonly<components['schemas']['Combo']>
+export type CatalogNode = DeepReadonly<components['schemas']['CatalogNode']>
 export type Catalog = DeepReadonly<components['schemas']['Catalog']>
 export type EntitlementStatus = components['schemas']['EntitlementStatus']
 export type Purchase = DeepReadonly<components['schemas']['Purchase']>

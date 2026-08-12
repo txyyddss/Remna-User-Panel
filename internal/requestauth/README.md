@@ -22,4 +22,4 @@ LOWERCASE_HEX_SHA256_OF_EXACT_BODY_BYTES
 
 The signing envelope accepts up to 6 MiB so a valid 5 MiB questionnaire CSV and its multipart framing are not rejected. JSON and upload handlers keep their stricter format-specific limits.
 
-Explicit protocol exceptions are the Telegram `initData` bootstrap, Telegram/EZPay/BEPusdt callbacks with their existing provider authentication, health and readiness probes, payment return pages/status projections, and static assets. Those routes do not represent an already-authenticated browser API session.
+Explicit protocol exceptions are the Telegram `initData` bootstrap, Telegram/EZPay/BEPusdt callbacks with their existing provider authentication, health and readiness probes, payment return pages/receipt projections, and static assets. Those routes do not represent an already-authenticated browser API session.

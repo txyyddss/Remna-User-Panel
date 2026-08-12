@@ -1,8 +1,8 @@
 get:
   tags: [Billing]
   operationId: getPaymentReturnStatus
-  summary: Poll a provider-return payment status
-  description: Returns only the durable status for a short-lived signed provider-return capability. It never exposes owner, amount, checkout, or provider payload data and never changes payment state.
+  summary: Poll a provider-return payment receipt
+  description: Returns a narrow receipt projection for a short-lived signed provider-return capability. It never exposes the owner, checkout, QR, trade, or provider payload data and never changes payment state.
   security: []
   parameters:
     - name: provider
@@ -24,7 +24,7 @@ get:
         pattern: '^[0-9]+\.[a-f0-9]{64}$'
   responses:
     '200':
-      description: Current durable payment status.
+      description: Current durable payment receipt projection.
       content:
         application/json:
           schema:

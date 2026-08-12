@@ -12,7 +12,7 @@ import EntitlementSummary from './EntitlementSummary.vue'
 import SubscriptionPanel from './SubscriptionPanel.vue'
 import UsagePanel from './UsagePanel.vue'
 
-const { dashboard, loading, revoking, error, usageRatio, activeSquadNames, load, revokeSubscription } = useDashboard()
+const { dashboard, loading, revoking, error, usageRatio, catalogNodes, activeSquadNames, load, revokeSubscription } = useDashboard()
 const revoked = shallowRef(false)
 const queuedCancellationNotice = shallowRef(false)
 const route = useRoute()
@@ -86,6 +86,7 @@ function consumeReissueRequest(): void {
           :stale="dashboard.statisticsStale"
           :fetched-at="dashboard.fetchedAt"
           :term="dashboard.activePurchase"
+          :catalog-nodes="catalogNodes"
         />
         <section v-else class="section-block home-usage home-usage--empty empty-inline">
           <div><h3>{{ $t('dashboard.noStatistics') }}</h3><p>{{ $t('dashboard.statisticsPending') }}</p></div>

@@ -15,6 +15,16 @@ export type PaymentReturnProvider = 'ezpay' | 'bepusdt'
 
 export interface FeaturePaymentReturnStatus {
   status: import('./types').PaymentStatus
+  id: string
+  provider: import('./types').PaymentProvider
+  providerRail: string
+  txb: import('./types').Money
+  payableAmount: string
+  payableCurrency: 'CNY' | 'USD' | 'USDT' | 'XTR'
+  actualCryptoAmount: string | null
+  actualCryptoCurrency: 'USDT' | null
+  createdAt: import('./types').RFC3339
+  paidAt: import('./types').RFC3339 | null
 }
 
 const featureRequest = request

@@ -19,6 +19,7 @@ describe('UsagePanel', () => {
           sparklineData: ['0', '1073741824'],
           topNodes: [],
         },
+        catalogNodes: [],
       },
     })
     expect(wrapper.text()).toContain('Last known data')

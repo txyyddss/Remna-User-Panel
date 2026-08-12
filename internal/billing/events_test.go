@@ -103,6 +103,31 @@ func TestServiceSettleAndOrderForwarding(t *testing.T) {
 	}
 }
 
+func TestServiceReturnDetailsUsesNarrowProjection(t *testing.T) {
+	t.Parallel()
+
+	paidAt := time.Date(2026, 8, 11, 1, 2, 3, 0, time.UTC)
+	tradeID := "provider-trade-1"
+	paymentURL := "https://provider.example/checkout"
+	repository := newBillingRepository()
+	repository.orders["order-1"] = model.PaymentOrder{
+		ID: "order-1", UserID: "user-1", Provider: "bepusdt", ProviderRail: "usdt.trc20", Status: "paid",
+		TXB: model.Money{Currency: "TXB", Minor: "2000", Display: "20.00 TXB"}, PayableAmount: "20.00", PayableCurrency: "USD",
+		ProviderTradeID: &tradeID, PaymentURL: &paymentURL, CreatedAt: paidAt.Add(-time.Minute), PaidAt: &paidAt,
+	}
+
+	details, err := newBillingServiceForTest(repository, &billingSettings{}, &billingGateway{}).ReturnDetails(context.Background(), "bepusdt", "order-1")
+	if err != nil {
+		t.Fatalf("ReturnDetails(): %v", err)
+	}
+	if details.ID != "order-1" || details.Provider != "bepusdt" || details.ProviderRail != "usdt.trc20" || details.Status != "paid" || details.PaidAt == nil || !details.PaidAt.Equal(paidAt) {
+		t.Fatalf("ReturnDetails() = %+v", details)
+	}
+	if details.TXB.Display != "20.00 TXB" || details.PayableAmount != "20.00" || details.PayableCurrency != "USD" {
+		t.Fatalf("ReturnDetails() amount = %+v", details)
+	}
+}
+
 func TestServiceAuthorizeEventRequiresLivePendingOrder(t *testing.T) {
 	t.Parallel()
 

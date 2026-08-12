@@ -95,7 +95,7 @@ func (s *Service) Catalog(ctx context.Context) (model.Catalog, error) {
 func (s *Service) hydrateLiveCatalog(ctx context.Context, combos []model.Combo, overrides []model.SquadProduct) (model.Catalog, error) {
 	lister, ok := s.remnawave.(remoteSquadLister)
 	if !ok {
-		return model.Catalog{Combos: combos, Addons: overrides}, nil
+		return model.Catalog{Combos: combos, Addons: overrides, Nodes: []model.CatalogNode{}}, nil
 	}
 	remote, err := lister.ListCatalogSquads(ctx)
 	if err != nil {
@@ -142,7 +142,13 @@ func (s *Service) hydrateLiveCatalog(ctx context.Context, combos []model.Combo, 
 			liveCombos = append(liveCombos, combo)
 		}
 	}
-	return model.Catalog{Combos: liveCombos, Addons: addons}, nil
+	catalogNodes := make([]model.CatalogNode, 0)
+	if nodeLister, ok := s.remnawave.(remoteNodeLister); ok {
+		if remoteNodes, nodeErr := nodeLister.ListCatalogNodes(ctx); nodeErr == nil {
+			catalogNodes = projectCatalogNodes(remoteNodes)
+		}
+	}
+	return model.Catalog{Combos: liveCombos, Addons: addons, Nodes: catalogNodes}, nil
 }
 
 // Purchase delegates all pricing and balance work to one SQLite transaction.

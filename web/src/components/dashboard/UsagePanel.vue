@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue'
 
-import type { Purchase, RFC3339, UsageStatistics } from '@/api/types'
+import type { CatalogNode, Purchase, RFC3339, UsageStatistics } from '@/api/types'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import { useDashboardNodeUsage } from '@/composables/useDashboard'
 import { formatBytes, formatDateTime } from '@/utils/format'
+import TrafficUsageBar from './TrafficUsageBar.vue'
 import TrafficUsageDetails from './TrafficUsageDetails.vue'
 
 const props = defineProps<{
@@ -13,6 +14,7 @@ const props = defineProps<{
   stale: boolean
   fetchedAt: RFC3339
   term?: Purchase | null
+  catalogNodes: readonly CatalogNode[]
 }>()
 
 const percentage = computed(() => Math.min(100, Math.max(0, Math.round(props.ratio * 100))))
@@ -91,6 +93,11 @@ watch(detailsOpen, (open) => {
     >
       <span />
     </div>
+    <TrafficUsageBar
+      :nodes="statistics.topNodes"
+      :total-bytes="statistics.usedTrafficBytes"
+      :catalog-nodes="catalogNodes"
+    />
     <div v-if="graphPoints" class="home-usage__graph">
       <svg viewBox="0 0 100 100" role="img" :aria-label="$t('dashboard.trafficGraph')" preserveAspectRatio="none">
         <polyline :points="graphPoints" fill="none" stroke="currentColor" stroke-width="3" vector-effect="non-scaling-stroke" />

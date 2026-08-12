@@ -45,6 +45,7 @@ describe('catalog squad selection', () => {
     const beta = squad('2')
     const catalog = {
       addons: [alpha, beta],
+      nodes: [],
       combos: [
         { id: 'combo-a', name: 'A', description: '', price: money('1000'), validityDays: 30, trafficLimitBytes: '1', resetStrategy: 'MONTH', includedSquads: [alpha], active: true, rolloverMinRemainingBps: 0, rolloverMaxTxbMinor: '0', rolloverMax: money('0'), createdAt: '2026-08-08T00:00:00Z', updatedAt: '2026-08-08T00:00:00Z' },
         { id: 'combo-b', name: 'B', description: '', price: money('1000'), validityDays: 30, trafficLimitBytes: '1', resetStrategy: 'MONTH', includedSquads: [beta], active: true, rolloverMinRemainingBps: 0, rolloverMaxTxbMinor: '0', rolloverMax: money('0'), createdAt: '2026-08-08T00:00:00Z', updatedAt: '2026-08-08T00:00:00Z' },
@@ -72,6 +73,7 @@ describe('catalog squad selection', () => {
     const addon = squad('1')
     const catalog = {
       addons: [addon],
+      nodes: [],
       combos: [
         { id: 'combo-a', name: 'A', description: '', price: money('1000'), validityDays: 30, trafficLimitBytes: '1', resetStrategy: 'MONTH', includedSquads: [], active: true, rolloverMinRemainingBps: 0, rolloverMaxTxbMinor: '0', rolloverMax: money('0'), createdAt: '2026-08-08T00:00:00Z', updatedAt: '2026-08-08T00:00:00Z' },
       ],

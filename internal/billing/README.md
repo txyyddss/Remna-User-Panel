@@ -7,7 +7,7 @@ Payment-method discovery, exact decimal arithmetic, checkout creation, provider 
 - `service.go` defines settings/repository contracts, service construction, and checkout creation.
 - `gateway_contracts.go` defines the server-owned provider checkout/event contracts and gateway interfaces.
 - `payment_methods.go` builds the configured rail list, including coupon funding and independently selectable provider-account profiles.
-- `events.go` validates and authorizes provider events, settles orders, and handles cancellation.
+- `events.go` validates and authorizes provider events, settles orders, exposes the narrow signed-return receipt projection, and handles cancellation.
 - `payment_profile_runtime.go` gates channels from stable-ID profiles and derives each BEPusdt callback capability from the selected account credential.
 - `methods.go` defines canonical payment method identifiers and enabled-rail ordering.
 - `decimal.go` parses and computes exact TXB and provider-currency amounts without floating point.
@@ -17,4 +17,5 @@ Payment-method discovery, exact decimal arithmetic, checkout creation, provider 
 - `methods_test.go` covers documented method identifiers and rail ordering.
 - `decimal_test.go` covers decimal parsing, equivalence, and rounding.
 - `methods_service_test.go` covers configured method availability, cancellation behavior, and BEPusdt callback capabilities.
+- `payment_profile_runtime_test.go` covers account-scoped BEPusdt callback capabilities.
 - `README.md` documents the package layout.

@@ -175,6 +175,7 @@ components:
     ResetStrategy: { $ref: './components/schemas/schemas-02.yaml#/ResetStrategy' }
     SquadProduct: { $ref: './components/schemas/schemas-02.yaml#/SquadProduct' }
     Combo: { $ref: './components/schemas/schemas-02.yaml#/Combo' }
+    CatalogNode: { $ref: './components/schemas/schemas-02.yaml#/CatalogNode' }
     Catalog: { $ref: './components/schemas/schemas-02.yaml#/Catalog' }
     ComboWrite: { $ref: './components/schemas/schemas-02.yaml#/ComboWrite' }
     SquadProductWrite: { $ref: './components/schemas/schemas-02.yaml#/SquadProductWrite' }

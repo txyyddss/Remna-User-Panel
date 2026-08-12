@@ -123,10 +123,20 @@ type RenewalBatch struct {
 	Purchases  []Purchase `json:"purchases"`
 }
 
+// CatalogNode is the display-only node identity and multiplier metadata used
+// by the member dashboard.
+type CatalogNode struct {
+	UUID                  string  `json:"uuid"`
+	Name                  string  `json:"name"`
+	CountryCode           string  `json:"countryCode"`
+	ConsumptionMultiplier float64 `json:"consumptionMultiplier"`
+}
+
 // Catalog is the complete customer-visible catalog snapshot.
 type Catalog struct {
 	Combos []Combo        `json:"combos"`
 	Addons []SquadProduct `json:"addons"`
+	Nodes  []CatalogNode  `json:"nodes"`
 }
 
 // PurchaseQuote is a server-priced, non-mutating checkout preview.

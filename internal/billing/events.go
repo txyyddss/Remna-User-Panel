@@ -125,18 +125,23 @@ func (s *Service) OrderForUser(ctx context.Context, orderID, userID string) (mod
 	return s.repository.PaymentOrderForUser(ctx, orderID, userID)
 }
 
-// ReturnStatus exposes only the durable payment state needed by the
-// unauthenticated provider-return landing page. It deliberately omits the
-// owner, amount, checkout URL, and all provider payload details.
-func (s *Service) ReturnStatus(ctx context.Context, provider, orderID string) (string, error) {
+// ReturnDetails exposes a narrow receipt projection to the unauthenticated
+// provider-return landing page. It deliberately omits the owner, checkout
+// URL, QR payload, provider trade IDs, and all provider payload details.
+func (s *Service) ReturnDetails(ctx context.Context, provider, orderID string) (model.PaymentReturnDetails, error) {
 	order, err := s.repository.PaymentOrderByID(ctx, orderID)
 	if err != nil {
-		return "", err
+		return model.PaymentReturnDetails{}, err
 	}
 	if !strings.EqualFold(order.Provider, provider) {
-		return "", database.ErrNotFound
+		return model.PaymentReturnDetails{}, database.ErrNotFound
 	}
-	return order.Status, nil
+	return model.PaymentReturnDetails{
+		ID: order.ID, Provider: order.Provider, ProviderRail: order.ProviderRail, Status: order.Status,
+		TXB: order.TXB, PayableAmount: order.PayableAmount, PayableCurrency: order.PayableCurrency,
+		ActualCryptoAmount: order.ActualCryptoAmount, ActualCryptoCurrency: order.ActualCryptoCurrency,
+		CreatedAt: order.CreatedAt, PaidAt: order.PaidAt,
+	}, nil
 }
 
 // Cancel stops client polling immediately and then performs provider cancellation

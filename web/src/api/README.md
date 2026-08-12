@@ -2,7 +2,7 @@
 
 - `client.ts` exposes typed member and administrator API operations, including renewal batches, payment profiles, and date-bounded dashboard node usage.
 - `client.test.ts` covers client request behavior.
-- `features.ts` exposes feature-specific endpoints and contract types, including the browser-safe payment-return status projection, member coupon soft-discard, and the administrator terminal-payment courtesy credit.
+- `features.ts` exposes feature-specific endpoints and contract types, including the browser-safe payment-return receipt projection, member coupon soft-discard, and the administrator terminal-payment courtesy credit.
 - `features.test.ts` verifies feature request construction.
 - `generated.ts` contains the compact generated OpenAPI contract.
 - `http.ts` provides authenticated HTTP and error handling primitives.

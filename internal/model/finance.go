@@ -56,6 +56,22 @@ type PaymentOrder struct {
 	UpdatedAt            time.Time  `json:"updatedAt"`
 }
 
+// PaymentReturnDetails is the deliberately narrow receipt projection exposed
+// through a short-lived, signed provider-return capability.
+type PaymentReturnDetails struct {
+	ID                   string     `json:"id"`
+	Provider             string     `json:"provider"`
+	ProviderRail         string     `json:"providerRail"`
+	Status               string     `json:"status"`
+	TXB                  Money      `json:"txb"`
+	PayableAmount        string     `json:"payableAmount"`
+	PayableCurrency      string     `json:"payableCurrency"`
+	ActualCryptoAmount   *string    `json:"actualCryptoAmount"`
+	ActualCryptoCurrency *string    `json:"actualCryptoCurrency"`
+	CreatedAt            time.Time  `json:"createdAt"`
+	PaidAt               *time.Time `json:"paidAt"`
+}
+
 // PaymentMethod is one selectable provider rail exposed to a member.
 type PaymentMethod struct {
 	ID           string `json:"id"`

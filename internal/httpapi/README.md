@@ -50,7 +50,7 @@
 - `operations_shared.go` contains bounded-context and request-ID helpers.
 - `telegram_webhook.go` validates and processes Telegram membership and Stars payment updates.
 - `telegram_commands.go` handles group-message rewards and administrator deduction commands.
-- `payment_callbacks.go` handles EZPay/BEPusdt callbacks, short-lived payment-return capabilities, and navigation-only payment returns/status polling.
+- `payment_callbacks.go` handles EZPay/BEPusdt callbacks, short-lived payment-return capabilities, and navigation-only payment returns/receipt polling.
 
 ## Tests
 

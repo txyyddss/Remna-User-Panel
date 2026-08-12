@@ -23,6 +23,31 @@ type remoteNodeLister interface {
 	AccessibleCatalogNodeUUIDs(context.Context, string) ([]string, error)
 }
 
+func projectCatalogNodes(nodes []RemoteNode) []model.CatalogNode {
+	result := make([]model.CatalogNode, 0, len(nodes))
+	for _, node := range nodes {
+		if node.Disabled {
+			continue
+		}
+		result = append(result, model.CatalogNode{
+			UUID:                  node.UUID,
+			Name:                  node.Name,
+			CountryCode:           node.CountryCode,
+			ConsumptionMultiplier: node.ConsumptionMultiplier,
+		})
+	}
+	sort.Slice(result, func(left, right int) bool {
+		if result[left].CountryCode == result[right].CountryCode {
+			if result[left].Name == result[right].Name {
+				return result[left].UUID < result[right].UUID
+			}
+			return result[left].Name < result[right].Name
+		}
+		return result[left].CountryCode < result[right].CountryCode
+	})
+	return result
+}
+
 func (s *Service) quoteAccessibleNodes(ctx context.Context, comboID string, addonIDs []string) ([]model.RemnaNode, error) {
 	provider, ok := s.remnawave.(remoteNodeLister)
 	if !ok {

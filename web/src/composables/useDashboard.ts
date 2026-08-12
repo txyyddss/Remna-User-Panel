@@ -2,7 +2,7 @@ import { computed, inject, onMounted, provide, readonly, shallowRef, type Inject
 
 import { api } from '@/api/client'
 import { localizedError, t } from '@/i18n'
-import type { Catalog, Dashboard, DashboardNodeUsage } from '@/api/types'
+import type { Catalog, CatalogNode, Dashboard, DashboardNodeUsage } from '@/api/types'
 import { notifyHaptic } from '@/utils/telegram'
 
 const isoDate = /^\d{4}-\d{2}-\d{2}$/
@@ -94,6 +94,7 @@ export function useDashboard() {
   const { nodeUsage, nodeUsageLoading, nodeUsageError, nodeUsageStart, nodeUsageEnd, loadNodeUsage, setNodeUsageStart, setNodeUsageEnd } = nodeUsageController
 
   const hasEntitlement = computed(() => dashboard.value?.activePurchase != null)
+  const catalogNodes = computed<readonly CatalogNode[]>(() => catalog.value?.nodes ?? [])
   const usageRatio = computed(() => {
     if (!dashboard.value?.statistics) return 0
     const used = Number(dashboard.value.statistics.usedTrafficBytes)
@@ -169,6 +170,7 @@ export function useDashboard() {
     nodeUsageEnd: readonly(nodeUsageEnd),
     hasEntitlement,
     usageRatio,
+    catalogNodes,
     activeSquadNames,
     load,
     revokeSubscription,

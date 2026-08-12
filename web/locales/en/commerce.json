@@ -91,11 +91,37 @@
     "providers": {
       "ezpay": "EZPay",
       "bepusdt": "BEPUSDT",
-      "stars": "Telegram Stars"
-      ,"coupon": "Coupon"
+      "stars": "Telegram Stars",
+      "coupon": "Coupon"
+    },
+    "channels": {
+      "alipay": "Alipay",
+      "wxpay": "WeChat Pay",
+      "wechat": "WeChat Pay",
+      "qqpay": "QQ Wallet",
+      "bank": "UnionPay",
+      "jdpay": "JD Pay",
+      "usdt.trc20": "USDT · TRC20",
+      "usdt.erc20": "USDT · ERC20",
+      "usdt.polygon": "USDT · Polygon",
+      "usdt.bep20": "USDT · BEP20",
+      "usdt.aptos": "USDT · Aptos",
+      "usdt.solana": "USDT · Solana",
+      "usdt.xlayer": "USDT · X Layer",
+      "usdt.arbitrum": "USDT · Arbitrum",
+      "usdt.plasma": "USDT · Plasma",
+      "usdt.ton": "USDT · TON"
     },
     "noChannel": "No payment channel is available.",
     "channel": "Channel",
+    "receiptLabel": "Payment receipt",
+    "detailsHeading": "Payment details",
+    "balanceCredited": "Balance credited",
+    "paymentAmount": "Payment amount",
+    "paymentId": "Payment ID",
+    "createdAt": "Created",
+    "successTime": "Success time",
+    "settledAmount": "Settled amount",
     "creating": "Creating order",
     "continue": "Continue",
     "reissue": "Reissue payment",
@@ -114,6 +140,9 @@
     "orderExpired": "This payment order expired. Start a new one when you are ready.",
     "terminalStatus": "Payment status: {status}.",
     "status": {
+      "creating": "creating",
+      "pending": "pending",
+      "paid": "paid",
       "cancelled": "cancelled",
       "expired": "expired",
       "failed": "failed",
@@ -128,15 +157,13 @@
     "returnCheckingDescription": "Waiting for the payment provider confirmation.",
     "returnPendingDescription": "The payment is still pending. This page will update automatically.",
     "returnConfirmedTitle": "Payment confirmed",
-    "returnConfirmedDescription": "Your balance has been updated. It is safe to return to the Mini App.",
+    "returnConfirmedDescription": "Your balance has been updated. This receipt confirms the provider callback.",
     "returnTerminalTitle": "Payment was not confirmed",
     "returnTerminalDescription": "This payment is {status}.",
     "returnMissingTitle": "Payment reference is missing",
     "returnMissingDescription": "Open the Mini App to view your balance.",
     "returnUnavailableTitle": "Payment status is unavailable",
     "returnUnavailableDescription": "Open the Mini App and check your balance again.",
-    "returnAutoHome": "Returning to Home shortly.",
-    "returnHome": "Go to Home",
     "returnCheckingAction": "Checking payment"
   }
 }
