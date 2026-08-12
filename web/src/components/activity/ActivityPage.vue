@@ -24,7 +24,6 @@ const { overview, result, loading, busy, error, load, checkIn, placeBet, draw, c
     <template v-else-if="overview">
       <div class="page-toolbar">
         <p>{{ $t('activity.balance', { amount: formatMoney(overview.balance) }) }}</p>
-        <UButton class="text-button" color="neutral" variant="ghost" icon="i-ph-arrow-clockwise" :label="$t('common.refresh')" @click="load({ quiet: true })" />
       </div>
       <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
       <div class="activity-layout">

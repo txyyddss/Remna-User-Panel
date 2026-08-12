@@ -1,6 +1,8 @@
 import { detectTelegramWebApp } from './telegramContext'
+import { installHapticClickFeedback } from './telegramHaptics'
 
 export { isTelegramUserAgent, waitForTelegramContext } from './telegramContext'
+export { haptic, installHapticClickFeedback, notifyHaptic, notifyBetOutcome, type HapticImpact } from './telegramHaptics'
 
 export function getTelegramWebApp(): TelegramWebApp | undefined {
   return window.Telegram?.WebApp
@@ -156,37 +158,4 @@ export function openExternalLink(url: string): void {
 export function openTelegramInvoice(url: string): boolean {
   const app = getTelegramWebApp()
   return Boolean(app && supportsTelegramVersion('6.1') && tryTelegramCall(() => app.openInvoice(url)))
-}
-
-export type HapticImpact = 'light' | 'medium' | 'heavy'
-
-export function haptic(type: HapticImpact = 'light'): void {
-  const app = getTelegramWebApp()
-  if (app?.HapticFeedback && supportsTelegramVersion('6.1')) {
-    tryTelegramCall(() => app.HapticFeedback?.impactOccurred(type))
-  }
-}
-
-function hapticImpactFor(element: Element): HapticImpact {
-  const value = element.getAttribute('data-haptic')
-  return value === 'medium' || value === 'heavy' ? value : 'light'
-}
-
-function handleHapticClick(event: MouseEvent): void {
-  if (!(event.target instanceof Element)) return
-  const target = event.target.closest('[data-haptic]')
-  if (!target || target.hasAttribute('disabled') || target.getAttribute('aria-disabled') === 'true') return
-  haptic(hapticImpactFor(target))
-}
-
-export function installHapticClickFeedback(): () => void {
-  document.addEventListener('click', handleHapticClick, true)
-  return () => document.removeEventListener('click', handleHapticClick, true)
-}
-
-export function notifyHaptic(type: 'error' | 'success' | 'warning'): void {
-  const app = getTelegramWebApp()
-  if (app?.HapticFeedback && supportsTelegramVersion('6.1')) {
-    tryTelegramCall(() => app.HapticFeedback?.notificationOccurred(type))
-  }
 }

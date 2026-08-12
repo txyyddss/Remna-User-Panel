@@ -13,11 +13,20 @@
     "trafficTopNodes": "显示流量最高的最多 {count} 个节点。",
     "trafficNode": "{name} · {country}",
     "trafficTotal": "总计",
+    "squadSeparator": " · ",
+    "renew": "续费当前套餐",
+    "renewTitle": "续费当前套餐",
+    "renewHint": "按当前服务器价格选择连续周期。",
+    "renewTerms": "周期数",
+    "renewPrice": "合计",
+    "renewAction": "确认续费",
+    "renewSuccess": "续费已成功排队。",
     "resetCadence": "重置周期",
     "reset": {
       "DAY": "每日",
       "WEEK": "每周",
-      "MONTH": "每月"
+      "MONTH": "每月",
+      "MONTH_ROLLING": "滚动月度"
     }
   }
 }

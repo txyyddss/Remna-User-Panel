@@ -82,7 +82,8 @@
     "noResults": "没有结果",
     "error": "出现问题，请重试。",
     "working": "处理中",
-    "currencyTxb": "TXB"
+    "currencyTxb": "TXB",
+    "rangeSeparator": "至"
   },
   "errors": {
     "activityUnavailable": "活动暂时不可用。",
@@ -134,7 +135,12 @@
       "ADMIN_REQUIRED": "需要管理员权限。",
       "INVALID_GROUP_MESSAGE_THRESHOLD": "消息数量必须是非负整数。",
       "INVALID_GROUP_MESSAGE_REWARD": "群消息奖励必须是非负 TXB 金额。",
-      "HTTP_ERROR": "请求未能完成。"
-    }
+      "HTTP_ERROR": "请求未能完成。",
+      "NO_ACCESSIBLE_NODES": "当前选择没有可访问的节点。",
+      "SQUAD_STOCK_UNAVAILABLE": "所选线路暂时已满。",
+      "RENEWAL_CONFLICT": "续费状态已变化，请刷新后重试。",
+      "PURCHASE_NOT_FOUND": "找不到当前套餐。"
+    },
+    "renewalFailed": "续费报价或确认失败。"
   }
 }

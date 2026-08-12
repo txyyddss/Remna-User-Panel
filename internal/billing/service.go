@@ -78,6 +78,10 @@ type Settings interface {
 	Optional(context.Context, string) (string, error)
 }
 
+type paymentProfileReader interface {
+	PaymentProfiles(context.Context) ([]model.PaymentProfile, error)
+}
+
 // Repository is the transactional billing persistence contract.
 type Repository interface {
 	CreatePaymentOrder(context.Context, model.PaymentOrder) (model.PaymentOrder, error)
@@ -112,52 +116,14 @@ func NewService(repository Repository, settings Settings, gateway Gateway, publi
 	return &Service{repository: repository, settings: settings, gateway: gateway, publicURL: publicURL, now: time.Now}
 }
 
-// Methods returns the configured ordered rail list. A method is selectable only
-// when both its provider and new-direction rate are configured.
-func (s *Service) Methods(ctx context.Context) ([]model.PaymentMethod, error) {
-	result := make([]model.PaymentMethod, 0)
-	for _, provider := range []string{"ezpay", "bepusdt", "stars"} {
-		enabled, err := s.settings.Optional(ctx, "billing."+provider+".enabled")
-		if err != nil {
-			return nil, err
-		}
-		if enabled != "true" {
-			continue
-		}
-		rate, rateErr := s.loadNewRate(ctx, provider)
-		available := rateErr == nil && rate.Positive()
-		note := ""
-		if !available {
-			note = "Administrator must enter the TXB rate"
-		}
-		if provider == "stars" {
-			result = append(result, methodModel(provider, "", available, note))
-			continue
-		}
-		raw, err := s.settings.Optional(ctx, "billing."+provider+".methods")
-		if err != nil {
-			return nil, err
-		}
-		allowed := ezpayRails
-		if provider == "bepusdt" {
-			allowed = bepusdtRails
-		}
-		rails, err := parseEnabledRails(raw, allowed)
-		if err != nil {
-			return nil, fmt.Errorf("load %s methods: %w", provider, err)
-		}
-		for _, rail := range rails {
-			result = append(result, methodModel(provider, rail, available, note))
-		}
-	}
-	return result, nil
-}
-
 // CreateOrder computes authoritative pricing, persists the attempt, then requests checkout data.
 func (s *Service) CreateOrder(ctx context.Context, user model.User, methodID string, txbMinor int64) (model.PaymentOrder, error) {
 	provider, rail, err := ParseMethodID(methodID)
 	if err != nil {
 		return model.PaymentOrder{}, err
+	}
+	if provider == "coupon" {
+		return model.PaymentOrder{}, fmt.Errorf("%w: coupon funding is not a provider order", ErrInvalidOrder)
 	}
 	if txbMinor <= 0 || txbMinor > 100_000_000_00 {
 		return model.PaymentOrder{}, fmt.Errorf("%w: TXB amount is out of range", ErrInvalidOrder)

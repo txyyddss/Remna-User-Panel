@@ -1,0 +1,199 @@
+package database
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
+	"strings"
+	"time"
+)
+
+// RenewalInput describes one contiguous, no-coupon renewal batch.
+type RenewalInput struct {
+	UserID, PurchaseID, IdempotencyKey string
+	TermCount                          int
+}
+
+func (s *Store) RenewalQuote(ctx context.Context, userID, purchaseID string, termCount int, now time.Time) (model.RenewalQuote, error) {
+	if termCount < 1 || termCount > 6 {
+		return model.RenewalQuote{}, ErrConflict
+	}
+	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		return model.RenewalQuote{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	quote, _, _, err := renewalQuoteTx(ctx, tx, userID, purchaseID, termCount, now.UTC())
+	return quote, err
+}
+
+func renewalQuoteTx(ctx context.Context, tx *sql.Tx, userID, purchaseID string, termCount int, now time.Time) (model.RenewalQuote, model.Combo, []model.SquadProduct, error) {
+	purchase, err := scanPurchase(tx.QueryRowContext(ctx, purchaseSelect+` WHERE purchases.id=? AND purchases.user_id=?`, purchaseID, userID))
+	if err != nil {
+		return model.RenewalQuote{}, model.Combo{}, nil, err
+	}
+	if purchase.Status != "active" && purchase.Status != "activating" && purchase.Status != "queued" {
+		return model.RenewalQuote{}, model.Combo{}, nil, ErrConflict
+	}
+	combo, err := comboByIDTx(ctx, tx, purchase.ComboID, true)
+	if err != nil {
+		return model.RenewalQuote{}, model.Combo{}, nil, err
+	}
+	rows, err := tx.QueryContext(ctx, `SELECT remna_squad_uuid FROM purchase_addons WHERE purchase_id=? ORDER BY remna_squad_uuid`, purchaseID)
+	if err != nil {
+		return model.RenewalQuote{}, model.Combo{}, nil, err
+	}
+	addons := make([]model.SquadProduct, 0)
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			_ = rows.Close()
+			return model.RenewalQuote{}, model.Combo{}, nil, err
+		}
+		product, loadErr := squadByIDTx(ctx, tx, id, false)
+		if loadErr != nil {
+			_ = rows.Close()
+			return model.RenewalQuote{}, model.Combo{}, nil, loadErr
+		}
+		addons = append(addons, product)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return model.RenewalQuote{}, model.Combo{}, nil, err
+	}
+	_ = rows.Close()
+	selected := make([]string, 0, len(combo.IncludedSquads)+len(addons))
+	for _, squad := range combo.IncludedSquads {
+		selected = append(selected, squad.RemnaSquadUUID)
+	}
+	for _, squad := range addons {
+		selected = append(selected, squad.RemnaSquadUUID)
+	}
+	if err := checkSquadStockTx(ctx, tx, selected, userID); err != nil {
+		return model.RenewalQuote{}, model.Combo{}, nil, err
+	}
+	start, err := nextPurchaseStartTx(ctx, tx, userID, now)
+	if err != nil {
+		return model.RenewalQuote{}, model.Combo{}, nil, err
+	}
+	perTerm := combo.PriceTXBMinor
+	addonIDs := make([]string, 0, len(addons))
+	for _, addon := range addons {
+		perTerm += addon.PriceTXBMinor
+		addonIDs = append(addonIDs, addon.RemnaSquadUUID)
+	}
+	return model.RenewalQuote{PurchaseID: purchaseID, ComboID: combo.ID, TermCount: termCount, PricePerTerm: model.TXBMoney(perTerm), TotalPrice: model.TXBMoney(perTerm * int64(termCount)), EffectiveAt: start,
+		ExpiresAt: start.AddDate(0, 0, combo.ValidityDays*termCount), AddonSquadUUIDs: addonIDs}, combo, addons, nil
+}
+
+// Renew creates all terms and one ledger debit in one SQLite transaction.
+func (s *Store) Renew(ctx context.Context, input RenewalInput, now time.Time) (model.RenewalBatch, error) {
+	if input.TermCount < 1 || input.TermCount > 6 || strings.TrimSpace(input.IdempotencyKey) == "" {
+		return model.RenewalBatch{}, ErrConflict
+	}
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return model.RenewalBatch{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	var existingID, existingFingerprint string
+	fingerprint := fmt.Sprintf("%s:%d", input.PurchaseID, input.TermCount)
+	err = tx.QueryRowContext(ctx, `SELECT id,request_fingerprint FROM renewal_batches WHERE user_id=? AND idempotency_key=?`, input.UserID, input.IdempotencyKey).Scan(&existingID, &existingFingerprint)
+	if err == nil {
+		if existingID == "" || existingFingerprint != fingerprint {
+			return model.RenewalBatch{}, ErrConflict
+		}
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return model.RenewalBatch{}, rollbackErr
+		}
+		return s.loadRenewalBatch(ctx, existingID)
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return model.RenewalBatch{}, err
+	}
+	quote, combo, addons, err := renewalQuoteTx(ctx, tx, input.UserID, input.PurchaseID, input.TermCount, now.UTC())
+	if err != nil {
+		return model.RenewalBatch{}, err
+	}
+	batchID, err := ids.New()
+	if err != nil {
+		return model.RenewalBatch{}, err
+	}
+	newBalance, err := debitBalanceTx(ctx, tx, input.UserID, quote.TotalPrice.MinorInt64(), now.UTC())
+	if err != nil {
+		return model.RenewalBatch{}, err
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO renewal_batches(id,user_id,source_purchase_id,idempotency_key,request_fingerprint,term_count,charged_txb_minor,created_at) VALUES(?,?,?,?,?,?,?,?)`, batchID, input.UserID, input.PurchaseID, input.IdempotencyKey, fingerprint, input.TermCount, quote.TotalPrice.MinorInt64(), stamp(now)); err != nil {
+		return model.RenewalBatch{}, err
+	}
+	start := quote.EffectiveAt
+	idsForBatch := make([]string, 0, input.TermCount)
+	for index := 0; index < input.TermCount; index++ {
+		purchaseID, err := ids.New()
+		if err != nil {
+			return model.RenewalBatch{}, err
+		}
+		from := start.AddDate(0, 0, combo.ValidityDays*index)
+		until := from.AddDate(0, 0, combo.ValidityDays)
+		status := "queued"
+		if !from.After(now) {
+			status = "activating"
+		}
+		requestKey := any(nil)
+		if index == 0 {
+			requestKey = input.IdempotencyKey
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO purchases(id,user_id,combo_id,charged_txb_minor,valid_from,valid_until,status,coupon_grant_id,gross_price_txb_minor,coupon_discount_txb_minor,idempotency_key,request_fingerprint,renewal_batch_id,renewal_index,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, purchaseID, input.UserID, combo.ID, quote.PricePerTerm.MinorInt64(), stamp(from), stamp(until), status, nil, quote.PricePerTerm.MinorInt64(), 0, requestKey, fingerprint, batchID, index, stamp(now), stamp(now)); err != nil {
+			return model.RenewalBatch{}, err
+		}
+		for _, addon := range addons {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO purchase_addons(purchase_id,remna_squad_uuid,charged_txb_minor) VALUES(?,?,?)`, purchaseID, addon.RemnaSquadUUID, addon.PriceTXBMinor); err != nil {
+				return model.RenewalBatch{}, err
+			}
+		}
+		if index == 0 && status == "activating" {
+			if err := insertOutboxTx(ctx, tx, "remna_apply_entitlement", `{"purchaseId":"`+purchaseID+`"}`, now, now); err != nil {
+				return model.RenewalBatch{}, err
+			}
+		}
+		idsForBatch = append(idsForBatch, purchaseID)
+	}
+	if _, err := insertLedgerTx(ctx, tx, input.UserID, -quote.TotalPrice.MinorInt64(), newBalance, "purchase_debit", batchID, "renewal batch", now); err != nil {
+		return model.RenewalBatch{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return model.RenewalBatch{}, err
+	}
+	return s.loadRenewalBatch(ctx, batchID)
+}
+
+func (s *Store) loadRenewalBatch(ctx context.Context, batchID string) (model.RenewalBatch, error) {
+	var batch model.RenewalBatch
+	var total int64
+	if err := s.db.QueryRowContext(ctx, `SELECT id,source_purchase_id,term_count,charged_txb_minor FROM renewal_batches WHERE id=?`, batchID).Scan(&batch.ID, &batch.PurchaseID, &batch.TermCount, &total); err != nil {
+		return batch, err
+	}
+	batch.TotalPrice = model.TXBMoney(total)
+	rows, err := s.db.QueryContext(ctx, `SELECT id FROM purchases WHERE renewal_batch_id=? ORDER BY renewal_index`, batchID)
+	if err != nil {
+		return batch, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return batch, err
+		}
+		purchase, err := s.PurchaseByID(ctx, id)
+		if err != nil {
+			return batch, err
+		}
+		batch.Purchases = append(batch.Purchases, purchase)
+	}
+	return batch, rows.Err()
+}

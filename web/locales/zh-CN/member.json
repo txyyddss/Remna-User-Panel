@@ -24,6 +24,8 @@
     "used": "已使用",
     "thisTerm": "本周期",
     "ofLimit": "共 {amount}",
+    "trafficGraph": "流量使用图",
+    "trafficGraphFallback": "图表包含 {points} 个流量数据点。",
     "lifetime": "累计",
     "acrossSubscriptions": "跨所有订阅",
     "topNodes": "主要节点",

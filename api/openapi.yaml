@@ -28,6 +28,8 @@ paths:
   /api/v1/catalog: { $ref: './paths/api-v1-catalog.yaml' }
   /api/v1/purchases/quote: { $ref: './paths/api-v1-purchases-quote.yaml' }
   /api/v1/purchases: { $ref: './paths/api-v1-purchases.yaml' }
+  /api/v1/purchases/{id}/renew/quote: { $ref: './paths/api-v1-purchases-id-renew-quote.yaml' }
+  /api/v1/purchases/{id}/renew: { $ref: './paths/api-v1-purchases-id-renew.yaml' }
   /api/v1/subscription/revoke: { $ref: './paths/api-v1-subscription-revoke.yaml' }
   /api/v1/balance: { $ref: './paths/api-v1-balance.yaml' }
   /api/v1/ledger: { $ref: './paths/api-v1-ledger.yaml' }
@@ -69,6 +71,8 @@ paths:
   /api/v1/admin/emby-accounts/{id}/retry: { $ref: './paths/api-v1-admin-emby-accounts-id-retry.yaml' }
   /api/v1/admin/settings: { $ref: './paths/api-v1-admin-settings.yaml' }
   /api/v1/admin/settings/{key}: { $ref: './paths/api-v1-admin-settings-key.yaml' }
+  /api/v1/admin/payment-profiles: { $ref: './paths/api-v1-admin-payment-profiles.yaml' }
+  /api/v1/admin/payment-profiles/{provider}/{rail}: { $ref: './paths/api-v1-admin-payment-profiles-provider-rail.yaml' }
   /api/v1/admin/combos: { $ref: './paths/api-v1-admin-combos.yaml' }
   /api/v1/admin/combos/{id}: { $ref: './paths/api-v1-admin-combos-id.yaml' }
   /api/v1/admin/combos/{id}/statistics: { $ref: './paths/api-v1-admin-combos-id-statistics.yaml' }
@@ -198,6 +202,11 @@ components:
     PaymentProvider: { $ref: './components/schemas/schemas-04.yaml#/PaymentProvider' }
     PaymentStatus: { $ref: './components/schemas/schemas-04.yaml#/PaymentStatus' }
     PaymentOrderRequest: { $ref: './components/schemas/schemas-04.yaml#/PaymentOrderRequest' }
+    RenewalRequest: { $ref: './components/schemas/schemas-15.yaml#/RenewalRequest' }
+    RenewalQuote: { $ref: './components/schemas/schemas-15.yaml#/RenewalQuote' }
+    RenewalBatch: { $ref: './components/schemas/schemas-15.yaml#/RenewalBatch' }
+    PaymentProfile: { $ref: './components/schemas/schemas-15.yaml#/PaymentProfile' }
+    PaymentProfileWrite: { $ref: './components/schemas/schemas-15.yaml#/PaymentProfileWrite' }
     PaymentOrder: { $ref: './components/schemas/schemas-05.yaml#/PaymentOrder' }
     ActivityGame: { $ref: './components/schemas/schemas-05.yaml#/ActivityGame' }
     ActivityGameWrite: { $ref: './components/schemas/schemas-05.yaml#/ActivityGameWrite' }

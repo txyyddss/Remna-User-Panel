@@ -1,18 +1,32 @@
 <script setup lang="ts">
 import type { DeepReadonly } from 'vue'
 
-import type { Combo, PurchaseQuote, SquadProduct } from '@/api/types'
+import type { Combo, Purchase, PurchaseQuote, SquadProduct } from '@/api/types'
 import type { CouponGrant } from '@/api/features'
-import { formatMoney } from '@/utils/format'
+import { formatBytes, formatDate, formatMoney } from '@/utils/format'
+import { useRouter } from 'vue-router'
+import { useI18n } from '@/i18n'
 
-defineProps<{
+const props = defineProps<{
   combo?: Combo
   squads: readonly SquadProduct[]
   coupon: CouponGrant | null
   quote: DeepReadonly<PurchaseQuote> | null
   quoting: boolean
   error?: string | null
+  purchase: DeepReadonly<Purchase> | null
+  purchasing: boolean
+  needsBalance: boolean
 }>()
+const emit = defineEmits<{ confirm: [] }>()
+const router = useRouter()
+const { t } = useI18n()
+function couponEffect(): string {
+  if (!props.coupon) return ''
+  if (props.coupon.coupon.discountMode === 'percent') return t('coupons.effectPercent', { value: (Number(props.coupon.coupon.valueMinorOrBps) / 100).toFixed(2) })
+  return t('coupons.effectFixed', { amount: formatMoney({ currency: 'TXB', minor: props.coupon.coupon.valueMinorOrBps, display: '' }) })
+}
+function goToBalance(): void { void router.push({ path: '/home', query: { topUp: '1' } }) }
 </script>
 
 <template>
@@ -28,11 +42,32 @@ defineProps<{
       </div>
       <div v-if="squads.length" class="catalog-checkout__line">
         <span>{{ $t('catalog.optionalSquads') }}</span>
-        <strong>{{ squads.map((squad) => squad.name).join(', ') }}</strong>
+        <strong>{{ squads.map((squad) => squad.name).join($t('home.squadSeparator')) }}</strong>
       </div>
       <div class="catalog-checkout__line">
         <span>{{ $t('catalog.coupon') }}</span>
         <strong>{{ coupon?.coupon.name ?? $t('catalog.noCoupon') }}</strong>
+        <small v-if="coupon">{{ couponEffect() }}</small>
+      </div>
+      <div v-if="quote" class="catalog-checkout__line">
+        <span>{{ $t('catalog.validity') }}</span>
+        <strong>{{ formatDate(quote.effectiveAt) }} {{ $t('common.rangeSeparator') }} {{ formatDate(quote.expiresAt) }}</strong>
+      </div>
+      <div v-if="quote" class="catalog-checkout__line">
+        <span>{{ $t('catalog.accessibleNodes') }}</span>
+        <strong>{{ quote.accessibleNodes.length }}</strong>
+      </div>
+      <div class="catalog-checkout__line">
+        <span>{{ $t('catalog.traffic') }}</span>
+        <strong>{{ formatBytes(combo.trafficLimitBytes) }}</strong>
+      </div>
+      <div class="catalog-checkout__line">
+        <span>{{ $t('catalog.term') }}</span>
+        <strong>{{ $t('catalog.termSummary', { days: combo.validityDays, reset: $t(`home.reset.${combo.resetStrategy}`) }) }}</strong>
+      </div>
+      <div class="catalog-checkout__line">
+        <span>{{ $t('catalog.rollover') }}</span>
+        <strong>{{ $t('catalog.rolloverSummary', { threshold: (combo.rolloverMinRemainingBps / 100).toFixed(2), cap: formatMoney(combo.rolloverMax) }) }}</strong>
       </div>
       <div class="catalog-checkout__total">
         <span>{{ $t('catalog.serverTotal') }}</span>
@@ -42,6 +77,13 @@ defineProps<{
     </div>
     <UAlert v-if="error" color="warning" variant="soft" icon="i-ph-warning-circle" :description="error" />
     <USkeleton v-if="quoting" class="h-16" />
+    <template v-if="props.purchase">
+      <UButton block trailing-icon="i-ph-house" :label="$t('catalog.returnHome')" data-haptic @click="router.push('/home')" />
+    </template>
+    <template v-else>
+      <UButton v-if="needsBalance" block trailing-icon="i-ph-plus" :label="$t('catalog.addBalance')" data-haptic @click="goToBalance" />
+      <UButton v-else block :disabled="purchasing || !quote || quote.accessibleNodes.length === 0" :loading="purchasing" trailing-icon="i-ph-check" :label="purchasing ? $t('catalog.confirming') : $t('catalog.confirmPurchase')" data-haptic @click="emit('confirm')" />
+    </template>
   </section>
 </template>
 

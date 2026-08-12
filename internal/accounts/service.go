@@ -13,7 +13,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 )
 
-var usernamePattern = regexp.MustCompile(`^[a-z]{3,9}$`)
+var usernamePattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{3,36}$`)
 
 // ErrInvalidAuthentication denotes untrusted or expired Telegram launch data.
 var ErrInvalidAuthentication = errors.New("invalid Telegram authentication")

@@ -7,6 +7,7 @@
 - `browserCompatibility.ts` checks baseline browser capabilities, supplies secure UUID entropy, and installs narrow WebView constructor fallbacks before the app bundle mounts.
 - `browserCompatibility.test.ts` covers constructor, UUID, and fail-closed entropy behavior.
 - `telegram.ts` wraps Telegram Mini App integration helpers.
+- `telegramHaptics.ts` contains click feedback and distinct payment/bet outcome haptic behavior re-exported by `telegram.ts`.
 - `telegramContext.ts` classifies the native `TelegramWebviewProxy` bridge, launch markers, SDK-captured `WebView.initParams`, platforms, and user agents before route construction.
 - `telegram.test.ts` covers Telegram capability behavior.
 - `validation.ts` contains shared input validation helpers.

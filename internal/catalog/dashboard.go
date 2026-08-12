@@ -1,0 +1,69 @@
+package catalog
+
+import (
+	"context"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
+)
+
+// Dashboard prefers fresh upstream data and falls back to a clearly marked cached snapshot.
+func (s *Service) Dashboard(ctx context.Context, user model.User) (model.Dashboard, error) {
+	now := s.now().UTC()
+	balance, err := s.repository.Balance(ctx, user.ID)
+	if err != nil {
+		return model.Dashboard{}, err
+	}
+	active, queued, err := s.repository.ActiveAndQueuedPurchases(ctx, user.ID, now)
+	if err != nil {
+		return model.Dashboard{}, err
+	}
+	dashboard := model.Dashboard{User: user, Balance: balance, ActivePurchase: active, QueuedPurchase: queued, FetchedAt: now}
+	if user.RemnaUserID == nil {
+		return dashboard, nil
+	}
+	s.cacheMu.RLock()
+	cached, exists := s.cache[user.ID]
+	s.cacheMu.RUnlock()
+	if exists && now.Sub(cached.fetchedAt) <= s.cacheTTL {
+		dashboard.Statistics = &cached.value.Statistics
+		dashboard.SubscriptionURL = &cached.value.SubscriptionURL
+		dashboard.FetchedAt = cached.fetchedAt
+		return dashboard, nil
+	}
+	remote, remoteErr := s.remnawave.Dashboard(ctx, *user.RemnaUserID)
+	if remoteErr == nil {
+		dashboard.Statistics = &remote.Statistics
+		dashboard.SubscriptionURL = &remote.SubscriptionURL
+		s.cacheMu.Lock()
+		s.cache[user.ID] = cachedDashboard{value: remote, fetchedAt: now}
+		s.cacheMu.Unlock()
+		return dashboard, nil
+	}
+	if !exists {
+		dashboard.StatisticsStale = true
+		dashboard.StatisticsWarning = "Live usage is temporarily unavailable. Local balance and entitlement data are still current."
+		return dashboard, nil
+	}
+	dashboard.Statistics = &cached.value.Statistics
+	dashboard.SubscriptionURL = &cached.value.SubscriptionURL
+	dashboard.StatisticsStale = true
+	dashboard.StatisticsWarning = "Live usage is unavailable. Showing the latest cached data."
+	dashboard.FetchedAt = cached.fetchedAt
+	return dashboard, nil
+}
+
+// RevokeSubscription rotates the bearer URL and invalidates the process-local cache.
+func (s *Service) RevokeSubscription(ctx context.Context, user model.User) (string, error) {
+	if user.RemnaUserID == nil {
+		return "", database.ErrNotFound
+	}
+	url, err := s.remnawave.RevokeSubscription(ctx, *user.RemnaUserID)
+	if err != nil {
+		return "", err
+	}
+	s.cacheMu.Lock()
+	delete(s.cache, user.ID)
+	s.cacheMu.Unlock()
+	return url, nil
+}

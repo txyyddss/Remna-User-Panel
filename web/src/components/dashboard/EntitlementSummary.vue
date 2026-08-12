@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { computed, toRefs } from 'vue'
+import { computed, shallowRef, toRefs, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import type { Purchase } from '@/api/types'
+import InlineNotice from '@/components/common/InlineNotice.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import { useI18n } from '@/i18n'
-import { formatBytes, formatDate } from '@/utils/format'
+import { formatBytes, formatDate, formatMoney } from '@/utils/format'
+import { api } from '@/api/client'
+import { createUuid } from '@/utils/browserCompatibility'
+import { localizedError } from '@/i18n'
+import { notifyHaptic } from '@/utils/telegram'
 
 const props = defineProps<{
   active?: Purchase | null
@@ -17,6 +22,27 @@ const { active, queued } = toRefs(props)
 const { t } = useI18n()
 const router = useRouter()
 const resetLabel = computed(() => props.active ? t(`home.reset.${props.active.resetStrategy}`) : '')
+const renewalOpen = shallowRef(false)
+const renewalTerms = shallowRef(1)
+const renewalQuote = shallowRef<import('@/api/types').RenewalQuote | null>(null)
+const renewalBusy = shallowRef(false)
+const renewalError = shallowRef<string | null>(null)
+const renewalSuccess = shallowRef(false)
+const renewalChoices = Array.from({ length: 6 }, (_, index) => ({ label: String(index + 1), value: index + 1 }))
+
+async function loadRenewalQuote(): Promise<void> {
+  if (!props.active) return
+  renewalError.value = null
+  try { renewalQuote.value = await api.quoteRenewal(props.active.id, renewalTerms.value) } catch (caught) { renewalQuote.value = null; renewalError.value = localizedError(caught, 'errors.renewalFailed') }
+}
+async function renew(): Promise<void> {
+  if (!props.active || !renewalQuote.value || renewalBusy.value) return
+  renewalBusy.value = true
+  renewalError.value = null
+  try { await api.renewPurchase(props.active.id, renewalTerms.value, createUuid()); renewalSuccess.value = true; notifyHaptic('success') } catch (caught) { renewalError.value = localizedError(caught, 'errors.renewalFailed'); notifyHaptic('error') } finally { renewalBusy.value = false }
+}
+watch(renewalOpen, (open) => { if (open) { renewalSuccess.value = false; void loadRenewalQuote() } })
+watch(renewalTerms, () => { if (renewalOpen.value) void loadRenewalQuote() })
 
 function goToCatalog(): void {
   void router.push('/catalog')
@@ -35,7 +61,7 @@ function goToCatalog(): void {
         <span class="feature-icon"><UIcon name="i-ph-stack" /></span>
         <div>
           <h3>{{ active.comboName }}</h3>
-          <p>{{ squadNames?.length ? squadNames.join(' · ') : $t('dashboard.squadsIncluded', { count: active.squadUuids.length }) }}</p>
+          <p>{{ squadNames?.length ? squadNames.join(t('home.squadSeparator')) : $t('dashboard.squadsIncluded', { count: active.squadUuids.length }) }}</p>
         </div>
       </div>
       <dl class="home-ride__metrics">
@@ -58,6 +84,7 @@ function goToCatalog(): void {
           {{ $t('dashboard.queuedStarts', { name: queued.comboName, date: formatDate(queued.validFrom) }) }}
         </span>
       </div>
+      <UButton block color="neutral" variant="outline" trailing-icon="i-ph-arrow-clockwise" :label="$t('home.renew')" data-haptic @click="renewalOpen = true" />
     </div>
 
     <div v-else class="empty-inline">
@@ -75,4 +102,18 @@ function goToCatalog(): void {
       />
     </div>
   </section>
+  <UModal v-model:open="renewalOpen" :title="$t('home.renewTitle')" :description="$t('home.renewHint')">
+    <template #body>
+      <div class="renewal-dialog">
+        <USelect v-model="renewalTerms" :items="renewalChoices" value-key="value" label-key="label" :aria-label="$t('home.renewTerms')" />
+        <div v-if="renewalQuote" class="renewal-dialog__quote">
+          <span>{{ $t('home.renewPrice') }}</span><strong>{{ formatMoney(renewalQuote.totalPrice) }}</strong>
+          <small>{{ formatDate(renewalQuote.effectiveAt) }} {{ t('common.rangeSeparator') }} {{ formatDate(renewalQuote.expiresAt) }}</small>
+        </div>
+        <InlineNotice v-if="renewalSuccess" tone="success">{{ $t('home.renewSuccess') }}</InlineNotice>
+        <InlineNotice v-if="renewalError" tone="warning">{{ renewalError }}</InlineNotice>
+        <UButton v-if="!renewalSuccess" block :loading="renewalBusy" :disabled="!renewalQuote" :label="$t('home.renewAction')" data-haptic @click="renew" />
+      </div>
+    </template>
+  </UModal>
 </template>

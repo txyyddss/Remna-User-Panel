@@ -154,6 +154,7 @@ PaymentMethodID:
     - bepusdt:usdt.plasma
     - bepusdt:usdt.ton
     - stars
+    - coupon
 
 PaymentOrderMethodID:
   description: Stable method ID for new orders; legacy pending snapshots may expose an empty value or provider alias.
@@ -164,7 +165,7 @@ PaymentOrderMethodID:
 
 PaymentProvider:
   type: string
-  enum: [ezpay, bepusdt, stars]
+  enum: [ezpay, bepusdt, stars, coupon]
 
 PaymentStatus:
   type: string

@@ -17,6 +17,8 @@ depend on the `Store` methods; provider network calls do not belong here.
 - `catalog_queries.go` — combo reads, scans, and normalized squad UUID lists.
 - `catalog_squads.go` — sparse local merchandising overrides for upstream squads.
 - `billing.go` — purchase normalization, quotes, creation, pricing, and debit helpers.
+- `billing_renewal.go` — renewal quotes, contiguous batch creation, and idempotent replay.
+- `billing_purchase_helpers.go` — stock reservation checks, purchase fingerprints, catalog row loaders, and balance debit helpers.
 - `billing_ledger.go` — balances, audited adjustments, deductions, and ledger reads.
 - `ledger_page.go` — stable cursor-based ledger pagination.
 - `billing_purchases.go` — purchase reads, cancellation, squad hydration, and
@@ -61,6 +63,7 @@ depend on the `Store` methods; provider network calls do not belong here.
 - `administration_records.go` — audit events, administrator user lists, and backup
   run records.
 - `rollover.go` — durable rollover processing and finalization.
+- `payment_profiles.go` — per-rail payment profile migration, masking, and encrypted credential persistence.
 - `retention.go` — bounded cleanup of aged operational records.
 - `statistics.go` — catalog and activity administrator statistics.
 - `destructive.go` — audited feature deletion transactions.

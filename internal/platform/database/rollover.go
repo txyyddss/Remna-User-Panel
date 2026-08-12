@@ -39,6 +39,24 @@ func (s *Store) MarkRolloverProcessing(ctx context.Context, purchaseID string, n
 // FinalizeRollover atomically records authoritative traffic inputs, applies one
 // credit, expires the old term, and only then queues the next entitlement.
 func (s *Store) FinalizeRollover(ctx context.Context, purchaseID string, limitBytes, usedBytes int64, exceptionCode string, now time.Time) (model.PurchaseRollover, error) {
+	remaining := limitBytes - usedBytes
+	if remaining < 0 {
+		remaining = 0
+	}
+	summary := model.RolloverUsageSummary{AllocatedBytes: limitBytes, UsedBytes: usedBytes, EligibleUnusedBytes: remaining, AlgorithmVersion: "legacy-total-v1"}
+	if limitBytes <= 0 || !strictlyAboveBPS(remaining, limitBytes, 0) {
+		summary.EligibleUnusedBytes = 0
+	}
+	return s.finalizeRolloverUsage(ctx, purchaseID, summary, exceptionCode, now)
+}
+
+// FinalizeRolloverUsage commits a cadence-aware aggregate and never persists
+// the raw provider series.
+func (s *Store) FinalizeRolloverUsage(ctx context.Context, purchaseID string, summary model.RolloverUsageSummary, exceptionCode string, now time.Time) (model.PurchaseRollover, error) {
+	return s.finalizeRolloverUsage(ctx, purchaseID, summary, exceptionCode, now)
+}
+
+func (s *Store) finalizeRolloverUsage(ctx context.Context, purchaseID string, summary model.RolloverUsageSummary, exceptionCode string, now time.Time) (model.PurchaseRollover, error) {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -56,19 +74,16 @@ func (s *Store) FinalizeRollover(ctx context.Context, purchaseID string, limitBy
 	if rollover.Status != "processing" {
 		return model.PurchaseRollover{}, ErrConflict
 	}
-	if limitBytes < 0 || usedBytes < 0 {
+	if summary.AllocatedBytes < 0 || summary.UsedBytes < 0 || summary.EligibleUnusedBytes < 0 || summary.EligibleUnusedBytes > summary.AllocatedBytes {
 		return model.PurchaseRollover{}, errors.New("rollover traffic inputs must be non-negative")
 	}
-	remaining := limitBytes - usedBytes
-	if remaining < 0 {
-		remaining = 0
-	}
+	remaining := summary.EligibleUnusedBytes
 	credit := int64(0)
 	status := "zero"
 	if exceptionCode != "" {
 		status = "exception"
-	} else if limitBytes > 0 && strictlyAboveBPS(remaining, limitBytes, rollover.MinimumRemainingBPS) {
-		credit = proportionalFloor(rollover.NetPaidTXBMinor, remaining, limitBytes)
+	} else if summary.AllocatedBytes > 0 && strictlyAboveBPS(remaining, summary.AllocatedBytes, rollover.MinimumRemainingBPS) {
+		credit = proportionalFloor(rollover.NetPaidTXBMinor, remaining, summary.AllocatedBytes)
 		if credit > rollover.MaximumTXBMinor {
 			credit = rollover.MaximumTXBMinor
 		}
@@ -89,8 +104,8 @@ func (s *Store) FinalizeRollover(ctx context.Context, purchaseID string, limitBy
 			return model.PurchaseRollover{}, err
 		}
 	}
-	result, err := tx.ExecContext(ctx, `UPDATE purchase_rollovers SET status=?,traffic_limit_bytes=?,used_traffic_bytes=?,remaining_traffic_bytes=?,credited_txb_minor=?,exception_code=?,updated_at=?,completed_at=? WHERE purchase_id=? AND status='processing'`,
-		status, limitBytes, usedBytes, remaining, credit, exceptionCode, stamp(now), stamp(now), purchaseID)
+	result, err := tx.ExecContext(ctx, `UPDATE purchase_rollovers SET status=?,traffic_limit_bytes=?,allocated_traffic_bytes=?,used_traffic_bytes=?,eligible_unused_bytes=?,remaining_traffic_bytes=?,credited_txb_minor=?,exception_code=?,algorithm_version=?,updated_at=?,completed_at=? WHERE purchase_id=? AND status='processing'`,
+		status, rollover.TrafficLimitBytes, summary.AllocatedBytes, summary.UsedBytes, summary.EligibleUnusedBytes, remaining, credit, exceptionCode, summary.AlgorithmVersion, stamp(now), stamp(now), purchaseID)
 	if err != nil {
 		return model.PurchaseRollover{}, err
 	}
@@ -139,15 +154,15 @@ func (s *Store) FinalizeRollover(ctx context.Context, purchaseID string, limitBy
 	return s.RolloverByPurchase(ctx, purchaseID)
 }
 
-const rolloverSelect = `SELECT purchase_id,status,traffic_limit_bytes,used_traffic_bytes,remaining_traffic_bytes,minimum_remaining_bps,maximum_txb_minor,net_paid_txb_minor,credited_txb_minor,exception_code,attempts,created_at,updated_at,completed_at FROM purchase_rollovers`
+const rolloverSelect = `SELECT purchase_id,status,traffic_limit_bytes,allocated_traffic_bytes,used_traffic_bytes,eligible_unused_bytes,remaining_traffic_bytes,minimum_remaining_bps,maximum_txb_minor,net_paid_txb_minor,credited_txb_minor,exception_code,attempts,created_at,updated_at,completed_at,algorithm_version FROM purchase_rollovers`
 
 func scanRollover(row rowScanner) (model.PurchaseRollover, error) {
 	var value model.PurchaseRollover
-	var used, remaining sql.NullInt64
+	var allocated, used, eligible, remaining sql.NullInt64
 	var created, updated string
 	var completed sql.NullString
-	if err := row.Scan(&value.PurchaseID, &value.Status, &value.TrafficLimitBytes, &used, &remaining, &value.MinimumRemainingBPS,
-		&value.MaximumTXBMinor, &value.NetPaidTXBMinor, &value.CreditedTXBMinor, &value.ExceptionCode, &value.Attempts, &created, &updated, &completed); err != nil {
+	if err := row.Scan(&value.PurchaseID, &value.Status, &value.TrafficLimitBytes, &allocated, &used, &eligible, &remaining, &value.MinimumRemainingBPS,
+		&value.MaximumTXBMinor, &value.NetPaidTXBMinor, &value.CreditedTXBMinor, &value.ExceptionCode, &value.Attempts, &created, &updated, &completed, &value.AlgorithmVersion); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.PurchaseRollover{}, ErrNotFound
 		}
@@ -155,6 +170,12 @@ func scanRollover(row rowScanner) (model.PurchaseRollover, error) {
 	}
 	if used.Valid {
 		value.UsedTrafficBytes = &used.Int64
+	}
+	if allocated.Valid {
+		value.AllocatedBytes = &allocated.Int64
+	}
+	if eligible.Valid {
+		value.EligibleUnusedBytes = &eligible.Int64
 	}
 	if remaining.Valid {
 		value.RemainingBytes = &remaining.Int64

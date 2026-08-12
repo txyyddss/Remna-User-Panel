@@ -44,6 +44,9 @@ func ParseMethodID(methodID string) (provider, rail string, err error) {
 	if methodID == "stars" {
 		return "stars", "", nil
 	}
+	if methodID == "coupon" {
+		return "coupon", "", nil
+	}
 	parts := strings.Split(methodID, ":")
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 		return "", "", fmt.Errorf("%w: malformed method id", ErrInvalidOrder)
@@ -67,7 +70,7 @@ func ParseMethodID(methodID string) (provider, rail string, err error) {
 // qualifies its provider rail.
 func CanonicalMethodID(methodID string) bool {
 	methodID = strings.ToLower(strings.TrimSpace(methodID))
-	return methodID == "stars" || strings.HasPrefix(methodID, "ezpay:") || strings.HasPrefix(methodID, "bepusdt:")
+	return methodID == "stars" || methodID == "coupon" || strings.HasPrefix(methodID, "ezpay:") || strings.HasPrefix(methodID, "bepusdt:")
 }
 
 func parseEnabledRails(raw string, allowed map[string]string) ([]string, error) {
@@ -91,6 +94,9 @@ func parseEnabledRails(raw string, allowed map[string]string) ([]string, error) 
 }
 
 func methodName(provider, rail string) string {
+	if provider == "coupon" {
+		return "Coupon"
+	}
 	if provider == "stars" {
 		return "Telegram Stars"
 	}
@@ -107,7 +113,7 @@ func methodModel(provider, rail string, available bool, note string) model.Payme
 	}
 	return model.PaymentMethod{
 		ID: id, Provider: provider, Rail: rail, Name: methodName(provider, rail),
-		Currency: strings.ToUpper(currencyCode(provider)), Available: available, Note: note,
+		Currency: strings.ToUpper(currencyCode(provider)), Available: available, Note: note, Mode: "order",
 	}
 }
 

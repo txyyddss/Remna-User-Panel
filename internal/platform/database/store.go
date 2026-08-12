@@ -22,6 +22,9 @@ var ErrConflict = errors.New("record conflicts with current state")
 // ErrInsufficientBalance indicates that a debit would make an account negative.
 var ErrInsufficientBalance = errors.New("insufficient TXB balance")
 
+// ErrStockUnavailable indicates that a limited squad has no remaining user reservation.
+var ErrStockUnavailable = errors.New("squad stock is unavailable")
+
 // ErrPaymentCapacity indicates that all retained payment slots contain live,
 // non-prunable orders. Callers may retry after an order settles or expires.
 var ErrPaymentCapacity = errors.New("payment order capacity is full")

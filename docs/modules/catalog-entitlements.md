@@ -25,11 +25,13 @@ The read-only quote and the creation transaction both revalidate the live combo,
 
 Combo and internal-squad statistics accept a bounded date range, IANA timezone, and daily/weekly bucket. They report unique buyers, purchase count, charged/discount/add-on totals, series, and included-versus-add-on distribution from authoritative purchase facts plus current live combo references.
 
-When a term activates, synchronization persists three phases: remove all squads to quiesce access, reset usage while access is quiesced, then replace the complete internal-squad list and apply the account-wide limit/reset strategy. A crash or ambiguous reset response repeats only a phase safe while no traffic can accrue; a retry after final apply never resets again. At expiry, synchronization removes all internal squads but leaves the upstream identity ACTIVE with the fixed 2099 upstream expiry. The local term, not Remnawave's user expiry, is authoritative.
+When a term activates, synchronization persists three phases: remove all squads to quiesce access, reset usage while access is quiesced, then replace the complete internal-squad list and apply the account-wide limit/reset strategy. A crash or ambiguous reset response repeats only a phase safe while no traffic can accrue; a retry after final apply never resets again. At final expiry, synchronization sets the upstream identity DISABLED, clears squads and traffic entitlement, and only a later active term restores ACTIVE. The local term, not Remnawave's user expiry, is authoritative.
+
+Renewal uses the current ride's combo and add-ons, current server prices, and one idempotency key for a contiguous batch of 1-6 terms. Each selected squad is rechecked against an optional distinct-user reservation limit, including queued terms, before the single atomic debit.
 
 ## Rollover ordering and formula
 
-Expiry first queues `rollover_finalize` and blocks renewal activation. The worker quiesces old access before fetching authoritative `trafficLimitBytes` and `usedTrafficBytes`.
+Expiry first queues `rollover_finalize` and blocks renewal activation. The worker quiesces old access before fetching the upstream reset strategy, last reset timestamp, and bounded daily sparkline usage. It retains only aggregate allocation, used bytes, eligible unused bytes, and the algorithm version.
 
 - A zero traffic limit awards zero.
 - Remaining percentage must be strictly greater than the snapshotted `rolloverMinRemainingBps` threshold.
@@ -37,6 +39,7 @@ Expiry first queues `rollover_finalize` and blocks renewal activation. The worke
 - The traffic inputs, result, old-term expiry, optional ledger credit, and next activation command commit atomically. Only then may reset/activation run.
 - Transient Remnawave failures retry without resetting traffic. A confirmed missing user records a zero-credit exception instead of assuming all traffic was unused.
 - Purchase ID is the rollover credit's unique semantic reference; replay cannot credit twice.
+- Cadence-aware settlement derives `DAY`, `WEEK`, `MONTH`, and `MONTH_ROLLING` intervals from the term and reset metadata, prorates partial intervals, excludes intervals below threshold, and applies `netPaid * eligibleUnusedAllowance / totalAllowance` with the configured cap.
 
 ## Failure behavior
 

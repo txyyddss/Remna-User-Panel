@@ -2,16 +2,12 @@ package database
 
 import (
 	"context"
-	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/txyyddss/Remna-User-Panel/internal/coupons"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
-	"strings"
 	"time"
 )
 
@@ -163,6 +159,13 @@ func quotePurchaseTx(ctx context.Context, tx *sql.Tx, input PurchaseInput, now t
 		addonRows = append(addonRows, product)
 		addonPrice += product.PriceTXBMinor
 	}
+	selectedSquads := make([]string, 0, len(includedUUIDs))
+	for squadUUID := range includedUUIDs {
+		selectedSquads = append(selectedSquads, squadUUID)
+	}
+	if err := checkSquadStockTx(ctx, tx, selectedSquads); err != nil {
+		return model.PurchaseQuote{}, model.Combo{}, nil, err
+	}
 	grossMinor := combo.PriceTXBMinor + addonPrice
 	validFrom, err := nextPurchaseStartTx(ctx, tx, input.UserID, now)
 	if err != nil {
@@ -188,83 +191,4 @@ func quotePurchaseTx(ctx context.Context, tx *sql.Tx, input PurchaseInput, now t
 		GrossPrice: model.TXBMoney(grossMinor), Discount: model.TXBMoney(discount.DiscountMinor), NetPrice: model.TXBMoney(discount.NetMinor),
 		EffectiveAt: validFrom, ExpiresAt: validFrom.AddDate(0, 0, combo.ValidityDays), Queued: validFrom.After(now), AddonSquadUUIDs: addonUUIDs,
 	}, combo, addonRows, nil
-}
-
-func nextPurchaseStartTx(ctx context.Context, tx *sql.Tx, userID string, now time.Time) (time.Time, error) {
-	validFrom := now
-	var latestEnd string
-	err := tx.QueryRowContext(ctx, `SELECT valid_until FROM purchases WHERE user_id=? AND status IN ('activating','active','queued') ORDER BY valid_until DESC LIMIT 1`, userID).Scan(&latestEnd)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return time.Time{}, fmt.Errorf("find current entitlement: %w", err)
-	}
-	if err == nil {
-		parsed, parseErr := parseStamp(latestEnd)
-		if parseErr != nil {
-			return time.Time{}, fmt.Errorf("parse current entitlement: %w", parseErr)
-		}
-		if parsed.After(validFrom) {
-			validFrom = parsed
-		}
-	}
-	return validFrom, nil
-}
-
-func normalizeAndFingerprintPurchase(input *PurchaseInput) (string, error) {
-	if input == nil {
-		return "", errors.New("purchase input is required")
-	}
-	input.UserID = strings.TrimSpace(input.UserID)
-	input.ComboID = strings.TrimSpace(input.ComboID)
-	input.CouponGrantID = strings.TrimSpace(input.CouponGrantID)
-	input.IdempotencyKey = strings.TrimSpace(input.IdempotencyKey)
-	if input.UserID == "" || input.ComboID == "" || input.IdempotencyKey == "" || len(input.IdempotencyKey) > 128 {
-		return "", errors.New("purchase user, combo, and idempotency key are required")
-	}
-	normalizedAddons := make([]string, len(input.AddonSquadIDs))
-	for index := range input.AddonSquadIDs {
-		normalizedAddons[index] = strings.TrimSpace(input.AddonSquadIDs[index])
-	}
-	input.AddonSquadIDs = uniqueSorted(normalizedAddons)
-	payload, err := json.Marshal(struct {
-		Version       int      `json:"version"`
-		ComboID       string   `json:"comboId"`
-		AddonSquadIDs []string `json:"addonSquadIds"`
-		CouponGrantID string   `json:"couponGrantId"`
-	}{Version: 1, ComboID: input.ComboID, AddonSquadIDs: input.AddonSquadIDs, CouponGrantID: input.CouponGrantID})
-	if err != nil {
-		return "", fmt.Errorf("encode purchase request fingerprint: %w", err)
-	}
-	digest := sha256.Sum256(payload)
-	return hex.EncodeToString(digest[:]), nil
-}
-
-func comboByIDTx(ctx context.Context, tx *sql.Tx, id string, activeOnly bool) (model.Combo, error) {
-	query := comboSelect + ` WHERE id=?`
-	if activeOnly {
-		query += ` AND active=1`
-	}
-	return scanCombo(tx.QueryRowContext(ctx, query, id))
-}
-
-func squadByIDTx(ctx context.Context, tx *sql.Tx, id string, requireVisible bool) (model.SquadProduct, error) {
-	query := squadSelect + ` WHERE remna_squad_uuid=?`
-	if requireVisible {
-		query += ` AND visible=1`
-	}
-	return scanSquad(tx.QueryRowContext(ctx, query, id))
-}
-
-func debitBalanceTx(ctx context.Context, tx *sql.Tx, userID string, amount int64, now time.Time) (int64, error) {
-	if amount < 0 {
-		return 0, errors.New("negative debit")
-	}
-	var balance int64
-	err := tx.QueryRowContext(ctx, `UPDATE balances SET txb_minor=txb_minor-?,updated_at=? WHERE user_id=? AND txb_minor>=? RETURNING txb_minor`, amount, stamp(now), userID, amount).Scan(&balance)
-	if errors.Is(err, sql.ErrNoRows) {
-		return 0, ErrInsufficientBalance
-	}
-	if err != nil {
-		return 0, fmt.Errorf("debit balance: %w", err)
-	}
-	return balance, nil
 }

@@ -31,9 +31,9 @@ vi.mock('@/composables/usePaymentOrder', () => ({
 import BalancePaymentSheet from './BalancePaymentSheet.vue'
 
 const methods: FeaturePaymentMethod[] = [
-  { id: 'ezpay:alipay', provider: 'ezpay', rail: 'alipay', name: 'Alipay', currency: 'CNY', available: true, note: '' },
-  { id: 'ezpay:wxpay', provider: 'ezpay', rail: 'wxpay', name: 'WeChat Pay', currency: 'CNY', available: true, note: '' },
-  { id: 'bepusdt:usdt.trc20', provider: 'bepusdt', rail: 'usdt.trc20', name: 'USDT · TRC20', currency: 'USDT', available: true, note: '' },
+  { id: 'ezpay:alipay', provider: 'ezpay', rail: 'alipay', name: 'Alipay', currency: 'CNY', available: true, note: '', mode: 'order' },
+  { id: 'ezpay:wxpay', provider: 'ezpay', rail: 'wxpay', name: 'WeChat Pay', currency: 'CNY', available: true, note: '', mode: 'order' },
+  { id: 'bepusdt:usdt.trc20', provider: 'bepusdt', rail: 'usdt.trc20', name: 'USDT 路 TRC20', currency: 'USDT', available: true, note: '', mode: 'order' },
 ]
 
 describe('BalancePaymentSheet', () => {

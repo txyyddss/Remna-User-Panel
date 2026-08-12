@@ -32,6 +32,15 @@ Emby setup collects a write-only password, parental rating, and libraries before
 
 The payment sheet selects a canonical method ID in two stages: provider, then rail. It separately renders provider URL, QR payload, receiving address, actual crypto amount, and currency when supplied. Pending orders can be cancelled; cancellation stops polling, while the UI still accepts a later authoritative `paid` projection and refreshes the balance exactly once.
 
+Catalog review is the final purchase step and includes authoritative validity,
+traffic/reset and rollover details, accessible-node count, add-ons, coupon
+effect, and total. Combo/add-on/coupon selections and the current step are
+stored in user-scoped `sessionStorage` and cleared after successful purchase;
+progress is blocked when the quote has no accessible nodes. Home's ride summary
+offers a 1-6 term renewal quote and confirmation flow. Usage also includes a
+responsive native SVG graph with a textual fallback, while Activity preserves
+a selected game's entered stake across refreshes and has no refresh button.
+
 ## Administration
 
 All TXB form fields accept major-unit decimal strings. For example, entering `150` sends `15000` minor units. Rates, percentages, and multipliers retain their documented server units.
@@ -40,7 +49,7 @@ The database editor lists allowlisted application tables, debounces broad search
 
 Backup downloads use an authenticated binary response. Restore requires `RESTORE <filename>`, describes the automatic rescue backup, submits a staged restore, polls its operation, and enters reconnect/reauthentication state after the server begins its graceful restart.
 
-Encrypted settings render as masked values and only permit write-only replacement. Financial and destructive actions retain visible text labels even when icons are present.
+Encrypted settings render as masked values and only permit write-only replacement. Financial and destructive actions retain visible text labels even when icons are present. Payment administration uses a visual profile editor for rail, channel name, endpoint, enabled state, and masked credentials.
 
 ## Visual and accessibility contract
 

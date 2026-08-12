@@ -90,7 +90,7 @@ func (a paymentAdapter) RefundProvider(ctx context.Context, order model.PaymentO
 }
 
 func (a paymentAdapter) createEZPay(ctx context.Context, request billing.ProviderCreateRequest) (billing.ProviderCheckout, error) {
-	client, err := a.ezpayClient(ctx)
+	client, err := a.ezpayClient(ctx, request.Rail)
 	if err != nil {
 		return billing.ProviderCheckout{}, err
 	}
@@ -104,7 +104,7 @@ func (a paymentAdapter) createEZPay(ctx context.Context, request billing.Provide
 }
 
 func (a paymentAdapter) createBEPusdt(ctx context.Context, request billing.ProviderCreateRequest) (billing.ProviderCheckout, error) {
-	client, err := a.bepusdtClient(ctx)
+	client, err := a.bepusdtClient(ctx, request.Rail)
 	if err != nil {
 		return billing.ProviderCheckout{}, err
 	}
@@ -129,7 +129,7 @@ func (a paymentAdapter) Cancel(ctx context.Context, order model.PaymentOrder) er
 	if order.Provider != "bepusdt" || order.ProviderTradeID == nil || *order.ProviderTradeID == "" {
 		return nil
 	}
-	client, err := a.bepusdtClient(ctx)
+	client, err := a.bepusdtClient(ctx, order.ProviderRail)
 	if err != nil {
 		return err
 	}
@@ -150,36 +150,44 @@ func (a paymentAdapter) createStars(ctx context.Context, request billing.Provide
 		PayableCurrency: "XTR", ExpiresAt: time.Now().UTC().Add(30 * time.Minute)}, nil
 }
 
-func (a paymentAdapter) ezpayClient(ctx context.Context) (*ezpay.Client, error) {
-	baseURL, err := a.settings.Plaintext(ctx, "billing.ezpay.base_url")
+func (a paymentAdapter) ezpayClient(ctx context.Context, rail string) (*ezpay.Client, error) {
+	profile, err := a.settings.PaymentProfile(ctx, "ezpay", rail)
 	if err != nil {
-		return nil, err
+		baseURL, fallbackErr := a.settings.Plaintext(ctx, "billing.ezpay.base_url")
+		if fallbackErr != nil {
+			return nil, err
+		}
+		merchantID, merchantErr := a.settings.Plaintext(ctx, "billing.ezpay.merchant_id")
+		if merchantErr != nil {
+			return nil, merchantErr
+		}
+		key, keyErr := a.settings.Plaintext(ctx, "billing.ezpay.key")
+		if keyErr != nil {
+			return nil, keyErr
+		}
+		return ezpay.NewClient(baseURL, merchantID, key)
 	}
-	merchantID, err := a.settings.Plaintext(ctx, "billing.ezpay.merchant_id")
-	if err != nil {
-		return nil, err
-	}
-	key, err := a.settings.Plaintext(ctx, "billing.ezpay.key")
-	if err != nil {
-		return nil, err
-	}
-	return ezpay.NewClient(baseURL, merchantID, key)
+	return ezpay.NewClient(profile.Endpoint, profile.MerchantID, profile.CredentialPlaintext)
 }
 
-func (a paymentAdapter) bepusdtClient(ctx context.Context) (*bepusdt.Client, error) {
-	baseURL, err := a.settings.Plaintext(ctx, "billing.bepusdt.base_url")
+func (a paymentAdapter) bepusdtClient(ctx context.Context, rail string) (*bepusdt.Client, error) {
+	profile, err := a.settings.PaymentProfile(ctx, "bepusdt", rail)
 	if err != nil {
-		return nil, err
+		baseURL, fallbackErr := a.settings.Plaintext(ctx, "billing.bepusdt.base_url")
+		if fallbackErr != nil {
+			return nil, err
+		}
+		token, tokenErr := a.settings.Plaintext(ctx, "billing.bepusdt.api_token")
+		if tokenErr != nil {
+			return nil, tokenErr
+		}
+		return bepusdt.NewClient(baseURL, token)
 	}
-	token, err := a.settings.Plaintext(ctx, "billing.bepusdt.api_token")
-	if err != nil {
-		return nil, err
-	}
-	return bepusdt.NewClient(baseURL, token)
+	return bepusdt.NewClient(profile.Endpoint, profile.CredentialPlaintext)
 }
 
 func (a paymentAdapter) VerifyEZPay(ctx context.Context, values url.Values) (billing.ProviderEvent, bool, error) {
-	client, err := a.ezpayClient(ctx)
+	client, err := a.ezpayClient(ctx, values.Get("type"))
 	if err != nil {
 		return billing.ProviderEvent{}, false, err
 	}
@@ -194,7 +202,26 @@ func (a paymentAdapter) VerifyEZPay(ctx context.Context, values url.Values) (bil
 }
 
 func (a paymentAdapter) VerifyBEPusdt(ctx context.Context, body []byte) (billing.ProviderEvent, int, error) {
-	client, err := a.bepusdtClient(ctx)
+	if profiles, profilesErr := a.settings.PaymentProfileRuntimes(ctx, "bepusdt"); profilesErr == nil && len(profiles) > 0 {
+		var lastErr error
+		for _, profile := range profiles {
+			client, clientErr := bepusdt.NewClient(profile.Endpoint, profile.CredentialPlaintext)
+			if clientErr != nil {
+				lastErr = clientErr
+				continue
+			}
+			webhook, verifyErr := client.ParseAndVerifyWebhook(body)
+			if verifyErr != nil {
+				lastErr = verifyErr
+				continue
+			}
+			return bepusdtEvent(webhook, body, profile.Rail)
+		}
+		if lastErr != nil {
+			return billing.ProviderEvent{}, 0, lastErr
+		}
+	}
+	client, err := a.bepusdtClient(ctx, "usdt.trc20")
 	if err != nil {
 		return billing.ProviderEvent{}, 0, err
 	}
@@ -202,12 +229,16 @@ func (a paymentAdapter) VerifyBEPusdt(ctx context.Context, body []byte) (billing
 	if err != nil {
 		return billing.ProviderEvent{}, 0, err
 	}
+	return bepusdtEvent(webhook, body, "usdt.trc20")
+}
+
+func bepusdtEvent(webhook *bepusdt.Webhook, body []byte, rail string) (billing.ProviderEvent, int, error) {
 	digest := sha256.Sum256(body)
 	dedupe := webhook.BlockTransactionID
 	if dedupe == "" {
 		dedupe = webhook.TradeID + ":" + strconv.Itoa(webhook.Status)
 	}
-	event := billing.ProviderEvent{Provider: "bepusdt", OrderID: webhook.OrderID, TradeID: webhook.TradeID,
+	event := billing.ProviderEvent{Provider: "bepusdt", Rail: rail, OrderID: webhook.OrderID, TradeID: webhook.TradeID,
 		ChargeID: webhook.BlockTransactionID, PayableAmount: webhook.ActualAmount, PayableCurrency: "USDT",
 		FiatAmount: webhook.Amount, FiatCurrency: "USD", Recipient: webhook.Token, DedupeKey: dedupe, PayloadHash: hex.EncodeToString(digest[:])}
 	return event, webhook.Status, nil

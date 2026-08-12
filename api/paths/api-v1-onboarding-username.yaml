@@ -3,7 +3,7 @@ put:
   operationId: reserveUsername
   summary: Reserve the immutable service username
   description: |
-    Accepts only `^[a-z]{3,9}$`. The service checks local uniqueness, performs
+    Accepts only `^[a-zA-Z0-9_-]{3,36}$`. The service checks local uniqueness, performs
     a Remnawave preflight, and also treats Remnawave `A019` as a duplicate if
     the upstream race is lost.
   requestBody:

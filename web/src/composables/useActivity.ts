@@ -5,7 +5,7 @@ import type { ActivityOverview, ActivityResult } from '@/api/features'
 import { activityNotification } from '@/components/activity/feedback'
 import { localizedError } from '@/i18n'
 import { createUuid } from '@/utils/browserCompatibility'
-import { notifyHaptic } from '@/utils/telegram'
+import { notifyBetOutcome, notifyHaptic } from '@/utils/telegram'
 
 export function useActivity() {
   const overview = shallowRef<ActivityOverview | null>(null)
@@ -42,7 +42,8 @@ export function useActivity() {
     try {
       result.value = await action(idempotencyKey(actionId))
       actionKeys.delete(actionId)
-      notifyHaptic(activityNotification(result.value))
+		if (result.value.kind === 'bet') notifyBetOutcome(result.value.outcome === 'win' ? 'win' : 'loss')
+		else notifyHaptic(activityNotification(result.value))
       await load({ quiet: true })
     } catch (caught) {
       error.value = localizedError(caught, 'errors.activityFailed')

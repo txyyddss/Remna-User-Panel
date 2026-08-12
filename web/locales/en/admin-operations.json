@@ -52,6 +52,16 @@
       "activity_group_message_reward_txb": "Group-message reward"
     }
   },
+  "adminPaymentProfiles": {
+    "title": "Payment profiles",
+    "copy": "Configure one visual profile per EZPay or BEPUSDT rail. Credentials stay masked.",
+    "saved": "Payment profile saved.",
+    "channelName": "Channel name",
+    "endpoint": "Endpoint",
+    "merchantId": "Merchant ID",
+    "credential": "Credential",
+    "keepCredential": "Leave blank to keep the current credential"
+  },
   "adminAudit": {
     "title": "Audit trail",
     "copy": "Append-only records for sensitive administrative actions.",

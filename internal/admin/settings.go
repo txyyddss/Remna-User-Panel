@@ -61,6 +61,7 @@ type SettingsRepository interface {
 type SettingsService struct {
 	repository SettingsRepository
 	vault      *secret.Vault
+	profiles   PaymentProfileRepository
 }
 
 // NewSettingsService creates the runtime settings facade.

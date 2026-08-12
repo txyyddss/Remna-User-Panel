@@ -18,15 +18,15 @@ func (s *Store) SaveSquadProduct(ctx context.Context, input SquadProductInput) (
 		return model.SquadProduct{}, ErrNotFound
 	}
 	now := time.Now().UTC()
-	if strings.TrimSpace(input.Description) == "" && input.PriceTXBMinor == 0 && !input.Visible {
+	if strings.TrimSpace(input.Description) == "" && input.PriceTXBMinor == 0 && !input.Visible && input.StockLimit == nil {
 		if _, err := s.db.ExecContext(ctx, `DELETE FROM squad_product_overrides WHERE remna_squad_uuid=?`, uuid); err != nil {
 			return model.SquadProduct{}, fmt.Errorf("remove default squad override: %w", err)
 		}
 		return virtualSquad(input, now), nil
 	}
-	_, err := s.db.ExecContext(ctx, `INSERT INTO squad_product_overrides(remna_squad_uuid,description,price_txb_minor,visible,created_at,updated_at)
-		VALUES(?,?,?,?,?,?) ON CONFLICT(remna_squad_uuid) DO UPDATE SET description=excluded.description,price_txb_minor=excluded.price_txb_minor,visible=excluded.visible,updated_at=excluded.updated_at`,
-		uuid, strings.TrimSpace(input.Description), input.PriceTXBMinor, boolInt(input.Visible), stamp(now), stamp(now))
+	_, err := s.db.ExecContext(ctx, `INSERT INTO squad_product_overrides(remna_squad_uuid,description,price_txb_minor,visible,stock_limit,created_at,updated_at)
+		VALUES(?,?,?,?,?,?,?) ON CONFLICT(remna_squad_uuid) DO UPDATE SET description=excluded.description,price_txb_minor=excluded.price_txb_minor,visible=excluded.visible,stock_limit=excluded.stock_limit,updated_at=excluded.updated_at`,
+		uuid, strings.TrimSpace(input.Description), input.PriceTXBMinor, boolInt(input.Visible), input.StockLimit, stamp(now), stamp(now))
 	if err != nil {
 		return model.SquadProduct{}, fmt.Errorf("save squad override: %w", err)
 	}
@@ -41,7 +41,7 @@ func (s *Store) SaveSquadProduct(ctx context.Context, input SquadProductInput) (
 func virtualSquad(input SquadProductInput, now time.Time) model.SquadProduct {
 	return model.SquadProduct{ID: input.RemnaSquadUUID, RemnaSquadUUID: input.RemnaSquadUUID, Name: input.Name,
 		Description: strings.TrimSpace(input.Description), PriceTXBMinor: input.PriceTXBMinor, Price: model.TXBMoney(input.PriceTXBMinor),
-		Visible: input.Visible, UpstreamPresent: true, CreatedAt: now, UpdatedAt: now}
+		Visible: input.Visible, UpstreamPresent: true, StockLimit: input.StockLimit, CreatedAt: now, UpdatedAt: now}
 }
 
 // SquadProductByRemnaUUID resolves a persisted local override.
@@ -94,18 +94,42 @@ func (s *Store) ListSquadProducts(ctx context.Context, visibleOnly bool) ([]mode
 		if scanErr != nil {
 			return nil, scanErr
 		}
+		if err := s.attachSquadStock(ctx, &product); err != nil {
+			return nil, err
+		}
 		products = append(products, product)
 	}
 	return products, rows.Err()
 }
 
-const squadSelect = `SELECT remna_squad_uuid,description,price_txb_minor,visible,created_at,updated_at FROM squad_product_overrides`
+func (s *Store) attachSquadStock(ctx context.Context, product *model.SquadProduct) error {
+	if product == nil || product.StockLimit == nil {
+		return nil
+	}
+	var reservations int
+	err := s.db.QueryRowContext(ctx, `SELECT COUNT(DISTINCT user_id) FROM purchases
+		WHERE status IN ('activating','active','queued') AND (EXISTS (
+			SELECT 1 FROM json_each((SELECT included_squad_uuids FROM combos WHERE combos.id=purchases.combo_id)) WHERE value=?
+		) OR EXISTS (SELECT 1 FROM purchase_addons WHERE purchase_addons.purchase_id=purchases.id AND remna_squad_uuid=?))`, product.RemnaSquadUUID, product.RemnaSquadUUID).Scan(&reservations)
+	if err != nil {
+		return fmt.Errorf("count squad stock: %w", err)
+	}
+	remaining := *product.StockLimit - reservations
+	if remaining < 0 {
+		remaining = 0
+	}
+	product.StockRemaining = &remaining
+	return nil
+}
+
+const squadSelect = `SELECT remna_squad_uuid,description,price_txb_minor,visible,stock_limit,created_at,updated_at FROM squad_product_overrides`
 
 func scanSquad(row rowScanner) (model.SquadProduct, error) {
 	var product model.SquadProduct
 	var visible int
 	var created, updated string
-	if err := row.Scan(&product.RemnaSquadUUID, &product.Description, &product.PriceTXBMinor, &visible, &created, &updated); err != nil {
+	var stockLimit sql.NullInt64
+	if err := row.Scan(&product.RemnaSquadUUID, &product.Description, &product.PriceTXBMinor, &visible, &stockLimit, &created, &updated); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.SquadProduct{}, ErrNotFound
 		}
@@ -114,6 +138,7 @@ func scanSquad(row rowScanner) (model.SquadProduct, error) {
 	product.ID = product.RemnaSquadUUID
 	product.Visible = visible == 1
 	product.UpstreamPresent = true
+	product.StockLimit = intPointer(stockLimit)
 	product.Price = model.TXBMoney(product.PriceTXBMinor)
 	var err error
 	product.CreatedAt, err = parseStamp(created)
@@ -122,4 +147,12 @@ func scanSquad(row rowScanner) (model.SquadProduct, error) {
 	}
 	product.UpdatedAt, err = parseStamp(updated)
 	return product, err
+}
+
+func intPointer(value sql.NullInt64) *int {
+	if !value.Valid {
+		return nil
+	}
+	result := int(value.Int64)
+	return &result
 }

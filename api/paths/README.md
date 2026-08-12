@@ -14,6 +14,8 @@ Each YAML file is one complete OpenAPI Path Item Object. `../openapi.yaml` regis
 - `api-v1-catalog.yaml`: `/api/v1/catalog`
 - `api-v1-purchases-quote.yaml`: `/api/v1/purchases/quote`
 - `api-v1-purchases.yaml`: `/api/v1/purchases`
+- `api-v1-purchases-id-renew-quote.yaml`: `/api/v1/purchases/{id}/renew/quote`
+- `api-v1-purchases-id-renew.yaml`: `/api/v1/purchases/{id}/renew`
 - `api-v1-subscription-revoke.yaml`: `/api/v1/subscription/revoke`
 - `api-v1-balance.yaml`: `/api/v1/balance`
 - `api-v1-ledger.yaml`: `/api/v1/ledger`
@@ -55,6 +57,8 @@ Each YAML file is one complete OpenAPI Path Item Object. `../openapi.yaml` regis
 - `api-v1-admin-emby-accounts-id-retry.yaml`: `/api/v1/admin/emby-accounts/{id}/retry`
 - `api-v1-admin-settings.yaml`: `/api/v1/admin/settings`
 - `api-v1-admin-settings-key.yaml`: `/api/v1/admin/settings/{key}`
+- `api-v1-admin-payment-profiles.yaml`: `/api/v1/admin/payment-profiles`
+- `api-v1-admin-payment-profiles-provider-rail.yaml`: `/api/v1/admin/payment-profiles/{provider}/{rail}`
 - `api-v1-admin-combos.yaml`: `/api/v1/admin/combos`
 - `api-v1-admin-combos-id.yaml`: `/api/v1/admin/combos/{id}`
 - `api-v1-admin-combos-id-statistics.yaml`: `/api/v1/admin/combos/{id}/statistics`

@@ -6,8 +6,12 @@ import type { Catalog, Combo, Purchase, PurchaseQuote, SquadProduct } from '@/ap
 import { localizedError, t } from '@/i18n'
 import { createUuid } from '@/utils/browserCompatibility'
 import { notifyHaptic } from '@/utils/telegram'
+import { useSessionStore } from '@/stores/session'
+import { clearCatalogDraft, writeCatalogDraft } from '@/composables/catalogDraft'
+import { loadCatalogData } from '@/composables/catalogLoader'
 
 export function useCatalog() {
+	const sessionStore = useSessionStore()
   const catalog = shallowRef<Catalog | null>(null)
   const balance = shallowRef<import('@/api/types').Money | null>(null)
   const loading = shallowRef(true)
@@ -22,7 +26,11 @@ export function useCatalog() {
   const selectedCouponGrantId = shallowRef<string | null>(null)
   const couponDiscarding = shallowRef(false)
   const needsBalance = shallowRef(false)
-  const purchaseIdempotencyKey = shallowRef<string | null>(null)
+	const purchaseIdempotencyKey = shallowRef<string | null>(null)
+	const draftRestored = shallowRef(false)
+	function persistDraft(): void {
+		writeCatalogDraft(sessionStore.user?.id, { comboId: selectedComboId.value ?? undefined, squadIds: selectedSquadIds.value, couponGrantId: selectedCouponGrantId.value })
+	}
   const visibleCombos = computed(() => catalog.value?.combos.filter((combo) => combo.active) ?? [])
   const selectedCombo = computed<Combo | undefined>(() => visibleCombos.value.find((combo) => combo.id === selectedComboId.value))
   const includedSquadIds = computed(() => selectedCombo.value?.includedSquads.map((squad) => squad.id) ?? [])
@@ -50,30 +58,15 @@ export function useCatalog() {
     [...selectedSquadIds.value].sort(),
     selectedCouponGrantId.value,
   ]))
-  watch(purchaseFingerprint, () => {
-    purchaseIdempotencyKey.value = null
-    quote.value = null
-  })
+	watch(purchaseFingerprint, () => {
+		purchaseIdempotencyKey.value = null
+		quote.value = null
+		persistDraft()
+	})
+	watch([selectedSquadIds, selectedCouponGrantId], persistDraft, { deep: true })
 
-  async function load(): Promise<void> {
-    loading.value = true
-    error.value = null
-    try {
-      const [catalogResponse, balanceResponse, couponResponse] = await Promise.all([
-        api.getCatalog(),
-        api.getBalance(),
-        featuresApi.getCouponWallet().catch(() => ({ items: [] })),
-      ])
-      catalog.value = catalogResponse
-      balance.value = balanceResponse.balance
-      couponGrants.value = couponResponse.items
-      const preferred = catalog.value.combos.find((combo) => combo.active)
-      if (!selectedComboId.value || !catalog.value.combos.some((combo) => combo.active && combo.id === selectedComboId.value)) selectedComboId.value = preferred?.id ?? null
-    } catch (caught) {
-      error.value = localizedError(caught, 'errors.catalogUnavailable')
-    } finally {
-      loading.value = false
-    }
+  function load(): Promise<void> {
+    return loadCatalogData({ loading, error, catalog, balance, couponGrants, draftRestored, selectedComboId, selectedSquadIds, selectedCouponGrantId, userID: () => sessionStore.user?.id })
   }
 
   function selectCombo(id: string): void {
@@ -148,7 +141,8 @@ export function useCatalog() {
       notifyHaptic('success')
       purchaseIdempotencyKey.value = null
       selectedSquadIds.value = []
-      selectedCouponGrantId.value = null
+		selectedCouponGrantId.value = null
+		clearCatalogDraft(sessionStore.user?.id)
       await load()
       return true
     } catch (caught) {
@@ -193,6 +187,6 @@ export function useCatalog() {
     toggleSquad,
     refreshQuote,
     discardCoupon,
-    confirmPurchase,
-  }
+		confirmPurchase,
+	}
 }

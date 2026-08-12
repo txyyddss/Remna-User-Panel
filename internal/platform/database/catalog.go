@@ -37,6 +37,7 @@ type SquadProductInput struct {
 	PriceTXBMinor   int64
 	Visible         bool
 	UpstreamPresent bool
+	StockLimit      *int
 }
 
 // ImportedSquad is retained as a compatibility DTO. Upstream squads are no

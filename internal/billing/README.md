@@ -4,7 +4,8 @@ Payment-method discovery, exact decimal arithmetic, checkout creation, provider 
 
 ## Files
 
-- `service.go` defines gateway and repository contracts, service construction, payment methods, and checkout creation.
+- `service.go` defines gateway and repository contracts, service construction, and checkout creation.
+- `payment_methods.go` builds the configured rail list, including coupon funding and per-rail profiles.
 - `events.go` validates and authorizes provider events, settles orders, handles cancellation, and verifies callback capabilities.
 - `methods.go` defines canonical payment method identifiers and enabled-rail ordering.
 - `decimal.go` parses and computes exact TXB and provider-currency amounts without floating point.

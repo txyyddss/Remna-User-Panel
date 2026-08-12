@@ -1,0 +1,22 @@
+post:
+  tags: [Catalog]
+  operationId: quoteRenewal
+  summary: Quote a contiguous renewal batch
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema: { $ref: '../openapi.yaml#/components/schemas/ID' }
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema: { $ref: '../openapi.yaml#/components/schemas/RenewalRequest' }
+  responses:
+    '200':
+      description: Current authoritative renewal price.
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/RenewalQuote' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }

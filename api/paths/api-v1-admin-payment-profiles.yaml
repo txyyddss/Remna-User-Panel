@@ -1,0 +1,16 @@
+get:
+  tags: [Admin]
+  operationId: listAdminPaymentProfiles
+  responses:
+    '200':
+      description: Masked payment rail profiles.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [items]
+            properties:
+              items:
+                type: array
+                items: { $ref: '../openapi.yaml#/components/schemas/PaymentProfile' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }

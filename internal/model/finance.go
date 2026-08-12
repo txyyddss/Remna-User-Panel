@@ -2,8 +2,15 @@ package model
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 )
+
+// MinorInt64 returns the exact integer representation used by internal atomic debits.
+func (money Money) MinorInt64() int64 {
+	value, _ := strconv.ParseInt(money.Minor, 10, 64)
+	return value
+}
 
 // LedgerEntry is an immutable TXB balance mutation.
 type LedgerEntry struct {
@@ -58,6 +65,27 @@ type PaymentMethod struct {
 	Currency  string `json:"currency"`
 	Available bool   `json:"available"`
 	Note      string `json:"note"`
+	Mode      string `json:"mode"`
+}
+
+// PaymentProfile is the masked administrative representation of one rail.
+type PaymentProfile struct {
+	ID              string `json:"id"`
+	Provider        string `json:"provider"`
+	Rail            string `json:"rail"`
+	ChannelName     string `json:"channelName"`
+	Endpoint        string `json:"endpoint"`
+	MerchantID      string `json:"merchantId"`
+	Credential      string `json:"credential"`
+	Acknowledgement string `json:"acknowledgement"`
+	Enabled         bool   `json:"enabled"`
+	Configured      bool   `json:"configured"`
+}
+
+// PaymentProfileRuntime is an internal-only profile with decrypted credentials.
+type PaymentProfileRuntime struct {
+	PaymentProfile
+	CredentialPlaintext string `json:"-"`
 }
 
 // Refund is an immutable record of an administrator-authorized payment reversal.

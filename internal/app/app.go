@@ -79,6 +79,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		return cleanup(err)
 	}
 	settings := admin.NewSettingsService(store, vault)
+	settings.SetPaymentProfileRepository(store)
 	if err := ensureBootstrapSettings(ctx, store, vault); err != nil {
 		return cleanup(err)
 	}

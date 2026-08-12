@@ -16,7 +16,7 @@ func (s *Service) SaveCombo(ctx context.Context, actorID string, input database.
 		input.RolloverMinRemainingBPS < 0 || input.RolloverMinRemainingBPS > 10_000 || input.RolloverMaxTXBMinor < 0 || input.RolloverMaxTXBMinor > 1_000_000_000_000 {
 		return model.Combo{}, errors.New("invalid combo fields")
 	}
-	if input.ResetStrategy != "DAY" && input.ResetStrategy != "WEEK" && input.ResetStrategy != "MONTH" {
+	if input.ResetStrategy != "DAY" && input.ResetStrategy != "WEEK" && input.ResetStrategy != "MONTH" && input.ResetStrategy != "MONTH_ROLLING" {
 		return model.Combo{}, errors.New("invalid reset strategy")
 	}
 	live, err := s.liveSquads(ctx)
@@ -50,7 +50,7 @@ func (s *Service) DeleteCombo(ctx context.Context, actorID, comboID string) erro
 func (s *Service) SaveSquadProduct(ctx context.Context, actorID string, input database.SquadProductInput) (model.SquadProduct, error) {
 	input.RemnaSquadUUID = strings.TrimSpace(input.RemnaSquadUUID)
 	input.Name = strings.TrimSpace(input.Name)
-	if input.RemnaSquadUUID == "" || input.PriceTXBMinor < 0 || input.PriceTXBMinor > 1_000_000_000_000 {
+	if input.RemnaSquadUUID == "" || input.PriceTXBMinor < 0 || input.PriceTXBMinor > 1_000_000_000_000 || (input.StockLimit != nil && (*input.StockLimit < 0 || *input.StockLimit > 1_000_000_000)) {
 		return model.SquadProduct{}, errors.New("invalid squad product")
 	}
 	live, err := s.liveSquads(ctx)

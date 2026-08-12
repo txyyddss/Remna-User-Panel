@@ -16,3 +16,4 @@ Schema definitions are grouped into bounded sequential shards. The root componen
 - `schemas-12.yaml`: `AuditEvent`, `AuditPage`, `TelegramUpdate`, `FlexibleDecimal`, `BEPusdtNotification`, `BEPusdtUnsignedNotification`, `HealthStatus`, `RuntimeReadiness`
 - `schemas-13.yaml`: `CourtesyCredit`
 - `schemas-14.yaml`: `DashboardNodeUsage`
+- `schemas-15.yaml`: `RenewalRequest`, `RenewalQuote`, `RenewalBatch`, `PaymentProfile`, `PaymentProfileWrite`

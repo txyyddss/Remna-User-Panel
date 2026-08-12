@@ -25,3 +25,5 @@ file instead.
   aligns exhausted questionnaire jobs with the retry lifecycle.
 - `013_coupon_discards_and_courtesy_credits.sql` — adds durable wallet-discard
   evidence and exactly-once terminal-payment courtesy-credit records.
+- `014_goal_completion.sql` adds optional squad stock, renewal batches, bounded
+  rollover aggregates, and per-rail payment profiles.

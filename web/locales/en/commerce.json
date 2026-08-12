@@ -32,7 +32,7 @@
     "confirmPurchase": "Confirm purchase",
     "checkoutDescription": "Review the live price and effective date before you confirm.",
     "closeCheckout": "Close purchase review",
-    "termSummary": "{days} days · {reset} reset",
+    "termSummary": "{days} days 路 {reset} reset",
     "coupon": "Coupon",
     "noCoupon": "No coupon",
     "couponHint": "Eligibility and discount are rechecked by the server.",
@@ -52,7 +52,7 @@
     "continuePayment": "Continue to payment",
     "accessibleNodes": "Accessible nodes",
     "accessibleNodesHint": "Nodes available to this selection.",
-    "nodeMultiplier": "{multiplier}× traffic",
+    "nodeMultiplier": "{multiplier}脳 traffic",
     "noAccessibleNodes": "No nodes are available yet",
     "noAccessibleNodesHint": "Continue after the server refreshes this selection.",
     "couponStepHint": "Choose one eligible coupon or add a code.",
@@ -61,7 +61,14 @@
     "noEligibleCoupons": "No eligible wallet coupons for this selection.",
     "couponIneligible": "Not eligible for this selection",
     "paymentHint": "Confirm the server-priced selection with your TXB balance.",
-    "returnHome": "Return home"
+    "returnHome": "Return home",
+    "validity": "Validity",
+    "traffic": "Traffic",
+    "term": "Term",
+    "rollover": "Rollover",
+    "rolloverSummary": "Threshold {threshold}% · cap {cap}",
+    "reviewAction": "Final purchase",
+    "renewalTerms": "Renewal terms"
   },
   "amount": {
     "hint": "Use up to 2 decimals.",
@@ -74,6 +81,9 @@
     "configureHint": "Payment channels are not configured.",
     "cancelledHint": "This order was cancelled.",
     "providerHint": "Choose a secure payment channel.",
+    "couponHint": "Redeem a balance coupon",
+    "couponCode": "Coupon code",
+    "redeemCoupon": "Redeem coupon",
     "amount": "Amount",
     "minimumTopUp": "Minimum top-up applies.",
     "provider": "Provider",
@@ -81,8 +91,8 @@
       "ezpay": "EZPay",
       "bepusdt": "BEPUSDT",
       "stars": "Telegram Stars"
+      ,"coupon": "Coupon"
     },
-    "localRails": "Local payment rail",
     "noChannel": "No payment channel is available.",
     "channel": "Channel",
     "creating": "Creating order",

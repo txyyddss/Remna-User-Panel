@@ -15,7 +15,6 @@ const items = computed(() => [
   { value: 3, title: t('catalog.steps.nodes'), icon: 'i-ph-network' },
   { value: 4, title: t('catalog.steps.coupon'), icon: 'i-ph-ticket' },
   { value: 5, title: t('catalog.steps.review'), icon: 'i-ph-list-checks' },
-  { value: 6, title: t('catalog.steps.payment'), icon: 'i-ph-credit-card' },
 ])
 
 </script>

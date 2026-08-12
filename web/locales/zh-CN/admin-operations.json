@@ -52,6 +52,16 @@
       "activity_group_message_reward_txb": "群消息奖励"
     }
   },
+  "adminPaymentProfiles": {
+    "title": "支付配置档案",
+    "copy": "为 EZPay 或 BEPUSDT 的每条渠道配置独立档案，凭据会保持遮罩。",
+    "saved": "支付档案已保存。",
+    "channelName": "渠道名称",
+    "endpoint": "接口地址",
+    "merchantId": "商户 ID",
+    "credential": "凭据",
+    "keepCredential": "留空以保留当前凭据"
+  },
   "adminAudit": {
     "title": "审计记录",
     "copy": "敏感管理操作的仅追加记录。",

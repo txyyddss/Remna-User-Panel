@@ -12,6 +12,10 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 )
 
+// ErrNoAccessibleNodes means the selected entitlement cannot be delivered by
+// any currently enabled Remnawave node.
+var ErrNoAccessibleNodes = errors.New("no accessible nodes")
+
 // Repository is the local catalog and entitlement persistence contract.
 type Repository interface {
 	ListCombos(context.Context, bool) ([]model.Combo, error)
@@ -46,6 +50,11 @@ type remoteSquadLister interface {
 
 type quoteRepository interface {
 	QuotePurchase(context.Context, database.PurchaseInput, time.Time) (model.PurchaseQuote, error)
+}
+
+type renewalRepository interface {
+	RenewalQuote(context.Context, string, string, int, time.Time) (model.RenewalQuote, error)
+	Renew(context.Context, database.RenewalInput, time.Time) (model.RenewalBatch, error)
 }
 
 type cachedDashboard struct {
@@ -153,6 +162,13 @@ func (s *Service) PurchaseWithCoupon(ctx context.Context, user model.User, combo
 	if err := s.validateLiveSelection(ctx, comboID, addonIDs); err != nil {
 		return model.Purchase{}, err
 	}
+	nodes, err := s.quoteAccessibleNodes(ctx, comboID, addonIDs)
+	if err != nil {
+		return model.Purchase{}, err
+	}
+	if len(nodes) == 0 {
+		return model.Purchase{}, ErrNoAccessibleNodes
+	}
 	return s.repository.CreatePurchase(ctx, database.PurchaseInput{UserID: user.ID, ComboID: comboID, AddonSquadIDs: addonIDs,
 		CouponGrantID: couponGrantID, IdempotencyKey: idempotencyKey}, s.now().UTC())
 }
@@ -181,7 +197,51 @@ func (s *Service) Quote(ctx context.Context, user model.User, comboID string, ad
 	if err != nil {
 		return model.PurchaseQuote{}, err
 	}
+	if len(quote.AccessibleNodes) == 0 {
+		return model.PurchaseQuote{}, ErrNoAccessibleNodes
+	}
 	return quote, nil
+}
+
+// RenewalQuote previews a contiguous renewal using the current combo and add-on prices.
+func (s *Service) RenewalQuote(ctx context.Context, user model.User, purchaseID string, termCount int) (model.RenewalQuote, error) {
+	if user.OnboardingState != "complete" || strings.TrimSpace(purchaseID) == "" || termCount < 1 || termCount > 6 {
+		return model.RenewalQuote{}, errors.New("invalid renewal selection")
+	}
+	repository, ok := s.repository.(renewalRepository)
+	if !ok {
+		return model.RenewalQuote{}, errors.New("renewal is unavailable")
+	}
+	quote, err := repository.RenewalQuote(ctx, user.ID, purchaseID, termCount, s.now().UTC())
+	if err != nil {
+		return model.RenewalQuote{}, err
+	}
+	quote.AccessibleNodes, err = s.quoteAccessibleNodes(ctx, quote.ComboID, quote.AddonSquadUUIDs)
+	if err != nil {
+		return model.RenewalQuote{}, err
+	}
+	if len(quote.AccessibleNodes) == 0 {
+		return model.RenewalQuote{}, ErrNoAccessibleNodes
+	}
+	return quote, nil
+}
+
+// Renew commits one atomic debit for 1-6 contiguous current-ride terms.
+func (s *Service) Renew(ctx context.Context, user model.User, purchaseID string, termCount int, idempotencyKey string) (model.RenewalBatch, error) {
+	if user.OnboardingState != "complete" || strings.TrimSpace(purchaseID) == "" || termCount < 1 || termCount > 6 {
+		return model.RenewalBatch{}, errors.New("invalid renewal selection")
+	}
+	if strings.TrimSpace(idempotencyKey) == "" || len(idempotencyKey) > 128 {
+		return model.RenewalBatch{}, errors.New("invalid idempotency key")
+	}
+	if _, err := s.RenewalQuote(ctx, user, purchaseID, termCount); err != nil {
+		return model.RenewalBatch{}, err
+	}
+	repository, ok := s.repository.(renewalRepository)
+	if !ok {
+		return model.RenewalBatch{}, errors.New("renewal is unavailable")
+	}
+	return repository.Renew(ctx, database.RenewalInput{UserID: user.ID, PurchaseID: purchaseID, TermCount: termCount, IdempotencyKey: idempotencyKey}, s.now().UTC())
 }
 
 func (s *Service) validateLiveSelection(ctx context.Context, comboID string, addonIDs []string) error {
@@ -217,65 +277,4 @@ func (s *Service) validateLiveSelection(ctx context.Context, comboID string, add
 // Purchases returns the account's immutable purchase history.
 func (s *Service) Purchases(ctx context.Context, userID string) ([]model.Purchase, error) {
 	return s.repository.ListPurchases(ctx, userID)
-}
-
-// Dashboard prefers fresh upstream data and falls back to a clearly marked cached snapshot.
-func (s *Service) Dashboard(ctx context.Context, user model.User) (model.Dashboard, error) {
-	now := s.now().UTC()
-	balance, err := s.repository.Balance(ctx, user.ID)
-	if err != nil {
-		return model.Dashboard{}, err
-	}
-	active, queued, err := s.repository.ActiveAndQueuedPurchases(ctx, user.ID, now)
-	if err != nil {
-		return model.Dashboard{}, err
-	}
-	dashboard := model.Dashboard{User: user, Balance: balance, ActivePurchase: active, QueuedPurchase: queued, FetchedAt: now}
-	if user.RemnaUserID == nil {
-		return dashboard, nil
-	}
-	s.cacheMu.RLock()
-	cached, exists := s.cache[user.ID]
-	s.cacheMu.RUnlock()
-	if exists && now.Sub(cached.fetchedAt) <= s.cacheTTL {
-		dashboard.Statistics = &cached.value.Statistics
-		dashboard.SubscriptionURL = &cached.value.SubscriptionURL
-		dashboard.FetchedAt = cached.fetchedAt
-		return dashboard, nil
-	}
-	remote, remoteErr := s.remnawave.Dashboard(ctx, *user.RemnaUserID)
-	if remoteErr == nil {
-		dashboard.Statistics = &remote.Statistics
-		dashboard.SubscriptionURL = &remote.SubscriptionURL
-		s.cacheMu.Lock()
-		s.cache[user.ID] = cachedDashboard{value: remote, fetchedAt: now}
-		s.cacheMu.Unlock()
-		return dashboard, nil
-	}
-	if !exists {
-		dashboard.StatisticsStale = true
-		dashboard.StatisticsWarning = "Live usage is temporarily unavailable. Local balance and entitlement data are still current."
-		return dashboard, nil
-	}
-	dashboard.Statistics = &cached.value.Statistics
-	dashboard.SubscriptionURL = &cached.value.SubscriptionURL
-	dashboard.StatisticsStale = true
-	dashboard.StatisticsWarning = "Live usage is unavailable. Showing the latest cached data."
-	dashboard.FetchedAt = cached.fetchedAt
-	return dashboard, nil
-}
-
-// RevokeSubscription rotates the bearer URL and invalidates the process-local cache.
-func (s *Service) RevokeSubscription(ctx context.Context, user model.User) (string, error) {
-	if user.RemnaUserID == nil {
-		return "", database.ErrNotFound
-	}
-	url, err := s.remnawave.RevokeSubscription(ctx, *user.RemnaUserID)
-	if err != nil {
-		return "", err
-	}
-	s.cacheMu.Lock()
-	delete(s.cache, user.ID)
-	s.cacheMu.Unlock()
-	return url, nil
 }

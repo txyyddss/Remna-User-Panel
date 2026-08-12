@@ -24,6 +24,8 @@
     "used": "used",
     "thisTerm": "This term",
     "ofLimit": "of {amount}",
+    "trafficGraph": "Traffic usage graph",
+    "trafficGraphFallback": "The graph contains {points} usage points.",
     "lifetime": "Lifetime",
     "acrossSubscriptions": "across all subscriptions",
     "topNodes": "Top nodes",

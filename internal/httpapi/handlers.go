@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/accounts"
+	"github.com/txyyddss/Remna-User-Panel/internal/catalog"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 )
@@ -143,6 +144,10 @@ func (s *Server) purchase(w http.ResponseWriter, r *http.Request) {
 	purchase, err := s.deps.Catalog.PurchaseWithCoupon(r.Context(), user, request.ComboID, request.AddonSquadProductIDs, request.CouponGrantID, idempotencyKey)
 	if err != nil {
 		switch {
+		case errors.Is(err, catalog.ErrNoAccessibleNodes):
+			s.writeError(w, r, http.StatusConflict, "NO_ACCESSIBLE_NODES", "The selected catalog item has no accessible nodes.")
+		case errors.Is(err, database.ErrStockUnavailable):
+			s.writeError(w, r, http.StatusConflict, "SQUAD_STOCK_UNAVAILABLE", "A selected squad is currently full.")
 		case errors.Is(err, database.ErrInsufficientBalance):
 			s.writeError(w, r, http.StatusConflict, "INSUFFICIENT_BALANCE", "Your TXB balance is too low for this purchase.")
 		case errors.Is(err, database.ErrNotFound):
@@ -173,6 +178,12 @@ func (s *Server) purchaseQuote(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		status := http.StatusConflict
 		code := "QUOTE_FAILED"
+		if errors.Is(err, catalog.ErrNoAccessibleNodes) {
+			code = "NO_ACCESSIBLE_NODES"
+		}
+		if errors.Is(err, database.ErrStockUnavailable) {
+			code = "SQUAD_STOCK_UNAVAILABLE"
+		}
 		if errors.Is(err, database.ErrNotFound) {
 			status = http.StatusNotFound
 			code = "CATALOG_ITEM_NOT_FOUND"

@@ -11,6 +11,7 @@
 - `handlers.go` serves onboarding actions, dashboard, catalog, purchases, balance, and ledger history.
 - `dashboard_usage.go` validates the authenticated member's UTC traffic range and serves the bounded per-node usage projection.
 - `billing_orders.go` creates, polls, and cancels member payment orders.
+- `renewals.go` quotes and commits 1-6-term current-ride renewal batches.
 - `onboarding.go` serves and administers localized onboarding content.
 - `emby.go` serves member and administrator Emby account operations.
 - `database_admin.go` exposes guarded database inspection, backup download, and restore transports.
@@ -35,6 +36,7 @@
 
 - `admin.go` registers administrator routes and delegates community administration registration.
 - `admin_settings.go` lists, creates, and updates deployment settings.
+- `admin_payment_profiles.go` lists and updates masked EZPay/BEPusdt rail profiles.
 - `admin_catalog.go` manages combos, squad products, nodes, and statistics windows.
 - `admin_accounts.go` manages users, balance adjustments, and entitlements.
 - `admin_payments.go` lists administrator payment and refund projections, applies refunds, and grants terminal-payment courtesy credits.

@@ -1,0 +1,23 @@
+post:
+  tags: [Catalog]
+  operationId: renewPurchase
+  summary: Debit and create a contiguous renewal batch
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema: { $ref: '../openapi.yaml#/components/schemas/ID' }
+    - $ref: '../openapi.yaml#/components/parameters/IdempotencyKey'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema: { $ref: '../openapi.yaml#/components/schemas/RenewalRequest' }
+  responses:
+    '201':
+      description: One atomic renewal debit and all resulting terms.
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/RenewalBatch' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }

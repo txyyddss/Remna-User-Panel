@@ -56,6 +56,24 @@ export interface PurchaseQuote {
   addonSquadUuids: string[]
   accessibleNodes: RemnaNode[]
 }
+export interface RenewalQuote {
+  purchaseId: string
+  comboId: string
+  termCount: number
+  pricePerTerm: Money
+  totalPrice: Money
+  effectiveAt: RFC3339
+  expiresAt: RFC3339
+  addonSquadUuids: string[]
+  accessibleNodes: RemnaNode[]
+}
+export interface RenewalBatch {
+  id: string
+  purchaseId: string
+  termCount: number
+  totalPrice: Money
+  purchases: Purchase[]
+}
 export interface RemnaNode {
   uuid: string
   name: string

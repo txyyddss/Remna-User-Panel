@@ -11,6 +11,8 @@ import type {
   PaymentOrder,
   Purchase,
   PurchaseQuote,
+	RenewalBatch,
+	RenewalQuote,
   RemnaNode,
   Session,
   SquadProduct,
@@ -28,6 +30,19 @@ type BalanceAdjustmentRequest = components['schemas']['BalanceAdjustmentRequest'
 type ReasonRequest = components['schemas']['ReasonRequest']
 type RefundRequest = components['schemas']['RefundRequest']
 type GeneratedSquadProductWrite = components['schemas']['SquadProductWrite']
+export interface AdminPaymentProfile {
+  id: string
+  provider: 'ezpay' | 'bepusdt'
+  rail: string
+  channelName: string
+  endpoint: string
+  merchantId: string
+  credential: string
+  acknowledgement: string
+  enabled: boolean
+  configured: boolean
+}
+export type AdminPaymentProfileWrite = Omit<AdminPaymentProfile, 'configured'>
 
 export const api = {
   authTelegram: (initData: string) => request<Session>('/api/v1/auth/telegram', {
@@ -74,6 +89,12 @@ export const api = {
     body: { comboId, addonSquadProductIds: squadProductIds, couponGrantId },
   }),
   getPurchases: () => request<Paginated<Purchase>>('/api/v1/purchases'),
+  quoteRenewal: (purchaseId: string, termCount: number) => request<RenewalQuote>(`/api/v1/purchases/${encodeURIComponent(purchaseId)}/renew/quote`, {
+    method: 'POST', body: { termCount },
+  }),
+  renewPurchase: (purchaseId: string, termCount: number, idempotencyKey: string) => request<RenewalBatch>(`/api/v1/purchases/${encodeURIComponent(purchaseId)}/renew`, {
+    method: 'POST', headers: { 'Idempotency-Key': idempotencyKey }, body: { termCount },
+  }),
   revokeSubscription: () => request<{ subscriptionUrl: string }>('/api/v1/subscription/revoke', {
     method: 'POST',
   }),
@@ -112,6 +133,8 @@ export const api = {
     method: 'POST',
     body: { reason } satisfies RefundRequest,
   }),
+  getAdminPaymentProfiles: () => request<{ items: AdminPaymentProfile[] }>('/api/v1/admin/payment-profiles'),
+  updateAdminPaymentProfile: (provider: string, rail: string, body: AdminPaymentProfileWrite) => request<AdminPaymentProfile>(`/api/v1/admin/payment-profiles/${encodeURIComponent(provider)}/${encodeURIComponent(rail)}`, { method: 'PUT', body }),
   cancelAdminEntitlement: (entitlementId: string, reason: string) => request<Purchase>(`/api/v1/admin/entitlements/${encodeURIComponent(entitlementId)}/cancel`, {
     method: 'POST',
     body: { reason } satisfies ReasonRequest,

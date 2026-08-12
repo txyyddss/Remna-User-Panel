@@ -5,6 +5,7 @@ import type { AdminSetting } from '@/api/types'
 import type { ActivitySettings, ActivitySettingsWrite } from '@/api/features'
 import { featuresApi } from '@/api/features'
 import AdminActivitySettings from '@/components/admin/activity/AdminActivitySettings.vue'
+import AdminPaymentProfiles from '@/components/admin/AdminPaymentProfiles.vue'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import SwitchField from '@/components/common/SwitchField.vue'
 import { useAdminSection } from '@/composables/useAdminSection'
@@ -108,6 +109,7 @@ onMounted(() => void loadActivitySettings())
       <AdminActivitySettings :settings="activitySettings" :busy="activityBusy" @save="saveActivitySettings" />
       <InlineNotice v-if="activityError" tone="warning">{{ activityError }}</InlineNotice>
     </section>
+    <AdminPaymentProfiles />
     <AdminSectionState :loading="loading" :error="error" @retry="load()">
       <form class="settings-groups" @submit.prevent="save">
         <fieldset v-for="(settings, category) in grouped" :key="category" class="settings-group">

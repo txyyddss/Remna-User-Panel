@@ -61,7 +61,14 @@
     "noEligibleCoupons": "当前选择没有可用的钱包优惠券。",
     "couponIneligible": "当前选择不适用",
     "paymentHint": "使用 TXB 余额确认服务器报价。",
-    "returnHome": "返回首页"
+    "returnHome": "返回首页",
+    "validity": "有效期",
+    "traffic": "流量",
+    "term": "期限",
+    "rollover": "结转",
+    "rolloverSummary": "阈值 {threshold}% · 上限 {cap}",
+    "reviewAction": "确认购买",
+    "renewalTerms": "续费周期"
   },
   "amount": {
     "hint": "最多输入 2 位小数。",
@@ -74,15 +81,16 @@
     "configureHint": "尚未配置支付渠道。",
     "cancelledHint": "订单已取消。",
     "providerHint": "选择安全的支付渠道。",
+    "couponHint": "兑换余额优惠券",
     "amount": "金额",
     "minimumTopUp": "有最低充值金额。",
     "provider": "支付方",
     "providers": {
       "ezpay": "EZPay",
       "bepusdt": "BEPUSDT",
-      "stars": "Telegram Stars"
+      "stars": "Telegram Stars",
+      "coupon": "优惠券"
     },
-    "localRails": "本地支付渠道",
     "noChannel": "暂无可用支付渠道。",
     "channel": "渠道",
     "creating": "正在创建订单",
@@ -126,6 +134,8 @@
     "returnUnavailableDescription": "请打开小程序并再次查看余额。",
     "returnAutoHome": "即将返回首页。",
     "returnHome": "前往首页",
-    "returnCheckingAction": "正在核对付款"
+    "returnCheckingAction": "正在核对付款",
+    "couponCode": "优惠券代码",
+    "redeemCoupon": "兑换优惠券"
   }
 }

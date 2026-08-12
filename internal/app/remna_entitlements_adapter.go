@@ -44,7 +44,7 @@ func (a remnaAdapter) RemoveEntitlement(ctx context.Context, remoteID string) er
 	if err != nil {
 		return err
 	}
-	status := remnawave.UserStatusActive
+	status := remnawave.UserStatusDisabled
 	limit := int64(0)
 	strategy := remnawave.TrafficNoReset
 	expires := time.Date(2099, 12, 31, 23, 59, 59, 0, time.UTC)
@@ -90,6 +90,42 @@ func (a remnaAdapter) TrafficForRollover(ctx context.Context, remoteID string) (
 		return 0, 0, err
 	}
 	return user.TrafficLimitBytes, user.UserTraffic.UsedTrafficBytes, nil
+}
+
+func (a remnaAdapter) UsageSnapshotForRollover(ctx context.Context, remoteID string, start, end time.Time) (rollover.UsageSnapshot, error) {
+	userID, err := remnaUserID(remoteID)
+	if err != nil {
+		return rollover.UsageSnapshot{}, err
+	}
+	user, err := remnaCall(ctx, a, func(callCtx context.Context, client remnaClient) (*remnawave.User, error) {
+		return client.GetUserByID(callCtx, userID)
+	})
+	if remnawave.IsNotFound(err) {
+		return rollover.UsageSnapshot{}, rollover.ErrRemoteUserMissing
+	}
+	if err != nil {
+		return rollover.UsageSnapshot{}, err
+	}
+	stats, err := remnaCall(ctx, a, func(callCtx context.Context, client remnaClient) (*remnawave.UserStats, error) {
+		return client.GetUserStats(callCtx, userID, start.UTC(), end.Add(-time.Nanosecond).UTC(), 20)
+	})
+	if remnawave.IsNotFound(err) {
+		return rollover.UsageSnapshot{}, rollover.ErrRemoteUserMissing
+	}
+	if err != nil {
+		return rollover.UsageSnapshot{}, err
+	}
+	daily := make([]rollover.DailyUsage, 0, len(stats.Categories))
+	for index, category := range stats.Categories {
+		date, parseErr := time.Parse(time.DateOnly, category)
+		if parseErr != nil {
+			continue
+		}
+		if index < len(stats.SparklineData) {
+			daily = append(daily, rollover.DailyUsage{Date: date, Bytes: stats.SparklineData[index]})
+		}
+	}
+	return rollover.UsageSnapshot{LimitBytes: user.TrafficLimitBytes, Strategy: string(user.TrafficLimitStrategy), LastResetAt: user.LastTrafficResetAt, Daily: daily}, nil
 }
 
 var _ entitlements.RemnawaveClient = remnaAdapter{}

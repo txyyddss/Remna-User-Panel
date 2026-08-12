@@ -34,9 +34,10 @@ export interface FeaturePaymentMethod {
   provider: PaymentProvider
   rail: string
   name: string
-  currency: 'CNY' | 'USD' | 'USDT' | 'XTR'
+  currency: 'TXB' | 'CNY' | 'USD' | 'USDT' | 'XTR'
   available: boolean
   note: string
+  mode: 'order' | 'coupon_redemption'
 }
 
 export interface FeaturePaymentOrder {

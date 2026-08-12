@@ -29,8 +29,9 @@ watch(() => props.games, (games) => {
   }
 }, { immediate: true })
 
-watch(selected, (game) => {
-  stake.value = game ? txbInputFromMinor(game.minimumStakeMinor) : ''
+watch(() => selected.value?.id, (gameId) => {
+	const game = props.games.find((candidate) => candidate.id === gameId)
+	stake.value = game ? txbInputFromMinor(game.minimumStakeMinor) : ''
 }, { immediate: true })
 
 function submit(): void {

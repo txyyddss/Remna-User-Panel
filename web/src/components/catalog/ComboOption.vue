@@ -34,6 +34,7 @@ defineEmits<{ select: [id: string] }>()
       <span><UIcon name="i-ph-gauge" />{{ formatBytes(combo.trafficLimitBytes) }}</span>
       <span><UIcon name="i-ph-clock" />{{ $t('catalog.days', { count: combo.validityDays }) }}</span>
       <span><UIcon name="i-ph-stack" />{{ $t('catalog.squads', { count: combo.includedSquads.length }) }}</span>
+      <span><UIcon name="i-ph-arrow-clockwise" />{{ $t(`home.reset.${combo.resetStrategy}`) }}</span>
     </span>
     <span class="combo-option__price">
       <strong>{{ formatMoney(combo.price) }}</strong>

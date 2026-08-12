@@ -2,6 +2,9 @@
   "coupons": {
     "wallet": "Coupon wallet",
     "walletHint": "Redeem a code or use an available grant.",
+    "selectorSummary": "{code} · {effect}",
+    "effectFixed": "Adds {amount} TXB",
+    "effectPercent": "Adds {value}% of the balance",
     "code": "Coupon code",
     "codePlaceholder": "Enter code",
     "redeeming": "Redeeming",
@@ -16,7 +19,7 @@
     },
     "expires": "Expires {date}",
     "noExpiry": "No expiry",
-    "grantSummary": "{code} · {kind} · {expiry}",
+    "grantSummary": "{code} 路 {kind} 路 {expiry}",
     "unlimited": "Unlimited",
     "uses": "{count} uses left",
     "discard": "Discard",

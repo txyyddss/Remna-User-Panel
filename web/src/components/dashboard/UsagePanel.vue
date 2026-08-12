@@ -18,6 +18,16 @@ const props = defineProps<{
 const percentage = computed(() => Math.min(100, Math.max(0, Math.round(props.ratio * 100))))
 const tone = computed(() => percentage.value >= 90 ? 'danger' : percentage.value >= 75 ? 'warning' : 'safe')
 const meterStyle = computed(() => ({ '--usage': `${percentage.value}%` }))
+const graphPoints = computed(() => {
+  const values = props.statistics.sparklineData.map((value) => Number(value))
+  if (!values.length) return ''
+  const max = Math.max(...values, 1)
+  return values.map((value, index) => {
+    const x = values.length === 1 ? 50 : (index / (values.length - 1)) * 100
+    const y = 92 - (value / max) * 76
+    return `${x.toFixed(2)},${y.toFixed(2)}`
+  }).join(' ')
+})
 const detailsOpen = shallowRef(false)
 const nodeUsage = useDashboardNodeUsage()
 
@@ -81,5 +91,16 @@ watch(detailsOpen, (open) => {
     >
       <span />
     </div>
+    <div v-if="graphPoints" class="home-usage__graph">
+      <svg viewBox="0 0 100 100" role="img" :aria-label="$t('dashboard.trafficGraph')" preserveAspectRatio="none">
+        <polyline :points="graphPoints" fill="none" stroke="currentColor" stroke-width="3" vector-effect="non-scaling-stroke" />
+      </svg>
+      <p class="sr-only">{{ $t('dashboard.trafficGraphFallback', { points: statistics.sparklineData.length }) }}</p>
+    </div>
   </section>
 </template>
+
+<style scoped>
+.home-usage__graph { height: 6.5rem; margin-top: 0.85rem; padding: 0.35rem 0; color: var(--accent); border-top: 1px solid var(--line); }
+.home-usage__graph svg { width: 100%; height: 100%; overflow: visible; }
+</style>

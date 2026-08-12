@@ -31,7 +31,7 @@ Money:
 PaymentMethod:
   type: object
   additionalProperties: false
-  required: [id, provider, rail, name, currency, available, note]
+  required: [id, provider, rail, name, currency, available, note, mode]
   properties:
     id:
       $ref: '../../openapi.yaml#/components/schemas/PaymentMethodID'
@@ -44,11 +44,14 @@ PaymentMethod:
       type: string
     currency:
       type: string
-      enum: [CNY, USD, USDT, XTR]
+      enum: [TXB, CNY, USD, USDT, XTR]
     available:
       type: boolean
     note:
       type: string
+    mode:
+      type: string
+      enum: [order, coupon_redemption]
 
 BalanceResponse:
   type: object
@@ -64,7 +67,7 @@ BalanceResponse:
 
 ResetStrategy:
   type: string
-  enum: [DAY, WEEK, MONTH]
+  enum: [DAY, WEEK, MONTH, MONTH_ROLLING]
 
 SquadProduct:
   type: object
@@ -95,6 +98,12 @@ SquadProduct:
       type: boolean
     upstreamPresent:
       type: boolean
+    stockLimit:
+      type: [integer, 'null']
+      minimum: 0
+    stockRemaining:
+      type: [integer, 'null']
+      minimum: 0
     createdAt:
       $ref: '../../openapi.yaml#/components/schemas/Timestamp'
     updatedAt:
@@ -244,3 +253,6 @@ SquadProductWrite:
       pattern: '^\d+$'
     visible:
       type: boolean
+    stockLimit:
+      type: [integer, 'null']
+      minimum: 0

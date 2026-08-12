@@ -13,11 +13,20 @@
     "trafficTopNodes": "Up to {count} busiest nodes are shown.",
     "trafficNode": "{name} · {country}",
     "trafficTotal": "Total",
+    "squadSeparator": " · ",
+    "renew": "Renew ride",
+    "renewTitle": "Renew your ride",
+    "renewHint": "Choose contiguous terms at the current server price.",
+    "renewTerms": "Terms",
+    "renewPrice": "Total",
+    "renewAction": "Confirm renewal",
+    "renewSuccess": "Renewal scheduled successfully.",
     "resetCadence": "Reset cadence",
     "reset": {
       "DAY": "Daily",
       "WEEK": "Weekly",
-      "MONTH": "Monthly"
+      "MONTH": "Monthly",
+      "MONTH_ROLLING": "Rolling monthly"
     }
   }
 }

@@ -1,20 +1,22 @@
 <script setup lang="ts">
-import { computed, shallowRef } from 'vue'
+import { computed, onMounted, shallowRef, watch } from 'vue'
 
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { useCatalog } from '@/composables/useCatalog'
 import { useI18n } from '@/i18n'
+import { useSessionStore } from '@/stores/session'
 import CatalogCheckout from './CatalogCheckout.vue'
 import CatalogCouponStep from './CatalogCouponStep.vue'
 import CatalogFlowControls from './CatalogFlowControls.vue'
 import CatalogFlowProgress from './CatalogFlowProgress.vue'
 import CatalogNodes from './CatalogNodes.vue'
-import CatalogPaymentStep from './CatalogPaymentStep.vue'
 import ComboOption from './ComboOption.vue'
 import SquadSelector from './SquadSelector.vue'
 
 const activeStep = shallowRef(1)
+const sessionStore = useSessionStore()
+const stepKey = () => sessionStore.user?.id ? `txc-catalog-step:${sessionStore.user.id}` : null
 const { t } = useI18n()
 const {
   catalog,
@@ -45,19 +47,31 @@ const {
   confirmPurchase,
 } = useCatalog()
 
+onMounted(() => {
+  try {
+    const value = Number(globalThis.sessionStorage?.getItem(stepKey() ?? ''))
+    if (value >= 1 && value <= 5) activeStep.value = value
+  } catch { /* Storage is optional in restricted WebViews. */ }
+})
+watch(activeStep, (value) => {
+  try { const key = stepKey(); if (key) globalThis.sessionStorage?.setItem(key, String(value)) } catch { /* Ignore unavailable storage. */ }
+})
+
 const selectedCoupon = computed(() => eligibleCoupons.value.find((grant) => grant.id === selectedCouponGrantId.value) ?? null)
 const nextDisabled = computed(() => {
   if (activeStep.value === 1 || activeStep.value === 2) return !selectedCombo.value
-  return activeStep.value === 5 && !quote.value
+  if (activeStep.value === 3) return !quote.value || quote.value.accessibleNodes.length === 0
+  if (activeStep.value === 4) return !selectedCombo.value
+  return true
 })
-const nextLabel = computed(() => activeStep.value === 5 ? t('catalog.continuePayment') : t('catalog.continue'))
+const nextLabel = computed(() => t('catalog.continue'))
 
 function goBack(): void {
   if (activeStep.value > 1) activeStep.value -= 1
 }
 
 async function advance(): Promise<void> {
-  if (!selectedCombo.value || activeStep.value >= 6) return
+  if (!selectedCombo.value || activeStep.value >= 5) return
   if ((activeStep.value === 2 || activeStep.value === 4) && !(await refreshQuote())) return
   activeStep.value += 1
 }
@@ -95,11 +109,10 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
           <SquadSelector v-else-if="activeStep === 2" :squads="visibleSquads" :selected-ids="selectedSquadIds" :included-ids="includedSquadIds" @toggle="toggleSquad" />
           <CatalogNodes v-else-if="activeStep === 3" :quote="quote" :loading="quoting" />
           <CatalogCouponStep v-else-if="activeStep === 4" v-model:coupon-grant-id="selectedCouponGrantId" :coupons="couponGrants" :eligible-ids="eligibleCoupons.map((grant) => grant.id)" :discarding="couponDiscarding" :discard-coupon="discardCoupon" @redeemed="handleCouponRedeemed" />
-          <CatalogCheckout v-else-if="activeStep === 5" :combo="selectedCombo" :squads="selectedSquads" :coupon="selectedCoupon" :quote="quote" :quoting="quoting" :error="error" />
-          <CatalogPaymentStep v-else :combo="selectedCombo" :quote="quote" :purchase="purchase" :purchasing="purchasing" :needs-balance="needsBalance" :error="error" @confirm="confirmPurchase" />
+          <CatalogCheckout v-else-if="activeStep === 5" :combo="selectedCombo" :squads="selectedSquads" :coupon="selectedCoupon" :quote="quote" :quoting="quoting" :error="error" :purchase="purchase" :purchasing="purchasing" :needs-balance="needsBalance" @confirm="confirmPurchase" />
         </section>
       </Transition>
-      <CatalogFlowControls v-if="activeStep < 6" :show-back="activeStep > 1" :next-disabled="nextDisabled" :loading="quoting" :next-label="nextLabel" @back="goBack" @next="advance" />
+      <CatalogFlowControls v-if="activeStep < 5" :show-back="activeStep > 1" :next-disabled="nextDisabled" :loading="quoting" :next-label="nextLabel" @back="goBack" @next="advance" />
     </template>
     <div v-else class="error-state">
       <h1>{{ $t('catalog.unavailable') }}</h1>

@@ -5,6 +5,8 @@ import type { CouponGrant } from '@/api/features'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import { useCouponRedemption } from '@/composables/useCouponRedemption'
+import { useI18n } from '@/i18n'
+import { formatMoney } from '@/utils/format'
 
 const couponGrantId = defineModel<string | null>('couponGrantId', { required: true })
 const props = defineProps<{
@@ -19,6 +21,14 @@ const code = shallowRef('')
 const pendingDiscard = shallowRef<CouponGrant | null>(null)
 const hasEligibleCoupons = computed(() => props.coupons.some((grant) => props.eligibleIds.includes(grant.id)))
 const { redeeming, error, message, redeem } = useCouponRedemption()
+const { t } = useI18n()
+
+function couponEffect(grant: CouponGrant): string {
+  if (grant.coupon.discountMode === 'percent') {
+    return t('coupons.effectPercent', { value: (Number(grant.coupon.valueMinorOrBps) / 100).toFixed(2) })
+  }
+  return t('coupons.effectFixed', { amount: formatMoney({ currency: 'TXB', minor: grant.coupon.valueMinorOrBps, display: '' }) })
+}
 
 async function submit(): Promise<void> {
   const result = await redeem(code.value)
@@ -55,7 +65,7 @@ async function confirmDiscard(): Promise<void> {
       </UButton>
       <div v-for="grant in props.coupons" :key="grant.id" class="catalog-coupon-choice-row">
         <UButton class="catalog-coupon-choice" :class="{ 'catalog-coupon-choice--selected': couponGrantId === grant.id, 'catalog-coupon-choice--ineligible': !eligibleIds.includes(grant.id) }" color="neutral" variant="ghost" :aria-pressed="couponGrantId === grant.id" :disabled="!eligibleIds.includes(grant.id)" data-haptic @click="couponGrantId = grant.id">
-          <span><strong>{{ grant.coupon.name }}</strong><small>{{ eligibleIds.includes(grant.id) ? grant.coupon.code : $t('catalog.couponIneligible') }}</small></span>
+          <span><strong>{{ grant.coupon.name }}</strong><small>{{ eligibleIds.includes(grant.id) ? t('coupons.selectorSummary', { code: grant.coupon.code, effect: couponEffect(grant) }) : $t('catalog.couponIneligible') }}</small></span>
           <UIcon v-if="couponGrantId === grant.id" name="i-ph-check-bold" />
         </UButton>
         <UButton color="error" variant="ghost" square icon="i-ph-trash" :aria-label="$t('coupons.discardTitle', { name: grant.coupon.name })" data-haptic @click="pendingDiscard = grant" />

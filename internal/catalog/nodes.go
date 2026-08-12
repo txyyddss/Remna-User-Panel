@@ -26,7 +26,7 @@ type remoteNodeLister interface {
 func (s *Service) quoteAccessibleNodes(ctx context.Context, comboID string, addonIDs []string) ([]model.RemnaNode, error) {
 	provider, ok := s.remnawave.(remoteNodeLister)
 	if !ok {
-		return []model.RemnaNode{}, nil
+		return nil, ErrNoAccessibleNodes
 	}
 	catalog, err := s.Catalog(ctx)
 	if err != nil {

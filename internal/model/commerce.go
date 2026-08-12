@@ -19,6 +19,8 @@ type SquadProduct struct {
 	Price           Money     `json:"price"`
 	Visible         bool      `json:"visible"`
 	UpstreamPresent bool      `json:"upstreamPresent"`
+	StockLimit      *int      `json:"stockLimit"`
+	StockRemaining  *int      `json:"stockRemaining"`
 	CreatedAt       time.Time `json:"createdAt"`
 	UpdatedAt       time.Time `json:"updatedAt"`
 }
@@ -75,7 +77,9 @@ type PurchaseRollover struct {
 	PurchaseID          string     `json:"purchaseId"`
 	Status              string     `json:"status"`
 	TrafficLimitBytes   int64      `json:"trafficLimitBytes"`
+	AllocatedBytes      *int64     `json:"allocatedTrafficBytes"`
 	UsedTrafficBytes    *int64     `json:"usedTrafficBytes"`
+	EligibleUnusedBytes *int64     `json:"eligibleUnusedBytes"`
 	RemainingBytes      *int64     `json:"remainingTrafficBytes"`
 	MinimumRemainingBPS int        `json:"minimumRemainingBps"`
 	MaximumTXBMinor     int64      `json:"-"`
@@ -86,6 +90,37 @@ type PurchaseRollover struct {
 	CreatedAt           time.Time  `json:"createdAt"`
 	UpdatedAt           time.Time  `json:"updatedAt"`
 	CompletedAt         *time.Time `json:"completedAt"`
+	AlgorithmVersion    string     `json:"algorithmVersion"`
+}
+
+// RolloverUsageSummary is the bounded settlement aggregate retained in SQLite.
+type RolloverUsageSummary struct {
+	AllocatedBytes      int64
+	UsedBytes           int64
+	EligibleUnusedBytes int64
+	AlgorithmVersion    string
+}
+
+// RenewalQuote is the server-priced preview for a contiguous renewal batch.
+type RenewalQuote struct {
+	PurchaseID      string      `json:"purchaseId"`
+	ComboID         string      `json:"comboId"`
+	TermCount       int         `json:"termCount"`
+	PricePerTerm    Money       `json:"pricePerTerm"`
+	TotalPrice      Money       `json:"totalPrice"`
+	EffectiveAt     time.Time   `json:"effectiveAt"`
+	ExpiresAt       time.Time   `json:"expiresAt"`
+	AddonSquadUUIDs []string    `json:"addonSquadUuids"`
+	AccessibleNodes []RemnaNode `json:"accessibleNodes"`
+}
+
+// RenewalBatch is the result of one atomic renewal debit.
+type RenewalBatch struct {
+	ID         string     `json:"id"`
+	PurchaseID string     `json:"purchaseId"`
+	TermCount  int        `json:"termCount"`
+	TotalPrice Money      `json:"totalPrice"`
+	Purchases  []Purchase `json:"purchases"`
 }
 
 // Catalog is the complete customer-visible catalog snapshot.

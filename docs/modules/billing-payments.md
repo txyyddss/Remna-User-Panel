@@ -57,6 +57,14 @@ the refund path only for an already provider-paid order.
 - Stars reconciliation queries durable Telegram charge/order state after lost updates without trusting the client.
 - Before inserting a new order, the database retains at most 199 existing orders by pruning the oldest terminal records and their dependent webhook/refund evidence while preserving all ledger credits. If 200 non-prunable orders remain, creation returns a retryable capacity conflict rather than deleting payable evidence.
 
+Balance funding also exposes a `coupon` method. It redeems only `balance_add`
+and `balance_multiply` coupons; purchase-discount grants remain catalog-only.
+EZPay and BEPusdt settings migrate into one encrypted, masked visual profile
+per rail, preserving profile identity for checkout cancellation and callback
+signature verification. Renewal uses the current ride's combo and add-ons,
+current prices, one atomic debit, and one idempotency key for a 1-6 term batch;
+it does not apply a purchase-discount coupon.
+
 ## Verification
 
 - Table-driven decimal tests cover all three currencies, non-terminating rates, round-up boundaries, huge inputs, zero/negative requests, and snapshot stability.

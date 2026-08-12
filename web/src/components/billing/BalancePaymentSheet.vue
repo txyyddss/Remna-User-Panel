@@ -2,7 +2,7 @@
 import { computed, shallowRef, watch } from 'vue'
 import type { FeaturePaymentMethod, FeaturePaymentOrder } from '@/api/features'
 import type { PaymentProvider } from '@/api/types'
-import TxbAmountField from '@/components/common/TxbAmountField.vue'
+import BalancePaymentConfiguration from '@/components/billing/BalancePaymentConfiguration.vue'
 import { usePaymentOrder } from '@/composables/usePaymentOrder'
 import { useI18n } from '@/i18n'
 import { formatDateTime, formatMoney } from '@/utils/format'
@@ -17,10 +17,8 @@ const selectedProvider = shallowRef<PaymentProvider | null>(null)
 const { t } = useI18n()
 
 const methods = computed(() => props.methods)
-const providers = computed(() => {
-  return [...new Set(methods.value.map((method) => method.provider))]
-})
-const channels = computed(() => methods.value.filter((method) => method.provider === selectedProvider.value))
+const externalMethods = computed(() => methods.value.filter((method) => method.mode === 'order'))
+const couponMethod = computed(() => methods.value.find((method) => method.mode === 'coupon_redemption'))
 
 const {
   amount,
@@ -50,6 +48,7 @@ const icons: Record<PaymentProvider, string> = {
   ezpay: 'i-ph-credit-card',
   bepusdt: 'i-ph-currency-circle-dollar',
   stars: 'i-ph-telegram-logo',
+  coupon: 'i-ph-ticket',
 }
 const description = computed(() => stage.value === 'configure'
   ? t('payment.configureHint')
@@ -61,26 +60,10 @@ function providerLabel(provider: PaymentProvider): string {
   return t(`payment.providers.${provider}`)
 }
 
-function chooseProvider(provider: PaymentProvider): void {
-  selectedProvider.value = provider
-  const first = methods.value.find((method) => method.provider === provider && method.available)
-  if (first) chooseMethod(first.id)
-}
-
-function providerNote(provider: PaymentProvider): string {
-  if (provider === 'ezpay') return t('payment.localRails')
-  const available = methods.value.some((method) => method.provider === provider && method.available)
-  return available ? '' : t('payment.rateUnavailable')
-}
-
-function methodNote(method: FeaturePaymentMethod): string {
-  return method.available ? '' : t('payment.rateUnavailable')
-}
-
 function prepareOrder(): void {
-  reset(methods.value)
-  if (props.reissueOrder && hydrateReissueOrder(props.reissueOrder, methods.value)) selectedProvider.value = props.reissueOrder.provider
-  else selectedProvider.value = methods.value.find((method) => method.available)?.provider ?? null
+  reset(externalMethods.value)
+  if (props.reissueOrder && hydrateReissueOrder(props.reissueOrder, externalMethods.value)) selectedProvider.value = props.reissueOrder.provider
+  else selectedProvider.value = externalMethods.value.find((method) => method.available)?.provider ?? couponMethod.value?.provider ?? null
 }
 
 watch(open, (next) => {
@@ -98,71 +81,19 @@ watch(open, (next) => {
   >
     <template #body>
       <template v-if="stage === 'configure' || stage === 'creating'">
-        <TxbAmountField
-          id="txb-amount"
-          v-model="amount"
-          :label="$t('payment.amount')"
-          :hint="$t('payment.minimumTopUp')"
-          min-minor="100"
-          required
-        />
-
-        <fieldset class="provider-picker">
-          <legend>{{ $t('payment.provider') }}</legend>
-          <UButton
-            v-for="provider in providers"
-            :key="provider"
-            class="provider-option"
-            :class="{ 'provider-option--selected': selectedProvider === provider }"
-            color="neutral"
-            variant="ghost"
-            :disabled="!methods.some((method) => method.provider === provider && method.available)"
-            :aria-pressed="selectedProvider === provider"
-            data-haptic
-            @click="chooseProvider(provider)"
-          >
-            <span class="provider-option__icon"><UIcon :name="icons[provider]" /></span>
-            <span>
-              <strong>{{ providerLabel(provider) }}</strong>
-              <small>{{ providerNote(provider) }}</small>
-            </span>
-          </UButton>
-        </fieldset>
-        <UAlert
-          v-if="!methods.some((method) => method.available)"
-          color="warning"
-          variant="soft"
-          icon="i-ph-warning-circle"
-          :description="$t('payment.noChannel')"
-        />
-
-        <fieldset v-if="channels.length" class="channel-picker">
-          <legend>{{ $t('payment.channel') }}</legend>
-          <UButton
-            v-for="method in channels"
-            :key="method.id"
-            class="channel-option"
-            :class="{ 'channel-option--selected': selectedMethodId === method.id }"
-            color="neutral"
-            variant="ghost"
-            :disabled="!method.available"
-            :aria-pressed="selectedMethodId === method.id"
-            data-haptic
-            @click="chooseMethod(method.id)"
-          >
-            <span><strong>{{ method.name }}</strong><small>{{ methodNote(method) }}</small></span>
-            <UBadge v-if="!method.available" color="neutral" variant="soft" :label="$t('common.unavailable')" />
-          </UButton>
-        </fieldset>
-
-        <UAlert v-if="error" color="error" variant="soft" :description="error" />
-        <UButton
-          block
-          :disabled="!canCreate || stage === 'creating' || !amountValid"
-          :loading="stage === 'creating'"
-          :label="stage === 'creating' ? $t('payment.creating') : canReissue ? $t('payment.reissue') : $t('payment.continue')"
-          data-haptic
-          @click="createOrder"
+        <BalancePaymentConfiguration
+          v-model:amount="amount"
+          v-model:selected-provider="selectedProvider"
+          :methods="methods"
+          :selected-method-id="selectedMethodId"
+          :stage="stage"
+          :error="error"
+          :amount-valid="amountValid"
+          :can-create="canCreate"
+          :can-reissue="canReissue"
+          @choose-method="chooseMethod"
+          @create-order="createOrder"
+          @paid="emit('paid')"
         />
       </template>
 

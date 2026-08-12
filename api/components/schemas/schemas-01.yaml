@@ -79,7 +79,7 @@ User:
       type: string
     username:
       type: [string, 'null']
-      pattern: '^[a-z]{3,9}$'
+      pattern: '^[a-zA-Z0-9_-]{3,36}$'
     role:
       type: string
       enum: [user, admin]
@@ -157,7 +157,7 @@ UsernameRequest:
   properties:
     username:
       type: string
-      pattern: '^[a-z]{3,9}$'
+      pattern: '^[a-zA-Z0-9_-]{3,36}$'
 
 AgreementRequest:
   type: object
