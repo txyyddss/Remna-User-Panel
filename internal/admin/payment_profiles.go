@@ -83,9 +83,6 @@ func (s *SettingsService) SavePaymentProfile(ctx context.Context, actorID string
 	if s.profiles == nil || (input.Provider != "ezpay" && input.Provider != "bepusdt") {
 		return model.PaymentProfile{}, database.ErrConflict
 	}
-	if err := billing.ValidatePaymentChannels(input.Provider, input.EnabledChannels); err != nil {
-		return model.PaymentProfile{}, database.ErrConflict
-	}
 	if err := validateHTTPSURL(strings.TrimSpace(input.Endpoint)); err != nil {
 		return model.PaymentProfile{}, err
 	}
@@ -100,6 +97,9 @@ func (s *SettingsService) SavePaymentProfile(ctx context.Context, actorID string
 	channels := make([]string, 0, len(input.EnabledChannels))
 	for _, channel := range input.EnabledChannels {
 		channels = append(channels, strings.ToLower(strings.TrimSpace(channel)))
+	}
+	if err := billing.ValidatePaymentChannels(input.Provider, channels); err != nil {
+		return model.PaymentProfile{}, database.ErrConflict
 	}
 	ciphertext := ""
 	credential := strings.TrimSpace(input.Credential)

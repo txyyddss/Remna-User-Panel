@@ -11,6 +11,8 @@ import (
 var ezpayRails = map[string]string{
 	"alipay": "Alipay",
 	"wxpay":  "WeChat Pay",
+	// "wechat" is retained as a compatibility alias for persisted profiles.
+	"wechat": "WeChat Pay",
 	"qqpay":  "QQ Wallet",
 	"bank":   "UnionPay",
 	"jdpay":  "JD Pay",
