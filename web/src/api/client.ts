@@ -44,6 +44,20 @@ export interface AdminPaymentProfile {
 }
 export type AdminPaymentProfileWrite = Omit<AdminPaymentProfile, 'configured'>
 
+function paymentProfileWriteBody(profile: AdminPaymentProfileWrite): AdminPaymentProfileWrite {
+  return {
+    id: profile.id,
+    provider: profile.provider,
+    providerName: profile.providerName,
+    enabledChannels: profile.enabledChannels,
+    endpoint: profile.endpoint,
+    merchantId: profile.merchantId,
+    credential: profile.credential,
+    acknowledgement: profile.acknowledgement,
+    enabled: profile.enabled,
+  }
+}
+
 export const api = {
   authTelegram: (initData: string) => request<Session>('/api/v1/auth/telegram', {
     method: 'POST',
@@ -137,8 +151,8 @@ export const api = {
     body: { reason } satisfies RefundRequest,
   }),
   getAdminPaymentProfiles: () => request<{ items: AdminPaymentProfile[] }>('/api/v1/admin/payment-profiles'),
-  createAdminPaymentProfile: (body: AdminPaymentProfileWrite) => request<AdminPaymentProfile>('/api/v1/admin/payment-profiles', { method: 'POST', body }),
-  updateAdminPaymentProfile: (id: string, body: AdminPaymentProfileWrite) => request<AdminPaymentProfile>(`/api/v1/admin/payment-profiles/${encodeURIComponent(id)}`, { method: 'PUT', body }),
+  createAdminPaymentProfile: (body: AdminPaymentProfileWrite) => request<AdminPaymentProfile>('/api/v1/admin/payment-profiles', { method: 'POST', body: paymentProfileWriteBody(body) }),
+  updateAdminPaymentProfile: (id: string, body: AdminPaymentProfileWrite) => request<AdminPaymentProfile>(`/api/v1/admin/payment-profiles/${encodeURIComponent(id)}`, { method: 'PUT', body: paymentProfileWriteBody(body) }),
   cancelAdminEntitlement: (entitlementId: string, reason: string) => request<Purchase>(`/api/v1/admin/entitlements/${encodeURIComponent(entitlementId)}/cancel`, {
     method: 'POST',
     body: { reason } satisfies ReasonRequest,

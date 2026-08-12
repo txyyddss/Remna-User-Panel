@@ -121,7 +121,7 @@
     "successTime": "成功时间",
     "settledAmount": "实际结算金额",
     "creating": "正在创建订单",
-    "continue": "继续",
+    "proceedToPayment": "前往付款",
     "reissue": "重新发起支付",
     "reissueUnavailable": "此支付无法重新发起，请选择其他支付方式。",
     "exactAmount": "准确金额",

@@ -21,6 +21,10 @@ vi.mock('@/api/features', () => ({
   featuresApi: { getCouponWallet },
 }))
 
+vi.mock('@/stores/session', () => ({
+  useSessionStore: () => ({ user: { id: 'user-1' } }),
+}))
+
 import { useCatalog } from './useCatalog'
 
 const money = (minor: string) => ({ currency: 'TXB' as const, minor, display: `${Number(minor) / 100} TXB` })
@@ -38,7 +42,10 @@ const squad = (id: string): SquadProduct => ({
 
 describe('catalog squad selection', () => {
   beforeEach(() => setActivePinia(createPinia()))
-  afterEach(() => vi.clearAllMocks())
+  afterEach(() => {
+    sessionStorage.clear()
+    vi.clearAllMocks()
+  })
 
   it('disables included squads and prunes newly included paid add-ons after a combo change', async () => {
     const alpha = squad('1')
@@ -108,6 +115,7 @@ describe('catalog squad selection', () => {
     expect(createPurchase.mock.calls[0]?.[3]).toBeTruthy()
     expect(createPurchase.mock.calls[1]?.[3]).toBe(createPurchase.mock.calls[0]?.[3])
     expect(state.quote.value?.netPrice.minor).toBe('1000')
+    expect(sessionStorage.getItem('txc-catalog-draft:user-1')).toBeNull()
     expect(await state.confirmPurchase()).toBe(false)
     expect(createPurchase).toHaveBeenCalledTimes(2)
     scope.stop()

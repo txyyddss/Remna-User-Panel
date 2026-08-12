@@ -29,28 +29,47 @@ const couponCode = shallowRef('')
 const couponBusy = shallowRef(false)
 const couponError = shallowRef<string | null>(null)
 
+interface ProviderOption {
+  value: string
+  label: string
+  description: string
+  icon: string
+  available: boolean
+}
+
 const externalMethods = computed(() => props.methods.filter((method) => method.mode === 'order'))
 const selectedMethod = computed(() => props.methods.find((method) => method.id === props.selectedMethodId) ?? null)
 const selectedProvider = computed<PaymentProvider | null>(() => selectedMethod.value?.provider ?? null)
-const selectedProfileKey = computed<string | undefined>({
-  get: () => selectedMethod.value ? profileKey(selectedMethod.value) : undefined,
-  set: (key) => chooseProfile(key),
-})
-const profileItems = computed(() => {
-  const items: { label: string; value: string; description: string }[] = []
+const selectedProfileKey = computed(() => selectedProvider.value === 'coupon'
+  ? 'coupon'
+  : selectedMethod.value ? profileKey(selectedMethod.value) : undefined)
+const providerItems = computed<ProviderOption[]>(() => {
+  const items: ProviderOption[] = []
   const seen = new Set<string>()
   for (const method of externalMethods.value) {
     const value = profileKey(method)
     if (seen.has(value)) continue
     seen.add(value)
+    const profileMethods = externalMethods.value.filter((candidate) => profileKey(candidate) === value)
+    const available = profileMethods.some((candidate) => candidate.available)
     items.push({
       label: method.providerName || t(`payment.providers.${method.provider}`),
       value,
-      description: method.available ? t(`payment.providers.${method.provider}`) : t('payment.rateUnavailable'),
+      description: available ? t(`payment.providers.${method.provider}`) : t('payment.rateUnavailable'),
+      icon: providerIcon(method.provider),
+      available,
     })
   }
   const coupon = props.methods.find((method) => method.provider === 'coupon')
-  if (coupon) items.push({ label: t('payment.providers.coupon'), value: 'coupon', description: t('payment.couponHint') })
+  if (coupon) {
+    items.push({
+      label: t('payment.providers.coupon'),
+      value: 'coupon',
+      description: t('payment.couponHint'),
+      icon: providerIcon('coupon'),
+      available: coupon.available,
+    })
+  }
   return items
 })
 const channels = computed(() => externalMethods.value.filter((method) => profileKey(method) === selectedProfileKey.value))
@@ -63,6 +82,13 @@ const channelItems = computed(() => channels.value.map((method) => ({
 
 function profileKey(method: FeaturePaymentMethod): string {
   return `${method.provider}:${method.profileId || 'legacy'}`
+}
+
+function providerIcon(provider: PaymentProvider): string {
+  if (provider === 'ezpay') return 'i-ph-credit-card'
+  if (provider === 'bepusdt') return 'i-ph-currency-circle-dollar'
+  if (provider === 'stars') return 'i-ph-telegram-logo'
+  return 'i-ph-ticket'
 }
 
 function chooseProfile(key: string | undefined): void {
@@ -101,9 +127,25 @@ async function redeemCoupon(): Promise<void> {
 
 <template>
   <TxbAmountField v-if="selectedProvider !== 'coupon'" id="txb-amount" v-model="amount" :label="$t('payment.amount')" :hint="$t('payment.minimumTopUp')" min-minor="100" required />
-  <UFormField :label="$t('payment.provider')">
-    <USelectMenu v-model="selectedProfileKey" :items="profileItems" :placeholder="$t('payment.chooseProvider')" value-key="value" :search-input="false" />
-  </UFormField>
+  <fieldset class="provider-picker">
+    <legend>{{ $t('payment.provider') }}</legend>
+    <UButton
+      v-for="item in providerItems"
+      :key="item.value"
+      class="provider-option"
+      :class="{ 'provider-option--selected': selectedProfileKey === item.value }"
+      color="neutral"
+      variant="ghost"
+      :disabled="!item.available"
+      :aria-pressed="selectedProfileKey === item.value"
+      data-haptic
+      @click="chooseProfile(item.value)"
+    >
+      <span class="provider-option__icon"><UIcon :name="item.icon" aria-hidden="true" /></span>
+      <span><strong>{{ item.label }}</strong><small>{{ item.description }}</small></span>
+      <UIcon v-if="selectedProfileKey === item.value" class="provider-option__check" name="i-ph-check-circle-fill" aria-hidden="true" />
+    </UButton>
+  </fieldset>
   <UAlert v-if="selectedProvider !== 'coupon' && !externalMethods.some((method) => method.available)" color="warning" variant="soft" icon="i-ph-warning-circle" :description="$t('payment.noChannel')" />
   <UFormField v-if="selectedProvider !== 'coupon' && channels.length" :label="$t('payment.channel')">
     <URadioGroup
@@ -122,5 +164,5 @@ async function redeemCoupon(): Promise<void> {
     <UAlert v-if="couponError" color="error" variant="soft" :description="couponError" />
   </div>
   <UAlert v-if="error && selectedProvider !== 'coupon'" color="error" variant="soft" :description="error" />
-  <UButton v-if="selectedProvider !== 'coupon'" block :disabled="!canCreate || stage === 'creating' || !amountValid" :loading="stage === 'creating'" :label="stage === 'creating' ? $t('payment.creating') : canReissue ? $t('payment.reissue') : $t('payment.continue')" data-haptic @click="emit('createOrder')" />
+  <UButton v-if="selectedProvider !== 'coupon'" data-test="payment-submit" block :disabled="!canCreate || stage === 'creating' || !amountValid" :loading="stage === 'creating'" :label="stage === 'creating' ? $t('payment.creating') : canReissue ? $t('payment.reissue') : $t('payment.proceedToPayment')" data-haptic @click="emit('createOrder')" />
 </template>

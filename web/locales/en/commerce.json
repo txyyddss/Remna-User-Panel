@@ -123,7 +123,7 @@
     "successTime": "Success time",
     "settledAmount": "Settled amount",
     "creating": "Creating order",
-    "continue": "Continue",
+    "proceedToPayment": "Proceed to payment",
     "reissue": "Reissue payment",
     "reissueUnavailable": "This payment can no longer be reissued. Choose another payment method.",
     "exactAmount": "Exact amount",

@@ -30,7 +30,7 @@ Questionnaire participation retrieves the same durable validation code on repeat
 
 Emby setup collects a write-only password, parental rating, and libraries before debit and shows the exact TXB setup price. Linked accounts expose only approved password and preference controls; raw policy fields are never presented. Failed retryable provisioning shows a bounded retry action.
 
-The payment sheet selects a canonical method ID in two stages: provider account, then rail. It uses Nuxt UI's select-menu and card radio-group controls, separately renders provider URL, QR payload, receiving address, actual crypto amount, and currency when supplied. Pending orders can be cancelled; cancellation stops polling, while the UI still accepts a later authoritative `paid` projection and refreshes the balance exactly once. The browser return page renders a signed public receipt projection with amount, payment ID, provider, channel, status, and created/paid timestamps, without a Mini App navigation action.
+The payment sheet selects a canonical method ID in two stages: provider account tiles, then rail card controls. It separately renders provider URL, QR payload, receiving address, actual crypto amount, and currency when supplied. Pending orders can be cancelled; cancellation stops polling, while the UI still accepts a later authoritative `paid` projection and refreshes the balance exactly once. The browser return page renders a signed public receipt projection with amount, payment ID, provider, channel, status, and created/paid timestamps, without a Mini App navigation action.
 
 Catalog review is the final purchase step and includes authoritative validity,
 traffic/reset and rollover details, accessible-node count, add-ons, coupon

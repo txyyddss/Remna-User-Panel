@@ -77,6 +77,17 @@ function goBack(): void {
   if (activeStep.value > 1) activeStep.value -= 1
 }
 
+function clearPersistedStep(): void {
+  try {
+    const key = stepKey()
+    if (key) globalThis.sessionStorage?.removeItem(key)
+  } catch { /* Storage is optional in restricted WebViews. */ }
+}
+
+async function handlePurchase(): Promise<void> {
+  if (await confirmPurchase()) clearPersistedStep()
+}
+
 async function advance(): Promise<void> {
   if (!selectedCombo.value || activeStep.value >= 5) return
   if ((activeStep.value === 2 || activeStep.value === 4) && !(await refreshQuote())) return
@@ -116,7 +127,7 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
           <SquadSelector v-else-if="activeStep === 2" :squads="visibleSquads" :selected-ids="selectedSquadIds" :included-ids="includedSquadIds" @toggle="toggleSquad" />
           <CatalogNodes v-else-if="activeStep === 3" :quote="quote" :loading="quoting" />
           <CatalogCouponStep v-else-if="activeStep === 4" v-model:coupon-grant-id="selectedCouponGrantId" :coupons="couponGrants" :eligible-ids="eligibleCoupons.map((grant) => grant.id)" :discarding="couponDiscarding" :discard-coupon="discardCoupon" @redeemed="handleCouponRedeemed" />
-          <CatalogCheckout v-else-if="activeStep === 5" :combo="selectedCombo" :squads="selectedSquads" :coupon="selectedCoupon" :quote="quote" :quoting="quoting" :error="error" :purchase="purchase" :purchasing="purchasing" :needs-balance="needsBalance" @confirm="confirmPurchase" />
+          <CatalogCheckout v-else-if="activeStep === 5" :combo="selectedCombo" :squads="selectedSquads" :coupon="selectedCoupon" :quote="quote" :quoting="quoting" :error="error" :purchase="purchase" :purchasing="purchasing" :needs-balance="needsBalance" @confirm="handlePurchase" />
         </section>
       </Transition>
       <CatalogFlowControls v-if="activeStep < 5" :show-back="activeStep > 1" :next-disabled="nextDisabled" :loading="quoting" :next-label="nextLabel" @back="goBack" @next="advance" />

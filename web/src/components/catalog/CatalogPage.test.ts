@@ -29,7 +29,7 @@ const combo = {
   updatedAt: '2026-08-08T00:00:00Z',
 }
 
-async function mountPage(purchase: object | null, step = 5) {
+async function mountPage(purchase: object | null, step = 5, confirmPurchase = vi.fn()) {
   const refreshQuote = vi.fn().mockResolvedValue(true)
   catalogMock.useCatalog.mockReturnValue({
     catalog: shallowRef({ combos: [combo], addons: [] }),
@@ -57,7 +57,7 @@ async function mountPage(purchase: object | null, step = 5) {
     toggleSquad: vi.fn(),
     refreshQuote,
     discardCoupon: vi.fn(),
-    confirmPurchase: vi.fn(),
+    confirmPurchase,
   })
 
   sessionStorage.setItem('txc-catalog-step:user-1', String(step))
@@ -71,7 +71,7 @@ async function mountPage(purchase: object | null, step = 5) {
     global: {
       plugins: [router],
       stubs: {
-        CatalogCheckout: true,
+        CatalogCheckout: { template: '<button data-test="confirm-purchase" @click="$emit(\'confirm\')" />' },
         CatalogCouponStep: true,
         CatalogFlowControls: true,
         CatalogFlowProgress: true,
@@ -105,6 +105,18 @@ describe('CatalogPage quote restoration', () => {
     await nextTick()
 
     expect(refreshQuote).toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('clears the persisted step after a successful purchase', async () => {
+    const confirmPurchase = vi.fn().mockResolvedValue(true)
+    const { wrapper } = await mountPage(null, 5, confirmPurchase)
+
+    await wrapper.get('[data-test="confirm-purchase"]').trigger('click')
+    await nextTick()
+
+    expect(confirmPurchase).toHaveBeenCalledOnce()
+    expect(sessionStorage.getItem('txc-catalog-step:user-1')).toBeNull()
     wrapper.unmount()
   })
 })

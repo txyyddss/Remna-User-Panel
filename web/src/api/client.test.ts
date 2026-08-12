@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Purchase, SquadProduct, SquadProductWrite } from './types'
-import { api } from './client'
+import { api, type AdminPaymentProfile } from './client'
 
 const fetchMock = vi.fn()
 
@@ -72,6 +72,39 @@ describe('admin API mutations', () => {
     expect(url).toBe('/api/v1/admin/squad-products/squad%2F1')
     expect(options.method).toBe('PUT')
     expect(JSON.parse(String(options.body))).toEqual(payload)
+  })
+
+  it('does not send response-only payment profile fields when saving', async () => {
+    const profile: AdminPaymentProfile = {
+      id: 'profile-1',
+      provider: 'ezpay',
+      providerName: 'Primary account',
+      enabledChannels: ['alipay'],
+      endpoint: 'https://pay.example.test',
+      merchantId: 'merchant-1',
+      credential: '********',
+      acknowledgement: 'ok',
+      enabled: true,
+      configured: true,
+    }
+    fetchMock.mockResolvedValue(jsonResponse(profile))
+
+    await api.updateAdminPaymentProfile(profile.id, profile)
+
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('/api/v1/admin/payment-profiles/profile-1')
+    expect(options.method).toBe('PUT')
+    expect(JSON.parse(String(options.body))).toEqual({
+      id: profile.id,
+      provider: profile.provider,
+      providerName: profile.providerName,
+      enabledChannels: profile.enabledChannels,
+      endpoint: profile.endpoint,
+      merchantId: profile.merchantId,
+      credential: profile.credential,
+      acknowledgement: profile.acknowledgement,
+      enabled: profile.enabled,
+    })
   })
 
   it('binds an entitlement cancellation reason to the selected record', async () => {

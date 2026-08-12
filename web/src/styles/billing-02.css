@@ -1,6 +1,6 @@
 .provider-option--selected {
-  border-color: #557763;
-  background: #18231b;
+  border-color: var(--line-strong);
+  background: var(--accent-soft);
 }
 
 .provider-option__icon {
@@ -27,6 +27,10 @@
   margin-top: 0.2rem;
   color: var(--text-faint);
   font-size: 0.66rem;
+}
+
+.provider-option__check {
+  color: var(--accent);
 }
 
 .payment-amount {

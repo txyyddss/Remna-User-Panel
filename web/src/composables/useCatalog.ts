@@ -29,6 +29,7 @@ export function useCatalog() {
 	const purchaseIdempotencyKey = shallowRef<string | null>(null)
 	const draftRestored = shallowRef(false)
 	function persistDraft(): void {
+		if (purchase.value) return
 		writeCatalogDraft(sessionStore.user?.id, { comboId: selectedComboId.value ?? undefined, squadIds: selectedSquadIds.value, couponGrantId: selectedCouponGrantId.value })
 	}
   const visibleCombos = computed(() => catalog.value?.combos.filter((combo) => combo.active) ?? [])
