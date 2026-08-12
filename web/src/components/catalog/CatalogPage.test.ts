@@ -71,7 +71,7 @@ async function mountPage(purchase: object | null, step = 5, confirmPurchase = vi
     global: {
       plugins: [router],
       stubs: {
-        CatalogCheckout: { template: '<button data-test="confirm-purchase" @click="$emit(\'confirm\')" />' },
+        CatalogCheckout: { template: '<div role="button" tabindex="0" data-test="confirm-purchase" @click="$emit(\'confirm\')" />' },
         CatalogCouponStep: true,
         CatalogFlowControls: true,
         CatalogFlowProgress: true,
