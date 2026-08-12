@@ -26,7 +26,7 @@ const items = computed(() => [
         <UIcon
           :name="indicatorIcon(item.value, step, item.icon)"
           :class="{ 'catalog-progress__icon--completed': item.value < step }"
-          :style="{ color: item.value < step ? 'var(--success)' : undefined }"
+          :style="{ color: 'black' }"
           data-slot="icon"
         />
       </template>
@@ -37,5 +37,6 @@ const items = computed(() => [
 <style scoped>
 .catalog-progress { overflow-x: auto; margin: 0.3rem 0 1.15rem; padding: 0.2rem 0; }
 .catalog-progress :deep([data-slot='title']) { font-size: 0.58rem; white-space: nowrap; }
-.catalog-progress :deep(.catalog-progress__icon--completed) { color: var(--success); }
+.catalog-progress :deep([data-slot='icon']) { order: -1; }
+.catalog-progress :deep(.catalog-progress__icon--completed) { color: black; }
 </style>

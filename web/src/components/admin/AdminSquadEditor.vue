@@ -37,7 +37,8 @@ watch(() => props.squad, (squad) => {
 
 function submit(): void {
   const priceTxbMinor = moneyFromTxbInput(draft.priceTxb)
-  const stockLimit = draft.stockLimit.trim() === '' ? null : Number(draft.stockLimit)
+  const stockLimitStr = String(draft.stockLimit ?? '').trim()
+  const stockLimit = stockLimitStr === '' ? null : Number(stockLimitStr)
   if (!priceTxbMinor || (stockLimit !== null && (!Number.isInteger(stockLimit) || stockLimit < 0))) return
   emit('save', {
     remnaSquadUuid: props.squad.remnaSquadUuid,
