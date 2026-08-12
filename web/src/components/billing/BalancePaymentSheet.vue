@@ -44,21 +44,11 @@ const {
   },
 })
 
-const icons: Record<PaymentProvider, string> = {
-  ezpay: 'i-ph-credit-card',
-  bepusdt: 'i-ph-currency-circle-dollar',
-  stars: 'i-ph-telegram-logo',
-  coupon: 'i-ph-ticket',
-}
 const description = computed(() => stage.value === 'configure'
   ? t('payment.configureHint')
   : stage.value === 'cancelled'
     ? t('payment.cancelledHint')
     : t('payment.providerHint'))
-
-function providerLabel(provider: PaymentProvider): string {
-  return t(`payment.providers.${provider}`)
-}
 
 function prepareOrder(): void {
   reset(externalMethods.value)

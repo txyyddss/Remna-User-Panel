@@ -24,10 +24,10 @@ func TestMethodsReturnsOrderedAvailability(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Methods(): %v", err)
 	}
-	if len(methods) != 4 || methods[0].ID != "ezpay:wxpay" || methods[1].ID != "ezpay:alipay" || methods[2].Available || !methods[3].Available {
+	if len(methods) != 5 || methods[0].ID != "coupon" || methods[0].Mode != "coupon_redemption" || methods[1].ID != "ezpay:wxpay" || methods[2].ID != "ezpay:alipay" || methods[3].Available || !methods[4].Available {
 		t.Fatalf("Methods() = %+v", methods)
 	}
-	if methods[2].Note == "" || methods[3].Name != "Telegram Stars" || methods[3].Currency != "XTR" {
+	if methods[3].Note == "" || methods[4].Name != "Telegram Stars" || methods[4].Currency != "XTR" {
 		t.Fatalf("method metadata = %+v", methods)
 	}
 }

@@ -105,8 +105,8 @@ func TestQuoteAccessibleNodesHandlesUnavailableProviders(t *testing.T) {
 
 	service := newCatalogServiceForTest(nodeCatalogRepository(), &catalogRemnawave{})
 	nodes, err := service.quoteAccessibleNodes(context.Background(), "core", []string{"addon-squad"})
-	if err != nil || len(nodes) != 0 {
-		t.Fatalf("quoteAccessibleNodes() without node provider = (%v, %v)", nodes, err)
+	if !errors.Is(err, ErrNoAccessibleNodes) || len(nodes) != 0 {
+		t.Fatalf("quoteAccessibleNodes() without node provider = (%v, %v), want ErrNoAccessibleNodes", nodes, err)
 	}
 }
 

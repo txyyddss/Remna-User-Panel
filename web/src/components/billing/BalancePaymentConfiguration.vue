@@ -29,7 +29,6 @@ const couponCode = shallowRef('')
 const couponBusy = shallowRef(false)
 const couponError = shallowRef<string | null>(null)
 const externalMethods = computed(() => props.methods.filter((method) => method.mode === 'order'))
-const couponMethod = computed(() => props.methods.find((method) => method.mode === 'coupon_redemption'))
 const providers = computed(() => [...new Set(props.methods.map((method) => method.provider))])
 const channels = computed(() => externalMethods.value.filter((method) => method.provider === selectedProvider.value))
 const icons: Record<PaymentProvider, string> = {
@@ -95,4 +94,3 @@ async function redeemCoupon(): Promise<void> {
   <UAlert v-if="error && selectedProvider !== 'coupon'" color="error" variant="soft" :description="error" />
   <UButton v-if="selectedProvider !== 'coupon'" block :disabled="!canCreate || stage === 'creating' || !amountValid" :loading="stage === 'creating'" :label="stage === 'creating' ? $t('payment.creating') : canReissue ? $t('payment.reissue') : $t('payment.continue')" data-haptic @click="emit('createOrder')" />
 </template>
-

@@ -41,8 +41,8 @@ func TestCatalogAndPurchaseRejectMissingLiveSquads(t *testing.T) {
 	if _, err := service.Purchase(context.Background(), user, "live-combo", []string{"stale-addon"}, "stale-addon-attempt"); !errors.Is(err, database.ErrNotFound) {
 		t.Fatalf("Purchase(stale addon) = %v, want ErrNotFound", err)
 	}
-	if _, err := service.Purchase(context.Background(), user, "live-combo", []string{"live-addon"}, "live-attempt"); err != nil {
-		t.Fatalf("Purchase(live selection): %v", err)
+	if _, err := service.Purchase(context.Background(), user, "live-combo", []string{"live-addon"}, "live-attempt"); !errors.Is(err, ErrNoAccessibleNodes) {
+		t.Fatalf("Purchase(live selection) = %v, want ErrNoAccessibleNodes", err)
 	}
 }
 

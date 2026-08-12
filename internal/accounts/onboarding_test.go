@@ -39,8 +39,12 @@ func TestReserveUsername(t *testing.T) {
 			if test.want != nil && !errors.Is(err, test.want) {
 				t.Fatalf("ReserveUsername() error = %v, want %v", err, test.want)
 			}
-			if test.want == nil && test.name == "success trims" {
-				if err != nil || test.repository.reservedUsername != "alice" {
+			if test.want == nil && (test.name == "success trims" || test.name == "uppercase") {
+				wantUsername := test.username
+				if test.name == "success trims" {
+					wantUsername = "alice"
+				}
+				if err != nil || test.repository.reservedUsername != wantUsername {
 					t.Fatalf("ReserveUsername() = %v, reserved %q", err, test.repository.reservedUsername)
 				}
 			} else if test.want == nil && err == nil {

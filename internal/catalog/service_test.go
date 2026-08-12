@@ -15,11 +15,11 @@ func TestCatalogAndPurchaseForwarding(t *testing.T) {
 
 	repository := &catalogRepository{
 		combos:    []model.Combo{{ID: "combo-1"}},
-		addons:    []model.SquadProduct{{ID: "addon-1"}},
+		addons:    []model.SquadProduct{{ID: "addon-1", RemnaSquadUUID: "addon-squad"}},
 		purchase:  model.Purchase{ID: "purchase-1"},
 		purchases: []model.Purchase{{ID: "purchase-1"}},
 	}
-	service := newCatalogServiceForTest(repository, &catalogRemnawave{})
+	service := newCatalogServiceForTest(repository, &catalogPurchaseRemote{catalogRemnawave: &catalogRemnawave{}})
 
 	result, err := service.Catalog(context.Background())
 	if err != nil {
@@ -264,6 +264,18 @@ func (r *catalogRemnawave) Dashboard(_ context.Context, userID string) (RemoteDa
 }
 func (r *catalogRemnawave) RevokeSubscription(context.Context, string) (string, error) {
 	return r.revokeURL, r.revokeErr
+}
+
+type catalogPurchaseRemote struct {
+	*catalogRemnawave
+}
+
+func (*catalogPurchaseRemote) ListCatalogNodes(context.Context) ([]RemoteNode, error) {
+	return []RemoteNode{{UUID: "node-1", Name: "Node", CountryCode: "US"}}, nil
+}
+
+func (*catalogPurchaseRemote) AccessibleCatalogNodeUUIDs(context.Context, string) ([]string, error) {
+	return []string{"node-1"}, nil
 }
 
 func newCatalogServiceForTest(repository Repository, remnawave RemnawaveClient) *Service {
