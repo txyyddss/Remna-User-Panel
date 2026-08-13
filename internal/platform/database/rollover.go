@@ -81,12 +81,16 @@ func (s *Store) finalizeRolloverUsage(ctx context.Context, purchaseID string, su
 	if remaining < 0 {
 		remaining = 0
 	}
+	eligible := summary.EligibleUnusedBytes
+	if summary.AlgorithmVersion != "cadence-v1" && !strictlyAboveBPS(remaining, summary.AllocatedBytes, rollover.MinimumRemainingBPS) {
+		eligible = 0
+	}
 	credit := int64(0)
 	status := "zero"
 	if exceptionCode != "" {
 		status = "exception"
-	} else if summary.AllocatedBytes > 0 && summary.EligibleUnusedBytes > 0 {
-		credit = proportionalFloor(rollover.NetPaidTXBMinor, summary.EligibleUnusedBytes, summary.AllocatedBytes)
+	} else if summary.AllocatedBytes > 0 && eligible > 0 {
+		credit = proportionalFloor(rollover.NetPaidTXBMinor, eligible, summary.AllocatedBytes)
 		if credit > rollover.MaximumTXBMinor {
 			credit = rollover.MaximumTXBMinor
 		}
@@ -108,7 +112,7 @@ func (s *Store) finalizeRolloverUsage(ctx context.Context, purchaseID string, su
 		}
 	}
 	result, err := tx.ExecContext(ctx, `UPDATE purchase_rollovers SET status=?,traffic_limit_bytes=?,allocated_traffic_bytes=?,used_traffic_bytes=?,eligible_unused_bytes=?,remaining_traffic_bytes=?,credited_txb_minor=?,exception_code=?,algorithm_version=?,updated_at=?,completed_at=? WHERE purchase_id=? AND status='processing'`,
-		status, rollover.TrafficLimitBytes, summary.AllocatedBytes, summary.UsedBytes, summary.EligibleUnusedBytes, remaining, credit, exceptionCode, summary.AlgorithmVersion, stamp(now), stamp(now), purchaseID)
+		status, rollover.TrafficLimitBytes, summary.AllocatedBytes, summary.UsedBytes, eligible, remaining, credit, exceptionCode, summary.AlgorithmVersion, stamp(now), stamp(now), purchaseID)
 	if err != nil {
 		return model.PurchaseRollover{}, err
 	}
