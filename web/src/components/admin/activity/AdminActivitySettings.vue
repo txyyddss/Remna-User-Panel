@@ -35,7 +35,7 @@ watch(() => props.settings, (settings) => {
 </template>
 
 <style scoped>
-.activity-settings { display: grid; gap: 0.8rem; margin: 0 1rem 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface-raised); }
+.activity-settings { display: grid; gap: 0.8rem; margin: 0 1rem 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface-raised); }
 .activity-settings h3, .activity-settings p { margin: 0; }
 .activity-settings p { margin-top: 0.25rem; color: var(--text-muted); font-size: 0.8rem; }
 .activity-settings__save { justify-self: start; }

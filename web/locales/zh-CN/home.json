@@ -1,7 +1,6 @@
 {
   "home": {
     "currentTerm": "当前周期",
-    "trafficDetails": "流量明细",
     "noNodeUsage": "所选范围暂无节点流量数据。",
     "trafficStart": "开始日期",
     "trafficEnd": "结束日期",

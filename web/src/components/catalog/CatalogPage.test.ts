@@ -71,10 +71,11 @@ async function mountPage(purchase: object | null, step = 5, confirmPurchase = vi
     global: {
       plugins: [router],
       stubs: {
+        CatalogConfirmation: { template: '<div data-test="catalog-confirmation" />' },
         CatalogCheckout: { template: '<div role="button" tabindex="0" data-test="confirm-purchase" @click="$emit(\'confirm\')" />' },
-        CatalogCouponStep: true,
-        CatalogFlowControls: true,
-        CatalogFlowProgress: true,
+        CatalogCouponStep: { template: '<div data-test="catalog-coupon-step" />' },
+        CatalogFlowControls: { template: '<div data-test="catalog-flow-controls" />' },
+        CatalogFlowProgress: { template: '<div data-test="catalog-flow-progress" />' },
         CatalogNodes: true,
         SquadSelector: true,
       },
@@ -96,6 +97,9 @@ describe('CatalogPage quote restoration', () => {
     await nextTick()
 
     expect(refreshQuote).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-test="catalog-confirmation"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="catalog-flow-progress"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="catalog-flow-controls"]').exists()).toBe(false)
     wrapper.unmount()
   })
 

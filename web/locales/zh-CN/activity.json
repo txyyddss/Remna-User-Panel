@@ -37,6 +37,7 @@
     "weightedPrize": "系统会选择并记录一个加权奖品。",
     "balanceAfter": "结果后的余额",
     "reward": "奖励",
+    "checkInReward": "今日增加：{amount}",
     "rewardTxb": "TXB 奖励：{amount}",
     "rewardCoupon": "优惠券奖励",
     "rewardSubscription": "增加 {days} 天",

@@ -19,7 +19,7 @@ describe('BalancePaymentConfiguration', () => {
     document.body.innerHTML = ''
   })
 
-  it('renders provider accounts as tiles separate from their channels', async () => {
+  it('separates provider selection from channel selection', async () => {
     const wrapper = mount(BalancePaymentConfiguration, {
       props: {
         amount: '20.00',
@@ -44,12 +44,18 @@ describe('BalancePaymentConfiguration', () => {
     await nextTick()
 
     const providerTiles = wrapper.findAll('button.provider-option')
-    const channelPicker = wrapper.get('[role="radiogroup"]')
     expect(providerTiles).toHaveLength(2)
     expect(providerTiles[0].text()).toContain('Main EZPay')
     expect(providerTiles[0].text()).not.toContain('Alipay')
     expect(providerTiles[0].attributes('aria-pressed')).toBe('true')
     expect(wrapper.find('button[aria-haspopup="listbox"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="choose-channel"]').text()).toContain('Choose channel')
+    expect(wrapper.find('[role="radiogroup"]').exists()).toBe(false)
+
+    await wrapper.get('[data-test="choose-channel"]').trigger('click')
+    await nextTick()
+
+    const channelPicker = wrapper.get('[role="radiogroup"]')
     expect(channelPicker.text()).toContain('Alipay')
     const paymentSubmit = wrapper.get('[data-test="payment-submit"]')
     expect(paymentSubmit.attributes('class')?.split(/\s+/)).toContain('payment-submit')

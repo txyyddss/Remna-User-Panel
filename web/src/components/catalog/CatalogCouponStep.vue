@@ -68,7 +68,7 @@ async function confirmDiscard(): Promise<void> {
       </UButton>
       <div v-for="grant in props.coupons" :key="grant.id" class="catalog-coupon-choice-row">
         <UButton class="catalog-coupon-choice" :class="{ 'catalog-coupon-choice--selected': couponGrantId === grant.id, 'catalog-coupon-choice--ineligible': !eligibleIds.includes(grant.id) }" color="neutral" variant="ghost" :aria-pressed="couponGrantId === grant.id" :disabled="!eligibleIds.includes(grant.id)" data-haptic @click="couponGrantId = grant.id">
-          <span><strong>{{ grant.coupon.name }}</strong><small>{{ eligibleIds.includes(grant.id) ? t('coupons.selectorSummary', { code: grant.coupon.code, effect: couponEffect(grant) }) : $t('catalog.couponIneligible') }}</small></span>
+          <span><strong>{{ grant.coupon.name }}</strong><small>{{ eligibleIds.includes(grant.id) ? couponEffect(grant) : $t('catalog.couponIneligible') }}</small></span>
           <UIcon v-if="couponGrantId === grant.id" name="i-ph-check-bold" />
         </UButton>
         <UButton color="error" variant="ghost" square icon="i-ph-trash" :aria-label="$t('coupons.discardTitle', { name: grant.coupon.name })" data-haptic @click="pendingDiscard = grant" />

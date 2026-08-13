@@ -127,7 +127,7 @@ onMounted(() => void load())
 <style scoped>
 .payment-profiles, .payment-profiles__grid { display: grid; gap: 0.8rem; }
 .payment-profiles__grid { grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
-.payment-profile { display: grid; gap: 0.7rem; padding: 0.9rem; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface-raised); }
+.payment-profile { display: grid; gap: 0.7rem; padding: 0.9rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface-raised); }
 .payment-profile__header { display: flex; align-items: start; justify-content: space-between; gap: 0.7rem; }
 .payment-profile h3, .payment-profile p { margin: 0; }
 .payment-profile h3 { font-size: 1rem; }

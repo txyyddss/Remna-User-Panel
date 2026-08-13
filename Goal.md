@@ -30,14 +30,12 @@ You may want to use the following projects for frontend:
 
 ---
 
-## Frontend code audit
-
-Audit all the frontend code to find out and perform changes when it:
-
-- Displays error on mobile devices
-- The buttons conflicts with each other
-- Did not make the best of Telegram SDK (https://core.telegram.org/bots/webapps) or misused it
-- Components that could use NUXT (UI/Charts/Icon/Fonts) / Shadcn / Zod / TanStack Table to implement the but didnt use
-- Contains logical errors
-- Did not align with user habits
-- Displayed extra texts that are not necessary
+Improve internal squad description editing and display.
+Admin should set 3 types of the squad: Broadband, China Optimized, or International Network (default)
+For broadbrand, fill in the ISP, port (Mbps), dynamic or static (edit using switch button), and detailed location (like Miaoli, Taiwan).
+For China Optimized, fill in the route of the three major carriors of china (CT,CU,CM), port (Mbps, could be unlimited), location (country only).
+For International Network, fill in the port speed (Mbps, could be unlimited), location (country only), and upstream carriers (could be multiple, split using commas).
+All of the types may also have extra descriptions that supports markdown.
+Auto-generate the description displayed to user by the infos by admin.
+Display the infos using icons and words as few as possible.
+Use NUXT UI for the components.

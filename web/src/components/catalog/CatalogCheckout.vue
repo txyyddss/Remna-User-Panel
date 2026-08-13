@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DeepReadonly } from 'vue'
 
-import type { Combo, Purchase, PurchaseQuote, SquadProduct } from '@/api/types'
+import type { Combo, PurchaseQuote, SquadProduct } from '@/api/types'
 import type { CouponGrant } from '@/api/features'
 import { formatBytes, formatDate, formatMoney } from '@/utils/format'
 import { useRouter } from 'vue-router'
@@ -14,7 +14,6 @@ const props = defineProps<{
   quote: DeepReadonly<PurchaseQuote> | null
   quoting: boolean
   error?: string | null
-  purchase: DeepReadonly<Purchase> | null
   purchasing: boolean
   needsBalance: boolean
 }>()
@@ -82,13 +81,8 @@ function goToBalance(): void { void router.push({ path: '/home', query: { topUp:
     </div>
     <UAlert v-if="error" color="warning" variant="soft" icon="i-ph-warning-circle" :description="error" />
     <USkeleton v-if="quoting" class="h-16" />
-    <template v-if="props.purchase">
-      <UButton block trailing-icon="i-ph-house" :label="$t('catalog.returnHome')" data-haptic @click="router.push('/home')" />
-    </template>
-    <template v-else>
-      <UButton v-if="needsBalance" block trailing-icon="i-ph-plus" :label="$t('catalog.addBalance')" data-haptic @click="goToBalance" />
-      <UButton v-else block :disabled="purchasing || !quote || quote.accessibleNodes.length === 0" :loading="purchasing" trailing-icon="i-ph-check" :label="purchasing ? $t('catalog.confirming') : $t('catalog.confirmPurchase')" data-haptic @click="emit('confirm')" />
-    </template>
+    <UButton v-if="needsBalance" block trailing-icon="i-ph-plus" :label="$t('catalog.addBalance')" data-haptic @click="goToBalance" />
+    <UButton v-else block :disabled="purchasing || !quote || quote.accessibleNodes.length === 0" :loading="purchasing" trailing-icon="i-ph-check" :label="purchasing ? $t('catalog.confirming') : $t('catalog.confirmPurchase')" data-haptic @click="emit('confirm')" />
   </section>
 </template>
 

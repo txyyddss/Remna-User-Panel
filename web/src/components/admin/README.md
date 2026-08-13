@@ -6,7 +6,7 @@ Admin section labels are locale-owned, use Nuxt UI controls, and avoid visual se
 
 - `AdminActivityPanel.vue` manages games and lucky draws; calendar and reward settings are in `AdminSettingsPanel.vue`.
 - `AdminAuditPanel.vue` filters the audit trail.
-- `AdminBackupsPanel.vue` manages backup and restore jobs.
+- `AdminBackupsPanel.vue` manages backup and restore jobs; provider diagnostics stay behind localized status summaries.
 - `AdminCatalogEditor.vue` edits combo terms.
 - `AdminCatalogPanel.vue` manages combos and squads.
 - `AdminCouponsPanel.vue` manages coupon definitions.

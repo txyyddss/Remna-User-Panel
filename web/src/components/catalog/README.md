@@ -7,6 +7,8 @@
 - `ComboOption.vue` and `SquadSelector.vue` collect the core-combo and optional-squad selections.
 - `CatalogNodes.vue` presents the server-projected accessible nodes with a country flag and traffic multiplier.
 - `CatalogCouponStep.vue` selects an eligible wallet coupon or redeems a new code.
+- `CatalogConfirmation.vue` presents the localized post-purchase summary and emits the Home navigation action.
+- `CatalogConfirmation.test.ts` verifies purchase details and the Home action.
 - `CatalogCheckout.vue` combines authoritative review and idempotent purchase confirmation; payment funding remains in the balance sheet. Returning to review restores a missing quote before confirmation and does not leave a completed or failed quote in a calculating state.
 - `CatalogPaymentStep.vue` is retained as the route-safe payment handoff component for legacy links while the catalog review owns purchase confirmation.
 - `CatalogPage.test.ts` verifies confirmed purchases do not trigger quote restoration and returning to accessible nodes restores the missing quote.

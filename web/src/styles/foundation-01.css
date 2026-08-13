@@ -94,6 +94,12 @@ select {
   font: inherit;
 }
 
+input,
+textarea,
+select {
+  font-size: 1rem;
+}
+
 button,
 a {
   -webkit-tap-highlight-color: transparent;

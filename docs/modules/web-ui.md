@@ -16,6 +16,8 @@ The main boundaries are:
 
 Telegram bootstrap waits for a delayed WebApp bridge before binding events. It expands the viewport, calls `ready()` after the application mounts, reflects theme and safe-area changes, configures supported native surface colors, and falls back to browser controls when native controls are unavailable. Visible copy and accessibility labels remain locale-owned.
 
+The mobile audit keeps native form controls at a 16 px minimum for Telegram and iOS, uses Nuxt UI button variants without legacy class collisions, and keeps compact navigation/content above the safe-area-aware bottom bar. Backup and restore panels expose localized operational summaries instead of raw provider diagnostics.
+
 Localization is embedded from matching domain shards under `locales/en/` and `locales/zh-CN/` through `src/i18n/generated.ts`. Vite validates identical nested leaf keys and placeholders before a build; runtime `t()` supports interpolation, persisted switching, and Telegram-language defaulting. API and local failure states resolve to locale keys rather than displaying raw transport text. The language selector is available before authentication and inside the authenticated shell.
 
 ## Routes and state behavior
@@ -36,8 +38,11 @@ The payment sheet selects a canonical method ID in two stages: provider account 
 
 Catalog review is the final purchase step and includes authoritative validity,
 traffic/reset and rollover details, accessible-node count, add-ons, coupon
-effect, and total. Combo/add-on/coupon selections and the current step are
-stored in user-scoped `sessionStorage` and cleared after successful purchase;
+effect, and total. A successful purchase replaces the flow with a localized
+confirmation summary containing the charged amount, discount, validity window,
+status, traffic limit, and reset cadence; its Home action is the only navigation
+out of that transient state. Combo/add-on/coupon selections and the current step
+are stored in user-scoped `sessionStorage` and cleared after successful purchase;
 progress is blocked when the quote has no accessible nodes. Home's ride summary
 offers a 1-6 term renewal quote and confirmation flow; a recurring coupon carried
 by the current ride is reflected in the quote total and displayed discount.

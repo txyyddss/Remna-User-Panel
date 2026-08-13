@@ -82,7 +82,7 @@ onMounted(() => void refresh())
 </template>
 
 <style scoped>
-.statistics-panel { min-width: 0; display: grid; gap: 0.8rem; margin: 0.8rem; padding: 0.9rem; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface-raised); }
+.statistics-panel { min-width: 0; display: grid; gap: 0.8rem; margin: 0.8rem; padding: 0.9rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface-raised); }
 .statistics-content, .statistics-filters, .statistics-filters > * { min-width: 0; }
 .statistics-panel__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.8rem; }
 .statistics-panel__header > div { min-width: 0; }

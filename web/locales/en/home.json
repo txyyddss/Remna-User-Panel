@@ -1,7 +1,6 @@
 {
   "home": {
     "currentTerm": "Current term",
-    "trafficDetails": "Traffic details",
     "noNodeUsage": "No per-node traffic is available for this range.",
     "trafficStart": "Start date",
     "trafficEnd": "End date",

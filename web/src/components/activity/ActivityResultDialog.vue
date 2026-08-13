@@ -14,9 +14,13 @@ const { t } = useI18n()
 const showFireworks = computed(() => isSuccessfulBet(props.result))
 
 const rewardLabel = computed(() => {
-  const reward = props.result?.kind === 'draw' ? props.result.reward : null
+  const result = props.result
+  const reward = result && (result.kind === 'draw' || result.kind === 'check_in') ? result.reward : null
   if (!reward || reward.kind === 'none') return t('activity.noReward')
-  if (reward.kind === 'txb_delta') return t('activity.rewardTxb', { amount: formatMoney({ currency: 'TXB', minor: reward.txbDeltaMinor, display: '' }) })
+  if (reward.kind === 'txb_delta') {
+    const amount = formatMoney({ currency: 'TXB', minor: reward.txbDeltaMinor, display: '' })
+    return result?.kind === 'check_in' ? t('activity.checkInReward', { amount }) : t('activity.rewardTxb', { amount })
+  }
   if (reward.kind === 'coupon_grant') return t('activity.rewardCoupon')
   return t('activity.rewardSubscription', { days: reward.extensionDays })
 })
@@ -53,7 +57,7 @@ const description = computed(() => {
           <span>{{ $t('activity.balanceAfter') }}</span>
           <strong>{{ formatMoney(result.balanceAfter) }}</strong>
         </div>
-        <div v-if="result.kind === 'draw'" class="result-reward">
+        <div v-if="(result.kind === 'draw' || result.kind === 'check_in') && result.reward.kind !== 'none'" class="result-reward">
           <span>{{ $t('activity.reward') }}</span>
           <strong>{{ rewardLabel }}</strong>
         </div>

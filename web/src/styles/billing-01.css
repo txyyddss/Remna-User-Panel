@@ -74,6 +74,22 @@
   margin-bottom: 0.55rem;
 }
 
+.payment-step-heading {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 0.85rem;
+}
+
+.payment-step-heading h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.payment-step-heading__back {
+  justify-self: start;
+  padding-inline: 0;
+}
+
 .provider-option {
   width: 100%;
   min-height: 66px;

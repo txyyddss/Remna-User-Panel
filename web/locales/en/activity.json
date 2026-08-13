@@ -37,6 +37,7 @@
     "weightedPrize": "One weighted prize is selected and recorded.",
     "balanceAfter": "Balance after result",
     "reward": "Reward",
+    "checkInReward": "Added today: {amount}",
     "rewardTxb": "TXB reward: {amount}",
     "rewardCoupon": "Coupon reward",
     "rewardSubscription": "{days} days added",

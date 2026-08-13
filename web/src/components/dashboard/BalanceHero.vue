@@ -70,7 +70,9 @@ watch(() => props.reissueOrderId, (orderId) => {
     </div>
     <div class="home-balance__action">
       <UButton
-        class="button button--light home-balance__button"
+        class="home-balance__button"
+        color="neutral"
+        variant="solid"
         icon="i-ph-plus-bold"
         :label="$t('billing.addBalance')"
         :loading="paymentLoading"

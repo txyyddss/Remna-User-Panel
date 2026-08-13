@@ -12,13 +12,13 @@ const ModalStub = defineComponent({
   template: '<div data-modal><slot name="body" /><slot name="footer" /></div>',
 })
 
-function result(kind: ActivityResult['kind'], outcome: ActivityResult['outcome']): ActivityResult {
+function result(kind: ActivityResult['kind'], outcome: ActivityResult['outcome'], reward: ActivityResult['reward'] = { kind: 'none' }): ActivityResult {
   return {
     id: `${kind}-${outcome}`,
     kind,
     outcome,
     message: '',
-    reward: { kind: 'none' },
+    reward,
     balanceAfter: { currency: 'TXB', minor: '100', display: '1.00 TXB' },
     createdAt: '2026-08-11T00:00:00Z',
   }
@@ -39,5 +39,9 @@ describe('ActivityResultDialog', () => {
     expect(mountDialog(result('bet', 'loss')).find('.bet-fireworks').exists()).toBe(false)
     expect(mountDialog(result('check_in', 'complete')).find('.bet-fireworks').exists()).toBe(false)
     expect(mountDialog(result('draw', 'complete')).find('.bet-fireworks').exists()).toBe(false)
+  })
+
+  it('shows the TXB amount added by a daily check-in', () => {
+    expect(mountDialog(result('check_in', 'complete', { kind: 'txb_delta', txbDeltaMinor: '250' })).text()).toContain('Added today: 2.50 TXB')
   })
 })

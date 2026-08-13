@@ -3,7 +3,7 @@ import type { DeepReadonly } from 'vue'
 import { useRouter } from 'vue-router'
 
 import type { Combo, Purchase, PurchaseQuote } from '@/api/types'
-import InlineNotice from '@/components/common/InlineNotice.vue'
+import CatalogConfirmation from './CatalogConfirmation.vue'
 import { formatMoney } from '@/utils/format'
 
 const router = useRouter()
@@ -31,8 +31,7 @@ function goToBalance(): void {
 <template>
   <section class="catalog-payment-step">
     <template v-if="purchase">
-      <InlineNotice tone="success" :title="$t('catalog.purchaseConfirmed')">{{ $t('catalog.purchaseScheduled', { name: purchase.comboName }) }}</InlineNotice>
-      <UButton block trailing-icon="i-ph-house" :label="$t('catalog.returnHome')" data-haptic @click="goHome" />
+      <CatalogConfirmation :purchase="purchase" @home="goHome" />
     </template>
     <template v-else>
       <div class="section-heading section-heading--stacked">

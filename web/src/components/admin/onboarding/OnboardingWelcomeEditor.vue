@@ -77,7 +77,7 @@ function add(): void {
 
 <style scoped>
 .welcome-editor { display: grid; gap: 0.75rem; padding: 0 1rem; }
-.welcome-card { display: grid; gap: 0.7rem; padding: 0.85rem; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface-raised); }
+.welcome-card { display: grid; gap: 0.7rem; padding: 0.85rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface-raised); }
 .welcome-card__heading, .welcome-card__actions { display: flex; align-items: center; gap: 0.25rem; }
 .welcome-card__heading { justify-content: space-between; }
 .welcome-card__locales { display: grid; gap: 0.7rem; }

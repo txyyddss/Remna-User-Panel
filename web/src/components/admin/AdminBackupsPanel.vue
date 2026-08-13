@@ -82,6 +82,12 @@ function backupName(backup: BackupRecord): string {
   return backup.path.split(/[\\/]/).pop() ?? t('adminBackups.backupName', { id: backup.id })
 }
 
+function restoreFollowUp(operation: RestoreOperation): string {
+  if (operation.status === 'complete') return t('adminBackups.reauthenticate')
+  if (operation.status === 'failed') return t('adminBackups.operationError')
+  return t('adminBackups.reconnect')
+}
+
 async function download(backup: BackupRecord): Promise<void> {
   actionError.value = null
   try {
@@ -121,7 +127,7 @@ onScopeDispose(stopRestorePolling)
       <div><h2>{{ t('adminBackups.title') }}</h2><p>{{ t('adminBackups.copy') }}</p></div>
       <UButton icon="i-ph-archive" :disabled="backups.busy.value" :loading="backups.busy.value" :label="t('adminBackups.create')" @click="createBackup" />
     </div>
-    <InlineNotice v-if="restoreOperation" :tone="restoreOperation.status === 'failed' ? 'warning' : 'success'" :title="restoreOperation.status === 'complete' ? t('adminBackups.restoreComplete') : restoreOperation.status === 'failed' ? t('adminBackups.restoreFailedTitle') : t('adminBackups.restoreStaged')">{{ t('adminBackups.operationStatus', { id: restoreOperation.id, status: t(`adminBackups.status.${restoreOperation.status}`) }) }} {{ restoreOperation.error || (restoreOperation.status === 'complete' ? t('adminBackups.reauthenticate') : t('adminBackups.reconnect')) }}</InlineNotice>
+    <InlineNotice v-if="restoreOperation" :tone="restoreOperation.status === 'failed' ? 'warning' : 'success'" :title="restoreOperation.status === 'complete' ? t('adminBackups.restoreComplete') : restoreOperation.status === 'failed' ? t('adminBackups.restoreFailedTitle') : t('adminBackups.restoreStaged')">{{ t('adminBackups.operationStatus', { id: restoreOperation.id, status: t(`adminBackups.status.${restoreOperation.status}`) }) }} {{ restoreFollowUp(restoreOperation) }}</InlineNotice>
     <InlineNotice v-if="actionError" tone="warning">{{ actionError }}</InlineNotice>
     <AdminSectionState :loading="backups.loading.value" :error="backups.error.value" @retry="backups.load()">
       <div v-auto-animate class="backup-grid">
@@ -141,7 +147,7 @@ onScopeDispose(stopRestorePolling)
     <AdminSectionState :loading="jobs.loading.value" :error="jobs.error.value" @retry="jobs.load()">
       <div v-auto-animate class="admin-list admin-list--compact">
         <article v-for="job in jobs.items.value.slice(0, 12)" :key="job.id" class="admin-list-row">
-          <div><strong>{{ job.kind }}</strong><small>{{ t('adminBackups.attempts', { count: job.attempts }) }} / {{ formatDateTime(job.createdAt) }}{{ job.lastError ? ` / ${job.lastError}` : '' }}</small></div>
+          <div><strong>{{ job.kind }}</strong><small>{{ t('adminBackups.attempts', { count: job.attempts }) }} / {{ formatDateTime(job.createdAt) }}<template v-if="job.lastError"> / {{ t('adminBackups.jobError') }}</template></small></div>
           <StatusBadge :tone="job.status === 'done' ? 'success' : job.status === 'failed' ? 'danger' : 'warning'" :label="t(`adminBackups.status.${job.status}`)" />
           <UButton
             v-if="job.status === 'failed'"

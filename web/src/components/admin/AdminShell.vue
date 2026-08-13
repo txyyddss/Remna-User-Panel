@@ -74,6 +74,6 @@ function goToOnboarding(): void {
 </template>
 
 <style scoped>
-.admin-section-picker { max-width: 420px; margin: 0 0 0.9rem; padding: 0.75rem; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface-raised); }
+.admin-section-picker { max-width: 420px; margin: 0 0 0.9rem; padding: 0.75rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface-raised); }
 .admin-section-picker__select { width: 100%; }
 </style>

@@ -120,7 +120,7 @@ function add(): void {
 
 <style scoped>
 .agreement-editor { display: grid; gap: 0.75rem; padding: 0 1rem; }
-.agreement-card { display: grid; gap: 0.7rem; padding: 0.85rem; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface-raised); }
+.agreement-card { display: grid; gap: 0.7rem; padding: 0.85rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface-raised); }
 .agreement-card--accent { border-color: var(--accent); }.agreement-card--success { border-color: var(--success); }.agreement-card--warning { border-color: var(--warning); }.agreement-card--danger { border-color: var(--danger); }
 .agreement-card__heading, .agreement-card__identity, .agreement-card__actions, .icon-picker, .color-picker { display: flex; align-items: center; gap: 0.3rem; }
 .agreement-card__heading { justify-content: space-between; }.agreement-card__icon { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 9px; color: var(--accent); background: var(--accent-soft); }

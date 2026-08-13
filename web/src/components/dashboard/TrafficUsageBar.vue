@@ -10,16 +10,20 @@ const props = defineProps<{
   nodes: readonly TopNode[]
   totalBytes: string
   catalogNodes: readonly CatalogNode[]
+  useMultiplier: boolean
 }>()
 
 const scale = 10_000n
 const pointerScale = 1_000_000n
+const multiplierScale = 1_000n
 const paletteSize = 5
+const minimumSharePercent = 5n
 const hoveredKey = shallowRef<string | null>(null)
 const selectedKey = shallowRef<string | null>(null)
 const trackRef = shallowRef<globalThis.HTMLElement | null>(null)
 
 interface Segment { key: string; name: string; countryCode: string; bytes: bigint; startBytes: bigint; widthBasis: bigint; color: string; bytesLabel: string; percentageLabel: string; multiplierLabel: string; isOther: boolean; ariaLabel: string }
+interface SourceNode { node: TopNode; index: number; bytes: bigint; calculatedBytes: bigint; multiplier: number | null }
 
 function byteCount(value: string): bigint {
   try {
@@ -40,15 +44,30 @@ function multiplierLabel(value: number | null): string {
   return t('home.trafficMultiplierValue', { value: formatted })
 }
 
-const sourceNodes = computed(() => props.nodes.map((node, index) => ({ node, index, bytes: byteCount(node.totalBytes) })).filter((entry) => entry.bytes > 0n))
+const catalogByUuid = computed(() => new Map(props.catalogNodes.map((node) => [node.uuid, node])))
+function multiplierFactor(value: number | null): bigint {
+  if (value === null || !Number.isFinite(value) || value < 0) return multiplierScale
+  return BigInt(Math.max(0, Math.round(value * Number(multiplierScale))))
+}
+
+const sourceNodes = computed<SourceNode[]>(() => props.nodes
+  .map((node, index) => {
+    const bytes = byteCount(node.totalBytes)
+    const metadata = catalogByUuid.value.get(node.uuid)
+    const multiplier = metadata && Number.isFinite(metadata.consumptionMultiplier) ? metadata.consumptionMultiplier : null
+    const calculatedBytes = props.useMultiplier
+      ? (bytes * multiplierFactor(multiplier)) / multiplierScale
+      : bytes
+    return { node, index, bytes, calculatedBytes, multiplier }
+  })
+  .filter((entry) => entry.bytes > 0n))
 
 const totalForBar = computed(() => {
   const reported = byteCount(props.totalBytes)
-  const listed = sourceNodes.value.reduce((sum, entry) => sum + entry.bytes, 0n)
+  const listed = sourceNodes.value.reduce((sum, entry) => sum + entry.calculatedBytes, 0n)
   return reported > listed ? reported : listed
 })
 
-const catalogByUuid = computed(() => new Map(props.catalogNodes.map((node) => [node.uuid, node])))
 const colorByUuid = computed(() => {
   const uuids = [...new Set(sourceNodes.value.map(({ node }) => node.uuid))].sort()
   return new Map(uuids.map((uuid, index) => [uuid, index % paletteSize]))
@@ -57,28 +76,28 @@ const colorByUuid = computed(() => {
 const segments = computed<Segment[]>(() => {
   const total = totalForBar.value
   if (total <= 0n || sourceNodes.value.length === 0) return []
-  const listed = sourceNodes.value.reduce((sum, entry) => sum + entry.bytes, 0n)
-  const entries = sourceNodes.value.map(({ node, index, bytes }) => {
+  const visibleNodes = sourceNodes.value.filter((entry) => entry.calculatedBytes * 100n >= total * minimumSharePercent)
+  const visibleBytes = visibleNodes.reduce((sum, entry) => sum + entry.calculatedBytes, 0n)
+  const entries = visibleNodes.map(({ node, index, calculatedBytes, multiplier }) => {
     const metadata = catalogByUuid.value.get(node.uuid)
-    const multiplier = metadata && Number.isFinite(metadata.consumptionMultiplier) ? metadata.consumptionMultiplier : null
     return {
       key: node.uuid + '-' + index,
       name: metadata?.name || node.name,
       countryCode: metadata?.countryCode || node.countryCode,
-      bytes,
-      rawWidthBasis: (bytes * scale) / total,
+      bytes: calculatedBytes,
+      rawWidthBasis: (calculatedBytes * scale) / total,
       color: 'var(--traffic-node-' + ((colorByUuid.value.get(node.uuid) ?? index % paletteSize) + 1) + ')',
       multiplierLabel: multiplierLabel(multiplier),
       isOther: false,
     }
   })
-  if (total > listed) {
+  if (total > visibleBytes) {
     entries.push({
       key: 'other-usage',
       name: t('home.trafficOther'),
       countryCode: '',
-      bytes: total - listed,
-      rawWidthBasis: ((total - listed) * scale) / total,
+      bytes: total - visibleBytes,
+      rawWidthBasis: ((total - visibleBytes) * scale) / total,
       color: 'var(--traffic-node-other)',
       multiplierLabel: t('home.trafficMultiplierUnavailable'),
       isOther: true,
@@ -152,13 +171,13 @@ function clearSelection(): void { selectedKey.value = null; hoveredKey.value = n
 </template>
 
 <style scoped>
-.traffic-usage-bar { --traffic-node-1: var(--accent); --traffic-node-2: #83a6b8; --traffic-node-3: #d1b578; --traffic-node-4: #c1918e; --traffic-node-5: #9d9bc2; --traffic-node-other: var(--line-strong); margin-top: 0.75rem; }
-.traffic-usage-bar__track { position: relative; display: flex; min-height: 44px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-muted); isolation: isolate; }
-.traffic-usage-bar__visual { display: block; min-width: 0; height: 100%; min-height: 44px; opacity: 0.9; }
+.traffic-usage-bar { --traffic-node-1: var(--accent); --traffic-node-2: var(--accent-strong); --traffic-node-3: var(--success); --traffic-node-4: var(--warning); --traffic-node-5: var(--text-muted); --traffic-node-other: var(--line-strong); margin-top: 0.75rem; }
+.traffic-usage-bar__track { position: relative; display: flex; min-height: 44px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-raised); isolation: isolate; }
+.traffic-usage-bar__visual { display: block; min-width: 0; height: 100%; min-height: 44px; opacity: 0.82; }
 .traffic-usage-bar__segment { position: absolute; inset-block: 0; z-index: 1; min-width: 0; padding: 0; border: 0; border-radius: 0; background: transparent; cursor: pointer; }
 .traffic-usage-bar__segment:focus-visible { outline: 2px solid var(--text); outline-offset: -3px; }
 .traffic-usage-bar__segment--selected { box-shadow: inset 0 0 0 2px var(--text); }
-.traffic-usage-bar__details { margin-top: 0.65rem; padding: 0.8rem 0.9rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-muted); }
+.traffic-usage-bar__details { margin-top: 0.65rem; padding: 0.8rem 0.9rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-raised); }
 .traffic-usage-bar__header { display: flex; align-items: center; gap: 0.65rem; }
 .traffic-usage-bar__header strong { display: block; color: var(--text); font-size: 0.88rem; }
 .traffic-usage-bar__country { display: inline-flex; align-items: center; gap: 0.2rem; color: var(--text-muted); font-size: 0.74rem; }

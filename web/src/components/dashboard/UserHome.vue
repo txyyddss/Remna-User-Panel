@@ -85,7 +85,6 @@ function consumeReissueRequest(): void {
           :ratio="usageRatio"
           :stale="dashboard.statisticsStale"
           :fetched-at="dashboard.fetchedAt"
-          :term="dashboard.activePurchase"
           :catalog-nodes="catalogNodes"
         />
         <section v-else class="section-block home-usage home-usage--empty empty-inline">
