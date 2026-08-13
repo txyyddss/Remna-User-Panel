@@ -19,6 +19,7 @@ var (
 )
 
 // Config controls one provider-specific worker and its bounded backlog.
+
 type Config struct {
 	Name        string
 	Capacity    int
@@ -41,6 +42,7 @@ type call struct {
 }
 
 // Queue is a bounded FIFO with one context-owned worker. A Queue is started once.
+
 type Queue struct {
 	name        string
 	capacity    int
@@ -55,6 +57,7 @@ type Queue struct {
 }
 
 // New validates config and creates a stopped queue.
+
 func New(config Config) (*Queue, error) {
 	if config.Name == "" {
 		return nil, errors.New("upstream queue name is required")
@@ -74,6 +77,7 @@ func New(config Config) (*Queue, error) {
 }
 
 // Name returns the provider label used in diagnostic errors.
+
 func (q *Queue) Name() string {
 	if q == nil {
 		return ""
@@ -82,6 +86,7 @@ func (q *Queue) Name() string {
 }
 
 // Capacity returns the maximum number of calls waiting behind the active call.
+
 func (q *Queue) Capacity() int {
 	if q == nil {
 		return 0
@@ -90,6 +95,7 @@ func (q *Queue) Capacity() int {
 }
 
 // MinInterval returns the configured minimum delay between call start times.
+
 func (q *Queue) MinInterval() time.Duration {
 	if q == nil {
 		return 0
@@ -98,6 +104,7 @@ func (q *Queue) MinInterval() time.Duration {
 }
 
 // Start attaches the worker to ctx. Cancellation stops admission and cancels the active call.
+
 func (q *Queue) Start(ctx context.Context) error {
 	if q == nil {
 		return errors.New("upstream queue is nil")
@@ -124,6 +131,7 @@ func (q *Queue) Start(ctx context.Context) error {
 
 // Shutdown cancels the worker and waits for its active call to observe cancellation.
 // It is safe to call before Start and more than once.
+
 func (q *Queue) Shutdown(ctx context.Context) error {
 	if q == nil {
 		return nil
@@ -172,74 +180,5 @@ func (q *Queue) enqueue(ctx context.Context, item call) (context.Context, error)
 		return nil, fmt.Errorf("submit to %s queue: %w", q.name, ctx.Err())
 	case <-lifecycle.Done():
 		return nil, fmt.Errorf("submit to %s queue: %w", q.name, lifecycle.Err())
-	}
-}
-
-func (q *Queue) run(lifecycle context.Context, done chan struct{}) {
-	defer func() {
-		q.mu.Lock()
-		q.state = stateStopped
-		q.mu.Unlock()
-		close(done)
-	}()
-	var nextStart time.Time
-	for {
-		if lifecycle.Err() != nil {
-			return
-		}
-		select {
-		case <-lifecycle.Done():
-			return
-		case item := <-q.calls:
-			q.execute(lifecycle, item, &nextStart)
-		}
-	}
-}
-
-func (q *Queue) execute(lifecycle context.Context, item call, nextStart *time.Time) {
-	if err := item.ctx.Err(); err != nil {
-		item.reject(err)
-		return
-	}
-	if err := waitUntil(item.ctx, lifecycle, *nextStart); err != nil {
-		item.reject(err)
-		return
-	}
-	if q.minInterval > 0 {
-		*nextStart = time.Now().Add(q.minInterval)
-	}
-	executionCtx, cancel := mergeCancellation(item.ctx, lifecycle)
-	defer cancel()
-	defer func() {
-		if recover() != nil {
-			item.reject(fmt.Errorf("%s: %w", q.name, ErrTaskPanic))
-		}
-	}()
-	item.run(executionCtx)
-}
-
-func waitUntil(caller, lifecycle context.Context, target time.Time) error {
-	delay := time.Until(target)
-	if delay <= 0 {
-		return nil
-	}
-	timer := time.NewTimer(delay)
-	defer timer.Stop()
-	select {
-	case <-timer.C:
-		return nil
-	case <-caller.Done():
-		return caller.Err()
-	case <-lifecycle.Done():
-		return lifecycle.Err()
-	}
-}
-
-func mergeCancellation(caller, lifecycle context.Context) (context.Context, context.CancelFunc) {
-	ctx, cancel := context.WithCancel(caller)
-	stop := context.AfterFunc(lifecycle, cancel)
-	return ctx, func() {
-		stop()
-		cancel()
 	}
 }

@@ -78,7 +78,7 @@ function readTelegramInitData(app: TelegramWebApp | undefined): string | undefin
   return undefined
 }
 
-export async function getTelegramInitData(timeoutMs = 8000): Promise<string | undefined> {
+export async function getTelegramInitData(timeoutMs = 3000): Promise<string | undefined> {
   const startedAt = Date.now()
 
   while (Date.now() - startedAt < timeoutMs) {
@@ -91,8 +91,8 @@ export async function getTelegramInitData(timeoutMs = 8000): Promise<string | un
   return undefined
 }
 
-const telegramEvents = ['themeChanged', 'viewportChanged']
-const safeAreaEvents = ['safeAreaChanged', 'contentSafeAreaChanged']
+const telegramEvents = ['themeChanged', 'viewportChanged'] as const
+const safeAreaEvents = ['safeAreaChanged', 'contentSafeAreaChanged'] as const
 
 function syncTelegramEnvironment(): void {
   const app = getTelegramWebApp()
@@ -121,31 +121,70 @@ function syncTelegramEnvironment(): void {
   root.style.setProperty('--tg-viewport-stable-height', `${app.viewportStableHeight ?? window.innerHeight}px`)
 }
 
-export function initializeTelegram(): () => void {
-  const app = getTelegramWebApp()
-  const disposeHapticClicks = installHapticClickFeedback()
-  if (app) tryTelegramCall(() => app.expand())
-  syncTelegramEnvironment()
-  const events = supportsTelegramVersion('8.0') ? [...telegramEvents, ...safeAreaEvents] : telegramEvents
-  for (const event of events) {
-    if (app?.onEvent) tryTelegramCall(() => app.onEvent?.(event, syncTelegramEnvironment))
+function syncTelegramColors(app: TelegramWebApp): void {
+  const theme = app.themeParams ?? {}
+  const background = theme.bg_color
+  const surface = theme.secondary_bg_color
+  if (background) {
+    tryTelegramCall(() => app.setBackgroundColor?.(background))
+    tryTelegramCall(() => app.setHeaderColor?.(background))
   }
+  if (surface) tryTelegramCall(() => app.setBottomBarColor?.(surface))
+}
+
+export function initializeTelegram(): () => void {
+  const disposeHapticClicks = installHapticClickFeedback()
+  let app: TelegramWebApp | undefined
+  let events: readonly string[] = []
+  let retry: number | undefined
+  let attempts = 0
+
+  const syncAll = () => {
+    const current = getTelegramWebApp()
+    if (current) syncTelegramColors(current)
+    syncTelegramEnvironment()
+  }
+
+  const unbind = () => {
+    if (!app?.offEvent) return
+    for (const event of events) tryTelegramCall(() => app?.offEvent?.(event, syncAll))
+    events = []
+  }
+
+  const bind = () => {
+    retry = undefined
+    const next = getTelegramWebApp()
+    if (!next) {
+      if (attempts < 30) {
+        attempts += 1
+        retry = window.setTimeout(bind, 100)
+      }
+      return
+    }
+    if (next !== app) {
+      unbind()
+      app = next
+      events = supportsTelegramVersion('8.0') ? [...telegramEvents, ...safeAreaEvents] : telegramEvents
+      for (const event of events) if (app.onEvent) tryTelegramCall(() => app?.onEvent?.(event, syncAll))
+      tryTelegramCall(() => app?.expand())
+    }
+    syncAll()
+  }
+
+  bind()
   window.addEventListener('resize', syncTelegramEnvironment)
   return () => {
-    for (const event of events) {
-      if (app?.offEvent) tryTelegramCall(() => app.offEvent?.(event, syncTelegramEnvironment))
-    }
+    if (retry !== undefined) window.clearTimeout(retry)
+    unbind()
     window.removeEventListener('resize', syncTelegramEnvironment)
     disposeHapticClicks()
   }
 }
-
 export function markTelegramReady(): void {
   syncTelegramEnvironment()
   const app = getTelegramWebApp()
   if (app) tryTelegramCall(() => app.ready())
 }
-
 export function openExternalLink(url: string): void {
   const app = getTelegramWebApp()
   if (app && supportsTelegramVersion('6.1')) {
@@ -154,7 +193,6 @@ export function openExternalLink(url: string): void {
   }
   tryTelegramCall(() => window.open(url, '_blank', 'noopener,noreferrer'))
 }
-
 export function openTelegramInvoice(url: string): boolean {
   const app = getTelegramWebApp()
   return Boolean(app && supportsTelegramVersion('6.1') && tryTelegramCall(() => app.openInvoice(url)))

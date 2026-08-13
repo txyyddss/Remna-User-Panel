@@ -1,4 +1,5 @@
 # Admin package
+- `settings_part2.go` continues the focused implementation from its original package module.
 
 Audited administrative operations for catalog data, settings, balances, refunds, purchases, backups, and durable jobs live here.
 
@@ -23,3 +24,5 @@ Provider profiles have stable IDs, separate endpoint, credential, merchant ID,
 provider name, and acknowledgement values. Channel selection only controls
 which rails are offered for that account. Balance adjustments create unique
 ledger references so repeated reasons remain separate audited operations.
+
+- `settings_part2.go` contains the remaining settings validation and persistence helpers.

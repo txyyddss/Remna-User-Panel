@@ -24,4 +24,4 @@
 - `useQuestionnaireImport.ts` previews and settles questionnaire imports.
 - `useQuestionnaireImport.test.ts` covers import analysis and settlement.
 - `useQuestionnaires.ts` manages member questionnaire participation.
-- `useTelegramBackButton.ts` synchronizes Telegram back navigation.
+- `useTelegramBackButton.ts` coordinates one native Telegram BackButton across route and overlay owners; the most recently mounted visible sheet owns the action and all handlers are removed on teardown.

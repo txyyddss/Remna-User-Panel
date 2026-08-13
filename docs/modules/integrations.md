@@ -4,6 +4,8 @@
 
 Each integration package translates a documented external protocol into a small application-facing interface. Domain services own interfaces and business decisions; adapters own URLs, authentication, signing, transport timeouts, response decoding, and provider-specific errors. Every method that can block accepts `context.Context`. HTTP clients have explicit timeouts and bounded response bodies. Application adapters submit every Remnawave and Emby call to a bounded, paced, context-owned FIFO queue before constructing or invoking the provider client; cancellation and shutdown release blocked callers.
 
+The implementation is split into focused transport, mapping, and lifecycle files without changing the public adapter interfaces. The reference contracts remain the source of truth for every method, path, query, body, and header; no browser code calls either provider directly.
+
 ## Telegram
 
 The Telegram adapter validates Mini App `initData`, creates and revokes join-request links, approves only an expected Telegram identity, reads canonical chat membership, configures the webhook and chat menu button, creates Stars invoice links, reconciles transactions, refunds Stars, and decodes updates. Its Bot API surface is `setWebhook`, `setChatMenuButton`, `createChatInviteLink` with `creates_join_request=true`, `approveChatJoinRequest`, `revokeChatInviteLink`, `getChatMember`, `createInvoiceLink` using XTR, `answerPreCheckoutQuery`, `getStarTransactions`, and `refundStarPayment`. Startup derives callback URLs from `PUBLIC_BASE_URL`, requests `message`, `chat_member`, `chat_join_request`, and `pre_checkout_query` updates, and verifies the secret-token header in constant time. Selecting the bot's Main Mini App remains a BotFather deployment step.

@@ -30,7 +30,7 @@ const rewardItems = computed(() => [
   { value: 'coupon_grant', label: t('adminLuckyDraw.couponGrant') },
   { value: 'subscription_extension', label: t('adminLuckyDraw.extension') },
 ])
-const couponItems = computed(() => props.coupons.map((coupon) => ({ value: coupon.id, label: `${coupon.code} · ${coupon.name}` })))
+const couponItems = computed(() => props.coupons.map((coupon) => ({ value: coupon.id, label: t('adminLuckyDraw.couponLabel', { code: coupon.code, name: coupon.name }) })))
 
 function blankPrize(): PrizeDraft {
   return { id: '', name: t('adminLuckyDraw.noPrize'), weight: '1', stockRemaining: '', kind: 'none', txbDelta: '1.00', couponId: '', extensionDays: 1 }

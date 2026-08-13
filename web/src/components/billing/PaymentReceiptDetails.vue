@@ -93,7 +93,7 @@ function localized(key: string, fallback: string): string {
             <div>
               <span class="payment-receipt__label">{{ $t('payment.balanceCredited') }}</span>
               <strong>{{ creditedAmount }}</strong>
-              <span class="payment-receipt__secondary">{{ $t('payment.paymentAmount') }} · {{ paymentAmount }}</span>
+              <span class="payment-receipt__secondary">{{ $t('payment.paymentAmountValue', { amount: paymentAmount }) }}</span>
             </div>
             <UIcon name="i-ph-wallet" class="payment-receipt__amount-icon" aria-hidden="true" />
           </section>

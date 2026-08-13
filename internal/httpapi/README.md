@@ -1,4 +1,8 @@
 # HTTP API transport
+- `activity_member_part2.go` continues the focused implementation from its original package module.
+- `database_admin_part2.go` continues the focused implementation from its original package module.
+- `handlers_part2.go` continues the focused implementation from its original package module.
+- `server_part2.go` continues the focused implementation from its original package module.
 
 ## Core transport
 
@@ -61,3 +65,5 @@
 - `payment_callbacks_test.go` verifies that navigation returns accept only the documented payment providers.
 
 `README.md` is this direct-file ownership index. Unsigned routes remain limited to operational probes, Telegram authentication, provider-authenticated callbacks, the capability-limited payment return/status flow, and static assets.
+- `handlers_part2.go` contains the remaining route handler implementations.
+- `server_part2.go` contains static asset and transport helper implementations.

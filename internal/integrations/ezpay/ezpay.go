@@ -3,13 +3,10 @@ package ezpay
 import (
 	"crypto/md5" // #nosec G501 -- MD5 is mandated by the EZPay wire protocol.
 	"crypto/subtle"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"math/big"
 	"net/url"
 	"regexp"
-	"sort"
 	"strings"
 )
 
@@ -20,6 +17,7 @@ var (
 )
 
 // PaymentType identifies an EZPay payment rail.
+
 type PaymentType string
 
 const (
@@ -36,6 +34,7 @@ const (
 )
 
 // CheckoutRequest contains the signed submit.php parameters used by the supplied SDK.
+
 type CheckoutRequest struct {
 	Type       PaymentType
 	NotifyURL  string
@@ -46,6 +45,7 @@ type CheckoutRequest struct {
 }
 
 // Notification is a verified EZPay GET notification.
+
 type Notification struct {
 	MerchantID  string
 	OutTradeNo  string
@@ -56,11 +56,13 @@ type Notification struct {
 }
 
 // Successful reports whether EZPay marked the transaction paid.
+
 func (n Notification) Successful() bool {
 	return n.TradeStatus == "TRADE_SUCCESS"
 }
 
 // Client owns an EZPay merchant's checkout URL and signing key.
+
 type Client struct {
 	baseURL    *url.URL
 	merchantID string
@@ -68,6 +70,7 @@ type Client struct {
 }
 
 // NewClient creates an EZPay checkout/signature client.
+
 func NewClient(rawBaseURL, merchantID, key string) (*Client, error) {
 	baseURL, err := url.Parse(rawBaseURL)
 	if err != nil {
@@ -86,6 +89,7 @@ func NewClient(rawBaseURL, merchantID, key string) (*Client, error) {
 }
 
 // CheckoutURL returns the signed submit.php URL for a payment order.
+
 func (c *Client) CheckoutURL(input CheckoutRequest) (string, error) {
 	if strings.TrimSpace(string(input.Type)) == "" || strings.TrimSpace(input.OutTradeNo) == "" || strings.TrimSpace(input.Name) == "" {
 		return "", errors.New("ezpay checkout requires payment type, order number, and name")
@@ -117,6 +121,7 @@ func (c *Client) CheckoutURL(input CheckoutRequest) (string, error) {
 }
 
 // Verify authenticates a callback using the supplied SDK's sorted MD5 suffix signature.
+
 func (c *Client) Verify(values url.Values) error {
 	if len(values) == 0 {
 		return errors.New("ezpay callback is empty")
@@ -138,6 +143,7 @@ func (c *Client) Verify(values url.Values) error {
 }
 
 // ParseNotification verifies and parses a GET callback. Unknown signed fields are accepted.
+
 func (c *Client) ParseNotification(values url.Values) (*Notification, error) {
 	if err := c.Verify(values); err != nil {
 		return nil, err
@@ -164,44 +170,3 @@ func (c *Client) ParseNotification(values url.Values) (*Notification, error) {
 
 // Sign implements the supplied EZPay SDK algorithm: sorted non-empty key=value pairs,
 // excluding sign and sign_type, followed immediately by the merchant key and lower-case MD5.
-func Sign(values url.Values, key string) string {
-	keys := make([]string, 0, len(values))
-	for name := range values {
-		if name == "sign" || name == "sign_type" || values.Get(name) == "" {
-			continue
-		}
-		keys = append(keys, name)
-	}
-	sort.Strings(keys)
-	parts := make([]string, 0, len(keys))
-	for _, name := range keys {
-		parts = append(parts, name+"="+values.Get(name))
-	}
-	sum := md5.Sum([]byte(strings.Join(parts, "&") + key)) // #nosec G401 -- required for protocol compatibility.
-	return hex.EncodeToString(sum[:])
-}
-
-func validateCallbackURL(rawURL string) error {
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		return err
-	}
-	if (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || u.User != nil {
-		return errors.New("URL must be absolute http(s) without credentials")
-	}
-	return nil
-}
-
-func validatePositiveDecimal(value string) error {
-	if len(value) > 64 {
-		return errors.New("value is too long")
-	}
-	if !decimalPattern.MatchString(value) {
-		return errors.New("value must be an unsigned base-10 decimal")
-	}
-	parsed, ok := new(big.Rat).SetString(value)
-	if !ok || parsed.Sign() <= 0 {
-		return errors.New("value must be positive")
-	}
-	return nil
-}

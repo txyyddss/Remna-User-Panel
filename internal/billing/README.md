@@ -1,4 +1,5 @@
 # Billing package
+- `events_part2.go` continues the focused implementation from its original package module.
 
 Payment-method discovery, exact decimal arithmetic, checkout creation, provider event validation, and settlement live here.
 

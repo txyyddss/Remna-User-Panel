@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-// RetryEmbyProvisioning enqueues one retained transient setup unless work is
-// already pending. Terminal failures cannot pass the secret/state predicate.
 func (s *Store) RetryEmbyProvisioning(ctx context.Context, accountID string, now time.Time) (domain.Account, error) {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
@@ -50,6 +48,7 @@ func (s *Store) RetryEmbyProvisioning(ctx context.Context, accountID string, now
 }
 
 // BeginEmbyProvisioning leases the account state to a kind-specific outbox handler.
+
 func (s *Store) BeginEmbyProvisioning(ctx context.Context, accountID string, now time.Time) (domain.ProvisioningRecord, error) {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
@@ -60,6 +59,7 @@ func (s *Store) BeginEmbyProvisioning(ctx context.Context, accountID string, now
 }
 
 // SetEmbyCandidate persists the exact name before any create attempt.
+
 func (s *Store) SetEmbyCandidate(ctx context.Context, accountID, candidate string, now time.Time) error {
 	result, err := s.db.ExecContext(ctx, `UPDATE emby_accounts SET candidate_username=?,updated_at=?
 		WHERE id=? AND status='provisioning' AND candidate_username IS NULL`, candidate, stamp(now), accountID)
@@ -82,6 +82,7 @@ func (s *Store) SetEmbyCandidate(ctx context.Context, accountID, candidate strin
 }
 
 // MarkEmbyCreateAttempted records the ambiguity boundary before POST /Users/New.
+
 func (s *Store) MarkEmbyCreateAttempted(ctx context.Context, accountID string, now time.Time) error {
 	result, err := s.db.ExecContext(ctx, `UPDATE emby_accounts SET create_attempted=1,updated_at=?
 		WHERE id=? AND status='provisioning' AND candidate_username IS NOT NULL`, stamp(now), accountID)
@@ -95,6 +96,7 @@ func (s *Store) MarkEmbyCreateAttempted(ctx context.Context, accountID string, n
 }
 
 // SetEmbyRemoteIdentity stores the authoritative remote identity idempotently.
+
 func (s *Store) SetEmbyRemoteIdentity(ctx context.Context, accountID, remoteID, remoteUsername string, now time.Time) error {
 	result, err := s.db.ExecContext(ctx, `UPDATE emby_accounts SET remote_user_id=?,remote_username=?,candidate_username=?,updated_at=?
 		WHERE id=? AND status='provisioning' AND (remote_user_id IS NULL OR remote_user_id=?)`,
@@ -112,6 +114,7 @@ func (s *Store) SetEmbyRemoteIdentity(ctx context.Context, accountID, remoteID, 
 }
 
 // RequeueEmbyProvisioning preserves the secret and records a retry-safe error.
+
 func (s *Store) RequeueEmbyProvisioning(ctx context.Context, accountID string, provisionErr error, now time.Time) error {
 	result, err := s.db.ExecContext(ctx, `UPDATE emby_accounts SET status='queued',last_error=?,updated_at=?
 		WHERE id=? AND status='provisioning'`, sanitizeError(provisionErr), stamp(now), accountID)
@@ -126,6 +129,7 @@ func (s *Store) RequeueEmbyProvisioning(ctx context.Context, accountID string, p
 
 // MarkEmbyProvisioned persists disabled folders only after the service has
 // re-fetched and verified the remote full policy.
+
 func (s *Store) MarkEmbyProvisioned(ctx context.Context, accountID string, preferences domain.Preferences, now time.Time) error {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
@@ -151,78 +155,3 @@ func (s *Store) MarkEmbyProvisioned(ctx context.Context, accountID string, prefe
 
 // FailAndRefundEmbySetup atomically records a terminal failure, erases the
 // temporary password, and credits the exact debited setup price once.
-func (s *Store) FailAndRefundEmbySetup(ctx context.Context, accountID, reason string, now time.Time) (domain.Account, error) {
-	s.writeMu.Lock()
-	defer s.writeMu.Unlock()
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return domain.Account{}, err
-	}
-	defer func() { _ = tx.Rollback() }()
-	record, err := scanEmbyProvisioning(tx.QueryRowContext(ctx, embyAccountSelect+` WHERE id=?`, accountID))
-	if err != nil {
-		return domain.Account{}, err
-	}
-	if record.Status == domain.StatusActive {
-		return domain.Account{}, ErrConflict
-	}
-	if record.RefundedAt != nil {
-		err = hydrateEmbyPreferences(ctx, tx, &record)
-		return record.Account, err
-	}
-	balance, err := adjustBalanceTx(ctx, tx, record.UserID, record.SetupPriceTXBMinor, now)
-	if err != nil {
-		return domain.Account{}, fmt.Errorf("refund Emby setup balance: %w", err)
-	}
-	referenceID := fmt.Sprintf("%s:%d", record.ID, record.SetupAttempt)
-	if _, err := insertLedgerTx(ctx, tx, record.UserID, record.SetupPriceTXBMinor, balance, "emby_setup_refund", referenceID, "Emby setup refund", now); err != nil {
-		return domain.Account{}, err
-	}
-	if _, err := tx.ExecContext(ctx, `UPDATE emby_accounts SET status='failed',password_ciphertext='',password_context='',pending_preferences_json='{}',
-		last_error=?,refunded_at=?,updated_at=? WHERE id=?`, truncateEmbyError(reason), stamp(now), stamp(now), record.ID); err != nil {
-		return domain.Account{}, fmt.Errorf("record failed Emby setup: %w", err)
-	}
-	if err := tx.Commit(); err != nil {
-		return domain.Account{}, fmt.Errorf("commit Emby setup refund: %w", err)
-	}
-	return s.EmbyAccountForUser(ctx, record.UserID)
-}
-
-// UpdateEmbyPreferences persists only preferences that were accepted upstream.
-func (s *Store) UpdateEmbyPreferences(ctx context.Context, accountID string, preferences domain.Preferences, now time.Time) (domain.Account, error) {
-	s.writeMu.Lock()
-	defer s.writeMu.Unlock()
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return domain.Account{}, err
-	}
-	defer func() { _ = tx.Rollback() }()
-	result, err := tx.ExecContext(ctx, `UPDATE emby_accounts SET max_parental_rating=?,updated_at=? WHERE id=? AND status='active'`,
-		nullableInt32(preferences.MaxParentalRating), stamp(now), accountID)
-	if err != nil {
-		return domain.Account{}, fmt.Errorf("update Emby preferences: %w", err)
-	}
-	if affected, _ := result.RowsAffected(); affected == 0 {
-		return domain.Account{}, domain.ErrNotFound
-	}
-	if err := replaceEmbyFoldersTx(ctx, tx, accountID, preferences.DisabledLibraryIDs); err != nil {
-		return domain.Account{}, err
-	}
-	if err := tx.Commit(); err != nil {
-		return domain.Account{}, err
-	}
-	record, err := s.EmbyProvisioningByID(ctx, accountID)
-	return record.Account, err
-}
-
-// TouchEmbyAccount records a successful password operation without storing password data.
-func (s *Store) TouchEmbyAccount(ctx context.Context, accountID string, now time.Time) error {
-	result, err := s.db.ExecContext(ctx, `UPDATE emby_accounts SET updated_at=? WHERE id=? AND status='active'`, stamp(now), accountID)
-	if err != nil {
-		return fmt.Errorf("touch Emby account: %w", err)
-	}
-	if affected, _ := result.RowsAffected(); affected == 0 {
-		return domain.ErrNotFound
-	}
-	return nil
-}

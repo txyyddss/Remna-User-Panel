@@ -36,7 +36,7 @@ const groups = [
 
 const sectionItems = computed(() => groups.flatMap((group) => group.sections.map((section) => ({
   value: section.value,
-  label: `${t(group.labelKey)} · ${t(section.labelKey)}`,
+  label: t('adminNav.sectionLabel', { group: t(group.labelKey), section: t(section.labelKey) }),
 }))))
 const selected = computed({
   get: () => String(route.params.section || 'settings'),

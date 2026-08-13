@@ -1,4 +1,5 @@
 # Emby package
+- `types_part2.go` continues the focused implementation from its original package module.
 
 Priced Emby setup, durable provisioning, policy hardening, preference updates, and password changes live here.
 
@@ -14,3 +15,4 @@ Priced Emby setup, durable provisioning, policy hardening, preference updates, a
 - `provisioning_test.go` covers provisioning failure, recovery, reconciliation, and validation branches.
 - `service_test_helpers_test.go` contains shared repository, remote, price, secret, and cipher doubles.
 - `README.md` documents the package layout.
+- `types_part2.go` contains policy hardening and policy comparison helpers.

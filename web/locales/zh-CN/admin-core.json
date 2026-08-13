@@ -8,6 +8,7 @@
     "setupAccount": "设置用户账户",
     "sections": "管理分区",
     "section": "分区",
+    "sectionLabel": "{group}：{section}",
     "commerce": "商业",
     "community": "社区",
     "accounts": "账户",

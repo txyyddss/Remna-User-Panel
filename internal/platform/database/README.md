@@ -1,8 +1,29 @@
 # SQLite store
+- `activity_draws_part2.go` continues the focused implementation from its original package module.
+- `activity_extensions_part2.go` continues the focused implementation from its original package module.
+- `activity_history_part2.go` continues the focused implementation from its original package module.
+- `activity_part2.go` continues the focused implementation from its original package module.
+- `billing_payments_part2.go` continues the focused implementation from its original package module.
+- `coupon_purchase_part2.go` continues the focused implementation from its original package module.
+- `coupons_part2.go` continues the focused implementation from its original package module.
+- `coupons_part3.go` continues the focused implementation from its original package module.
+- `emby_provisioning_part2.go` continues the focused implementation from its original package module.
+- `outbox_jobs_part2.go` continues the focused implementation from its original package module.
+- `questionnaire_queries_part2.go` continues the focused implementation from its original package module.
+- `questionnaires_part2.go` continues the focused implementation from its original package module.
+- `rollover_part2.go` continues the focused implementation from its original package module.
+- `statistics_part2.go` continues the focused implementation from its original package module.
+- `store_part2.go` continues the focused implementation from its original package module.
 
 This package owns the authoritative SQLite connection, migrations, transactional
 repositories, durable outbox records, and restore validation. Domain services
 depend on the `Store` methods; provider network calls do not belong here.
+
+The persistence implementation is split by domain operation. The `_part2.go` files contain continuation methods for the corresponding bounded repository module.
+
+- `activity_draws_part2.go`, `activity_extensions_part2.go`, and `activity_part2.go` continue activity persistence.
+- `billing_payments_part2.go`, `coupons_part2.go`, and `coupons_part3.go` continue billing and coupon persistence.
+- `emby_provisioning_part2.go`, `outbox_jobs_part2.go`, `questionnaires_part2.go`, `statistics_part2.go`, and `store_part2.go` continue their focused repositories.
 
 ## Production files
 

@@ -6,13 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 	"unicode/utf8"
 )
 
 var candidateDelimiters = []rune{',', ';', '\t'}
 
 // ParsedCodes contains unique normalized codes and row-quality counts.
+
 type ParsedCodes struct {
 	Codes          []string
 	DuplicateCount int
@@ -20,6 +20,7 @@ type ParsedCodes struct {
 }
 
 // ParseCSV reads and parses a bounded UTF-8 CSV upload.
+
 func ParseCSV(reader io.Reader, maxBytes int64, maxRows, maxColumns int) (CSVDocument, error) {
 	if reader == nil || maxBytes <= 0 || maxRows <= 0 || maxColumns <= 0 {
 		return CSVDocument{}, fmt.Errorf("%w: invalid CSV parser limits", ErrInvalidInput)
@@ -100,6 +101,7 @@ func parseDocument(raw []byte, delimiter rune, maxRows, maxColumns int) (CSVDocu
 }
 
 // ExtractCodes reparses a stored document using an administrator-selected column.
+
 func ExtractCodes(raw []byte, delimiter rune, headers []string, codeColumn string, maxRows int) (ParsedCodes, error) {
 	columnIndex := -1
 	for index, header := range headers {
@@ -180,32 +182,4 @@ func newCSVReader(raw []byte, delimiter rune) *csv.Reader {
 	reader.FieldsPerRecord = -1
 	reader.ReuseRecord = false
 	return reader
-}
-
-func delimiterLabel(delimiter rune) string {
-	switch delimiter {
-	case ';':
-		return "semicolon"
-	case '\t':
-		return "tab"
-	default:
-		return "comma"
-	}
-}
-
-func trimRecord(record []string) []string {
-	result := make([]string, len(record))
-	for index, value := range record {
-		result[index] = strings.TrimSpace(value)
-	}
-	return result
-}
-
-func hasEmptyHeader(headers []string) bool {
-	for _, header := range headers {
-		if header == "" {
-			return true
-		}
-	}
-	return false
 }

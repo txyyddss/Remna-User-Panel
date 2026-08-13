@@ -77,6 +77,7 @@
     "tooLarge": "请输入更小的金额。"
   },
   "payment": {
+    "paymentAmountValue": "{amount}",
     "addTxb": "充值 TXB",
     "configureHint": "尚未配置支付渠道。",
     "cancelledHint": "订单已取消。",

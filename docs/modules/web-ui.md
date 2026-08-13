@@ -6,13 +6,15 @@ The web module is a mobile-first Telegram Mini App built with Vue 3 Composition 
 
 The main boundaries are:
 
-- `AppShell`: safe areas, session bootstrap, desktop/mobile navigation, skip link, Telegram BackButton, and guarded focus restoration after navigation.
+- `AppShell`: safe areas, session bootstrap, desktop/mobile navigation, skip link, Telegram BackButton ownership, and guarded focus restoration after navigation. A shared owner stack prevents an overlay close action from competing with route history.
 - Member features: `ActivityPage`, `CouponWalletPanel`, `QuestionnairePage`, `EmbyPage`, `CatalogCheckout`, and `BalancePaymentSheet`.
 - Shared controls: `TxbAmountField` converts human major-unit input to integer hundredths, Nuxt UI owns accessible switches/forms/overlays/tables, and `MarkdownContent` renders sanitized Markdown with raw HTML disabled.
 - `AdminShell`: compact responsive navigation for Commerce, Community, Onboarding, Users, Emby, and System operations. Every registered backend administration domain has a live UI route.
 - Workflow surfaces: questionnaire CSV import and database record editing use mobile drawers/dialogs with explicit review states rather than exposing raw SQL or unreviewed mutations.
 
 `src/api/generated.ts` is generated from the split `api/openapi.yaml` contract. `src/api/http.ts` is the only HTTP transport and `src/api/features.ts` is a narrow feature adapter. Once Telegram authentication supplies the companion key, every protected request signs its uppercase method, escaped path and raw query, exact timestamp/nonce, and SHA-256 body hash. JSON, multipart, binary download, and empty-body calls all share that implementation.
+
+Telegram bootstrap waits for a delayed WebApp bridge before binding events. It expands the viewport, calls `ready()` after the application mounts, reflects theme and safe-area changes, configures supported native surface colors, and falls back to browser controls when native controls are unavailable. Visible copy and accessibility labels remain locale-owned.
 
 Localization is embedded from matching domain shards under `locales/en/` and `locales/zh-CN/` through `src/i18n/generated.ts`. Vite validates identical nested leaf keys and placeholders before a build; runtime `t()` supports interpolation, persisted switching, and Telegram-language defaulting. API and local failure states resolve to locale keys rather than displaying raw transport text. The language selector is available before authentication and inside the authenticated shell.
 

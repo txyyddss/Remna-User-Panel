@@ -5,14 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io/fs"
-	"log/slog"
-	"net/http"
-	"net/url"
-	"runtime/debug"
-	"strings"
-	"time"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/txyyddss/Remna-User-Panel/internal/accounts"
@@ -23,10 +15,14 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/coupons"
 	"github.com/txyyddss/Remna-User-Panel/internal/emby"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
-	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 	"github.com/txyyddss/Remna-User-Panel/internal/questionnaires"
 	"github.com/txyyddss/Remna-User-Panel/internal/requestauth"
+	"io/fs"
+	"log/slog"
+	"net/http"
+	"net/url"
+	"time"
 )
 
 const sessionCookie = "txc_session"
@@ -36,6 +32,7 @@ type contextKey string
 const userContextKey contextKey = "user"
 
 // PaymentWebhookVerifier authenticates legacy provider callbacks before domain settlement.
+
 type PaymentWebhookVerifier interface {
 	VerifyEZPay(context.Context, url.Values) (billing.ProviderEvent, bool, error)
 	VerifyBEPusdt(context.Context, []byte) (billing.ProviderEvent, int, error)
@@ -46,6 +43,7 @@ type bepusdtUnsignedVerifier interface {
 }
 
 // Dependencies contains already-constructed application services.
+
 type Dependencies struct {
 	Accounts          *accounts.Service
 	Catalog           *catalog.Service
@@ -71,6 +69,7 @@ type Dependencies struct {
 }
 
 // Server owns HTTP routing and transport-only validation.
+
 type Server struct {
 	deps             Dependencies
 	requests         *requestauth.Verifier
@@ -79,6 +78,7 @@ type Server struct {
 }
 
 // New constructs all public, authenticated, admin, and webhook routes.
+
 func New(deps Dependencies) (*Server, error) {
 	if deps.Accounts == nil || deps.Catalog == nil || deps.Billing == nil || deps.Activity == nil || deps.Coupons == nil || deps.Questionnaires == nil || deps.Emby == nil || deps.EmbyPrice == nil || deps.Admin == nil || deps.Settings == nil || deps.Store == nil || deps.Telegram == nil || deps.Webhooks == nil || deps.PublicURL == nil || deps.Logger == nil || len(deps.AdminTelegramIDs) == 0 {
 		return nil, errors.New("HTTP API dependencies are incomplete")
@@ -161,6 +161,7 @@ func New(deps Dependencies) (*Server, error) {
 }
 
 // Handler returns the fully configured router.
+
 func (s *Server) Handler() http.Handler { return s.router }
 
 type apiError struct {
@@ -178,116 +179,4 @@ func writeJSON(w http.ResponseWriter, status int, value any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(value)
-}
-
-func (s *Server) requireSession(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie(sessionCookie)
-		if err != nil {
-			s.writeError(w, r, http.StatusUnauthorized, "UNAUTHENTICATED", "Open TX Carpool from Telegram to continue.")
-			return
-		}
-		user, err := s.deps.Accounts.UserBySession(r.Context(), cookie.Value)
-		if err != nil {
-			s.writeError(w, r, http.StatusUnauthorized, "UNAUTHENTICATED", "Your session has expired. Open the Mini App again.")
-			return
-		}
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), userContextKey, user)))
-	})
-}
-
-func (s *Server) requireAdmin(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := currentUser(r)
-		if user.Role != "admin" || !s.isAdminTelegramID(user.TelegramID) {
-			s.writeError(w, r, http.StatusForbidden, "ADMIN_REQUIRED", "Administrator access is required.")
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (s *Server) isAdminTelegramID(telegramID int64) bool {
-	_, ok := s.adminTelegramIDs[telegramID]
-	return ok
-}
-
-func currentUser(r *http.Request) model.User {
-	user, _ := r.Context().Value(userContextKey).(model.User)
-	return user
-}
-
-func (s *Server) recoverer(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if recovered := recover(); recovered != nil {
-				s.deps.Logger.Error("HTTP panic", "request_id", middleware.GetReqID(r.Context()), "method", r.Method, "path", r.URL.Path, "panic", recovered, "stack", string(debug.Stack()))
-				s.writeError(w, r, http.StatusInternalServerError, "INTERNAL", "The request could not be completed.")
-			}
-		}()
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (s *Server) securityHeaders(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("Referrer-Policy", "no-referrer")
-		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors https://web.telegram.org https://*.telegram.org")
-		if strings.HasPrefix(r.URL.Path, "/api/") {
-			w.Header().Set("Cache-Control", "no-store")
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (s *Server) accessLog(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		wrapper := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
-		next.ServeHTTP(wrapper, r)
-		path := r.URL.Path
-		if strings.HasPrefix(path, "/api/v1/webhooks/bepusdt/") {
-			path = "/api/v1/webhooks/bepusdt/[redacted]"
-		}
-		s.deps.Logger.Info("HTTP request", "request_id", middleware.GetReqID(r.Context()), "method", r.Method, "path", path, "status", wrapper.Status(), "duration_ms", time.Since(start).Milliseconds())
-	})
-}
-
-func spaHandler(content fs.FS) http.Handler {
-	files := http.FileServer(http.FS(content))
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		path := strings.TrimPrefix(r.URL.Path, "/")
-		if path == "" {
-			path = "index.html"
-		}
-		if file, err := content.Open(path); err == nil {
-			if err := file.Close(); err != nil {
-				http.Error(w, "failed to close file", http.StatusInternalServerError)
-				return
-			}
-			setStaticCacheHeaders(w, path)
-			files.ServeHTTP(w, r)
-			return
-		}
-		index, err := fs.ReadFile(content, "index.html")
-		if err != nil {
-			http.NotFound(w, r)
-			return
-		}
-		setStaticCacheHeaders(w, "index.html")
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write(index)
-	})
-}
-
-func setStaticCacheHeaders(w http.ResponseWriter, path string) {
-	if path == "index.html" {
-		w.Header().Set("Cache-Control", "no-cache, must-revalidate")
-		return
-	}
-	if strings.HasPrefix(path, "assets/") {
-		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-	}
 }

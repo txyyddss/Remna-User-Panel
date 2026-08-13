@@ -77,6 +77,7 @@
     "tooLarge": "Enter a smaller amount."
   },
   "payment": {
+    "paymentAmountValue": "{amount}",
     "addTxb": "Add TXB",
     "configureHint": "Payment channels are not configured.",
     "cancelledHint": "This order was cancelled.",

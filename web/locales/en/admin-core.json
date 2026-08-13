@@ -8,6 +8,7 @@
     "setupAccount": "Set up user account",
     "sections": "Admin sections",
     "section": "Section",
+    "sectionLabel": "{group}: {section}",
     "commerce": "Commerce",
     "community": "Community",
     "accounts": "Accounts",

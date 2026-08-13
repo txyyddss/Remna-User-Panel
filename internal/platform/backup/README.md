@@ -1,10 +1,18 @@
 # Backup and restore
+- `restore_part2.go` continues the focused implementation from its original package module.
+- `restore_startup_part2.go` continues the focused implementation from its original package module.
+- `service_part2.go` continues the focused implementation from its original package module.
 
 This package creates verified SQLite backups, serves contained downloads, stages
 administrator restore requests, and performs the pre-open database swap. Restore
 markers and results are written atomically so process crashes remain recoverable.
 
 ## Files
+
+The implementation is split so backup publication and restore startup remain independently reviewable.
+
+- `restore_startup_part2.go` contains restore marker startup transitions.
+- `service_part2.go` contains backup publication and retention helpers.
 
 - `service.go` — service construction, backup deletion/containment, verified
   online backup creation, and retention cleanup.

@@ -81,3 +81,5 @@ Cross-module rules:
 - IDs are opaque strings, timestamps are RFC3339 UTC strings, TXB uses integer hundredths, provider decimals use fixed-decimal parsing, and traffic byte counts never pass through floating point.
 - Secret and bearer values are redacted at the logging boundary. Sensitive dashboard settings are AES-256-GCM encrypted and write-only through the API.
 - Domain APIs treat ledger entries, refunds, webhook receipts, Activity results, questionnaire awards, rollover results, and audit events as immutable; corrections use compensating records. The explicitly warned break-glass database editor can bypass domain hooks only after diff review, typed confirmation, rescue backup, and audit.
+- Production frontend and backend code is limited to 200 physical lines per file; tests, generated clients, migrations, API documents, and embedded build output are exempt. Every split implementation file is indexed by its package README.
+- Telegram WebApp lifecycle is initialized before Vue Router construction, waits for delayed WebApp context, synchronizes safe areas and theme colors, and gives the most recent visible overlay ownership of native BackButton navigation.

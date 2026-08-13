@@ -36,6 +36,9 @@ interface TelegramWebApp {
   openLink(url: string): void
   openTelegramLink(url: string): void
   openInvoice(url: string, callback?: (status: string) => void): void
+  setHeaderColor?(color: string): void
+  setBackgroundColor?(color: string): void
+  setBottomBarColor?(color: string): void
   isVersionAtLeast?(version: string): boolean
   onEvent?(eventType: string, callback: (...args: unknown[]) => void): void
   offEvent?(eventType: string, callback: (...args: unknown[]) => void): void
@@ -46,10 +49,23 @@ interface TelegramWebApp {
     onClick(callback: () => void): void
     offClick(callback: () => void): void
   }
+  MainButton?: TelegramMainButton
   HapticFeedback?: {
     impactOccurred(style: 'light' | 'medium' | 'heavy'): void
     notificationOccurred(type: 'error' | 'success' | 'warning'): void
   }
+}
+
+interface TelegramMainButton {
+  show(): void
+  hide(): void
+  enable(): void
+  disable(): void
+  setText(text: string): void
+  showProgress(leaveActive?: boolean): void
+  hideProgress(): void
+  onClick(callback: () => void): void
+  offClick(callback: () => void): void
 }
 
 interface TelegramInsets {

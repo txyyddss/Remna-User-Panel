@@ -11,10 +11,10 @@ import (
 	"time"
 )
 
-// ErrInvalidInput indicates an unsafe questionnaire request or import.
 var ErrInvalidInput = errors.New("invalid questionnaire input")
 
 // Status identifies the questionnaire lifecycle.
+
 type Status string
 
 const (
@@ -31,6 +31,7 @@ const (
 )
 
 // QuestionnaireInput is an administrator-authored external form definition.
+
 type QuestionnaireInput struct {
 	ID             string     `json:"id,omitempty"`
 	Title          string     `json:"title"`
@@ -42,6 +43,7 @@ type QuestionnaireInput struct {
 }
 
 // Validate rejects invalid form hosts and lifecycle values.
+
 func (input QuestionnaireInput) Validate() error {
 	if title := strings.TrimSpace(input.Title); title == "" || len(title) > 120 {
 		return fmt.Errorf("%w: title must be 1 to 120 bytes", ErrInvalidInput)
@@ -65,6 +67,7 @@ func (input QuestionnaireInput) Validate() error {
 }
 
 // ValidateFormURL allows only HTTPS Google Forms and Microsoft Forms URLs.
+
 func ValidateFormURL(rawURL string) error {
 	parsed, err := url.Parse(strings.TrimSpace(rawURL))
 	if err != nil || parsed.Scheme != "https" || parsed.User != nil || parsed.Host == "" {
@@ -85,6 +88,7 @@ func ValidateFormURL(rawURL string) error {
 }
 
 // Questionnaire is a persisted form definition.
+
 type Questionnaire struct {
 	QuestionnaireInput
 	ParticipantCount int       `json:"participantCount"`
@@ -94,6 +98,7 @@ type Questionnaire struct {
 }
 
 // Participant holds the durable validation code shown to a member.
+
 type Participant struct {
 	ID              string     `json:"id"`
 	QuestionnaireID string     `json:"questionnaireId"`
@@ -104,20 +109,24 @@ type Participant struct {
 }
 
 // ParticipationHistory combines a member code/result with its questionnaire.
+
 type ParticipationHistory struct {
 	Questionnaire Questionnaire `json:"questionnaire"`
 	Participation Participant   `json:"participation"`
 }
 
 // CodeGenerator creates high-entropy validation codes.
+
 type CodeGenerator interface {
 	NewCode() (string, error)
 }
 
 // CryptoCodeGenerator creates 128-bit base32 validation codes.
+
 type CryptoCodeGenerator struct{}
 
 // NewCode returns a cryptographically random, human-copyable code.
+
 func (CryptoCodeGenerator) NewCode() (string, error) {
 	value := make([]byte, 16)
 	if _, err := rand.Read(value); err != nil {
@@ -127,11 +136,13 @@ func (CryptoCodeGenerator) NewCode() (string, error) {
 }
 
 // NormalizeValidationCode trims and case-normalizes an imported validation code.
+
 func NormalizeValidationCode(value string) string {
 	return strings.ToUpper(strings.TrimSpace(value))
 }
 
 // ImportStatus identifies the CSV import lifecycle.
+
 type ImportStatus string
 
 const (
@@ -148,6 +159,7 @@ const (
 )
 
 // CSVDocument is a bounded parsed upload. Raw is intentionally excluded from JSON.
+
 type CSVDocument struct {
 	Raw               []byte     `json:"-"`
 	Delimiter         rune       `json:"-"`
@@ -159,51 +171,3 @@ type CSVDocument struct {
 }
 
 // ImportPreview is the persisted administrator confirmation surface.
-type ImportPreview struct {
-	ID                string          `json:"id"`
-	QuestionnaireID   string          `json:"questionnaireId"`
-	Status            ImportStatus    `json:"status"`
-	Delimiter         string          `json:"delimiter"`
-	Headers           []string        `json:"headers"`
-	SampleRows        [][]string      `json:"sampleRows"`
-	DataRowCount      int             `json:"dataRowCount"`
-	MalformedRowCount int             `json:"malformedRowCount"`
-	CodeColumn        *string         `json:"codeColumn,omitempty"`
-	Analysis          *ImportAnalysis `json:"analysis,omitempty"`
-	IdempotencyKey    string          `json:"idempotencyKey,omitempty"`
-	CreatedAt         time.Time       `json:"createdAt"`
-	UpdatedAt         time.Time       `json:"updatedAt"`
-}
-
-// ImportAnalysis is the non-mutating match preview shown before settlement.
-type ImportAnalysis struct {
-	ImportID            string `json:"importId"`
-	QuestionnaireID     string `json:"questionnaireId"`
-	CodeColumn          string `json:"codeColumn"`
-	MatchedCount        int    `json:"matchedCount"`
-	DuplicateCount      int    `json:"duplicateCount"`
-	UnknownCount        int    `json:"unknownCount"`
-	MalformedCount      int    `json:"malformedCount"`
-	AlreadyAwardedCount int    `json:"alreadyAwardedCount"`
-}
-
-// SettlementReport records the exact result of a confirmed CSV import.
-type SettlementReport struct {
-	ImportID            string    `json:"importId"`
-	QuestionnaireID     string    `json:"questionnaireId"`
-	MatchedCount        int       `json:"matchedCount"`
-	DuplicateCount      int       `json:"duplicateCount"`
-	UnknownCount        int       `json:"unknownCount"`
-	MalformedCount      int       `json:"malformedCount"`
-	AlreadyAwardedCount int       `json:"alreadyAwardedCount"`
-	RewardedCount       int       `json:"rewardedCount"`
-	RewardTXBMinor      int64     `json:"rewardTxbMinor"`
-	SettledAt           time.Time `json:"settledAt"`
-	Replayed            bool      `json:"replayed"`
-}
-
-// ImportState combines preview/progress data with an optional final report.
-type ImportState struct {
-	Preview ImportPreview     `json:"preview"`
-	Report  *SettlementReport `json:"report,omitempty"`
-}

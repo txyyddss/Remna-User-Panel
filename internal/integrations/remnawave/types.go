@@ -2,7 +2,6 @@ package remnawave
 
 import "time"
 
-// UserStatus is a Remnawave user lifecycle state.
 type UserStatus string
 
 const (
@@ -17,6 +16,7 @@ const (
 )
 
 // TrafficLimitStrategy controls Remnawave's traffic reset period.
+
 type TrafficLimitStrategy string
 
 const (
@@ -33,12 +33,14 @@ const (
 )
 
 // SquadSummary is a squad currently assigned to a user.
+
 type SquadSummary struct {
 	UUID string `json:"uuid"`
 	Name string `json:"name"`
 }
 
 // UserTraffic is Remnawave's aggregate usage snapshot for a user.
+
 type UserTraffic struct {
 	UsedTrafficBytes         int64      `json:"usedTrafficBytes"`
 	LifetimeUsedTrafficBytes int64      `json:"lifetimeUsedTrafficBytes"`
@@ -49,6 +51,7 @@ type UserTraffic struct {
 
 // User is the non-secret portion of a Remnawave v3.2.1 user response.
 // SubscriptionURL must be treated as a bearer credential by callers.
+
 type User struct {
 	ID                   int64                `json:"id"`
 	ShortUUID            string               `json:"shortUuid"`
@@ -70,6 +73,7 @@ type User struct {
 }
 
 // CreateUserRequest matches Remnawave's CreateUserBodyDto fields used by TX Carpool.
+
 type CreateUserRequest struct {
 	Username             string               `json:"username"`
 	Status               UserStatus           `json:"status"`
@@ -84,6 +88,7 @@ type CreateUserRequest struct {
 
 // UpdateUserRequest identifies a user by exactly one of ID or Username and patches set fields.
 // Set ClearExternalSquad to emit an explicit JSON null for externalSquadUuid.
+
 type UpdateUserRequest struct {
 	ID                   int64
 	Username             string
@@ -99,6 +104,7 @@ type UpdateUserRequest struct {
 }
 
 // UserSelector identifies a user with exactly one supported field.
+
 type UserSelector struct {
 	ID        int64  `json:"id,omitempty"`
 	ShortUUID string `json:"shortUuid,omitempty"`
@@ -106,6 +112,7 @@ type UserSelector struct {
 }
 
 // SubscriptionUser contains the presentation-safe account data returned by the subscription API.
+
 type SubscriptionUser struct {
 	ShortUUID                string               `json:"shortUuid"`
 	DaysLeft                 float64              `json:"daysLeft"`
@@ -123,6 +130,7 @@ type SubscriptionUser struct {
 }
 
 // Subscription is the protected subscription response. Its URL and links are bearer secrets.
+
 type Subscription struct {
 	IsFound         bool              `json:"isFound"`
 	User            SubscriptionUser  `json:"user"`
@@ -132,6 +140,7 @@ type Subscription struct {
 }
 
 // NodeUsage is an aggregate usage result for a node.
+
 type NodeUsage struct {
 	UUID        string `json:"uuid"`
 	Color       string `json:"color"`
@@ -141,6 +150,7 @@ type NodeUsage struct {
 }
 
 // NodeUsageSeries is a time series for a node.
+
 type NodeUsageSeries struct {
 	UUID        string  `json:"uuid"`
 	Name        string  `json:"name"`
@@ -151,6 +161,7 @@ type NodeUsageSeries struct {
 }
 
 // UserStats is Remnawave's per-user node usage response for a date range.
+
 type UserStats struct {
 	Categories    []string          `json:"categories"`
 	SparklineData []int64           `json:"sparklineData"`
@@ -159,52 +170,10 @@ type UserStats struct {
 }
 
 // SquadInfo contains aggregate squad membership and inbound counts.
+
 type SquadInfo struct {
 	MembersCount  int64 `json:"membersCount"`
 	InboundsCount int64 `json:"inboundsCount"`
 }
 
 // InternalSquad is a Remnawave internal squad available for catalog import.
-type InternalSquad struct {
-	UUID         string    `json:"uuid"`
-	ViewPosition int64     `json:"viewPosition"`
-	Name         string    `json:"name"`
-	Info         SquadInfo `json:"info"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
-}
-
-// NodeInbound is one currently active inbound exposed by a Remnawave node.
-type NodeInbound struct {
-	UUID string `json:"uuid"`
-}
-
-// Node is the documented subset required to map node selections to squad
-// inbounds. Links and other volatile upstream properties are intentionally not
-// represented or persisted.
-type Node struct {
-	UUID                  string  `json:"uuid"`
-	Name                  string  `json:"name"`
-	CountryCode           string  `json:"countryCode"`
-	ConsumptionMultiplier float64 `json:"consumptionMultiplier"`
-	IsDisabled            bool    `json:"isDisabled"`
-	ConfigProfile         struct {
-		ActiveInbounds []NodeInbound `json:"activeInbounds"`
-	} `json:"configProfile"`
-}
-
-// AccessibleNode is returned after Remnawave resolves squad inbounds to nodes.
-type AccessibleNode struct {
-	UUID           string   `json:"uuid"`
-	NodeName       string   `json:"nodeName"`
-	CountryCode    string   `json:"countryCode"`
-	ActiveInbounds []string `json:"activeInbounds"`
-}
-
-// ValidationIssue describes one Remnawave request validation failure.
-type ValidationIssue struct {
-	Validation string   `json:"validation"`
-	Code       string   `json:"code"`
-	Message    string   `json:"message"`
-	Path       []string `json:"path"`
-}

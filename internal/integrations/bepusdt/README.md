@@ -1,4 +1,5 @@
 # BEPusdt integration
+- `transactions_part2.go` continues the focused implementation from its original package module.
 
 This package implements the narrow BEPusdt transaction and callback surface used by TX Carpool. Provider-mandated MD5 signatures are isolated to the callback protocol, compared in constant time, and never placed in errors.
 
@@ -12,3 +13,4 @@ This package implements the narrow BEPusdt transaction and callback surface used
 - `diagnostic_test.go` contains the explicitly opt-in, redacted live create/cancel diagnostic.
 - `redirect_test.go` verifies provider redirects cannot receive signed request bodies.
 - `README.md` documents the package layout and security boundary.
+- `transactions_part2.go` contains callback verification and normalized transaction mapping.

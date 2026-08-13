@@ -1,4 +1,6 @@
 # Remnawave integration
+- `types_part2.go` continues the focused implementation from its original package module.
+- `users_part2.go` continues the focused implementation from its original package module.
 
 This package implements the Remnawave v3.2.1 operations used by TX Carpool. Endpoint and response shapes follow `reference/Upstream/Remnawave/api.json`; the shared transport applies bearer authentication and sanitizes provider errors.
 
@@ -16,3 +18,4 @@ This package implements the Remnawave v3.2.1 operations used by TX Carpool. Endp
 - `user_validation_test.go` verifies strict required-field response validation and provides canonical user fixtures.
 - `user_identity_test.go` rejects mismatched identities from every user-returning operation.
 - `README.md` documents the package layout and upstream contract boundary.
+- `users_part2.go` contains paged user lookup, mutation payload, and action helpers.

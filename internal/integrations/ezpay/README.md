@@ -1,4 +1,5 @@
 # EZPay integration
+- `ezpay_part2.go` continues the focused implementation from its original package module.
 
 This package implements the narrow signed redirect and payment-notification contract used by TX Carpool.
 

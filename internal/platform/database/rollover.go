@@ -5,19 +5,17 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"math/big"
-	"time"
-
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"time"
 )
 
-// RolloverByPurchase returns the durable settlement state for one term.
 func (s *Store) RolloverByPurchase(ctx context.Context, purchaseID string) (model.PurchaseRollover, error) {
 	return scanRollover(s.db.QueryRowContext(ctx, rolloverSelect+` WHERE purchase_id=?`, purchaseID))
 }
 
 // MarkRolloverProcessing records a successful upstream quiesce. Replays are
 // harmless because no traffic reset occurs in this phase.
+
 func (s *Store) MarkRolloverProcessing(ctx context.Context, purchaseID string, now time.Time) error {
 	result, err := s.db.ExecContext(ctx, `UPDATE purchase_rollovers SET status='processing',attempts=attempts+1,updated_at=? WHERE purchase_id=? AND status='pending'`, stamp(now), purchaseID)
 	if err != nil {
@@ -38,6 +36,7 @@ func (s *Store) MarkRolloverProcessing(ctx context.Context, purchaseID string, n
 
 // FinalizeRollover atomically records authoritative traffic inputs, applies one
 // credit, expires the old term, and only then queues the next entitlement.
+
 func (s *Store) FinalizeRollover(ctx context.Context, purchaseID string, limitBytes, usedBytes int64, exceptionCode string, now time.Time) (model.PurchaseRollover, error) {
 	remaining := limitBytes - usedBytes
 	if remaining < 0 {
@@ -52,6 +51,7 @@ func (s *Store) FinalizeRollover(ctx context.Context, purchaseID string, limitBy
 
 // FinalizeRolloverUsage commits a cadence-aware aggregate and never persists
 // the raw provider series.
+
 func (s *Store) FinalizeRolloverUsage(ctx context.Context, purchaseID string, summary model.RolloverUsageSummary, exceptionCode string, now time.Time) (model.PurchaseRollover, error) {
 	return s.finalizeRolloverUsage(ctx, purchaseID, summary, exceptionCode, now)
 }
@@ -155,62 +155,3 @@ func (s *Store) finalizeRolloverUsage(ctx context.Context, purchaseID string, su
 }
 
 const rolloverSelect = `SELECT purchase_id,status,traffic_limit_bytes,allocated_traffic_bytes,used_traffic_bytes,eligible_unused_bytes,remaining_traffic_bytes,minimum_remaining_bps,maximum_txb_minor,net_paid_txb_minor,credited_txb_minor,exception_code,attempts,created_at,updated_at,completed_at,algorithm_version FROM purchase_rollovers`
-
-func scanRollover(row rowScanner) (model.PurchaseRollover, error) {
-	var value model.PurchaseRollover
-	var allocated, used, eligible, remaining sql.NullInt64
-	var created, updated string
-	var completed sql.NullString
-	if err := row.Scan(&value.PurchaseID, &value.Status, &value.TrafficLimitBytes, &allocated, &used, &eligible, &remaining, &value.MinimumRemainingBPS,
-		&value.MaximumTXBMinor, &value.NetPaidTXBMinor, &value.CreditedTXBMinor, &value.ExceptionCode, &value.Attempts, &created, &updated, &completed, &value.AlgorithmVersion); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return model.PurchaseRollover{}, ErrNotFound
-		}
-		return model.PurchaseRollover{}, err
-	}
-	if used.Valid {
-		value.UsedTrafficBytes = &used.Int64
-	}
-	if allocated.Valid {
-		value.AllocatedBytes = &allocated.Int64
-	}
-	if eligible.Valid {
-		value.EligibleUnusedBytes = &eligible.Int64
-	}
-	if remaining.Valid {
-		value.RemainingBytes = &remaining.Int64
-	}
-	var err error
-	if value.CreatedAt, err = parseStamp(created); err != nil {
-		return model.PurchaseRollover{}, err
-	}
-	if value.UpdatedAt, err = parseStamp(updated); err != nil {
-		return model.PurchaseRollover{}, err
-	}
-	if completed.Valid {
-		parsed, parseErr := parseStamp(completed.String)
-		if parseErr != nil {
-			return model.PurchaseRollover{}, parseErr
-		}
-		value.CompletedAt = &parsed
-	}
-	return value, nil
-}
-
-func strictlyAboveBPS(remaining, limit int64, threshold int) bool {
-	left := new(big.Int).Mul(big.NewInt(remaining), big.NewInt(10000))
-	right := new(big.Int).Mul(big.NewInt(limit), big.NewInt(int64(threshold)))
-	return left.Cmp(right) > 0
-}
-
-func proportionalFloor(paid, remaining, limit int64) int64 {
-	if paid <= 0 || remaining <= 0 || limit <= 0 {
-		return 0
-	}
-	value := new(big.Int).Mul(big.NewInt(paid), big.NewInt(remaining))
-	value.Quo(value, big.NewInt(limit))
-	if !value.IsInt64() {
-		return paid
-	}
-	return value.Int64()
-}

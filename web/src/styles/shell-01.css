@@ -35,6 +35,22 @@
   --shell-safe-right: max(var(--tg-content-safe-area-inset-right, 0px), env(safe-area-inset-right, 0px));
 }
 
+.skip-link {
+  position: fixed;
+  z-index: 50;
+  top: 0.75rem;
+  left: 0.75rem;
+  transform: translateY(-160%);
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  color: var(--text);
+  transition: transform 140ms ease;
+}
+
+.skip-link:focus-visible { transform: translateY(0); }
+
 .side-rail {
   display: none;
 }

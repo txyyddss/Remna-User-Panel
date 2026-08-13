@@ -1,4 +1,5 @@
 # Application composition
+- `adapters_part2.go` continues the focused implementation from its original package module.
 
 The `app` package is the process composition root. It opens SQLite, constructs
 domain services and provider adapters, registers durable outbox handlers, and
@@ -31,3 +32,4 @@ stopped.
 - `app_test.go` verifies normalized Telegram Stars transaction directions.
 - `adapter_queue_test.go` verifies Remnawave and Emby adapter calls enter their queue before client construction.
 - `provider_queues_test.go` verifies provider queue configuration and independent worker operation.
+- `adapters_part2.go` contains the remaining payment-provider verification and callback mapping helpers.

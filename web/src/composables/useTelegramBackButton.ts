@@ -5,63 +5,65 @@ import { getTelegramWebApp, haptic, supportsTelegramVersion, tryTelegramCall } f
 
 type BackAction = () => void | Promise<void>
 
+interface BackOwner {
+  id: number
+  visible: ComputedRef<boolean>
+  action: BackAction
+}
+
+const owners: BackOwner[] = []
+let nextOwnerId = 0
+let backButton: TelegramWebApp['BackButton']
+let retry: number | undefined
+let attempts = 0
+
+function activeOwner(): BackOwner | undefined {
+  return [...owners].reverse().find((owner) => owner.visible.value)
+}
+
+function handleBack(): void {
+  const owner = activeOwner()
+  if (!owner) return
+  haptic()
+  try {
+    void Promise.resolve(owner.action()).catch(() => undefined)
+  } catch {
+    // Telegram can dispatch the event while the route component is tearing down.
+  }
+}
+
+function sync(): void {
+  if (retry !== undefined) window.clearTimeout(retry)
+  retry = undefined
+  const app = getTelegramWebApp()
+  const next = supportsTelegramVersion('6.1') ? app?.BackButton : undefined
+  if (next !== backButton) {
+    if (backButton) tryTelegramCall(() => backButton?.offClick(handleBack))
+    backButton = next
+    if (backButton) tryTelegramCall(() => backButton?.onClick(handleBack))
+  }
+  if (backButton) tryTelegramCall(() => activeOwner() ? backButton?.show() : backButton?.hide())
+  if (!backButton && owners.length > 0 && attempts < 30) {
+    attempts += 1
+    retry = window.setTimeout(sync, 100)
+  }
+}
+
 export function useTelegramBackButton(visible: ComputedRef<boolean>, onBack: BackAction): void {
-  let backButton: TelegramWebApp['BackButton']
-  let retry: number | undefined
-  let attempts = 0
-
-  function handleBack(): void {
-    haptic()
-    try {
-      void Promise.resolve(onBack()).catch(() => undefined)
-    } catch {
-      // Telegram can dispatch the event while the route component is tearing down.
-    }
-  }
-
-  function bind(): void {
-    if (retry !== undefined) window.clearTimeout(retry)
-    retry = undefined
-    const app = getTelegramWebApp()
-    if (!app) {
-      if (attempts < 20) {
-        attempts += 1
-        retry = window.setTimeout(bind, 100)
-      }
-      return
-    }
-    if (!supportsTelegramVersion('6.1')) return
-    const next = app.BackButton
-    if (next && next !== backButton) {
-      if (backButton) tryTelegramCall(() => backButton?.offClick(handleBack))
-      backButton = next
-      if (!tryTelegramCall(() => next.onClick(handleBack))) {
-        backButton = undefined
-        return
-      }
-      tryTelegramCall(() => visible.value ? next.show() : next.hide())
-      return
-    }
-    if (!next && attempts < 20) {
-      attempts += 1
-      retry = window.setTimeout(bind, 100)
-    }
-  }
+  const owner: BackOwner = { id: nextOwnerId, visible, action: onBack }
+  nextOwnerId += 1
 
   onMounted(() => {
-    bind()
+    owners.push(owner)
+    attempts = 0
+    sync()
   })
 
-  watch(visible, (show) => {
-    bind()
-    if (backButton) tryTelegramCall(() => show ? backButton?.show() : backButton?.hide())
-  }, { immediate: true })
+  watch(visible, sync, { immediate: true })
 
   onUnmounted(() => {
-    if (retry !== undefined) window.clearTimeout(retry)
-    if (backButton) {
-      tryTelegramCall(() => backButton?.offClick(handleBack))
-      tryTelegramCall(() => backButton?.hide())
-    }
+    const index = owners.findIndex((candidate) => candidate.id === owner.id)
+    if (index >= 0) owners.splice(index, 1)
+    sync()
   })
 }

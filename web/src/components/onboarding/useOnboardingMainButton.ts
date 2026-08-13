@@ -3,18 +3,6 @@ import { onMounted, onUnmounted, shallowRef, watch } from 'vue'
 
 import { getTelegramWebApp, haptic, supportsTelegramVersion, tryTelegramCall } from '@/utils/telegram'
 
-interface TelegramMainButton {
-  show(): void
-  hide(): void
-  enable(): void
-  disable(): void
-  setText(text: string): void
-  showProgress(leaveActive?: boolean): void
-  hideProgress(): void
-  onClick(callback: () => void): void
-  offClick(callback: () => void): void
-}
-
 export interface OnboardingMainAction {
   text: string
   disabled: boolean
@@ -24,7 +12,7 @@ export interface OnboardingMainAction {
 
 function readMainButton(): TelegramMainButton | undefined {
   if (!supportsTelegramVersion('6.1')) return undefined
-  return (getTelegramWebApp() as TelegramWebApp & { MainButton?: TelegramMainButton } | undefined)?.MainButton
+  return getTelegramWebApp()?.MainButton
 }
 
 export function useOnboardingMainButton(action: ComputedRef<OnboardingMainAction | null>) {

@@ -20,9 +20,11 @@ const (
 
 // ErrRestoreConflict reports an invalid confirmation, incompatible snapshot,
 // concurrent restore, or restore record that changed while being staged.
+
 var ErrRestoreConflict = errors.New("restore conflicts with current state")
 
 // RestoreJob describes a durable staged restore operation.
+
 type RestoreJob struct {
 	ID           string     `json:"id"`
 	BackupID     string     `json:"backupId"`
@@ -53,6 +55,7 @@ type restoreMarker struct {
 
 // StartupRestoreResult is written beside the database during the pre-open
 // atomic swap and imported into restore_jobs after SQLite is opened.
+
 type StartupRestoreResult struct {
 	restoreMarker
 	Status      string    `json:"status"`
@@ -63,6 +66,7 @@ type StartupRestoreResult struct {
 // StageRestore verifies a stored snapshot, copies it beside the live database,
 // creates a verified rescue backup, and publishes a durable pre-open marker.
 // No live database file is replaced by this method.
+
 func (s *Service) StageRestore(ctx context.Context, backupID, actorUserID, reason, confirmation string, supportedMigrations []string) (RestoreJob, error) {
 	s.restoreMu.Lock()
 	defer s.restoreMu.Unlock()
@@ -178,33 +182,4 @@ func (s *Service) pendingMarkerExists(ctx context.Context) (bool, error) {
 		return false, nil
 	}
 	return false, fmt.Errorf("inspect restore marker: %w", err)
-}
-
-func (s *Service) mainDatabasePath(ctx context.Context) (string, error) {
-	rows, err := s.db.QueryContext(ctx, `PRAGMA database_list`)
-	if err != nil {
-		return "", fmt.Errorf("locate live database: %w", err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var sequence int
-		var name, path string
-		if err := rows.Scan(&sequence, &name, &path); err != nil {
-			return "", fmt.Errorf("scan database location: %w", err)
-		}
-		if name == "main" {
-			if strings.TrimSpace(path) == "" {
-				return "", errors.New("live database does not have a filesystem path")
-			}
-			absolute, err := filepath.Abs(path)
-			if err != nil {
-				return "", fmt.Errorf("resolve live database path: %w", err)
-			}
-			return filepath.Clean(absolute), nil
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return "", fmt.Errorf("iterate database locations: %w", err)
-	}
-	return "", errors.New("main SQLite database was not found")
 }

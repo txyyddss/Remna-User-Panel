@@ -1,8 +1,16 @@
 # Database administration
+- `mutation_prepare_part2.go` continues the focused implementation from its original package module.
+- `mutations_part2.go` continues the focused implementation from its original package module.
+- `query_part2.go` continues the focused implementation from its original package module.
+- `schema_part2.go` continues the focused implementation from its original package module.
+- `types_part2.go` continues the focused implementation from its original package module.
 
 This package provides the allowlisted, typed SQLite administration surface. It
 introspects real schema metadata, masks sensitive data, uses opaque cursors, and
 requires reviewed mutations with rescue backups and immutable audit evidence.
+
+- `mutations_part2.go` contains remaining mutation validation and review helpers.
+- `types_part2.go` contains typed editor value and request helpers.
 
 ## Files
 

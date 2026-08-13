@@ -4,17 +4,15 @@ package coupons
 import (
 	"errors"
 	"fmt"
-	"math/big"
 	"regexp"
-	"sort"
 	"strings"
 	"time"
 )
 
-// ErrInvalidInput indicates that a coupon or redemption request is unsafe.
 var ErrInvalidInput = errors.New("invalid coupon input")
 
 // CouponKind identifies how a coupon affects a member account.
+
 type CouponKind string
 
 const (
@@ -29,6 +27,7 @@ const (
 )
 
 // DiscountMode identifies fixed or percentage purchase pricing.
+
 type DiscountMode string
 
 const (
@@ -41,6 +40,7 @@ const (
 var codePattern = regexp.MustCompile(`^[A-Z0-9][A-Z0-9_-]{3,63}$`)
 
 // CanonicalCode trims and uppercases a coupon code.
+
 func CanonicalCode(code string) (string, error) {
 	code = strings.ToUpper(strings.TrimSpace(code))
 	if !codePattern.MatchString(code) {
@@ -52,6 +52,7 @@ func CanonicalCode(code string) (string, error) {
 // CouponInput is the administrator-authored coupon definition.
 // ValueMinorOrBPS is TXB minor units for fixed/add coupons and basis points for
 // percentage/multiply coupons.
+
 type CouponInput struct {
 	ID               string       `json:"id,omitempty"`
 	Code             string       `json:"code"`
@@ -69,6 +70,7 @@ type CouponInput struct {
 }
 
 // Validate rejects ambiguous coupon definitions.
+
 func (input CouponInput) Validate() error {
 	if _, err := CanonicalCode(input.Code); err != nil {
 		return err
@@ -126,6 +128,7 @@ func (input CouponInput) Validate() error {
 }
 
 // Normalize returns a validated canonical representation suitable for storage.
+
 func (input CouponInput) Normalize() (CouponInput, error) {
 	if err := input.Validate(); err != nil {
 		return CouponInput{}, err
@@ -143,6 +146,7 @@ func (input CouponInput) Normalize() (CouponInput, error) {
 }
 
 // Coupon is a persisted definition.
+
 type Coupon struct {
 	CouponInput
 	UsageCount int64     `json:"usageCount"`
@@ -151,6 +155,7 @@ type Coupon struct {
 }
 
 // Grant is a coupon held in a member's wallet.
+
 type Grant struct {
 	ID         string     `json:"id"`
 	Coupon     Coupon     `json:"coupon"`
@@ -164,6 +169,7 @@ type Grant struct {
 }
 
 // RedemptionResult contains either a wallet grant or an immediate balance effect.
+
 type RedemptionResult struct {
 	ID                string    `json:"id"`
 	Coupon            Coupon    `json:"coupon"`
@@ -176,119 +182,3 @@ type RedemptionResult struct {
 }
 
 // PurchaseContext contains only server-priced inputs used for eligibility.
-type PurchaseContext struct {
-	UserID          string
-	GrantID         string
-	ComboID         string
-	AddonSquadIDs   []string
-	GrossPriceMinor int64
-}
-
-// Discount is a server-calculated coupon quote or consumed purchase effect.
-type Discount struct {
-	GrantID       string `json:"grantId"`
-	CouponID      string `json:"couponId"`
-	CouponCode    string `json:"couponCode"`
-	GrossMinor    int64  `json:"grossMinor"`
-	DiscountMinor int64  `json:"discountMinor"`
-	NetMinor      int64  `json:"netMinor"`
-	Recurring     bool   `json:"recurring"`
-}
-
-// EligibleFor returns whether a coupon applies to a combo or any selected add-on.
-func (coupon Coupon) EligibleFor(comboID string, addonSquadIDs []string) bool {
-	if len(coupon.EligibleComboIDs) == 0 && len(coupon.EligibleSquadIDs) == 0 {
-		return true
-	}
-	for _, allowed := range coupon.EligibleComboIDs {
-		if allowed == comboID {
-			return true
-		}
-	}
-	selected := make(map[string]struct{}, len(addonSquadIDs))
-	for _, id := range addonSquadIDs {
-		selected[id] = struct{}{}
-	}
-	for _, allowed := range coupon.EligibleSquadIDs {
-		if _, ok := selected[allowed]; ok {
-			return true
-		}
-	}
-	return false
-}
-
-// CalculateDiscount applies fixed or basis-point pricing without floating point.
-func CalculateDiscount(coupon Coupon, grossMinor int64) (int64, error) {
-	if grossMinor < 0 {
-		return 0, fmt.Errorf("%w: gross price cannot be negative", ErrInvalidInput)
-	}
-	if coupon.Kind != KindPurchaseRecurring && coupon.Kind != KindPurchaseOnce {
-		return 0, fmt.Errorf("%w: coupon is not a purchase discount", ErrInvalidInput)
-	}
-	var discount int64
-	switch coupon.DiscountMode {
-	case DiscountFixed:
-		discount = coupon.ValueMinorOrBPS
-	case DiscountPercent:
-		value, err := multiplyDivideFloor(grossMinor, coupon.ValueMinorOrBPS, 10_000)
-		if err != nil {
-			return 0, err
-		}
-		discount = value
-		if coupon.PercentCapMinor != nil && discount > *coupon.PercentCapMinor {
-			discount = *coupon.PercentCapMinor
-		}
-	default:
-		return 0, fmt.Errorf("%w: unsupported discount mode", ErrInvalidInput)
-	}
-	if discount > grossMinor {
-		discount = grossMinor
-	}
-	return discount, nil
-}
-
-// CalculateBalanceMultiplyCredit returns floor(balance*factor)-balance.
-func CalculateBalanceMultiplyCredit(balanceMinor, multiplierBPS int64) (int64, error) {
-	if balanceMinor < 0 || multiplierBPS <= 10_000 {
-		return 0, fmt.Errorf("%w: invalid balance multiplier", ErrInvalidInput)
-	}
-	finalBalance, err := multiplyDivideFloor(balanceMinor, multiplierBPS, 10_000)
-	if err != nil {
-		return 0, err
-	}
-	return finalBalance - balanceMinor, nil
-}
-
-func multiplyDivideFloor(left, right, divisor int64) (int64, error) {
-	if left < 0 || right < 0 || divisor <= 0 {
-		return 0, fmt.Errorf("%w: invalid fixed-point operands", ErrInvalidInput)
-	}
-	value := new(big.Int).Mul(big.NewInt(left), big.NewInt(right))
-	value.Quo(value, big.NewInt(divisor))
-	if !value.IsInt64() {
-		return 0, fmt.Errorf("%w: fixed-point result overflows int64", ErrInvalidInput)
-	}
-	return value.Int64(), nil
-}
-
-func hasBlank(values []string) bool {
-	for _, value := range values {
-		if strings.TrimSpace(value) == "" {
-			return true
-		}
-	}
-	return false
-}
-
-func uniqueSorted(values []string) []string {
-	set := make(map[string]struct{}, len(values))
-	for _, value := range values {
-		set[strings.TrimSpace(value)] = struct{}{}
-	}
-	result := make([]string, 0, len(set))
-	for value := range set {
-		result = append(result, value)
-	}
-	sort.Strings(result)
-	return result
-}

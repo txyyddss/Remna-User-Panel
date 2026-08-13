@@ -1,4 +1,5 @@
 # Upstream queue
+- `queue_part2.go` continues the focused implementation from its original package module.
 
 This package owns the in-memory admission queues for synchronous provider API
 calls. Each provider gets a separate bounded FIFO and one context-owned worker,
@@ -16,3 +17,4 @@ before invoking its provider adapter.
 - `queue.go` owns bounded FIFO admission, provider pacing, lifecycle transitions, shutdown, and cancellation merging.
 - `result.go` exposes typed `Do` and error-only `Execute` helpers with panic containment and caller cancellation.
 - `queue_test.go` verifies validation, results, panic recovery, backpressure, pacing, active-call cancellation, and shutdown state.
+- `queue_part2.go` contains queue worker and lifecycle helpers.

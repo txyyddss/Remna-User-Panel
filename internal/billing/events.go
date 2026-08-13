@@ -5,14 +5,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"fmt"
-	"strings"
-
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
+	"strings"
 )
 
-// ValidateEvent checks stored provider, amount, identity, and trade ID before settlement.
 func (s *Service) ValidateEvent(ctx context.Context, event ProviderEvent) (model.PaymentOrder, error) {
 	order, err := s.repository.PaymentOrderByID(ctx, event.OrderID)
 	if err != nil {
@@ -91,6 +88,7 @@ func (s *Service) ValidateEvent(ctx context.Context, event ProviderEvent) (model
 // AuthorizeEvent applies the stricter state and expiry checks required before a
 // provider is allowed to collect funds. Authoritative paid events remain able to
 // settle a just-expired order because the charge has already occurred.
+
 func (s *Service) AuthorizeEvent(ctx context.Context, event ProviderEvent) (model.PaymentOrder, error) {
 	order, err := s.ValidateEvent(ctx, event)
 	if err != nil {
@@ -103,6 +101,7 @@ func (s *Service) AuthorizeEvent(ctx context.Context, event ProviderEvent) (mode
 }
 
 // Settle commits a previously cryptographically verified provider event exactly once.
+
 func (s *Service) Settle(ctx context.Context, event ProviderEvent) (model.PaymentOrder, bool, error) {
 	if _, err := s.ValidateEvent(ctx, event); err != nil {
 		return model.PaymentOrder{}, false, err
@@ -121,6 +120,7 @@ func (s *Service) Settle(ctx context.Context, event ProviderEvent) (model.Paymen
 }
 
 // OrderForUser returns durable status for payment-sheet polling.
+
 func (s *Service) OrderForUser(ctx context.Context, orderID, userID string) (model.PaymentOrder, error) {
 	return s.repository.PaymentOrderForUser(ctx, orderID, userID)
 }
@@ -128,6 +128,7 @@ func (s *Service) OrderForUser(ctx context.Context, orderID, userID string) (mod
 // ReturnDetails exposes a narrow receipt projection to the unauthenticated
 // provider-return landing page. It deliberately omits the owner, checkout
 // URL, QR payload, provider trade IDs, and all provider payload details.
+
 func (s *Service) ReturnDetails(ctx context.Context, provider, orderID string) (model.PaymentReturnDetails, error) {
 	order, err := s.repository.PaymentOrderByID(ctx, orderID)
 	if err != nil {
@@ -146,6 +147,7 @@ func (s *Service) ReturnDetails(ctx context.Context, provider, orderID string) (
 
 // Cancel stops client polling immediately and then performs provider cancellation
 // on a best-effort basis. A later verified paid event remains authoritative.
+
 func (s *Service) Cancel(ctx context.Context, orderID, userID string) (model.PaymentOrder, error) {
 	repository, ok := s.repository.(cancellationRepository)
 	if !ok {
@@ -169,38 +171,4 @@ func (s *Service) Cancel(ctx context.Context, orderID, userID string) (model.Pay
 	}
 	_ = repository.SetPaymentProviderCancellation(ctx, order.ID, status, s.now().UTC())
 	return s.repository.PaymentOrderForUser(ctx, order.ID, userID)
-}
-
-func (s *Service) loadNewRate(ctx context.Context, provider string) (Decimal, error) {
-	rateRaw, err := s.settings.Plaintext(ctx, "billing.rate.txb_per_"+currencyCode(provider))
-	if err != nil {
-		return Decimal{}, fmt.Errorf("%w: %v", errRateNotConfigured, err)
-	}
-	rate, err := ParseDecimal(rateRaw)
-	if err != nil || !rate.Positive() {
-		return Decimal{}, errRateNotConfigured
-	}
-	return rate, nil
-}
-
-func currencyCode(provider string) string {
-	switch provider {
-	case "ezpay":
-		return "cny"
-	case "bepusdt":
-		return "usd"
-	default:
-		return "xtr"
-	}
-}
-
-func (s *Service) absolute(path string) string {
-	result := *s.publicURL
-	result.Path = strings.TrimRight(result.Path, "/") + path
-	result.RawQuery = ""
-	if split := strings.IndexByte(path, '?'); split >= 0 {
-		result.Path = strings.TrimRight(s.publicURL.Path, "/") + path[:split]
-		result.RawQuery = path[split+1:]
-	}
-	return result.String()
 }

@@ -2,21 +2,17 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { dirname, extname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
-
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const failures = []
 const ignored = new Set([
   resolve(workspace, 'internal/webui/dist'),
 ])
-
 function pathLabel(path) {
   return relative(workspace, path).replaceAll('\\', '/') || '.'
 }
-
 function isIgnored(path) {
   return [...ignored].some((entry) => path === entry || path.startsWith(`${entry}\\`) || path.startsWith(`${entry}/`))
 }
-
 function directories(root) {
   const output = []
   const visit = (directory) => {
@@ -29,25 +25,30 @@ function directories(root) {
   visit(resolve(workspace, root))
   return output
 }
-
 function files(root) {
   return directories(root).flatMap((directory) => readdirSync(directory, { withFileTypes: true })
     .filter((entry) => entry.isFile())
     .map((entry) => join(directory, entry.name)))
 }
-
 function lineCount(path) {
   return readFileSync(path, 'utf8').split(/\r?\n/).length
 }
-
-function checkLines(root, extensions, maximum) {
+function isExcludedProductionSource(path) {
+  const label = pathLabel(path)
+  return path.endsWith('.test.ts')
+    || path.endsWith('.spec.ts')
+    || path.endsWith('_test.go')
+    || label === 'web/src/api/generated.ts'
+    || /(^|\/)(?:tests?|migrations?)\//.test(label)
+}
+function checkLines(root, extensions, maximum, productionOnly = false) {
   for (const path of files(root)) {
+    if (productionOnly && isExcludedProductionSource(path)) continue
     if (extensions.has(extname(path)) && lineCount(path) > maximum) {
       failures.push(`${pathLabel(path)} exceeds ${maximum} lines (${lineCount(path)})`)
     }
   }
 }
-
 function checkFolders(root) {
   for (const directory of directories(root)) {
     const directFiles = readdirSync(directory, { withFileTypes: true }).filter((entry) => entry.isFile())
@@ -65,7 +66,6 @@ function checkFolders(root) {
     }
   }
 }
-
 function flatten(value, prefix = '', output = new Map()) {
   if (typeof value === 'string') output.set(prefix, value)
   else if (value && typeof value === 'object' && !Array.isArray(value)) {
@@ -73,11 +73,9 @@ function flatten(value, prefix = '', output = new Map()) {
   }
   return output
 }
-
 function placeholders(value) {
   return [...value.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort().join(',')
 }
-
 function readLocale(locale, domains) {
   const messages = {}
   for (const domain of domains) {
@@ -87,7 +85,6 @@ function readLocale(locale, domains) {
   }
   return flatten(messages)
 }
-
 function checkLocales() {
   const manifest = JSON.parse(readFileSync(resolve(workspace, 'web/locales/manifest.json'), 'utf8'))
   const [primary, ...translations] = manifest.locales
@@ -181,11 +178,11 @@ function checkFrontendPolicy() {
   if (title) failures.push(`${pathLabel(indexPath)} contains a hardcoded document title: ${title}`)
 }
 
-checkLines('web/src', new Set(['.vue', '.ts', '.css']), 200)
+checkLines('web/src', new Set(['.vue', '.ts', '.css']), 200, true)
 checkLines('web/locales', new Set(['.json']), 200)
 checkLines('web/scripts', new Set(['.mjs']), 200)
-checkLines('internal', new Set(['.go']), 300)
-checkLines('cmd', new Set(['.go']), 300)
+checkLines('internal', new Set(['.go']), 200, true)
+checkLines('cmd', new Set(['.go']), 200, true)
 checkLines('api', new Set(['.yaml', '.yml']), 350)
 for (const root of ['web/src', 'web/locales', 'web/scripts', 'internal', 'cmd', 'api']) checkFolders(root)
 checkLocales()

@@ -22,7 +22,7 @@ You may want to use the following projects for frontend:
 - Nuxt Charts (for displaying statistics)
 - Nuxt Icon
 - Nuxt Fonts (Remember to apply different fonts for chinses and english)
-- Shadcn Nuxt
+- Shadcn
 - Zod (for input validation)
 - AutoAnimate
 - TanStack Table (for database editing interface)
@@ -30,15 +30,14 @@ You may want to use the following projects for frontend:
 
 ---
 
-## Fix bugs / Make adjustments
+## Frontend code audit
 
-- Show the amount of TXB gain for coupon redeem on add TXB interface similar to other payment methods
-- Move the page title of agreement to the right of warning icon on the top of the page
-- Renew ride price calculation should include the recurring coupon used for purchase the combo
-- DELETE acessible nodes editing as the porogram already gets accessible nodes directly from remnawave
-- The recurring coupon used for renew should not count in the use limit
-- One-time discount should not be calculated in combo renewal
-- Add a telegram native back button to add TXB interface as the close button may be covered because of too many channels/providers
-- Replace the black and small tick on Order cancelled interface of Add TXB to a big red error icon
-- The mask of progress bar of Choose your combo interface should be green but not gray
-- Show the reward in the popup of lucky draws
+Audit all the frontend code to find out and perform changes when it:
+
+- Displays error on mobile devices
+- The buttons conflicts with each other
+- Did not make the best of Telegram SDK (https://core.telegram.org/bots/webapps) or misused it
+- Components that could use NUXT (UI/Charts/Icon/Fonts) / Shadcn / Zod / TanStack Table to implement the but didnt use
+- Contains logical errors
+- Did not align with user habits
+- Displayed extra texts that are not necessary

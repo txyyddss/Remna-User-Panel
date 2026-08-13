@@ -1,5 +1,6 @@
 {
   "adminActivityManagement": {
+    "couponLabel": "{code}：{name}",
     "title": "活动",
     "copy": "配置签到时间、透明游戏概率和加权抽奖。奖励金额统一在设置中管理。",
     "chooseActivity": "请选择一个活动。",

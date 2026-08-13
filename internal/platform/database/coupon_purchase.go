@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/txyyddss/Remna-User-Panel/internal/coupons"
@@ -12,7 +11,6 @@ import (
 	"time"
 )
 
-// QuotePurchaseCoupon validates one selected grant against a server-priced basket.
 func (s *Store) QuotePurchaseCoupon(ctx context.Context, input coupons.PurchaseContext, now time.Time) (coupons.Discount, error) {
 	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
@@ -29,6 +27,7 @@ func (s *Store) QuotePurchaseCoupon(ctx context.Context, input coupons.PurchaseC
 // applyPurchaseCouponTx consumes one selected grant inside the purchase transaction.
 // Checkout must call this only after it has assigned the immutable purchase ID and
 // before it debits the returned net price.
+
 func applyPurchaseCouponTx(ctx context.Context, tx *sql.Tx, input coupons.PurchaseContext, purchaseID string, now time.Time) (coupons.Discount, error) {
 	if strings.TrimSpace(purchaseID) == "" {
 		return coupons.Discount{}, coupons.ErrInvalidInput
@@ -172,43 +171,4 @@ func couponByID(ctx context.Context, queryer interface {
 
 func couponByCodeTx(ctx context.Context, tx *sql.Tx, code string) (coupons.Coupon, error) {
 	return scanCoupon(tx.QueryRowContext(ctx, couponSelect+` WHERE code=?`, code))
-}
-
-func scanCoupon(row rowScanner) (coupons.Coupon, error) {
-	var coupon coupons.Coupon
-	var percentCap, globalLimit, userLimit sql.NullInt64
-	var comboJSON, squadJSON string
-	var expires sql.NullString
-	var active int
-	var created, updated string
-	if err := row.Scan(&coupon.ID, &coupon.Code, &coupon.Name, &coupon.Kind, &coupon.DiscountMode, &coupon.ValueMinorOrBPS,
-		&percentCap, &comboJSON, &squadJSON, &expires, &globalLimit, &userLimit, &active, &created, &updated, &coupon.UsageCount); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return coupons.Coupon{}, ErrNotFound
-		}
-		return coupons.Coupon{}, fmt.Errorf("scan coupon: %w", err)
-	}
-	coupon.Active = active == 1
-	coupon.PercentCapMinor = int64Pointer(percentCap)
-	coupon.GlobalUseLimit = int64Pointer(globalLimit)
-	coupon.PerUserUseLimit = int64Pointer(userLimit)
-	if err := json.Unmarshal([]byte(comboJSON), &coupon.EligibleComboIDs); err != nil {
-		return coupons.Coupon{}, fmt.Errorf("decode coupon combo eligibility: %w", err)
-	}
-	if err := json.Unmarshal([]byte(squadJSON), &coupon.EligibleSquadIDs); err != nil {
-		return coupons.Coupon{}, fmt.Errorf("decode coupon squad eligibility: %w", err)
-	}
-	var err error
-	if expires.Valid {
-		value, parseErr := parseStamp(expires.String)
-		if parseErr != nil {
-			return coupons.Coupon{}, parseErr
-		}
-		coupon.ExpiresAt = &value
-	}
-	if coupon.CreatedAt, err = parseStamp(created); err != nil {
-		return coupons.Coupon{}, err
-	}
-	coupon.UpdatedAt, err = parseStamp(updated)
-	return coupon, err
 }

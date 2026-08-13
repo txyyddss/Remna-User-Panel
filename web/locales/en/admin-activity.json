@@ -1,5 +1,6 @@
 {
   "adminActivityManagement": {
+    "couponLabel": "{code}: {name}",
     "title": "Activity",
     "copy": "Set check-in timing, transparent game odds, and weighted draws. Reward amounts are managed in Settings.",
     "chooseActivity": "Choose an activity.",
