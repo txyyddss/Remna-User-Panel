@@ -1,6 +1,7 @@
 # Admin squad profile editor
 
 - `AdminSquadProfileEditor.vue` owns the type selector, validation state, and preview.
+- `CountryCodeField.vue` accepts a guarded uppercase ISO alpha-2 country code and restores the last valid value after an accidental blank.
 - `BroadbandProfileFields.vue` edits ISP, port, access mode, and detailed location.
 - `ChinaOptimizedProfileFields.vue` edits CT, CU, CM, port, and country.
 - `InternationalNetworkProfileFields.vue` edits port, country, and upstream carriers.

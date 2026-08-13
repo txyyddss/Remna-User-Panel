@@ -21,4 +21,14 @@ describe('squad profile form mapping', () => {
     draft.type = 'broadband'
     expect(profileFromDraft(draft)).toBeNull()
   })
+
+  it('normalizes ISO alpha-2 country codes and rejects unknown codes', () => {
+    const draft = draftFromProfile(null)
+    draft.countryCode = 'sg'
+    draft.upstreamCarriers = 'Carrier A'
+    expect(profileFromDraft(draft)).toMatchObject({ countryCode: 'SG' })
+
+    draft.countryCode = 'ZZ'
+    expect(profileFromDraft(draft)).toBeNull()
+  })
 })

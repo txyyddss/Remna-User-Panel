@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, shallowRef, watch } from 'vue'
 
 import type { SquadProfileWrite } from '@/api/types'
 import SquadProfileSummary from '@/components/squad-profile/SquadProfileSummary.vue'
@@ -20,9 +20,27 @@ const draft = reactive<ProfileDraft>(draftFromProfile(profile.value))
 const typeItems = computed(() => profileTypeOptions(t))
 const isValid = computed(() => profileFromDraft(draft) !== null)
 const validationMessage = computed(() => props.showValidation && !isValid.value ? t(validationKey(draft)) : '')
+const profileSyncInProgress = shallowRef(false)
 
-watch(() => profile.value, (value) => Object.assign(draft, draftFromProfile(value)), { deep: true })
-watch(draft, () => { profile.value = profileFromDraft(draft) }, { deep: true })
+watch(() => profile.value, (value) => {
+  if (profileSyncInProgress.value) {
+    profileSyncInProgress.value = false
+    return
+  }
+  Object.assign(draft, draftFromProfile(value))
+}, { deep: true })
+watch(draft, () => {
+  const nextProfile = profileFromDraft(draft)
+  if (nextProfile === null) {
+    if (profile.value !== null) {
+      profileSyncInProgress.value = true
+      profile.value = null
+    }
+    return
+  }
+  profileSyncInProgress.value = true
+  profile.value = nextProfile
+}, { deep: true })
 
 function changeType(value: string): void {
   if (!['broadband', 'china_optimized', 'international_network'].includes(value) || value === draft.type) return
