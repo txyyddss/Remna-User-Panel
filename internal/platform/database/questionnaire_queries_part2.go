@@ -53,4 +53,3 @@ func importSettlementDataTx(ctx context.Context, tx *sql.Tx, importID string) (q
 	}
 	return preview, raw, runes[0], reportJSON.String, nil
 }
-

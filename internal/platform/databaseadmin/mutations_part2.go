@@ -55,4 +55,3 @@ func consumeReview(ctx context.Context, tx *sql.Tx, actor string, request Mutati
 	}
 	return nil
 }
-

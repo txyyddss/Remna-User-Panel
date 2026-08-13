@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
+	"github.com/txyyddss/Remna-User-Panel/internal/squadprofile"
 	"strings"
 	"testing"
 )
@@ -87,10 +88,11 @@ func TestAdminDeleteComboAndSaveSquad(t *testing.T) {
 	repository := &adminCatalogRepository{savedSquad: model.SquadProduct{ID: "uuid", RemnaSquadUUID: "uuid"}}
 	importer := &adminSquadImporter{squads: []UpstreamSquad{{UUID: "uuid", Name: "Upstream Fast"}}}
 	service := newAdminServiceForTest(repository, nil, importer, &adminBackupRunner{}, &adminRefunder{})
+	profile := &squadprofile.Profile{Type: squadprofile.InternationalNetwork, CountryCode: "US", UpstreamCarriers: []string{"Carrier"}}
 	if err := service.DeleteCombo(context.Background(), "admin", "combo-1"); err != nil || repository.deletedComboID != "combo-1" {
 		t.Fatalf("DeleteCombo() = %v, ID %q", err, repository.deletedComboID)
 	}
-	product, err := service.SaveSquadProduct(context.Background(), "admin", database.SquadProductInput{RemnaSquadUUID: " uuid ", Name: "Ignored Local Name", PriceTXBMinor: 10})
+	product, err := service.SaveSquadProduct(context.Background(), "admin", database.SquadProductInput{RemnaSquadUUID: " uuid ", Name: "Ignored Local Name", PriceTXBMinor: 10, Profile: profile})
 	if err != nil || product.ID != "uuid" || product.Name != "Upstream Fast" || !product.UpstreamPresent ||
 		repository.squadInput.RemnaSquadUUID != "uuid" || repository.squadInput.ID != "uuid" || repository.squadInput.Name != "Upstream Fast" || !repository.squadInput.UpstreamPresent {
 		t.Fatalf("SaveSquadProduct() = (%+v, %v), input %+v", product, err, repository.squadInput)
@@ -107,7 +109,7 @@ func TestAdminDeleteComboAndSaveSquad(t *testing.T) {
 	}
 	missing := &adminCatalogRepository{}
 	if _, err := newAdminServiceForTest(missing, nil, importer, &adminBackupRunner{}, &adminRefunder{}).
-		SaveSquadProduct(context.Background(), "admin", database.SquadProductInput{RemnaSquadUUID: "invented", Name: "name"}); !errors.Is(err, database.ErrNotFound) {
+		SaveSquadProduct(context.Background(), "admin", database.SquadProductInput{RemnaSquadUUID: "invented", Name: "name", Profile: profile}); !errors.Is(err, database.ErrNotFound) {
 		t.Fatalf("SaveSquadProduct(invented UUID) = %v, want not found", err)
 	}
 
@@ -117,7 +119,7 @@ func TestAdminDeleteComboAndSaveSquad(t *testing.T) {
 	}
 	repository.deleteComboErr = nil
 	repository.saveSquadErr = errors.New("save failure")
-	if _, err := service.SaveSquadProduct(context.Background(), "admin", database.SquadProductInput{RemnaSquadUUID: "uuid", Name: "name"}); err == nil {
+	if _, err := service.SaveSquadProduct(context.Background(), "admin", database.SquadProductInput{RemnaSquadUUID: "uuid", Name: "name", Profile: profile}); err == nil {
 		t.Fatal("SaveSquadProduct() ignored repository failure")
 	}
 	repository.saveSquadErr = nil
@@ -125,7 +127,7 @@ func TestAdminDeleteComboAndSaveSquad(t *testing.T) {
 	if err := service.DeleteCombo(context.Background(), "admin", "combo-3"); err == nil {
 		t.Fatal("DeleteCombo() ignored audit failure")
 	}
-	if _, err := service.SaveSquadProduct(context.Background(), "admin", database.SquadProductInput{RemnaSquadUUID: "uuid", Name: "name"}); err == nil {
+	if _, err := service.SaveSquadProduct(context.Background(), "admin", database.SquadProductInput{RemnaSquadUUID: "uuid", Name: "name", Profile: profile}); err == nil {
 		t.Fatal("SaveSquadProduct() ignored audit failure")
 	}
 }

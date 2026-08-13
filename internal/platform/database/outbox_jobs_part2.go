@@ -68,4 +68,3 @@ func sanitizeError(err error) string {
 	}
 	return value
 }
-

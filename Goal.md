@@ -29,13 +29,3 @@ You may want to use the following projects for frontend:
 - Feel free to use other projects.
 
 ---
-
-Improve internal squad description editing and display.
-Admin should set 3 types of the squad: Broadband, China Optimized, or International Network (default)
-For broadbrand, fill in the ISP, port (Mbps), dynamic or static (edit using switch button), and detailed location (like Miaoli, Taiwan).
-For China Optimized, fill in the route of the three major carriors of china (CT,CU,CM), port (Mbps, could be unlimited), location (country only).
-For International Network, fill in the port speed (Mbps, could be unlimited), location (country only), and upstream carriers (could be multiple, split using commas).
-All of the types may also have extra descriptions that supports markdown.
-Auto-generate the description displayed to user by the infos by admin.
-Display the infos using icons and words as few as possible.
-Use NUXT UI for the components.

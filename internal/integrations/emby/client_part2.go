@@ -6,10 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	domain "github.com/txyyddss/Remna-User-Panel/internal/emby"
 	"io"
 	"net/http"
 	"strings"
-	domain "github.com/txyyddss/Remna-User-Panel/internal/emby"
 )
 
 func (c *Client) ListSelectableFolders(ctx context.Context) ([]domain.Folder, error) {
@@ -146,4 +146,3 @@ func decodeAPIError(status int, _ []byte) error {
 }
 
 var _ domain.Remote = (*Client)(nil)
-

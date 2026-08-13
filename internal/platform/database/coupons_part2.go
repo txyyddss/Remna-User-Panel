@@ -152,4 +152,3 @@ func (s *Store) ListCouponGrants(ctx context.Context, userID string, now time.Ti
 
 // DiscardCouponGrant hides one active grant while preserving its immutable
 // redemption and purchase links. Replaying a member's own discard is a no-op.
-

@@ -3,8 +3,8 @@ package database
 import (
 	"database/sql"
 	"errors"
-	"math/big"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"math/big"
 )
 
 func scanRollover(row rowScanner) (model.PurchaseRollover, error) {
@@ -65,4 +65,3 @@ func proportionalFloor(paid, remaining, limit int64) int64 {
 	}
 	return value.Int64()
 }
-

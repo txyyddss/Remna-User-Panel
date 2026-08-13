@@ -36,4 +36,3 @@ func (s *Service) mainDatabasePath(ctx context.Context) (string, error) {
 	}
 	return "", errors.New("main SQLite database was not found")
 }
-

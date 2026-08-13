@@ -84,4 +84,3 @@ func (s *Store) TouchEmbyAccount(ctx context.Context, accountID string, now time
 	}
 	return nil
 }
-

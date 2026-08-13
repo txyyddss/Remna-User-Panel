@@ -2,11 +2,11 @@ package httpapi
 
 import (
 	"errors"
-	"net/http"
-	"strconv"
 	"github.com/txyyddss/Remna-User-Panel/internal/catalog"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
+	"net/http"
+	"strconv"
 )
 
 func (s *Server) purchaseQuote(w http.ResponseWriter, r *http.Request) {
@@ -104,4 +104,3 @@ func (s *Server) requireOnboarded(w http.ResponseWriter, r *http.Request, user m
 	s.writeError(w, r, http.StatusConflict, "ONBOARDING_REQUIRED", "Complete onboarding to use this feature.")
 	return false
 }
-

@@ -61,4 +61,3 @@ func (c *Client) CancelTransaction(ctx context.Context, tradeID string) error {
 	}
 	return nil
 }
-

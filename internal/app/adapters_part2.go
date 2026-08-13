@@ -4,12 +4,12 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"net/url"
-	"strconv"
 	"github.com/txyyddss/Remna-User-Panel/internal/billing"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/bepusdt"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/ezpay"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"net/url"
+	"strconv"
 )
 
 func (a paymentAdapter) bepusdtClient(ctx context.Context, profileID, rail string) (*bepusdt.Client, error) {
@@ -129,4 +129,3 @@ func (a paymentAdapter) VerifyBEPusdtUnsigned(_ context.Context, body []byte) (b
 		FiatAmount: webhook.Amount, FiatCurrency: "USD", Recipient: webhook.Token, DedupeKey: dedupe, PayloadHash: hex.EncodeToString(digest[:])}
 	return event, webhook.Status, nil
 }
-

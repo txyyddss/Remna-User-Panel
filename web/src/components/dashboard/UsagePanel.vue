@@ -36,7 +36,7 @@ const useTrafficMultiplier = shallowRef(true)
     </div>
 
     <InlineNotice v-if="stale" tone="warning">
-      {{ $t('dashboard.remnawaveUnavailable') }} {{ $t('dashboard.showingDataFrom', { date: formatDateTime(fetchedAt) }) }}
+      {{ $t('dashboard.lastKnownData') }} · {{ $t('dashboard.remnawaveUnavailable') }} {{ $t('dashboard.showingDataFrom', { date: formatDateTime(fetchedAt) }) }}
     </InlineNotice>
 
     <div class="home-usage__summary">

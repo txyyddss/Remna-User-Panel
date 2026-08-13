@@ -122,4 +122,3 @@ func normalizeReason(reason string) (string, error) {
 	}
 	return reason, nil
 }
-

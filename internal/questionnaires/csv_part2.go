@@ -31,4 +31,3 @@ func hasEmptyHeader(headers []string) bool {
 	}
 	return false
 }
-

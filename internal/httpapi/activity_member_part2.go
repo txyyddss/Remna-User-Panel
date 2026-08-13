@@ -2,11 +2,11 @@ package httpapi
 
 import (
 	"context"
+	"github.com/txyyddss/Remna-User-Panel/internal/activity"
+	"github.com/txyyddss/Remna-User-Panel/internal/billing"
 	"strconv"
 	"strings"
 	"time"
-	"github.com/txyyddss/Remna-User-Panel/internal/activity"
-	"github.com/txyyddss/Remna-User-Panel/internal/billing"
 )
 
 func (s *Server) activityConfig(ctx context.Context) (activity.CheckInConfig, error) {
@@ -66,4 +66,3 @@ func (s *Server) activityConfig(ctx context.Context) (activity.CheckInConfig, er
 	}
 	return activity.CheckInConfig{Timezone: timezone, RewardMinMinor: rewardMinMinor, RewardMaxMinor: rewardMaxMinor, GroupMessageThreshold: int(threshold), GroupMessageRewardMinor: groupRewardMinor}, nil
 }
-

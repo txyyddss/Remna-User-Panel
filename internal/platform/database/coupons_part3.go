@@ -46,4 +46,3 @@ func (s *Store) DiscardCouponGrant(ctx context.Context, userID, grantID string, 
 	}
 	return nil
 }
-

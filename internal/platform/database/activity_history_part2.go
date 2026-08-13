@@ -137,4 +137,3 @@ func groupMessageRewardStatusQuery(ctx context.Context, queryer interface {
 	}
 	return status, nil
 }
-

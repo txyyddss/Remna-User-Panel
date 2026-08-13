@@ -4,10 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"sort"
-	"time"
 	"github.com/txyyddss/Remna-User-Panel/internal/activity"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"sort"
+	"time"
 )
 
 func (s *Store) LuckyDrawStatistics(ctx context.Context, drawID string, from, to time.Time, bucket string, location *time.Location) (model.AdminStatistics, error) {
@@ -124,4 +124,3 @@ func statisticBucket(value time.Time, bucket string) string {
 	weekday := (int(value.Weekday()) + 6) % 7
 	return time.Date(value.Year(), value.Month(), value.Day()-weekday, 0, 0, 0, 0, value.Location()).Format(time.DateOnly)
 }
-

@@ -98,4 +98,3 @@ func scanPaymentOrder(row rowScanner) (model.PaymentOrder, error) {
 	order.UpdatedAt, err = parseStamp(updated)
 	return order, err
 }
-

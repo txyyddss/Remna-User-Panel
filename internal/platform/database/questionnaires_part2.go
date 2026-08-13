@@ -132,4 +132,3 @@ func (s *Store) ListQuestionnaireParticipations(ctx context.Context, userID stri
 	}
 	return result, rows.Err()
 }
-

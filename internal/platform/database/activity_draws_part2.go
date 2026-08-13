@@ -148,4 +148,3 @@ func (s *Store) PlayLuckyDraw(ctx context.Context, userID, drawID, idempotencyKe
 	}
 	return s.drawResultByID(ctx, resultID)
 }
-

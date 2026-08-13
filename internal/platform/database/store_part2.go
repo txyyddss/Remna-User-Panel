@@ -4,9 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"strings"
 	"time"
-	"github.com/txyyddss/Remna-User-Panel/internal/model"
 )
 
 func (s *Store) BeginRemnawaveRecovery(ctx context.Context, userID, reason string, now time.Time) (model.User, error) {
@@ -78,7 +78,7 @@ func (s *Store) ReserveUsername(ctx context.Context, userID, username string) er
 	return nil
 }
 
-func stamp(value time.Time) string               { return value.UTC().Format(time.RFC3339Nano) }
+func stamp(value time.Time) string { return value.UTC().Format(time.RFC3339Nano) }
 
 func parseStamp(value string) (time.Time, error) { return time.Parse(time.RFC3339Nano, value) }
 
@@ -95,4 +95,3 @@ func boolInt(value bool) int {
 	}
 	return 0
 }
-

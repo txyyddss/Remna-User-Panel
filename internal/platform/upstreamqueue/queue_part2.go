@@ -74,4 +74,3 @@ func mergeCancellation(caller, lifecycle context.Context) (context.Context, cont
 		cancel()
 	}
 }
-

@@ -115,4 +115,3 @@ func updatePayload(input UpdateUserRequest) (map[string]any, error) {
 	}
 	return payload, nil
 }
-

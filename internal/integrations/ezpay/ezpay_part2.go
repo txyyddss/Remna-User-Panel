@@ -51,4 +51,3 @@ func validatePositiveDecimal(value string) error {
 	}
 	return nil
 }
-

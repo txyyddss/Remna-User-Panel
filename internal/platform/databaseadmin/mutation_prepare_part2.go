@@ -70,4 +70,3 @@ func integerBool(value any) bool {
 		return false
 	}
 }
-

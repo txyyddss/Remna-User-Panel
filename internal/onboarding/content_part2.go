@@ -40,4 +40,3 @@ func MessageDurationMS(text string) int {
 func isCJK(value rune) bool {
 	return unicode.In(value, unicode.Han, unicode.Hiragana, unicode.Katakana, unicode.Hangul)
 }
-

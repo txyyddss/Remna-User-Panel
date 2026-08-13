@@ -107,4 +107,3 @@ func fixedMultiplyFloor(left, right, divisor int64) (int64, error) {
 	}
 	return value.Int64(), nil
 }
-

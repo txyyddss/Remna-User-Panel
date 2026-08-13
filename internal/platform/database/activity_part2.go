@@ -65,4 +65,3 @@ func (s *Store) claimDailyActivity(ctx context.Context, userID, localDate, timez
 	}
 	return s.dailyCheckInByID(ctx, checkInID)
 }
-

@@ -70,4 +70,3 @@ func RecordStartupRestore(ctx context.Context, db *sql.DB, databasePath string) 
 	}
 	return &result, nil
 }
-

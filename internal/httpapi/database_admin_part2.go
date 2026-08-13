@@ -2,11 +2,11 @@ package httpapi
 
 import (
 	"errors"
-	"net/http"
-	"strings"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/backup"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/databaseadmin"
+	"net/http"
+	"strings"
 )
 
 func mapRestoreOperation(job backup.RestoreJob) restoreOperationResponse {
@@ -45,4 +45,3 @@ func (h *DatabaseAdministrationHTTP) failure(w http.ResponseWriter, r *http.Requ
 func (h *DatabaseAdministrationHTTP) writeError(w http.ResponseWriter, r *http.Request, status int, code, message string) {
 	writeJSON(w, status, apiError{Code: code, Message: message, RequestID: middleware.GetReqID(r.Context())})
 }
-

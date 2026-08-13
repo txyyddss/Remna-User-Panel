@@ -79,4 +79,3 @@ func escapeLike(value string) string {
 	value = strings.ReplaceAll(value, `%`, `\%`)
 	return strings.ReplaceAll(value, `_`, `\_`)
 }
-

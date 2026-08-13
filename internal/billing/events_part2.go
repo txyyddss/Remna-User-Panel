@@ -39,4 +39,3 @@ func (s *Service) absolute(path string) string {
 	}
 	return result.String()
 }
-

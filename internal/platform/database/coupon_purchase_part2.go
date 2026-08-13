@@ -46,4 +46,3 @@ func scanCoupon(row rowScanner) (coupons.Coupon, error) {
 	coupon.UpdatedAt, err = parseStamp(updated)
 	return coupon, err
 }
-

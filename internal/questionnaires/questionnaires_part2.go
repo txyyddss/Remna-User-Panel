@@ -55,4 +55,3 @@ type ImportState struct {
 	Preview ImportPreview     `json:"preview"`
 	Report  *SettlementReport `json:"report,omitempty"`
 }
-

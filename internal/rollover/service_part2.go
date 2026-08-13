@@ -32,7 +32,10 @@ func calculateUsageRange(threshold int, snapshot UsageSnapshot, anchor, start, e
 	}
 	var allocated, used, eligible int64
 	for _, period := range periods {
-		full := cadenceAdvance(period.start, snapshot.Strategy).Sub(period.start)
+		full := end.Sub(start)
+		if snapshot.Strategy != "NO_RESET" {
+			full = cadenceAdvance(period.start, snapshot.Strategy).Sub(period.start)
+		}
 		if full <= 0 {
 			full = end.Sub(start)
 		}

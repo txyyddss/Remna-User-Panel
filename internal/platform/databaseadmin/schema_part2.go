@@ -32,4 +32,3 @@ func isSensitiveColumn(table, column string) bool {
 	}
 	return false
 }
-

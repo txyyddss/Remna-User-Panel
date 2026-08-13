@@ -36,7 +36,7 @@ function sync(): void {
   if (retry !== undefined) window.clearTimeout(retry)
   retry = undefined
   const app = getTelegramWebApp()
-  const next = supportsTelegramVersion('6.1') ? app?.BackButton : undefined
+  const next = owners.length > 0 && supportsTelegramVersion('6.1') ? app?.BackButton : undefined
   if (next !== backButton) {
     if (backButton) tryTelegramCall(() => backButton?.offClick(handleBack))
     backButton = next
