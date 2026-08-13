@@ -14,7 +14,7 @@
 - `home-01.css` styles the compact balance, subscription, and traffic surfaces on Home.
 - `home-02.css` styles traffic details, ride facts, and Around TX links on Home.
 - `home-03.css` styles the compact renewal term slider and separated quote total/date block.
-- `home-04.css` styles the accessible Your ride rollover flip card, aggregate windows, and reduced-motion fallback.
+- `home-04.css` styles the accessible Your ride rollover flip card, its concise current-term detail, size-safe face swap, and reduced-motion fallback.
 - `catalog-01.css` styles catalog browsing and plan presentation.
 - `catalog-02.css` styles catalog selection and checkout details.
 - `billing-01.css` styles funding controls.

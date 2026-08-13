@@ -27,8 +27,10 @@ configured through the editor before they can be saved again.
 
 All upstream reads continue through the existing Remnawave queue. Database
 migration `017_squad_profiles.sql` is additive and leaves deployed migrations
-immutable. Vue uses Nuxt UI controls, locale-owned text, and a compact profile
-summary for both admin and member catalog surfaces.
+immutable. Vue uses Nuxt UI controls and locale-owned text. The member catalog
+summary adds the squad name plus a profile-specific icon and restrained
+semantic color treatment, while the compact default summary remains suitable
+for administration.
 
 ## Verification
 

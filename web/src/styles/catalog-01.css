@@ -132,8 +132,8 @@
 .squad-option {
   min-height: 82px;
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: 0.75rem;
   padding: 0.75rem;
   border: 1px solid var(--line);
@@ -146,17 +146,6 @@
 .squad-option--selected {
   border-color: #4a6d57;
   background: #18231b;
-}
-
-.squad-option__icon {
-  width: 40px;
-  height: 40px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  color: var(--accent);
-  background: var(--accent-soft);
 }
 
 .squad-option__copy {

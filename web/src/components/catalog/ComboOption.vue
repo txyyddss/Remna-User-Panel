@@ -38,7 +38,7 @@ defineEmits<{ select: [id: string] }>()
       <span><UIcon name="i-ph-arrow-clockwise" />{{ $t(`home.reset.${combo.resetStrategy}`) }}</span>
     </span>
     <div v-if="combo.includedSquads.length" class="combo-option__squads">
-      <SquadProfileSummary v-for="squad in combo.includedSquads" :key="squad.id" :profile="squad.profile" :description="squad.description" compact />
+      <SquadProfileSummary v-for="squad in combo.includedSquads" :key="squad.id" :name="squad.name" :profile="squad.profile" :description="squad.description" presentation="member" compact />
     </div>
     <span class="combo-option__price">
       <strong>{{ formatMoney(combo.price) }}</strong>

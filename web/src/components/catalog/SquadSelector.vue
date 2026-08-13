@@ -29,13 +29,11 @@ function isIncluded(id: string): boolean {
     </div>
     <div v-if="squads.length" v-auto-animate class="squad-grid">
       <label v-for="squad in squads" :key="squad.id" class="squad-option" :class="{ 'squad-option--selected': isSelected(squad.id), 'squad-option--included': isIncluded(squad.id) }" :data-haptic="isIncluded(squad.id) ? undefined : 'light'">
-        <span class="squad-option__icon"><UIcon name="i-ph-globe-hemisphere-west" /></span>
-        <span class="squad-option__copy">
-          <strong>{{ squad.name }}</strong>
-          <SquadProfileSummary :profile="squad.profile" :description="squad.description" compact />
+        <div class="squad-option__copy">
+          <SquadProfileSummary :name="squad.name" :profile="squad.profile" :description="squad.description" presentation="member" compact />
           <StatusBadge v-if="isIncluded(squad.id)" tone="neutral" :label="$t('catalog.included')" />
           <span v-else>{{ formatMoney(squad.price) }}</span>
-        </span>
+        </div>
         <UCheckbox
           :model-value="isSelected(squad.id)"
           :disabled="isIncluded(squad.id)"
