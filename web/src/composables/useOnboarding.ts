@@ -14,6 +14,8 @@ function normalizeStep(step?: OnboardingStep): OnboardingStep {
   return step
 }
 
+type ErrorRecovery = (caught: unknown) => Promise<boolean>
+
 export function useOnboarding() {
   const router = useRouter()
   const sessionStore = useSessionStore()
@@ -39,12 +41,21 @@ export function useOnboarding() {
     return usernameValid.value ? t('onboarding.formatGood') : t('onboarding.formatInvalid')
   })
 
-  async function run<T>(task: () => Promise<T>): Promise<T | undefined> {
+  async function run<T>(task: () => Promise<T>, recover?: ErrorRecovery): Promise<T | undefined> {
     loading.value = true
     error.value = null
     try {
       return await task()
     } catch (caught) {
+      let recovered = false
+      if (recover) {
+        try {
+          recovered = await recover(caught)
+        } catch {
+          recovered = false
+        }
+      }
+      if (recovered) return undefined
       if (caught instanceof ApiError && caught.code === 'USERNAME_UNAVAILABLE') {
         error.value = t('onboarding.usernameUnavailable')
       } else {
@@ -108,9 +119,37 @@ export function useOnboarding() {
     step.value = 'agreement'
   }
 
+  async function refreshAgreementState(): Promise<boolean> {
+    const session = await api.getMe()
+    sessionStore.updateSession(session)
+    if (session.user.onboardingState === 'complete') {
+      notifyHaptic('success')
+      step.value = 'complete'
+      await router.replace('/home')
+      return true
+    }
+    if (session.user.onboardingState !== 'agreement') {
+      step.value = normalizeStep(session.user.onboardingState)
+      return false
+    }
+    form.agreementIds = []
+    const currentContent = await featuresApi.getPublishedOnboarding(locale.value)
+    content.value = currentContent
+    return false
+  }
+
+  async function recoverAgreementConflict(caught: unknown): Promise<boolean> {
+    if (!(caught instanceof ApiError)) return false
+    if (!['AGREEMENT_OUTDATED', 'ONBOARDING_CONFLICT', 'ONBOARDING_STATE_CONFLICT'].includes(caught.code)) return false
+    return refreshAgreementState()
+  }
+
   async function acceptAgreement(): Promise<void> {
     if (!content.value || !allAgreementsAccepted.value) return
-    const response = await run(() => api.acceptAgreement(content.value!.agreementRevision, [...form.agreementIds]))
+    const response = await run(
+      () => api.acceptAgreement(content.value!.agreementRevision, [...form.agreementIds]),
+      recoverAgreementConflict,
+    )
     if (!response) return
     sessionStore.updateSession(response)
     notifyHaptic('success')

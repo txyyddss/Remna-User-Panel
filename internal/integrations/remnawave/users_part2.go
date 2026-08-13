@@ -4,9 +4,37 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 )
+
+func (c *Client) listUsersStream(ctx context.Context, cursor string, size int, telegramID *int64) ([]User, *string, bool, error) {
+	if size < 1 || size > 1000 {
+		return nil, nil, false, errors.New("remnawave user stream requires size in 1..1000")
+	}
+	query := url.Values{"size": {strconv.Itoa(size)}}
+	if cursor != "" {
+		query.Set("cursor", cursor)
+	}
+	if telegramID != nil {
+		if *telegramID <= 0 {
+			return nil, nil, false, errors.New("remnawave Telegram id must be positive")
+		}
+		query.Set("telegramId", strconv.FormatInt(*telegramID, 10))
+	}
+	var envelope struct {
+		Response struct {
+			Users      []User  `json:"users"`
+			NextCursor *string `json:"nextCursor"`
+			HasMore    bool    `json:"hasMore"`
+		} `json:"response"`
+	}
+	if err := c.do(ctx, http.MethodGet, "/api/users/stream", query, nil, &envelope); err != nil {
+		return nil, nil, false, err
+	}
+	return envelope.Response.Users, envelope.Response.NextCursor, envelope.Response.HasMore, nil
+}
 
 func (c *Client) RevokeSubscription(ctx context.Context, userID int64, revokeOnlyPasswords bool) (*User, error) {
 	if userID <= 0 {

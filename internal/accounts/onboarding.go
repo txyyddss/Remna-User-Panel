@@ -37,14 +37,14 @@ func (s *Service) ReserveUsername(ctx context.Context, user model.User, username
 // published agreement ID before reconciling the permanent Remnawave identity.
 func (s *Service) AcceptAgreementRevision(ctx context.Context, user model.User, revision int, agreementIDs []string) (model.User, error) {
 	if user.Username == nil || user.OnboardingState != "agreement" || revision <= 0 {
-		return model.User{}, database.ErrConflict
+		return model.User{}, fmt.Errorf("%w: %w", ErrAgreementStateConflict, database.ErrConflict)
 	}
 	currentRevision, requiredIDs, err := s.repository.CurrentAgreementContract(ctx)
 	if err != nil {
 		return model.User{}, err
 	}
 	if revision != currentRevision || !sameStringSet(requiredIDs, agreementIDs) {
-		return model.User{}, database.ErrConflict
+		return model.User{}, fmt.Errorf("%w: %w", ErrAgreementRevisionConflict, database.ErrConflict)
 	}
 	remote, err := s.reconcileAgreementUser(ctx, user)
 	if err != nil {
@@ -59,7 +59,7 @@ func (s *Service) reconcileAgreementUser(ctx context.Context, user model.User) (
 		return RemoteUser{}, fmt.Errorf("reconcile Remnawave user: %w", err)
 	}
 	if exists && (remote.TelegramID == nil || *remote.TelegramID != user.TelegramID) {
-		return RemoteUser{}, ErrUsernameUnavailable
+		return RemoteUser{}, remnawaveIdentityConflict()
 	}
 	if !exists {
 		byTelegram, telegramExists, telegramErr := s.remnawave.FindUserByTelegramID(ctx, user.TelegramID)
@@ -68,7 +68,7 @@ func (s *Service) reconcileAgreementUser(ctx context.Context, user model.User) (
 		}
 		if telegramExists {
 			if byTelegram.Username != *user.Username {
-				return RemoteUser{}, ErrUsernameUnavailable
+				return RemoteUser{}, remnawaveIdentityConflict()
 			}
 			remote, exists = byTelegram, true
 		}
@@ -82,7 +82,7 @@ func (s *Service) reconcileAgreementUser(ctx context.Context, user model.User) (
 		if err != nil && s.remnawave.IsDuplicateError(err) {
 			remote, exists, err = s.remnawave.FindUserByUsername(ctx, *user.Username)
 			if err == nil && (!exists || remote.TelegramID == nil || *remote.TelegramID != user.TelegramID) {
-				err = ErrUsernameUnavailable
+				err = remnawaveIdentityConflict()
 			}
 		}
 		if err != nil {
@@ -90,6 +90,10 @@ func (s *Service) reconcileAgreementUser(ctx context.Context, user model.User) (
 		}
 	}
 	return remote, nil
+}
+
+func remnawaveIdentityConflict() error {
+	return fmt.Errorf("%w: %w", ErrRemnawaveIdentityConflict, ErrUsernameUnavailable)
 }
 
 func sameStringSet(expected, provided []string) bool {

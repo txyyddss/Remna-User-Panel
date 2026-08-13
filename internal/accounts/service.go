@@ -24,6 +24,15 @@ var ErrMembershipRequired = errors.New("membership is required")
 // ErrUsernameUnavailable means either the local database or Remnawave owns the name.
 var ErrUsernameUnavailable = errors.New("username is unavailable")
 
+// ErrAgreementStateConflict means the local onboarding state changed while the request was in flight.
+var ErrAgreementStateConflict = errors.New("onboarding state changed")
+
+// ErrAgreementRevisionConflict means the user accepted a no-longer-current agreement contract.
+var ErrAgreementRevisionConflict = errors.New("onboarding agreement revision changed")
+
+// ErrRemnawaveIdentityConflict means the requested local identity is already linked elsewhere upstream.
+var ErrRemnawaveIdentityConflict = errors.New("Remnawave identity conflicts with the local account")
+
 // ErrUpstreamUnavailable distinguishes a temporary Remnawave failure from bad
 // Telegram authentication data.
 var ErrUpstreamUnavailable = errors.New("Remnawave is temporarily unavailable")

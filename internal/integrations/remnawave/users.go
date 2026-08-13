@@ -132,26 +132,7 @@ func (c *Client) ResolveUser(ctx context.Context, selector UserSelector) (*UserS
 	return &envelope.Response, nil
 }
 
-// ListUsers retrieves one page of users using the documented start/size parameters.
-
-func (c *Client) ListUsers(ctx context.Context, start, size int) ([]User, int, error) {
-	if start < 0 || size < 1 || size > 1000 {
-		return nil, 0, errors.New("remnawave user page requires start >= 0 and size in 1..1000")
-	}
-	query := url.Values{"start": {strconv.Itoa(start)}, "size": {strconv.Itoa(size)}}
-	var envelope struct {
-		Response struct {
-			Users []User `json:"users"`
-			Total int    `json:"total"`
-		} `json:"response"`
-	}
-	if err := c.do(ctx, http.MethodGet, "/api/users", query, nil, &envelope); err != nil {
-		return nil, 0, err
-	}
-	return envelope.Response.Users, envelope.Response.Total, nil
-}
-
-// FindUserByTelegramID scans documented user pages for an exact Telegram ID match.
+// FindUserByTelegramID uses the documented stream filter for an exact identity lookup.
 // It returns (nil, nil) when no user is found.
 
 func (c *Client) FindUserByTelegramID(ctx context.Context, telegramID int64) (*User, error) {
@@ -159,19 +140,25 @@ func (c *Client) FindUserByTelegramID(ctx context.Context, telegramID int64) (*U
 		return nil, errors.New("remnawave Telegram id must be positive")
 	}
 	const pageSize = 1000
-	for start := 0; ; start += pageSize {
-		users, total, err := c.ListUsers(ctx, start, pageSize)
+	var cursor string
+	for {
+		users, nextCursor, hasMore, err := c.listUsersStream(ctx, cursor, pageSize, &telegramID)
 		if err != nil {
 			return nil, err
 		}
-		for i := range users {
-			if users[i].TelegramID != nil && *users[i].TelegramID == telegramID {
-				return &users[i], nil
-			}
+		if len(users) > 1 {
+			return nil, errors.New("remnawave returned multiple users for one Telegram id")
 		}
-		if len(users) == 0 || start+len(users) >= total {
+		if len(users) == 1 {
+			if users[0].TelegramID == nil || *users[0].TelegramID != telegramID {
+				return nil, errors.New("remnawave Telegram stream returned a mismatched identity")
+			}
+			return &users[0], nil
+		}
+		if !hasMore || nextCursor == nil || *nextCursor == "" || *nextCursor == cursor {
 			return nil, nil
 		}
+		cursor = *nextCursor
 	}
 }
 

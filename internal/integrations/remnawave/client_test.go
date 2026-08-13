@@ -250,10 +250,10 @@ func TestFindUserByUsernameNotFound(t *testing.T) {
 func TestFindUserByTelegramID(t *testing.T) {
 	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.URL.Path != "/api/users" || request.URL.Query().Get("size") != "1000" {
+		if request.URL.Path != "/api/users/stream" || request.URL.Query().Get("size") != "1000" || request.URL.Query().Get("telegramId") != "42" {
 			t.Errorf("request URL = %s", request.URL.String())
 		}
-		_, _ = writer.Write([]byte(`{"response":{"total":2,"users":[` + userJSON(1, "one", 11) + `,` + userJSON(2, "two", 42) + `]}}`))
+		_, _ = writer.Write([]byte(`{"response":{"users":[` + userJSON(2, "two", 42) + `],"nextCursor":null,"hasMore":false}}`))
 	}))
 	defer server.Close()
 	client, err := NewClient(server.URL, "token", WithHTTPClient(server.Client()))

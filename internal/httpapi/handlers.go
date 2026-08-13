@@ -69,12 +69,21 @@ func (s *Server) acceptAgreement(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, http.StatusBadRequest, "AGREEMENT_REQUIRED", "Select every current agreement to continue.")
 		return
 	}
-	user, err := s.deps.Accounts.AcceptAgreementRevision(r.Context(), currentUser(r), request.Revision, request.AgreementIDs)
+	current := currentUser(r)
+	user, err := s.deps.Accounts.AcceptAgreementRevision(r.Context(), current, request.Revision, request.AgreementIDs)
 	if err != nil {
 		status, code := http.StatusBadGateway, "REMNAWAVE_UNAVAILABLE"
-		if errors.Is(err, accounts.ErrUsernameUnavailable) || errors.Is(err, database.ErrConflict) {
+		switch {
+		case errors.Is(err, accounts.ErrAgreementRevisionConflict):
+			status, code = http.StatusConflict, "AGREEMENT_OUTDATED"
+		case errors.Is(err, accounts.ErrRemnawaveIdentityConflict):
+			status, code = http.StatusConflict, "REMNAWAVE_IDENTITY_CONFLICT"
+		case errors.Is(err, accounts.ErrAgreementStateConflict):
+			status, code = http.StatusConflict, "ONBOARDING_STATE_CONFLICT"
+		case errors.Is(err, accounts.ErrUsernameUnavailable) || errors.Is(err, database.ErrConflict):
 			status, code = http.StatusConflict, "ONBOARDING_CONFLICT"
 		}
+		s.deps.Logger.Warn("onboarding agreement rejected", "request_id", middlewareRequestID(r), "user_id", current.ID, "code", code, "error", err)
 		s.writeError(w, r, status, code, "The account could not be completed yet. You can safely retry.")
 		return
 	}
