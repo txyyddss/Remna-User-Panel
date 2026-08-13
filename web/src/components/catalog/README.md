@@ -5,6 +5,7 @@
 - `catalogFlowProgress.ts` contains the pure completed-step icon rule used by the progress component.
 - `CatalogFlowProgress.test.ts` verifies one-based catalog steps map to the stepper index and completed steps use check indicators.
 - `ComboOption.vue` and `SquadSelector.vue` collect the core-combo and optional-squad selections.
+- Both squad surfaces use `../squad-profile/SquadProfileSummary.vue` for localized generated profile facts and extra Markdown.
 - `CatalogNodes.vue` presents the server-projected accessible nodes with a country flag and traffic multiplier.
 - `CatalogCouponStep.vue` selects an eligible wallet coupon or redeems a new code.
 - `CatalogConfirmation.vue` presents the localized post-purchase summary and emits the Home navigation action.

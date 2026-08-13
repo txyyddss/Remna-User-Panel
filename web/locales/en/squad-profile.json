@@ -1,0 +1,40 @@
+{
+  "squadProfile": {
+    "type": "Network profile",
+    "types": {
+      "broadband": "Broadband",
+      "chinaOptimized": "China Optimized",
+      "internationalNetwork": "International Network"
+    },
+    "isp": "ISP",
+    "ispPlaceholder": "Internet provider",
+    "port": "Port speed",
+    "portPlaceholder": "Mbps",
+    "mbps": "Mbps",
+    "unlimited": "Unlimited",
+    "unlimitedPort": "Unlimited port",
+    "unlimitedPortHint": "Use this when the upstream does not publish a cap.",
+    "dynamic": "Dynamic IP",
+    "dynamicHint": "Switch off for a static IP.",
+    "static": "Static IP",
+    "location": "Detailed location",
+    "locationBroadbandPlaceholder": "Miaoli, Taiwan",
+    "country": "Country",
+    "countryPlaceholder": "Choose a country",
+    "ct": "CT route",
+    "cu": "CU route",
+    "cm": "CM route",
+    "carrierPlaceholder": "Carrier route",
+    "upstreamCarriers": "Upstream carriers",
+    "upstreamCarriersHint": "Separate multiple carriers with commas.",
+    "upstreamCarriersPlaceholder": "Carrier A, Carrier B",
+    "preview": "Member view",
+    "unconfigured": "Profile not configured",
+    "validation": {
+      "required": "Complete the required profile fields.",
+      "port": "Enter a positive whole-number port speed or choose unlimited.",
+      "country": "Choose a valid country.",
+      "carriers": "Add at least one upstream carrier."
+    }
+  }
+}

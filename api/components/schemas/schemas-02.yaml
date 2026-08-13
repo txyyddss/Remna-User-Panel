@@ -75,6 +75,55 @@ ResetStrategy:
   type: string
   enum: [DAY, WEEK, MONTH, MONTH_ROLLING]
 
+BroadbandSquadProfile:
+  type: object
+  additionalProperties: false
+  required: [type, isp, portMbps, dynamic, location]
+  properties:
+    type: { type: string, const: broadband }
+    isp: { type: string, minLength: 1 }
+    portMbps: { type: integer, minimum: 1 }
+    dynamic: { type: boolean }
+    location: { type: string, minLength: 1 }
+
+ChinaOptimizedSquadProfile:
+  type: object
+  additionalProperties: false
+  required: [type, ct, cu, cm, portMbps, countryCode]
+  properties:
+    type: { type: string, const: china_optimized }
+    ct: { type: string, minLength: 1 }
+    cu: { type: string, minLength: 1 }
+    cm: { type: string, minLength: 1 }
+    portMbps: { type: [integer, 'null'], minimum: 1 }
+    countryCode: { type: string, pattern: '^[A-Z]{2}$' }
+
+InternationalNetworkSquadProfile:
+  type: object
+  additionalProperties: false
+  required: [type, portMbps, countryCode, upstreamCarriers]
+  properties:
+    type: { type: string, const: international_network }
+    portMbps: { type: [integer, 'null'], minimum: 1 }
+    countryCode: { type: string, pattern: '^[A-Z]{2}$' }
+    upstreamCarriers:
+      type: array
+      minItems: 1
+      uniqueItems: true
+      items: { type: string, minLength: 1 }
+
+SquadProfile:
+  oneOf:
+    - $ref: '../../openapi.yaml#/components/schemas/BroadbandSquadProfile'
+    - $ref: '../../openapi.yaml#/components/schemas/ChinaOptimizedSquadProfile'
+    - $ref: '../../openapi.yaml#/components/schemas/InternationalNetworkSquadProfile'
+  discriminator:
+    propertyName: type
+    mapping:
+      broadband: '../../openapi.yaml#/components/schemas/BroadbandSquadProfile'
+      china_optimized: '../../openapi.yaml#/components/schemas/ChinaOptimizedSquadProfile'
+      international_network: '../../openapi.yaml#/components/schemas/InternationalNetworkSquadProfile'
+
 SquadProduct:
   type: object
   additionalProperties: false
@@ -83,6 +132,7 @@ SquadProduct:
     - remnaSquadUuid
     - name
     - description
+    - profile
     - price
     - visible
     - upstreamPresent
@@ -98,6 +148,10 @@ SquadProduct:
       type: string
     description:
       type: string
+    profile:
+      oneOf:
+        - $ref: '../../openapi.yaml#/components/schemas/SquadProfile'
+        - type: 'null'
     price:
       $ref: '../../openapi.yaml#/components/schemas/Money'
     visible:
@@ -264,7 +318,7 @@ ComboWrite:
 SquadProductWrite:
   type: object
   additionalProperties: false
-  required: [remnaSquadUuid, name, description, priceTxbMinor, visible]
+  required: [remnaSquadUuid, name, description, profile, priceTxbMinor, visible]
   properties:
     remnaSquadUuid:
       type: string
@@ -275,6 +329,8 @@ SquadProductWrite:
     description:
       type: string
       maxLength: 1000
+    profile:
+      $ref: '../../openapi.yaml#/components/schemas/SquadProfile'
     priceTxbMinor:
       type: string
       pattern: '^\d+$'

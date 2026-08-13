@@ -32,3 +32,6 @@ file instead.
   per-rail table.
 - `016_multiple_payment_profiles.sql` allows multiple independent EZPay and
   BEPusdt accounts while preserving the existing provider profile rows.
+- `017_squad_profiles.sql` adds nullable normalized local metadata for the
+  three customer-facing internal-squad profile types without duplicating the
+  generated description.

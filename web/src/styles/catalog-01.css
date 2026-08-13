@@ -105,6 +105,8 @@
   gap: 0.3rem;
 }
 
+.combo-option__squads { display: grid; gap: 0.45rem; padding-top: 0.25rem; }
+
 .combo-option__price {
   display: flex;
   align-items: baseline;

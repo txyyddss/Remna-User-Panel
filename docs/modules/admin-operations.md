@@ -35,7 +35,7 @@ Readiness checks required settings, enabled-provider completeness, and at least 
 - Entitlement cancellation and payment refund append durable compensating commands; they never mutate provider state first and hope persistence follows.
 - A terminal failed/expired payment may receive one locally funded courtesy credit only with a 3-500 byte reason. Its ledger entry, dedicated idempotency record, and audit event commit together; it never changes the original order to provider-paid or calls a provider.
 - Activity games/draws, coupons, questionnaires/imports, and Emby retries use their module services so validation, transactions, and idempotency remain centralized.
-- Job retry is allowed only for an eligible failed job and cannot change kind or typed payload. Pending, done, and failed jobs may be deleted; processing jobs return `409`.
+- Job retry is allowed only for an eligible failed job and cannot change kind or typed payload. Successful jobs are removed at completion; pending, failed, and legacy done jobs may be deleted, while processing jobs return `409`.
 - Every audit insertion transactionally retains the newest 200 events. Sensitive values are redacted before persistence.
 
 Payment profiles are durable records per provider account. EZPay and BEPusdt

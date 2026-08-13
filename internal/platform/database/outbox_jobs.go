@@ -40,7 +40,7 @@ func (s *Store) ClaimOutboxJob(ctx context.Context, now time.Time) (*model.Outbo
 	return &job, nil
 }
 
-// CompleteOutboxJob marks success or schedules bounded exponential retry.
+// CompleteOutboxJob removes successful work or schedules bounded exponential retry.
 
 func (s *Store) CompleteOutboxJob(ctx context.Context, jobID string, attempts int, jobErr error, now time.Time) error {
 	s.writeMu.Lock()
@@ -51,8 +51,8 @@ func (s *Store) CompleteOutboxJob(ctx context.Context, jobID string, attempts in
 	}
 	defer func() { _ = tx.Rollback() }()
 	if jobErr == nil {
-		if _, err := tx.ExecContext(ctx, `UPDATE outbox_jobs SET status='done',last_error='',updated_at=? WHERE id=?`, stamp(now), jobID); err != nil {
-			return err
+		if _, err := tx.ExecContext(ctx, `DELETE FROM outbox_jobs WHERE id=?`, jobID); err != nil {
+			return fmt.Errorf("remove completed outbox job: %w", err)
 		}
 		return tx.Commit()
 	}

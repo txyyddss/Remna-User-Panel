@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed, shallowRef, toRefs, watch } from 'vue'
+import { shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import type { Purchase } from '@/api/types'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import RolloverFlipCard from './RolloverFlipCard.vue'
 import { useI18n } from '@/i18n'
-import { formatBytes, formatDate, formatMoney } from '@/utils/format'
+import { formatDate, formatMoney } from '@/utils/format'
 import { api } from '@/api/client'
 import { createUuid } from '@/utils/browserCompatibility'
 import { localizedError } from '@/i18n'
@@ -20,10 +21,8 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ queuedCancelled: []; renewed: [] }>()
 
-const { active, queued } = toRefs(props)
 const { t } = useI18n()
 const router = useRouter()
-const resetLabel = computed(() => props.active ? t(`home.reset.${props.active.resetStrategy}`) : '')
 const renewalOpen = shallowRef(false)
 const renewalTerms = shallowRef(1)
 const renewalQuote = shallowRef<import('@/api/types').RenewalQuote | null>(null)
@@ -80,30 +79,8 @@ function goToCatalog(): void {
       <StatusBadge v-if="active" tone="success" :label="$t('common.active')" />
     </div>
 
-    <div v-if="active || queued" class="home-ride__summary">
-      <template v-if="active">
-        <div class="home-ride__primary">
-          <span class="feature-icon"><UIcon name="i-ph-stack" /></span>
-          <div>
-            <h3>{{ active.comboName }}</h3>
-            <p>{{ squadNames?.length ? squadNames.join(t('home.squadSeparator')) : $t('dashboard.squadsIncluded', { count: active.squadUuids.length }) }}</p>
-          </div>
-        </div>
-        <dl class="home-ride__metrics">
-          <div>
-            <dt><UIcon name="i-ph-gauge" /> {{ $t('dashboard.traffic') }}</dt>
-            <dd>{{ formatBytes(active.trafficLimitBytes) }}</dd>
-          </div>
-          <div>
-            <dt><UIcon name="i-ph-arrow-clockwise" /> {{ $t('home.resetCadence') }}</dt>
-            <dd>{{ resetLabel }}</dd>
-          </div>
-          <div>
-            <dt><UIcon name="i-ph-calendar-blank" /> {{ $t('dashboard.renews') }}</dt>
-            <dd>{{ formatDate(active.validUntil) }}</dd>
-          </div>
-        </dl>
-      </template>
+    <div v-if="active || queued" class="home-ride__content">
+      <RolloverFlipCard v-if="active" :active="active" :squad-names="squadNames" />
       <div v-if="queued" class="home-ride__queued">
         <div class="home-ride__queued-content">
           <span>

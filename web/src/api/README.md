@@ -8,4 +8,4 @@
 - `http.ts` provides authenticated HTTP and error handling primitives.
 - `request-signing.ts` signs every protected request with Web Crypto or the audited pure-JS HMAC/SHA-256 fallback; it never sends an unsigned fallback.
 - `request-signing.test.ts` covers signing, nonce behavior, and missing-Web-Crypto behavior.
-- `types.ts` exports stable aliases over generated schema types.
+- `types.ts` exports stable aliases over generated schema types, including the typed squad profile read/write unions.

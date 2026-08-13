@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
+	"github.com/txyyddss/Remna-User-Panel/internal/squadprofile"
 )
 
 func (s *Server) adminCombos(w http.ResponseWriter, r *http.Request) {
@@ -104,12 +105,13 @@ func (s *Server) adminSquadProducts(w http.ResponseWriter, r *http.Request) {
 }
 
 type squadProductRequest struct {
-	RemnaSquadUUID string `json:"remnaSquadUuid"`
-	Name           string `json:"name"`
-	Description    string `json:"description"`
-	PriceTXBMinor  string `json:"priceTxbMinor"`
-	Visible        bool   `json:"visible"`
-	StockLimit     *int   `json:"stockLimit"`
+	RemnaSquadUUID string                `json:"remnaSquadUuid"`
+	Name           string                `json:"name"`
+	Description    string                `json:"description"`
+	Profile        *squadprofile.Profile `json:"profile"`
+	PriceTXBMinor  string                `json:"priceTxbMinor"`
+	Visible        bool                  `json:"visible"`
+	StockLimit     *int                  `json:"stockLimit"`
 }
 
 func (s *Server) adminCreateSquadProduct(w http.ResponseWriter, r *http.Request) {
@@ -136,7 +138,7 @@ func (s *Server) adminSaveSquadProduct(w http.ResponseWriter, r *http.Request, i
 	}
 	product, err := s.deps.Admin.SaveSquadProduct(r.Context(), currentUser(r).ID, database.SquadProductInput{ID: id,
 		RemnaSquadUUID: request.RemnaSquadUUID, Name: request.Name, Description: request.Description, PriceTXBMinor: price,
-		Visible: request.Visible, UpstreamPresent: true, StockLimit: request.StockLimit})
+		Profile: request.Profile, Visible: request.Visible, UpstreamPresent: true, StockLimit: request.StockLimit})
 	if err != nil {
 		s.adminFailure(w, r, err)
 		return

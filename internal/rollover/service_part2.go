@@ -3,6 +3,7 @@ package rollover
 import (
 	"math/big"
 	"time"
+
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 )
 
@@ -14,6 +15,13 @@ func CalculateUsage(purchase model.Purchase, threshold int, snapshot UsageSnapsh
 	anchor := start
 	if snapshot.LastResetAt != nil && snapshot.LastResetAt.Before(end) {
 		anchor = snapshot.LastResetAt.UTC()
+	}
+	return calculateUsageRange(threshold, snapshot, anchor, start, end)
+}
+
+func calculateUsageRange(threshold int, snapshot UsageSnapshot, anchor, start, end time.Time) model.RolloverUsageSummary {
+	if snapshot.LimitBytes <= 0 || !end.After(start) {
+		return model.RolloverUsageSummary{AlgorithmVersion: UsageAlgorithmVersion}
 	}
 	periods := cadencePeriods(anchor, start, end, snapshot.Strategy)
 	usageByDay := make(map[string]int64, len(snapshot.Daily))
@@ -36,7 +44,7 @@ func CalculateUsage(purchase model.Purchase, threshold int, snapshot UsageSnapsh
 		periodUsed := int64(0)
 		for day := dayStart(period.start); day.Before(period.end); day = day.AddDate(0, 0, 1) {
 			dayEnd := day.AddDate(0, 0, 1)
-			portion := overlapDuration(day, dayEnd, period.start, period.end)
+			portion := overlapDuration(day, dayEnd, start, end)
 			if portion <= 0 {
 				continue
 			}
@@ -49,13 +57,29 @@ func CalculateUsage(purchase model.Purchase, threshold int, snapshot UsageSnapsh
 			periodUsed = allowance
 		}
 		unused := allowance - periodUsed
-		if allowance > 0 && unused*10000 > allowance*int64(threshold) {
-			allocated += allowance
-			used += periodUsed
-			eligible += unused
+		if allowance > 0 && strictlyAboveBPS(unused, allowance, threshold) {
+			allocated = sumBytes(allocated, allowance)
+			used = sumBytes(used, periodUsed)
+			eligible = sumBytes(eligible, unused)
 		}
 	}
 	return model.RolloverUsageSummary{AllocatedBytes: allocated, UsedBytes: used, EligibleUnusedBytes: eligible, AlgorithmVersion: UsageAlgorithmVersion}
+}
+
+func strictlyAboveBPS(remaining, allowance int64, threshold int) bool {
+	if remaining <= 0 || allowance <= 0 {
+		return false
+	}
+	left := new(big.Int).Mul(big.NewInt(remaining), big.NewInt(10000))
+	right := new(big.Int).Mul(big.NewInt(allowance), big.NewInt(int64(threshold)))
+	return left.Cmp(right) > 0
+}
+
+func sumBytes(left, right int64) int64 {
+	if right <= 0 || left >= 1<<63-1-right {
+		return 1<<63 - 1
+	}
+	return left + right
 }
 
 type cadencePeriod struct{ start, end time.Time }
@@ -132,4 +156,3 @@ func proportionalBytes(value, numerator, denominator int64) int64 {
 	}
 	return result.Int64()
 }
-

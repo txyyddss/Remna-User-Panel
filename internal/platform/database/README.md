@@ -36,7 +36,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
   onboarding completion.
 - `catalog.go` — combo inputs and transactional combo writes.
 - `catalog_queries.go` — combo reads, scans, and normalized squad UUID lists.
-- `catalog_squads.go` — sparse local merchandising overrides for upstream squads.
+- `catalog_squads.go` — sparse local merchandising and normalized profile overrides for upstream squads.
 - `billing.go` — purchase normalization, quotes, creation, pricing, and debit helpers.
 - `billing_renewal.go` — renewal quotes, contiguous batch creation, and idempotent replay.
 - `billing_purchase_helpers.go` — stock reservation checks, purchase fingerprints, catalog row loaders, and balance debit helpers.
@@ -115,6 +115,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `retention_test.go` — retained operational-record cleanup behavior.
 - `restore_test.go` — restore validation and schema compatibility.
 - `ledger_page_test.go` — cursor pagination order and validation.
+- `squad_profiles_test.go` — typed profile round trips and legacy Markdown preservation.
 
 `payment_profiles_test.go` covers independent provider-account persistence and stable-ID lookup.
 

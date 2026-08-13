@@ -24,6 +24,7 @@ Admin section labels are locale-owned, use Nuxt UI controls, and avoid visual se
 - `AdminShell.vue` provides admin section navigation and sends optional signup through Vue Router without native anchor navigation.
 - `AdminShell.test.ts` covers shell navigation and onboarding actions.
 - `AdminSquadEditor.vue` edits sparse squad overrides; node access remains a live Remnawave projection.
+- `admin/squad-profile/` contains the typed Broadband, China Optimized, and International Network profile editor modules.
 - `AdminStatisticsPanel.vue` presents resource statistics with narrow-screen overflow protection.
 - `AdminUsersPanel.vue` searches users and adjusts balances.
 

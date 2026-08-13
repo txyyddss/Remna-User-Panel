@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/squadprofile"
+)
 
 // Money is a currency amount encoded without JSON floating point.
 type Money struct {
@@ -11,18 +15,19 @@ type Money struct {
 
 // SquadProduct enriches an upstream Remnawave internal squad with customer-facing catalog data.
 type SquadProduct struct {
-	ID              string    `json:"id"`
-	RemnaSquadUUID  string    `json:"remnaSquadUuid"`
-	Name            string    `json:"name"`
-	Description     string    `json:"description"`
-	PriceTXBMinor   int64     `json:"-"`
-	Price           Money     `json:"price"`
-	Visible         bool      `json:"visible"`
-	UpstreamPresent bool      `json:"upstreamPresent"`
-	StockLimit      *int      `json:"stockLimit"`
-	StockRemaining  *int      `json:"stockRemaining"`
-	CreatedAt       time.Time `json:"createdAt"`
-	UpdatedAt       time.Time `json:"updatedAt"`
+	ID              string                `json:"id"`
+	RemnaSquadUUID  string                `json:"remnaSquadUuid"`
+	Name            string                `json:"name"`
+	Description     string                `json:"description"`
+	Profile         *squadprofile.Profile `json:"profile"`
+	PriceTXBMinor   int64                 `json:"-"`
+	Price           Money                 `json:"price"`
+	Visible         bool                  `json:"visible"`
+	UpstreamPresent bool                  `json:"upstreamPresent"`
+	StockLimit      *int                  `json:"stockLimit"`
+	StockRemaining  *int                  `json:"stockRemaining"`
+	CreatedAt       time.Time             `json:"createdAt"`
+	UpdatedAt       time.Time             `json:"updatedAt"`
 }
 
 // Combo is a time-limited traffic entitlement and its included squads.
@@ -99,6 +104,33 @@ type RolloverUsageSummary struct {
 	UsedBytes           int64
 	EligibleUnusedBytes int64
 	AlgorithmVersion    string
+}
+
+// RolloverProjection is a live, aggregate-only view of the current term's
+// possible rollover credit. It is never persisted and never contains raw
+// provider usage series.
+type RolloverProjection struct {
+	PurchaseID          string         `json:"purchaseId"`
+	Paid                Money          `json:"paid"`
+	Maximum             Money          `json:"maximum"`
+	MinimumRemainingBPS int            `json:"minimumRemainingBps"`
+	SavedBPS            int            `json:"savedBps"`
+	Term                RolloverWindow `json:"term"`
+	LastResetPeriod     RolloverWindow `json:"lastResetPeriod"`
+	FetchedAt           time.Time      `json:"fetchedAt"`
+}
+
+// RolloverWindow describes one aggregate cadence window used by a projection.
+type RolloverWindow struct {
+	Start                 time.Time `json:"start"`
+	End                   time.Time `json:"end"`
+	AllocatedTrafficBytes int64     `json:"allocatedTrafficBytes,string"`
+	UsedTrafficBytes      int64     `json:"usedTrafficBytes,string"`
+	RemainingTrafficBytes int64     `json:"remainingTrafficBytes,string"`
+	EligibleUnusedBytes   int64     `json:"eligibleUnusedBytes,string"`
+	Rollover              Money     `json:"rollover"`
+	TrafficToMaximumBytes *int64    `json:"trafficToMaximumBytes,omitempty,string"`
+	MaximumReachable      bool      `json:"maximumReachable"`
 }
 
 // RenewalQuote is the server-priced preview for a contiguous renewal batch.

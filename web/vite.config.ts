@@ -23,7 +23,7 @@ const uiIconRegistry = {
   folderOpen: 'i-ph-folder-open', hash: 'i-ph-hash', info: 'i-ph-info',
   light: 'i-ph-sun', loading: 'i-ph-spinner-gap', menu: 'i-ph-list',
   minus: 'i-ph-minus', panelClose: 'i-ph-sidebar-simple', panelOpen: 'i-ph-sidebar-simple',
-  plus: 'i-ph-plus', reload: 'i-ph-arrows-clockwise', search: 'i-ph-magnifying-glass',
+  plus: 'i-ph-plus', reload: 'i-ph-arrows-clockwise', search: 'i-ph-magnifying-glass', mapPin: 'i-ph-map-pin',
   star: 'i-ph-star', stop: 'i-ph-stop', success: 'i-ph-check-circle',
   system: 'i-ph-monitor', tip: 'i-ph-lightbulb', upload: 'i-ph-upload-simple',
   warning: 'i-ph-warning-circle',

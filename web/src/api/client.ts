@@ -13,6 +13,7 @@ import type {
   PurchaseQuote,
 	RenewalBatch,
 	RenewalQuote,
+  RolloverProjection,
   Session,
   SquadProduct,
   SquadProductWrite,
@@ -105,6 +106,7 @@ export const api = {
   cancelQueuedPurchase: (purchaseId: string) => request<Purchase>(`/api/v1/purchases/${encodeURIComponent(purchaseId)}/cancel`, {
     method: 'POST',
   }),
+  getPurchaseRollover: (purchaseId: string) => request<RolloverProjection>(`/api/v1/purchases/${encodeURIComponent(purchaseId)}/rollover`),
   quoteRenewal: (purchaseId: string, termCount: number) => request<RenewalQuote>(`/api/v1/purchases/${encodeURIComponent(purchaseId)}/renew/quote`, {
     method: 'POST', body: { termCount },
   }),

@@ -43,6 +43,10 @@ export function formatBytes(raw: string | number): string {
   return `${fraction === '0' ? whole.toString() : `${whole}.${fraction}`} ${units[index]}`
 }
 
+export function formatBPS(value: number): string {
+  return new Intl.NumberFormat(getLocale(), { maximumFractionDigits: 2 }).format(value / 100)
+}
+
 export function trafficBytesFromInput(value: string): string {
   const match = /^\s*(\d+)(?:\.(\d+))?\s*(B|KB|MB|GB|TB)?\s*$/i.exec(value)
   if (!match) return ''

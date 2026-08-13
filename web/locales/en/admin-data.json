@@ -86,7 +86,7 @@
     "noJobs": "No synchronization jobs",
     "noJobsHint": "Scheduled work and retries will appear here.",
     "deleteJobTitle": "Delete synchronization job?",
-    "deleteJobDescription": "Pending, completed, and failed work may be removed. A currently processing job remains protected.",
+    "deleteJobDescription": "Successful work is removed automatically. Pending, failed, and legacy completed work may be removed manually; a currently processing job remains protected.",
     "deleteJob": "Delete job"
   },
   "databaseRecord": {

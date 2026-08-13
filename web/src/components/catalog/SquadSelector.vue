@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { SquadProduct } from '@/api/types'
-import MarkdownContent from '@/components/common/MarkdownContent.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import SquadProfileSummary from '@/components/squad-profile/SquadProfileSummary.vue'
 import { formatMoney } from '@/utils/format'
 
 const props = defineProps<{
@@ -32,7 +32,7 @@ function isIncluded(id: string): boolean {
         <span class="squad-option__icon"><UIcon name="i-ph-globe-hemisphere-west" /></span>
         <span class="squad-option__copy">
           <strong>{{ squad.name }}</strong>
-          <MarkdownContent :source="squad.description" compact />
+          <SquadProfileSummary :profile="squad.profile" :description="squad.description" compact />
           <StatusBadge v-if="isIncluded(squad.id)" tone="neutral" :label="$t('catalog.included')" />
           <span v-else>{{ formatMoney(squad.price) }}</span>
         </span>

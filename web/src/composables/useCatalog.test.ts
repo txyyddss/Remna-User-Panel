@@ -33,6 +33,7 @@ const squad = (id: string): SquadProduct => ({
   remnaSquadUuid: `00000000-0000-4000-8000-${id.padStart(12, '0')}`,
   name: `Squad ${id}`,
   description: '',
+  profile: null,
   price: money('100'),
   visible: true,
   upstreamPresent: true,

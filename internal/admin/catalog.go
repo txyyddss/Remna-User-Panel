@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
+	"github.com/txyyddss/Remna-User-Panel/internal/squadprofile"
 	"strings"
 )
 
@@ -52,6 +53,11 @@ func (s *Service) SaveSquadProduct(ctx context.Context, actorID string, input da
 	if input.RemnaSquadUUID == "" || input.PriceTXBMinor < 0 || input.PriceTXBMinor > 1_000_000_000_000 || (input.StockLimit != nil && (*input.StockLimit < 0 || *input.StockLimit > 1_000_000_000)) {
 		return model.SquadProduct{}, errors.New("invalid squad product")
 	}
+	profile, profileErr := squadprofile.Normalize(input.Profile)
+	if profileErr != nil {
+		return model.SquadProduct{}, profileErr
+	}
+	input.Profile = profile
 	live, err := s.liveSquads(ctx)
 	if err != nil {
 		return model.SquadProduct{}, err

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
+	"github.com/txyyddss/Remna-User-Panel/internal/squadprofile"
 	"time"
 )
 
@@ -34,6 +35,7 @@ type SquadProductInput struct {
 	RemnaSquadUUID  string
 	Name            string
 	Description     string
+	Profile         *squadprofile.Profile
 	PriceTXBMinor   int64
 	Visible         bool
 	UpstreamPresent bool

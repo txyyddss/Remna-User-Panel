@@ -5,7 +5,7 @@ delete:
   parameters:
     - $ref: '../openapi.yaml#/components/parameters/ResourceID'
   responses:
-    '204': { description: Pending, done, or failed job deleted. }
+    '204': { description: Pending, failed, or legacy done job deleted. }
     '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
     '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
     '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }

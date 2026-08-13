@@ -1,0 +1,40 @@
+{
+  "squadProfile": {
+    "type": "网络配置",
+    "types": {
+      "broadband": "宽带",
+      "chinaOptimized": "中国优化",
+      "internationalNetwork": "国际网络"
+    },
+    "isp": "运营商",
+    "ispPlaceholder": "互联网服务商",
+    "port": "端口速度",
+    "portPlaceholder": "Mbps",
+    "mbps": "Mbps",
+    "unlimited": "不限速",
+    "unlimitedPort": "不限端口",
+    "unlimitedPortHint": "上游没有公布带宽上限时使用。",
+    "dynamic": "动态 IP",
+    "dynamicHint": "关闭后表示静态 IP。",
+    "static": "静态 IP",
+    "location": "详细位置",
+    "locationBroadbandPlaceholder": "苗栗，台湾",
+    "country": "国家",
+    "countryPlaceholder": "选择国家",
+    "ct": "电信线路",
+    "cu": "联通线路",
+    "cm": "移动线路",
+    "carrierPlaceholder": "线路名称",
+    "upstreamCarriers": "上游运营商",
+    "upstreamCarriersHint": "多个运营商请用逗号分隔。",
+    "upstreamCarriersPlaceholder": "运营商 A，运营商 B",
+    "preview": "用户视图",
+    "unconfigured": "尚未配置网络信息",
+    "validation": {
+      "required": "请完成必填的网络配置。",
+      "port": "请输入正整数带宽，或选择不限速。",
+      "country": "请选择有效国家。",
+      "carriers": "请至少填写一个上游运营商。"
+    }
+  }
+}

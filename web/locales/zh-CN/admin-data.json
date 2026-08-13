@@ -86,7 +86,7 @@
     "noJobs": "暂无同步任务",
     "noJobsHint": "计划任务和重试会显示在这里。",
     "deleteJobTitle": "删除同步任务？",
-    "deleteJobDescription": "可以删除等待中、已完成和失败的任务；正在处理的任务受到保护。",
+    "deleteJobDescription": "成功任务会自动移除；等待中、失败和历史已完成任务可以手动删除，正在处理的任务受到保护。",
     "deleteJob": "删除任务"
   },
   "databaseRecord": {

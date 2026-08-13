@@ -13,6 +13,7 @@
 - `useCoupons.ts` manages coupon-wallet redemption and server-confirmed grant discards.
 - `useCoupons.test.ts` covers confirmed and failed coupon-wallet discards.
 - `useDashboard.ts` loads dashboard summaries and provides bounded per-node UTC traffic state to its Home descendants.
+- `useRolloverDetail.ts` fetches fresh aggregate rollover details when the active Home ride opens, with cancellation-safe retry/reset state and localized errors.
 - `useEmby.ts` manages Emby setup and preferences.
 - `useIntroSequence.ts` drives the onboarding intro sequence.
 - `useIntroSequence.test.ts` covers intro timing and completion.

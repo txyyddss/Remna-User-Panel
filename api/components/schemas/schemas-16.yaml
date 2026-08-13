@@ -1,0 +1,42 @@
+RolloverWindow:
+  type: object
+  additionalProperties: false
+  required:
+    - start
+    - end
+    - allocatedTrafficBytes
+    - usedTrafficBytes
+    - remainingTrafficBytes
+    - eligibleUnusedBytes
+    - rollover
+    - maximumReachable
+  properties:
+    start: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+    end: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+    allocatedTrafficBytes: { $ref: '../../openapi.yaml#/components/schemas/DecimalInteger' }
+    usedTrafficBytes: { $ref: '../../openapi.yaml#/components/schemas/DecimalInteger' }
+    remainingTrafficBytes: { $ref: '../../openapi.yaml#/components/schemas/DecimalInteger' }
+    eligibleUnusedBytes: { $ref: '../../openapi.yaml#/components/schemas/DecimalInteger' }
+    rollover: { $ref: '../../openapi.yaml#/components/schemas/Money' }
+    trafficToMaximumBytes:
+      oneOf:
+        - $ref: '../../openapi.yaml#/components/schemas/DecimalInteger'
+        - type: 'null'
+    maximumReachable: { type: boolean }
+
+RolloverProjection:
+  type: object
+  additionalProperties: false
+  required: [purchaseId, paid, maximum, minimumRemainingBps, savedBps, term, lastResetPeriod, fetchedAt]
+  properties:
+    purchaseId: { $ref: '../../openapi.yaml#/components/schemas/ID' }
+    paid:
+      allOf:
+        - $ref: '../../openapi.yaml#/components/schemas/Money'
+      description: Actual net TXB charged for this purchase term after discounts.
+    maximum: { $ref: '../../openapi.yaml#/components/schemas/Money' }
+    minimumRemainingBps: { type: integer, minimum: 0, maximum: 10000 }
+    savedBps: { type: integer, minimum: 0, maximum: 10000 }
+    term: { $ref: '../../openapi.yaml#/components/schemas/RolloverWindow' }
+    lastResetPeriod: { $ref: '../../openapi.yaml#/components/schemas/RolloverWindow' }
+    fetchedAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }

@@ -7,11 +7,14 @@ import (
 
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/backup"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
+	"github.com/txyyddss/Remna-User-Panel/internal/squadprofile"
 )
 
 func (s *Server) adminFailure(w http.ResponseWriter, r *http.Request, err error) {
 	status, code, message := http.StatusUnprocessableEntity, "ADMIN_OPERATION_FAILED", err.Error()
 	switch {
+	case errors.Is(err, squadprofile.ErrInvalid):
+		status, code, message = http.StatusUnprocessableEntity, "INVALID_SQUAD_PROFILE", "Squad profile fields are invalid."
 	case errors.Is(err, database.ErrNotFound):
 		status, code, message = http.StatusNotFound, "NOT_FOUND", "The requested record was not found."
 	case errors.Is(err, database.ErrConflict), errors.Is(err, backup.ErrRestoreConflict):

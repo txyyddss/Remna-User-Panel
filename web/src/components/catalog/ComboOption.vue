@@ -2,6 +2,7 @@
 import type { Combo } from '@/api/types'
 import MarkdownContent from '@/components/common/MarkdownContent.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import SquadProfileSummary from '@/components/squad-profile/SquadProfileSummary.vue'
 import { formatBytes, formatMoney } from '@/utils/format'
 
 defineProps<{
@@ -36,6 +37,9 @@ defineEmits<{ select: [id: string] }>()
       <span><UIcon name="i-ph-stack" />{{ $t('catalog.squads', { count: combo.includedSquads.length }) }}</span>
       <span><UIcon name="i-ph-arrow-clockwise" />{{ $t(`home.reset.${combo.resetStrategy}`) }}</span>
     </span>
+    <div v-if="combo.includedSquads.length" class="combo-option__squads">
+      <SquadProfileSummary v-for="squad in combo.includedSquads" :key="squad.id" :profile="squad.profile" :description="squad.description" compact />
+    </div>
     <span class="combo-option__price">
       <strong>{{ formatMoney(combo.price) }}</strong>
       <small>{{ $t('catalog.perTerm') }}</small>

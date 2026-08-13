@@ -85,7 +85,8 @@
     "currencyTxb": "TXB",
     "rangeSeparator": "至"
   },
-  "errors": {
+    "errors": {
+      "rolloverFailed": "无法加载实时结转详情。",
     "activityUnavailable": "活动暂时不可用。",
     "activityFailed": "活动未能完成。",
     "adminLoad": "管理数据无法加载。",
@@ -118,6 +119,8 @@
     "questionnaireUnavailable": "问卷暂不可用。",
     "questionnaireOpen": "无法打开问卷。",
     "api": {
+      "ROLLOVER_NOT_ACTIVE": "只有当前生效的套餐可以查看结转详情。",
+      "ROLLOVER_UNAVAILABLE": "实时结转详情暂不可用，请稍后重试。",
       "INVALID_REWARD": "每日奖励必须是非负 TXB 金额，最多两位小数。",
       "UNAUTHENTICATED": "会话已过期，请重新打开小程序。",
       "INVALID_TELEGRAM_DATA": "无法验证 Telegram 身份。",

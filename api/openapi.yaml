@@ -29,6 +29,7 @@ paths:
   /api/v1/purchases/quote: { $ref: './paths/api-v1-purchases-quote.yaml' }
   /api/v1/purchases: { $ref: './paths/api-v1-purchases.yaml' }
   /api/v1/purchases/{id}/cancel: { $ref: './paths/api-v1-purchases-id-cancel.yaml' }
+  /api/v1/purchases/{id}/rollover: { $ref: './paths/api-v1-purchases-id-rollover.yaml' }
   /api/v1/purchases/{id}/renew/quote: { $ref: './paths/api-v1-purchases-id-renew-quote.yaml' }
   /api/v1/purchases/{id}/renew: { $ref: './paths/api-v1-purchases-id-renew.yaml' }
   /api/v1/subscription/revoke: { $ref: './paths/api-v1-subscription-revoke.yaml' }
@@ -172,6 +173,10 @@ components:
     PaymentMethod: { $ref: './components/schemas/schemas-02.yaml#/PaymentMethod' }
     BalanceResponse: { $ref: './components/schemas/schemas-02.yaml#/BalanceResponse' }
     ResetStrategy: { $ref: './components/schemas/schemas-02.yaml#/ResetStrategy' }
+    SquadProfile: { $ref: './components/schemas/schemas-02.yaml#/SquadProfile' }
+    BroadbandSquadProfile: { $ref: './components/schemas/schemas-02.yaml#/BroadbandSquadProfile' }
+    ChinaOptimizedSquadProfile: { $ref: './components/schemas/schemas-02.yaml#/ChinaOptimizedSquadProfile' }
+    InternationalNetworkSquadProfile: { $ref: './components/schemas/schemas-02.yaml#/InternationalNetworkSquadProfile' }
     SquadProduct: { $ref: './components/schemas/schemas-02.yaml#/SquadProduct' }
     Combo: { $ref: './components/schemas/schemas-02.yaml#/Combo' }
     CatalogNode: { $ref: './components/schemas/schemas-02.yaml#/CatalogNode' }
@@ -204,6 +209,8 @@ components:
     RenewalRequest: { $ref: './components/schemas/schemas-15.yaml#/RenewalRequest' }
     RenewalQuote: { $ref: './components/schemas/schemas-15.yaml#/RenewalQuote' }
     RenewalBatch: { $ref: './components/schemas/schemas-15.yaml#/RenewalBatch' }
+    RolloverWindow: { $ref: './components/schemas/schemas-16.yaml#/RolloverWindow' }
+    RolloverProjection: { $ref: './components/schemas/schemas-16.yaml#/RolloverProjection' }
     PaymentProfile: { $ref: './components/schemas/schemas-15.yaml#/PaymentProfile' }
     PaymentProfileWrite: { $ref: './components/schemas/schemas-15.yaml#/PaymentProfileWrite' }
     PaymentOrder: { $ref: './components/schemas/schemas-05.yaml#/PaymentOrder' }

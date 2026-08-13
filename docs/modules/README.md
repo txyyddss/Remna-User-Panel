@@ -6,7 +6,8 @@ These documents describe the implemented module boundaries. They are maintenance
 | --- | --- |
 | Runtime, persistence, scheduler, and backups | [platform-runtime.md](platform-runtime.md) |
 | Telegram identity and onboarding | [accounts-onboarding.md](accounts-onboarding.md) |
-| Catalog, purchases, and access terms | [catalog-entitlements.md](catalog-entitlements.md) |
+| Catalog, purchases, access terms, and rollover projection | [catalog-entitlements.md](catalog-entitlements.md) |
+| Typed internal squad profiles | [squad-profiles.md](squad-profiles.md) |
 | TXB ledger, top-ups, and refunds | [billing-payments.md](billing-payments.md) |
 | Games, daily check-ins, group-message rewards, and lucky draws | [activity.md](activity.md) |
 | Coupon definitions, wallet grants, and purchase discounts | [coupons.md](coupons.md) |

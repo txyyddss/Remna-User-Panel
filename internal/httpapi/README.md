@@ -15,6 +15,7 @@
 - `handlers.go` serves onboarding actions, dashboard, catalog, purchases, balance, and ledger history.
 - `purchases.go` serves the authenticated queued-purchase cancellation and TXB refund endpoint.
 - `dashboard_usage.go` validates the authenticated member's UTC traffic range and serves the bounded per-node usage projection.
+- `rollover.go` serves the authenticated owner's on-demand active-purchase rollover projection and maps ownership, inactive-term, and upstream failures to stable API errors.
 - `billing_orders.go` creates, polls, and cancels member payment orders.
 - `renewals.go` quotes and commits 1-6-term current-ride renewal batches.
 - `onboarding.go` serves and administers localized onboarding content.
@@ -61,6 +62,7 @@
 
 - `server_test.go` covers strict decoding, onboarding access, and SPA delivery.
 - `community_test.go` covers nullable inputs, multipart bounds, decimal parsing, reward mapping, and idempotency.
+- `admin_catalog_test.go` covers strict decoding of typed squad profile writes.
 - `operations_commands_test.go` covers Telegram deduction command parsing.
 - `payment_callbacks_test.go` verifies that navigation returns accept only the documented payment providers.
 

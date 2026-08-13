@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { reactive, shallowRef, watch } from 'vue'
 
-import type { SquadProduct, SquadProductWrite } from '@/api/types'
+import type { SquadProduct, SquadProductWrite, SquadProfileWrite } from '@/api/types'
 import MarkdownEditorField from '@/components/common/MarkdownEditorField.vue'
 import SwitchField from '@/components/common/SwitchField.vue'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
 import { useI18n } from '@/i18n'
 import { moneyFromTxbInput, txbInputFromMinor } from '@/utils/format'
+import AdminSquadProfileEditor from './squad-profile/AdminSquadProfileEditor.vue'
+import { editableProfile } from './squad-profile/profileForm'
 
 const props = defineProps<{
   squad: SquadProduct
@@ -23,7 +25,9 @@ const draft = reactive({
   priceTxb: '',
   visible: false,
   stockLimit: '',
+  profile: null as SquadProfileWrite | null,
 })
+const profileAttempted = shallowRef(false)
 const { t } = useI18n()
 
 watch(() => props.squad, (squad) => {
@@ -32,14 +36,19 @@ watch(() => props.squad, (squad) => {
     priceTxb: txbInputFromMinor(squad.price.minor),
     visible: squad.visible,
     stockLimit: squad.stockLimit === null ? '' : String(squad.stockLimit ?? ''),
+    profile: editableProfile(squad.profile),
   })
+  profileAttempted.value = false
 }, { immediate: true })
 
 function submit(): void {
   const priceTxbMinor = moneyFromTxbInput(draft.priceTxb)
   const stockLimitStr = String(draft.stockLimit ?? '').trim()
   const stockLimit = stockLimitStr === '' ? null : Number(stockLimitStr)
-  if (!priceTxbMinor || (stockLimit !== null && (!Number.isInteger(stockLimit) || stockLimit < 0))) return
+  if (!priceTxbMinor || (stockLimit !== null && (!Number.isInteger(stockLimit) || stockLimit < 0)) || !draft.profile) {
+    profileAttempted.value = true
+    return
+  }
   emit('save', {
     remnaSquadUuid: props.squad.remnaSquadUuid,
     name: props.squad.name,
@@ -47,12 +56,13 @@ function submit(): void {
     priceTxbMinor,
     visible: draft.visible,
     stockLimit,
+    profile: draft.profile,
   })
 }
 </script>
 
 <template>
-  <form class="catalog-editor squad-editor" @submit.prevent="submit">
+  <UForm :state="draft" class="catalog-editor squad-editor" @submit="submit">
     <div class="catalog-editor__heading">
       <div>
         <h3>{{ t('adminSquad.edit', { name: squad.name }) }}</h3>
@@ -60,12 +70,13 @@ function submit(): void {
       </div>
       <UButton color="neutral" variant="ghost" square icon="i-ph-x" :aria-label="t('adminSquad.close')" @click="emit('cancel')" />
     </div>
+    <AdminSquadProfileEditor v-model:profile="draft.profile" :description="draft.description" :show-validation="profileAttempted" />
     <MarkdownEditorField v-model="draft.description" class="catalog-editor__wide" :label="t('adminSquad.description')" :placeholder="t('adminSquad.descriptionPlaceholder')" :maxlength="1000" />
     <TxbAmountField id="squad-price" v-model="draft.priceTxb" :label="t('adminSquad.price')" min-minor="0" required />
     <UFormField name="squad-stock-limit" :label="t('adminSquad.stockLimit')" :hint="t('adminSquad.stockLimitHint')"><UInput v-model="draft.stockLimit" type="number" min="0" step="1" inputmode="numeric" :placeholder="t('adminSquad.stockUnlimited')" /></UFormField>
     <SwitchField id="squad-visible" v-model="draft.visible" :label="t('adminSquad.visible')" :help="t('adminSquad.visibleHint')" />
     <UButton class="catalog-editor__wide" type="submit" icon="i-ph-floppy-disk" :loading="busy" :disabled="busy" :label="busy ? t('common.saving') : t('adminSquad.saveSquad')" />
-  </form>
+  </UForm>
 </template>
 
 <style scoped>

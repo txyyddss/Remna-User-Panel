@@ -4,13 +4,13 @@
 
 This module owns live combo definitions, sparse per-Remnawave-squad merchandising overrides, server-side quotes/pricing, coupon-aware purchases, active/queued access terms, rollover settlement, statistics, and durable commands that make Remnawave match local entitlement state. It consumes the transactional balance interface and a narrow access-synchronization interface; it does not call HTTP providers directly.
 
-Members read `/api/v1/catalog`, quote at `/api/v1/purchases/quote`, create/list `/api/v1/purchases`, see entitlement projections on `/api/v1/dashboard`, and can read bounded per-node traffic at `/api/v1/dashboard/node-usage` with inclusive UTC `start`/`end` dates. Administrators manage combos and sparse squad overrides, inspect combo/squad statistics, inspect entitlements, and issue audited cancellation commands. Remnawave owns accessible-node resolution.
+Members read `/api/v1/catalog`, quote at `/api/v1/purchases/quote`, create/list `/api/v1/purchases`, see entitlement projections on `/api/v1/dashboard`, and can read bounded per-node traffic at `/api/v1/dashboard/node-usage` with inclusive UTC `start`/`end` dates. The active ride's rollover detail is fetched on demand from `/api/v1/purchases/{id}/rollover`; it requires the authenticated owner, returns only aggregate cadence windows, and never persists raw provider statistics. Administrators manage combos and sparse squad overrides, inspect combo/squad statistics, inspect entitlements, and issue audited cancellation commands. Remnawave owns accessible-node resolution.
 
 ## Catalog and pricing invariants
 
 - A combo has a positive traffic limit, `DAY`, `WEEK`, or `MONTH` reset cadence, positive validity in days, a nonnegative TXB minor-unit price, included internal squads, and rollover threshold/cap settings.
 - "Free nodes" are represented only by included Remnawave internal squads. Node IDs are not stored as a second access model.
-- Squad identity/name/availability comes from every live Remnawave list call. `squad_product_overrides` stores only edited description, term price, and visibility keyed by upstream UUID; restoring defaults removes the row.
+- Squad identity/name/availability comes from every live Remnawave list call. `squad_product_overrides` stores only edited Markdown, typed profile metadata, term price, and visibility keyed by upstream UUID; restoring defaults removes the row.
 - A public catalog contains only active combos whose included squads are all upstream-present, plus visible upstream-present add-ons. A stale selection is revalidated in the purchase transaction before any debit. Historical records are archived rather than deleted when purchases refer to them.
 - The public catalog also exposes enabled node display metadata (UUID, name, country, and consumption multiplier) for Home's usage distribution bar. This metadata is read-only, display-only, and never persisted locally.
 - Included squads are selected explicitly in combo administration. They are disabled, gray, and labelled `Included` in member add-on selection; a combo change immediately prunes newly included squads from the paid selection.
@@ -43,6 +43,7 @@ Expiry first queues `rollover_finalize` and blocks renewal activation. The worke
 - Transient Remnawave failures retry without resetting traffic. A confirmed missing user records a zero-credit exception instead of assuming all traffic was unused.
 - Purchase ID is the rollover credit's unique semantic reference; replay cannot credit twice.
 - Cadence-aware settlement derives `DAY`, `WEEK`, `MONTH`, and `MONTH_ROLLING` intervals from the term and reset metadata, prorates partial intervals, excludes intervals below threshold, and applies `netPaid * eligibleUnusedAllowance / totalAllowance` with the configured cap.
+- The live rollover projection uses the same cadence evaluator as settlement, ends the term at `min(now, validUntil)`, selects the current upstream reset period from `lastTrafficResetAt`, and calculates money from the immutable `charged_txb_minor` fact. `savedBps` is an integer floor of projected rollover divided by actual net paid, capped at 10000 bps.
 
 ## Failure behavior
 

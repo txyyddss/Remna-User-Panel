@@ -17,6 +17,7 @@ const squad: SquadProduct = {
   remnaSquadUuid: '4fe62019-e890-4d24-9f43-2c22889ec8da',
   name: 'Singapore Plus',
   description: 'Priority Singapore routes.',
+  profile: null,
   price: { currency: 'TXB', minor: '725', display: '7.25 TXB' },
   visible: true,
   upstreamPresent: true,
@@ -61,6 +62,12 @@ describe('admin API mutations', () => {
       remnaSquadUuid: squad.remnaSquadUuid,
       name: squad.name,
       description: squad.description,
+      profile: {
+        type: 'international_network',
+        portMbps: null,
+        countryCode: 'SG',
+        upstreamCarriers: ['Example Carrier'],
+      },
       priceTxbMinor: squad.price.minor,
       visible: squad.visible,
     }

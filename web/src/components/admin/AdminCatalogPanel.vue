@@ -5,6 +5,7 @@ import { featuresApi, type AdminStatistics, type StatisticsQuery } from '@/api/f
 import type { Combo, SquadProduct, SquadProductWrite } from '@/api/types'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import SquadProfileSummary from '@/components/squad-profile/SquadProfileSummary.vue'
 import { useAdminSection } from '@/composables/useAdminSection'
 import { useI18n } from '@/i18n'
 import { formatBytes, formatMoney } from '@/utils/format'
@@ -92,7 +93,7 @@ async function saveSquad(payload: SquadProductWrite): Promise<void> {
     <AdminSectionState :loading="squads.loading.value" :error="squads.error.value" @retry="squads.load()">
       <div v-auto-animate class="admin-list admin-list--compact">
         <article v-for="squad in squads.items.value" :key="squad.id" class="admin-list-row">
-          <div><strong>{{ squad.name }}</strong><small>{{ squad.description || squad.remnaSquadUuid }}</small></div>
+          <div><strong>{{ squad.name }}</strong><SquadProfileSummary :profile="squad.profile" :description="squad.description" compact /><small v-if="!squad.profile">{{ squad.remnaSquadUuid }}</small></div>
           <strong>{{ formatMoney(squad.price) }}</strong>
           <StatusBadge :tone="squad.upstreamPresent && squad.visible ? 'success' : 'neutral'" :label="squad.upstreamPresent && squad.visible ? t('adminCatalog.available') : t('adminCatalog.hidden')" />
           <div class="row-actions">

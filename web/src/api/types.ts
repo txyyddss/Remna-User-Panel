@@ -38,6 +38,11 @@ export interface MembershipState {
 }
 
 export type ResetCadence = components['schemas']['ResetStrategy']
+export type SquadProfile = DeepReadonly<components['schemas']['SquadProfile']>
+export type SquadProfileWrite = components['schemas']['SquadProfile']
+export type BroadbandSquadProfile = components['schemas']['BroadbandSquadProfile']
+export type ChinaOptimizedSquadProfile = components['schemas']['ChinaOptimizedSquadProfile']
+export type InternationalNetworkSquadProfile = components['schemas']['InternationalNetworkSquadProfile']
 export type SquadProduct = DeepReadonly<components['schemas']['SquadProduct']>
 export type SquadProductWrite = components['schemas']['SquadProductWrite']
 export type Combo = DeepReadonly<components['schemas']['Combo']>
@@ -45,6 +50,8 @@ export type CatalogNode = DeepReadonly<components['schemas']['CatalogNode']>
 export type Catalog = DeepReadonly<components['schemas']['Catalog']>
 export type EntitlementStatus = components['schemas']['EntitlementStatus']
 export type Purchase = DeepReadonly<components['schemas']['Purchase']>
+export type RolloverWindow = DeepReadonly<components['schemas']['RolloverWindow']>
+export type RolloverProjection = DeepReadonly<components['schemas']['RolloverProjection']>
 export interface PurchaseQuote {
   comboId: string
   comboName: string
