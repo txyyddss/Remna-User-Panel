@@ -42,7 +42,7 @@ Expiry first queues `rollover_finalize` and blocks renewal activation. The worke
 - The traffic inputs, result, old-term expiry, optional ledger credit, and next activation command commit atomically. Only then may reset/activation run.
 - Transient Remnawave failures retry without resetting traffic. A confirmed missing user records a zero-credit exception instead of assuming all traffic was unused.
 - Purchase ID is the rollover credit's unique semantic reference; replay cannot credit twice.
-- Cadence-aware settlement derives `DAY`, `WEEK`, `MONTH`, and `MONTH_ROLLING` intervals from the term and reset metadata, prorates partial intervals, excludes intervals below threshold, and applies `netPaid * eligibleUnusedAllowance / totalAllowance` with the configured cap.
+- Cadence-aware settlement derives `DAY`, `WEEK`, `MONTH`, and `MONTH_ROLLING` intervals from the term and reset metadata, prorates partial intervals, excludes intervals below threshold from `eligibleUnusedAllowance`, and applies `netPaid * eligibleUnusedAllowance / totalAllowance` with the configured cap. `totalAllowance` still includes every prorated interval, so daily and weekly resets cannot make the cap reachable prematurely.
 - The live rollover projection uses the same cadence evaluator as settlement, ends the term at `min(now, validUntil)`, selects the current upstream reset period from `lastTrafficResetAt`, and calculates money from the immutable `charged_txb_minor` fact. `savedBps` is an integer floor of projected rollover divided by actual net paid, capped at 10000 bps.
 
 ## Failure behavior

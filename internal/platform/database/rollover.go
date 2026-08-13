@@ -77,13 +77,16 @@ func (s *Store) finalizeRolloverUsage(ctx context.Context, purchaseID string, su
 	if summary.AllocatedBytes < 0 || summary.UsedBytes < 0 || summary.EligibleUnusedBytes < 0 || summary.EligibleUnusedBytes > summary.AllocatedBytes {
 		return model.PurchaseRollover{}, errors.New("rollover traffic inputs must be non-negative")
 	}
-	remaining := summary.EligibleUnusedBytes
+	remaining := summary.AllocatedBytes - summary.UsedBytes
+	if remaining < 0 {
+		remaining = 0
+	}
 	credit := int64(0)
 	status := "zero"
 	if exceptionCode != "" {
 		status = "exception"
-	} else if summary.AllocatedBytes > 0 && strictlyAboveBPS(remaining, summary.AllocatedBytes, rollover.MinimumRemainingBPS) {
-		credit = proportionalFloor(rollover.NetPaidTXBMinor, remaining, summary.AllocatedBytes)
+	} else if summary.AllocatedBytes > 0 && summary.EligibleUnusedBytes > 0 {
+		credit = proportionalFloor(rollover.NetPaidTXBMinor, summary.EligibleUnusedBytes, summary.AllocatedBytes)
 		if credit > rollover.MaximumTXBMinor {
 			credit = rollover.MaximumTXBMinor
 		}

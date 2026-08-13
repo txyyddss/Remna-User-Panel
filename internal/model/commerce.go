@@ -99,6 +99,8 @@ type PurchaseRollover struct {
 }
 
 // RolloverUsageSummary is the bounded settlement aggregate retained in SQLite.
+// AllocatedBytes and UsedBytes cover every included cadence interval, while
+// EligibleUnusedBytes includes only intervals strictly above the threshold.
 type RolloverUsageSummary struct {
 	AllocatedBytes      int64
 	UsedBytes           int64

@@ -60,9 +60,12 @@ func calculateUsageRange(threshold int, snapshot UsageSnapshot, anchor, start, e
 			periodUsed = allowance
 		}
 		unused := allowance - periodUsed
-		if allowance > 0 && strictlyAboveBPS(unused, allowance, threshold) {
-			allocated = sumBytes(allocated, allowance)
-			used = sumBytes(used, periodUsed)
+		if allowance <= 0 {
+			continue
+		}
+		allocated = sumBytes(allocated, allowance)
+		used = sumBytes(used, periodUsed)
+		if strictlyAboveBPS(unused, allowance, threshold) {
 			eligible = sumBytes(eligible, unused)
 		}
 	}
