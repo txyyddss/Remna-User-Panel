@@ -29,8 +29,9 @@ All upstream reads continue through the existing Remnawave queue. Database
 migration `017_squad_profiles.sql` is additive and leaves deployed migrations
 immutable. Vue uses Nuxt UI controls and locale-owned text. The member catalog
 summary adds the squad name plus a profile-specific icon and restrained
-semantic color treatment, while the compact default summary remains suitable
-for administration.
+semantic color treatment. Standalone catalog cards own that color across their
+outer surface, while the compact default summary remains suitable for
+administration.
 
 ## Verification
 

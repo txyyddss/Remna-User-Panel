@@ -72,7 +72,7 @@ const countryText = computed(() => {
 .squad-profile-summary__facts span { display: inline-flex; align-items: center; gap: 0.25rem; min-width: 0; }
 .squad-profile-summary__facts :deep(svg) { flex: 0 0 auto; }
 .squad-profile-summary--compact { gap: 0.35rem; }
-.squad-profile-summary--member { --squad-profile-tone: var(--accent); --squad-profile-tone-soft: color-mix(in srgb, var(--accent) 11%, var(--surface)); --squad-profile-tone-line: color-mix(in srgb, var(--accent) 32%, var(--line)); gap: 0.6rem; padding: 0.7rem; border-left: 2px solid var(--squad-profile-tone); border-radius: 0 var(--radius-control) var(--radius-control) 0; background: var(--squad-profile-tone-soft); }
+.squad-profile-summary--member { --squad-profile-tone: var(--accent); --squad-profile-tone-soft: color-mix(in srgb, var(--accent) 11%, var(--surface)); --squad-profile-tone-line: color-mix(in srgb, var(--accent) 32%, var(--line)); gap: 0.6rem; }
 .squad-profile-summary--member.squad-profile-summary--china_optimized { --squad-profile-tone: var(--warning); --squad-profile-tone-soft: color-mix(in srgb, var(--warning) 11%, var(--surface)); --squad-profile-tone-line: color-mix(in srgb, var(--warning) 32%, var(--line)); }
 .squad-profile-summary--member.squad-profile-summary--international_network { --squad-profile-tone: #9ebddd; --squad-profile-tone-soft: color-mix(in srgb, #9ebddd 11%, var(--surface)); --squad-profile-tone-line: color-mix(in srgb, #9ebddd 32%, var(--line)); }
 .squad-profile-summary--member .squad-profile-summary__heading { align-items: flex-start; color: var(--text); }
@@ -81,5 +81,5 @@ const countryText = computed(() => {
 .squad-profile-summary--member .squad-profile-summary__facts { gap: 0.35rem; }
 .squad-profile-summary--member .squad-profile-summary__facts span { max-width: 100%; padding: 0.27rem 0.38rem; border: 1px solid var(--squad-profile-tone-line); border-radius: 7px; color: var(--text-muted); background: color-mix(in srgb, var(--squad-profile-tone-soft) 70%, var(--surface)); }
 .squad-profile-summary--member .squad-profile-summary__description { color: var(--text-muted); }
-.squad-profile-summary--member.squad-profile-summary--compact { gap: 0.45rem; padding: 0.55rem 0.6rem; }
+.squad-profile-summary--member.squad-profile-summary--compact { gap: 0.45rem; }
 </style>

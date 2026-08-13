@@ -19,6 +19,10 @@ function isSelected(id: string): boolean {
 function isIncluded(id: string): boolean {
   return props.includedIds.includes(id)
 }
+
+function profileClass(squad: SquadProduct): string {
+  return squad.profile ? `squad-option--${squad.profile.type}` : ''
+}
 </script>
 
 <template>
@@ -28,7 +32,7 @@ function isIncluded(id: string): boolean {
       <p>{{ $t('catalog.optionalSquadsHint') }}</p>
     </div>
     <div v-if="squads.length" v-auto-animate class="squad-grid">
-      <label v-for="squad in squads" :key="squad.id" class="squad-option" :class="{ 'squad-option--selected': isSelected(squad.id), 'squad-option--included': isIncluded(squad.id) }" :data-haptic="isIncluded(squad.id) ? undefined : 'light'">
+      <label v-for="squad in squads" :key="squad.id" class="squad-option" :class="[profileClass(squad), { 'squad-option--selected': isSelected(squad.id), 'squad-option--included': isIncluded(squad.id) }]" :data-haptic="isIncluded(squad.id) ? undefined : 'light'">
         <div class="squad-option__copy">
           <SquadProfileSummary :name="squad.name" :profile="squad.profile" :description="squad.description" presentation="member" compact />
           <StatusBadge v-if="isIncluded(squad.id)" tone="neutral" :label="$t('catalog.included')" />
@@ -52,5 +56,5 @@ function isIncluded(id: string): boolean {
 </template>
 
 <style scoped>
-.squad-option--included { color: var(--text-faint); border-color: var(--line); background: var(--canvas-soft); cursor: default; }
+.squad-option--included { color: var(--text-faint); border-color: var(--squad-profile-tone-line, var(--line)); background: var(--squad-profile-tone-soft, var(--canvas-soft)); cursor: default; }
 </style>

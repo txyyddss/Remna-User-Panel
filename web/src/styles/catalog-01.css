@@ -143,9 +143,20 @@
   transition: border-color 180ms var(--ease-out), background-color 180ms var(--ease-out);
 }
 
+.squad-option--broadband { --squad-profile-tone: var(--accent); --squad-profile-tone-soft: color-mix(in srgb, var(--accent) 11%, var(--surface)); --squad-profile-tone-line: color-mix(in srgb, var(--accent) 32%, var(--line)); }
+.squad-option--china_optimized { --squad-profile-tone: var(--warning); --squad-profile-tone-soft: color-mix(in srgb, var(--warning) 11%, var(--surface)); --squad-profile-tone-line: color-mix(in srgb, var(--warning) 32%, var(--line)); }
+.squad-option--international_network { --squad-profile-tone: #9ebddd; --squad-profile-tone-soft: color-mix(in srgb, #9ebddd 11%, var(--surface)); --squad-profile-tone-line: color-mix(in srgb, #9ebddd 32%, var(--line)); }
+
+.squad-option--broadband,
+.squad-option--china_optimized,
+.squad-option--international_network {
+  border-color: var(--squad-profile-tone-line);
+  background: var(--squad-profile-tone-soft);
+}
+
 .squad-option--selected {
-  border-color: #4a6d57;
-  background: #18231b;
+  border-color: var(--squad-profile-tone, #4a6d57);
+  background: var(--squad-profile-tone-soft, #18231b);
 }
 
 .squad-option__copy {
