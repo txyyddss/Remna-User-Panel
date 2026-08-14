@@ -62,7 +62,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.26.5
+          go-version: 1.26.6
           cache: true
           cache-dependency-path: go.sum
       - name: Download and verify modules
@@ -89,7 +89,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.26.5
+          go-version: 1.26.6
           cache: true
           cache-dependency-path: go.sum
       - name: Test all packages with race detector
