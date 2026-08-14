@@ -12,16 +12,19 @@ func TestCalculateUsageUsesAuthoritativeCurrentCounterAcrossCadences(t *testing.
 	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	currentUsed := int64(250)
 	tests := []struct {
-		name     string
-		strategy string
-		reset    time.Time
-		end      time.Time
+		name          string
+		strategy      string
+		reset         time.Time
+		end           time.Time
+		wantAllocated int64
+		wantUsed      int64
+		wantEligible  int64
 	}{
-		{name: "no reset", strategy: "NO_RESET", reset: start, end: start.AddDate(0, 0, 2)},
-		{name: "daily", strategy: "DAY", reset: start.AddDate(0, 0, 1), end: start.AddDate(0, 0, 2)},
-		{name: "weekly", strategy: "WEEK", reset: start.AddDate(0, 0, 7), end: start.AddDate(0, 0, 14)},
-		{name: "monthly", strategy: "MONTH", reset: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC), end: time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)},
-		{name: "rolling monthly", strategy: "MONTH_ROLLING", reset: start.AddDate(0, 0, 30), end: start.AddDate(0, 0, 60)},
+		{name: "no reset", strategy: "NO_RESET", reset: start, end: start.AddDate(0, 0, 2), wantAllocated: 1_000, wantUsed: 250, wantEligible: 750},
+		{name: "daily", strategy: "DAY", reset: start.AddDate(0, 0, 1), end: start.AddDate(0, 0, 2), wantAllocated: 2_000, wantUsed: 350, wantEligible: 1_650},
+		{name: "weekly", strategy: "WEEK", reset: start.AddDate(0, 0, 7), end: start.AddDate(0, 0, 14), wantAllocated: 2_000, wantUsed: 350, wantEligible: 1_650},
+		{name: "monthly", strategy: "MONTH", reset: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC), end: time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC), wantAllocated: 2_000, wantUsed: 350, wantEligible: 1_650},
+		{name: "rolling monthly", strategy: "MONTH_ROLLING", reset: start.AddDate(0, 0, 30), end: start.AddDate(0, 0, 60), wantAllocated: 2_000, wantUsed: 350, wantEligible: 1_650},
 	}
 	for _, test := range tests {
 		test := test
@@ -33,8 +36,8 @@ func TestCalculateUsageUsesAuthoritativeCurrentCounterAcrossCadences(t *testing.
 					{Date: start, Bytes: 100}, {Date: test.reset, Bytes: 900},
 				},
 			})
-			if summary.AllocatedBytes != 2_000 || summary.UsedBytes != 350 || summary.EligibleUnusedBytes != 1_650 {
-				t.Fatalf("summary = %+v, want allocated=2000 used=350 eligible=1650", summary)
+			if summary.AllocatedBytes != test.wantAllocated || summary.UsedBytes != test.wantUsed || summary.EligibleUnusedBytes != test.wantEligible {
+				t.Fatalf("summary = %+v, want allocated=%d used=%d eligible=%d", summary, test.wantAllocated, test.wantUsed, test.wantEligible)
 			}
 		})
 	}

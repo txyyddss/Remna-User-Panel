@@ -75,7 +75,8 @@ func (s *Store) SetAutoRenewal(ctx context.Context, userID, purchaseID string, e
 func (s *Store) DueAutoRenewals(ctx context.Context, now time.Time) ([]DueAutoRenewal, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT id,user_id FROM purchases WHERE auto_renew_enabled=1
 		AND status IN ('active','activating') AND valid_until<=?
-		AND NOT EXISTS (SELECT 1 FROM purchases successor WHERE successor.auto_renew_source_purchase_id=purchases.id)
+		AND NOT EXISTS (SELECT 1 FROM purchases successor WHERE successor.auto_renew_source_purchase_id=purchases.id
+			AND successor.status IN ('queued','activating','active'))
 		ORDER BY valid_until,id`, stamp(now))
 	if err != nil {
 		return nil, fmt.Errorf("list due automatic renewals: %w", err)

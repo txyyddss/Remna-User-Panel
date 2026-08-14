@@ -106,6 +106,16 @@ func (s *Service) ProcessDueAutoRenewals(ctx context.Context, now time.Time) err
 				statusErr = err
 			}
 		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		// Provider, database, and state-race errors are retryable. Disabling
+		// renewal here would turn a temporary failure into a permanent member
+		// setting change. Deterministic ineligibility and insufficient balance
+		// are the only failures that should disable the source term.
+		if statusErr != nil && status.IneligibleReason == nil && !errors.Is(statusErr, database.ErrInsufficientBalance) {
+			return statusErr
+		}
 		reason := autoRenewalFailureReason(status, statusErr)
 		if err := repository.MarkAutoRenewalFailed(ctx, candidate.PurchaseID, reason, now.UTC()); err != nil {
 			return err
