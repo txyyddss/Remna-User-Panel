@@ -82,7 +82,7 @@ function goToBalance(): void { void router.push({ path: '/home', query: { topUp:
     <UAlert v-if="error" color="warning" variant="soft" icon="i-ph-warning-circle" :description="error" />
     <USkeleton v-if="quoting" class="h-16" />
     <UButton v-if="needsBalance" block trailing-icon="i-ph-plus" :label="$t('catalog.addBalance')" data-haptic @click="goToBalance" />
-    <UButton v-else block :disabled="purchasing || !quote || quote.accessibleNodes.length === 0" :loading="purchasing" trailing-icon="i-ph-check" :label="purchasing ? $t('catalog.confirming') : $t('catalog.confirmPurchase')" data-haptic @click="emit('confirm')" />
+    <UButton v-else block class="catalog-checkout__confirm" :disabled="purchasing || !quote || quote.accessibleNodes.length === 0" :loading="purchasing" :label="purchasing ? $t('catalog.confirming') : $t('catalog.confirmPurchase')" data-haptic @click="emit('confirm')" />
   </section>
 </template>
 
@@ -94,4 +94,5 @@ function goToBalance(): void { void router.push({ path: '/home', query: { topUp:
 .catalog-checkout__line strong { overflow-wrap: anywhere; font-size: 0.8rem; }
 .catalog-checkout__total { display: grid; gap: 0.25rem; }
 .catalog-checkout__total strong { color: var(--accent); font-family: var(--font-mono); font-size: 1.3rem; }
+.catalog-checkout__confirm { justify-content: center; }
 </style>

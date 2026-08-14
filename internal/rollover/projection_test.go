@@ -27,6 +27,80 @@ func TestProjectUsageUsesNetPaidAndTermProjection(t *testing.T) {
 	}
 }
 
+func TestCalculateUsageClipsDateBucketsToEachResetPeriod(t *testing.T) {
+	t.Parallel()
+	start := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	reset := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name     string
+		strategy string
+		reset    time.Time
+		end      time.Time
+		usageDay time.Time
+		wantUsed int64
+	}{
+		{name: "daily boundary", strategy: "DAY", reset: reset, end: start.AddDate(0, 0, 1), usageDay: start, wantUsed: 240},
+		{name: "weekly boundary", strategy: "WEEK", reset: start.AddDate(0, 0, 3).Add(12 * time.Hour), end: start.AddDate(0, 0, 7), usageDay: start.AddDate(0, 0, 3), wantUsed: 240},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			purchase := model.Purchase{ValidFrom: start, ValidUntil: test.end}
+			resetAt := test.reset
+			summary := CalculateUsage(purchase, 0, UsageSnapshot{
+				LimitBytes: 1_000, Strategy: test.strategy, LastResetAt: &resetAt,
+				Daily: []DailyUsage{{Date: test.usageDay, Bytes: 240}},
+			})
+			if summary.AllocatedBytes != 1_000 || summary.UsedBytes != test.wantUsed || summary.EligibleUnusedBytes != 760 {
+				t.Fatalf("summary = %+v, want allocated=1000 used=%d eligible=760", summary, test.wantUsed)
+			}
+		})
+	}
+}
+
+func TestCalculateUsagePartialTermMatchesProjection(t *testing.T) {
+	t.Parallel()
+	start := time.Date(2026, 8, 1, 6, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 8, 2, 18, 0, 0, 0, time.UTC)
+	reset := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+	purchase := model.Purchase{ID: "partial-term", PriceTXBMinor: 1_000, ValidFrom: start, ValidUntil: end, RolloverMaxTXBMinor: 2_000}
+	snapshot := UsageSnapshot{LimitBytes: 1_000, Strategy: "DAY", LastResetAt: &reset}
+	summary := CalculateUsage(purchase, 0, snapshot)
+	projection := ProjectUsage(purchase, 0, snapshot, end)
+	if summary.AllocatedBytes != 1_500 || summary.UsedBytes != 0 || summary.EligibleUnusedBytes != 1_500 {
+		t.Fatalf("summary = %+v, want allocated=1500 used=0 eligible=1500", summary)
+	}
+	if projection.Term.AllocatedTrafficBytes != summary.AllocatedBytes || projection.Term.UsedTrafficBytes != summary.UsedBytes || projection.Term.EligibleUnusedBytes != summary.EligibleUnusedBytes {
+		t.Fatalf("projection term = %+v, summary = %+v", projection.Term, summary)
+	}
+}
+
+func TestCalculateUsageThresholdIsStrictPerPeriod(t *testing.T) {
+	t.Parallel()
+	start := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name         string
+		used         int64
+		wantEligible int64
+	}{
+		{name: "equal threshold", used: 500, wantEligible: 0},
+		{name: "above threshold", used: 499, wantEligible: 501},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			purchase := model.Purchase{ValidFrom: start, ValidUntil: start.AddDate(0, 0, 1)}
+			summary := CalculateUsage(purchase, 5_000, UsageSnapshot{
+				LimitBytes: 1_000, Strategy: "DAY", LastResetAt: &start,
+				Daily: []DailyUsage{{Date: start, Bytes: test.used}},
+			})
+			if summary.EligibleUnusedBytes != test.wantEligible {
+				t.Fatalf("eligible = %d, want %d", summary.EligibleUnusedBytes, test.wantEligible)
+			}
+		})
+	}
+}
+
 func TestProjectUsageSelectsLatestResetPeriodAndStrictThreshold(t *testing.T) {
 	start := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
 	asOf := time.Date(2026, 8, 3, 12, 0, 0, 0, time.UTC)

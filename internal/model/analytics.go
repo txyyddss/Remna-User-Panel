@@ -58,19 +58,22 @@ type RemnaNode struct {
 	ConsumptionMultiplier float64  `json:"consumptionMultiplier"`
 	ActiveInboundUUIDs    []string `json:"activeInboundUuids"`
 	Accessible            bool     `json:"accessible"`
+	ProviderName          string   `json:"providerName"`
+	ProviderFaviconURL    *string  `json:"providerFaviconUrl"`
 }
 
 // Dashboard combines local financial state with a briefly cached Remnawave snapshot.
 type Dashboard struct {
-	User              User        `json:"user"`
-	Balance           Money       `json:"balance"`
-	ActivePurchase    *Purchase   `json:"activePurchase"`
-	QueuedPurchase    *Purchase   `json:"queuedPurchase"`
-	Statistics        *Statistics `json:"statistics"`
-	SubscriptionURL   *string     `json:"subscriptionUrl"`
-	StatisticsStale   bool        `json:"statisticsStale"`
-	StatisticsWarning string      `json:"statisticsWarning"`
-	FetchedAt         time.Time   `json:"fetchedAt"`
+	User               User                `json:"user"`
+	Balance            Money               `json:"balance"`
+	ActivePurchase     *Purchase           `json:"activePurchase"`
+	QueuedPurchase     *Purchase           `json:"queuedPurchase"`
+	AutoRenewalFailure *AutoRenewalFailure `json:"autoRenewalFailure"`
+	Statistics         *Statistics         `json:"statistics"`
+	SubscriptionURL    *string             `json:"subscriptionUrl"`
+	StatisticsStale    bool                `json:"statisticsStale"`
+	StatisticsWarning  string              `json:"statisticsWarning"`
+	FetchedAt          time.Time           `json:"fetchedAt"`
 }
 
 // TopNode is an upstream node usage summary.

@@ -36,6 +36,7 @@ const entitlement: Purchase = {
   validFrom: '2026-08-07T00:00:00Z',
   validUntil: '2026-09-06T00:00:00Z',
   status: 'cancelled',
+  autoRenewEnabled: false,
   trafficLimitBytes: '107374182400',
   resetStrategy: 'MONTH',
   squadUuids: [],

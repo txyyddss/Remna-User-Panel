@@ -45,9 +45,17 @@ func calculateUsageRange(threshold int, snapshot UsageSnapshot, anchor, start, e
 		}
 		allowance := proportionalBytes(snapshot.LimitBytes, overlap.Nanoseconds(), full.Nanoseconds())
 		periodUsed := int64(0)
-		for day := dayStart(period.start); day.Before(period.end); day = day.AddDate(0, 0, 1) {
+		windowStart := period.start
+		if windowStart.Before(start) {
+			windowStart = start
+		}
+		windowEnd := period.end
+		if windowEnd.After(end) {
+			windowEnd = end
+		}
+		for day := dayStart(windowStart); day.Before(windowEnd); day = day.AddDate(0, 0, 1) {
 			dayEnd := day.AddDate(0, 0, 1)
-			portion := overlapDuration(day, dayEnd, start, end)
+			portion := overlapDuration(day, dayEnd, windowStart, windowEnd)
 			if portion <= 0 {
 				continue
 			}

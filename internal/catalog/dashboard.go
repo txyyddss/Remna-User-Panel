@@ -19,6 +19,13 @@ func (s *Service) Dashboard(ctx context.Context, user model.User) (model.Dashboa
 		return model.Dashboard{}, err
 	}
 	dashboard := model.Dashboard{User: user, Balance: balance, ActivePurchase: active, QueuedPurchase: queued, FetchedAt: now}
+	if repository, ok := s.repository.(automaticRenewalFailureRepository); ok {
+		failure, failureErr := repository.AutoRenewalFailure(ctx, user.ID)
+		if failureErr != nil {
+			return model.Dashboard{}, failureErr
+		}
+		dashboard.AutoRenewalFailure = failure
+	}
 	if user.RemnaUserID == nil {
 		return dashboard, nil
 	}

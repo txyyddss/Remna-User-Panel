@@ -11,8 +11,7 @@ import type {
   PaymentOrder,
   Purchase,
   PurchaseQuote,
-	RenewalBatch,
-	RenewalQuote,
+  AutoRenewal,
   RolloverProjection,
   Session,
   SquadProduct,
@@ -29,6 +28,7 @@ type PurchaseRequest = components['schemas']['PurchaseRequest']
 type BalanceAdjustmentRequest = components['schemas']['BalanceAdjustmentRequest']
 type ReasonRequest = components['schemas']['ReasonRequest']
 type RefundRequest = components['schemas']['RefundRequest']
+type AutoRenewalUpdate = components['schemas']['AutoRenewalUpdate']
 type GeneratedSquadProductWrite = components['schemas']['SquadProductWrite']
 export interface AdminPaymentProfile {
   id: string
@@ -107,11 +107,9 @@ export const api = {
     method: 'POST',
   }),
   getPurchaseRollover: (purchaseId: string) => request<RolloverProjection>(`/api/v1/purchases/${encodeURIComponent(purchaseId)}/rollover`),
-  quoteRenewal: (purchaseId: string, termCount: number) => request<RenewalQuote>(`/api/v1/purchases/${encodeURIComponent(purchaseId)}/renew/quote`, {
-    method: 'POST', body: { termCount },
-  }),
-  renewPurchase: (purchaseId: string, termCount: number, idempotencyKey: string) => request<RenewalBatch>(`/api/v1/purchases/${encodeURIComponent(purchaseId)}/renew`, {
-    method: 'POST', headers: { 'Idempotency-Key': idempotencyKey }, body: { termCount },
+  getAutoRenewal: (purchaseId: string) => request<AutoRenewal>(`/api/v1/purchases/${encodeURIComponent(purchaseId)}/auto-renewal`),
+  setAutoRenewal: (purchaseId: string, enabled: boolean) => request<AutoRenewal>(`/api/v1/purchases/${encodeURIComponent(purchaseId)}/auto-renewal`, {
+    method: 'PUT', body: { enabled } satisfies AutoRenewalUpdate,
   }),
   revokeSubscription: () => request<{ subscriptionUrl: string }>('/api/v1/subscription/revoke', {
     method: 'POST',

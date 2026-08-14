@@ -5,6 +5,7 @@ import type { SquadProfile } from '@/api/types'
 import MarkdownContent from '@/components/common/MarkdownContent.vue'
 import { useI18n } from '@/i18n'
 import { countryName, profileTypeMeta } from './profile'
+import CarrierLogo from './CarrierLogo.vue'
 
 const props = withDefaults(defineProps<{
   name?: string
@@ -47,9 +48,9 @@ const countryText = computed(() => {
       <span v-if="profile.type === 'broadband'"><UIcon name="i-ph-arrows-clockwise" />{{ profile.dynamic ? t('squadProfile.dynamic') : t('squadProfile.static') }}</span>
       <span v-if="profile.type === 'broadband'"><UIcon name="i-ph-map-pin" />{{ profile.location }}</span>
       <template v-else-if="profile.type === 'china_optimized'">
-        <span><UIcon name="i-ph-broadcast" />CT {{ profile.ct }}</span>
-        <span><UIcon name="i-ph-broadcast" />CU {{ profile.cu }}</span>
-        <span><UIcon name="i-ph-broadcast" />CM {{ profile.cm }}</span>
+        <span class="squad-profile-summary__carrier-route"><CarrierLogo carrier="telecom" :label="t('squadProfile.carriers.chinaTelecom')" />{{ profile.ct }}</span>
+        <span class="squad-profile-summary__carrier-route"><CarrierLogo carrier="unicom" :label="t('squadProfile.carriers.chinaUnicom')" />{{ profile.cu }}</span>
+        <span class="squad-profile-summary__carrier-route"><CarrierLogo carrier="mobile" :label="t('squadProfile.carriers.chinaMobile')" />{{ profile.cm }}</span>
         <span><UIcon name="i-ph-gauge" />{{ portText }}</span>
         <span><UIcon name="i-ph-map-pin" />{{ countryText }}</span>
       </template>
@@ -69,7 +70,8 @@ const countryText = computed(() => {
 .squad-profile-summary__heading-copy { display: grid; min-width: 0; gap: 0.08rem; }
 .squad-profile-summary__heading-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .squad-profile-summary__facts { display: flex; flex-wrap: wrap; gap: 0.35rem 0.7rem; color: var(--text-faint); font-size: 0.68rem; line-height: 1.45; }
-.squad-profile-summary__facts span { display: inline-flex; align-items: center; gap: 0.25rem; min-width: 0; }
+.squad-profile-summary__facts > span { display: inline-flex; align-items: center; gap: 0.25rem; min-width: 0; }
+.squad-profile-summary__carrier-route { font-weight: 600; }
 .squad-profile-summary__facts :deep(svg) { flex: 0 0 auto; }
 .squad-profile-summary--compact { gap: 0.35rem; }
 .squad-profile-summary--member { --squad-profile-tone: var(--accent); --squad-profile-tone-soft: color-mix(in srgb, var(--accent) 11%, var(--surface)); --squad-profile-tone-line: color-mix(in srgb, var(--accent) 32%, var(--line)); gap: 0.6rem; }

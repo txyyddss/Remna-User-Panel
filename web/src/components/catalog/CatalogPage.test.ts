@@ -31,6 +31,7 @@ const combo = {
 
 async function mountPage(purchase: object | null, step = 5, confirmPurchase = vi.fn()) {
   const refreshQuote = vi.fn().mockResolvedValue(true)
+  const autoRenewalBlocked = shallowRef(false)
   catalogMock.useCatalog.mockReturnValue({
     catalog: shallowRef({ combos: [combo], addons: [] }),
     balance: shallowRef({ currency: 'TXB', minor: '1000', display: '10.00 TXB' }),
@@ -40,6 +41,8 @@ async function mountPage(purchase: object | null, step = 5, confirmPurchase = vi
     error: shallowRef(null),
     purchase: shallowRef(purchase),
     quote: shallowRef(null),
+    quoteUsable: shallowRef(false),
+    autoRenewalBlocked,
     selectedComboId: shallowRef(combo.id),
     selectedSquadIds: shallowRef<string[]>([]),
     selectedCouponGrantId: shallowRef<string | null>(null),
@@ -63,7 +66,10 @@ async function mountPage(purchase: object | null, step = 5, confirmPurchase = vi
   sessionStorage.setItem('txc-catalog-step:user-1', String(step))
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: [{ path: '/catalog', component: { template: '<div />' } }],
+    routes: [
+      { path: '/catalog', component: { template: '<div />' } },
+      { path: '/home', component: { template: '<div />' } },
+    ],
   })
   await router.push('/catalog')
   await router.isReady()
@@ -74,7 +80,7 @@ async function mountPage(purchase: object | null, step = 5, confirmPurchase = vi
         CatalogConfirmation: { template: '<div data-test="catalog-confirmation" />' },
         CatalogCheckout: { template: '<div role="button" tabindex="0" data-test="confirm-purchase" @click="$emit(\'confirm\')" />' },
         CatalogCouponStep: { template: '<div data-test="catalog-coupon-step" />' },
-        CatalogFlowControls: { template: '<div data-test="catalog-flow-controls" />' },
+        CatalogFlowControls: { props: ['nextDisabled'], template: '<div data-test="catalog-flow-controls" :data-disabled="String(nextDisabled)" />' },
         CatalogFlowProgress: { template: '<div data-test="catalog-flow-progress" />' },
         CatalogNodes: true,
         SquadSelector: true,
@@ -82,7 +88,7 @@ async function mountPage(purchase: object | null, step = 5, confirmPurchase = vi
     },
   })
   await nextTick()
-  return { refreshQuote, wrapper }
+  return { autoRenewalBlocked, refreshQuote, router, wrapper }
 }
 
 describe('CatalogPage quote restoration', () => {
@@ -121,6 +127,29 @@ describe('CatalogPage quote restoration', () => {
 
     expect(confirmPurchase).toHaveBeenCalledOnce()
     expect(sessionStorage.getItem('txc-catalog-step:user-1')).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('disables Coupon-step continuation without a current usable quote', async () => {
+    const { wrapper } = await mountPage(null, 4)
+
+    expect(wrapper.get('[data-test="catalog-flow-controls"]').attributes('data-disabled')).toBe('true')
+    wrapper.unmount()
+  })
+
+  it('returns Home when the catalog reports automatic-renewal blocking', async () => {
+    const { autoRenewalBlocked, router, wrapper } = await mountPage(null, 1)
+
+    await new Promise<void>((resolve) => {
+      const remove = router.afterEach((to) => {
+        if (to.path !== '/home') return
+        remove()
+        resolve()
+      })
+      autoRenewalBlocked.value = true
+    })
+
+    expect(router.currentRoute.value.query.autoRenewBlocked).toBe('1')
     wrapper.unmount()
   })
 })

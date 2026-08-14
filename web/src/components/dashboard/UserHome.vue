@@ -6,6 +6,7 @@ import InlineNotice from '@/components/common/InlineNotice.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import LanguageControl from '@/components/layout/LanguageControl.vue'
 import { useDashboard } from '@/composables/useDashboard'
+import { useI18n } from '@/i18n'
 import BalanceHero from './BalanceHero.vue'
 import ComingSoonLinks from './ComingSoonLinks.vue'
 import EntitlementSummary from './EntitlementSummary.vue'
@@ -17,8 +18,17 @@ const revoked = shallowRef(false)
 const queuedCancellationNotice = shallowRef(false)
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 const reissueOrderId = computed(() => typeof route.query.reissue === 'string' && route.query.reissue ? route.query.reissue : undefined)
 const topUpRequested = computed(() => route.query.topUp === '1' && !reissueOrderId.value)
+const catalogBlocked = computed(() => route.query.autoRenewBlocked === '1')
+const autoRenewalFailureMessage = computed(() => {
+  const reason = dashboard.value?.autoRenewalFailure?.reason
+  if (!reason) return null
+  const key = `home.autoRenewalReason.${reason}`
+  const localized = t(key)
+  return localized === key ? t('home.autoRenewalFailureGeneric') : localized
+})
 
 watch(revoking, (next, previous) => {
   if (previous && !next) revoked.value = true
@@ -33,7 +43,7 @@ async function handleQueuedCancelled(): Promise<void> {
   await load({ quiet: true })
 }
 
-async function handleRenewed(): Promise<void> {
+async function handleAutoRenewalChanged(): Promise<void> {
   await load({ quiet: true })
 }
 
@@ -71,6 +81,8 @@ function consumeReissueRequest(): void {
         @reissue-request-consumed="consumeReissueRequest"
       />
       <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
+      <InlineNotice v-if="catalogBlocked" tone="warning">{{ $t('home.autoRenewalCatalogBlocked') }}</InlineNotice>
+      <InlineNotice v-if="autoRenewalFailureMessage" tone="warning" :title="$t('home.autoRenewalFailureTitle')">{{ autoRenewalFailureMessage }}</InlineNotice>
       <div class="home-stack">
         <SubscriptionPanel
           :subscription-url="dashboard.subscriptionUrl"
@@ -95,7 +107,7 @@ function consumeReissueRequest(): void {
           :queued="dashboard.queuedPurchase"
           :squad-names="activeSquadNames"
           @queued-cancelled="handleQueuedCancelled"
-          @renewed="handleRenewed"
+          @auto-renewal-changed="handleAutoRenewalChanged"
         />
         <ComingSoonLinks />
       </div>

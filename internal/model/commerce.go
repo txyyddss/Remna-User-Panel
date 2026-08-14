@@ -52,29 +52,31 @@ type Combo struct {
 
 // Purchase represents an active, queued, or historical combo term.
 type Purchase struct {
-	ID                      string    `json:"id"`
-	UserID                  string    `json:"-"`
-	ComboID                 string    `json:"comboId"`
-	ComboName               string    `json:"comboName"`
-	PriceTXBMinor           int64     `json:"-"`
-	Price                   Money     `json:"price"`
-	GrossPriceTXBMinor      int64     `json:"-"`
-	GrossPrice              Money     `json:"grossPrice"`
-	CouponDiscountTXBMinor  int64     `json:"-"`
-	CouponDiscount          Money     `json:"couponDiscount"`
-	CouponGrantID           *string   `json:"couponGrantId"`
-	ValidFrom               time.Time `json:"validFrom"`
-	ValidUntil              time.Time `json:"validUntil"`
-	Status                  string    `json:"status"`
-	TrafficLimitBytes       int64     `json:"-"`
-	TrafficLimit            string    `json:"trafficLimitBytes"`
-	ResetStrategy           string    `json:"resetStrategy"`
-	SquadUUIDs              []string  `json:"squadUuids"`
-	RolloverMinRemainingBPS int       `json:"rolloverMinRemainingBps"`
-	RolloverMaxTXBMinor     int64     `json:"rolloverMaxTxbMinor,string"`
-	RolloverMax             Money     `json:"rolloverMax"`
-	CreatedAt               time.Time `json:"createdAt"`
-	UpdatedAt               time.Time `json:"updatedAt"`
+	ID                        string    `json:"id"`
+	UserID                    string    `json:"-"`
+	ComboID                   string    `json:"comboId"`
+	ComboName                 string    `json:"comboName"`
+	PriceTXBMinor             int64     `json:"-"`
+	Price                     Money     `json:"price"`
+	GrossPriceTXBMinor        int64     `json:"-"`
+	GrossPrice                Money     `json:"grossPrice"`
+	CouponDiscountTXBMinor    int64     `json:"-"`
+	CouponDiscount            Money     `json:"couponDiscount"`
+	CouponGrantID             *string   `json:"couponGrantId"`
+	ValidFrom                 time.Time `json:"validFrom"`
+	ValidUntil                time.Time `json:"validUntil"`
+	Status                    string    `json:"status"`
+	AutoRenewEnabled          bool      `json:"autoRenewEnabled"`
+	RecurringDiscountAttached bool      `json:"-"`
+	TrafficLimitBytes         int64     `json:"-"`
+	TrafficLimit              string    `json:"trafficLimitBytes"`
+	ResetStrategy             string    `json:"resetStrategy"`
+	SquadUUIDs                []string  `json:"squadUuids"`
+	RolloverMinRemainingBPS   int       `json:"rolloverMinRemainingBps"`
+	RolloverMaxTXBMinor       int64     `json:"rolloverMaxTxbMinor,string"`
+	RolloverMax               Money     `json:"rolloverMax"`
+	CreatedAt                 time.Time `json:"createdAt"`
+	UpdatedAt                 time.Time `json:"updatedAt"`
 }
 
 // PurchaseRollover is the durable expiry settlement for one paid term.
@@ -133,31 +135,6 @@ type RolloverWindow struct {
 	Rollover              Money     `json:"rollover"`
 	TrafficToMaximumBytes *int64    `json:"trafficToMaximumBytes,omitempty,string"`
 	MaximumReachable      bool      `json:"maximumReachable"`
-}
-
-// RenewalQuote is the server-priced preview for a contiguous renewal batch.
-type RenewalQuote struct {
-	PurchaseID      string      `json:"purchaseId"`
-	ComboID         string      `json:"comboId"`
-	TermCount       int         `json:"termCount"`
-	GrossPrice      Money       `json:"grossPrice"`
-	Discount        Money       `json:"discount"`
-	PricePerTerm    Money       `json:"pricePerTerm"`
-	TotalPrice      Money       `json:"totalPrice"`
-	CouponGrantID   *string     `json:"couponGrantId"`
-	EffectiveAt     time.Time   `json:"effectiveAt"`
-	ExpiresAt       time.Time   `json:"expiresAt"`
-	AddonSquadUUIDs []string    `json:"addonSquadUuids"`
-	AccessibleNodes []RemnaNode `json:"accessibleNodes"`
-}
-
-// RenewalBatch is the result of one atomic renewal debit.
-type RenewalBatch struct {
-	ID         string     `json:"id"`
-	PurchaseID string     `json:"purchaseId"`
-	TermCount  int        `json:"termCount"`
-	TotalPrice Money      `json:"totalPrice"`
-	Purchases  []Purchase `json:"purchases"`
 }
 
 // CatalogNode is the display-only node identity and multiplier metadata used

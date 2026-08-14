@@ -45,8 +45,14 @@ func (a remnaAdapter) ListCatalogNodes(ctx context.Context) ([]catalog.RemoteNod
 		for _, inbound := range node.ConfigProfile.ActiveInbounds {
 			inbounds = append(inbounds, inbound.UUID)
 		}
+		providerName := ""
+		var providerFaviconURL *string
+		if node.Provider != nil {
+			providerName, providerFaviconURL = node.Provider.Name, node.Provider.FaviconLink
+		}
 		result = append(result, catalog.RemoteNode{UUID: node.UUID, Name: node.Name, CountryCode: node.CountryCode,
-			ConsumptionMultiplier: node.ConsumptionMultiplier, ActiveInboundUUIDs: inbounds, Disabled: node.IsDisabled})
+			ConsumptionMultiplier: node.ConsumptionMultiplier, ActiveInboundUUIDs: inbounds, Disabled: node.IsDisabled,
+			ProviderName: providerName, ProviderFaviconURL: providerFaviconURL})
 	}
 	return result, nil
 }

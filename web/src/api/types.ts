@@ -50,6 +50,8 @@ export type CatalogNode = DeepReadonly<components['schemas']['CatalogNode']>
 export type Catalog = DeepReadonly<components['schemas']['Catalog']>
 export type EntitlementStatus = components['schemas']['EntitlementStatus']
 export type Purchase = DeepReadonly<components['schemas']['Purchase']>
+export type AutoRenewal = DeepReadonly<components['schemas']['AutoRenewal']>
+export type AutoRenewalFailure = DeepReadonly<components['schemas']['AutoRenewalFailure']>
 export type RolloverWindow = DeepReadonly<components['schemas']['RolloverWindow']>
 export type RolloverProjection = DeepReadonly<components['schemas']['RolloverProjection']>
 export interface PurchaseQuote {
@@ -64,35 +66,7 @@ export interface PurchaseQuote {
   addonSquadUuids: string[]
   accessibleNodes: RemnaNode[]
 }
-export interface RenewalQuote {
-  purchaseId: string
-  comboId: string
-  termCount: number
-  grossPrice: Money
-  discount: Money
-  pricePerTerm: Money
-  totalPrice: Money
-  couponGrantId: string | null
-  effectiveAt: RFC3339
-  expiresAt: RFC3339
-  addonSquadUuids: string[]
-  accessibleNodes: RemnaNode[]
-}
-export interface RenewalBatch {
-  id: string
-  purchaseId: string
-  termCount: number
-  totalPrice: Money
-  purchases: Purchase[]
-}
-export interface RemnaNode {
-  uuid: string
-  name: string
-  countryCode: string
-  consumptionMultiplier: number
-  activeInboundUuids: string[]
-  accessible: boolean
-}
+export type RemnaNode = DeepReadonly<components['schemas']['RemnaNode']>
 export type TopNode = DeepReadonly<components['schemas']['TopNode']>
 export type UsageStatistics = DeepReadonly<components['schemas']['Statistics']>
 export type Dashboard = DeepReadonly<components['schemas']['Dashboard']>

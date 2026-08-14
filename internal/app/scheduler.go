@@ -24,6 +24,9 @@ func (a *Application) runScheduler(ctx context.Context) {
 	if err := a.store.RecoverOutbox(ctx, startupNow, startupNow); err != nil {
 		a.logger.Error("startup outbox recovery failed", "error", err)
 	}
+	if err := a.catalog.ProcessDueAutoRenewals(ctx, startupNow); err != nil {
+		a.logger.Error("startup automatic renewal scan failed", "error", err)
+	}
 	if err := a.store.EnqueueDueEntitlementTransitions(ctx, startupNow); err != nil {
 		a.logger.Error("startup entitlement transition scan failed", "error", err)
 	}
@@ -41,6 +44,9 @@ func (a *Application) runScheduler(ctx context.Context) {
 		case now := <-transitionTicker.C:
 			if err := a.store.RecoverOutbox(ctx, now.UTC().Add(-2*time.Minute), now.UTC()); err != nil {
 				a.logger.Error("outbox lease recovery failed", "error", err)
+			}
+			if err := a.catalog.ProcessDueAutoRenewals(ctx, now.UTC()); err != nil {
+				a.logger.Error("automatic renewal scan failed", "error", err)
 			}
 			if err := a.store.EnqueueDueEntitlementTransitions(ctx, now.UTC()); err != nil {
 				a.logger.Error("entitlement transition scan failed", "error", err)

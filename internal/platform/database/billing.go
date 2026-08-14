@@ -90,9 +90,9 @@ func (s *Store) CreatePurchase(ctx context.Context, input PurchaseInput, now tim
 	if input.CouponGrantID != "" {
 		couponGrantID = input.CouponGrantID
 	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO purchases(id,user_id,combo_id,charged_txb_minor,valid_from,valid_until,status,coupon_grant_id,gross_price_txb_minor,coupon_discount_txb_minor,idempotency_key,request_fingerprint,created_at,updated_at)
-		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, purchaseID, input.UserID, combo.ID, netPrice, stamp(validFrom), stamp(validUntil), status,
-		couponGrantID, quote.GrossPriceTXBMinor, discount.DiscountMinor, input.IdempotencyKey, fingerprint, stamp(now), stamp(now))
+	_, err = tx.ExecContext(ctx, `INSERT INTO purchases(id,user_id,combo_id,charged_txb_minor,valid_from,valid_until,status,coupon_grant_id,gross_price_txb_minor,coupon_discount_txb_minor,auto_renew_enabled,recurring_discount_attached,idempotency_key,request_fingerprint,created_at,updated_at)
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, purchaseID, input.UserID, combo.ID, netPrice, stamp(validFrom), stamp(validUntil), status,
+		couponGrantID, quote.GrossPriceTXBMinor, discount.DiscountMinor, boolInt(status == "activating"), boolInt(discount.Recurring), input.IdempotencyKey, fingerprint, stamp(now), stamp(now))
 	if err != nil {
 		return model.Purchase{}, fmt.Errorf("insert purchase: %w", err)
 	}

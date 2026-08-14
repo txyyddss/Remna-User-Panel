@@ -85,7 +85,12 @@
     "rollover": "Rollover",
     "rolloverSummary": "Threshold {threshold}% · cap {cap}",
     "reviewAction": "Final purchase",
-    "renewalTerms": "Renewal terms"
+    "renewalTerms": "Renewal terms",
+    "full": "Full",
+    "couponQuoteRefreshing": "Refreshing server quote…",
+    "providerUnavailable": "Provider unavailable",
+    "providerIconAlt": "Provider icon for {name}",
+    "providerIconFallback": "Provider icon unavailable"
   },
   "amount": {
     "hint": "Use up to 2 decimals.",

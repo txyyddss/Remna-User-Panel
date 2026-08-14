@@ -17,16 +17,23 @@ type NodeInbound struct {
 	UUID string `json:"uuid"`
 }
 
+// NodeProvider is the display-safe provider identity returned with a live node.
+type NodeProvider struct {
+	Name        string  `json:"name"`
+	FaviconLink *string `json:"faviconLink"`
+}
+
 // Node is the documented subset required to map node selections to squad
 // inbounds. Links and other volatile upstream properties are intentionally not
 // represented or persisted.
 
 type Node struct {
-	UUID                  string  `json:"uuid"`
-	Name                  string  `json:"name"`
-	CountryCode           string  `json:"countryCode"`
-	ConsumptionMultiplier float64 `json:"consumptionMultiplier"`
-	IsDisabled            bool    `json:"isDisabled"`
+	UUID                  string        `json:"uuid"`
+	Name                  string        `json:"name"`
+	CountryCode           string        `json:"countryCode"`
+	ConsumptionMultiplier float64       `json:"consumptionMultiplier"`
+	IsDisabled            bool          `json:"isDisabled"`
+	Provider              *NodeProvider `json:"provider"`
 	ConfigProfile         struct {
 		ActiveInbounds []NodeInbound `json:"activeInbounds"`
 	} `json:"configProfile"`

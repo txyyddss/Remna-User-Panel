@@ -30,8 +30,7 @@ paths:
   /api/v1/purchases: { $ref: './paths/api-v1-purchases.yaml' }
   /api/v1/purchases/{id}/cancel: { $ref: './paths/api-v1-purchases-id-cancel.yaml' }
   /api/v1/purchases/{id}/rollover: { $ref: './paths/api-v1-purchases-id-rollover.yaml' }
-  /api/v1/purchases/{id}/renew/quote: { $ref: './paths/api-v1-purchases-id-renew-quote.yaml' }
-  /api/v1/purchases/{id}/renew: { $ref: './paths/api-v1-purchases-id-renew.yaml' }
+  /api/v1/purchases/{id}/auto-renewal: { $ref: './paths/api-v1-purchases-id-auto-renewal.yaml' }
   /api/v1/subscription/revoke: { $ref: './paths/api-v1-subscription-revoke.yaml' }
   /api/v1/balance: { $ref: './paths/api-v1-balance.yaml' }
   /api/v1/ledger: { $ref: './paths/api-v1-ledger.yaml' }
@@ -206,9 +205,9 @@ components:
     PaymentProvider: { $ref: './components/schemas/schemas-04.yaml#/PaymentProvider' }
     PaymentStatus: { $ref: './components/schemas/schemas-04.yaml#/PaymentStatus' }
     PaymentOrderRequest: { $ref: './components/schemas/schemas-04.yaml#/PaymentOrderRequest' }
-    RenewalRequest: { $ref: './components/schemas/schemas-15.yaml#/RenewalRequest' }
-    RenewalQuote: { $ref: './components/schemas/schemas-15.yaml#/RenewalQuote' }
-    RenewalBatch: { $ref: './components/schemas/schemas-15.yaml#/RenewalBatch' }
+    AutoRenewal: { $ref: './components/schemas/schemas-15.yaml#/AutoRenewal' }
+    AutoRenewalUpdate: { $ref: './components/schemas/schemas-15.yaml#/AutoRenewalUpdate' }
+    AutoRenewalFailure: { $ref: './components/schemas/schemas-15.yaml#/AutoRenewalFailure' }
     RolloverWindow: { $ref: './components/schemas/schemas-16.yaml#/RolloverWindow' }
     RolloverProjection: { $ref: './components/schemas/schemas-16.yaml#/RolloverProjection' }
     PaymentProfile: { $ref: './components/schemas/schemas-15.yaml#/PaymentProfile' }

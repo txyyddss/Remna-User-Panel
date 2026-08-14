@@ -82,7 +82,7 @@ func (s *Store) finalizeRolloverUsage(ctx context.Context, purchaseID string, su
 		remaining = 0
 	}
 	eligible := summary.EligibleUnusedBytes
-	if summary.AlgorithmVersion != "cadence-v1" && !strictlyAboveBPS(remaining, summary.AllocatedBytes, rollover.MinimumRemainingBPS) {
+	if !isCadenceAlgorithm(summary.AlgorithmVersion) && !strictlyAboveBPS(remaining, summary.AllocatedBytes, rollover.MinimumRemainingBPS) {
 		eligible = 0
 	}
 	credit := int64(0)
@@ -162,3 +162,12 @@ func (s *Store) finalizeRolloverUsage(ctx context.Context, purchaseID string, su
 }
 
 const rolloverSelect = `SELECT purchase_id,status,traffic_limit_bytes,allocated_traffic_bytes,used_traffic_bytes,eligible_unused_bytes,remaining_traffic_bytes,minimum_remaining_bps,maximum_txb_minor,net_paid_txb_minor,credited_txb_minor,exception_code,attempts,created_at,updated_at,completed_at,algorithm_version FROM purchase_rollovers`
+
+func isCadenceAlgorithm(version string) bool {
+	switch version {
+	case "cadence-v1", "cadence-v2":
+		return true
+	default:
+		return false
+	}
+}

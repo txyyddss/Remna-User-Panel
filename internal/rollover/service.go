@@ -134,7 +134,7 @@ func (s *Service) HandleOutbox(ctx context.Context, job model.OutboxJob) error {
 	return err
 }
 
-const UsageAlgorithmVersion = "cadence-v1"
+const UsageAlgorithmVersion = "cadence-v2"
 
 // CalculateUsage derives cadence allowances from daily upstream data without
 // retaining the raw provider series.

@@ -77,6 +77,28 @@ describe('catalog squad selection', () => {
     scope.stop()
   })
 
+  it('does not select a full paid add-on', async () => {
+    const full = { ...squad('1'), stockRemaining: 0 }
+    const catalog = {
+      addons: [full],
+      nodes: [],
+      combos: [
+        { id: 'combo-a', name: 'A', description: '', price: money('1000'), validityDays: 30, trafficLimitBytes: '1', resetStrategy: 'MONTH', includedSquads: [], active: true, rolloverMinRemainingBps: 0, rolloverMaxTxbMinor: '0', rolloverMax: money('0'), createdAt: '2026-08-08T00:00:00Z', updatedAt: '2026-08-08T00:00:00Z' },
+      ],
+    } satisfies Catalog
+    getCatalog.mockResolvedValue(catalog)
+    getBalance.mockResolvedValue({ balance: money('5000'), paymentMethods: [] })
+    getCouponWallet.mockResolvedValue({ items: [] })
+    const scope = effectScope()
+    const state = scope.run(() => useCatalog())!
+    await state.load()
+
+    state.toggleSquad(full.id)
+
+    expect(state.selectedSquadIds.value).toEqual([])
+    scope.stop()
+  })
+
   it('reuses one purchase idempotency key after an ambiguous failed attempt', async () => {
     const addon = squad('1')
     const catalog = {

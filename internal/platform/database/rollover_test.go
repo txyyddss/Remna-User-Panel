@@ -5,6 +5,8 @@ import (
 	"math"
 	"testing"
 	"time"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/model"
 )
 
 func TestFinalizeRolloverFormulaThresholdCapAndIdempotency(t *testing.T) {
@@ -119,5 +121,47 @@ func TestFinalizeRolloverBalanceOverflowRollsBack(t *testing.T) {
 	stored, err := store.PurchaseByID(ctx, purchase.ID)
 	if err != nil || stored.Status == "expired" {
 		t.Fatalf("purchase after rollback = (%+v, %v)", stored, err)
+	}
+}
+
+func TestFinalizeRolloverUsageAcceptsCadenceVersions(t *testing.T) {
+	t.Parallel()
+	for index, version := range []string{"cadence-v1", "cadence-v2"} {
+		index, version := index, version
+		t.Run(version, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			store := newTestStore(t)
+			user := createTestUser(t, store, int64(26_300+index))
+			combo, err := store.SaveCombo(ctx, ComboInput{
+				Name: "cadence " + version, PriceTXBMinor: 1_000, ValidityDays: 1, TrafficLimitBytes: 2_000,
+				ResetStrategy: "DAY", Active: true, RolloverMinRemainingBPS: 5_000, RolloverMaxTXBMinor: 1_000,
+			})
+			if err != nil {
+				t.Fatalf("SaveCombo(): %v", err)
+			}
+			if _, err := store.AdjustBalance(ctx, user.ID, 1_000, "seed-"+version, "test", time.Now()); err != nil {
+				t.Fatalf("AdjustBalance(): %v", err)
+			}
+			purchase, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID, IdempotencyKey: "cadence-" + version}, time.Now())
+			if err != nil {
+				t.Fatalf("CreatePurchase(): %v", err)
+			}
+			if err := store.EnqueueDueEntitlementTransitions(ctx, purchase.ValidUntil); err != nil {
+				t.Fatalf("EnqueueDueEntitlementTransitions(): %v", err)
+			}
+			if err := store.MarkRolloverProcessing(ctx, purchase.ID, purchase.ValidUntil); err != nil {
+				t.Fatalf("MarkRolloverProcessing(): %v", err)
+			}
+			settled, err := store.FinalizeRolloverUsage(ctx, purchase.ID, model.RolloverUsageSummary{
+				AllocatedBytes: 2_000, UsedBytes: 1_300, EligibleUnusedBytes: 1_000, AlgorithmVersion: version,
+			}, "", purchase.ValidUntil)
+			if err != nil {
+				t.Fatalf("FinalizeRolloverUsage(): %v", err)
+			}
+			if settled.CreditedTXBMinor != 500 || settled.AlgorithmVersion != version {
+				t.Fatalf("settled = %+v, want credit=500 version=%s", settled, version)
+			}
+		})
 	}
 }

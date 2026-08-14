@@ -25,6 +25,11 @@
     "ct": "CT route",
     "cu": "CU route",
     "cm": "CM route",
+    "carriers": {
+      "chinaTelecom": "China Telecom",
+      "chinaUnicom": "China Unicom",
+      "chinaMobile": "China Mobile"
+    },
     "carrierPlaceholder": "Carrier route",
     "upstreamCarriers": "Upstream carriers",
     "upstreamCarriersHint": "Separate multiple carriers with commas.",

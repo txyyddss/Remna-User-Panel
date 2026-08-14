@@ -30,6 +30,8 @@ const {
   error,
   purchase,
   quote,
+  quoteUsable,
+  autoRenewalBlocked,
   selectedComboId,
   selectedSquadIds,
   selectedCouponGrantId,
@@ -51,7 +53,7 @@ const {
 } = useCatalog()
 
 async function restoreStepQuote(): Promise<void> {
-  if (![3, 5].includes(activeStep.value) || loading.value || quoting.value || quote.value || purchase.value || !selectedCombo.value) return
+  if (![3, 4, 5].includes(activeStep.value) || loading.value || quoting.value || quoteUsable.value || purchase.value || !selectedCombo.value) return
   await refreshQuote()
 }
 
@@ -66,12 +68,15 @@ watch(activeStep, (value) => {
   try { const key = stepKey(); if (key) globalThis.sessionStorage?.setItem(key, String(value)) } catch { /* Ignore unavailable storage. */ }
 })
 watch([activeStep, loading, selectedCombo, selectedSquadIds, selectedCouponGrantId], () => { void restoreStepQuote() }, { deep: true })
+watch(autoRenewalBlocked, (blocked) => {
+  if (blocked) void router.replace({ path: '/home', query: { autoRenewBlocked: '1' } })
+})
 
 const selectedCoupon = computed(() => eligibleCoupons.value.find((grant) => grant.id === selectedCouponGrantId.value) ?? null)
 const nextDisabled = computed(() => {
   if (activeStep.value === 1 || activeStep.value === 2) return !selectedCombo.value
-  if (activeStep.value === 3) return !quote.value || quote.value.accessibleNodes.length === 0
-  if (activeStep.value === 4) return !selectedCombo.value
+  if (activeStep.value === 3) return !quoteUsable.value || !quote.value || quote.value.accessibleNodes.length === 0
+  if (activeStep.value === 4) return !quoteUsable.value
   return true
 })
 const nextLabel = computed(() => t('catalog.continue'))
@@ -97,7 +102,8 @@ function goHome(): void {
 
 async function advance(): Promise<void> {
   if (!selectedCombo.value || activeStep.value >= 5) return
-  if ((activeStep.value === 2 || activeStep.value === 4) && !(await refreshQuote())) return
+  if (activeStep.value === 2 && !(await refreshQuote())) return
+  if (activeStep.value === 4 && (!quoteUsable.value || quoting.value)) return
   activeStep.value += 1
 }
 
@@ -137,7 +143,7 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
             </div>
             <SquadSelector v-else-if="activeStep === 2" :squads="visibleSquads" :selected-ids="selectedSquadIds" :included-ids="includedSquadIds" @toggle="toggleSquad" />
             <CatalogNodes v-else-if="activeStep === 3" :quote="quote" :loading="quoting" />
-            <CatalogCouponStep v-else-if="activeStep === 4" v-model:coupon-grant-id="selectedCouponGrantId" :coupons="couponGrants" :eligible-ids="eligibleCoupons.map((grant) => grant.id)" :discarding="couponDiscarding" :discard-coupon="discardCoupon" @redeemed="handleCouponRedeemed" />
+            <CatalogCouponStep v-else-if="activeStep === 4" v-model:coupon-grant-id="selectedCouponGrantId" :coupons="couponGrants" :eligible-ids="eligibleCoupons.map((grant) => grant.id)" :discarding="couponDiscarding" :discard-coupon="discardCoupon" :quoting="quoting" @redeemed="handleCouponRedeemed" />
             <CatalogCheckout v-else-if="activeStep === 5" :combo="selectedCombo" :squads="selectedSquads" :coupon="selectedCoupon" :quote="quote" :quoting="quoting" :error="error" :purchasing="purchasing" :needs-balance="needsBalance" @confirm="handlePurchase" />
           </section>
         </Transition>

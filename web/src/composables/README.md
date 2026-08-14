@@ -3,12 +3,15 @@
 - `useActivity.ts` loads games, draws, and check-in actions.
 - `useAdminDatabase.ts` coordinates protected database review and mutation flows.
 - `useAdminSection.ts` provides reusable administrator list operations.
-- `useCatalog.ts` prepares catalog selection and purchase quotes, with user-scoped session drafts.
+- `useCatalog.ts` prepares catalog selection, quote freshness, full paid add-on guards, automatic-renewal catalog blocking, and user-scoped session drafts.
+- `catalogQuoteState.ts` owns the request-versioned authoritative catalog quote and its selection fingerprint.
 - `catalogDraft.ts` reads, validates through callers, writes, and clears user-scoped catalog drafts in session storage.
 - `catalogLoader.ts` loads catalog, balance, coupon wallet, and validated user-scoped drafts.
 - `useCatalog.test.ts` covers catalog selection behavior.
 - `useCouponRedemption.ts` redeems a coupon code for the guided purchase flow.
 - `useCouponRedemption.test.ts` covers guided redemption normalization and idempotency reuse.
+- `useAutoRenewal.ts` owns the owner-scoped automatic-renewal status load, eligibility, and server toggle update.
+- `useAutoRenewal.test.ts` covers the server-ineligible toggle constraint.
 - `useClipboard.ts` provides safe clipboard feedback.
 - `useCoupons.ts` manages coupon-wallet redemption and server-confirmed grant discards.
 - `useCoupons.test.ts` covers confirmed and failed coupon-wallet discards.

@@ -150,6 +150,7 @@
       "PURCHASE_NOT_FOUND": "找不到当前套餐。",
       "PURCHASE_CANCEL_CONFLICT": "此排队套餐已无法取消，请刷新后重试。"
     },
-    "renewalFailed": "续费报价或确认失败。"
+    "renewalFailed": "续费报价或确认失败。",
+    "autoRenewalFailed": "无法更新自动续费。"
   }
 }

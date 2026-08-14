@@ -27,6 +27,9 @@ func (s *Server) purchaseQuote(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		status := http.StatusConflict
 		code := "QUOTE_FAILED"
+		if errors.Is(err, catalog.ErrAutoRenewalEnabled) {
+			code = "AUTO_RENEW_ENABLED"
+		}
 		if errors.Is(err, catalog.ErrNoAccessibleNodes) {
 			code = "NO_ACCESSIBLE_NODES"
 		}

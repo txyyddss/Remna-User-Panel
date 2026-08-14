@@ -44,6 +44,7 @@ type Application struct {
 	backups    *backup.Service
 	telegram   *telegram.Client
 	settings   *admin.SettingsService
+	catalog    *catalog.Service
 	billing    *billing.Service
 	upstreams  *providerQueues
 }
@@ -161,6 +162,6 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	}
 	return &Application{
 		config: cfg, logger: logger, httpServer: httpServer, store: store, outbox: outboxWorker,
-		backups: backupService, telegram: telegramClient, settings: settings, billing: billingService, upstreams: upstreams,
+		backups: backupService, telegram: telegramClient, settings: settings, catalog: catalogService, billing: billingService, upstreams: upstreams,
 	}, nil
 }

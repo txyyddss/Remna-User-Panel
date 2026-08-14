@@ -1,0 +1,46 @@
+get:
+  tags: [Catalog]
+  operationId: getPurchaseAutoRenewal
+  summary: Get automatic-renewal state and live next-cycle quote
+  description: Returns the authenticated owner's automatic-renewal state, eligibility, and server-authoritative one-cycle price. Provider-dependent availability is revalidated through the upstream queue.
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema: { $ref: '../openapi.yaml#/components/schemas/ID' }
+  responses:
+    '200':
+      description: Automatic-renewal state and current one-cycle quote.
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/AutoRenewal' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }
+    '502': { $ref: '../openapi.yaml#/components/responses/UpstreamFailure' }
+
+put:
+  tags: [Catalog]
+  operationId: updatePurchaseAutoRenewal
+  summary: Enable or disable one-cycle automatic renewal
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema: { $ref: '../openapi.yaml#/components/schemas/ID' }
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema: { $ref: '../openapi.yaml#/components/schemas/AutoRenewalUpdate' }
+  responses:
+    '200':
+      description: Updated automatic-renewal state and fresh one-cycle quote.
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/AutoRenewal' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }
+    '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }
+    '502': { $ref: '../openapi.yaml#/components/responses/UpstreamFailure' }

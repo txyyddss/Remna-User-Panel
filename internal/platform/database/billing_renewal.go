@@ -66,10 +66,9 @@ func renewalQuoteTx(ctx context.Context, tx *sql.Tx, userID, purchaseID string, 
 		return model.RenewalQuote{}, model.Combo{}, nil, err
 	}
 	_ = rows.Close()
-	selected := make([]string, 0, len(combo.IncludedSquads)+len(addons))
-	for _, squad := range combo.IncludedSquads {
-		selected = append(selected, squad.RemnaSquadUUID)
-	}
+	// Included squads reserve capacity only on the initial purchase. A renewal
+	// rechecks its paid add-ons without displacing the current member.
+	selected := make([]string, 0, len(addons))
 	for _, squad := range addons {
 		selected = append(selected, squad.RemnaSquadUUID)
 	}

@@ -62,9 +62,10 @@ and `balance_multiply` coupons; purchase-discount grants remain catalog-only.
 EZPay and BEPusdt settings are stored as multiple independent encrypted,
 masked profiles (or one profile) per provider, each with an administrator-
 defined provider name, endpoint/credential, and independently enabled channels.
-Renewal uses the current ride's combo and add-ons,
-current prices, one atomic debit, and one idempotency key for a 1-6 term batch;
-it does not apply a purchase-discount coupon.
+Automatic renewal uses the current ride's combo and paid add-ons, current
+prices, one atomic debit, and a unique source-successor link for exactly one
+next term. It preserves an attached recurring-discount relationship under the
+catalog policy; retained legacy batch records are not a public member flow.
 
 ## Verification
 

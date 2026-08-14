@@ -13,6 +13,7 @@ const props = defineProps<{
   coupons: readonly CouponGrant[]
   eligibleIds: readonly string[]
   discarding?: boolean
+  quoting?: boolean
   discardCoupon?: (grantID: string) => Promise<boolean>
 }>()
 const emit = defineEmits<{ redeemed: [grantId: string | null] }>()
@@ -75,6 +76,7 @@ async function confirmDiscard(): Promise<void> {
       </div>
     </div>
     <p v-if="!hasEligibleCoupons" class="field-hint">{{ $t('catalog.noEligibleCoupons') }}</p>
+    <p v-if="quoting" class="field-hint" aria-live="polite">{{ $t('catalog.couponQuoteRefreshing') }}</p>
     <ConfirmDialog :open="Boolean(pendingDiscard)" :title="$t('coupons.discardTitle', { name: pendingDiscard?.coupon.name ?? '' })" :description="$t('coupons.discardDescription')" :confirm-label="$t('coupons.discardConfirm')" :busy="Boolean(discarding)" danger @update:open="!$event && (pendingDiscard = null)" @confirm="confirmDiscard" />
   </section>
 </template>

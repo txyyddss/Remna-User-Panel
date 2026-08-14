@@ -16,6 +16,8 @@ type RemoteNode struct {
 	ConsumptionMultiplier float64
 	ActiveInboundUUIDs    []string
 	Disabled              bool
+	ProviderName          string
+	ProviderFaviconURL    *string
 }
 
 type remoteNodeLister interface {
@@ -81,7 +83,8 @@ func (s *Service) quoteAccessibleNodes(ctx context.Context, comboID string, addo
 			continue
 		}
 		result = append(result, model.RemnaNode{UUID: node.UUID, Name: node.Name, CountryCode: node.CountryCode,
-			ConsumptionMultiplier: node.ConsumptionMultiplier, ActiveInboundUUIDs: node.ActiveInboundUUIDs, Accessible: true})
+			ConsumptionMultiplier: node.ConsumptionMultiplier, ActiveInboundUUIDs: node.ActiveInboundUUIDs, Accessible: true,
+			ProviderName: node.ProviderName, ProviderFaviconURL: node.ProviderFaviconURL})
 	}
 	sort.Slice(result, func(left, right int) bool {
 		if result[left].CountryCode == result[right].CountryCode {

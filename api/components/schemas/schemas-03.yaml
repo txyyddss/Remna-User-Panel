@@ -1,7 +1,7 @@
 RemnaNode:
   type: object
   additionalProperties: false
-  required: [uuid, name, countryCode, consumptionMultiplier, activeInboundUuids, accessible]
+  required: [uuid, name, countryCode, consumptionMultiplier, activeInboundUuids, accessible, providerName, providerFaviconUrl]
   properties:
     uuid: { type: string, format: uuid }
     name: { type: string }
@@ -16,6 +16,10 @@ RemnaNode:
       uniqueItems: true
       items: { type: string, format: uuid }
     accessible: { type: boolean }
+    providerName: { type: [string, 'null'] }
+    providerFaviconUrl:
+      type: [string, 'null']
+      format: uri
 
 PurchaseRequest:
   type: object
@@ -117,6 +121,7 @@ Purchase:
     - rolloverMax
     - createdAt
     - updatedAt
+    - autoRenewEnabled
   properties:
     id:
       $ref: '../../openapi.yaml#/components/schemas/ID'
@@ -161,6 +166,7 @@ Purchase:
       $ref: '../../openapi.yaml#/components/schemas/Timestamp'
     updatedAt:
       $ref: '../../openapi.yaml#/components/schemas/Timestamp'
+    autoRenewEnabled: { type: boolean }
 
 SubscriptionRotation:
   type: object

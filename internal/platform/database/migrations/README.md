@@ -35,3 +35,6 @@ file instead.
 - `017_squad_profiles.sql` adds nullable normalized local metadata for the
   three customer-facing internal-squad profile types without duplicating the
   generated description.
+- `018_automatic_renewal.sql` adds opt-in automatic-renewal state, a durable
+  due-cycle failure notice, recurring-discount attachment, and a unique
+  source-successor link while leaving legacy renewal records intact.

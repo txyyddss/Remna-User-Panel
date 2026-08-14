@@ -91,15 +91,16 @@ func (s *Server) acceptAgreement(w http.ResponseWriter, r *http.Request) {
 }
 
 type dashboardResponse struct {
-	User              userResponse      `json:"user"`
-	Balance           model.Money       `json:"balance"`
-	ActivePurchase    *model.Purchase   `json:"activePurchase"`
-	QueuedPurchase    *model.Purchase   `json:"queuedPurchase"`
-	Statistics        *model.Statistics `json:"statistics"`
-	SubscriptionURL   *string           `json:"subscriptionUrl"`
-	StatisticsStale   bool              `json:"statisticsStale"`
-	StatisticsWarning string            `json:"statisticsWarning"`
-	FetchedAt         time.Time         `json:"fetchedAt"`
+	User               userResponse              `json:"user"`
+	Balance            model.Money               `json:"balance"`
+	ActivePurchase     *model.Purchase           `json:"activePurchase"`
+	QueuedPurchase     *model.Purchase           `json:"queuedPurchase"`
+	AutoRenewalFailure *model.AutoRenewalFailure `json:"autoRenewalFailure"`
+	Statistics         *model.Statistics         `json:"statistics"`
+	SubscriptionURL    *string                   `json:"subscriptionUrl"`
+	StatisticsStale    bool                      `json:"statisticsStale"`
+	StatisticsWarning  string                    `json:"statisticsWarning"`
+	FetchedAt          time.Time                 `json:"fetchedAt"`
 }
 
 func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
@@ -113,20 +114,25 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, dashboardResponse{User: mapUser(dashboard.User), Balance: dashboard.Balance, ActivePurchase: dashboard.ActivePurchase,
-		QueuedPurchase: dashboard.QueuedPurchase, Statistics: dashboard.Statistics, SubscriptionURL: dashboard.SubscriptionURL,
+		QueuedPurchase: dashboard.QueuedPurchase, AutoRenewalFailure: dashboard.AutoRenewalFailure, Statistics: dashboard.Statistics, SubscriptionURL: dashboard.SubscriptionURL,
 		StatisticsStale: dashboard.StatisticsStale, StatisticsWarning: dashboard.StatisticsWarning, FetchedAt: dashboard.FetchedAt})
 }
 
 func (s *Server) catalog(w http.ResponseWriter, r *http.Request) {
-	if !s.requireOnboarded(w, r, currentUser(r)) {
+	user := currentUser(r)
+	if !s.requireOnboarded(w, r, user) {
 		return
 	}
-	catalog, err := s.deps.Catalog.Catalog(r.Context())
+	snapshot, err := s.deps.Catalog.CatalogForUser(r.Context(), user)
 	if err != nil {
+		if errors.Is(err, catalog.ErrAutoRenewalEnabled) {
+			s.writeError(w, r, http.StatusConflict, "AUTO_RENEW_ENABLED", "Turn off automatic renewal before selecting a new combo.")
+			return
+		}
 		s.writeError(w, r, http.StatusInternalServerError, "CATALOG_UNAVAILABLE", "The catalog could not be loaded.")
 		return
 	}
-	writeJSON(w, http.StatusOK, catalog)
+	writeJSON(w, http.StatusOK, snapshot)
 }
 
 func (s *Server) purchase(w http.ResponseWriter, r *http.Request) {
@@ -151,6 +157,8 @@ func (s *Server) purchase(w http.ResponseWriter, r *http.Request) {
 	purchase, err := s.deps.Catalog.PurchaseWithCoupon(r.Context(), user, request.ComboID, request.AddonSquadProductIDs, request.CouponGrantID, idempotencyKey)
 	if err != nil {
 		switch {
+		case errors.Is(err, catalog.ErrAutoRenewalEnabled):
+			s.writeError(w, r, http.StatusConflict, "AUTO_RENEW_ENABLED", "Turn off automatic renewal before selecting a new combo.")
 		case errors.Is(err, catalog.ErrNoAccessibleNodes):
 			s.writeError(w, r, http.StatusConflict, "NO_ACCESSIBLE_NODES", "The selected catalog item has no accessible nodes.")
 		case errors.Is(err, database.ErrStockUnavailable):

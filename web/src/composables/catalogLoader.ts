@@ -16,6 +16,7 @@ export interface CatalogLoadState {
   selectedSquadIds: ShallowRef<string[]>
   selectedCouponGrantId: ShallowRef<string | null>
   userID: () => string | null | undefined
+  onError?: (caught: unknown) => boolean
 }
 
 export async function loadCatalogData(state: CatalogLoadState): Promise<void> {
@@ -42,7 +43,7 @@ export async function loadCatalogData(state: CatalogLoadState): Promise<void> {
     const preferred = catalogResponse.combos.find((combo) => combo.active)
     if (!state.selectedComboId.value || !catalogResponse.combos.some((combo) => combo.active && combo.id === state.selectedComboId.value)) state.selectedComboId.value = preferred?.id ?? null
   } catch (caught) {
-    state.error.value = localizedError(caught, 'errors.catalogUnavailable')
+    if (!state.onError?.(caught)) state.error.value = localizedError(caught, 'errors.catalogUnavailable')
   } finally {
     state.loading.value = false
   }

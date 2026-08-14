@@ -25,6 +25,11 @@
     "ct": "电信线路",
     "cu": "联通线路",
     "cm": "移动线路",
+    "carriers": {
+      "chinaTelecom": "中国电信",
+      "chinaUnicom": "中国联通",
+      "chinaMobile": "中国移动"
+    },
     "carrierPlaceholder": "线路名称",
     "upstreamCarriers": "上游运营商",
     "upstreamCarriersHint": "多个运营商请用逗号分隔。",

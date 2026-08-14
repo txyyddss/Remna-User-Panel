@@ -17,7 +17,7 @@
 - `dashboard_usage.go` validates the authenticated member's UTC traffic range and serves the bounded per-node usage projection.
 - `rollover.go` serves the authenticated owner's on-demand active-purchase rollover projection and maps ownership, inactive-term, and upstream failures to stable API errors.
 - `billing_orders.go` creates, polls, and cancels member payment orders.
-- `renewals.go` quotes and commits 1-6-term current-ride renewal batches.
+- `automatic_renewal.go` serves the owner-only automatic-renewal status and toggle resource; manual renewal routes are not public.
 - `onboarding.go` serves and administers localized onboarding content.
 - `emby.go` serves member and administrator Emby account operations.
 - `database_admin.go` exposes guarded database inspection, backup download, and restore transports.

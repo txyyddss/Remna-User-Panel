@@ -1,16 +1,15 @@
 <script setup lang="ts">
-import { shallowRef, watch } from 'vue'
+import { shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
 
 import type { Purchase } from '@/api/types'
+import { api } from '@/api/client'
+import AutoRenewalControl from './AutoRenewalControl.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import RolloverFlipCard from './RolloverFlipCard.vue'
-import { useI18n } from '@/i18n'
-import { formatDate, formatMoney } from '@/utils/format'
-import { api } from '@/api/client'
-import { createUuid } from '@/utils/browserCompatibility'
+import { formatDate } from '@/utils/format'
 import { localizedError } from '@/i18n'
 import { notifyHaptic } from '@/utils/telegram'
 
@@ -19,31 +18,13 @@ const props = defineProps<{
   queued?: Purchase | null
   squadNames?: readonly string[]
 }>()
-const emit = defineEmits<{ queuedCancelled: []; renewed: [] }>()
+const emit = defineEmits<{ queuedCancelled: []; autoRenewalChanged: [] }>()
 
-const { t } = useI18n()
 const router = useRouter()
-const renewalOpen = shallowRef(false)
-const renewalTerms = shallowRef(1)
-const renewalQuote = shallowRef<import('@/api/types').RenewalQuote | null>(null)
-const renewalBusy = shallowRef(false)
-const renewalError = shallowRef<string | null>(null)
-const renewalSuccess = shallowRef(false)
 const queuedCancelOpen = shallowRef(false)
 const queuedCancelBusy = shallowRef(false)
 const queuedCancelError = shallowRef<string | null>(null)
 
-async function loadRenewalQuote(): Promise<void> {
-  if (!props.active) return
-  renewalError.value = null
-  try { renewalQuote.value = await api.quoteRenewal(props.active.id, renewalTerms.value) } catch (caught) { renewalQuote.value = null; renewalError.value = localizedError(caught, 'errors.renewalFailed') }
-}
-async function renew(): Promise<void> {
-  if (!props.active || !renewalQuote.value || renewalBusy.value) return
-  renewalBusy.value = true
-  renewalError.value = null
-  try { await api.renewPurchase(props.active.id, renewalTerms.value, createUuid()); renewalSuccess.value = true; notifyHaptic('success'); emit('renewed') } catch (caught) { renewalError.value = localizedError(caught, 'errors.renewalFailed'); notifyHaptic('error') } finally { renewalBusy.value = false }
-}
 function openQueuedCancellation(): void {
   queuedCancelError.value = null
   queuedCancelOpen.value = true
@@ -64,8 +45,6 @@ async function cancelQueued(): Promise<void> {
     queuedCancelBusy.value = false
   }
 }
-watch(renewalOpen, (open) => { if (open) { renewalSuccess.value = false; void loadRenewalQuote() } })
-watch(renewalTerms, () => { if (renewalOpen.value) void loadRenewalQuote() })
 
 function goToCatalog(): void {
   void router.push('/catalog')
@@ -99,7 +78,7 @@ function goToCatalog(): void {
           <InlineNotice v-if="queuedCancelError" tone="warning">{{ queuedCancelError }}</InlineNotice>
         </div>
       </div>
-      <UButton v-if="active" block color="neutral" variant="outline" trailing-icon="i-ph-arrow-clockwise" :label="$t('home.renew')" data-haptic @click="renewalOpen = true" />
+      <AutoRenewalControl v-if="active" :purchase="active" @changed="emit('autoRenewalChanged')" />
     </div>
 
     <div v-else class="empty-inline">
@@ -117,24 +96,6 @@ function goToCatalog(): void {
       />
     </div>
   </section>
-  <UModal v-model:open="renewalOpen" :title="$t('home.renewTitle')" :description="$t('home.renewHint')">
-    <template #body>
-      <div class="renewal-dialog">
-        <div class="renewal-dialog__terms">
-          <div class="renewal-dialog__terms-heading"><span>{{ $t('home.renewTerms') }}</span><strong>{{ renewalTerms }}</strong></div>
-          <USlider v-model="renewalTerms" :min="1" :max="6" :step="1" :aria-label="$t('home.renewTerms')" />
-        </div>
-        <div v-if="renewalQuote" class="renewal-dialog__quote">
-          <div class="renewal-dialog__total"><span>{{ $t('home.renewPrice') }}</span><strong>{{ formatMoney(renewalQuote.totalPrice) }}</strong></div>
-          <small v-if="renewalQuote.discount.minor !== '0'">{{ $t('home.renewDiscount', { amount: formatMoney(renewalQuote.discount) }) }}</small>
-          <small>{{ formatDate(renewalQuote.effectiveAt) }} {{ t('common.rangeSeparator') }} {{ formatDate(renewalQuote.expiresAt) }}</small>
-        </div>
-        <InlineNotice v-if="renewalSuccess" tone="success">{{ $t('home.renewSuccess') }}</InlineNotice>
-        <InlineNotice v-if="renewalError" tone="warning">{{ renewalError }}</InlineNotice>
-        <UButton v-if="!renewalSuccess" block :loading="renewalBusy" :disabled="!renewalQuote" :label="$t('home.renewAction')" data-haptic @click="renew" />
-      </div>
-    </template>
-  </UModal>
   <ConfirmDialog
     v-model:open="queuedCancelOpen"
     :title="$t('home.cancelQueuedTitle')"

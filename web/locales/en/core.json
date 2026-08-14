@@ -102,6 +102,7 @@
     "purchaseCancelFailed": "Queued ride cancellation failed.",
     "purchaseBalance": "Your TXB balance is too low.",
     "renewalFailed": "Renewal quote or confirmation failed.",
+    "autoRenewalFailed": "Automatic renewal could not be updated.",
     "rolloverFailed": "Live rollover details could not be loaded.",
     "couponWallet": "Coupon wallet is unavailable.",
     "couponRedeem": "Code could not be redeemed.",

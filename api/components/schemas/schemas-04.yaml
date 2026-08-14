@@ -45,6 +45,7 @@ Dashboard:
     - subscriptionUrl
     - statisticsStale
     - statisticsWarning
+    - autoRenewalFailure
     - fetchedAt
   properties:
     user:
@@ -70,6 +71,10 @@ Dashboard:
       type: boolean
     statisticsWarning:
       type: string
+    autoRenewalFailure:
+      oneOf:
+        - $ref: '../../openapi.yaml#/components/schemas/AutoRenewalFailure'
+        - type: 'null'
     fetchedAt:
       $ref: '../../openapi.yaml#/components/schemas/Timestamp'
 
@@ -80,6 +85,7 @@ LedgerKind:
     - payment_courtesy_credit
     - payment_reversal
     - purchase_debit
+    - automatic_renewal
     - purchase_cancellation
     - admin_adjustment
     - admin_entitlement_cancellation

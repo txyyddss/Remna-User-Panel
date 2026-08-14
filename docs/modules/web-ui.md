@@ -30,7 +30,7 @@ The active `Your ride` summary is an accessible flip card. Its summary button is
 
 Activity shows daily check-in, group-message reward progress/claimed state, enabled betting games, lucky draws, recent outcomes, exact stakes/fees, and resulting balance. It does not use streak pressure, near-miss animation, celebratory loops, or other manipulative gambling cues. Every financial action is disabled while pending and displays the server result.
 
-Coupon wallet redemption is explicit. Catalog checkout displays at most one selected eligible grant, uses the non-mutating server quote, shows the authoritative effective date before confirmation, prunes add-on squads newly included by a changed combo, and disables included squads with an `Included` label. Combo and squad descriptions pass through `MarkdownContent`; the safe `[text]{color=accent size=lg}` directive maps only allowlisted colors and sizes to CSS classes with raw HTML disabled. Admin editing provides toolbar controls and the same renderer as a live preview.
+Coupon wallet redemption is explicit. Catalog checkout displays at most one selected eligible grant, refreshes the non-mutating server quote whenever that selection changes, and blocks Coupon-step progression until its current quote is usable. It prunes add-on squads newly included by a changed combo; only full paid add-ons are gray, disabled, and labelled `Full`, while bundled squads remain selectable under server authority. Accessible-node cards present the live provider name and favicon with a localized fallback. Combo and squad descriptions pass through `MarkdownContent`; the safe `[text]{color=accent size=lg}` directive maps only allowlisted colors and sizes to CSS classes with raw HTML disabled. Admin editing provides toolbar controls and the same renderer as a live preview.
 
 Questionnaire participation retrieves the same durable validation code on repeat visits. The administrator import flow progresses through upload, header/sample review, validation-column selection, match analysis, explicit settlement, and background-status polling. Closing and destructive deletion are separate actions. Activity result dialogs are focus-trapped, game icons come from the allowlisted external Iconify Phosphor set, and statistics expose accessible table data alongside daily/weekly graphs.
 
@@ -46,11 +46,13 @@ status, traffic limit, and reset cadence; its Home action is the only navigation
 out of that transient state. Combo/add-on/coupon selections and the current step
 are stored in user-scoped `sessionStorage` and cleared after successful purchase;
 progress is blocked when the quote has no accessible nodes. Home's ride summary
-offers a 1-6 term renewal quote and confirmation flow; a recurring coupon carried
-by the current ride is reflected in the quote total and displayed discount.
-Usage also includes a
-responsive native SVG graph with a textual fallback, while Activity preserves
-a selected game's entered stake across refreshes and has no refresh button.
+uses a focused `UModal`/`USwitch` automatic-renewal control: it displays the
+authoritative gross/discount/net amount, charge date, next-cycle end, stable
+eligibility reason, and a centered green-or-red action. A member with automatic
+renewal enabled is redirected away from Catalog, with the server enforcing the
+same restriction. Usage also includes a responsive native SVG graph with a
+textual fallback, while Activity preserves a selected game's entered stake across
+refreshes and has no refresh button.
 
 ## Administration
 
@@ -66,7 +68,7 @@ Encrypted settings render as masked values and only permit write-only replacemen
 
 The visual system preserves the existing premium-dark graphite/mint identity: graphite canvas, layered charcoal surfaces, off-white text, one muted mint accent, 16 px panels, and 12 px controls. Member density remains lower than administrator density, copy is task-oriented, and motion is restrained.
 
-The Home ride summary exposes cancellation only for the authenticated user's queued entitlement. Cancellation and successful renewal refresh the dashboard after the server atomically changes the ride and records the corresponding immutable ledger entry.
+The Home ride summary exposes cancellation only for the authenticated user's queued entitlement. Cancellation and automatic-renewal toggle changes refresh the dashboard after the server atomically changes the ride and records the corresponding immutable ledger entry.
 
 Interactive targets are at least 44 px. Keyboard focus is visible and restored to the main landmark after route changes. The skip link, semantic fieldsets, status live regions, Nuxt UI overlay focus management, Telegram BackButton/MainButton integration, safe-area variables, and 320 px layouts are part of the acceptance contract. Faint text meets usable contrast, and `prefers-reduced-motion` disables nonessential transitions.
 

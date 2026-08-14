@@ -4,7 +4,9 @@ This package builds the live catalog, validates purchase selections against curr
 
 - `service.go` defines repository/provider contracts and coordinates quotes, purchases, process-local dashboard caching, and subscription revocation without durable bearer storage.
 - `catalog.go` hydrates sparse local merchandising and typed squad profiles with live Remnawave squad identities and read-only node metadata.
-- `renewals.go` quotes and commits 1-6-term renewals, including valid recurring coupon pricing.
+- `automatic_renewal.go` owns member toggle/status projections, catalog blocking, due-cycle queue revalidation, one-successor commits, and failure notices. It keeps provider access behind the existing queued adapter boundary.
+- `automatic_renewal_test.go` covers catalog blocking and enablement eligibility without running provider calls.
+- `renewals.go` retains the internal legacy batch implementation only; manual renewal is no longer a public member flow.
 - `cancellation.go` exposes the authenticated member operation for cancelling a queued purchase through the transactional store refund path.
 - `dashboard.go` composes current balance and entitlement data with cached or live upstream statistics and handles subscription URL revocation.
 - `nodes.go` resolves the queued upstream node preview for the exact combo and optional-squad selection used by a quote, and projects enabled, display-only node metadata into the catalog for Home's usage multiplier lookup. Node metadata is never persisted.

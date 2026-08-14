@@ -27,7 +27,7 @@ stopped.
 - `remna_admin_adapter.go` implements queued live squad and node projections for catalog composition; it exposes no node-assignment mutation.
 - `remna_entitlements_adapter.go` implements queued entitlement, traffic reset, removal, and rollover operations.
 - `emby_adapter.go` implements queued Emby client creation, account operations, policy updates, and metadata lookups.
-- `scheduler.go` runs recurring outbox, rollover, backup, and maintenance work until application cancellation.
+- `scheduler.go` runs automatic due-renewal revalidation before entitlement transitions, plus recurring outbox, rollover, backup, and maintenance work until application cancellation.
 - `telegram_scheduler.go` configures Telegram delivery and reconciles Telegram Stars transactions.
 - `app_test.go` verifies normalized Telegram Stars transaction directions.
 - `adapter_queue_test.go` verifies Remnawave and Emby adapter calls enter their queue before client construction.

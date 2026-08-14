@@ -1,48 +1,33 @@
-RenewalRequest:
+AutoRenewal:
   type: object
   additionalProperties: false
-  required: [termCount]
-  properties:
-    termCount:
-      type: integer
-      minimum: 1
-      maximum: 6
-
-RenewalQuote:
-  type: object
-  additionalProperties: false
-  required: [purchaseId, comboId, termCount, grossPrice, discount, pricePerTerm, totalPrice, couponGrantId, effectiveAt, expiresAt, addonSquadUuids, accessibleNodes]
+  required: [purchaseId, enabled, canEnable, ineligibleReason, grossPrice, discount, netPrice, scheduledAt, nextCycleEndsAt]
   properties:
     purchaseId: { $ref: '../../openapi.yaml#/components/schemas/ID' }
-    comboId: { $ref: '../../openapi.yaml#/components/schemas/ID' }
-    termCount: { type: integer, minimum: 1, maximum: 6 }
+    enabled: { type: boolean }
+    canEnable: { type: boolean }
+    ineligibleReason: { type: [string, 'null'] }
     grossPrice: { $ref: '../../openapi.yaml#/components/schemas/Money' }
     discount: { $ref: '../../openapi.yaml#/components/schemas/Money' }
-    pricePerTerm: { $ref: '../../openapi.yaml#/components/schemas/Money' }
-    totalPrice: { $ref: '../../openapi.yaml#/components/schemas/Money' }
-    couponGrantId: { type: [string, 'null'] }
-    effectiveAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
-    expiresAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
-    addonSquadUuids:
-      type: array
-      uniqueItems: true
-      items: { type: string, format: uuid }
-    accessibleNodes:
-      type: array
-      items: { $ref: '../../openapi.yaml#/components/schemas/RemnaNode' }
+    netPrice: { $ref: '../../openapi.yaml#/components/schemas/Money' }
+    scheduledAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+    nextCycleEndsAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
 
-RenewalBatch:
+AutoRenewalUpdate:
   type: object
   additionalProperties: false
-  required: [id, purchaseId, termCount, totalPrice, purchases]
+  required: [enabled]
   properties:
-    id: { $ref: '../../openapi.yaml#/components/schemas/ID' }
+    enabled: { type: boolean }
+
+AutoRenewalFailure:
+  type: object
+  additionalProperties: false
+  required: [purchaseId, reason, failedAt]
+  properties:
     purchaseId: { $ref: '../../openapi.yaml#/components/schemas/ID' }
-    termCount: { type: integer, minimum: 1, maximum: 6 }
-    totalPrice: { $ref: '../../openapi.yaml#/components/schemas/Money' }
-    purchases:
-      type: array
-      items: { $ref: '../../openapi.yaml#/components/schemas/Purchase' }
+    reason: { type: string }
+    failedAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
 
 PaymentProfile:
   type: object

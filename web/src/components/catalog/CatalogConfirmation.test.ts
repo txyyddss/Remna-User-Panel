@@ -16,6 +16,7 @@ const purchase = {
   validFrom: '2026-08-13T00:00:00Z',
   validUntil: '2026-09-12T00:00:00Z',
   status: 'activating',
+  autoRenewEnabled: true,
   trafficLimitBytes: '1073741824',
   resetStrategy: 'MONTH',
   squadUuids: [],

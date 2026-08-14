@@ -39,11 +39,13 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `catalog_squads.go` — sparse local merchandising and normalized profile overrides for upstream squads.
 - `billing.go` — purchase normalization, quotes, creation, pricing, and debit helpers.
 - `billing_renewal.go` — renewal quotes, contiguous batch creation, and idempotent replay.
+- `automatic_renewal_plan.go`, `automatic_renewal_coupon.go`, `automatic_renewal_state.go`, and `automatic_renewal_commit.go` — automatic-renewal current pricing, attached-coupon policy, owner state/failure records, and atomic one-successor debits.
 - `billing_purchase_helpers.go` — stock reservation checks, purchase fingerprints, catalog row loaders, and balance debit helpers.
 - `billing_ledger.go` — balances, audited adjustments, deductions, and ledger reads.
 - `ledger_page.go` — stable cursor-based ledger pagination.
 - `billing_purchases.go` — purchase reads, cancellation, squad hydration, and
   active/queued selection.
+- `billing_purchase_summary.go` — bounded active/queued purchase projection used by the dashboard without growing the purchase-read module.
 - `billing_payments.go` — payment-order creation, checkout updates, expiry, reads,
   and row scanning.
 - `billing_purchase_cancellation.go` — owner-scoped queued cancellation with
@@ -99,6 +101,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 
 - `store_test.go` — core users, catalog guards, and store behavior.
 - `billing_purchase_test.go` — purchase creation, quoting, and idempotency.
+- `automatic_renewal_store_test.go` and `automatic_renewal_coupon_test.go` — automatic-renewal defaults, toggle/idempotency/failure behavior, and attached recurring-discount policy.
 - `billing_balance_test.go` — concurrent and bounded balance mutations.
 - `billing_payment_test.go` — payment settlement and deduplication.
 - `billing_refund_test.go` — refund, cancellation, and debt behavior.
@@ -132,6 +135,7 @@ profile record and preserve masked credentials.
 `billing_courtesy_test.go` covers terminal-payment courtesy-credit atomicity,
 idempotent replay, and late-provider-callback blocking.
 
-`renewal_coupon.go` provides read-only recurring coupon reuse for renewal pricing
-without coupon-use writes. `renewal_batch.go` projects renewal batches and their
-purchase records.
+`renewal_coupon.go` provides read-only recurring coupon reuse for retained legacy
+batch pricing without coupon-use writes. `renewal_batch.go` projects retained
+renewal batches and their purchase records. Automatic renewal uses its own
+attached-coupon policy and a unique source-successor link.

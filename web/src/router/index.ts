@@ -1,5 +1,6 @@
 import { createRouter } from 'vue-router'
 
+import { api } from '@/api/client'
 import { useSessionStore } from '@/stores/session'
 import { isTelegramWebAppDetected } from '@/utils/telegram'
 import { resolveProtectedRoute } from './guards'
@@ -57,7 +58,19 @@ router.beforeEach(async (to) => {
   if (to.meta.browserPublic === true && !isTelegramWebAppDetected()) return true
   await store.bootstrap()
   if (store.status === 'error') return true
-  return resolveProtectedRoute(to, store.user) ?? true
+  const protectedRedirect = resolveProtectedRoute(to, store.user)
+  if (protectedRedirect) return protectedRedirect
+  if (to.name !== 'catalog' || store.user?.role === 'admin') return true
+
+  try {
+    const dashboard = await api.getDashboard()
+    if (dashboard.activePurchase?.autoRenewEnabled || dashboard.queuedPurchase?.autoRenewEnabled) {
+      return { name: 'home', query: { autoRenewBlocked: '1' } }
+    }
+  } catch {
+    // The catalog request remains server-enforced when a dashboard refresh is unavailable.
+  }
+  return true
 })
 
 export default router
