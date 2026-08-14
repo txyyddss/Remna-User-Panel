@@ -17,6 +17,7 @@ Audited administrative operations for catalog data, settings, balances, refunds,
 - `service_test_helpers_test.go` contains shared admin service test doubles.
 - `settings_test.go` covers secret handling, safe listing, readiness, and validators.
 - `payment_profiles_test.go` covers provider profile validation, encryption, masking, and readiness behavior.
+- `zero_coverage_test.go` covers backup deletion, balance deductions, stable-ID payment-profile lookups and runtimes, legacy EZPay validation, and activity reward boundaries.
 - `catalog_test.go` covers optional setting validators.
 - `README.md` documents the package layout.
 

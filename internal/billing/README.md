@@ -19,4 +19,5 @@ Payment-method discovery, exact decimal arithmetic, checkout creation, provider 
 - `decimal_test.go` covers decimal parsing, equivalence, and rounding.
 - `methods_service_test.go` covers configured method availability, cancellation behavior, and BEPusdt callback capabilities.
 - `payment_profile_runtime_test.go` covers account-scoped BEPusdt callback capabilities.
+- `zero_coverage_test.go` covers provider channel ordering, channel validation, and EZPay/BEPusdt method-list validation.
 - `README.md` documents the package layout.

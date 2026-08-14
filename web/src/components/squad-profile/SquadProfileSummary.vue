@@ -81,7 +81,7 @@ const countryText = computed(() => {
 .squad-profile-summary--member .squad-profile-summary__identity-icon { width: 2rem; height: 2rem; display: inline-grid; flex: 0 0 auto; place-items: center; border: 1px solid var(--squad-profile-tone-line); border-radius: 9px; color: var(--squad-profile-tone); background: var(--squad-profile-tone-soft); }
 .squad-profile-summary--member .squad-profile-summary__heading-copy span { color: var(--squad-profile-tone); font-size: 0.66rem; font-weight: 700; }
 .squad-profile-summary--member .squad-profile-summary__facts { gap: 0.35rem; }
-.squad-profile-summary--member .squad-profile-summary__facts span { max-width: 100%; padding: 0.27rem 0.38rem; border: 1px solid var(--squad-profile-tone-line); border-radius: 7px; color: var(--text-muted); background: color-mix(in srgb, var(--squad-profile-tone-soft) 70%, var(--surface)); }
+.squad-profile-summary--member .squad-profile-summary__facts > span { max-width: 100%; padding: 0.27rem 0.38rem; border: 1px solid var(--squad-profile-tone-line); border-radius: 7px; color: var(--text-muted); background: color-mix(in srgb, var(--squad-profile-tone-soft) 70%, var(--surface)); }
 .squad-profile-summary--member .squad-profile-summary__description { color: var(--text-muted); }
 .squad-profile-summary--member.squad-profile-summary--compact { gap: 0.45rem; }
 </style>

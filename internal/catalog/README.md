@@ -17,3 +17,4 @@ This package builds the live catalog, validates purchase selections against curr
 - `live_catalog_test.go` verifies missing live squads are rejected during catalog hydration and purchase validation.
 - `usage_quote_test.go` verifies bounded node-usage ranges, quote selection validation, and purchase-history forwarding.
 - `rollover_test.go` verifies projection ownership, active-term validation, upstream identity requirements, and queued snapshot ranges.
+- `zero_coverage_test.go` covers queued-purchase cancellation, legacy renewal quote/commit flows, due automatic-renewal processing, and failure reasons.
