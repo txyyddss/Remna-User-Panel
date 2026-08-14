@@ -84,17 +84,20 @@ func calculateUsageRange(threshold int, snapshot UsageSnapshot, anchor, start, e
 }
 
 func currentPeriodUsage(snapshot UsageSnapshot, period cadencePeriod, start, end time.Time) (int64, bool) {
-	if snapshot.CurrentUsedBytes == nil || snapshot.LastResetAt == nil || *snapshot.CurrentUsedBytes < 0 {
-		return 0, false
-	}
-	resetAt := snapshot.LastResetAt.UTC()
-	if resetAt.Before(start) || !resetAt.Before(end) {
+	if snapshot.CurrentUsedBytes == nil || *snapshot.CurrentUsedBytes < 0 {
 		return 0, false
 	}
 	if snapshot.Strategy == "NO_RESET" {
 		if period.start.Equal(start) {
 			return *snapshot.CurrentUsedBytes, true
 		}
+		return 0, false
+	}
+	if snapshot.LastResetAt == nil {
+		return 0, false
+	}
+	resetAt := snapshot.LastResetAt.UTC()
+	if resetAt.Before(start) || !resetAt.Before(end) {
 		return 0, false
 	}
 	if period.start.Equal(resetAt) {
