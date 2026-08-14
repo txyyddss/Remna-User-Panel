@@ -86,9 +86,11 @@ func renewalQuoteTx(ctx context.Context, tx *sql.Tx, userID, purchaseID string, 
 		addonIDs = append(addonIDs, addon.RemnaSquadUUID)
 	}
 	discount := coupons.Discount{GrossMinor: grossPerTerm, NetMinor: grossPerTerm}
-	if purchase.CouponGrantID != nil {
-		discount, err = quoteRecurringRenewalCouponTx(ctx, tx, coupons.PurchaseContext{UserID: userID, GrantID: *purchase.CouponGrantID,
-			ComboID: combo.ID, AddonSquadIDs: addonIDs, GrossPriceMinor: grossPerTerm}, now)
+	if purchase.RecurringDiscountAttached {
+		if purchase.CouponGrantID == nil {
+			return model.RenewalQuote{}, model.Combo{}, nil, ErrConflict
+		}
+		discount, err = quoteRecurringRenewalCouponTx(ctx, tx, userID, *purchase.CouponGrantID, grossPerTerm)
 		if err != nil {
 			return model.RenewalQuote{}, model.Combo{}, nil, err
 		}
@@ -160,7 +162,7 @@ func (s *Store) Renew(ctx context.Context, input RenewalInput, now time.Time) (m
 		if index == 0 {
 			requestKey = input.IdempotencyKey
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO purchases(id,user_id,combo_id,charged_txb_minor,valid_from,valid_until,status,coupon_grant_id,gross_price_txb_minor,coupon_discount_txb_minor,idempotency_key,request_fingerprint,renewal_batch_id,renewal_index,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, purchaseID, input.UserID, combo.ID, quote.PricePerTerm.MinorInt64(), stamp(from), stamp(until), status, quote.CouponGrantID, quote.GrossPrice.MinorInt64(), quote.Discount.MinorInt64(), requestKey, fingerprint, batchID, index, stamp(now), stamp(now)); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO purchases(id,user_id,combo_id,charged_txb_minor,valid_from,valid_until,status,coupon_grant_id,gross_price_txb_minor,coupon_discount_txb_minor,recurring_discount_attached,idempotency_key,request_fingerprint,renewal_batch_id,renewal_index,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, purchaseID, input.UserID, combo.ID, quote.PricePerTerm.MinorInt64(), stamp(from), stamp(until), status, quote.CouponGrantID, quote.GrossPrice.MinorInt64(), quote.Discount.MinorInt64(), boolInt(quote.CouponGrantID != nil), requestKey, fingerprint, batchID, index, stamp(now), stamp(now)); err != nil {
 			return model.RenewalBatch{}, err
 		}
 		for _, addon := range addons {

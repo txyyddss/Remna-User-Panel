@@ -114,11 +114,10 @@ func (s *Service) ProcessDueAutoRenewals(ctx context.Context, now time.Time) err
 	return nil
 }
 
-// CatalogForUser blocks catalog entry while an entitlement chain has auto renewal enabled.
-func (s *Service) CatalogForUser(ctx context.Context, user model.User) (model.Catalog, error) {
-	if err := s.ensureCatalogAvailable(ctx, user.ID); err != nil {
-		return model.Catalog{}, err
-	}
+// CatalogForUser returns the displayable catalog for an onboarded member.
+// Checkout operations enforce the automatic-renewal restriction separately so
+// dashboard metadata such as squad names and node multipliers remains visible.
+func (s *Service) CatalogForUser(ctx context.Context, _ model.User) (model.Catalog, error) {
 	return s.Catalog(ctx)
 }
 

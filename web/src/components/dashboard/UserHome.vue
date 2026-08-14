@@ -72,17 +72,19 @@ function consumeReissueRequest(): void {
       </div>
     </template>
     <template v-else-if="dashboard">
-      <BalanceHero
-        :balance="dashboard.balance"
-        :open-top-up="topUpRequested"
-        :reissue-order-id="reissueOrderId"
-        @paid="load({ quiet: true })"
-        @top-up-request-consumed="consumeTopUpRequest"
-        @reissue-request-consumed="consumeReissueRequest"
-      />
-      <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
-      <InlineNotice v-if="catalogBlocked" tone="warning">{{ $t('home.autoRenewalCatalogBlocked') }}</InlineNotice>
-      <InlineNotice v-if="autoRenewalFailureMessage" tone="warning" :title="$t('home.autoRenewalFailureTitle')">{{ autoRenewalFailureMessage }}</InlineNotice>
+      <div class="home-overview">
+        <BalanceHero
+          :balance="dashboard.balance"
+          :open-top-up="topUpRequested"
+          :reissue-order-id="reissueOrderId"
+          @paid="load({ quiet: true })"
+          @top-up-request-consumed="consumeTopUpRequest"
+          @reissue-request-consumed="consumeReissueRequest"
+        />
+        <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
+        <InlineNotice v-if="catalogBlocked" tone="warning">{{ $t('home.autoRenewalCatalogBlocked') }}</InlineNotice>
+        <InlineNotice v-if="autoRenewalFailureMessage" tone="warning" :title="$t('home.autoRenewalFailureTitle')">{{ autoRenewalFailureMessage }}</InlineNotice>
+      </div>
       <div class="home-stack">
         <SubscriptionPanel
           :subscription-url="dashboard.subscriptionUrl"

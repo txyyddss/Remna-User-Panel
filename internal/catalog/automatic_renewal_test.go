@@ -10,13 +10,16 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 )
 
-func TestCatalogOperationsBlockWhileAutomaticRenewalIsEnabled(t *testing.T) {
+func TestCheckoutOperationsBlockWhileAutomaticRenewalIsEnabled(t *testing.T) {
 	t.Parallel()
-	repository := &automaticRenewalCatalogRepository{catalogRepository: &catalogRepository{}, enabled: true}
+	repository := &automaticRenewalCatalogRepository{catalogRepository: &catalogRepository{
+		combos: []model.Combo{{ID: "combo"}},
+		addons: []model.SquadProduct{{ID: "addon", RemnaSquadUUID: "addon"}},
+	}, enabled: true}
 	service := newAutomaticRenewalCatalogService(repository)
 	user := model.User{ID: "member", OnboardingState: "complete"}
-	if _, err := service.CatalogForUser(context.Background(), user); !errors.Is(err, ErrAutoRenewalEnabled) {
-		t.Fatalf("CatalogForUser() error = %v, want ErrAutoRenewalEnabled", err)
+	if snapshot, err := service.CatalogForUser(context.Background(), user); err != nil || len(snapshot.Combos) != 1 || len(snapshot.Addons) != 1 {
+		t.Fatalf("CatalogForUser() = (%+v, %v), want displayable catalog", snapshot, err)
 	}
 	if _, err := service.Quote(context.Background(), user, "combo", nil, ""); !errors.Is(err, ErrAutoRenewalEnabled) {
 		t.Fatalf("Quote() error = %v, want ErrAutoRenewalEnabled", err)

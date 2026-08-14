@@ -125,10 +125,6 @@ func (s *Server) catalog(w http.ResponseWriter, r *http.Request) {
 	}
 	snapshot, err := s.deps.Catalog.CatalogForUser(r.Context(), user)
 	if err != nil {
-		if errors.Is(err, catalog.ErrAutoRenewalEnabled) {
-			s.writeError(w, r, http.StatusConflict, "AUTO_RENEW_ENABLED", "Turn off automatic renewal before selecting a new combo.")
-			return
-		}
 		s.writeError(w, r, http.StatusInternalServerError, "CATALOG_UNAVAILABLE", "The catalog could not be loaded.")
 		return
 	}
