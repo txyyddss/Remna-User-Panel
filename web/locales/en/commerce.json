@@ -88,9 +88,7 @@
     "renewalTerms": "Renewal terms",
     "full": "Full",
     "couponQuoteRefreshing": "Refreshing server quote…",
-    "providerUnavailable": "Provider unavailable",
-    "providerIconAlt": "Provider icon for {name}",
-    "providerIconFallback": "Provider icon unavailable"
+    "providerUnavailable": "Unavailable"
   },
   "amount": {
     "hint": "Use up to 2 decimals.",

@@ -64,7 +64,6 @@
     "autoRenewalTitle": "Automatic renewal",
     "autoRenewalHint": "Charge one next cycle automatically at the scheduled date.",
     "autoRenewalSwitch": "Renew this ride automatically",
-    "autoRenewalSwitchHint": "The server checks price, availability, and balance before it charges.",
     "autoRenewalGross": "Price before discount",
     "autoRenewalDiscount": "Discount",
     "autoRenewalPrice": "Next-cycle price",

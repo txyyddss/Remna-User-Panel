@@ -61,6 +61,9 @@ func calculateUsageRange(threshold int, snapshot UsageSnapshot, anchor, start, e
 			}
 			periodUsed += proportionalBytes(usageByDay[day.Format(time.DateOnly)], portion.Nanoseconds(), (24 * time.Hour).Nanoseconds())
 		}
+		if currentUsed, ok := currentPeriodUsage(snapshot, period, start, end); ok {
+			periodUsed = currentUsed
+		}
 		if allowance < 0 {
 			allowance = 0
 		}
@@ -80,6 +83,26 @@ func calculateUsageRange(threshold int, snapshot UsageSnapshot, anchor, start, e
 	return model.RolloverUsageSummary{AllocatedBytes: allocated, UsedBytes: used, EligibleUnusedBytes: eligible, AlgorithmVersion: UsageAlgorithmVersion}
 }
 
+func currentPeriodUsage(snapshot UsageSnapshot, period cadencePeriod, start, end time.Time) (int64, bool) {
+	if snapshot.CurrentUsedBytes == nil || snapshot.LastResetAt == nil || *snapshot.CurrentUsedBytes < 0 {
+		return 0, false
+	}
+	resetAt := snapshot.LastResetAt.UTC()
+	if resetAt.Before(start) || !resetAt.Before(end) {
+		return 0, false
+	}
+	if snapshot.Strategy == "NO_RESET" {
+		if period.start.Equal(start) {
+			return *snapshot.CurrentUsedBytes, true
+		}
+		return 0, false
+	}
+	if period.start.Equal(resetAt) {
+		return *snapshot.CurrentUsedBytes, true
+	}
+	return 0, false
+}
+
 func strictlyAboveBPS(remaining, allowance int64, threshold int) bool {
 	if remaining <= 0 || allowance <= 0 {
 		return false
@@ -97,51 +120,6 @@ func sumBytes(left, right int64) int64 {
 		return 1<<63 - 1
 	}
 	return left + right
-}
-
-type cadencePeriod struct{ start, end time.Time }
-
-func cadencePeriods(anchor, start, end time.Time, strategy string) []cadencePeriod {
-	if strategy == "NO_RESET" {
-		return []cadencePeriod{{start: start, end: end}}
-	}
-	periodStart := anchor
-	for periodStart.After(start) {
-		periodStart = cadencePrevious(periodStart, strategy)
-	}
-	result := make([]cadencePeriod, 0)
-	for periodStart.Before(end) {
-		next := cadenceAdvance(periodStart, strategy)
-		result = append(result, cadencePeriod{periodStart, next})
-		periodStart = next
-	}
-	return result
-}
-
-func cadenceAdvance(value time.Time, strategy string) time.Time {
-	switch strategy {
-	case "DAY":
-		return value.AddDate(0, 0, 1)
-	case "WEEK":
-		return value.AddDate(0, 0, 7)
-	case "MONTH", "MONTH_ROLLING":
-		return value.AddDate(0, 1, 0)
-	default:
-		return value.AddDate(0, 0, 1)
-	}
-}
-
-func cadencePrevious(value time.Time, strategy string) time.Time {
-	switch strategy {
-	case "DAY":
-		return value.AddDate(0, 0, -1)
-	case "WEEK":
-		return value.AddDate(0, 0, -7)
-	case "MONTH", "MONTH_ROLLING":
-		return value.AddDate(0, -1, 0)
-	default:
-		return value.AddDate(0, 0, -1)
-	}
 }
 
 func dayStart(value time.Time) time.Time {

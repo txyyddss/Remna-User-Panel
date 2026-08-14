@@ -64,7 +64,6 @@
     "autoRenewalTitle": "自动续费",
     "autoRenewalHint": "将在扣款日自动购买下一个周期。",
     "autoRenewalSwitch": "自动续费当前套餐",
-    "autoRenewalSwitchHint": "服务器会在扣款前检查价格、可用性和余额。",
     "autoRenewalGross": "优惠前价格",
     "autoRenewalDiscount": "优惠",
     "autoRenewalPrice": "下个周期价格",

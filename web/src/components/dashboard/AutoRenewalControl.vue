@@ -20,6 +20,7 @@ const { renewal, loading, updating, error, enabled, canEnable, ineligibleReason,
 const actionColor = computed(() => enabled.value ? 'success' : 'error')
 const actionLabel = computed(() => t(enabled.value ? 'home.autoRenewalEnabledAction' : 'home.autoRenewalDisabledAction'))
 const eligibilityMessage = computed(() => localizedReason(ineligibleReason.value, 'home.autoRenewalUnavailable'))
+const showSwitch = computed(() => canEnable.value || enabled.value)
 
 watch(open, (next) => {
   if (next) void load()
@@ -67,8 +68,8 @@ async function updateRenewal(next: boolean): Promise<void> {
               <div><dt>{{ $t('home.autoRenewalChargeDate') }}</dt><dd>{{ formatDate(renewal.scheduledAt) }}</dd></div>
               <div><dt>{{ $t('home.autoRenewalNextCycleDate') }}</dt><dd>{{ formatDate(renewal.nextCycleEndsAt) }}</dd></div>
             </dl>
-            <USwitch v-model="switchValue" :color="enabled ? 'success' : 'error'" :label="$t('home.autoRenewalSwitch')" :description="$t('home.autoRenewalSwitchHint')" :loading="updating" :disabled="updating || (!enabled && !canEnable)" data-haptic @update:model-value="updateRenewal" />
-            <InlineNotice v-if="!canEnable" tone="warning">{{ eligibilityMessage }}</InlineNotice>
+            <USwitch v-if="showSwitch" v-model="switchValue" :color="enabled ? 'success' : 'error'" :label="$t('home.autoRenewalSwitch')" :loading="updating" :disabled="updating" data-haptic @update:model-value="updateRenewal" />
+            <InlineNotice v-else tone="warning">{{ eligibilityMessage }}</InlineNotice>
           </template>
           <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
         </div>

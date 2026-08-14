@@ -72,7 +72,15 @@ function resetLabel(): string {
       </div>
     </div>
 
-    <UButton block trailing-icon="i-ph-house" :label="$t('catalog.returnHome')" data-haptic @click="emit('home')" />
+    <UButton
+      block
+      class="catalog-confirmation__home-action"
+      :ui="{ trailingIcon: 'absolute end-3 top-1/2 -translate-y-1/2' }"
+      trailing-icon="i-ph-house"
+      :label="$t('catalog.returnHome')"
+      data-haptic
+      @click="emit('home')"
+    />
   </section>
 </template>
 
@@ -90,4 +98,5 @@ function resetLabel(): string {
 .catalog-confirmation__line:last-child { padding-bottom: 0; border-bottom: 0; }
 .catalog-confirmation__line span { color: var(--text-faint); font-size: 0.7rem; }
 .catalog-confirmation__line strong { overflow-wrap: anywhere; color: var(--text); font-family: var(--font-mono); font-size: 0.78rem; text-align: right; }
+.catalog-confirmation__home-action { position: relative; justify-content: center; }
 </style>

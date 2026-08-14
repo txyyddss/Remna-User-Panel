@@ -27,10 +27,10 @@ const quote: PurchaseQuote = {
 }
 
 describe('CatalogNodes', () => {
-  it('renders the projected provider name and favicon', () => {
+  it('renders the projected provider name without a provider icon', () => {
     const wrapper = mount(CatalogNodes, { props: { quote, loading: false } })
 
     expect(wrapper.text()).toContain('Transit provider')
-    expect(wrapper.get('.catalog-node__provider-icon').attributes('src')).toBe('https://example.test/favicon.png')
+    expect(wrapper.find('.catalog-node__provider img').exists()).toBe(false)
   })
 })

@@ -125,7 +125,11 @@ func (a remnaAdapter) UsageSnapshotForRollover(ctx context.Context, remoteID str
 			daily = append(daily, rollover.DailyUsage{Date: date, Bytes: stats.SparklineData[index]})
 		}
 	}
-	return rollover.UsageSnapshot{LimitBytes: user.TrafficLimitBytes, Strategy: string(user.TrafficLimitStrategy), LastResetAt: user.LastTrafficResetAt, Daily: daily}, nil
+	currentUsed := user.UserTraffic.UsedTrafficBytes
+	return rollover.UsageSnapshot{
+		LimitBytes: user.TrafficLimitBytes, Strategy: string(user.TrafficLimitStrategy),
+		LastResetAt: user.LastTrafficResetAt, CurrentUsedBytes: &currentUsed, Daily: daily,
+	}, nil
 }
 
 var _ entitlements.RemnawaveClient = remnaAdapter{}

@@ -41,7 +41,10 @@ type UsageSnapshot struct {
 	LimitBytes  int64
 	Strategy    string
 	LastResetAt *time.Time
-	Daily       []DailyUsage
+	// CurrentUsedBytes is the authoritative counter for the newest reset period.
+	// A nil value means callers should fall back to daily usage buckets.
+	CurrentUsedBytes *int64
+	Daily            []DailyUsage
 }
 
 type usageSnapshotRemote interface {
@@ -134,7 +137,7 @@ func (s *Service) HandleOutbox(ctx context.Context, job model.OutboxJob) error {
 	return err
 }
 
-const UsageAlgorithmVersion = "cadence-v2"
+const UsageAlgorithmVersion = "cadence-v3"
 
 // CalculateUsage derives cadence allowances from daily upstream data without
 // retaining the raw provider series.

@@ -126,7 +126,7 @@ func TestFinalizeRolloverBalanceOverflowRollsBack(t *testing.T) {
 
 func TestFinalizeRolloverUsageAcceptsCadenceVersions(t *testing.T) {
 	t.Parallel()
-	for index, version := range []string{"cadence-v1", "cadence-v2"} {
+	for index, version := range []string{"cadence-v1", "cadence-v2", "cadence-v3"} {
 		index, version := index, version
 		t.Run(version, func(t *testing.T) {
 			t.Parallel()

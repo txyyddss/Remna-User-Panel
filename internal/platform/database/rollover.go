@@ -165,7 +165,7 @@ const rolloverSelect = `SELECT purchase_id,status,traffic_limit_bytes,allocated_
 
 func isCadenceAlgorithm(version string) bool {
 	switch version {
-	case "cadence-v1", "cadence-v2":
+	case "cadence-v1", "cadence-v2", "cadence-v3":
 		return true
 	default:
 		return false
