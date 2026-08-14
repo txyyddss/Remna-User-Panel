@@ -147,3 +147,54 @@ func TestStoredExtensionAppliesToExactNextActivationAndDelaysQueue(t *testing.T)
 		t.Fatalf("extension consumed by %q, %v, want %q", consumedBy, err, second.ID)
 	}
 }
+
+func TestActiveExtensionQueuesRemnawaveSync(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := newTestStore(t)
+	user := createTestUser(t, store, 31_401)
+	base := time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC)
+	if _, err := store.AdjustBalance(ctx, user.ID, 10_000, "active-extension-seed", "seed", base); err != nil {
+		t.Fatal(err)
+	}
+	combo := saveTestCombo(t, store, "Active extension term", 100, 30)
+	active, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID, IdempotencyKey: "active-extension-first"}, base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	queued, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID, IdempotencyKey: "active-extension-second"}, base.Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	draw, err := store.SaveLuckyDraw(ctx, activity.LuckyDrawInput{Name: "Active extension", Enabled: true, Prizes: []activity.PrizeInput{{
+		Name: "Three days", Weight: 1, Reward: activity.Reward{Kind: activity.RewardSubscriptionExtension, ExtensionDays: 3},
+	}}}, base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.PlayLuckyDraw(ctx, user.ID, draw.ID, "active-extension-draw", fixedActivityRandom{}, base.Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	updatedActive, err := store.PurchaseByID(ctx, active.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	updatedQueued, err := store.PurchaseByID(ctx, queued.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !updatedActive.ValidUntil.Equal(active.ValidUntil.AddDate(0, 0, 3)) {
+		t.Fatalf("active expiry = %s, want %s", updatedActive.ValidUntil, active.ValidUntil.AddDate(0, 0, 3))
+	}
+	if !updatedQueued.ValidFrom.Equal(queued.ValidFrom.AddDate(0, 0, 3)) || !updatedQueued.ValidUntil.Equal(queued.ValidUntil.AddDate(0, 0, 3)) {
+		t.Fatalf("queued dates = %s..%s, want %s..%s", updatedQueued.ValidFrom, updatedQueued.ValidUntil, queued.ValidFrom.AddDate(0, 0, 3), queued.ValidUntil.AddDate(0, 0, 3))
+	}
+	var syncJobs int
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind='remna_sync_user' AND payload=?`, `{"userId":"`+user.ID+`"}`).Scan(&syncJobs); err != nil {
+		t.Fatal(err)
+	}
+	if syncJobs != 1 {
+		t.Fatalf("Remnawave sync jobs = %d, want 1", syncJobs)
+	}
+}

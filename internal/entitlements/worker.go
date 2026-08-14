@@ -27,7 +27,7 @@ type Repository interface {
 
 // RemnawaveClient atomically replaces the complete entitlement view upstream.
 type RemnawaveClient interface {
-	ApplyEntitlement(ctx context.Context, remoteUserID string, trafficLimitBytes int64, resetStrategy string, squadUUIDs []string) error
+	ApplyEntitlement(ctx context.Context, remoteUserID string, trafficLimitBytes int64, resetStrategy string, squadUUIDs []string, expiresAt time.Time) error
 	ResetTraffic(context.Context, string) error
 	RemoveEntitlement(ctx context.Context, remoteUserID string) error
 }
@@ -134,7 +134,7 @@ func (w *Worker) process(ctx context.Context, job model.OutboxJob) error {
 		if phase != "reset" {
 			return fmt.Errorf("unknown traffic reset phase %q", phase)
 		}
-		if err := w.remnawave.ApplyEntitlement(ctx, *user.RemnaUserID, purchase.TrafficLimitBytes, purchase.ResetStrategy, purchase.SquadUUIDs); err != nil {
+		if err := w.remnawave.ApplyEntitlement(ctx, *user.RemnaUserID, purchase.TrafficLimitBytes, purchase.ResetStrategy, purchase.SquadUUIDs, purchase.ValidUntil); err != nil {
 			return fmt.Errorf("apply Remnawave entitlement: %w", err)
 		}
 		return w.repository.MarkPurchaseSyncResult(ctx, purchase.ID, true, w.now().UTC())
@@ -157,7 +157,7 @@ func (w *Worker) process(ctx context.Context, job model.OutboxJob) error {
 		if desired == nil {
 			return w.remnawave.RemoveEntitlement(ctx, *user.RemnaUserID)
 		}
-		return w.remnawave.ApplyEntitlement(ctx, *user.RemnaUserID, desired.TrafficLimitBytes, desired.ResetStrategy, desired.SquadUUIDs)
+		return w.remnawave.ApplyEntitlement(ctx, *user.RemnaUserID, desired.TrafficLimitBytes, desired.ResetStrategy, desired.SquadUUIDs, desired.ValidUntil)
 	default:
 		return fmt.Errorf("unknown outbox job kind %q", job.Kind)
 	}

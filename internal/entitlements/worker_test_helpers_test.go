@@ -93,6 +93,7 @@ type entitlementRemnawave struct {
 	applyLimit         int64
 	applyResetStrategy string
 	applySquads        []string
+	applyExpiresAt     time.Time
 	applyErr           error
 	removeCalls        int
 	removeErr          error
@@ -100,10 +101,11 @@ type entitlementRemnawave struct {
 	resetErr           error
 }
 
-func (r *entitlementRemnawave) ApplyEntitlement(_ context.Context, userID string, limit int64, strategy string, squads []string) error {
+func (r *entitlementRemnawave) ApplyEntitlement(_ context.Context, userID string, limit int64, strategy string, squads []string, expiresAt time.Time) error {
 	r.applyCalls++
 	r.applyUserID, r.applyLimit, r.applyResetStrategy = userID, limit, strategy
 	r.applySquads = append([]string(nil), squads...)
+	r.applyExpiresAt = expiresAt
 	return r.applyErr
 }
 func (r *entitlementRemnawave) ResetTraffic(context.Context, string) error {

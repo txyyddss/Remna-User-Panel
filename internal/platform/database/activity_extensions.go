@@ -80,7 +80,7 @@ func applySubscriptionExtensionTx(ctx context.Context, tx *sql.Tx, userID string
 			return err
 		}
 	}
-	return nil
+	return insertOutboxTx(ctx, tx, "remna_sync_user", `{"userId":"`+userID+`"}`, now, now)
 }
 
 // consumePendingExtensionsTx marks stored extension credits used by the term

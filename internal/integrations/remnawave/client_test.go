@@ -54,9 +54,10 @@ func TestCreateAndUpdateUserWireContract(t *testing.T) {
 	emptySquads := []string{}
 	limit := int64(10_000)
 	strategy := TrafficMonthly
+	expireAt := time.Date(2027, 8, 7, 12, 0, 0, 0, time.UTC)
 	_, err = client.UpdateUser(context.Background(), UpdateUserRequest{
 		ID: 9, TrafficLimitBytes: &limit, TrafficLimitStrategy: &strategy,
-		ActiveInternalSquads: &emptySquads, ClearExternalSquad: true,
+		ExpireAt: &expireAt, ActiveInternalSquads: &emptySquads, ClearExternalSquad: true,
 	})
 	if err != nil {
 		t.Fatalf("UpdateUser() error = %v", err)
@@ -67,6 +68,9 @@ func TestCreateAndUpdateUserWireContract(t *testing.T) {
 	}
 	if value, found := request.body["externalSquadUuid"]; !found || value != nil {
 		t.Fatalf("update externalSquadUuid = %#v (found=%v)", value, found)
+	}
+	if value, want := request.body["expireAt"], expireAt.Format(time.RFC3339Nano); value != want {
+		t.Fatalf("update expireAt = %#v, want %q", value, want)
 	}
 }
 

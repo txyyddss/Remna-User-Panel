@@ -40,7 +40,7 @@ func TestRemnawaveAdapterMethodsEnterQueueBeforeClientCreation(t *testing.T) {
 		{name: "dashboard", call: func() error { _, err := adapter.Dashboard(context.Background(), "1"); return err }},
 		{name: "revoke subscription", call: func() error { _, err := adapter.RevokeSubscription(context.Background(), "1"); return err }},
 		{name: "apply entitlement", call: func() error {
-			return adapter.ApplyEntitlement(context.Background(), "1", 10, "NO_RESET", []string{"squad"})
+			return adapter.ApplyEntitlement(context.Background(), "1", 10, "NO_RESET", []string{"squad"}, time.Now().Add(time.Hour))
 		}},
 		{name: "reset traffic", call: func() error { return adapter.ResetTraffic(context.Background(), "1") }},
 		{name: "remove entitlement", call: func() error { return adapter.RemoveEntitlement(context.Background(), "1") }},

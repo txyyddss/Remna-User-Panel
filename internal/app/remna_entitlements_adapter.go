@@ -9,14 +9,14 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/rollover"
 )
 
-func (a remnaAdapter) ApplyEntitlement(ctx context.Context, remoteID string, trafficLimitBytes int64, resetStrategy string, squadUUIDs []string) error {
+func (a remnaAdapter) ApplyEntitlement(ctx context.Context, remoteID string, trafficLimitBytes int64, resetStrategy string, squadUUIDs []string, expiresAt time.Time) error {
 	userID, err := remnaUserID(remoteID)
 	if err != nil {
 		return err
 	}
 	status := remnawave.UserStatusActive
 	strategy := remnawave.TrafficLimitStrategy(resetStrategy)
-	expires := time.Date(2099, 12, 31, 23, 59, 59, 0, time.UTC)
+	expires := expiresAt.UTC()
 	squads := append([]string(nil), squadUUIDs...)
 	return remnaExecute(ctx, a, func(callCtx context.Context, client remnaClient) error {
 		_, callErr := client.UpdateUser(callCtx, remnawave.UpdateUserRequest{

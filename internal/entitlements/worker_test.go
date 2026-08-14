@@ -24,7 +24,7 @@ func TestWorkerDrainAppliesEntitlementAndCompletesJob(t *testing.T) {
 	if err := worker.Drain(context.Background(), 1); err != nil {
 		t.Fatalf("Drain(): %v", err)
 	}
-	if remote.applyUserID != remoteID || remote.applyLimit != 1234 || remote.applyResetStrategy != "MONTH" || remote.removeCalls != 1 || remote.resetCalls != 1 {
+	if remote.applyUserID != remoteID || remote.applyLimit != 1234 || remote.applyResetStrategy != "MONTH" || !remote.applyExpiresAt.Equal(time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC)) || remote.removeCalls != 1 || remote.resetCalls != 1 {
 		t.Fatalf("ApplyEntitlement call = %+v", remote)
 	}
 	if len(remote.applySquads) != 2 || repository.markedPurchaseID != "purchase-1" || repository.markedSuccess == nil || !*repository.markedSuccess {

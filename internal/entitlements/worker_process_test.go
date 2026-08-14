@@ -83,7 +83,7 @@ func TestWorkerProcessSynchronizesDesiredOrEmptyState(t *testing.T) {
 	t.Parallel()
 
 	remoteID := "remote-1"
-	desired := model.Purchase{TrafficLimitBytes: 4321, ResetStrategy: "WEEK", SquadUUIDs: []string{"squad"}}
+	desired := model.Purchase{TrafficLimitBytes: 4321, ResetStrategy: "WEEK", SquadUUIDs: []string{"squad"}, ValidUntil: time.Date(2099, 8, 7, 0, 0, 0, 0, time.UTC)}
 	testError := errors.New("test failure")
 	tests := []struct {
 		name       string
@@ -113,6 +113,9 @@ func TestWorkerProcessSynchronizesDesiredOrEmptyState(t *testing.T) {
 			}
 			if got := test.remote.applyCalls > 0; got != test.wantApply {
 				t.Fatalf("ApplyEntitlement called = %t, want %t", got, test.wantApply)
+			}
+			if test.wantApply && !test.remote.applyExpiresAt.Equal(desired.ValidUntil) {
+				t.Fatalf("ApplyEntitlement expiry = %s, want %s", test.remote.applyExpiresAt, desired.ValidUntil)
 			}
 			if got := test.remote.removeCalls > 0; got != test.wantRemove {
 				t.Fatalf("RemoveEntitlement called = %t, want %t", got, test.wantRemove)
