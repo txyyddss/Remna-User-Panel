@@ -26,8 +26,7 @@ jobs:
     name: Merge eligible Dependabot PR
     if: >-
       (github.event_name == 'pull_request_target' &&
-       github.event.pull_request.user.login == 'dependabot[bot]' &&
-       github.event.pull_request.head.repo.full_name == github.repository) ||
+       github.event.pull_request.user.login == 'dependabot[bot]') ||
       (github.event_name == 'workflow_run' &&
        github.event.workflow_run.event == 'pull_request' &&
        github.event.workflow_run.conclusion == 'success') ||
@@ -66,15 +65,15 @@ jobs:
         env:
           PR_NUMBER: ${{ steps.pull-request.outputs.number }}
         run: |
-          pr_json="$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json author,isDraft,isCrossRepository,state,headRefOid,url,statusCheckRollup)"
+          pr_json="$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json author,isDraft,state,headRefOid,url,statusCheckRollup)"
 
           author="$(jq -r '.author.login // ""' <<< "$pr_json")"
           is_draft="$(jq -r '.isDraft' <<< "$pr_json")"
-          is_cross_repository="$(jq -r '.isCrossRepository' <<< "$pr_json")"
           state="$(jq -r '.state' <<< "$pr_json")"
 
-          if [[ "$author" != "dependabot[bot]" || "$is_draft" == "true" || "$is_cross_repository" == "true" || "$state" != "OPEN" ]]; then
-            echo "PR is not an eligible same-repository Dependabot pull request."
+          echo "Dependabot eligibility: author=$author draft=$is_draft state=$state"
+          if [[ "$author" != "dependabot[bot]" || "$is_draft" == "true" || "$state" != "OPEN" ]]; then
+            echo "PR is not an eligible Dependabot pull request."
             exit 0
           fi
 
