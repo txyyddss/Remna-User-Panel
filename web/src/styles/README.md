@@ -9,6 +9,7 @@
 - `onboarding-01.css` styles onboarding structure and progress.
 - `onboarding-02.css` styles onboarding forms and agreements.
 - `onboarding-03.css` styles onboarding completion and supporting states.
+- `session-01.css` styles the non-blocking CSS car animation used by the authentication loading screen.
 - `dashboard-01.css` styles dashboard summaries and account details.
 - `dashboard-02.css` styles dashboard lists, actions, and secondary states.
 - `home-01.css` styles the compact balance, subscription, and traffic surfaces on Home.

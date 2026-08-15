@@ -29,3 +29,5 @@ You may want to use the following projects for frontend:
 - Feel free to use other projects.
 
 ---
+
+## Replace "Securing your ride" with a car-driving animation. Do not prevent the page from loading as well. Use vue-native compnents if available. If not, use css.
