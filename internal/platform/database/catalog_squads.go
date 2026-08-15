@@ -195,11 +195,3 @@ func activationHash(ctx context.Context, db *sql.DB, uuid string, required bool,
 	}
 	return existing.String, nil
 }
-
-func intPointer(value sql.NullInt64) *int {
-	if !value.Valid {
-		return nil
-	}
-	result := int(value.Int64)
-	return &result
-}
