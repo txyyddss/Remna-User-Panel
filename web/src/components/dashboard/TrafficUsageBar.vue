@@ -147,7 +147,7 @@ function clearSelection(): void { selectedKey.value = null; hoveredKey.value = n
   <div v-if="segments.length" class="traffic-usage-bar">
     <div ref="trackRef" class="traffic-usage-bar__track" role="group" :aria-label="$t('home.trafficBarLabel')" @click="selectAt" @pointermove="previewAt" @pointerleave="clearHover" @pointercancel="clearHover" @keydown.escape.stop.prevent="clearSelection">
       <span v-for="segment in segments" :key="'visual-' + segment.key" class="traffic-usage-bar__visual" :style="{ width: Number(segment.widthBasis) / 100 + '%', backgroundColor: segment.color }" aria-hidden="true" />
-      <UButton v-for="segment in segments" :key="segment.key" type="button" color="neutral" variant="ghost" class="traffic-usage-bar__segment" :class="{ 'traffic-usage-bar__segment--selected': selectedKey === segment.key }" :style="{ left: Number(segment.startBytes * scale / totalForBar) / 100 + '%', width: Number(segment.widthBasis) / 100 + '%' }" :aria-label="segment.ariaLabel" :aria-pressed="selectedKey === segment.key" @click.stop="toggleSelection(segment.key)" @focus="hoveredKey = segment.key" @blur="clearHover" />
+      <UButton v-for="(segment, index) in segments" :key="segment.key" type="button" color="neutral" variant="ghost" class="traffic-usage-bar__segment" :class="{ 'traffic-usage-bar__segment--selected': selectedKey === segment.key, 'traffic-usage-bar__segment--first': index === 0, 'traffic-usage-bar__segment--last': index === segments.length - 1 }" :style="{ left: Number(segment.startBytes * scale / totalForBar) / 100 + '%', width: Number(segment.widthBasis) / 100 + '%' }" :aria-label="segment.ariaLabel" :aria-pressed="selectedKey === segment.key" @click.stop="toggleSelection(segment.key)" @focus="hoveredKey = segment.key" @blur="clearHover" />
     </div>
     <article v-if="activeSegment" class="traffic-usage-bar__details" role="status" aria-live="polite">
       <header class="traffic-usage-bar__header">
@@ -175,6 +175,8 @@ function clearSelection(): void { selectedKey.value = null; hoveredKey.value = n
 .traffic-usage-bar__track { position: relative; display: flex; min-height: 44px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-raised); isolation: isolate; }
 .traffic-usage-bar__visual { display: block; min-width: 0; height: 100%; min-height: 44px; opacity: 0.82; }
 .traffic-usage-bar__segment { position: absolute; inset-block: 0; z-index: 1; min-width: 0; padding: 0; border: 0; border-radius: 0; background: transparent; cursor: pointer; }
+.traffic-usage-bar__segment--first { border-start-start-radius: inherit; border-end-start-radius: inherit; }
+.traffic-usage-bar__segment--last { border-start-end-radius: inherit; border-end-end-radius: inherit; }
 .traffic-usage-bar__segment:focus-visible { outline: 2px solid var(--text); outline-offset: -3px; }
 .traffic-usage-bar__segment--selected { box-shadow: inset 0 0 0 2px var(--text); }
 .traffic-usage-bar__details { margin-top: 0.65rem; padding: 0.8rem 0.9rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-raised); }

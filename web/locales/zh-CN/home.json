@@ -5,7 +5,6 @@
     "rolloverReductionNeeded": "需要减少的流量",
     "rolloverProjected": "预计周期总用量",
     "rolloverMaximumUsage": "最多可用流量",
-    "rolloverPredictedCredit": "预计返还：{amount}",
     "rolloverReduceDaily": "剩余每天减少 {amount}",
     "rolloverWarning": {
       "AUTO_RENEWAL_DISABLED": "自动续费已关闭，因此未请求上游用量，结转按零结算。"
@@ -20,12 +19,9 @@
     "rolloverPaid": "实际支付 TXB",
     "rolloverSaved": "结转节省比例",
     "rolloverSavedValue": "{value}%",
-    "rolloverTermWindow": "当前周期",
     "rolloverResetWindow": "最近流量重置周期",
     "rolloverAllocated": "符合条件的配额",
     "rolloverUsed": "已用流量",
-    "rolloverRemaining": "剩余流量",
-    "rolloverEligible": "符合条件的未用流量",
     "rolloverFetchedAt": "更新时间：{date}",
     "currentTerm": "当前周期",
     "noNodeUsage": "所选范围暂无节点流量数据。",

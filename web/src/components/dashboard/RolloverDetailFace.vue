@@ -24,9 +24,9 @@ const emit = defineEmits<{ back: []; retry: [] }>()
     <template v-else-if="detail">
       <InlineNotice v-if="detail.warningCode" tone="warning">{{ $t(`home.rolloverWarning.${detail.warningCode}`) }}</InlineNotice>
       <template v-else>
-        <div class="home-ride__detail-overview">
+        <div v-if="!detail.predictedRollover" class="home-ride__detail-overview">
           <span class="home-ride__detail-icon"><UIcon name="i-ph-arrows-clockwise" aria-hidden="true" /></span>
-          <div><span>{{ detail.predictedRollover ? $t('home.rolloverForecastCredit') : $t('home.rolloverReductionNeeded') }}</span><strong>{{ detail.predictedRollover ? formatMoney(detail.predictedRollover) : formatBytes(detail.requiredReductionBytes ?? '0') }}</strong></div>
+          <div><span>{{ $t('home.rolloverReductionNeeded') }}</span><strong>{{ formatBytes(detail.requiredReductionBytes ?? '0') }}</strong></div>
         </div>
         <section class="home-ride__window">
           <h3>{{ $t('home.rolloverForecast') }}</h3>
@@ -34,13 +34,9 @@ const emit = defineEmits<{ back: []; retry: [] }>()
             <div><dt>{{ $t('home.rolloverUsed') }}</dt><dd>{{ formatBytes(detail.actualUsedTrafficBytes ?? '0') }}</dd></div>
             <div><dt>{{ $t('home.rolloverProjected') }}</dt><dd>{{ formatBytes(detail.projectedFullTermUsageBytes ?? '0') }}</dd></div>
             <div><dt>{{ $t('home.rolloverMaximumUsage') }}</dt><dd>{{ formatBytes(detail.maximumAllowableUsageBytes ?? '0') }}</dd></div>
+            <div v-if="detail.predictedRollover"><dt>{{ $t('home.rolloverForecastCredit') }}</dt><dd>{{ formatMoney(detail.predictedRollover) }}</dd></div>
           </dl>
-          <p v-if="detail.predictedRollover" class="home-ride__maximum-hint">{{ $t('home.rolloverPredictedCredit', { amount: formatMoney(detail.predictedRollover) }) }}</p>
-          <p v-else class="home-ride__maximum-hint">{{ $t('home.rolloverReduceDaily', { amount: formatBytes(detail.requiredDailyReductionBytes ?? '0') }) }}</p>
-        </section>
-        <section v-if="detail.term" class="home-ride__window">
-          <h3>{{ $t('home.rolloverTermWindow') }}</h3>
-          <dl class="home-ride__window-metrics"><div><dt>{{ $t('home.rolloverRemaining') }}</dt><dd>{{ formatBytes(detail.term.remainingTrafficBytes) }}</dd></div><div><dt>{{ $t('home.rolloverEligible') }}</dt><dd>{{ formatBytes(detail.term.eligibleUnusedBytes) }}</dd></div></dl>
+          <p v-if="!detail.predictedRollover" class="home-ride__maximum-hint">{{ $t('home.rolloverReduceDaily', { amount: formatBytes(detail.requiredDailyReductionBytes ?? '0') }) }}</p>
         </section>
       </template>
     </template>
