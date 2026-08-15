@@ -11,6 +11,13 @@ const emit = defineEmits<{ back: []; retry: [] }>()
 const { detail, loading, error } = toRefs(props)
 
 type RolloverState = 'alreadyExceeded' | 'predictedExceeded' | 'predicted'
+type RolloverTone = 'success' | 'warning' | 'danger'
+
+const rolloverPresentationByState: Record<RolloverState, { icon: string; tone: RolloverTone }> = {
+  alreadyExceeded: { icon: 'i-ph-x-circle-fill', tone: 'danger' },
+  predictedExceeded: { icon: 'i-ph-warning-circle-fill', tone: 'warning' },
+  predicted: { icon: 'i-ph-check-circle-fill', tone: 'success' },
+}
 
 function parseTrafficBytes(value: string | null): bigint | null {
   return value && /^\d+$/.test(value) ? BigInt(value) : null
@@ -36,6 +43,8 @@ const rolloverStatusKey = computed(() => {
 const rolloverMetricLabelKey = computed(() => rolloverState.value === 'predictedExceeded'
   ? 'home.rolloverMaximumDailyUsage'
   : 'home.rolloverForecastCredit')
+
+const rolloverPresentation = computed(() => rolloverPresentationByState[rolloverState.value])
 </script>
 
 <template>
@@ -54,14 +63,13 @@ const rolloverMetricLabelKey = computed(() => rolloverState.value === 'predicted
     <template v-else-if="detail">
       <InlineNotice v-if="detail.warningCode" tone="warning">{{ $t(`home.rolloverWarning.${detail.warningCode}`) }}</InlineNotice>
       <template v-else>
-        <div class="home-ride__detail-overview">
-          <span class="home-ride__detail-icon"><UIcon name="i-ph-arrows-clockwise" aria-hidden="true" /></span>
-          <div>
-            <span>{{ $t(rolloverStatusKey) }}</span>
-            <strong v-if="rolloverState === 'alreadyExceeded'">{{ $t('home.rolloverNotAvailable') }}</strong>
-            <strong v-else-if="rolloverState === 'predictedExceeded'">{{ formatBytes(detail.requiredDailyReductionBytes ?? '0') }}</strong>
-            <strong v-else>{{ formatMoney(detail.predictedRollover!) }}</strong>
-          </div>
+        <div
+          class="home-ride__detail-overview"
+          :class="`home-ride__detail-overview--${rolloverPresentation.tone}`"
+          role="status"
+        >
+          <span class="home-ride__detail-icon"><UIcon :name="rolloverPresentation.icon" aria-hidden="true" /></span>
+          <strong>{{ $t(rolloverStatusKey) }}</strong>
         </div>
         <section class="home-ride__window">
           <h3>{{ $t('home.rolloverForecast') }}</h3>
@@ -76,7 +84,6 @@ const rolloverMetricLabelKey = computed(() => rolloverState.value === 'predicted
               <dd v-else>{{ formatMoney(detail.predictedRollover!) }}</dd>
             </div>
           </dl>
-          <p v-if="rolloverState !== 'predicted'" class="home-ride__maximum-hint">{{ $t('home.rolloverReduceDaily', { amount: formatBytes(detail.requiredDailyReductionBytes ?? '0') }) }}</p>
         </section>
       </template>
     </template>

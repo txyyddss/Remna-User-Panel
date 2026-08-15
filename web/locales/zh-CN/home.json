@@ -11,7 +11,6 @@
     },
     "rolloverProjected": "预计周期总用量",
     "rolloverMaximumUsage": "最多可用流量",
-    "rolloverReduceDaily": "剩余每天减少 {amount}",
     "rolloverWarning": {
       "AUTO_RENEWAL_DISABLED": "自动续费已关闭，因此未请求上游用量，结转按零结算。"
     },
