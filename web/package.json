@@ -23,7 +23,7 @@
     "@iconify-json/circle-flags": "^1.2.10",
     "@iconify-json/ph": "^1.2.2",
     "@noble/hashes": "2.2.0",
-    "@nuxt/ui": "^4.10.0",
+    "@nuxt/ui": "https://pkg.pr.new/@nuxt/ui@6813",
     "dompurify": "^3.4.13",
     "markdown-it": "^15.0.0",
     "pinia": "^4.0.2",
