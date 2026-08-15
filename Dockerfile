@@ -14,7 +14,7 @@ RUN mkdir -p /src/internal/webui/dist \
     && npm run generate:api \
     && npm run build
 
-FROM golang:1.26.5-alpine AS go-build
+FROM golang:1.27rc2-alpine AS go-build
 ARG TARGETOS=linux
 ARG TARGETARCH
 WORKDIR /src
@@ -30,7 +30,7 @@ RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go build -trimpath -ldflags="-s -w" -o /out/tx-carpool ./cmd/server
 
-FROM alpine:3.23 AS runtime
+FROM alpine:3.24 AS runtime
 ARG VERSION=dev
 ARG COMMIT=unknown
 ARG BUILD_DATE=unknown
