@@ -21,7 +21,11 @@ func TestCreateAndUpdateUserWireContract(t *testing.T) {
 		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
 			t.Errorf("decode request: %v", err)
 		}
-		requests <- remnaRequest{method: request.Method, path: request.URL.Path, authorization: request.Header.Get("Authorization"), body: body}
+		requests <- remnaRequest{
+			method: request.Method, path: request.URL.Path, authorization: request.Header.Get("Authorization"),
+			realIP: request.Header.Get("X-Real-IP"), forwardedFor: request.Header.Get("X-Forwarded-For"),
+			forwardedProto: request.Header.Get("X-Forwarded-Proto"), body: body,
+		}
 		writer.Header().Set("Content-Type", "application/json")
 		_, _ = writer.Write([]byte(`{"response":` + userJSON(9, "ada", 42) + `}`))
 	}))
@@ -38,7 +42,7 @@ func TestCreateAndUpdateUserWireContract(t *testing.T) {
 		t.Fatalf("CreateUser() = %#v, %v", user, err)
 	}
 	request := <-requests
-	if request.method != http.MethodPost || request.path != "/api/users" || request.authorization != "Bearer "+bearer {
+	if request.method != http.MethodPost || request.path != "/api/users" || request.authorization != "Bearer "+bearer || request.realIP != remnawaveProxyIP || request.forwardedFor != remnawaveProxyIP || request.forwardedProto != "https" {
 		t.Fatalf("create request = %#v", request)
 	}
 	if request.body["status"] != "ACTIVE" || request.body["trafficLimitStrategy"] != "NO_RESET" {
@@ -289,8 +293,11 @@ func stringPointer(value string) *string {
 }
 
 type remnaRequest struct {
-	method        string
-	path          string
-	authorization string
-	body          map[string]any
+	method         string
+	path           string
+	authorization  string
+	realIP         string
+	forwardedFor   string
+	forwardedProto string
+	body           map[string]any
 }

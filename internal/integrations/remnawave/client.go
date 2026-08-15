@@ -15,6 +15,8 @@ import (
 
 const maxResponseBytes = 4 << 20
 
+const remnawaveProxyIP = "127.0.0.1"
+
 // HTTPDoer is implemented by *http.Client and permits transport injection in tests.
 type HTTPDoer interface {
 	Do(*http.Request) (*http.Response, error)
@@ -123,6 +125,9 @@ func (c *Client) do(ctx context.Context, method, endpoint string, query url.Valu
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Authorization", "Bearer "+c.token)
+	request.Header.Set("X-Real-IP", remnawaveProxyIP)
+	request.Header.Set("X-Forwarded-For", remnawaveProxyIP)
+	request.Header.Set("X-Forwarded-Proto", "https")
 	if input != nil {
 		request.Header.Set("Content-Type", "application/json")
 	}
