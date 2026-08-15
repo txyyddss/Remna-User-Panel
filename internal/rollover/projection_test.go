@@ -24,6 +24,22 @@ func TestProjectUsageUsesNetPaidAndTermProjection(t *testing.T) {
 	if projection.Paid.Minor != "10000" || projection.MaximumAllowableUsageBytes == nil || *projection.MaximumAllowableUsageBytes != 999 {
 		t.Fatalf("money/usage facts = paid %q maximum %v", projection.Paid.Minor, projection.MaximumAllowableUsageBytes)
 	}
+	if projection.MaximumDailyUsageBytes == nil || *projection.MaximumDailyUsageBytes != 99 {
+		t.Fatalf("maximum daily usage = %v, want 99", projection.MaximumDailyUsageBytes)
+	}
+}
+
+func TestProjectUsageProvidesMaximumDailyUsageBeforeForecastExceeds(t *testing.T) {
+	start := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	reset := start
+	purchase := model.Purchase{ID: "purchase-daily-limit", PriceTXBMinor: 10_000, ValidFrom: start, ValidUntil: start.AddDate(0, 0, 3)}
+	projection := ProjectUsage(purchase, 5_000, UsageSnapshot{
+		LimitBytes: 1_000, Strategy: "DAY", LastResetAt: &reset,
+		Daily: []DailyUsage{{Date: start, Bytes: 200}, {Date: start.AddDate(0, 0, 1), Bytes: 800}},
+	}, start.AddDate(0, 0, 2))
+	if projection.PredictedRollover != nil || projection.MaximumDailyUsageBytes == nil || *projection.MaximumDailyUsageBytes != 499 {
+		t.Fatalf("projection = %+v, want no credit and 499 bytes per remaining day", projection)
+	}
 }
 
 func TestCalculateUsageClipsDateBucketsToEachResetPeriod(t *testing.T) {
@@ -118,17 +134,18 @@ func TestProjectUsageSelectsLatestResetPeriodAndStrictThreshold(t *testing.T) {
 func TestProjectUsageUsesFullAllowanceWithoutCap(t *testing.T) {
 	start := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
 	tests := []struct {
-		name             string
-		strategy         string
-		days             int
-		usage            map[int]int64
-		wantAllocated    int64
-		wantEligible     int64
-		wantMaximum      int64
-		wantCredit       string
+		name          string
+		strategy      string
+		days          int
+		usage         map[int]int64
+		wantAllocated int64
+		wantEligible  int64
+		wantMaximum   int64
+		wantCredit    string
+		wantReduction int64
 	}{
-		{name: "daily", strategy: "DAY", days: 3, usage: map[int]int64{0: 200, 1: 800, 2: 200}, wantAllocated: 3_000, wantEligible: 1_600, wantMaximum: 2_999, wantCredit: "6000"},
-		{name: "weekly", strategy: "WEEK", days: 14, usage: map[int]int64{0: 200, 7: 800}, wantAllocated: 2_000, wantEligible: 800, wantMaximum: 1_999, wantCredit: "5000"},
+		{name: "daily", strategy: "DAY", days: 3, usage: map[int]int64{0: 200, 1: 800, 2: 200}, wantAllocated: 3_000, wantEligible: 1_600, wantMaximum: 1_499, wantCredit: "6000"},
+		{name: "weekly", strategy: "WEEK", days: 14, usage: map[int]int64{0: 200, 7: 800}, wantAllocated: 2_000, wantEligible: 800, wantMaximum: 999, wantReduction: 1},
 	}
 	for _, test := range tests {
 		test := test
@@ -151,8 +168,12 @@ func TestProjectUsageUsesFullAllowanceWithoutCap(t *testing.T) {
 			if projection.MaximumAllowableUsageBytes == nil || *projection.MaximumAllowableUsageBytes != test.wantMaximum {
 				t.Fatalf("maximum usable traffic = %v, want %d", projection.MaximumAllowableUsageBytes, test.wantMaximum)
 			}
-			if projection.PredictedRollover == nil || projection.PredictedRollover.Minor != test.wantCredit {
-				t.Fatalf("rollover = %v, want %s", projection.PredictedRollover, test.wantCredit)
+			if test.wantCredit != "" {
+				if projection.PredictedRollover == nil || projection.PredictedRollover.Minor != test.wantCredit {
+					t.Fatalf("rollover = %v, want %s", projection.PredictedRollover, test.wantCredit)
+				}
+			} else if projection.PredictedRollover != nil || projection.RequiredReductionBytes == nil || *projection.RequiredReductionBytes != test.wantReduction {
+				t.Fatalf("rollover reduction = (%v, %v), want %d", projection.PredictedRollover, projection.RequiredReductionBytes, test.wantReduction)
 			}
 		})
 	}

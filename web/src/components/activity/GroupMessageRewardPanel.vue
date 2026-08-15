@@ -22,7 +22,6 @@ const statusLabel = computed(() => props.reward.rewarded ? 'activity.groupReward
       <div class="group-reward-panel__card">
         <div class="group-reward-panel__stats">
           <div><span>{{ $t('activity.groupRewardCount') }}</span><strong>{{ reward.messageCount }} / {{ reward.threshold }}</strong></div>
-          <div><span>{{ $t('activity.groupRewardRemaining') }}</span><strong>{{ remaining }}</strong></div>
           <div><span>{{ $t('activity.groupRewardAmount') }}</span><strong>{{ amount }}</strong></div>
         </div>
         <div class="progress-track" role="progressbar" :aria-label="$t('activity.groupRewardProgressLabel')" :aria-valuenow="reward.messageCount" :aria-valuemin="0" :aria-valuemax="reward.threshold"><span :style="{ width: `${progress}%` }" /></div>
@@ -34,11 +33,12 @@ const statusLabel = computed(() => props.reward.rewarded ? 'activity.groupReward
 
 <style scoped>
 .group-reward-panel__card { display: grid; gap: 0.85rem; padding: 1rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--surface); }
-.group-reward-panel__stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
+.group-reward-panel__stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
 .group-reward-panel__stats div { display: grid; gap: 0.2rem; }
 .group-reward-panel__stats span, .group-reward-panel__status { color: var(--text-faint); font-size: 0.78rem; }
 .group-reward-panel__stats strong { color: var(--text-strong); font-size: 1rem; }
+.group-reward-panel .progress-track { height: 0.45rem; overflow: hidden; border-radius: 999px; background: var(--surface-raised); }
+.group-reward-panel .progress-track span { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width 180ms ease; }
 .group-reward-panel__status { margin: 0; }
 .group-reward-panel__status--ready { color: var(--success); }
-@media (max-width: 30rem) { .group-reward-panel__stats { grid-template-columns: 1fr 1fr; } .group-reward-panel__stats div:last-child { grid-column: 1 / -1; } }
 </style>

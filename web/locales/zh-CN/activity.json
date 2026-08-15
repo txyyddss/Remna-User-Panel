@@ -1,7 +1,6 @@
 {
   "activity": {
     "groupRewardCount": "消息数",
-    "groupRewardRemaining": "还需消息",
     "groupRewardAmount": "奖励",
     "groupRewardProgressLabel": "群消息奖励进度",
     "groupRewardInProgress": "继续发送消息即可解锁今日奖励。",

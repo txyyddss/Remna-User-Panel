@@ -21,7 +21,7 @@ RolloverWindow:
 RolloverProjection:
   type: object
   additionalProperties: false
-  required: [purchaseId, paid, autoRenewalEnabled, warningCode, actualUsedTrafficBytes, projectedFullTermUsageBytes, maximumAllowableUsageBytes, predictedRollover, requiredReductionBytes, requiredDailyReductionBytes, minimumRemainingBps, term, lastResetPeriod, fetchedAt]
+  required: [purchaseId, paid, autoRenewalEnabled, warningCode, actualUsedTrafficBytes, projectedFullTermUsageBytes, maximumAllowableUsageBytes, maximumDailyUsageBytes, predictedRollover, requiredReductionBytes, requiredDailyReductionBytes, minimumRemainingBps, term, lastResetPeriod, fetchedAt]
   properties:
     purchaseId: { $ref: '../../openapi.yaml#/components/schemas/ID' }
     paid:
@@ -33,6 +33,7 @@ RolloverProjection:
     actualUsedTrafficBytes: { type: [string, 'null'], pattern: '^\d+$' }
     projectedFullTermUsageBytes: { type: [string, 'null'], pattern: '^\d+$' }
     maximumAllowableUsageBytes: { type: [string, 'null'], pattern: '^\d+$' }
+    maximumDailyUsageBytes: { type: [string, 'null'], pattern: '^\d+$' }
     predictedRollover:
       oneOf:
         - $ref: '../../openapi.yaml#/components/schemas/Money'

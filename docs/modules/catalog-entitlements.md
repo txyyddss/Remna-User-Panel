@@ -49,7 +49,7 @@ Expiry first queues `rollover_finalize` and blocks renewal activation. The worke
 - Transient Remnawave failures retry without resetting traffic. A confirmed missing user records a zero-credit exception instead of assuming all traffic was unused.
 - Purchase ID is the rollover credit's unique semantic reference; replay cannot credit twice.
 - Cadence-aware settlement derives `DAY`, `WEEK`, `MONTH`, and `MONTH_ROLLING` intervals from the term and reset metadata, uses Remnawave's authoritative current-period used counter for the newest interval, uses bounded daily buckets for historical intervals, prorates partial intervals, excludes intervals below threshold from `eligibleUnusedAllowance`, and applies `netPaid * eligibleUnusedAllowance / totalAllowance` without a rollover cap. `totalAllowance` still includes every prorated interval.
-- The live rollover projection forecasts from actual usage over elapsed term time, reports maximum allowable usage and total/daily reduction when needed, and calculates money from the immutable `charged_txb_minor` fact. When automatic renewal is disabled it returns a localized warning state without requesting provider usage.
+- The live rollover projection forecasts from actual usage over elapsed term time, reports maximum allowable usage, maximum daily usage when the current total is still eligible but the forecast exceeds the limit, and total/daily reduction when needed. It calculates money from the immutable `charged_txb_minor` fact. When automatic renewal is disabled it returns a localized warning state without requesting provider usage.
 
 ## Failure behavior
 

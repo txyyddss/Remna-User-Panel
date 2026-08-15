@@ -1,7 +1,6 @@
 {
   "activity": {
     "groupRewardCount": "Messages",
-    "groupRewardRemaining": "Remaining",
     "groupRewardAmount": "Reward",
     "groupRewardProgressLabel": "Group-message reward progress",
     "groupRewardInProgress": "Keep going to unlock today's reward.",

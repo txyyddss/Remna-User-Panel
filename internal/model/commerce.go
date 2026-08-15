@@ -117,6 +117,7 @@ type RolloverProjection struct {
 	ActualUsedTrafficBytes      *int64          `json:"actualUsedTrafficBytes,string"`
 	ProjectedFullTermUsageBytes *int64          `json:"projectedFullTermUsageBytes,string"`
 	MaximumAllowableUsageBytes  *int64          `json:"maximumAllowableUsageBytes,string"`
+	MaximumDailyUsageBytes      *int64          `json:"maximumDailyUsageBytes,string"`
 	PredictedRollover           *Money          `json:"predictedRollover"`
 	RequiredReductionBytes      *int64          `json:"requiredReductionBytes,string"`
 	RequiredDailyReductionBytes *int64          `json:"requiredDailyReductionBytes,string"`

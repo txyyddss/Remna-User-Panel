@@ -16,12 +16,11 @@ func TestFinalizeRolloverFormulaThresholdCapAndIdempotency(t *testing.T) {
 		limit      int64
 		used       int64
 		threshold  int
-		maximum    int64
 		wantCredit int64
 	}{
-		{name: "strictly above threshold capped", limit: 1000, used: 400, threshold: 5000, maximum: 400, wantCredit: 400},
-		{name: "equal threshold is zero", limit: 1000, used: 500, threshold: 5000, maximum: 1000, wantCredit: 0},
-		{name: "zero limit is zero", limit: 0, used: 0, threshold: 0, maximum: 1000, wantCredit: 0},
+		{name: "strictly above threshold", limit: 1000, used: 400, threshold: 5000, wantCredit: 600},
+		{name: "equal threshold is zero", limit: 1000, used: 500, threshold: 5000, wantCredit: 0},
+		{name: "zero limit is zero", limit: 0, used: 0, threshold: 0, wantCredit: 0},
 	}
 	for index, test := range tests {
 		index, test := index, test

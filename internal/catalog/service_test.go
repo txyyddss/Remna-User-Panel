@@ -25,7 +25,7 @@ func TestCatalogAndPurchaseForwarding(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Catalog(): %v", err)
 	}
-	if len(result.Combos) != 1 || len(result.Addons) != 1 || !repository.combosVisibleOnly || !repository.addonsVisibleOnly {
+	if len(result.Combos) != 1 || len(result.Addons) != 1 || !repository.combosVisibleOnly || repository.addonsVisibleOnly {
 		t.Fatalf("Catalog() = %+v, filters = %t/%t", result, repository.combosVisibleOnly, repository.addonsVisibleOnly)
 	}
 
