@@ -18,7 +18,7 @@
 .home-ride__detail-heading .u-button { flex: 0 0 auto; }
 .home-ride__detail-title { color: var(--text-faint); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
 .home-ride__detail-loading, .home-ride__detail-error { display: grid; gap: 0.7rem; }
-.home-ride__detail-overview { --detail-tone: var(--accent); --detail-tone-soft: var(--accent-soft); position: relative; display: grid; min-height: 4.5rem; place-items: center; padding: 1rem 3.75rem; border: 1px solid var(--detail-tone); border-left-width: 3px; border-radius: 0 var(--radius-control) var(--radius-control) 0; background: var(--detail-tone-soft); }
+.home-ride__detail-overview { --detail-tone: var(--accent); --detail-tone-soft: var(--accent-soft); position: relative; display: grid; min-height: 4.5rem; place-items: center; padding: 1rem 3.75rem; border: 1px solid var(--detail-tone); border-radius: var(--radius-control); background: var(--detail-tone-soft); }
 .home-ride__detail-overview--success { --detail-tone: var(--success); --detail-tone-soft: var(--success-soft); }
 .home-ride__detail-overview--warning { --detail-tone: var(--warning); --detail-tone-soft: var(--warning-soft); }
 .home-ride__detail-overview--danger { --detail-tone: var(--danger); --detail-tone-soft: var(--danger-soft); }
