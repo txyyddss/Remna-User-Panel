@@ -24,6 +24,22 @@ func TestProjectUsageUsesNetPaidAndTermProjection(t *testing.T) {
 	if projection.Paid.Minor != "10000" || projection.MaximumAllowableUsageBytes == nil || *projection.MaximumAllowableUsageBytes != 999 {
 		t.Fatalf("money/usage facts = paid %q maximum %v", projection.Paid.Minor, projection.MaximumAllowableUsageBytes)
 	}
+	if projection.MaximumDailyUsageBytes == nil || *projection.MaximumDailyUsageBytes != 99 {
+		t.Fatalf("maximum daily usage = %v, want 99", projection.MaximumDailyUsageBytes)
+	}
+}
+
+func TestProjectUsageProvidesMaximumDailyUsageBeforeForecastExceeds(t *testing.T) {
+	start := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	reset := start
+	purchase := model.Purchase{ID: "purchase-daily-limit", PriceTXBMinor: 10_000, ValidFrom: start, ValidUntil: start.AddDate(0, 0, 3)}
+	projection := ProjectUsage(purchase, 5_000, UsageSnapshot{
+		LimitBytes: 1_000, Strategy: "DAY", LastResetAt: &reset,
+		Daily: []DailyUsage{{Date: start, Bytes: 200}, {Date: start.AddDate(0, 0, 1), Bytes: 800}},
+	}, start.AddDate(0, 0, 2))
+	if projection.PredictedRollover != nil || projection.MaximumDailyUsageBytes == nil || *projection.MaximumDailyUsageBytes != 499 {
+		t.Fatalf("projection = %+v, want no credit and 499 bytes per remaining day", projection)
+	}
 }
 
 func TestCalculateUsageClipsDateBucketsToEachResetPeriod(t *testing.T) {

@@ -35,11 +35,21 @@ func ProjectUsage(purchase model.Purchase, threshold int, snapshot UsageSnapshot
 	if remaining < 0 {
 		remaining = 0
 	}
+	daysLeft := int64((purchase.ValidUntil.Sub(now) + 24*time.Hour - 1).Hours() / 24)
+	if daysLeft < 1 {
+		daysLeft = 1
+	}
+	var maximumDailyUsage *int64
+	if actual <= maximum {
+		value := (maximum - actual) / daysLeft
+		maximumDailyUsage = pointer(value)
+	}
 	result := model.RolloverProjection{
 		PurchaseID: purchase.ID, Paid: model.TXBMoney(purchase.PriceTXBMinor),
 		AutoRenewalEnabled: purchase.AutoRenewEnabled, MinimumRemainingBPS: threshold,
 		ActualUsedTrafficBytes: pointer(actual), ProjectedFullTermUsageBytes: pointer(projected),
 		MaximumAllowableUsageBytes: pointer(maximum),
+		MaximumDailyUsageBytes:     maximumDailyUsage,
 		Term:                       pointerWindow(buildWindow(start, now, current, purchase.PriceTXBMinor)),
 		LastResetPeriod:            pointerWindow(buildLastWindow(start, now, snapshot, purchase.PriceTXBMinor, threshold)),
 	}
@@ -50,10 +60,6 @@ func ProjectUsage(purchase model.Purchase, threshold int, snapshot UsageSnapshot
 	reduction := projected - maximum
 	if reduction < 0 {
 		reduction = 0
-	}
-	daysLeft := int64((purchase.ValidUntil.Sub(now) + 24*time.Hour - 1).Hours() / 24)
-	if daysLeft < 1 {
-		daysLeft = 1
 	}
 	result.RequiredReductionBytes = pointer(reduction)
 	result.RequiredDailyReductionBytes = pointer(ceilDivide(reduction, daysLeft))

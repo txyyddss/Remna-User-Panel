@@ -1,11 +1,41 @@
 <script setup lang="ts">
+import { computed, toRefs } from 'vue'
+
 import type { RolloverProjection } from '@/api/types'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { formatBytes, formatMoney } from '@/utils/format'
 
-defineProps<{ detail: RolloverProjection | null; loading: boolean; error: string | null }>()
+const props = defineProps<{ detail: RolloverProjection | null; loading: boolean; error: string | null }>()
 const emit = defineEmits<{ back: []; retry: [] }>()
+const { detail, loading, error } = toRefs(props)
+
+type RolloverState = 'alreadyExceeded' | 'predictedExceeded' | 'predicted'
+
+function parseTrafficBytes(value: string | null): bigint | null {
+  return value && /^\d+$/.test(value) ? BigInt(value) : null
+}
+
+const alreadyExceeded = computed(() => {
+  const actual = parseTrafficBytes(detail.value?.actualUsedTrafficBytes ?? null)
+  const maximum = parseTrafficBytes(detail.value?.maximumAllowableUsageBytes ?? null)
+  return actual !== null && maximum !== null && actual > maximum
+})
+
+const rolloverState = computed<RolloverState>(() => {
+  if (detail.value?.predictedRollover) return 'predicted'
+  return alreadyExceeded.value ? 'alreadyExceeded' : 'predictedExceeded'
+})
+
+const rolloverStatusKey = computed(() => {
+  if (rolloverState.value === 'predicted') return 'home.rolloverStatus.willGet'
+  if (rolloverState.value === 'alreadyExceeded') return 'home.rolloverStatus.couldNotGet'
+  return 'home.rolloverStatus.dailyReduction'
+})
+
+const rolloverMetricLabelKey = computed(() => rolloverState.value === 'predictedExceeded'
+  ? 'home.rolloverMaximumDailyUsage'
+  : 'home.rolloverForecastCredit')
 </script>
 
 <template>
@@ -24,9 +54,14 @@ const emit = defineEmits<{ back: []; retry: [] }>()
     <template v-else-if="detail">
       <InlineNotice v-if="detail.warningCode" tone="warning">{{ $t(`home.rolloverWarning.${detail.warningCode}`) }}</InlineNotice>
       <template v-else>
-        <div v-if="!detail.predictedRollover" class="home-ride__detail-overview">
+        <div class="home-ride__detail-overview">
           <span class="home-ride__detail-icon"><UIcon name="i-ph-arrows-clockwise" aria-hidden="true" /></span>
-          <div><span>{{ $t('home.rolloverReductionNeeded') }}</span><strong>{{ formatBytes(detail.requiredReductionBytes ?? '0') }}</strong></div>
+          <div>
+            <span>{{ $t(rolloverStatusKey) }}</span>
+            <strong v-if="rolloverState === 'alreadyExceeded'">{{ $t('home.rolloverNotAvailable') }}</strong>
+            <strong v-else-if="rolloverState === 'predictedExceeded'">{{ formatBytes(detail.requiredDailyReductionBytes ?? '0') }}</strong>
+            <strong v-else>{{ formatMoney(detail.predictedRollover!) }}</strong>
+          </div>
         </div>
         <section class="home-ride__window">
           <h3>{{ $t('home.rolloverForecast') }}</h3>
@@ -34,9 +69,14 @@ const emit = defineEmits<{ back: []; retry: [] }>()
             <div><dt>{{ $t('home.rolloverUsed') }}</dt><dd>{{ formatBytes(detail.actualUsedTrafficBytes ?? '0') }}</dd></div>
             <div><dt>{{ $t('home.rolloverProjected') }}</dt><dd>{{ formatBytes(detail.projectedFullTermUsageBytes ?? '0') }}</dd></div>
             <div><dt>{{ $t('home.rolloverMaximumUsage') }}</dt><dd>{{ formatBytes(detail.maximumAllowableUsageBytes ?? '0') }}</dd></div>
-            <div v-if="detail.predictedRollover"><dt>{{ $t('home.rolloverForecastCredit') }}</dt><dd>{{ formatMoney(detail.predictedRollover) }}</dd></div>
+            <div>
+              <dt>{{ $t(rolloverMetricLabelKey) }}</dt>
+              <dd v-if="rolloverState === 'alreadyExceeded'">{{ $t('home.rolloverNotAvailable') }}</dd>
+              <dd v-else-if="rolloverState === 'predictedExceeded'">{{ formatBytes(detail.maximumDailyUsageBytes ?? '0') }}</dd>
+              <dd v-else>{{ formatMoney(detail.predictedRollover!) }}</dd>
+            </div>
           </dl>
-          <p v-if="!detail.predictedRollover" class="home-ride__maximum-hint">{{ $t('home.rolloverReduceDaily', { amount: formatBytes(detail.requiredDailyReductionBytes ?? '0') }) }}</p>
+          <p v-if="rolloverState !== 'predicted'" class="home-ride__maximum-hint">{{ $t('home.rolloverReduceDaily', { amount: formatBytes(detail.requiredDailyReductionBytes ?? '0') }) }}</p>
         </section>
       </template>
     </template>

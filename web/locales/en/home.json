@@ -2,7 +2,13 @@
   "home": {
     "rolloverForecast": "Rollover forecast",
     "rolloverForecastCredit": "Predicted rollover credit",
-    "rolloverReductionNeeded": "Reduction needed",
+    "rolloverMaximumDailyUsage": "Maximum daily usage",
+    "rolloverNotAvailable": "N/A",
+    "rolloverStatus": {
+      "willGet": "You will get a rollover",
+      "dailyReduction": "Daily usage reduction needed",
+      "couldNotGet": "You could not get a rollover"
+    },
     "rolloverProjected": "Projected full-term usage",
     "rolloverMaximumUsage": "Maximum usable traffic",
     "rolloverReduceDaily": "Reduce by {amount} per remaining day",

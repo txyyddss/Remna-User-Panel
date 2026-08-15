@@ -2,7 +2,13 @@
   "home": {
     "rolloverForecast": "结转预测",
     "rolloverForecastCredit": "预计结转额度",
-    "rolloverReductionNeeded": "需要减少的流量",
+    "rolloverMaximumDailyUsage": "可获得结转的每日最大用量",
+    "rolloverNotAvailable": "不适用",
+    "rolloverStatus": {
+      "willGet": "你将获得结转",
+      "dailyReduction": "需要减少每日用量",
+      "couldNotGet": "你无法获得结转"
+    },
     "rolloverProjected": "预计周期总用量",
     "rolloverMaximumUsage": "最多可用流量",
     "rolloverReduceDaily": "剩余每天减少 {amount}",
