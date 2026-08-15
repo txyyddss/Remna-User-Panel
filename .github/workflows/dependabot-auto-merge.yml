@@ -1,0 +1,117 @@
+name: Dependabot auto-merge
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+  check_suite:
+    types:
+      - completed
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+jobs:
+  auto-merge:
+    name: Merge eligible Dependabot PR
+    if: >-
+      (github.event_name == 'pull_request_target' &&
+       github.event.pull_request.user.login == 'dependabot[bot]' &&
+       github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.event == 'pull_request' &&
+       github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'check_suite' &&
+       github.event.check_suite.conclusion == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      AUTO_MERGE_CHECK: Merge eligible Dependabot PR
+    steps:
+      - name: Resolve pull request
+        id: pull-request
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+          WORKFLOW_PULL_REQUEST_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+          CHECK_SUITE_PULL_REQUEST_NUMBER: ${{ github.event.check_suite.pull_requests[0].number }}
+        run: |
+          case "$EVENT_NAME" in
+            pull_request_target) number="$PULL_REQUEST_NUMBER" ;;
+            workflow_run) number="$WORKFLOW_PULL_REQUEST_NUMBER" ;;
+            check_suite) number="$CHECK_SUITE_PULL_REQUEST_NUMBER" ;;
+            *) number="" ;;
+          esac
+
+          if [[ -n "$number" && "$number" != "null" ]]; then
+            echo "number=$number" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify Dependabot author and completed checks
+        id: eligibility
+        if: steps.pull-request.outputs.number != ''
+        shell: bash
+        env:
+          PR_NUMBER: ${{ steps.pull-request.outputs.number }}
+        run: |
+          pr_json="$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json author,isDraft,isCrossRepository,state,headRefOid,url,statusCheckRollup)"
+
+          author="$(jq -r '.author.login // ""' <<< "$pr_json")"
+          is_draft="$(jq -r '.isDraft' <<< "$pr_json")"
+          is_cross_repository="$(jq -r '.isCrossRepository' <<< "$pr_json")"
+          state="$(jq -r '.state' <<< "$pr_json")"
+
+          if [[ "$author" != "dependabot[bot]" || "$is_draft" == "true" || "$is_cross_repository" == "true" || "$state" != "OPEN" ]]; then
+            echo "PR is not an eligible same-repository Dependabot pull request."
+            exit 0
+          fi
+
+          checks="$(jq -c --arg current_check "$AUTO_MERGE_CHECK" '
+            [
+              .statusCheckRollup[]
+              | select((.name // .context // "") != $current_check)
+              | {
+                  name: (.name // .context // "unnamed"),
+                  status: (.status // "COMPLETED"),
+                  conclusion: (.conclusion // .state // "UNKNOWN")
+                }
+            ]
+          ' <<< "$pr_json")"
+
+          check_count="$(jq 'length' <<< "$checks")"
+          if [[ "$check_count" == "0" ]]; then
+            echo "No completed checks are reported yet."
+            exit 0
+          fi
+
+          if ! jq -e 'all(.[];
+            (.status == "COMPLETED") and
+            (.conclusion == "SUCCESS")
+          )' <<< "$checks" > /dev/null; then
+            echo "Not all checks have passed; leaving the PR open."
+            exit 0
+          fi
+
+          echo "eligible=true" >> "$GITHUB_OUTPUT"
+          echo "head-sha=$(jq -r '.headRefOid' <<< "$pr_json")" >> "$GITHUB_OUTPUT"
+          echo "url=$(jq -r '.url' <<< "$pr_json")" >> "$GITHUB_OUTPUT"
+
+      - name: Enable squash auto-merge
+        if: steps.eligibility.outputs.eligible == 'true'
+        shell: bash
+        env:
+          PR_URL: ${{ steps.eligibility.outputs.url }}
+          HEAD_SHA: ${{ steps.eligibility.outputs.head-sha }}
+        run: gh pr merge "$PR_URL" --repo "$GITHUB_REPOSITORY" --auto --squash --delete-branch --match-head-commit "$HEAD_SHA"
