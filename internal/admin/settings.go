@@ -21,7 +21,7 @@ var settingDefinitions = map[string]SettingDefinition{
 	"telegram.group_chat_id":            {Required: true, Validate: validateInteger},
 	"telegram.channel_chat_id":          {Required: true, Validate: validateInteger},
 	"telegram.webhook_secret":           {Secret: true, Validate: validateWebhookSecret},
-	"remnawave.base_url":                {Required: true, Validate: validateHTTPSURL},
+	"remnawave.base_url":                {Required: true, Validate: validateHTTPOrHTTPSURL},
 	"remnawave.api_token":               {Secret: true, Required: true, Validate: nonempty},
 	"billing.rate.txb_per_cny":          {Required: true, Validate: validatePositiveDecimal},
 	"billing.rate.txb_per_usd":          {Required: true, Validate: validatePositiveDecimal},

@@ -14,7 +14,7 @@ The fixed registry defines each known key's validator, sensitivity, display cate
 | --- | --- |
 | `telegram.group_chat_id`, `telegram.channel_chat_id` | Required nonzero integer chat IDs |
 | `telegram.webhook_secret` | Encrypted, URL-safe; generated at bootstrap |
-| `remnawave.base_url`, `remnawave.api_token` | Required HTTPS origin and encrypted bearer token |
+| `remnawave.base_url`, `remnawave.api_token` | Required HTTP or HTTPS origin and encrypted bearer token |
 | `billing.rate.txb_per_cny`, `txb_per_usd`, `txb_per_xtr` | Required positive fixed decimals; legacy inverse rates are not converted |
 | `billing.ezpay.*`, `billing.bepusdt.*` | Legacy compatibility/readiness keys; new provider credentials and channel choices are edited through the provider-account payment profile endpoint |
 | `billing.stars.enabled` | Boolean Stars gate |
@@ -23,6 +23,8 @@ The fixed registry defines each known key's validator, sensitivity, display cate
 | `activity.group_message_threshold`, `activity.group_message_reward_txb` | Nonnegative message threshold and human-major TXB reward; either zero disables the reward |
 
 All TXB setting/editor fields accept human-major decimals with at most two fractional digits. `150` therefore stores or resolves to `15000` minor units when used financially. Admin API domain records continue to serialize money as decimal-string minor units.
+
+Remnawave may use an internal Docker-network origin such as `http://remnawave:3000`. Use HTTP only when the panel and Remnawave share a trusted private network; public Remnawave endpoints should use HTTPS.
 
 Readiness checks required settings, enabled-provider completeness, and at least one active combo without calling external providers. Missing new-direction rates keep the corresponding payment method unavailable. Provider connectivity and permissions surface through their normal operations instead of leaking secrets through readiness.
 

@@ -57,6 +57,14 @@ func validateHTTPSURL(value string) error {
 	return nil
 }
 
+func validateHTTPOrHTTPSURL(value string) error {
+	parsed, err := url.Parse(value)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return errors.New("must be an absolute HTTP or HTTPS URL without credentials, query, or fragment")
+	}
+	return nil
+}
+
 func validateBoolean(value string) error {
 	if value != "true" && value != "false" {
 		return errors.New("must be true or false")

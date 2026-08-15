@@ -147,7 +147,7 @@ func TestSettingsReadiness(t *testing.T) {
 	required := map[string]string{
 		"telegram.group_chat_id":   "-1001",
 		"telegram.channel_chat_id": "-1002",
-		"remnawave.base_url":       "https://remna.test",
+		"remnawave.base_url":       "http://remnawave:3000",
 		"remnawave.api_token":      "secret",
 		"billing.rate.txb_per_cny": "1",
 		"billing.rate.txb_per_usd": "10",
@@ -191,6 +191,7 @@ func TestSettingValidators(t *testing.T) {
 		{name: "positive decimal", validate: validatePositiveDecimal, valid: []string{"0.01", "42"}, invalid: []string{"0", "-1", "one"}},
 		{name: "integer", validate: validateInteger, valid: []string{"1", "-1001"}, invalid: []string{"0", "1.5", "x"}},
 		{name: "HTTPS URL", validate: validateHTTPSURL, valid: []string{"https://example.test/path"}, invalid: []string{"http://example.test", "https://user@example.test", "/relative", "https:///missing"}},
+		{name: "HTTP or HTTPS URL", validate: validateHTTPOrHTTPSURL, valid: []string{"http://remnawave:3000", "https://example.test/path"}, invalid: []string{"https://user@example.test", "/relative", "http:///missing"}},
 		{name: "boolean", validate: validateBoolean, valid: []string{"true", "false"}, invalid: []string{"TRUE", "1", ""}},
 		{name: "ack", validate: validateAck, valid: []string{"ok", "success", "SUCCESS"}, invalid: []string{"true", "done"}},
 		{name: "EZPay methods", validate: billing.ValidateEZPayMethods, valid: []string{"alipay", "wxpay,alipay", "qqpay,bank,jdpay"}, invalid: []string{"card", "", "alipay,alipay"}},
