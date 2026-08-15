@@ -84,6 +84,9 @@ func calculateUsageRange(threshold int, snapshot UsageSnapshot, anchor, start, e
 }
 
 func currentPeriodUsage(snapshot UsageSnapshot, period cadencePeriod, start, end time.Time) (int64, bool) {
+	if snapshot.NodeSeriesAvailable {
+		return 0, false
+	}
 	if snapshot.CurrentUsedBytes == nil || *snapshot.CurrentUsedBytes < 0 {
 		return 0, false
 	}

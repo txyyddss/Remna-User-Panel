@@ -38,3 +38,5 @@ file instead.
 - `018_automatic_renewal.sql` adds opt-in automatic-renewal state, a durable
   due-cycle failure notice, recurring-discount attachment, and a unique
   source-successor link while leaving legacy renewal records intact.
+- `019_rollover_activation_codes.sql` removes the persisted rollover cap and
+  adds bcrypt-backed squad activation metadata.

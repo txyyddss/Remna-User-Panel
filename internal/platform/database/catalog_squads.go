@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/squadprofile"
+	"golang.org/x/crypto/bcrypt"
 	"strings"
 	"time"
 )
@@ -20,7 +21,7 @@ func (s *Store) SaveSquadProduct(ctx context.Context, input SquadProductInput) (
 		return model.SquadProduct{}, ErrNotFound
 	}
 	now := time.Now().UTC()
-	if strings.TrimSpace(input.Description) == "" && input.PriceTXBMinor == 0 && !input.Visible && input.StockLimit == nil && input.Profile == nil {
+	if strings.TrimSpace(input.Description) == "" && input.PriceTXBMinor == 0 && !input.Visible && input.StockLimit == nil && input.Profile == nil && !input.ActivationRequired && strings.TrimSpace(input.ActivationCode) == "" {
 		if _, err := s.db.ExecContext(ctx, `DELETE FROM squad_product_overrides WHERE remna_squad_uuid=?`, uuid); err != nil {
 			return model.SquadProduct{}, fmt.Errorf("remove default squad override: %w", err)
 		}
@@ -38,9 +39,13 @@ func (s *Store) SaveSquadProduct(ctx context.Context, input SquadProductInput) (
 		}
 		profileJSON = string(encoded)
 	}
-	_, err := s.db.ExecContext(ctx, `INSERT INTO squad_product_overrides(remna_squad_uuid,description,profile_json,price_txb_minor,visible,stock_limit,created_at,updated_at)
-		VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(remna_squad_uuid) DO UPDATE SET description=excluded.description,profile_json=excluded.profile_json,price_txb_minor=excluded.price_txb_minor,visible=excluded.visible,stock_limit=excluded.stock_limit,updated_at=excluded.updated_at`,
-		uuid, strings.TrimSpace(input.Description), profileJSON, input.PriceTXBMinor, boolInt(input.Visible), input.StockLimit, stamp(now), stamp(now))
+	hash, err := activationHash(ctx, s.db, uuid, input.ActivationRequired, input.ActivationCode)
+	if err != nil {
+		return model.SquadProduct{}, err
+	}
+	_, err = s.db.ExecContext(ctx, `INSERT INTO squad_product_overrides(remna_squad_uuid,description,profile_json,price_txb_minor,visible,stock_limit,activation_required,activation_code_hash,created_at,updated_at)
+		VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(remna_squad_uuid) DO UPDATE SET description=excluded.description,profile_json=excluded.profile_json,price_txb_minor=excluded.price_txb_minor,visible=excluded.visible,stock_limit=excluded.stock_limit,activation_required=excluded.activation_required,activation_code_hash=excluded.activation_code_hash,updated_at=excluded.updated_at`,
+		uuid, strings.TrimSpace(input.Description), profileJSON, input.PriceTXBMinor, boolInt(input.Visible), input.StockLimit, boolInt(input.ActivationRequired), hash, stamp(now), stamp(now))
 	if err != nil {
 		return model.SquadProduct{}, fmt.Errorf("save squad override: %w", err)
 	}
@@ -55,7 +60,7 @@ func (s *Store) SaveSquadProduct(ctx context.Context, input SquadProductInput) (
 func virtualSquad(input SquadProductInput, now time.Time) model.SquadProduct {
 	return model.SquadProduct{ID: input.RemnaSquadUUID, RemnaSquadUUID: input.RemnaSquadUUID, Name: input.Name,
 		Description: strings.TrimSpace(input.Description), PriceTXBMinor: input.PriceTXBMinor, Price: model.TXBMoney(input.PriceTXBMinor),
-		Profile: input.Profile, Visible: input.Visible, UpstreamPresent: true, StockLimit: input.StockLimit, CreatedAt: now, UpdatedAt: now}
+		Profile: input.Profile, Visible: input.Visible, UpstreamPresent: true, StockLimit: input.StockLimit, ActivationRequired: input.ActivationRequired, CreatedAt: now, UpdatedAt: now}
 }
 
 // SquadProductByRemnaUUID resolves a persisted local override.
@@ -136,15 +141,15 @@ func (s *Store) attachSquadStock(ctx context.Context, product *model.SquadProduc
 	return nil
 }
 
-const squadSelect = `SELECT remna_squad_uuid,description,profile_json,price_txb_minor,visible,stock_limit,created_at,updated_at FROM squad_product_overrides`
+const squadSelect = `SELECT remna_squad_uuid,description,profile_json,price_txb_minor,visible,stock_limit,activation_required,created_at,updated_at FROM squad_product_overrides`
 
 func scanSquad(row rowScanner) (model.SquadProduct, error) {
 	var product model.SquadProduct
-	var visible int
+	var visible, activationRequired int
 	var created, updated string
 	var stockLimit sql.NullInt64
 	var profileJSON sql.NullString
-	if err := row.Scan(&product.RemnaSquadUUID, &product.Description, &profileJSON, &product.PriceTXBMinor, &visible, &stockLimit, &created, &updated); err != nil {
+	if err := row.Scan(&product.RemnaSquadUUID, &product.Description, &profileJSON, &product.PriceTXBMinor, &visible, &stockLimit, &activationRequired, &created, &updated); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.SquadProduct{}, ErrNotFound
 		}
@@ -152,6 +157,7 @@ func scanSquad(row rowScanner) (model.SquadProduct, error) {
 	}
 	product.ID = product.RemnaSquadUUID
 	product.Visible = visible == 1
+	product.ActivationRequired = activationRequired == 1
 	product.UpstreamPresent = true
 	product.StockLimit = intPointer(stockLimit)
 	product.Price = model.TXBMoney(product.PriceTXBMinor)
@@ -168,10 +174,26 @@ func scanSquad(row rowScanner) (model.SquadProduct, error) {
 	return product, err
 }
 
-func intPointer(value sql.NullInt64) *int {
-	if !value.Valid {
-		return nil
+func activationHash(ctx context.Context, db *sql.DB, uuid string, required bool, code string) (any, error) {
+	if !required {
+		return nil, nil
 	}
-	result := int(value.Int64)
-	return &result
+	code = strings.TrimSpace(code)
+	if code != "" {
+		hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, fmt.Errorf("hash squad activation code: %w", err)
+		}
+		return string(hash), nil
+	}
+	var existing sql.NullString
+	if err := db.QueryRowContext(ctx, `SELECT activation_code_hash FROM squad_product_overrides WHERE remna_squad_uuid=?`, uuid).Scan(&existing); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("load squad activation code: %w", err)
+	}
+	if !existing.Valid || existing.String == "" {
+		return nil, ErrActivationCodeRequired
+	}
+	return existing.String, nil
 }
+
+func intPointer(value sql.NullInt64) *int { if !value.Valid { return nil }; result := int(value.Int64); return &result }

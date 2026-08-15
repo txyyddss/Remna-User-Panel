@@ -136,6 +136,7 @@ SquadProduct:
     - price
     - visible
     - upstreamPresent
+    - activationRequired
     - createdAt
     - updatedAt
   properties:
@@ -155,6 +156,8 @@ SquadProduct:
     price:
       $ref: '../../openapi.yaml#/components/schemas/Money'
     visible:
+      type: boolean
+    activationRequired:
       type: boolean
     upstreamPresent:
       type: boolean
@@ -183,8 +186,6 @@ Combo:
     - active
     - includedSquads
     - rolloverMinRemainingBps
-    - rolloverMaxTxbMinor
-    - rolloverMax
     - createdAt
     - updatedAt
   properties:
@@ -216,11 +217,6 @@ Combo:
       minimum: 0
       maximum: 10000
       description: Remaining traffic must be strictly greater than this basis-point threshold.
-    rolloverMaxTxbMinor:
-      type: string
-      pattern: '^\d+$'
-    rolloverMax:
-      $ref: '../../openapi.yaml#/components/schemas/Money'
     createdAt:
       $ref: '../../openapi.yaml#/components/schemas/Timestamp'
     updatedAt:
@@ -273,7 +269,6 @@ ComboWrite:
     - resetStrategy
     - active
     - rolloverMinRemainingBps
-    - rolloverMaxTxbMinor
   properties:
     name:
       type: string
@@ -311,14 +306,11 @@ ComboWrite:
       type: integer
       minimum: 0
       maximum: 10000
-    rolloverMaxTxbMinor:
-      type: string
-      pattern: '^\d+$'
 
 SquadProductWrite:
   type: object
   additionalProperties: false
-  required: [remnaSquadUuid, name, description, profile, priceTxbMinor, visible]
+  required: [remnaSquadUuid, name, description, profile, priceTxbMinor, visible, activationRequired]
   properties:
     remnaSquadUuid:
       type: string
@@ -336,6 +328,12 @@ SquadProductWrite:
       pattern: '^\d+$'
     visible:
       type: boolean
+    activationRequired:
+      type: boolean
+    activationCode:
+      type: string
+      minLength: 1
+      writeOnly: true
     stockLimit:
       type: [integer, 'null']
       minimum: 0

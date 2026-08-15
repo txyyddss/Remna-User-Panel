@@ -121,7 +121,7 @@ func (s *Store) CancelPurchase(ctx context.Context, purchaseID, reason string, n
 
 const purchaseSelect = `SELECT purchases.id,purchases.user_id,purchases.combo_id,combos.name,purchases.charged_txb_minor,purchases.valid_from,purchases.valid_until,
 	purchases.status,combos.traffic_limit_bytes,combos.reset_strategy,purchases.coupon_grant_id,COALESCE(purchases.gross_price_txb_minor,purchases.charged_txb_minor),purchases.coupon_discount_txb_minor,
-	combos.rollover_min_remaining_bps,combos.rollover_max_txb_minor,purchases.auto_renew_enabled,purchases.recurring_discount_attached,purchases.created_at,purchases.updated_at FROM purchases JOIN combos ON combos.id=purchases.combo_id`
+	combos.rollover_min_remaining_bps,purchases.auto_renew_enabled,purchases.recurring_discount_attached,purchases.created_at,purchases.updated_at FROM purchases JOIN combos ON combos.id=purchases.combo_id`
 
 func scanPurchase(row rowScanner) (model.Purchase, error) {
 	var purchase model.Purchase
@@ -130,7 +130,7 @@ func scanPurchase(row rowScanner) (model.Purchase, error) {
 	var autoRenewEnabled, recurringDiscountAttached int
 	if err := row.Scan(&purchase.ID, &purchase.UserID, &purchase.ComboID, &purchase.ComboName, &purchase.PriceTXBMinor,
 		&validFrom, &validUntil, &purchase.Status, &purchase.TrafficLimitBytes, &purchase.ResetStrategy, &couponGrantID, &purchase.GrossPriceTXBMinor,
-		&purchase.CouponDiscountTXBMinor, &purchase.RolloverMinRemainingBPS, &purchase.RolloverMaxTXBMinor, &autoRenewEnabled, &recurringDiscountAttached, &created, &updated); err != nil {
+		&purchase.CouponDiscountTXBMinor, &purchase.RolloverMinRemainingBPS, &autoRenewEnabled, &recurringDiscountAttached, &created, &updated); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.Purchase{}, ErrNotFound
 		}
@@ -142,7 +142,6 @@ func scanPurchase(row rowScanner) (model.Purchase, error) {
 	purchase.CouponGrantID = nullableString(couponGrantID)
 	purchase.AutoRenewEnabled = autoRenewEnabled == 1
 	purchase.RecurringDiscountAttached = recurringDiscountAttached == 1
-	purchase.RolloverMax = model.TXBMoney(purchase.RolloverMaxTXBMinor)
 	purchase.TrafficLimit = strconv.FormatInt(purchase.TrafficLimitBytes, 10)
 	var err error
 	if purchase.ValidFrom, err = parseStamp(validFrom); err != nil {

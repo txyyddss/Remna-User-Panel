@@ -11,6 +11,7 @@
 - `CatalogConfirmation.vue` presents the localized post-purchase summary and emits the Home navigation action.
 - `CatalogConfirmation.test.ts` verifies purchase details and the Home action.
 - `CatalogCheckout.vue` combines authoritative review and idempotent purchase confirmation; payment funding remains in the balance sheet. Returning to review restores a missing quote before confirmation and does not leave a completed or failed quote in a calculating state.
+- `SquadActivationDialog.vue` prompts sequentially for every selected gated squad, including combo-included squads; raw codes remain memory-only until one purchase request.
 - `CatalogPaymentStep.vue` is retained as the route-safe payment handoff component for legacy links while the catalog review owns purchase confirmation.
 - `CatalogPage.test.ts` verifies confirmed purchases do not trigger quote restoration, returning to accessible nodes restores the missing quote, and Coupon-step continuation stays disabled until a usable quote returns.
 - `CatalogNodes.test.ts` verifies the live provider name renders without a provider icon.

@@ -1,5 +1,11 @@
 {
   "activity": {
+    "groupRewardCount": "Messages",
+    "groupRewardRemaining": "Remaining",
+    "groupRewardAmount": "Reward",
+    "groupRewardProgressLabel": "Group-message reward progress",
+    "groupRewardInProgress": "Keep going to unlock today's reward.",
+    "groupRewardAvailable": "Today's reward is ready to claim.",
     "stakeRange": "{minimum} to {maximum} TXB",
     "title": "Play with clear odds.",
     "balance": "Balance {amount}",

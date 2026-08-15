@@ -86,6 +86,9 @@
     "currencyTxb": "TXB"
   },
   "errors": {
+    "squadActivationRequired": "Enter an activation code for every selected gated squad.",
+    "squadActivationInvalid": "One of the activation codes is incorrect.",
+    "squadActivationExtra": "Remove activation codes for squads that are not selected.",
     "activityUnavailable": "Activity is unavailable.",
     "activityFailed": "The activity could not be completed.",
     "adminLoad": "Admin data could not be loaded.",
@@ -121,6 +124,9 @@
     "questionnaireUnavailable": "Questionnaire is unavailable.",
     "questionnaireOpen": "Questionnaire could not be opened.",
     "api": {
+      "SQUAD_ACTIVATION_REQUIRED": "Enter an activation code for every selected gated squad.",
+      "SQUAD_ACTIVATION_INVALID": "One of the activation codes is incorrect.",
+      "SQUAD_ACTIVATION_EXTRA": "Remove activation codes for squads that are not selected.",
       "UNAUTHENTICATED": "Your session has expired. Open the Mini App again.",
       "INVALID_TELEGRAM_DATA": "Telegram authentication could not be verified.",
       "REMNAWAVE_UNAVAILABLE": "Account verification is temporarily unavailable. Please retry.",

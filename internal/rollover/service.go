@@ -43,8 +43,10 @@ type UsageSnapshot struct {
 	LastResetAt *time.Time
 	// CurrentUsedBytes is the authoritative counter for the newest reset period.
 	// A nil value means callers should fall back to daily usage buckets.
-	CurrentUsedBytes *int64
-	Daily            []DailyUsage
+	CurrentUsedBytes    *int64
+	Daily               []DailyUsage
+	WeightedUsedBytes   int64
+	NodeSeriesAvailable bool
 }
 
 type usageSnapshotRemote interface {
@@ -75,6 +77,26 @@ func (s *Service) HandleOutbox(ctx context.Context, job model.OutboxJob) error {
 	}
 	if rollover.Status == "credited" || rollover.Status == "zero" || rollover.Status == "exception" {
 		return nil
+	}
+	loader, hasPurchase := s.repository.(purchaseLoader)
+	if hasPurchase {
+		purchase, loadErr := loader.PurchaseByID(ctx, purchaseID)
+		if loadErr != nil {
+			return loadErr
+		}
+		if !purchase.AutoRenewEnabled {
+			if rollover.Status == "pending" {
+				if err := s.repository.MarkRolloverProcessing(ctx, purchaseID, s.now().UTC()); err != nil {
+					return err
+				}
+			}
+			if finalizer, ok := s.repository.(usageFinalizer); ok {
+				_, err := finalizer.FinalizeRolloverUsage(ctx, purchaseID, model.RolloverUsageSummary{AlgorithmVersion: "disabled-v1"}, "", s.now().UTC())
+				return err
+			}
+			_, err := s.repository.FinalizeRollover(ctx, purchaseID, 0, 0, "", s.now().UTC())
+			return err
+		}
 	}
 	user, err := s.repository.UserForPurchase(ctx, purchaseID)
 	if err != nil {

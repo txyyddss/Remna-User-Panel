@@ -23,8 +23,6 @@ const combo = {
   includedSquads: [],
   active: true,
   rolloverMinRemainingBps: 0,
-  rolloverMaxTxbMinor: '0',
-  rolloverMax: { currency: 'TXB' as const, minor: '0', display: '0.00 TXB' },
   createdAt: '2026-08-08T00:00:00Z',
   updatedAt: '2026-08-08T00:00:00Z',
 }
@@ -52,6 +50,7 @@ async function mountPage(purchase: object | null, step = 5, confirmPurchase = vi
     visibleSquads: shallowRef([]),
     selectedCombo: shallowRef(combo),
     selectedSquads: shallowRef([]),
+    activationSquads: shallowRef([]),
     includedSquadIds: shallowRef<string[]>([]),
     couponGrants: shallowRef([]),
     eligibleCoupons: shallowRef([]),

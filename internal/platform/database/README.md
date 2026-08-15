@@ -1,4 +1,6 @@
 # SQLite store
+- `activation_codes.go` validates selected combo/add-on activation-code maps in the purchase transaction while keeping only bcrypt hashes in local overrides.
+- `activation_codes_test.go` covers missing, invalid, extra, and bcrypt-validated purchase codes.
 - `activity_draws_part2.go` continues the focused implementation from its original package module.
 - `activity_extensions_part2.go` continues the focused implementation from its original package module.
 - `activity_history_part2.go` continues the focused implementation from its original package module.

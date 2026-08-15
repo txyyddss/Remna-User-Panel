@@ -8,7 +8,10 @@ Members read `/api/v1/catalog`, quote at `/api/v1/purchases/quote`, create/list 
 
 ## Catalog and pricing invariants
 
-- A combo has a positive traffic limit, `DAY`, `WEEK`, or `MONTH` reset cadence, positive validity in days, a nonnegative TXB minor-unit price, included internal squads, and rollover threshold/cap settings.
+- Combos use a strict minimum-remaining rollover threshold and have no configured TXB rollover cap. Forecasts use actual usage divided by elapsed term time, projected across the full term, and report the maximum allowable usage plus required total/daily reduction when ineligible.
+- Activation-required squads remain visible with a localized badge. Checkout prompts sequentially for every selected gated squad, including combo-included squads; raw codes stay memory-only and the database stores only bcrypt hashes. Previously validated renewal access is reused without another prompt.
+
+- A combo has a positive traffic limit, `DAY`, `WEEK`, or `MONTH` reset cadence, positive validity in days, a nonnegative TXB minor-unit price, included internal squads, and a strict rollover threshold without a TXB credit cap.
 - "Free nodes" are represented only by included Remnawave internal squads. Node IDs are not stored as a second access model.
 - Squad identity/name/availability comes from every live Remnawave list call. `squad_product_overrides` stores only edited Markdown, typed profile metadata, term price, and visibility keyed by upstream UUID; restoring defaults removes the row.
 - A public catalog contains only active combos whose included squads are all upstream-present, plus visible upstream-present add-ons. A stale selection is revalidated in the purchase transaction before any debit. Historical records are archived rather than deleted when purchases refer to them.
@@ -41,12 +44,12 @@ Expiry first queues `rollover_finalize` and blocks renewal activation. The worke
 
 - A zero traffic limit awards zero.
 - Remaining percentage must be strictly greater than the snapshotted `rolloverMinRemainingBps` threshold.
-- An eligible award is `floor(netPaidMinor * remainingBytes / limitBytes)`, capped at snapshotted `rolloverMaxTxbMinor`.
+- An eligible award is `floor(netPaidMinor * remainingBytes / limitBytes)` with no configured TXB cap; strict minimum-remaining threshold checks still apply.
 - The traffic inputs, result, old-term expiry, optional ledger credit, and next activation command commit atomically. Only then may reset/activation run.
 - Transient Remnawave failures retry without resetting traffic. A confirmed missing user records a zero-credit exception instead of assuming all traffic was unused.
 - Purchase ID is the rollover credit's unique semantic reference; replay cannot credit twice.
-- Cadence-aware settlement derives `DAY`, `WEEK`, `MONTH`, and `MONTH_ROLLING` intervals from the term and reset metadata, uses Remnawave's authoritative current-period used counter for the newest interval, uses bounded daily buckets for historical intervals, prorates partial intervals, excludes intervals below threshold from `eligibleUnusedAllowance`, and applies `netPaid * eligibleUnusedAllowance / totalAllowance` with the configured cap. `totalAllowance` still includes every prorated interval, so daily and weekly resets cannot make the cap reachable prematurely.
-- The live rollover projection uses the same cadence evaluator as settlement, ends the term at `min(now, validUntil)`, selects the current upstream reset period from `lastTrafficResetAt`, and calculates money from the immutable `charged_txb_minor` fact. `savedBps` is an integer floor of projected rollover divided by actual net paid, capped at 10000 bps.
+- Cadence-aware settlement derives `DAY`, `WEEK`, `MONTH`, and `MONTH_ROLLING` intervals from the term and reset metadata, uses Remnawave's authoritative current-period used counter for the newest interval, uses bounded daily buckets for historical intervals, prorates partial intervals, excludes intervals below threshold from `eligibleUnusedAllowance`, and applies `netPaid * eligibleUnusedAllowance / totalAllowance` without a rollover cap. `totalAllowance` still includes every prorated interval.
+- The live rollover projection forecasts from actual usage over elapsed term time, reports maximum allowable usage and total/daily reduction when needed, and calculates money from the immutable `charged_txb_minor` fact. When automatic renewal is disabled it returns a localized warning state without requesting provider usage.
 
 ## Failure behavior
 
@@ -63,6 +66,6 @@ Expiry first queues `rollover_finalize` and blocks renewal activation. The worke
 - Pricing tests cover included squads, paid add-ons, coupon selection, duplicate IDs, archived records, integer overflow, and tampered client totals.
 - Transition tables cover first purchase, early/late same-plan renewal, plan/add-on changes, exact boundary, expiry, cancellation, pending extensions, and concurrent purchase attempts.
 - Transaction tests inject failures between coupon use, debit, purchase, squads, rollover, ledger, and outbox writes and assert all-or-nothing behavior.
-- Fake Remnawave tests assert rollover quiesce/read/credit ordering before reset, strict threshold/cap math, confirmed 404 versus transient failure, complete squad replacement, account-wide limit/cadence, idempotent retries, and expiry cleanup.
+- Fake Remnawave tests assert rollover quiesce/read/credit ordering before reset, strict-threshold/no-cap math, confirmed 404 versus transient failure, complete squad replacement, account-wide limit/cadence, idempotent retries, and expiry cleanup.
 - Restart tests confirm queued boundaries and failed rollover/activation jobs resume from SQLite without duplicate debits or credits.
 - Automatic-renewal tests cover migration defaults and legacy backfill, owner toggle eligibility, concurrent/due retry idempotency, failure-to-expiry behavior, paid-only stock rechecks, and the recurring-coupon attachment policy.

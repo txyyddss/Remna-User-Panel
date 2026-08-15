@@ -43,14 +43,14 @@ func (s *Store) ListCombos(ctx context.Context, activeOnly bool) ([]model.Combo,
 	return combos, rows.Err()
 }
 
-const comboSelect = `SELECT id,name,description,price_txb_minor,validity_days,traffic_limit_bytes,reset_strategy,active,rollover_min_remaining_bps,rollover_max_txb_minor,included_squad_uuids,created_at,updated_at FROM combos`
+const comboSelect = `SELECT id,name,description,price_txb_minor,validity_days,traffic_limit_bytes,reset_strategy,active,rollover_min_remaining_bps,included_squad_uuids,created_at,updated_at FROM combos`
 
 func scanCombo(row rowScanner) (model.Combo, error) {
 	var combo model.Combo
 	var active int
 	var encodedSquads, created, updated string
 	if err := row.Scan(&combo.ID, &combo.Name, &combo.Description, &combo.PriceTXBMinor, &combo.ValidityDays,
-		&combo.TrafficLimitBytes, &combo.ResetStrategy, &active, &combo.RolloverMinRemainingBPS, &combo.RolloverMaxTXBMinor,
+		&combo.TrafficLimitBytes, &combo.ResetStrategy, &active, &combo.RolloverMinRemainingBPS,
 		&encodedSquads, &created, &updated); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.Combo{}, ErrNotFound
@@ -67,7 +67,6 @@ func scanCombo(row rowScanner) (model.Combo, error) {
 	}
 	combo.Active = active == 1
 	combo.Price = model.TXBMoney(combo.PriceTXBMinor)
-	combo.RolloverMax = model.TXBMoney(combo.RolloverMaxTXBMinor)
 	combo.TrafficLimit = fmt.Sprintf("%d", combo.TrafficLimitBytes)
 	var err error
 	combo.CreatedAt, err = parseStamp(created)

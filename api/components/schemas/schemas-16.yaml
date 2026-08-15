@@ -9,7 +9,6 @@ RolloverWindow:
     - remainingTrafficBytes
     - eligibleUnusedBytes
     - rollover
-    - maximumReachable
   properties:
     start: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
     end: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
@@ -18,25 +17,35 @@ RolloverWindow:
     remainingTrafficBytes: { $ref: '../../openapi.yaml#/components/schemas/DecimalInteger' }
     eligibleUnusedBytes: { $ref: '../../openapi.yaml#/components/schemas/DecimalInteger' }
     rollover: { $ref: '../../openapi.yaml#/components/schemas/Money' }
-    trafficToMaximumBytes:
-      oneOf:
-        - $ref: '../../openapi.yaml#/components/schemas/DecimalInteger'
-        - type: 'null'
-    maximumReachable: { type: boolean }
 
 RolloverProjection:
   type: object
   additionalProperties: false
-  required: [purchaseId, paid, maximum, minimumRemainingBps, savedBps, term, lastResetPeriod, fetchedAt]
+  required: [purchaseId, paid, autoRenewalEnabled, warningCode, actualUsedTrafficBytes, projectedFullTermUsageBytes, maximumAllowableUsageBytes, predictedRollover, requiredReductionBytes, requiredDailyReductionBytes, minimumRemainingBps, term, lastResetPeriod, fetchedAt]
   properties:
     purchaseId: { $ref: '../../openapi.yaml#/components/schemas/ID' }
     paid:
       allOf:
         - $ref: '../../openapi.yaml#/components/schemas/Money'
       description: Actual net TXB charged for this purchase term after discounts.
-    maximum: { $ref: '../../openapi.yaml#/components/schemas/Money' }
+    autoRenewalEnabled: { type: boolean }
+    warningCode: { type: [string, 'null'] }
+    actualUsedTrafficBytes: { type: [string, 'null'], pattern: '^\d+$' }
+    projectedFullTermUsageBytes: { type: [string, 'null'], pattern: '^\d+$' }
+    maximumAllowableUsageBytes: { type: [string, 'null'], pattern: '^\d+$' }
+    predictedRollover:
+      oneOf:
+        - $ref: '../../openapi.yaml#/components/schemas/Money'
+        - type: 'null'
+    requiredReductionBytes: { type: [string, 'null'], pattern: '^\d+$' }
+    requiredDailyReductionBytes: { type: [string, 'null'], pattern: '^\d+$' }
     minimumRemainingBps: { type: integer, minimum: 0, maximum: 10000 }
-    savedBps: { type: integer, minimum: 0, maximum: 10000 }
-    term: { $ref: '../../openapi.yaml#/components/schemas/RolloverWindow' }
-    lastResetPeriod: { $ref: '../../openapi.yaml#/components/schemas/RolloverWindow' }
+    term:
+      oneOf:
+        - $ref: '../../openapi.yaml#/components/schemas/RolloverWindow'
+        - type: 'null'
+    lastResetPeriod:
+      oneOf:
+        - $ref: '../../openapi.yaml#/components/schemas/RolloverWindow'
+        - type: 'null'
     fetchedAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }

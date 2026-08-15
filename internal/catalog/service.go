@@ -64,11 +64,11 @@ func NewService(repository Repository, remnawave RemnawaveClient, cacheTTL time.
 
 // Purchase delegates all pricing and balance work to one SQLite transaction.
 func (s *Service) Purchase(ctx context.Context, user model.User, comboID string, addonIDs []string, idempotencyKey string) (model.Purchase, error) {
-	return s.PurchaseWithCoupon(ctx, user, comboID, addonIDs, "", idempotencyKey)
+	return s.PurchaseWithCoupon(ctx, user, comboID, addonIDs, "", nil, idempotencyKey)
 }
 
 // PurchaseWithCoupon applies at most one explicitly selected wallet grant.
-func (s *Service) PurchaseWithCoupon(ctx context.Context, user model.User, comboID string, addonIDs []string, couponGrantID, idempotencyKey string) (model.Purchase, error) {
+func (s *Service) PurchaseWithCoupon(ctx context.Context, user model.User, comboID string, addonIDs []string, couponGrantID string, activationCodes map[string]string, idempotencyKey string) (model.Purchase, error) {
 	if user.OnboardingState != "complete" {
 		return model.Purchase{}, errors.New("onboarding is incomplete")
 	}
@@ -90,7 +90,7 @@ func (s *Service) PurchaseWithCoupon(ctx context.Context, user model.User, combo
 		return model.Purchase{}, ErrNoAccessibleNodes
 	}
 	return s.repository.CreatePurchase(ctx, database.PurchaseInput{UserID: user.ID, ComboID: comboID, AddonSquadIDs: addonIDs,
-		CouponGrantID: couponGrantID, IdempotencyKey: idempotencyKey}, s.now().UTC())
+		CouponGrantID: couponGrantID, SquadActivationCodes: activationCodes, IdempotencyKey: idempotencyKey}, s.now().UTC())
 }
 
 // Quote returns the authoritative price and entitlement start time without

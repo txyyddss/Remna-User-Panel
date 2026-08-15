@@ -58,8 +58,18 @@ func automaticRenewalPlanTx(ctx context.Context, tx *sql.Tx, userID, purchaseID 
 		plan.NextCycleEndsAt = plan.ScheduledAt
 	}
 	if purchase.Status != "active" && purchase.Status != "activating" {
-		plan.IneligibleReason = AutoRenewalReasonPurchaseUnavailable
-		return plan, nil
+		if purchase.Status != "expired" {
+			plan.IneligibleReason = AutoRenewalReasonPurchaseUnavailable
+			return plan, nil
+		}
+		var settled int
+		if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM purchase_rollovers WHERE purchase_id=? AND status IN ('credited','zero'))`, purchaseID).Scan(&settled); err != nil {
+			return AutoRenewalPlan{}, fmt.Errorf("check settled rollover: %w", err)
+		}
+		if settled != 1 {
+			plan.IneligibleReason = AutoRenewalReasonPurchaseUnavailable
+			return plan, nil
+		}
 	}
 	var queued int
 	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM purchases WHERE user_id=? AND status='queued' AND id<>?)`, userID, purchaseID).Scan(&queued); err != nil {

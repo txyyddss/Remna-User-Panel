@@ -15,6 +15,8 @@ import CatalogFlowProgress from './CatalogFlowProgress.vue'
 import CatalogNodes from './CatalogNodes.vue'
 import ComboOption from './ComboOption.vue'
 import SquadSelector from './SquadSelector.vue'
+import SquadActivationDialog from './SquadActivationDialog.vue'
+import type { SquadProduct } from '@/api/types'
 
 const activeStep = shallowRef(1)
 const sessionStore = useSessionStore()
@@ -41,6 +43,7 @@ const {
   visibleSquads,
   selectedCombo,
   selectedSquads,
+  activationSquads,
   includedSquadIds,
   couponGrants,
   eligibleCoupons,
@@ -80,6 +83,10 @@ const nextDisabled = computed(() => {
   return true
 })
 const nextLabel = computed(() => t('catalog.continue'))
+const activationOpen = shallowRef(false)
+const activationTarget = shallowRef<SquadProduct | null>(null)
+const activationPrompting = shallowRef(false)
+let activationResolver: ((code: string | null) => void) | null = null
 
 function goBack(): void {
   if (activeStep.value > 1) activeStep.value -= 1
@@ -93,7 +100,33 @@ function clearPersistedStep(): void {
 }
 
 async function handlePurchase(): Promise<void> {
-  if (await confirmPurchase()) clearPersistedStep()
+  if (activationPrompting.value || purchasing.value) return
+  activationPrompting.value = true
+  try {
+    const codes: Record<string, string> = {}
+    for (const squad of activationSquads.value) {
+      const code = await requestActivationCode(squad)
+      if (!code) return
+      codes[squad.remnaSquadUuid] = code
+    }
+    if (await confirmPurchase(codes)) clearPersistedStep()
+  } finally {
+    activationPrompting.value = false
+  }
+}
+
+function requestActivationCode(squad: SquadProduct): Promise<string | null> {
+  activationTarget.value = squad
+  activationOpen.value = true
+  return new Promise((resolve) => { activationResolver = resolve })
+}
+
+function resolveActivation(code: string | null): void {
+  const resolve = activationResolver
+  activationResolver = null
+  activationOpen.value = false
+  activationTarget.value = null
+  resolve?.(code)
 }
 
 function goHome(): void {
@@ -144,7 +177,7 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
             <SquadSelector v-else-if="activeStep === 2" :squads="visibleSquads" :selected-ids="selectedSquadIds" :included-ids="includedSquadIds" @toggle="toggleSquad" />
             <CatalogNodes v-else-if="activeStep === 3" :quote="quote" :loading="quoting" />
             <CatalogCouponStep v-else-if="activeStep === 4" v-model:coupon-grant-id="selectedCouponGrantId" :coupons="couponGrants" :eligible-ids="eligibleCoupons.map((grant) => grant.id)" :discarding="couponDiscarding" :discard-coupon="discardCoupon" :quoting="quoting" @redeemed="handleCouponRedeemed" />
-            <CatalogCheckout v-else-if="activeStep === 5" :combo="selectedCombo" :squads="selectedSquads" :coupon="selectedCoupon" :quote="quote" :quoting="quoting" :error="error" :purchasing="purchasing" :needs-balance="needsBalance" @confirm="handlePurchase" />
+            <CatalogCheckout v-else-if="activeStep === 5" :combo="selectedCombo" :squads="selectedSquads" :coupon="selectedCoupon" :quote="quote" :quoting="quoting" :error="error" :purchasing="purchasing || activationPrompting" :needs-balance="needsBalance" @confirm="handlePurchase" />
           </section>
         </Transition>
         <CatalogFlowControls v-if="activeStep < 5" :show-back="activeStep > 1" :next-disabled="nextDisabled" :loading="quoting" :next-label="nextLabel" @back="goBack" @next="advance" />
@@ -155,6 +188,7 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
         <UButton :label="$t('common.tryAgain')" data-haptic @click="load" />
       </div>
     </template>
+    <SquadActivationDialog v-model:open="activationOpen" :squad="activationTarget" @submit="resolveActivation" @cancel="resolveActivation(null)" />
   </div>
 </template>
 

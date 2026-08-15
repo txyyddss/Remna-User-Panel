@@ -32,7 +32,7 @@ func TestFinalizeRolloverFormulaThresholdCapAndIdempotency(t *testing.T) {
 			user := createTestUser(t, store, int64(26100+index))
 			combo, err := store.SaveCombo(ctx, ComboInput{
 				Name: "rollover", PriceTXBMinor: 1000, ValidityDays: 1, TrafficLimitBytes: 1000,
-				ResetStrategy: "MONTH", Active: true, RolloverMinRemainingBPS: test.threshold, RolloverMaxTXBMinor: test.maximum,
+				ResetStrategy: "MONTH", Active: true, RolloverMinRemainingBPS: test.threshold,
 			})
 			if err != nil {
 				t.Fatalf("SaveCombo(): %v", err)
@@ -89,7 +89,7 @@ func TestFinalizeRolloverBalanceOverflowRollsBack(t *testing.T) {
 	user := createTestUser(t, store, 26_200)
 	combo, err := store.SaveCombo(ctx, ComboInput{
 		Name: "rollover overflow", PriceTXBMinor: 1000, ValidityDays: 1, TrafficLimitBytes: 1000,
-		ResetStrategy: "MONTH", Active: true, RolloverMaxTXBMinor: 1000,
+		ResetStrategy: "MONTH", Active: true,
 	})
 	if err != nil {
 		t.Fatalf("SaveCombo(): %v", err)
@@ -135,7 +135,7 @@ func TestFinalizeRolloverUsageAcceptsCadenceVersions(t *testing.T) {
 			user := createTestUser(t, store, int64(26_300+index))
 			combo, err := store.SaveCombo(ctx, ComboInput{
 				Name: "cadence " + version, PriceTXBMinor: 1_000, ValidityDays: 1, TrafficLimitBytes: 2_000,
-				ResetStrategy: "DAY", Active: true, RolloverMinRemainingBPS: 5_000, RolloverMaxTXBMinor: 1_000,
+				ResetStrategy: "DAY", Active: true, RolloverMinRemainingBPS: 5_000,
 			})
 			if err != nil {
 				t.Fatalf("SaveCombo(): %v", err)

@@ -25,6 +25,8 @@ stopped.
 - `remna_catalog_adapter.go` implements queued dashboard reads and subscription revocation for catalog workflows.
 - `remna_usage_adapter.go` implements queued date-bounded per-node usage reads for the member dashboard.
 - `remna_admin_adapter.go` implements queued live squad and node projections for catalog composition; it exposes no node-assignment mutation.
+- `node_multiplier_cache.go` owns the copied five-minute node-multiplier cache shared by queued Remnawave projections and rollover usage mapping.
+- `node_multiplier_cache_test.go` covers cache expiry at the five-minute boundary.
 - `remna_entitlements_adapter.go` implements queued entitlement, traffic reset, removal, and rollover operations.
 - `emby_adapter.go` implements queued Emby client creation, account operations, policy updates, and metadata lookups.
 - `scheduler.go` runs automatic due-renewal revalidation before entitlement transitions, plus recurring outbox, rollover, backup, and maintenance work until application cancellation.

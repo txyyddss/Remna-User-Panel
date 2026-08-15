@@ -199,8 +199,6 @@ AdminEntitlement:
     - resetStrategy
     - squadUuids
     - rolloverMinRemainingBps
-    - rolloverMaxTxbMinor
-    - rolloverMax
     - createdAt
     - updatedAt
   properties:
@@ -240,11 +238,6 @@ AdminEntitlement:
       type: integer
       minimum: 0
       maximum: 10000
-    rolloverMaxTxbMinor:
-      type: string
-      pattern: '^\d+$'
-    rolloverMax:
-      $ref: '../../openapi.yaml#/components/schemas/Money'
     createdAt:
       $ref: '../../openapi.yaml#/components/schemas/Timestamp'
     updatedAt:

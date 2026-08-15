@@ -13,6 +13,7 @@ const fullAddon: SquadProduct = {
   price: { currency: 'TXB', minor: '100', display: '1.00 TXB' },
   visible: true,
   upstreamPresent: true,
+  activationRequired: false,
   stockRemaining: 0,
   createdAt: '2026-08-14T00:00:00Z',
   updatedAt: '2026-08-14T00:00:00Z',

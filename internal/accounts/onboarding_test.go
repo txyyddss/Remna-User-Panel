@@ -100,6 +100,33 @@ func TestAcceptAgreementCreatesOrReconcilesUser(t *testing.T) {
 	}
 }
 
+func TestAcceptAgreementUsesPersistedRemnawaveIdentity(t *testing.T) {
+	t.Parallel()
+
+	username := "alice"
+	telegramID := int64(42)
+	remoteID := "remote-1"
+	remote := RemoteUser{ID: remoteID, Username: username}
+	repository := &accountsRepository{user: model.User{ID: "user-1", OnboardingState: "complete"}, agreementRevision: 1, requiredAgreementIDs: []string{"terms"}}
+	upstream := &accountsRemnawave{
+		linkedResponse: accountsFindResponse{remote: remote, exists: true},
+		findResponses:  []accountsFindResponse{{exists: true, remote: RemoteUser{Username: username}}},
+	}
+	linkedUser := model.User{ID: "user-1", TelegramID: telegramID, Username: &username, RemnaUserID: &remoteID, OnboardingState: "agreement"}
+
+	completed, err := newAccountsServiceForTest(repository, &accountsValidator{}, &accountsTelegram{}, upstream, &accountsSettings{}, 1).
+		AcceptAgreementRevision(context.Background(), linkedUser, 1, []string{"terms"})
+	if err != nil {
+		t.Fatalf("AcceptAgreementRevision() error = %v", err)
+	}
+	if repository.completedRemoteID != remoteID || completed.ID != repository.user.ID {
+		t.Fatalf("completed identity = (%q, %+v), want (%q, %q)", repository.completedRemoteID, completed, remoteID, repository.user.ID)
+	}
+	if upstream.findIndex != 0 {
+		t.Fatalf("username lookup count = %d, want 0", upstream.findIndex)
+	}
+}
+
 func TestAcceptAgreementFailures(t *testing.T) {
 	t.Parallel()
 

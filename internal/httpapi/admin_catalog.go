@@ -28,7 +28,6 @@ type comboRequest struct {
 	SquadProductIDs         []string `json:"squadProductIds"`
 	IncludedSquadIDs        []string `json:"includedSquadIds"`
 	RolloverMinRemainingBPS int      `json:"rolloverMinRemainingBps"`
-	RolloverMaxTXBMinor     string   `json:"rolloverMaxTxbMinor"`
 }
 
 func (s *Server) adminCreateCombo(w http.ResponseWriter, r *http.Request) {
@@ -47,11 +46,7 @@ func (s *Server) adminSaveCombo(w http.ResponseWriter, r *http.Request, id strin
 	}
 	price, priceErr := strconv.ParseInt(request.PriceTXBMinor, 10, 64)
 	traffic, trafficErr := strconv.ParseInt(request.TrafficLimitBytes, 10, 64)
-	rolloverMax, rolloverErr := strconv.ParseInt(request.RolloverMaxTXBMinor, 10, 64)
-	if request.RolloverMaxTXBMinor == "" {
-		rolloverMax, rolloverErr = 0, nil
-	}
-	if priceErr != nil || trafficErr != nil || rolloverErr != nil {
+	if priceErr != nil || trafficErr != nil {
 		s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_COMBO", "Price and traffic must be decimal integer strings.")
 		return
 	}
@@ -62,7 +57,7 @@ func (s *Server) adminSaveCombo(w http.ResponseWriter, r *http.Request, id strin
 	combo, err := s.deps.Admin.SaveCombo(r.Context(), currentUser(r).ID, database.ComboInput{ID: id, Name: request.Name,
 		Description: request.Description, PriceTXBMinor: price, ValidityDays: request.ValidityDays, TrafficLimitBytes: traffic,
 		ResetStrategy: request.ResetStrategy, Active: request.Active, SquadProductIDs: squadIDs,
-		RolloverMinRemainingBPS: request.RolloverMinRemainingBPS, RolloverMaxTXBMinor: rolloverMax})
+		RolloverMinRemainingBPS: request.RolloverMinRemainingBPS})
 	if err != nil {
 		s.adminFailure(w, r, err)
 		return
@@ -105,13 +100,15 @@ func (s *Server) adminSquadProducts(w http.ResponseWriter, r *http.Request) {
 }
 
 type squadProductRequest struct {
-	RemnaSquadUUID string                `json:"remnaSquadUuid"`
-	Name           string                `json:"name"`
-	Description    string                `json:"description"`
-	Profile        *squadprofile.Profile `json:"profile"`
-	PriceTXBMinor  string                `json:"priceTxbMinor"`
-	Visible        bool                  `json:"visible"`
-	StockLimit     *int                  `json:"stockLimit"`
+	RemnaSquadUUID     string                `json:"remnaSquadUuid"`
+	Name               string                `json:"name"`
+	Description        string                `json:"description"`
+	Profile            *squadprofile.Profile `json:"profile"`
+	PriceTXBMinor      string                `json:"priceTxbMinor"`
+	Visible            bool                  `json:"visible"`
+	StockLimit         *int                  `json:"stockLimit"`
+	ActivationRequired bool                  `json:"activationRequired"`
+	ActivationCode     string                `json:"activationCode"`
 }
 
 func (s *Server) adminCreateSquadProduct(w http.ResponseWriter, r *http.Request) {
@@ -138,7 +135,8 @@ func (s *Server) adminSaveSquadProduct(w http.ResponseWriter, r *http.Request, i
 	}
 	product, err := s.deps.Admin.SaveSquadProduct(r.Context(), currentUser(r).ID, database.SquadProductInput{ID: id,
 		RemnaSquadUUID: request.RemnaSquadUUID, Name: request.Name, Description: request.Description, PriceTXBMinor: price,
-		Profile: request.Profile, Visible: request.Visible, UpstreamPresent: true, StockLimit: request.StockLimit})
+		Profile: request.Profile, Visible: request.Visible, UpstreamPresent: true, StockLimit: request.StockLimit,
+		ActivationRequired: request.ActivationRequired, ActivationCode: request.ActivationCode})
 	if err != nil {
 		s.adminFailure(w, r, err)
 		return

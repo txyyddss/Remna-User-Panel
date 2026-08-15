@@ -73,6 +73,10 @@
     "descriptionPreview": "Description preview"
   },
   "adminSquad": {
+    "activationRequired": "Require activation code",
+    "activationRequiredHint": "Keep this squad visible, but request a code before a new purchase.",
+    "activationCode": "Activation code",
+    "activationCodeHint": "Leave blank to keep the existing code when editing.",
     "loadError": "Node assignments could not be loaded.",
     "saveError": "Node assignments could not be verified and saved.",
     "edit": "Edit {name}",

@@ -20,7 +20,11 @@
 - `useEmby.ts` manages Emby setup and preferences.
 - `useIntroSequence.ts` drives the onboarding intro sequence.
 - `useIntroSequence.test.ts` covers intro timing and completion.
-- `useOnboarding.ts` coordinates onboarding steps and persistence.
+- `onboardingState.ts` resolves the next onboarding step from the server-owned
+  membership response; `onboardingState.test.ts` covers returning-user state.
+- `useOnboarding.ts` coordinates onboarding steps and persistence, including
+  refreshing the server-owned state before moving a returning user through a
+  revised agreement.
 - `usePaymentOrder.ts` manages payment-order polling, cancellation, and validated failed/expired replacement orders.
 - `usePaymentOrder.test.ts` covers payment-order state transitions.
 - `usePaymentReturn.ts` polls a provider-returned payment order until it is confirmed or terminal.

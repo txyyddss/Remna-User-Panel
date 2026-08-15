@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 
-import type { Combo, Money, ResetCadence, SquadProduct } from '@/api/types'
+import type { Combo, ResetCadence, SquadProduct } from '@/api/types'
 import MarkdownEditorField from '@/components/common/MarkdownEditorField.vue'
 import SwitchField from '@/components/common/SwitchField.vue'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
 import { useI18n } from '@/i18n'
 import { moneyFromTxbInput, trafficBytesFromInput, txbInputFromMinor } from '@/utils/format'
-
-type RolloverCombo = Combo & { rolloverMinRemainingBps?: number; rolloverMaxTxbMinor?: string; rolloverMax?: Money }
 
 const props = defineProps<{ combo?: Combo; squads: readonly SquadProduct[]; busy: boolean }>()
 const emit = defineEmits<{ cancel: []; save: [payload: Record<string, unknown>] }>()
@@ -18,12 +16,11 @@ const resetItems = computed(() => resetCadences.map((value) => ({ value, label: 
 const draft = reactive({
   name: '', description: '', priceTxb: '', validityDays: 30, trafficLimitBytes: '',
   resetStrategy: 'MONTH' as ResetCadence, squadProductIds: [] as string[],
-  rolloverMinRemainingPercent: 0, rolloverMaxTxb: '0.00', active: true,
+  rolloverMinRemainingPercent: 0, active: true,
 })
 const trafficInvalid = ref(false)
 
 watch(() => props.combo, (combo) => {
-  const rollover = combo as RolloverCombo | undefined
   Object.assign(draft, combo ? {
     name: combo.name,
     description: combo.description,
@@ -32,29 +29,25 @@ watch(() => props.combo, (combo) => {
     trafficLimitBytes: combo.trafficLimitBytes,
     resetStrategy: combo.resetStrategy,
     squadProductIds: combo.includedSquads.map((squad) => squad.id),
-    rolloverMinRemainingPercent: (rollover?.rolloverMinRemainingBps ?? 0) / 100,
-    rolloverMaxTxb: txbInputFromMinor(rollover?.rolloverMax?.minor ?? rollover?.rolloverMaxTxbMinor ?? '0'),
+    rolloverMinRemainingPercent: combo.rolloverMinRemainingBps / 100,
     active: combo.active,
   } : {
     name: '', description: '', priceTxb: '', validityDays: 30,
-    trafficLimitBytes: '', resetStrategy: 'MONTH', squadProductIds: [],
-    rolloverMinRemainingPercent: 0, rolloverMaxTxb: '0.00', active: true,
+    trafficLimitBytes: '', resetStrategy: 'MONTH', squadProductIds: [], rolloverMinRemainingPercent: 0, active: true,
   })
 }, { immediate: true })
 
 function submit(): void {
   const priceTxbMinor = moneyFromTxbInput(draft.priceTxb)
-  const rolloverMaxTxbMinor = moneyFromTxbInput(draft.rolloverMaxTxb)
   const trafficLimitBytes = trafficBytesFromInput(draft.trafficLimitBytes)
   trafficInvalid.value = trafficLimitBytes === ''
-  if (!priceTxbMinor || rolloverMaxTxbMinor === '' || trafficInvalid.value) return
+  if (!priceTxbMinor || trafficInvalid.value) return
   draft.trafficLimitBytes = trafficLimitBytes
   emit('save', {
     name: draft.name, description: draft.description, priceTxbMinor,
     validityDays: draft.validityDays, trafficLimitBytes,
     resetStrategy: draft.resetStrategy, squadProductIds: [...draft.squadProductIds],
-    rolloverMinRemainingBps: Math.round(draft.rolloverMinRemainingPercent * 100),
-    rolloverMaxTxbMinor, active: draft.active,
+    rolloverMinRemainingBps: Math.round(draft.rolloverMinRemainingPercent * 100), active: draft.active,
   })
 }
 
@@ -84,7 +77,6 @@ function setSquad(id: string, selected: boolean): void {
     <UFormField name="traffic-limit" :label="t('adminCatalogEditor.trafficLimit')" :hint="t('adminCatalogEditor.trafficLimitHint')" :error="trafficInvalid ? t('adminCatalogEditor.trafficLimitInvalid') : undefined" required><UInput v-model="draft.trafficLimitBytes" class="w-full" inputmode="text" @blur="normalizeTrafficLimit" /></UFormField>
     <UFormField name="reset-cadence" :label="t('adminCatalogEditor.resetCadence')"><USelect v-model="draft.resetStrategy" class="w-full" :items="resetItems" /></UFormField>
     <UFormField name="rollover-minimum" :label="t('adminCatalogEditor.rolloverMinimum')" required><UInput v-model.number="draft.rolloverMinRemainingPercent" class="w-full" type="number" :min="0" :max="100" :step="0.01" /></UFormField>
-    <TxbAmountField id="combo-rollover-max" v-model="draft.rolloverMaxTxb" :label="t('adminCatalogEditor.rolloverMaximum')" min-minor="0" required />
     <fieldset class="catalog-editor__wide squad-picker">
       <legend>{{ t('adminCatalogEditor.includedSquads') }}</legend>
       <div v-auto-animate class="squad-picker__items">

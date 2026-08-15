@@ -13,7 +13,7 @@ func scanRollover(row rowScanner) (model.PurchaseRollover, error) {
 	var created, updated string
 	var completed sql.NullString
 	if err := row.Scan(&value.PurchaseID, &value.Status, &value.TrafficLimitBytes, &allocated, &used, &eligible, &remaining, &value.MinimumRemainingBPS,
-		&value.MaximumTXBMinor, &value.NetPaidTXBMinor, &value.CreditedTXBMinor, &value.ExceptionCode, &value.Attempts, &created, &updated, &completed, &value.AlgorithmVersion); err != nil {
+		&value.NetPaidTXBMinor, &value.CreditedTXBMinor, &value.ExceptionCode, &value.Attempts, &created, &updated, &completed, &value.AlgorithmVersion); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.PurchaseRollover{}, ErrNotFound
 		}

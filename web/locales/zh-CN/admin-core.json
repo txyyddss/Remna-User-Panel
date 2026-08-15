@@ -73,6 +73,10 @@
     "descriptionPreview": "描述预览"
   },
   "adminSquad": {
+    "activationRequired": "需要激活码",
+    "activationRequiredHint": "保持此区域可见，但新购买前需要输入激活码。",
+    "activationCode": "激活码",
+    "activationCodeHint": "编辑时留空可保留现有激活码。",
     "loadError": "无法加载节点分配。",
     "saveError": "无法验证并保存节点分配。",
     "edit": "编辑 {name}",

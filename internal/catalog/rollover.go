@@ -48,6 +48,11 @@ func (s *Service) RolloverProjection(ctx context.Context, user model.User, purch
 	if (purchase.Status != "active" && purchase.Status != "activating") || purchase.ValidUntil.Before(now) || purchase.ValidFrom.After(now) {
 		return model.RolloverProjection{}, ErrRolloverNotActive
 	}
+	if !purchase.AutoRenewEnabled {
+		warning := "AUTO_RENEWAL_DISABLED"
+		return model.RolloverProjection{PurchaseID: purchase.ID, Paid: purchase.Price, AutoRenewalEnabled: false,
+			WarningCode: &warning, MinimumRemainingBPS: purchase.RolloverMinRemainingBPS, FetchedAt: now}, nil
+	}
 	if user.RemnaUserID == nil {
 		return model.RolloverProjection{}, ErrRolloverUnavailable
 	}

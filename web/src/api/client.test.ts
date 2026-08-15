@@ -21,6 +21,7 @@ const squad: SquadProduct = {
   price: { currency: 'TXB', minor: '725', display: '7.25 TXB' },
   visible: true,
   upstreamPresent: true,
+  activationRequired: false,
   createdAt: '2026-08-07T00:00:00Z',
   updatedAt: '2026-08-07T00:00:00Z',
 }
@@ -41,8 +42,6 @@ const entitlement: Purchase = {
   resetStrategy: 'MONTH',
   squadUuids: [],
   rolloverMinRemainingBps: 0,
-  rolloverMaxTxbMinor: '0',
-  rolloverMax: { currency: 'TXB', minor: '0', display: '0.00 TXB' },
   createdAt: '2026-08-07T00:00:00Z',
   updatedAt: '2026-08-07T00:01:00Z',
 }
@@ -71,6 +70,7 @@ describe('admin API mutations', () => {
       },
       priceTxbMinor: squad.price.minor,
       visible: squad.visible,
+      activationRequired: false,
     }
 
     await api.updateAdminSquadProduct('squad/1', payload)

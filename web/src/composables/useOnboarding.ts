@@ -8,6 +8,7 @@ import { useI18n } from '@/i18n'
 import { useSessionStore } from '@/stores/session'
 import { notifyHaptic, openExternalLink } from '@/utils/telegram'
 import { isValid, usernameSchema } from '@/utils/validation'
+import { onboardingStepAfterMembership } from './onboardingState'
 
 function normalizeStep(step?: OnboardingStep): OnboardingStep {
   if (!step || step === 'complete') return 'membership'
@@ -15,7 +16,6 @@ function normalizeStep(step?: OnboardingStep): OnboardingStep {
 }
 
 type ErrorRecovery = (caught: unknown) => Promise<boolean>
-
 export function useOnboarding() {
   const router = useRouter()
   const sessionStore = useSessionStore()
@@ -27,12 +27,10 @@ export function useOnboarding() {
   const membership = shallowRef<MembershipState | null>(null)
   const content = shallowRef<PublishedOnboarding | null>(null)
   const form = reactive({ username: '', agreementIds: [] as string[] })
-
   const progress = computed(() => {
     const order: OnboardingStep[] = ['intro', 'membership', 'username', 'agreement', 'complete']
     return Math.max(0, order.indexOf(step.value)) / (order.length - 1)
   })
-
   const usernameValid = computed(() => isValid(usernameSchema, form.username))
   const allAgreementsAccepted = computed(() => Boolean(content.value?.agreements.length)
     && content.value!.agreements.every((agreement) => form.agreementIds.includes(agreement.id)))
@@ -40,7 +38,6 @@ export function useOnboarding() {
     if (!form.username) return t('onboarding.useLowercase')
     return usernameValid.value ? t('onboarding.formatGood') : t('onboarding.formatInvalid')
   })
-
   async function run<T>(task: () => Promise<T>, recover?: ErrorRecovery): Promise<T | undefined> {
     loading.value = true
     error.value = null
@@ -69,7 +66,6 @@ export function useOnboarding() {
       loading.value = false
     }
   }
-
   async function loadInvites(): Promise<void> {
     const response = await run(() => api.createInvites())
     if (response) invites.value = response.invites.map((invite) => ({
@@ -77,22 +73,18 @@ export function useOnboarding() {
       label: t(invite.kind === 'group' ? 'onboarding.privateGroup' : 'onboarding.updatesChannel'),
     }))
   }
-
   async function loadContent(): Promise<void> {
     const response = await run(() => featuresApi.getPublishedOnboarding(locale.value))
     if (!response) return
     content.value = response
     form.agreementIds = form.agreementIds.filter((id) => response.agreements.some((agreement) => agreement.id === id))
   }
-
   function finishIntro(): void {
     step.value = 'membership'
   }
-
   function openInvite(invite: InviteLink): void {
     openExternalLink(invite.url)
   }
-
   async function checkMembership(): Promise<void> {
     const response = await run(() => api.checkMembership())
     if (!response) return
@@ -102,14 +94,24 @@ export function useOnboarding() {
       ...invite,
       joined: invite.kind === 'group' ? response.groupJoined : response.channelJoined,
     }))
-    if (response.complete) {
+    const nextStep = onboardingStepAfterMembership(response.session.user.onboardingState, response.complete)
+    if (nextStep === 'agreement') {
+      step.value = nextStep
+      return
+    }
+    if (nextStep === 'complete') {
       notifyHaptic('success')
-      step.value = 'username'
+      step.value = nextStep
+      await router.replace('/home')
+      return
+    }
+    if (nextStep === 'username') {
+      notifyHaptic('success')
+      step.value = nextStep
     } else {
       error.value = t('onboarding.joinBoth')
     }
   }
-
   async function submitUsername(): Promise<void> {
     if (!usernameValid.value) return
     const response = await run(() => api.setUsername(form.username))
@@ -167,7 +169,6 @@ export function useOnboarding() {
     error.value = null
     if (next === 'membership' && invites.value.length === 0) void loadInvites()
   })
-
   watch(locale, () => void loadContent())
 
   onMounted(() => {

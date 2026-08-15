@@ -70,11 +70,34 @@ func TestHandleOutboxLocalIdentityMissingFinalizesWithoutRemoteAccess(t *testing
 	}
 }
 
+func TestHandleOutboxDisabledAutoRenewalFinalizesWithoutProviderAccess(t *testing.T) {
+	events := make([]string, 0, 2)
+	repository := &purchaseLoadingRepository{rolloverRepository: &rolloverRepository{
+		events: &events, rollover: model.PurchaseRollover{PurchaseID: "purchase-1", Status: "pending"},
+	}, purchase: model.Purchase{ID: "purchase-1", AutoRenewEnabled: false}}
+	service := NewService(repository, &rolloverRemote{events: &events})
+	if err := service.HandleOutbox(context.Background(), model.OutboxJob{Kind: "rollover_finalize", Payload: `{"purchaseId":"purchase-1"}`}); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(events, []string{"mark", "finalize"}) {
+		t.Fatalf("events=%v, want mark/finalize without provider calls", events)
+	}
+}
+
 type rolloverRepository struct {
 	events    *[]string
 	rollover  model.PurchaseRollover
 	user      model.User
 	exception string
+}
+
+type purchaseLoadingRepository struct {
+	*rolloverRepository
+	purchase model.Purchase
+}
+
+func (repository *purchaseLoadingRepository) PurchaseByID(context.Context, string) (model.Purchase, error) {
+	return repository.purchase, nil
 }
 
 func (repository *rolloverRepository) RolloverByPurchase(context.Context, string) (model.PurchaseRollover, error) {

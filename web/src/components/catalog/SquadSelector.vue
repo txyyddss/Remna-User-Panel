@@ -40,6 +40,7 @@ function profileClass(squad: SquadProduct): string {
         <div class="squad-option__copy">
           <SquadProfileSummary :name="squad.name" :profile="squad.profile" :description="squad.description" presentation="member" compact />
           <StatusBadge v-if="isIncluded(squad.id)" tone="neutral" :label="$t('catalog.included')" />
+          <StatusBadge v-else-if="squad.activationRequired" tone="warning" :label="$t('catalog.activationRequired')" />
           <StatusBadge v-else-if="isFullPaidAddon(squad)" tone="neutral" :label="$t('catalog.full')" />
           <span v-else>{{ formatMoney(squad.price) }}</span>
         </div>

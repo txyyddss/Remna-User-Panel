@@ -54,6 +54,21 @@ func (s *Service) AcceptAgreementRevision(ctx context.Context, user model.User, 
 }
 
 func (s *Service) reconcileAgreementUser(ctx context.Context, user model.User) (RemoteUser, error) {
+	// A published agreement revision temporarily moves completed local users
+	// back to agreement. Their persisted Remnawave ID is the durable identity;
+	// use it before username lookup so an old upstream record cannot look like a
+	// new-account username collision.
+	if user.RemnaUserID != nil && strings.TrimSpace(*user.RemnaUserID) != "" {
+		if verifier, ok := s.remnawave.(linkedUserVerifier); ok {
+			remote, exists, err := verifier.FindUserByID(ctx, *user.RemnaUserID)
+			if err != nil {
+				return RemoteUser{}, fmt.Errorf("reconcile linked Remnawave user: %w", err)
+			}
+			if exists {
+				return remote, nil
+			}
+		}
+	}
 	remote, exists, err := s.remnawave.FindUserByUsername(ctx, *user.Username)
 	if err != nil {
 		return RemoteUser{}, fmt.Errorf("reconcile Remnawave user: %w", err)

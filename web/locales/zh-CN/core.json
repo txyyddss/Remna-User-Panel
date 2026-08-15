@@ -85,7 +85,10 @@
     "currencyTxb": "TXB",
     "rangeSeparator": "至"
   },
-    "errors": {
+  "errors": {
+    "squadActivationRequired": "请为每个需要激活码的所选区域输入激活码。",
+    "squadActivationInvalid": "其中一个激活码不正确。",
+    "squadActivationExtra": "请移除未选择区域的激活码。",
       "rolloverFailed": "无法加载实时结转详情。",
     "activityUnavailable": "活动暂时不可用。",
     "activityFailed": "活动未能完成。",
@@ -119,6 +122,9 @@
     "questionnaireUnavailable": "问卷暂不可用。",
     "questionnaireOpen": "无法打开问卷。",
     "api": {
+      "SQUAD_ACTIVATION_REQUIRED": "请为每个需要激活码的所选区域输入激活码。",
+      "SQUAD_ACTIVATION_INVALID": "其中一个激活码不正确。",
+      "SQUAD_ACTIVATION_EXTRA": "请移除未选择区域的激活码。",
       "ONBOARDING_CONFLICT": "设置状态已变化，请刷新应用后重试。",
       "ONBOARDING_STATE_CONFLICT": "设置状态已变化，请重新打开设置后重试。",
       "AGREEMENT_OUTDATED": "你查看规则期间内容已更新，请重新确认当前规则。",

@@ -137,9 +137,10 @@ func (s *Server) purchase(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var request struct {
-		ComboID              string   `json:"comboId"`
-		AddonSquadProductIDs []string `json:"addonSquadProductIds"`
-		CouponGrantID        string   `json:"couponGrantId"`
+		ComboID              string            `json:"comboId"`
+		AddonSquadProductIDs []string          `json:"addonSquadProductIds"`
+		CouponGrantID        string            `json:"couponGrantId"`
+		SquadActivationCodes map[string]string `json:"squadActivationCodes"`
 	}
 	if err := decodeJSON(w, r, &request); err != nil || request.ComboID == "" {
 		s.writeError(w, r, http.StatusBadRequest, "INVALID_REQUEST", "Select a combo to continue.")
@@ -150,7 +151,7 @@ func (s *Server) purchase(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, http.StatusBadRequest, "INVALID_IDEMPOTENCY_KEY", "Idempotency-Key must contain 1 to 128 characters.")
 		return
 	}
-	purchase, err := s.deps.Catalog.PurchaseWithCoupon(r.Context(), user, request.ComboID, request.AddonSquadProductIDs, request.CouponGrantID, idempotencyKey)
+	purchase, err := s.deps.Catalog.PurchaseWithCoupon(r.Context(), user, request.ComboID, request.AddonSquadProductIDs, request.CouponGrantID, request.SquadActivationCodes, idempotencyKey)
 	if err != nil {
 		switch {
 		case errors.Is(err, catalog.ErrAutoRenewalEnabled):
@@ -161,6 +162,12 @@ func (s *Server) purchase(w http.ResponseWriter, r *http.Request) {
 			s.writeError(w, r, http.StatusConflict, "SQUAD_STOCK_UNAVAILABLE", "A selected squad is currently full.")
 		case errors.Is(err, database.ErrInsufficientBalance):
 			s.writeError(w, r, http.StatusConflict, "INSUFFICIENT_BALANCE", "Your TXB balance is too low for this purchase.")
+		case errors.Is(err, database.ErrActivationCodeRequired):
+			s.writeError(w, r, http.StatusUnprocessableEntity, "SQUAD_ACTIVATION_REQUIRED", "An activation code is required for a selected squad.")
+		case errors.Is(err, database.ErrActivationCodeInvalid):
+			s.writeError(w, r, http.StatusUnprocessableEntity, "SQUAD_ACTIVATION_INVALID", "A selected squad activation code is invalid.")
+		case errors.Is(err, database.ErrActivationCodeExtra):
+			s.writeError(w, r, http.StatusUnprocessableEntity, "SQUAD_ACTIVATION_EXTRA", "Activation codes may only be sent for selected squads.")
 		case errors.Is(err, database.ErrNotFound):
 			s.writeError(w, r, http.StatusNotFound, "CATALOG_ITEM_NOT_FOUND", "The selected catalog item is unavailable.")
 		default:

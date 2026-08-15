@@ -22,18 +22,20 @@ const { t } = useI18n()
 <template>
   <UModal
     v-model:open="open"
-    :title="title"
     :description="description"
     :dismissible="!busy"
     :ui="{ footer: 'justify-end' }"
   >
-    <template #body>
-      <UIcon
-        name="i-ph-warning-fill"
-        class="dialog-icon"
-        :class="{ 'dialog-icon--danger': danger }"
-        aria-hidden="true"
-      />
+    <template #title>
+      <span class="dialog-title">
+        <UIcon
+          name="i-ph-warning-fill"
+          class="dialog-icon"
+          :class="{ 'dialog-icon--danger': danger }"
+          aria-hidden="true"
+        />
+        <span>{{ title }}</span>
+      </span>
     </template>
     <template #footer="{ close }">
       <UButton
@@ -53,3 +55,8 @@ const { t } = useI18n()
     </template>
   </UModal>
 </template>
+
+<style scoped>
+.dialog-title { display: inline-flex; align-items: center; gap: 0.55rem; }
+.dialog-title .dialog-icon { width: 1.35rem; height: 1.35rem; margin: 0; font-size: 1.35rem; }
+</style>

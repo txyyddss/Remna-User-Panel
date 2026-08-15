@@ -25,7 +25,9 @@ func (s *Service) Catalog(ctx context.Context) (model.Catalog, error) {
 	if err != nil {
 		return model.Catalog{}, err
 	}
-	addons, err := s.repository.ListSquadProducts(ctx, true)
+	// Load hidden overrides too so combo-included squads retain activation and
+	// profile metadata; hydrateLiveCatalog still filters hidden standalone add-ons.
+	addons, err := s.repository.ListSquadProducts(ctx, false)
 	if err != nil {
 		return model.Catalog{}, err
 	}

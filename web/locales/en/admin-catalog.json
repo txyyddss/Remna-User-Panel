@@ -42,7 +42,6 @@
       "MONTH": "Monthly"
     },
     "rolloverMinimum": "Minimum remaining traffic, percent",
-    "rolloverMaximum": "Maximum rollover",
     "includedSquads": "Included live squads",
     "noSquads": "Refresh Remnawave squads before assigning them.",
     "available": "Available to users",

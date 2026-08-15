@@ -25,21 +25,22 @@ type ComboInput struct {
 	Active                  bool
 	SquadProductIDs         []string
 	RolloverMinRemainingBPS int
-	RolloverMaxTXBMinor     int64
 }
 
 // SquadProductInput is the local merchandising override associated with a
 // Remnawave-owned internal squad.
 type SquadProductInput struct {
-	ID              string
-	RemnaSquadUUID  string
-	Name            string
-	Description     string
-	Profile         *squadprofile.Profile
-	PriceTXBMinor   int64
-	Visible         bool
-	UpstreamPresent bool
-	StockLimit      *int
+	ID                 string
+	RemnaSquadUUID     string
+	Name               string
+	Description        string
+	Profile            *squadprofile.Profile
+	PriceTXBMinor      int64
+	Visible            bool
+	UpstreamPresent    bool
+	StockLimit         *int
+	ActivationRequired bool
+	ActivationCode     string
 }
 
 // ImportedSquad is retained as a compatibility DTO. Upstream squads are no
@@ -75,14 +76,14 @@ func (s *Store) SaveCombo(ctx context.Context, input ComboInput) (model.Combo, e
 	defer func() { _ = tx.Rollback() }()
 	var result sql.Result
 	if creating {
-		result, err = tx.ExecContext(ctx, `INSERT INTO combos(id,name,description,price_txb_minor,validity_days,traffic_limit_bytes,reset_strategy,active,rollover_min_remaining_bps,rollover_max_txb_minor,included_squad_uuids,created_at,updated_at)
-			VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`, input.ID, input.Name, input.Description, input.PriceTXBMinor, input.ValidityDays,
-			input.TrafficLimitBytes, input.ResetStrategy, boolInt(input.Active), input.RolloverMinRemainingBPS, input.RolloverMaxTXBMinor,
+		result, err = tx.ExecContext(ctx, `INSERT INTO combos(id,name,description,price_txb_minor,validity_days,traffic_limit_bytes,reset_strategy,active,rollover_min_remaining_bps,included_squad_uuids,created_at,updated_at)
+			VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`, input.ID, input.Name, input.Description, input.PriceTXBMinor, input.ValidityDays,
+			input.TrafficLimitBytes, input.ResetStrategy, boolInt(input.Active), input.RolloverMinRemainingBPS,
 			string(encodedSquads), stamp(now), stamp(now))
 	} else {
-		result, err = tx.ExecContext(ctx, `UPDATE combos SET name=?,description=?,price_txb_minor=?,validity_days=?,traffic_limit_bytes=?,reset_strategy=?,active=?,rollover_min_remaining_bps=?,rollover_max_txb_minor=?,included_squad_uuids=?,updated_at=? WHERE id=?`,
+		result, err = tx.ExecContext(ctx, `UPDATE combos SET name=?,description=?,price_txb_minor=?,validity_days=?,traffic_limit_bytes=?,reset_strategy=?,active=?,rollover_min_remaining_bps=?,included_squad_uuids=?,updated_at=? WHERE id=?`,
 			input.Name, input.Description, input.PriceTXBMinor, input.ValidityDays, input.TrafficLimitBytes, input.ResetStrategy,
-			boolInt(input.Active), input.RolloverMinRemainingBPS, input.RolloverMaxTXBMinor, string(encodedSquads), stamp(now), input.ID)
+			boolInt(input.Active), input.RolloverMinRemainingBPS, string(encodedSquads), stamp(now), input.ID)
 	}
 	if err != nil {
 		return model.Combo{}, fmt.Errorf("save combo: %w", err)

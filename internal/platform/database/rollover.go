@@ -91,9 +91,6 @@ func (s *Store) finalizeRolloverUsage(ctx context.Context, purchaseID string, su
 		status = "exception"
 	} else if summary.AllocatedBytes > 0 && eligible > 0 {
 		credit = proportionalFloor(rollover.NetPaidTXBMinor, eligible, summary.AllocatedBytes)
-		if credit > rollover.MaximumTXBMinor {
-			credit = rollover.MaximumTXBMinor
-		}
 		if credit > 0 {
 			status = "credited"
 		}
@@ -161,7 +158,7 @@ func (s *Store) finalizeRolloverUsage(ctx context.Context, purchaseID string, su
 	return s.RolloverByPurchase(ctx, purchaseID)
 }
 
-const rolloverSelect = `SELECT purchase_id,status,traffic_limit_bytes,allocated_traffic_bytes,used_traffic_bytes,eligible_unused_bytes,remaining_traffic_bytes,minimum_remaining_bps,maximum_txb_minor,net_paid_txb_minor,credited_txb_minor,exception_code,attempts,created_at,updated_at,completed_at,algorithm_version FROM purchase_rollovers`
+const rolloverSelect = `SELECT purchase_id,status,traffic_limit_bytes,allocated_traffic_bytes,used_traffic_bytes,eligible_unused_bytes,remaining_traffic_bytes,minimum_remaining_bps,net_paid_txb_minor,credited_txb_minor,exception_code,attempts,created_at,updated_at,completed_at,algorithm_version FROM purchase_rollovers`
 
 func isCadenceAlgorithm(version string) bool {
 	switch version {

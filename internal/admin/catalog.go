@@ -13,7 +13,7 @@ import (
 func (s *Service) SaveCombo(ctx context.Context, actorID string, input database.ComboInput) (model.Combo, error) {
 	input.Name = strings.TrimSpace(input.Name)
 	if input.Name == "" || input.PriceTXBMinor < 0 || input.PriceTXBMinor > 1_000_000_000_000 || input.ValidityDays < 1 || input.ValidityDays > 3650 || input.TrafficLimitBytes <= 0 ||
-		input.RolloverMinRemainingBPS < 0 || input.RolloverMinRemainingBPS > 10_000 || input.RolloverMaxTXBMinor < 0 || input.RolloverMaxTXBMinor > 1_000_000_000_000 {
+		input.RolloverMinRemainingBPS < 0 || input.RolloverMinRemainingBPS > 10_000 {
 		return model.Combo{}, errors.New("invalid combo fields")
 	}
 	if input.ResetStrategy != "DAY" && input.ResetStrategy != "WEEK" && input.ResetStrategy != "MONTH" && input.ResetStrategy != "MONTH_ROLLING" {

@@ -145,6 +145,10 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	if err != nil {
 		return cleanup(fmt.Errorf("open embedded frontend: %w", err))
 	}
+	static, err = webui.Preload(static)
+	if err != nil {
+		return cleanup(fmt.Errorf("preload embedded frontend: %w", err))
+	}
 	api, err := httpapi.New(httpapi.Dependencies{
 		Accounts: accountsService, Catalog: catalogService, Billing: billingService, Activity: activityService,
 		Coupons: couponService, Questionnaires: questionnaireService, Emby: embyService, EmbyPrice: embyPrice,

@@ -15,19 +15,20 @@ type Money struct {
 
 // SquadProduct enriches an upstream Remnawave internal squad with customer-facing catalog data.
 type SquadProduct struct {
-	ID              string                `json:"id"`
-	RemnaSquadUUID  string                `json:"remnaSquadUuid"`
-	Name            string                `json:"name"`
-	Description     string                `json:"description"`
-	Profile         *squadprofile.Profile `json:"profile"`
-	PriceTXBMinor   int64                 `json:"-"`
-	Price           Money                 `json:"price"`
-	Visible         bool                  `json:"visible"`
-	UpstreamPresent bool                  `json:"upstreamPresent"`
-	StockLimit      *int                  `json:"stockLimit"`
-	StockRemaining  *int                  `json:"stockRemaining"`
-	CreatedAt       time.Time             `json:"createdAt"`
-	UpdatedAt       time.Time             `json:"updatedAt"`
+	ID                 string                `json:"id"`
+	RemnaSquadUUID     string                `json:"remnaSquadUuid"`
+	Name               string                `json:"name"`
+	Description        string                `json:"description"`
+	Profile            *squadprofile.Profile `json:"profile"`
+	PriceTXBMinor      int64                 `json:"-"`
+	Price              Money                 `json:"price"`
+	Visible            bool                  `json:"visible"`
+	UpstreamPresent    bool                  `json:"upstreamPresent"`
+	StockLimit         *int                  `json:"stockLimit"`
+	StockRemaining     *int                  `json:"stockRemaining"`
+	ActivationRequired bool                  `json:"activationRequired"`
+	CreatedAt          time.Time             `json:"createdAt"`
+	UpdatedAt          time.Time             `json:"updatedAt"`
 }
 
 // Combo is a time-limited traffic entitlement and its included squads.
@@ -44,8 +45,6 @@ type Combo struct {
 	Active                  bool           `json:"active"`
 	IncludedSquads          []SquadProduct `json:"includedSquads"`
 	RolloverMinRemainingBPS int            `json:"rolloverMinRemainingBps"`
-	RolloverMaxTXBMinor     int64          `json:"rolloverMaxTxbMinor,string"`
-	RolloverMax             Money          `json:"rolloverMax"`
 	CreatedAt               time.Time      `json:"createdAt"`
 	UpdatedAt               time.Time      `json:"updatedAt"`
 }
@@ -73,8 +72,6 @@ type Purchase struct {
 	ResetStrategy             string    `json:"resetStrategy"`
 	SquadUUIDs                []string  `json:"squadUuids"`
 	RolloverMinRemainingBPS   int       `json:"rolloverMinRemainingBps"`
-	RolloverMaxTXBMinor       int64     `json:"rolloverMaxTxbMinor,string"`
-	RolloverMax               Money     `json:"rolloverMax"`
 	CreatedAt                 time.Time `json:"createdAt"`
 	UpdatedAt                 time.Time `json:"updatedAt"`
 }
@@ -89,7 +86,6 @@ type PurchaseRollover struct {
 	EligibleUnusedBytes *int64     `json:"eligibleUnusedBytes"`
 	RemainingBytes      *int64     `json:"remainingTrafficBytes"`
 	MinimumRemainingBPS int        `json:"minimumRemainingBps"`
-	MaximumTXBMinor     int64      `json:"-"`
 	NetPaidTXBMinor     int64      `json:"-"`
 	CreditedTXBMinor    int64      `json:"-"`
 	ExceptionCode       string     `json:"exceptionCode"`
@@ -114,14 +110,20 @@ type RolloverUsageSummary struct {
 // possible rollover credit. It is never persisted and never contains raw
 // provider usage series.
 type RolloverProjection struct {
-	PurchaseID          string         `json:"purchaseId"`
-	Paid                Money          `json:"paid"`
-	Maximum             Money          `json:"maximum"`
-	MinimumRemainingBPS int            `json:"minimumRemainingBps"`
-	SavedBPS            int            `json:"savedBps"`
-	Term                RolloverWindow `json:"term"`
-	LastResetPeriod     RolloverWindow `json:"lastResetPeriod"`
-	FetchedAt           time.Time      `json:"fetchedAt"`
+	PurchaseID                  string          `json:"purchaseId"`
+	Paid                        Money           `json:"paid"`
+	AutoRenewalEnabled          bool            `json:"autoRenewalEnabled"`
+	WarningCode                 *string         `json:"warningCode"`
+	ActualUsedTrafficBytes      *int64          `json:"actualUsedTrafficBytes,string"`
+	ProjectedFullTermUsageBytes *int64          `json:"projectedFullTermUsageBytes,string"`
+	MaximumAllowableUsageBytes  *int64          `json:"maximumAllowableUsageBytes,string"`
+	PredictedRollover           *Money          `json:"predictedRollover"`
+	RequiredReductionBytes      *int64          `json:"requiredReductionBytes,string"`
+	RequiredDailyReductionBytes *int64          `json:"requiredDailyReductionBytes,string"`
+	MinimumRemainingBPS         int             `json:"minimumRemainingBps"`
+	Term                        *RolloverWindow `json:"term"`
+	LastResetPeriod             *RolloverWindow `json:"lastResetPeriod"`
+	FetchedAt                   time.Time       `json:"fetchedAt"`
 }
 
 // RolloverWindow describes one aggregate cadence window used by a projection.
@@ -133,8 +135,6 @@ type RolloverWindow struct {
 	RemainingTrafficBytes int64     `json:"remainingTrafficBytes,string"`
 	EligibleUnusedBytes   int64     `json:"eligibleUnusedBytes,string"`
 	Rollover              Money     `json:"rollover"`
-	TrafficToMaximumBytes *int64    `json:"trafficToMaximumBytes,omitempty,string"`
-	MaximumReachable      bool      `json:"maximumReachable"`
 }
 
 // CatalogNode is the display-only node identity and multiplier metadata used

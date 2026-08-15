@@ -24,14 +24,17 @@ func (a *Application) runScheduler(ctx context.Context) {
 	if err := a.store.RecoverOutbox(ctx, startupNow, startupNow); err != nil {
 		a.logger.Error("startup outbox recovery failed", "error", err)
 	}
-	if err := a.catalog.ProcessDueAutoRenewals(ctx, startupNow); err != nil {
-		a.logger.Error("startup automatic renewal scan failed", "error", err)
-	}
 	if err := a.store.EnqueueDueEntitlementTransitions(ctx, startupNow); err != nil {
 		a.logger.Error("startup entitlement transition scan failed", "error", err)
 	}
 	if err := a.outbox.Drain(ctx, 50); err != nil && !errors.Is(err, context.Canceled) {
 		a.logger.Error("startup outbox drain failed", "error", err)
+	}
+	if err := a.catalog.ProcessDueAutoRenewals(ctx, startupNow); err != nil {
+		a.logger.Error("startup automatic renewal scan failed", "error", err)
+	}
+	if err := a.store.EnqueueDueEntitlementTransitions(ctx, startupNow); err != nil {
+		a.logger.Error("startup successor transition scan failed", "error", err)
 	}
 	for {
 		select {
@@ -45,11 +48,17 @@ func (a *Application) runScheduler(ctx context.Context) {
 			if err := a.store.RecoverOutbox(ctx, now.UTC().Add(-2*time.Minute), now.UTC()); err != nil {
 				a.logger.Error("outbox lease recovery failed", "error", err)
 			}
+			if err := a.store.EnqueueDueEntitlementTransitions(ctx, now.UTC()); err != nil {
+				a.logger.Error("entitlement transition scan failed", "error", err)
+			}
+			if err := a.outbox.Drain(ctx, 50); err != nil && !errors.Is(err, context.Canceled) {
+				a.logger.Error("rollover settlement drain failed", "error", err)
+			}
 			if err := a.catalog.ProcessDueAutoRenewals(ctx, now.UTC()); err != nil {
 				a.logger.Error("automatic renewal scan failed", "error", err)
 			}
 			if err := a.store.EnqueueDueEntitlementTransitions(ctx, now.UTC()); err != nil {
-				a.logger.Error("entitlement transition scan failed", "error", err)
+				a.logger.Error("successor transition scan failed", "error", err)
 			}
 			if err := a.store.ExpireStalePaymentOrders(ctx, now.UTC()); err != nil {
 				a.logger.Error("payment expiry scan failed", "error", err)

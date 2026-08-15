@@ -74,8 +74,8 @@ func (s *Store) EnqueueDueEntitlementTransitions(ctx context.Context, now time.T
 	}
 	_ = rows.Close()
 	for _, item := range expired {
-		result, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO purchase_rollovers(purchase_id,status,traffic_limit_bytes,minimum_remaining_bps,maximum_txb_minor,net_paid_txb_minor,created_at,updated_at)
-			SELECT p.id,'pending',c.traffic_limit_bytes,c.rollover_min_remaining_bps,c.rollover_max_txb_minor,p.charged_txb_minor,?,?
+		result, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO purchase_rollovers(purchase_id,status,traffic_limit_bytes,minimum_remaining_bps,net_paid_txb_minor,created_at,updated_at)
+			SELECT p.id,'pending',c.traffic_limit_bytes,c.rollover_min_remaining_bps,p.charged_txb_minor,?,?
 			FROM purchases p JOIN combos c ON c.id=p.combo_id WHERE p.id=?`, stamp(now), stamp(now), item.purchaseID)
 		if err != nil {
 			return err

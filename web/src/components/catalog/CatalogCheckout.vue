@@ -71,7 +71,7 @@ function goToBalance(): void { void router.push({ path: '/home', query: { topUp:
       </div>
       <div class="catalog-checkout__line">
         <span>{{ $t('catalog.rollover') }}</span>
-        <strong>{{ $t('catalog.rolloverSummary', { threshold: (combo.rolloverMinRemainingBps / 100).toFixed(2), cap: formatMoney(combo.rolloverMax) }) }}</strong>
+        <strong>{{ $t('catalog.rolloverSummary', { threshold: (combo.rolloverMinRemainingBps / 100).toFixed(2) }) }}</strong>
       </div>
       <div class="catalog-checkout__total">
         <span>{{ $t('catalog.serverTotal') }}</span>

@@ -78,12 +78,18 @@ func normalizeAndFingerprintPurchase(input *PurchaseInput) (string, error) {
 		normalizedAddons[index] = strings.TrimSpace(input.AddonSquadIDs[index])
 	}
 	input.AddonSquadIDs = uniqueSorted(normalizedAddons)
+	activationIDs := make([]string, 0, len(input.SquadActivationCodes))
+	for uuid := range input.SquadActivationCodes {
+		activationIDs = append(activationIDs, strings.TrimSpace(uuid))
+	}
+	activationIDs = uniqueSorted(activationIDs)
 	payload, err := json.Marshal(struct {
 		Version       int      `json:"version"`
 		ComboID       string   `json:"comboId"`
 		AddonSquadIDs []string `json:"addonSquadIds"`
 		CouponGrantID string   `json:"couponGrantId"`
-	}{Version: 1, ComboID: input.ComboID, AddonSquadIDs: input.AddonSquadIDs, CouponGrantID: input.CouponGrantID})
+		ActivationIDs []string `json:"activationIds"`
+	}{Version: 2, ComboID: input.ComboID, AddonSquadIDs: input.AddonSquadIDs, CouponGrantID: input.CouponGrantID, ActivationIDs: activationIDs})
 	if err != nil {
 		return "", fmt.Errorf("encode purchase request fingerprint: %w", err)
 	}

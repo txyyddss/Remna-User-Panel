@@ -8,6 +8,8 @@ Bootstrap environment is intentionally narrow: comma-separated `ADMIN_TELEGRAM_I
 
 ## Persistence contract
 
+The embedded Vite output is copied into a read-only in-memory filesystem before HTTP starts. The asset cache is fully populated during bootstrap and cannot grow during request handling; hashed assets retain immutable cache headers.
+
 - The authoritative database lives on disk at `${DATA_DIR}/tx-carpool.db`; backups live below `${DATA_DIR}/backups`. It is never mirrored wholesale into memory.
 - Every connection enables foreign keys, WAL, a busy timeout, a 16 MiB page cache, a 128 MiB mmap ceiling, memory-backed temporary storage, and `synchronous=FULL`. The pool is fixed at four connections; passive checkpoints run normally and a final checkpoint runs before backup and shutdown.
 - Embedded migrations run in order before HTTP readiness. A migration failure aborts startup without partially advertising readiness.

@@ -1,5 +1,15 @@
 {
   "home": {
+    "rolloverForecast": "结转预测",
+    "rolloverForecastCredit": "预计结转额度",
+    "rolloverReductionNeeded": "需要减少的流量",
+    "rolloverProjected": "预计周期总用量",
+    "rolloverMaximumUsage": "最多可用流量",
+    "rolloverPredictedCredit": "预计返还：{amount}",
+    "rolloverReduceDaily": "剩余每天减少 {amount}",
+    "rolloverWarning": {
+      "AUTO_RENEWAL_DISABLED": "自动续费已关闭，因此未请求上游用量，结转按零结算。"
+    },
     "rolloverOpen": "查看流量结转详情",
     "rolloverBack": "返回套餐摘要",
     "rolloverTitle": "流量结转详情",
@@ -16,9 +26,6 @@
     "rolloverUsed": "已用流量",
     "rolloverRemaining": "剩余流量",
     "rolloverEligible": "符合条件的未用流量",
-    "rolloverMaximum": "最大结转：{amount}",
-    "rolloverTrafficToMaximum": "至少保留 {amount} 未使用流量",
-    "rolloverMaximumUnreachable": "此周期无法达到最大结转",
     "rolloverFetchedAt": "更新时间：{date}",
     "currentTerm": "当前周期",
     "noNodeUsage": "所选范围暂无节点流量数据。",

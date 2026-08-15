@@ -32,10 +32,11 @@ type remnaAdapter struct {
 	settings      *admin.SettingsService
 	queue         *upstreamqueue.Queue
 	clientFactory remnaClientFactory
+	multipliers   *nodeMultiplierCache
 }
 
 func newRemnaAdapter(settings *admin.SettingsService, queue *upstreamqueue.Queue) remnaAdapter {
-	return remnaAdapter{settings: settings, queue: queue}
+	return remnaAdapter{settings: settings, queue: queue, multipliers: newNodeMultiplierCache()}
 }
 
 func (a remnaAdapter) client(ctx context.Context) (remnaClient, error) {

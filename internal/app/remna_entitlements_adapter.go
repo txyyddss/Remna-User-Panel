@@ -116,19 +116,35 @@ func (a remnaAdapter) UsageSnapshotForRollover(ctx context.Context, remoteID str
 		return rollover.UsageSnapshot{}, err
 	}
 	daily := make([]rollover.DailyUsage, 0, len(stats.Categories))
+	categories := make([]time.Time, 0, len(stats.Categories))
 	for index, category := range stats.Categories {
 		date, parseErr := time.Parse(time.DateOnly, category)
 		if parseErr != nil {
+			categories = append(categories, time.Time{})
 			continue
 		}
+		categories = append(categories, date)
 		if index < len(stats.SparklineData) {
 			daily = append(daily, rollover.DailyUsage{Date: date, Bytes: stats.SparklineData[index]})
 		}
+	}
+	nodeSeries := make([]rollover.NodeUsageSeries, 0, len(stats.Series))
+	for _, series := range stats.Series {
+		multiplier, multiplierErr := a.nodeMultiplier(ctx, series.UUID)
+		if multiplierErr != nil {
+			return rollover.UsageSnapshot{}, multiplierErr
+		}
+		nodeSeries = append(nodeSeries, rollover.NodeUsageSeries{UUID: series.UUID, MultiplierFP: multiplier, Data: append([]int64(nil), series.Data...)})
+	}
+	weightedTotal := int64(0)
+	if len(nodeSeries) > 0 {
+		daily, weightedTotal = rollover.WeightedNodeUsage(categories, nodeSeries)
 	}
 	currentUsed := user.UserTraffic.UsedTrafficBytes
 	return rollover.UsageSnapshot{
 		LimitBytes: user.TrafficLimitBytes, Strategy: string(user.TrafficLimitStrategy),
 		LastResetAt: user.LastTrafficResetAt, CurrentUsedBytes: &currentUsed, Daily: daily,
+		WeightedUsedBytes: weightedTotal, NodeSeriesAvailable: len(nodeSeries) > 0,
 	}, nil
 }
 

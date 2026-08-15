@@ -1,5 +1,11 @@
 {
   "activity": {
+    "groupRewardCount": "消息数",
+    "groupRewardRemaining": "还需消息",
+    "groupRewardAmount": "奖励",
+    "groupRewardProgressLabel": "群消息奖励进度",
+    "groupRewardInProgress": "继续发送消息即可解锁今日奖励。",
+    "groupRewardAvailable": "今日奖励已可领取。",
     "stakeRange": "{minimum} 至 {maximum} TXB",
     "title": "透明地参与活动。",
     "balance": "余额 {amount}",

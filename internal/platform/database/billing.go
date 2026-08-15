@@ -13,11 +13,12 @@ import (
 
 // PurchaseInput contains the server-selected catalog IDs for a checkout.
 type PurchaseInput struct {
-	UserID         string
-	ComboID        string
-	AddonSquadIDs  []string
-	CouponGrantID  string
-	IdempotencyKey string
+	UserID               string
+	ComboID              string
+	AddonSquadIDs        []string
+	CouponGrantID        string
+	IdempotencyKey       string
+	SquadActivationCodes map[string]string
 }
 
 // CreatePurchase atomically revalidates live pricing, debits TXB, stores only
@@ -54,6 +55,9 @@ func (s *Store) CreatePurchase(ctx context.Context, input PurchaseInput, now tim
 
 	quote, combo, addonRows, err := quotePurchaseTx(ctx, tx, input, now)
 	if err != nil {
+		return model.Purchase{}, err
+	}
+	if err := validateSquadActivationCodesTx(ctx, tx, combo, addonRows, input.SquadActivationCodes); err != nil {
 		return model.Purchase{}, err
 	}
 	validFrom := quote.EffectiveAt

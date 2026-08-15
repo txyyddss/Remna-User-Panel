@@ -37,6 +37,12 @@ PurchaseRequest:
       type: string
       minLength: 1
       description: One explicitly selected eligible wallet grant; discounts never stack.
+    squadActivationCodes:
+      type: object
+      additionalProperties:
+        type: string
+        minLength: 1
+      writeOnly: true
 
 PurchaseQuote:
   type: object
@@ -117,8 +123,6 @@ Purchase:
     - resetStrategy
     - squadUuids
     - rolloverMinRemainingBps
-    - rolloverMaxTxbMinor
-    - rolloverMax
     - createdAt
     - updatedAt
     - autoRenewEnabled
@@ -157,11 +161,6 @@ Purchase:
       type: integer
       minimum: 0
       maximum: 10000
-    rolloverMaxTxbMinor:
-      type: string
-      pattern: '^\d+$'
-    rolloverMax:
-      $ref: '../../openapi.yaml#/components/schemas/Money'
     createdAt:
       $ref: '../../openapi.yaml#/components/schemas/Timestamp'
     updatedAt:

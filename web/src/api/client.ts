@@ -93,10 +93,10 @@ export const api = {
   getDashboardNodeUsage: (start: string, end: string) =>
     request<DashboardNodeUsage>('/api/v1/dashboard/node-usage', { query: { start, end } }),
   getCatalog: () => request<Catalog>('/api/v1/catalog'),
-  createPurchase: (comboId: string, squadProductIds: string[], couponGrantId: string | undefined, idempotencyKey: string) => request<Purchase>('/api/v1/purchases', {
+  createPurchase: (comboId: string, squadProductIds: string[], couponGrantId: string | undefined, idempotencyKey: string, squadActivationCodes: Record<string, string> = {}) => request<Purchase>('/api/v1/purchases', {
     method: 'POST',
     headers: { 'Idempotency-Key': idempotencyKey },
-    body: { comboId, addonSquadProductIds: squadProductIds, couponGrantId } as PurchaseRequest & { couponGrantId?: string },
+    body: { comboId, addonSquadProductIds: squadProductIds, couponGrantId, squadActivationCodes } as PurchaseRequest & { couponGrantId?: string },
   }),
   quotePurchase: (comboId: string, squadProductIds: string[], couponGrantId?: string) => request<PurchaseQuote>('/api/v1/purchases/quote', {
     method: 'POST',

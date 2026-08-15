@@ -3,6 +3,10 @@
     "addBalance": "Add balance"
   },
   "catalog": {
+    "activationRequired": "Activation code required", "activationTitle": "Unlock this squad",
+    "activationDescription": "Enter the activation code for this selected squad. It is used only for this purchase.", "activationCodeLabel": "Activation code",
+    "activationCodeHint": "Codes are checked securely by the server and are not saved in the app.",
+    "activationContinue": "Continue",
     "browsePlans": "Browse plans",
     "viewCombos": "View combos",
     "title": "Choose your combo.",
@@ -83,7 +87,7 @@
     "traffic": "Traffic",
     "term": "Term",
     "rollover": "Rollover",
-    "rolloverSummary": "Threshold {threshold}% · cap {cap}",
+    "rolloverSummary": "Minimum remaining traffic {threshold}%",
     "reviewAction": "Final purchase",
     "renewalTerms": "Renewal terms",
     "full": "Full",

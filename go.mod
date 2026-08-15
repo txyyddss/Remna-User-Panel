@@ -6,6 +6,7 @@ toolchain go1.26.6
 
 require (
 	github.com/go-chi/chi/v5 v5.3.1
+	golang.org/x/crypto v0.48.0
 	modernc.org/sqlite v1.56.0
 )
 

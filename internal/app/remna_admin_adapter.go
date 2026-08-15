@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"math"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/admin"
 	"github.com/txyyddss/Remna-User-Panel/internal/catalog"
@@ -41,6 +42,7 @@ func (a remnaAdapter) ListCatalogNodes(ctx context.Context) ([]catalog.RemoteNod
 	}
 	result := make([]catalog.RemoteNode, 0, len(nodes))
 	for _, node := range nodes {
+		a.multipliers.set(node.UUID, fixedNodeMultiplier(node.ConsumptionMultiplier))
 		inbounds := make([]string, 0, len(node.ConfigProfile.ActiveInbounds))
 		for _, inbound := range node.ConfigProfile.ActiveInbounds {
 			inbounds = append(inbounds, inbound.UUID)
@@ -55,6 +57,33 @@ func (a remnaAdapter) ListCatalogNodes(ctx context.Context) ([]catalog.RemoteNod
 			ProviderName: providerName, ProviderFaviconURL: providerFaviconURL})
 	}
 	return result, nil
+}
+
+func fixedNodeMultiplier(value float64) int64 {
+	if value <= 0 || math.IsNaN(value) || math.IsInf(value, 0) {
+		return 0
+	}
+	const scale = 1_000_000
+	return int64(math.Round(value * scale))
+}
+
+func (a remnaAdapter) nodeMultiplier(ctx context.Context, uuid string) (int64, error) {
+	if value, ok := a.multipliers.get(uuid); ok {
+		return value, nil
+	}
+	nodes, err := remnaCall(ctx, a, func(callCtx context.Context, client remnaClient) ([]remnawave.Node, error) {
+		return client.ListNodes(callCtx)
+	})
+	if err != nil {
+		return 0, err
+	}
+	for _, node := range nodes {
+		a.multipliers.set(node.UUID, fixedNodeMultiplier(node.ConsumptionMultiplier))
+	}
+	if value, ok := a.multipliers.get(uuid); ok {
+		return value, nil
+	}
+	return 0, nil
 }
 
 func (a remnaAdapter) AccessibleCatalogNodeUUIDs(ctx context.Context, squadUUID string) ([]string, error) {

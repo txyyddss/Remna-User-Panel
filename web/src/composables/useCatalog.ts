@@ -1,5 +1,4 @@
 import { computed, getCurrentInstance, onMounted, readonly, shallowRef, watch } from 'vue'
-
 import { api, ApiError } from '@/api/client'
 import { featuresApi, type CouponGrant } from '@/api/features'
 import type { Catalog, Combo, Purchase, SquadProduct } from '@/api/types'
@@ -46,6 +45,7 @@ export function useCatalog() {
     return squads.filter((squad, index) => squads.findIndex((candidate) => candidate.id === squad.id) === index)
   })
   const selectedSquads = computed<SquadProduct[]>(() => visibleSquads.value.filter((squad) => selectedSquadIds.value.includes(squad.id)))
+  const activationSquads = computed<SquadProduct[]>(() => visibleSquads.value.filter((squad) => squad.activationRequired && (includedSquadIds.value.includes(squad.id) || selectedSquadIds.value.includes(squad.id))))
   const eligibleCoupons = computed(() => couponGrants.value.filter((grant) => {
     const coupon = grant.coupon
     if (!selectedCombo.value || grant.status !== 'active' || !coupon.active) return false
@@ -103,10 +103,7 @@ export function useCatalog() {
       : [...selectedSquadIds.value, id]
     if (!eligibleCoupons.value.some((coupon) => coupon.id === selectedCouponGrantId.value)) selectedCouponGrantId.value = null
   }
-  function paidAddonIsFull(id: string): boolean {
-    return !includedSquadIds.value.includes(id)
-      && visibleSquads.value.some((squad) => squad.id === id && squad.stockRemaining === 0)
-  }
+  function paidAddonIsFull(id: string): boolean { return !includedSquadIds.value.includes(id) && visibleSquads.value.some((squad) => squad.id === id && squad.stockRemaining === 0) }
   function blocksCatalog(caught: unknown): boolean {
     if (!(caught instanceof ApiError) || caught.code !== 'AUTO_RENEW_ENABLED') return false
     autoRenewalBlocked.value = true
@@ -130,7 +127,7 @@ export function useCatalog() {
       couponDiscarding.value = false
     }
   }
-  async function confirmPurchase(): Promise<boolean> {
+  async function confirmPurchase(squadActivationCodes: Record<string, string> = {}): Promise<boolean> {
     if (!selectedCombo.value || purchase.value || purchasing.value) return false
     if ((!quote.value || !quoteUsable.value) && !(await refreshQuote())) return false
     purchasing.value = true
@@ -143,6 +140,7 @@ export function useCatalog() {
         selectedSquadIds.value,
         selectedCouponGrantId.value ?? undefined,
         purchaseIdempotencyKey.value,
+        squadActivationCodes,
       )
       notifyHaptic('success')
       purchaseIdempotencyKey.value = null
@@ -185,6 +183,7 @@ export function useCatalog() {
     visibleSquads,
     selectedCombo,
     selectedSquads,
+    activationSquads,
     includedSquadIds,
     couponGrants: readonly(couponGrants),
     eligibleCoupons,

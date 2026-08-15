@@ -11,7 +11,9 @@
   counter when available; earlier periods continue to use bounded daily buckets.
   `MONTH_ROLLING` advances by a fixed 30-day window, while `MONTH` follows
   calendar-month boundaries.
-- `projection.go` shares the cadence evaluator for live current-term/reset-period projections, integer-safe rollover caps, maximum thresholds, and net-paid savings percentages.
-- `projection_test.go` covers net-paid savings, latest reset selection, strict thresholds, and unreachable maximum states.
+- `projection.go` shares the cadence evaluator for live current-term/reset-period projections, fixed-point forecast math, strict maximum thresholds, and net-paid rollover credit.
+- `weighted_usage.go` converts transient per-node usage series to fixed-point multiplier-weighted daily and total usage without persisting provider series.
+- `weighted_usage_test.go` covers fixed-point per-node aggregation.
+- `projection_test.go` covers net-paid savings, latest reset selection, strict thresholds, forecast eligibility, and no-cap rollover credit.
 - `projection_current_counter_test.go` covers authoritative current usage,
   daily fallback, zero usage, and all supported reset cadences.

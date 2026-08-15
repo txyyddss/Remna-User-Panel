@@ -112,7 +112,7 @@ watch(open, (next, previous) => {
       </template>
 
       <div v-else-if="couponRedemption" class="payment-success payment-success--coupon" role="status">
-        <UIcon name="i-ph-check-circle-fill" aria-hidden="true" />
+        <UIcon name="i-ph-check-circle-fill" class="payment-success__coupon-icon" aria-hidden="true" />
         <h2>{{ $t('payment.added') }}</h2>
         <div class="payment-amount">
           <span>{{ $t('payment.couponGain') }}</span>
@@ -134,5 +134,6 @@ watch(open, (next, previous) => {
 <style scoped>
 .payment-success--coupon { gap: 0.8rem; }
 .payment-success--coupon > .payment-amount { width: 100%; }
+.payment-success__coupon-icon { width: 5rem; height: 5rem; color: var(--success); font-size: 5rem; }
 .payment-success__error-icon { width: 5rem; height: 5rem; color: var(--danger); font-size: 5rem; }
 </style>

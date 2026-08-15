@@ -7,37 +7,77 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 )
 
-// ProjectUsage builds the aggregate projection shown on the member dashboard.
-// The calculation intentionally shares the cadence evaluator used by expiry
-// settlement and uses the purchase's charged, net TXB amount.
+// ProjectUsage returns the current weighted usage and a full-term forecast.
+// The eligibility boundary is strict: remaining traffic must be greater than
+// the configured basis-point threshold.
 func ProjectUsage(purchase model.Purchase, threshold int, snapshot UsageSnapshot, asOf time.Time) model.RolloverProjection {
-	termStart := purchase.ValidFrom.UTC()
-	termEnd := asOf.UTC()
-	if termEnd.After(purchase.ValidUntil.UTC()) {
-		termEnd = purchase.ValidUntil.UTC()
+	start := purchase.ValidFrom.UTC()
+	now := asOf.UTC()
+	if now.Before(start) {
+		now = start
 	}
-	if termEnd.Before(termStart) {
-		termEnd = termStart
+	if now.After(purchase.ValidUntil.UTC()) {
+		now = purchase.ValidUntil.UTC()
 	}
-	anchor := termStart
-	if snapshot.LastResetAt != nil && snapshot.LastResetAt.Before(termEnd) {
+	anchor := start
+	if snapshot.LastResetAt != nil && snapshot.LastResetAt.Before(now) {
 		anchor = snapshot.LastResetAt.UTC()
 	}
-	termSummary := calculateUsageRange(threshold, snapshot, anchor, termStart, termEnd)
-	lastStart, lastEnd := latestResetBounds(termStart, termEnd, snapshot)
-	lastSummary := calculateUsageRange(threshold, snapshot, lastStart, lastStart, lastEnd)
-
-	term := buildWindow(termStart, termEnd, termSummary, purchase.PriceTXBMinor, purchase.RolloverMaxTXBMinor, int64(threshold))
-	last := buildWindow(lastStart, lastEnd, lastSummary, purchase.PriceTXBMinor, purchase.RolloverMaxTXBMinor, int64(threshold))
-	return model.RolloverProjection{
-		PurchaseID:          purchase.ID,
-		Paid:                model.TXBMoney(purchase.PriceTXBMinor),
-		Maximum:             model.TXBMoney(purchase.RolloverMaxTXBMinor),
-		MinimumRemainingBPS: threshold,
-		SavedBPS:            savedBPS(term.Rollover.Minor, purchase.PriceTXBMinor),
-		Term:                term,
-		LastResetPeriod:     last,
+	current := calculateUsageRange(threshold, snapshot, anchor, start, now)
+	full := CalculateUsage(purchase, threshold, snapshot)
+	actual := current.UsedBytes
+	if snapshot.NodeSeriesAvailable {
+		actual = snapshot.WeightedUsedBytes
 	}
+	projected := projectFullTerm(actual, now.Sub(start), purchase.ValidUntil.Sub(start))
+	maximum := maximumAllowableUsage(full.AllocatedBytes, threshold)
+	remaining := full.AllocatedBytes - projected
+	if remaining < 0 {
+		remaining = 0
+	}
+	result := model.RolloverProjection{
+		PurchaseID: purchase.ID, Paid: model.TXBMoney(purchase.PriceTXBMinor),
+		AutoRenewalEnabled: purchase.AutoRenewEnabled, MinimumRemainingBPS: threshold,
+		ActualUsedTrafficBytes: pointer(actual), ProjectedFullTermUsageBytes: pointer(projected),
+		MaximumAllowableUsageBytes: pointer(maximum),
+		Term:                       pointerWindow(buildWindow(start, now, current, purchase.PriceTXBMinor, threshold)),
+		LastResetPeriod:            pointerWindow(buildLastWindow(start, now, snapshot, purchase.PriceTXBMinor, threshold)),
+	}
+	if projected <= maximum && strictlyAboveBPS(full.AllocatedBytes-projected, full.AllocatedBytes, threshold) {
+		result.PredictedRollover = pointerMoney(model.TXBMoney(proportionalFloor(purchase.PriceTXBMinor, remaining, full.AllocatedBytes)))
+		return result
+	}
+	reduction := projected - maximum
+	if reduction < 0 {
+		reduction = 0
+	}
+	daysLeft := int64((purchase.ValidUntil.Sub(now) + 24*time.Hour - 1).Hours() / 24)
+	if daysLeft < 1 {
+		daysLeft = 1
+	}
+	result.RequiredReductionBytes = pointer(reduction)
+	result.RequiredDailyReductionBytes = pointer(ceilDivide(reduction, daysLeft))
+	return result
+}
+
+func buildLastWindow(start, end time.Time, snapshot UsageSnapshot, paid int64, threshold int) model.RolloverWindow {
+	lastStart, lastEnd := latestResetBounds(start, end, snapshot)
+	last := calculateUsageRange(threshold, snapshot, lastStart, lastStart, lastEnd)
+	return buildWindow(lastStart, lastEnd, last, paid, threshold)
+}
+
+func buildWindow(start, end time.Time, summary model.RolloverUsageSummary, paid int64, threshold int) model.RolloverWindow {
+	remaining := summary.AllocatedBytes - summary.UsedBytes
+	if remaining < 0 {
+		remaining = 0
+	}
+	eligible := summary.EligibleUnusedBytes
+	if !strictlyAboveBPS(remaining, summary.AllocatedBytes, threshold) {
+		eligible = 0
+	}
+	return model.RolloverWindow{Start: start.UTC(), End: end.UTC(), AllocatedTrafficBytes: summary.AllocatedBytes,
+		UsedTrafficBytes: summary.UsedBytes, RemainingTrafficBytes: remaining, EligibleUnusedBytes: eligible,
+		Rollover: model.TXBMoney(proportionalFloor(paid, eligible, summary.AllocatedBytes))}
 }
 
 func latestResetBounds(termStart, termEnd time.Time, snapshot UsageSnapshot) (time.Time, time.Time) {
@@ -47,11 +87,8 @@ func latestResetBounds(termStart, termEnd time.Time, snapshot UsageSnapshot) (ti
 	periodStart := termStart
 	if snapshot.LastResetAt != nil && snapshot.LastResetAt.Before(termEnd) {
 		periodStart = snapshot.LastResetAt.UTC()
-	} else {
-		periods := cadencePeriods(termStart, termStart, termEnd, snapshot.Strategy)
-		if len(periods) > 0 {
-			periodStart = periods[len(periods)-1].start
-		}
+	} else if periods := cadencePeriods(termStart, termStart, termEnd, snapshot.Strategy); len(periods) > 0 {
+		periodStart = periods[len(periods)-1].start
 	}
 	periodEnd := cadenceAdvance(periodStart, snapshot.Strategy)
 	if periodStart.Before(termStart) {
@@ -63,27 +100,24 @@ func latestResetBounds(termStart, termEnd time.Time, snapshot UsageSnapshot) (ti
 	return periodStart, periodEnd
 }
 
-func buildWindow(start, end time.Time, summary model.RolloverUsageSummary, paid, maximum, threshold int64) model.RolloverWindow {
-	remaining := summary.AllocatedBytes - summary.UsedBytes
-	if remaining < 0 {
-		remaining = 0
+func projectFullTerm(actual int64, elapsed, full time.Duration) int64 {
+	if actual <= 0 || elapsed <= 0 || full <= 0 {
+		return 0
 	}
-	credit := proportionalFloor(paid, summary.EligibleUnusedBytes, summary.AllocatedBytes)
-	if credit > maximum {
-		credit = maximum
+	return proportionalBytes(actual, full.Nanoseconds(), elapsed.Nanoseconds())
+}
+
+func maximumAllowableUsage(allocated int64, threshold int) int64 {
+	if allocated <= 0 {
+		return 0
 	}
-	required, reachable := trafficToMaximum(summary.AllocatedBytes, paid, maximum, threshold)
-	return model.RolloverWindow{
-		Start:                 start.UTC(),
-		End:                   end.UTC(),
-		AllocatedTrafficBytes: summary.AllocatedBytes,
-		UsedTrafficBytes:      summary.UsedBytes,
-		RemainingTrafficBytes: remaining,
-		EligibleUnusedBytes:   summary.EligibleUnusedBytes,
-		Rollover:              model.TXBMoney(credit),
-		TrafficToMaximumBytes: required,
-		MaximumReachable:      reachable,
+	thresholdBytes := new(big.Int).Mul(big.NewInt(allocated), big.NewInt(int64(threshold)))
+	thresholdBytes.Quo(thresholdBytes, big.NewInt(10000))
+	result := allocated - thresholdBytes.Int64() - 1
+	if result < 0 {
+		return 0
 	}
+	return result
 }
 
 func proportionalFloor(paid, remaining, allocated int64) int64 {
@@ -98,46 +132,13 @@ func proportionalFloor(paid, remaining, allocated int64) int64 {
 	return value.Int64()
 }
 
-func trafficToMaximum(allocated, paid, maximum int64, threshold int64) (*int64, bool) {
-	if allocated <= 0 || paid <= 0 || maximum <= 0 {
-		return nil, false
-	}
-	product := new(big.Int).Mul(big.NewInt(maximum), big.NewInt(allocated))
-	required := ceilDiv(product, big.NewInt(paid))
-	minimum := new(big.Int).Mul(big.NewInt(allocated), big.NewInt(threshold))
-	minimum.Quo(minimum, big.NewInt(10000))
-	minimum.Add(minimum, big.NewInt(1))
-	if required.Cmp(minimum) < 0 {
-		required = minimum
-	}
-	if !required.IsInt64() || required.Sign() <= 0 || required.Cmp(big.NewInt(allocated)) > 0 {
-		return nil, false
-	}
-	value := required.Int64()
-	return &value, true
-}
-
-func ceilDiv(numerator, denominator *big.Int) *big.Int {
-	quotient, remainder := new(big.Int), new(big.Int)
-	quotient.QuoRem(numerator, denominator, remainder)
-	if remainder.Sign() > 0 {
-		quotient.Add(quotient, big.NewInt(1))
-	}
-	return quotient
-}
-
-func savedBPS(rolloverMinor string, paid int64) int {
-	if paid <= 0 {
+func ceilDivide(numerator, denominator int64) int64 {
+	if numerator <= 0 || denominator <= 0 {
 		return 0
 	}
-	rollover := new(big.Int)
-	if _, ok := rollover.SetString(rolloverMinor, 10); !ok || rollover.Sign() <= 0 {
-		return 0
-	}
-	value := new(big.Int).Mul(rollover, big.NewInt(10000))
-	value.Quo(value, big.NewInt(paid))
-	if value.Cmp(big.NewInt(10000)) > 0 {
-		return 10000
-	}
-	return int(value.Int64())
+	return (numerator + denominator - 1) / denominator
 }
+
+func pointer(value int64) *int64                                     { return &value }
+func pointerMoney(value model.Money) *model.Money                    { return &value }
+func pointerWindow(value model.RolloverWindow) *model.RolloverWindow { return &value }
