@@ -10,7 +10,7 @@
       "couldNotGet": "你无法获得结转"
     },
     "rolloverProjected": "预计周期总用量",
-    "rolloverMaximumUsage": "最多可用流量",
+    "rolloverMaximumUsage": "可获得结转的最大用量",
     "rolloverWarning": {
       "AUTO_RENEWAL_DISABLED": "自动续费已关闭，因此未请求上游用量，结转按零结算。"
     },

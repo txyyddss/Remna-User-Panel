@@ -10,7 +10,7 @@
       "couldNotGet": "You could not get a rollover"
     },
     "rolloverProjected": "Projected full-term usage",
-    "rolloverMaximumUsage": "Maximum usable traffic",
+    "rolloverMaximumUsage": "Maximum usage for rollover",
     "rolloverWarning": {
       "AUTO_RENEWAL_DISABLED": "Automatic renewal is off, so no provider usage was requested and rollover is settled at zero."
     },
