@@ -96,7 +96,12 @@ export const api = {
   createPurchase: (comboId: string, squadProductIds: string[], couponGrantId: string | undefined, idempotencyKey: string, squadActivationCodes: Record<string, string> = {}) => request<Purchase>('/api/v1/purchases', {
     method: 'POST',
     headers: { 'Idempotency-Key': idempotencyKey },
-    body: { comboId, addonSquadProductIds: squadProductIds, couponGrantId, squadActivationCodes } as PurchaseRequest & { couponGrantId?: string },
+    body: {
+      comboId,
+      addonSquadProductIds: squadProductIds,
+      ...(couponGrantId ? { couponGrantId } : {}),
+      ...(Object.keys(squadActivationCodes).length > 0 ? { squadActivationCodes } : {}),
+    } as PurchaseRequest & { couponGrantId?: string },
   }),
   quotePurchase: (comboId: string, squadProductIds: string[], couponGrantId?: string) => request<PurchaseQuote>('/api/v1/purchases/quote', {
     method: 'POST',

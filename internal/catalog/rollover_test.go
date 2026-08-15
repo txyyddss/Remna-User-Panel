@@ -14,7 +14,7 @@ import (
 func TestRolloverProjectionValidatesOwnerAndUsesQueuedSnapshot(t *testing.T) {
 	now := time.Date(2026, 8, 13, 12, 0, 0, 0, time.UTC)
 	remoteID := "remote-1"
-	purchase := model.Purchase{ID: "purchase-1", UserID: "user-1", Status: "active",
+	purchase := model.Purchase{ID: "purchase-1", UserID: "user-1", Status: "active", AutoRenewEnabled: true,
 		PriceTXBMinor: 10_000, ValidFrom: now.Add(-24 * time.Hour), ValidUntil: now.Add(24 * time.Hour),
 		Price: model.TXBMoney(10_000)}
 	remote := &rolloverRemote{catalogRemnawave: &catalogRemnawave{}, snapshot: rollover.UsageSnapshot{LimitBytes: 1_000, Strategy: "NO_RESET"}}
@@ -36,7 +36,7 @@ func TestRolloverProjectionValidatesOwnerAndUsesQueuedSnapshot(t *testing.T) {
 
 func TestRolloverProjectionRejectsInactiveAndMissingIdentity(t *testing.T) {
 	now := time.Date(2026, 8, 13, 12, 0, 0, 0, time.UTC)
-	purchase := model.Purchase{ID: "purchase-1", UserID: "user-1", Status: "expired", ValidFrom: now.Add(-time.Hour), ValidUntil: now.Add(time.Hour)}
+	purchase := model.Purchase{ID: "purchase-1", UserID: "user-1", Status: "expired", AutoRenewEnabled: true, ValidFrom: now.Add(-time.Hour), ValidUntil: now.Add(time.Hour)}
 	repository := &rolloverRepository{catalogRepository: &catalogRepository{}, purchase: purchase}
 	service := NewService(repository, &rolloverRemote{catalogRemnawave: &catalogRemnawave{}}, time.Minute)
 	service.now = func() time.Time { return now }

@@ -118,17 +118,18 @@ func TestProjectUsageSelectsLatestResetPeriodAndStrictThreshold(t *testing.T) {
 func TestProjectUsageUsesFullAllowanceWithoutCap(t *testing.T) {
 	start := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
 	tests := []struct {
-		name             string
-		strategy         string
-		days             int
-		usage            map[int]int64
-		wantAllocated    int64
-		wantEligible     int64
-		wantMaximum      int64
-		wantCredit       string
+		name          string
+		strategy      string
+		days          int
+		usage         map[int]int64
+		wantAllocated int64
+		wantEligible  int64
+		wantMaximum   int64
+		wantCredit    string
+		wantReduction int64
 	}{
-		{name: "daily", strategy: "DAY", days: 3, usage: map[int]int64{0: 200, 1: 800, 2: 200}, wantAllocated: 3_000, wantEligible: 1_600, wantMaximum: 2_999, wantCredit: "6000"},
-		{name: "weekly", strategy: "WEEK", days: 14, usage: map[int]int64{0: 200, 7: 800}, wantAllocated: 2_000, wantEligible: 800, wantMaximum: 1_999, wantCredit: "5000"},
+		{name: "daily", strategy: "DAY", days: 3, usage: map[int]int64{0: 200, 1: 800, 2: 200}, wantAllocated: 3_000, wantEligible: 1_600, wantMaximum: 1_499, wantCredit: "6000"},
+		{name: "weekly", strategy: "WEEK", days: 14, usage: map[int]int64{0: 200, 7: 800}, wantAllocated: 2_000, wantEligible: 800, wantMaximum: 999, wantReduction: 1},
 	}
 	for _, test := range tests {
 		test := test
@@ -151,8 +152,12 @@ func TestProjectUsageUsesFullAllowanceWithoutCap(t *testing.T) {
 			if projection.MaximumAllowableUsageBytes == nil || *projection.MaximumAllowableUsageBytes != test.wantMaximum {
 				t.Fatalf("maximum usable traffic = %v, want %d", projection.MaximumAllowableUsageBytes, test.wantMaximum)
 			}
-			if projection.PredictedRollover == nil || projection.PredictedRollover.Minor != test.wantCredit {
-				t.Fatalf("rollover = %v, want %s", projection.PredictedRollover, test.wantCredit)
+			if test.wantCredit != "" {
+				if projection.PredictedRollover == nil || projection.PredictedRollover.Minor != test.wantCredit {
+					t.Fatalf("rollover = %v, want %s", projection.PredictedRollover, test.wantCredit)
+				}
+			} else if projection.PredictedRollover != nil || projection.RequiredReductionBytes == nil || *projection.RequiredReductionBytes != test.wantReduction {
+				t.Fatalf("rollover reduction = (%v, %v), want %d", projection.PredictedRollover, projection.RequiredReductionBytes, test.wantReduction)
 			}
 		})
 	}

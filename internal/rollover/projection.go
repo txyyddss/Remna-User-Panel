@@ -40,7 +40,7 @@ func ProjectUsage(purchase model.Purchase, threshold int, snapshot UsageSnapshot
 		AutoRenewalEnabled: purchase.AutoRenewEnabled, MinimumRemainingBPS: threshold,
 		ActualUsedTrafficBytes: pointer(actual), ProjectedFullTermUsageBytes: pointer(projected),
 		MaximumAllowableUsageBytes: pointer(maximum),
-		Term:                       pointerWindow(buildWindow(start, now, current, purchase.PriceTXBMinor, threshold)),
+		Term:                       pointerWindow(buildWindow(start, now, current, purchase.PriceTXBMinor)),
 		LastResetPeriod:            pointerWindow(buildLastWindow(start, now, snapshot, purchase.PriceTXBMinor, threshold)),
 	}
 	if projected <= maximum && strictlyAboveBPS(full.AllocatedBytes-projected, full.AllocatedBytes, threshold) {
@@ -63,18 +63,15 @@ func ProjectUsage(purchase model.Purchase, threshold int, snapshot UsageSnapshot
 func buildLastWindow(start, end time.Time, snapshot UsageSnapshot, paid int64, threshold int) model.RolloverWindow {
 	lastStart, lastEnd := latestResetBounds(start, end, snapshot)
 	last := calculateUsageRange(threshold, snapshot, lastStart, lastStart, lastEnd)
-	return buildWindow(lastStart, lastEnd, last, paid, threshold)
+	return buildWindow(lastStart, lastEnd, last, paid)
 }
 
-func buildWindow(start, end time.Time, summary model.RolloverUsageSummary, paid int64, threshold int) model.RolloverWindow {
+func buildWindow(start, end time.Time, summary model.RolloverUsageSummary, paid int64) model.RolloverWindow {
 	remaining := summary.AllocatedBytes - summary.UsedBytes
 	if remaining < 0 {
 		remaining = 0
 	}
 	eligible := summary.EligibleUnusedBytes
-	if !strictlyAboveBPS(remaining, summary.AllocatedBytes, threshold) {
-		eligible = 0
-	}
 	return model.RolloverWindow{Start: start.UTC(), End: end.UTC(), AllocatedTrafficBytes: summary.AllocatedBytes,
 		UsedTrafficBytes: summary.UsedBytes, RemainingTrafficBytes: remaining, EligibleUnusedBytes: eligible,
 		Rollover: model.TXBMoney(proportionalFloor(paid, eligible, summary.AllocatedBytes))}
