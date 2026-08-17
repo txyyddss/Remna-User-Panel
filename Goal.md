@@ -30,4 +30,14 @@ You may want to use the following projects for frontend:
 
 ---
 
-## Replace "Securing your ride" with a car-driving animation. Do not prevent the page from loading as well. Use vue-native compnents if available. If not, use css.
+## Make adjustments
+
+- Change monthly reset cadence from MONTH to MONTH_ROLLING
+- Change the threshold of combining node usage into Other traffic from 5% to 2%
+
+## Fix bugs
+
+
+## 
+
+[PingFang-W4.ttc](d:/Remna-User-Panel/internal/fonts/PingFang-W4.ttc) 

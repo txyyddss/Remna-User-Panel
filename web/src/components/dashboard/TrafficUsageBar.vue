@@ -17,7 +17,7 @@ const scale = 10_000n
 const pointerScale = 1_000_000n
 const multiplierScale = 1_000n
 const paletteSize = 5
-const minimumSharePercent = 5n
+const minimumSharePercent = 3n
 const hoveredKey = shallowRef<string | null>(null)
 const selectedKey = shallowRef<string | null>(null)
 const trackRef = shallowRef<globalThis.HTMLElement | null>(null)
@@ -65,6 +65,9 @@ const sourceNodes = computed<SourceNode[]>(() => props.nodes
 const totalForBar = computed(() => {
   const reported = byteCount(props.totalBytes)
   const listed = sourceNodes.value.reduce((sum, entry) => sum + entry.calculatedBytes, 0n)
+  if (!props.useMultiplier) {
+    return listed > 0n ? listed : reported
+  }
   return reported > listed ? reported : listed
 })
 
