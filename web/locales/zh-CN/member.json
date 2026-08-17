@@ -9,7 +9,7 @@
     "noActiveCombo": "暂无活跃套餐",
     "choosePlan": "选择流量套餐并激活订阅。",
     "subscriptionLink": "订阅链接",
-    "subscriptionHint": "请将此 URL 视为密码，获取它的人都可使用你的权限。",
+    "subscriptionHint": "请将此 URL 视为密码，拥有它的人都可使用你的节点。。",
     "copySubscription": "复制订阅链接",
     "noActiveLink": "暂无活跃链接",
     "linkAfterActivation": "套餐激活后会显示订阅 URL。",
