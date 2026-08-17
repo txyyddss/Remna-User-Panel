@@ -58,12 +58,12 @@ const { t } = useI18n()
       :class="{ 'provider-option--selected': selectedMethodId === item.value }"
       color="neutral"
       variant="ghost"
-      :disabled="!item.available"
+      :disabled="Boolean((item as any).disabled || (item as any).available === false)"
       :aria-pressed="selectedMethodId === item.value"
       data-haptic
       @click="emit('chooseMethod', item.value)"
     >
-      <span class="provider-option__icon"><UIcon v-if="item.icon" :name="item.icon" aria-hidden="true" /></span>
+      <span v-if="(item as any).icon" class="provider-option__icon"><UIcon :name="(item as any).icon" aria-hidden="true" /></span>
       <span><strong>{{ item.label }}</strong><small v-if="item.description">{{ item.description }}</small></span>
       <UIcon v-if="selectedMethodId === item.value" class="provider-option__check" name="i-ph-check-circle-fill" aria-hidden="true" />
     </UButton>
