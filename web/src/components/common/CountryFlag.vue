@@ -3,6 +3,7 @@ import { computed } from 'vue'
 
 const props = defineProps<{ code: string }>()
 const flags = {
+  TW: 'i-circle-flags-tw',
   CN: 'i-circle-flags-cn',
   DE: 'i-circle-flags-de',
   GB: 'i-circle-flags-gb',

@@ -44,7 +44,7 @@
     "trafficOtherAria": "Other traffic, {usage}, {percentage}% of usage",
     "trafficNodeMultiplier": "Multiplier",
     "trafficMultiplierValue": "{value}×",
-    "trafficMultiplierUnavailable": "Multiplier unavailable",
+    "trafficMultiplierUnavailable": "N/A",
     "trafficNodeUsage": "Node usage",
     "trafficNodeShare": "Share",
     "trafficOther": "Other traffic",
