@@ -49,7 +49,7 @@ const { t } = useI18n()
     @update:model-value="emit('update:amount', String($event))"
   />
   <UAlert v-if="!channels.length" color="warning" variant="soft" icon="i-ph-warning-circle" :description="t('payment.noChannel')" />
-  <fieldset v-else class="provider-picker">
+  <fieldset v-else class="provider-picker" role="radiogroup">
     <legend>{{ t('payment.channel') }}</legend>
     <UButton
       v-for="item in channels"
