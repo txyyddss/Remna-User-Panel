@@ -21,8 +21,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/entitlements"
 	"github.com/txyyddss/Remna-User-Panel/internal/httpapi"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
-	"github.com/txyyddss/Remna-User-Panel/internal/model"
-	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
+	"github.com/txyyddss/Remna-User-Panel/internal/maintenance"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/backup"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/config"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
@@ -31,22 +30,25 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/secret"
 	"github.com/txyyddss/Remna-User-Panel/internal/questionnaires"
 	"github.com/txyyddss/Remna-User-Panel/internal/rollover"
+	productstats "github.com/txyyddss/Remna-User-Panel/internal/statistics"
 	"github.com/txyyddss/Remna-User-Panel/internal/webui"
 )
 
 // Application owns all context-managed process resources.
 type Application struct {
-	config     config.Config
-	logger     *slog.Logger
-	httpServer *http.Server
-	store      *database.Store
-	outbox     *outbox.Worker
-	backups    *backup.Service
-	telegram   *telegram.Client
-	settings   *admin.SettingsService
-	catalog    *catalog.Service
-	billing    *billing.Service
-	upstreams  *providerQueues
+	config      config.Config
+	logger      *slog.Logger
+	httpServer  *http.Server
+	store       *database.Store
+	outbox      *outbox.Worker
+	backups     *backup.Service
+	maintenance *maintenance.Service
+	telegram    *telegram.Client
+	settings    *admin.SettingsService
+	catalog     *catalog.Service
+	billing     *billing.Service
+	statistics  *productstats.Service
+	upstreams   *providerQueues
 }
 
 // New opens persistence, constructs integrations, and builds the HTTP router.
@@ -100,8 +102,16 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	telegramBridge := telegramAdapter{client: telegramClient}
 	paymentBridge := paymentAdapter{settings: settings, telegram: telegramClient, users: store}
 	backupService := backup.NewService(db, store, filepath.Join(cfg.DataDir, "backups"), cfg.BackupRetention)
+	reconcileCtx, reconcileCancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	reconcileErr := backupService.ReconcileUploads(reconcileCtx, migrationVersions)
+	reconcileCancel()
+	if reconcileErr != nil {
+		return cleanup(fmt.Errorf("reconcile interrupted backup uploads: %w", reconcileErr))
+	}
+	maintenanceService := maintenance.NewService(store, backupService, cfg.Timezone)
 	databaseEditor := databaseadmin.NewService(db, backupService, vault, logger)
 	databaseAdminHTTP := httpapi.NewDatabaseAdministrationHTTP(databaseEditor, backupService, migrationVersions)
+	databaseAdminHTTP.SetBackupUploadMaxBytes(cfg.BackupUploadMaxBytes)
 	accountsService := accounts.NewService(store, initDataAdapter{verifier: verifier}, telegramBridge, remna, settings, cfg.AdminTelegramIDs, cfg.SessionTTL)
 	catalogService := catalog.NewService(store, remna, 2*time.Minute)
 	billingService := billing.NewService(store, settings, paymentBridge, cfg.PublicBaseURL)
@@ -109,37 +119,38 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	couponService := coupons.NewService(store, nil)
 	questionnaireService := questionnaires.NewService(store, questionnaires.CryptoCodeGenerator{}, nil)
 	embyPrice := embySetupPrice(settings)
-	embyService := emby.NewService(store, newEmbyAdapter(settings, upstreams.emby), embyPrice, emby.NewSecretBox(vault))
+	embySecrets := emby.NewSecretBox(vault)
+	embyService := emby.NewService(store, newEmbyAdapter(settings, upstreams.emby), embyPrice, embySecrets)
+	embyOperations, err := emby.NewOperationService(embyService, store, embySecrets, cfg.MasterKey)
+	if err != nil {
+		return cleanup(err)
+	}
 	adminService := admin.NewService(store, settings, remna, backupService, paymentBridge)
+	adminUserWorkflows := admin.NewUserWorkflows(store, remna)
 	entitlementWorker := entitlements.NewWorker(store, remna)
 	rolloverWorker := rollover.NewService(store, remna)
 	outboxWorker := outbox.NewWorker(store)
-	for _, kind := range []string{"remna_apply_entitlement", "remna_sync_user"} {
-		if err := outboxWorker.Register(kind, entitlementWorker); err != nil {
-			return cleanup(fmt.Errorf("register %s outbox handler: %w", kind, err))
-		}
+	paymentAnnouncementWorker := billing.NewPaymentAnnouncementWorker(settings, telegramClient)
+	memberServices, scanWorker, operationDispatcher, err := newMemberWorkflows(store, remna, vault, cfg.MasterKey)
+	if err != nil {
+		return cleanup(err)
 	}
-	if err := outboxWorker.Register("rollover_finalize", outbox.HandlerFunc(rolloverWorker.HandleOutbox)); err != nil {
-		return cleanup(fmt.Errorf("register rollover outbox handler: %w", err))
+	if err := registerPaymentOperationHandlers(operationDispatcher, billingService); err != nil {
+		return cleanup(err)
 	}
-	if err := outboxWorker.Register(emby.ProvisionOutboxKind, outbox.HandlerFunc(func(ctx context.Context, job model.OutboxJob) error {
-		accountID, err := jobpayload.TargetID(job, "accountId")
-		if err != nil {
-			return err
-		}
-		return embyService.HandleProvisionJob(ctx, accountID)
-	})); err != nil {
-		return cleanup(fmt.Errorf("register Emby outbox handler: %w", err))
+	if err := registerMutationOperationHandlers(operationDispatcher, catalogService, embyOperations, questionnaireService, adminService); err != nil {
+		return cleanup(err)
 	}
-	if err := outboxWorker.Register("questionnaire_settlement", outbox.HandlerFunc(func(ctx context.Context, job model.OutboxJob) error {
-		importID, err := jobpayload.TargetID(job, "importId")
-		if err != nil {
-			return err
-		}
-		_, settleErr := store.SettleQuestionnaireImport(ctx, importID, time.Now().UTC())
-		return settleErr
-	})); err != nil {
-		return cleanup(fmt.Errorf("register questionnaire outbox handler: %w", err))
+	if err := registerAdminOperationHandlers(operationDispatcher, store, remna); err != nil {
+		return cleanup(err)
+	}
+	statisticsService := productstats.NewService(store, remna)
+	if err := registerStatisticsOperationHandler(operationDispatcher, store, remna); err != nil {
+		return cleanup(err)
+	}
+	if err := registerCoreOutboxHandlers(outboxWorker, store, entitlementWorker, rolloverWorker, embyService,
+		paymentAnnouncementWorker, scanWorker, operationDispatcher); err != nil {
+		return cleanup(err)
 	}
 	static, err := fs.Sub(webui.Dist, "dist")
 	if err != nil {
@@ -150,9 +161,12 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		return cleanup(fmt.Errorf("preload embedded frontend: %w", err))
 	}
 	api, err := httpapi.New(httpapi.Dependencies{
-		Accounts: accountsService, Catalog: catalogService, Billing: billingService, Activity: activityService,
-		Coupons: couponService, Questionnaires: questionnaireService, Emby: embyService, EmbyPrice: embyPrice,
-		Admin: adminService, Settings: settings, DatabaseAdmin: databaseAdminHTTP,
+		Accounts: accountsService, Catalog: catalogService, Connections: memberServices.connections,
+		ConnectionDrops: memberServices.drops, PurchaseOperations: memberServices.purchases, Statistics: statisticsService,
+		Billing: billingService, Activity: activityService,
+		Coupons: couponService, Questionnaires: questionnaireService, Emby: embyService,
+		EmbyOperations: embyOperations, EmbyPrice: embyPrice,
+		Admin: adminService, AdminUsers: adminUserWorkflows, Settings: settings, DatabaseAdmin: databaseAdminHTTP,
 		Store: store, Telegram: telegramClient, Webhooks: paymentBridge, PublicURL: cfg.PublicBaseURL, Static: static,
 		Logger: logger, SessionTTL: cfg.SessionTTL, SecureCookies: cfg.PublicBaseURL.Scheme == "https",
 		AdminTelegramIDs: cfg.AdminTelegramIDs, RequestSigningKey: cfg.MasterKey,
@@ -166,6 +180,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	}
 	return &Application{
 		config: cfg, logger: logger, httpServer: httpServer, store: store, outbox: outboxWorker,
-		backups: backupService, telegram: telegramClient, settings: settings, catalog: catalogService, billing: billingService, upstreams: upstreams,
+		backups: backupService, maintenance: maintenanceService, telegram: telegramClient, settings: settings,
+		catalog: catalogService, billing: billingService, statistics: statisticsService, upstreams: upstreams,
 	}, nil
 }

@@ -56,12 +56,20 @@ func (s *Server) purchases(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) revokeSubscription(w http.ResponseWriter, r *http.Request) {
-	url, err := s.deps.Catalog.RevokeSubscription(r.Context(), currentUser(r))
-	if err != nil {
-		s.writeError(w, r, http.StatusBadGateway, "REVOKE_FAILED", "The subscription could not be rotated.")
+	key, ok := s.requireIdempotencyKey(w, r)
+	if !ok {
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"subscriptionUrl": url})
+	receipt, err := s.deps.Catalog.QueueSubscriptionRevoke(r.Context(), currentUser(r), key)
+	if err != nil {
+		status := http.StatusBadGateway
+		if errors.Is(err, database.ErrConflict) {
+			status = http.StatusConflict
+		}
+		s.writeError(w, r, status, "REVOKE_FAILED", "The subscription rotation could not be queued.")
+		return
+	}
+	writeJSON(w, http.StatusAccepted, receipt)
 }
 
 func (s *Server) balance(w http.ResponseWriter, r *http.Request) {
@@ -75,7 +83,14 @@ func (s *Server) balance(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, http.StatusInternalServerError, "PAYMENT_METHODS_UNAVAILABLE", "Payment methods could not be loaded.")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"balance": balance, "paymentMethods": methods})
+	limits, err := s.deps.Store.AddTXBBounds(r.Context())
+	if err != nil {
+		s.writeError(w, r, http.StatusInternalServerError, "BILLING_LIMITS_UNAVAILABLE", "Payment amount limits could not be loaded.")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"balance": balance, "paymentMethods": methods, "addAmountLimits": limits,
+	})
 }
 
 func (s *Server) ledger(w http.ResponseWriter, r *http.Request) {

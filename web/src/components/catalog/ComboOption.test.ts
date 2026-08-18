@@ -11,7 +11,7 @@ const combo: Combo = {
   price: { currency: 'TXB', minor: '1880', display: '18.80 TXB' },
   validityDays: 30,
   trafficLimitBytes: '107374182400',
-  resetStrategy: 'MONTH',
+  resetStrategy: 'MONTH_ROLLING',
   active: true,
   includedSquads: [],
   rolloverMinRemainingBps: 0,

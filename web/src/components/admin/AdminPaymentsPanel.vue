@@ -4,8 +4,10 @@ import { computed, shallowRef } from 'vue'
 import { featuresApi } from '@/api/features'
 import type { AdminPaymentOrder, CourtesyCredit, Refund } from '@/api/types'
 import InlineNotice from '@/components/common/InlineNotice.vue'
+import OperationStatusNotice from '@/components/common/OperationStatusNotice.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import { useAdminSection } from '@/composables/useAdminSection'
+import { useDurableCommand } from '@/composables/useDurableCommand'
 import { useI18n } from '@/i18n'
 import { formatDateTime, formatMoney } from '@/utils/format'
 import AdminReasonDialog from './AdminReasonDialog.vue'
@@ -13,6 +15,12 @@ import AdminSectionState from './AdminSectionState.vue'
 
 const payments = useAdminSection<AdminPaymentOrder>('payments')
 const refunds = useAdminSection<Refund>('refunds')
+const refundCommand = useDurableCommand({
+  errorKey: 'errors.adminAction',
+  onTerminal: async (receipt) => {
+    if (receipt.status === 'succeeded') await Promise.all([payments.load(), refunds.load()])
+  },
+})
 const refundPayment = shallowRef<AdminPaymentOrder | null>(null)
 const courtesyPayment = shallowRef<AdminPaymentOrder | null>(null)
 const reason = shallowRef('')
@@ -50,14 +58,16 @@ function openCourtesyCredit(payment: AdminPaymentOrder): void {
 }
 
 async function refund(): Promise<void> {
-  if (!refundPayment.value) return
-  const id = refundPayment.value.id
-  const { api } = await import('@/api/client')
-  const ok = await payments.perform(() => api.refundPayment(id, reason.value))
+  const payment = refundPayment.value
+  if (!payment) return
+  const refundReason = reason.value
+  const ok = await refundCommand.execute(payment.id, JSON.stringify([payment.id, refundReason]), async (key) => {
+    const { api } = await import('@/api/client')
+    return api.refundPayment(payment.id, refundReason, key)
+  })
   if (ok) {
     refundPayment.value = null
     reason.value = ''
-    await refunds.load()
   }
 }
 
@@ -101,6 +111,7 @@ function setCourtesyCreditOpen(open: boolean): void {
       <USelect v-model="statusFilter" :items="statusItems" value-key="value" :aria-label="t('adminPayments.filter')" />
     </div>
     <InlineNotice v-if="courtesyMessage" tone="success">{{ courtesyMessage }}</InlineNotice>
+    <OperationStatusNotice :receipt="refundCommand.receipt.value" :error="refundCommand.error.value" :checking="refundCommand.checking.value" @refresh="refundCommand.refresh" />
     <AdminSectionState :loading="payments.loading.value" :error="payments.error.value" @retry="payments.load()">
       <div v-auto-animate class="admin-list">
         <article v-for="payment in filtered" :key="payment.id" class="admin-list-row admin-list-row--payment">
@@ -109,8 +120,8 @@ function setCourtesyCreditOpen(open: boolean): void {
           <strong>{{ payment.payableAmount }} {{ payment.payableCurrency }}</strong>
           <StatusBadge :tone="tone(payment.status)" :label="t(`adminPayments.${payment.status}`)" />
           <div class="row-actions">
-            <UButton v-if="payment.status === 'paid'" size="sm" color="neutral" variant="outline" icon="i-ph-arrow-counter-clockwise" :disabled="payments.busy.value" :label="t('adminPayments.refund')" @click="openRefund(payment)" />
-            <UButton v-if="canIssueCourtesyCredit(payment)" size="sm" color="primary" variant="outline" icon="i-ph-heart" :disabled="payments.busy.value" :label="t('adminPayments.courtesyCredit')" @click="openCourtesyCredit(payment)" />
+            <UButton v-if="payment.status === 'paid'" size="sm" color="neutral" variant="outline" icon="i-ph-arrow-counter-clockwise" :disabled="payments.busy.value || refundCommand.blocksMutations.value" :label="t('adminPayments.refund')" @click="openRefund(payment)" />
+            <UButton v-if="canIssueCourtesyCredit(payment)" size="sm" color="primary" variant="outline" icon="i-ph-heart" :disabled="payments.busy.value || refundCommand.blocksMutations.value" :label="t('adminPayments.courtesyCredit')" @click="openCourtesyCredit(payment)" />
           </div>
         </article>
         <div v-if="!filtered.length" class="empty-inline"><div><h3>{{ t('adminPayments.none') }}</h3><p>{{ t('adminPayments.noneHint') }}</p></div></div>
@@ -130,7 +141,7 @@ function setCourtesyCreditOpen(open: boolean): void {
       </div>
     </AdminSectionState>
 
-    <AdminReasonDialog :open="refundPayment !== null" v-model:reason="reason" :title="t('adminPayments.refundTitle')" :description="t('adminPayments.refundDescription')" :confirm-label="t('adminPayments.issueRefund')" :busy="payments.busy.value" :error="payments.error.value" danger @update:open="setRefundOpen" @confirm="refund" />
+    <AdminReasonDialog :open="refundPayment !== null" v-model:reason="reason" :title="t('adminPayments.refundTitle')" :description="t('adminPayments.refundDescription')" :confirm-label="t('adminPayments.issueRefund')" :busy="refundCommand.submitting.value" :error="refundCommand.error.value" danger @update:open="setRefundOpen" @confirm="refund" />
     <AdminReasonDialog :open="courtesyPayment !== null" v-model:reason="reason" :title="t('adminPayments.courtesyCreditTitle')" :description="t('adminPayments.courtesyCreditDescription')" :confirm-label="t('adminPayments.issueCourtesyCredit')" :busy="payments.busy.value" :error="payments.error.value" @update:open="setCourtesyCreditOpen" @confirm="issueCourtesyCredit" />
   </section>
 </template>

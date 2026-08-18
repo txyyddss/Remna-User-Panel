@@ -13,9 +13,11 @@ import (
 )
 
 func (s *Service) insertRestoreJob(ctx context.Context, job RestoreJob) error {
-	_, err := s.db.ExecContext(ctx, `INSERT INTO restore_jobs(id,backup_run_id,actor_user_id,status,staged_path,rescue_path,source_sha256,error,created_at,updated_at)
-		VALUES(?,?,?,?,?,?,?,?,?,?)`, job.ID, job.BackupID, job.ActorUserID, job.Status, job.StagedPath, job.RescuePath,
-		job.SourceSHA256, "", job.CreatedAt.Format(time.RFC3339Nano), job.UpdatedAt.Format(time.RFC3339Nano))
+	_, err := s.db.ExecContext(ctx, `INSERT INTO restore_jobs(id,backup_run_id,actor_user_id,request_actor_id,idempotency_key,
+		request_fingerprint,status,staged_path,rescue_path,source_sha256,error,created_at,updated_at)
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`, job.ID, job.BackupID, job.ActorUserID, job.RequestActorID, job.IdempotencyKey,
+		job.RequestFingerprint, job.Status, job.StagedPath, job.RescuePath, job.SourceSHA256, "",
+		job.CreatedAt.Format(time.RFC3339Nano), job.UpdatedAt.Format(time.RFC3339Nano))
 	if err != nil {
 		return fmt.Errorf("record staged restore: %w", err)
 	}
@@ -51,9 +53,6 @@ func (s *Service) markRestoreReady(ctx context.Context, job RestoreJob, reason, 
 		auditID, job.ActorUserID, "database_restore_staged", "restore_job", job.ID, string(detail), now.Format(time.RFC3339Nano)); err != nil {
 		return fmt.Errorf("record restore audit: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM audit_events WHERE id IN (SELECT id FROM audit_events ORDER BY created_at DESC,id DESC LIMIT -1 OFFSET 200)`); err != nil {
-		return fmt.Errorf("retain restore audits: %w", err)
-	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit restore staging: %w", err)
 	}
@@ -72,11 +71,27 @@ func (s *Service) failRestoreJob(ctx context.Context, id string, restoreErr erro
 
 // Restore returns one restore job by identifier.
 func (s *Service) Restore(ctx context.Context, id string) (RestoreJob, error) {
+	return scanRestoreJob(s.db.QueryRowContext(ctx, `SELECT `+restoreJobColumns+` FROM restore_jobs WHERE id=?`, id))
+}
+
+func (s *Service) restoreByRequestKey(ctx context.Context, actorID, key string) (RestoreJob, error) {
+	return scanRestoreJob(s.db.QueryRowContext(ctx, `SELECT `+restoreJobColumns+`
+		FROM restore_jobs WHERE request_actor_id=? AND idempotency_key=?`, actorID, key))
+}
+
+const restoreJobColumns = `id,backup_run_id,actor_user_id,request_actor_id,idempotency_key,request_fingerprint,
+	status,staged_path,rescue_path,source_sha256,error,created_at,updated_at,completed_at`
+
+type restoreJobScanner interface {
+	Scan(...any) error
+}
+
+func scanRestoreJob(row restoreJobScanner) (RestoreJob, error) {
 	var job RestoreJob
 	var actor, completed sql.NullString
 	var created, updated string
-	err := s.db.QueryRowContext(ctx, `SELECT id,backup_run_id,actor_user_id,status,staged_path,rescue_path,source_sha256,error,created_at,updated_at,completed_at FROM restore_jobs WHERE id=?`, id).
-		Scan(&job.ID, &job.BackupID, &actor, &job.Status, &job.StagedPath, &job.RescuePath, &job.SourceSHA256, &job.Error, &created, &updated, &completed)
+	err := row.Scan(&job.ID, &job.BackupID, &actor, &job.RequestActorID, &job.IdempotencyKey, &job.RequestFingerprint,
+		&job.Status, &job.StagedPath, &job.RescuePath, &job.SourceSHA256, &job.Error, &created, &updated, &completed)
 	if errors.Is(err, sql.ErrNoRows) {
 		return RestoreJob{}, ErrBackupNotFound
 	}

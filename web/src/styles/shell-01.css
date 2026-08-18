@@ -25,11 +25,7 @@
 
 .app-frame {
   min-height: var(--tg-viewport-stable-height, 100dvh);
-  --shell-safe-top: max(
-    3.5rem,
-    calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px)),
-    env(safe-area-inset-top, 0px)
-  );
+  --shell-safe-top: 0px;
   --shell-safe-bottom: max(var(--tg-content-safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px));
   --shell-safe-left: max(var(--tg-content-safe-area-inset-left, 0px), env(safe-area-inset-left, 0px));
   --shell-safe-right: max(var(--tg-content-safe-area-inset-right, 0px), env(safe-area-inset-right, 0px));

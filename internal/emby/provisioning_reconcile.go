@@ -137,6 +137,13 @@ func (s *Service) handleProvisionError(ctx context.Context, accountID string, pr
 		errors.Is(provisionErr, ErrInvalidSetup) || s.remote.IsTerminal(provisionErr) {
 		return s.failTerminal(ctx, accountID, provisionErr)
 	}
+	record, err := s.repository.EmbyProvisioningByID(ctx, accountID)
+	if err != nil {
+		return fmt.Errorf("load Emby provisioning stage: %w", err)
+	}
+	if record.CreateAttempted {
+		return s.pendingReview(ctx, accountID, provisionErr)
+	}
 	if err := s.repository.RequeueEmbyProvisioning(ctx, accountID, provisionErr, s.now().UTC()); err != nil {
 		return fmt.Errorf("record Emby provisioning retry: %w", err)
 	}

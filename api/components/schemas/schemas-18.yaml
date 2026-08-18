@@ -1,0 +1,114 @@
+EntitlementEditRequest:
+  type: object
+  additionalProperties: false
+  required: [version, reason, comboId, validFrom, validUntil, status, trafficLimitBytes, resetStrategy, squadUuids]
+  properties:
+    version:
+      type: string
+      format: date-time
+      description: Exact updatedAt value returned by the last entitlement read.
+    reason: { type: string, minLength: 3, maxLength: 500 }
+    comboId: { $ref: '../../openapi.yaml#/components/schemas/ID' }
+    validFrom: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+    validUntil: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+    status: { $ref: '../../openapi.yaml#/components/schemas/EntitlementStatus' }
+    trafficLimitBytes: { type: string, pattern: '^\d+$' }
+    resetStrategy: { $ref: '../../openapi.yaml#/components/schemas/ResetStrategy' }
+    squadUuids:
+      type: array
+      uniqueItems: true
+      items: { type: string, format: uuid }
+
+ComboReplacementRequest:
+  type: object
+  additionalProperties: false
+  required: [comboId, addonSquadUuids, reason]
+  properties:
+    comboId: { $ref: '../../openapi.yaml#/components/schemas/ID' }
+    addonSquadUuids:
+      type: array
+      uniqueItems: true
+      items: { type: string, format: uuid }
+    reason: { type: string, minLength: 3, maxLength: 500 }
+
+BulkExtensionRequest:
+  type: object
+  additionalProperties: false
+  required: [comboIds, addonSquadUuids, days]
+  properties:
+    comboIds:
+      type: array
+      uniqueItems: true
+      items: { $ref: '../../openapi.yaml#/components/schemas/ID' }
+    addonSquadUuids:
+      type: array
+      uniqueItems: true
+      items: { type: string, format: uuid }
+    days: { type: integer, minimum: 1, maximum: 3650 }
+
+BulkExtensionPreview:
+  type: object
+  additionalProperties: false
+  required: [matchedUsers, activePurchases, queuedSuccessors]
+  properties:
+    matchedUsers: { type: integer, minimum: 0 }
+    activePurchases: { type: integer, minimum: 0 }
+    queuedSuccessors: { type: integer, minimum: 0 }
+
+BulkExtensionCreateRequest:
+  type: object
+  additionalProperties: false
+  required: [comboIds, addonSquadUuids, days, reason]
+  properties:
+    comboIds:
+      type: array
+      uniqueItems: true
+      items: { $ref: '../../openapi.yaml#/components/schemas/ID' }
+    addonSquadUuids:
+      type: array
+      uniqueItems: true
+      items: { type: string, format: uuid }
+    days: { type: integer, minimum: 1, maximum: 3650 }
+    reason: { type: string, minLength: 3, maxLength: 500 }
+
+OperationResolutionRequest:
+  type: object
+  additionalProperties: false
+  required: [resolution, reason]
+  properties:
+    resolution: { type: string, enum: [succeeded, failed, compensated, partial] }
+    reason: { type: string, minLength: 3, maxLength: 500 }
+
+AdminSynchronization:
+  type: object
+  additionalProperties: false
+  required: [status]
+  properties:
+    status: { type: string, enum: [synchronized, pending, failed, not_provisioned] }
+    remoteUserId: { type: [string, 'null'] }
+    lastError: { type: [string, 'null'] }
+
+AdminUserDetail:
+  type: object
+  additionalProperties: false
+  required: [user, balance, synchronization, entitlements, embyAccounts, payments, refunds, operations]
+  properties:
+    user: { $ref: '../../openapi.yaml#/components/schemas/User' }
+    balance: { $ref: '../../openapi.yaml#/components/schemas/Money' }
+    synchronization: { $ref: '../../openapi.yaml#/components/schemas/AdminSynchronization' }
+    activeCombo: { anyOf: [{ $ref: '../../openapi.yaml#/components/schemas/AdminEntitlement' }, { type: 'null' }] }
+    entitlements:
+      type: array
+      items: { $ref: '../../openapi.yaml#/components/schemas/AdminEntitlement' }
+    embyAccounts:
+      type: array
+      items: { $ref: '../../openapi.yaml#/components/schemas/EmbyAccount' }
+    payments:
+      type: array
+      items: { $ref: '../../openapi.yaml#/components/schemas/AdminPaymentOrder' }
+    refunds:
+      type: array
+      items: { $ref: '../../openapi.yaml#/components/schemas/Refund' }
+    operations:
+      type: array
+      items: { $ref: '../../openapi.yaml#/components/schemas/OperationReceipt' }

@@ -44,6 +44,9 @@ func TestCreatePurchaseSnapshotsAndRenewsAtCurrentTermEnd(t *testing.T) {
 	if first.PriceTXBMinor != 1_300 {
 		t.Fatalf("first price = %d, want 1300", first.PriceTXBMinor)
 	}
+	if first.CoreGrossTXBMinor != 1_000 {
+		t.Fatalf("first core gross = %d, want 1000", first.CoreGrossTXBMinor)
+	}
 	if got, want := first.SquadUUIDs, []string{"addon-squad", "included-squad"}; !equalStrings(got, want) {
 		t.Fatalf("first squads = %v, want %v", got, want)
 	}
@@ -59,6 +62,9 @@ func TestCreatePurchaseSnapshotsAndRenewsAtCurrentTermEnd(t *testing.T) {
 	}
 	if second.Status != "queued" {
 		t.Fatalf("renewal status = %q, want queued", second.Status)
+	}
+	if second.CoreGrossTXBMinor != 1_000 {
+		t.Fatalf("queued core gross = %d, want 1000", second.CoreGrossTXBMinor)
 	}
 	if !second.ValidFrom.Equal(first.ValidUntil) {
 		t.Fatalf("renewal validFrom = %s, want prior validUntil %s", second.ValidFrom, first.ValidUntil)

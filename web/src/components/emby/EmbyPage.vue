@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import InlineNotice from '@/components/common/InlineNotice.vue'
+import OperationStatusNotice from '@/components/common/OperationStatusNotice.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { useEmby } from '@/composables/useEmby'
 import EmbyPreferencesPanel from './EmbyPreferencesPanel.vue'
 import EmbySetupPanel from './EmbySetupPanel.vue'
 
-const { overview, loading, busy, error, message, load, setup, updatePreferences, changePassword } = useEmby()
+const { overview, loading, busy, blocked, receipt, checking, error, message, load, setup, updatePreferences, changePassword, refreshOperation } = useEmby()
 </script>
 
 <template>
@@ -13,8 +14,7 @@ const { overview, loading, busy, error, message, load, setup, updatePreferences,
     <header class="page-header"><h1>{{ $t('emby.title') }}</h1></header>
     <SkeletonBlock v-if="loading" height="28rem" />
     <template v-else-if="overview">
-      <InlineNotice v-if="message" tone="success">{{ message }}</InlineNotice>
-      <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
+      <OperationStatusNotice :receipt="receipt" :error="error" :checking="checking" :message="message" @refresh="refreshOperation" />
       <InlineNotice v-if="!overview.configured" tone="warning" :title="$t('emby.notConfigured')">{{ $t('emby.notConfiguredHint') }}</InlineNotice>
       <EmbyPreferencesPanel
         v-if="overview.account && !(overview.account.status === 'failed' && !overview.account.retryable)"
@@ -22,6 +22,7 @@ const { overview, loading, busy, error, message, load, setup, updatePreferences,
         :ratings="overview.ratings"
         :libraries="overview.libraries"
         :busy="busy"
+        :blocked="blocked"
         @save="updatePreferences"
         @change-password="changePassword"
       />
@@ -31,6 +32,7 @@ const { overview, loading, busy, error, message, load, setup, updatePreferences,
         :ratings="overview.ratings"
         :libraries="overview.libraries"
         :busy="busy === 'setup'"
+        :blocked="blocked"
         @setup="setup"
       />
     </template>

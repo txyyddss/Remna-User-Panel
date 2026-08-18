@@ -7,6 +7,18 @@
   "adminSettings": {
     "title": "System settings",
     "copy": "Secrets are write-only and stay masked after save.",
+    "amountLimits": {
+      "title": "Add TXB limits",
+      "copy": "These inclusive bounds apply to every payment channel.",
+      "minimum": "Minimum amount",
+      "minimumHint": "The smallest top-up members can submit.",
+      "maximum": "Maximum amount",
+      "maximumHint": "The largest top-up members can submit.",
+      "rangeInvalid": "The maximum must be greater than or equal to the minimum.",
+      "save": "Save limits",
+      "saved": "Add TXB limits saved.",
+      "updated": "Last updated {date}"
+    },
     "save": "Save settings",
     "saved": "Settings saved",
     "savedHint": "New values will be used by the next integration request.",
@@ -25,6 +37,7 @@
     "settingLabels": {
       "telegram_group_chat_id": "Telegram group chat ID",
       "telegram_channel_chat_id": "Telegram channel chat ID",
+      "telegram_payment_announcement_chat_id": "Payment announcement channel ID",
       "telegram_webhook_secret": "Telegram webhook secret",
       "remnawave_base_url": "Remnawave base URL",
       "remnawave_api_token": "Remnawave API token",

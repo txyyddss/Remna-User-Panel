@@ -2,6 +2,7 @@
 import type { PaymentStage } from '@/composables/usePaymentOrder'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
 import { useI18n } from '@/i18n'
+import { txbInputFromMinor } from '@/utils/format'
 import type { PaymentChannelOption } from './paymentOptions'
 
 defineProps<{
@@ -13,6 +14,8 @@ defineProps<{
   error: string | null
   canCreate: boolean
   canReissue: boolean
+  minimumMinor: string
+  maximumMinor: string
 }>()
 
 const emit = defineEmits<{
@@ -20,6 +23,7 @@ const emit = defineEmits<{
   chooseMethod: [id: string]
   back: []
   createOrder: []
+  retryOperation: []
 }>()
 
 const { t } = useI18n()
@@ -33,24 +37,23 @@ const { t } = useI18n()
       variant="ghost"
       icon="i-ph-arrow-left"
       :aria-label="t('payment.backToProvider')"
-      :label="t('payment.backToProvider')"
       data-haptic
       @click="emit('back')"
     />
-    <h2>{{ t('payment.chooseChannel') }}</h2>
   </div>
   <TxbAmountField
     id="txb-amount"
     :model-value="amount"
     :label="t('payment.amount')"
-    :hint="t('payment.minimumTopUp')"
-    min-minor="100"
+    :hint="t('payment.amountRange', { min: txbInputFromMinor(minimumMinor), max: txbInputFromMinor(maximumMinor) })"
+    :min-minor="minimumMinor"
+    :max-minor="maximumMinor"
     required
     @update:model-value="emit('update:amount', String($event))"
   />
   <UAlert v-if="!channels.length" color="warning" variant="soft" icon="i-ph-warning-circle" :description="t('payment.noChannel')" />
   <fieldset v-else class="provider-picker" role="radiogroup">
-    <legend>{{ t('payment.channel') }}</legend>
+    <legend class="sr-only">{{ t('payment.chooseChannel') }}</legend>
     <UButton
       v-for="item in channels"
       :key="item.value"
@@ -58,18 +61,33 @@ const { t } = useI18n()
       :class="{ 'provider-option--selected': selectedMethodId === item.value }"
       color="neutral"
       variant="ghost"
-      :disabled="Boolean((item as any).disabled || (item as any).available === false)"
+      :disabled="item.disabled"
       :aria-pressed="selectedMethodId === item.value"
       data-haptic
       @click="emit('chooseMethod', item.value)"
     >
-      <span v-if="(item as any).icon" class="provider-option__icon"><UIcon :name="(item as any).icon" aria-hidden="true" /></span>
+      <span class="provider-option__icon">
+        <img v-if="item.logo" :src="item.logo" alt="" width="28" height="28" />
+        <UIcon v-else name="i-ph-credit-card" aria-hidden="true" />
+      </span>
       <span><strong>{{ item.label }}</strong><small v-if="item.description">{{ item.description }}</small></span>
       <UIcon v-if="selectedMethodId === item.value" class="provider-option__check" name="i-ph-check-circle-fill" aria-hidden="true" />
     </UButton>
   </fieldset>
   <UAlert v-if="error" color="error" variant="soft" :description="error" />
   <UButton
+    v-if="stage === 'creating' && error"
+    class="payment-submit"
+    block
+    color="neutral"
+    variant="outline"
+    icon="i-ph-arrows-clockwise"
+    :label="t('operations.checkStatus')"
+    data-haptic
+    @click="emit('retryOperation')"
+  />
+  <UButton
+    v-else
     class="payment-submit"
     data-test="payment-submit"
     block

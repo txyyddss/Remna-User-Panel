@@ -24,6 +24,10 @@ func (s *Server) adminPayments(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) adminRefundPayment(w http.ResponseWriter, r *http.Request) {
+	key, ok := s.requireIdempotencyKey(w, r)
+	if !ok {
+		return
+	}
 	var request struct {
 		Reason string `json:"reason"`
 	}
@@ -31,12 +35,12 @@ func (s *Server) adminRefundPayment(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, http.StatusBadRequest, "INVALID_REFUND", "A refund reason is required.")
 		return
 	}
-	order, err := s.deps.Admin.Refund(r.Context(), currentUser(r).ID, chiURLParam(r, "id"), request.Reason)
+	receipt, err := s.deps.Admin.QueueRefund(r.Context(), currentUser(r).ID, chiURLParam(r, "id"), request.Reason, key)
 	if err != nil {
 		s.adminFailure(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, order)
+	writeJSON(w, http.StatusAccepted, receipt)
 }
 
 func (s *Server) adminCourtesyCreditPayment(w http.ResponseWriter, r *http.Request) {

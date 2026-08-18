@@ -7,6 +7,8 @@ This package implements the Remnawave v3.2.1 operations used by TX Carpool. Endp
 - `client.go` owns client construction, authenticated HTTP transport, bounded response decoding, and sanitized API errors.
 - `users.go` implements user creation and identity lookup; `users_part2.go` implements documented stream pagination, update, credential revocation, and traffic reset operations.
 - `subscriptions.go` implements protected subscription retrieval and the documented `GET /api/bandwidth-stats/users/{userId}` date-bounded usage statistics.
+- `connections.go` implements queued user scans, polling, and selected-IP drops; `connection_types.go` keeps their transient provider contracts focused.
+- `statistics.go` implements digest, raw node-usage, and live node-metric reads; `hosts.go` owns the minimal host remark patch contract.
 - `squads.go` implements internal-squad, node, accessible-node, and inbound assignment operations.
 - `types.go` defines the provider request, response, status, traffic, subscription, node, and squad contracts.
 - `user_identity.go` binds user responses to the exact requested identifier before callers can use bearer data or issue mutations.

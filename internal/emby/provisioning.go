@@ -8,7 +8,11 @@ import (
 
 // HandleProvisionJob is the generic outbox handler for ProvisionOutboxKind.
 func (s *Service) HandleProvisionJob(ctx context.Context, aggregateID string) error {
-	return s.Provision(ctx, aggregateID)
+	err := s.Provision(ctx, aggregateID)
+	if errors.Is(err, ErrPendingReview) {
+		return nil
+	}
+	return err
 }
 
 // Provision advances one account through an idempotent remote provisioning saga.
@@ -23,6 +27,9 @@ func (s *Service) Provision(ctx context.Context, accountID string) error {
 	}
 	if record.Status == StatusFailed {
 		return nil
+	}
+	if record.Status == StatusPendingReview {
+		return ErrPendingReview
 	}
 	if record.PasswordCiphertext == "" || record.PasswordContext != passwordContext(record.UserID) {
 		return s.failTerminal(ctx, record.ID, errors.New("temporary provisioning secret is unavailable"))
@@ -45,10 +52,22 @@ func (s *Service) Provision(ctx context.Context, accountID string) error {
 		return s.handleProvisionError(ctx, record.ID, fmt.Errorf("load created Emby user: %w", err))
 	}
 	if err := s.remote.SetPassword(ctx, current.ID, nil, password); err != nil {
-		return s.handleProvisionError(ctx, record.ID, fmt.Errorf("set Emby password: %w", redactRemoteError(err, "remote password update failed")))
+		wrapped := fmt.Errorf("set Emby password: %w", redactRemoteError(err, "remote password update failed"))
+		if s.remote.IsTerminal(err) {
+			return s.handleProvisionError(ctx, record.ID, wrapped)
+		}
+		return s.pendingReview(ctx, record.ID, wrapped)
 	}
 	if err := s.remote.UpdatePolicy(ctx, current.ID, HardenPolicy(current.Policy, record.Preferences)); err != nil {
-		return s.handleProvisionError(ctx, record.ID, fmt.Errorf("apply restricted Emby policy: %w", err))
+		wrapped := fmt.Errorf("apply restricted Emby policy: %w", err)
+		verified, verifyErr := s.remote.GetUser(ctx, current.ID)
+		if verifyErr == nil && PolicyMatchesPreferences(verified.Policy, record.Preferences) {
+			return s.repository.MarkEmbyProvisioned(ctx, record.ID, record.Preferences, s.now().UTC())
+		}
+		if s.remote.IsTerminal(err) {
+			return s.handleProvisionError(ctx, record.ID, wrapped)
+		}
+		return s.pendingReview(ctx, record.ID, wrapped)
 	}
 	verified, err := s.remote.GetUser(ctx, current.ID)
 	if err != nil {
@@ -61,4 +80,11 @@ func (s *Service) Provision(ctx context.Context, accountID string) error {
 		return fmt.Errorf("complete Emby provisioning: %w", err)
 	}
 	return nil
+}
+
+func (s *Service) pendingReview(ctx context.Context, accountID string, cause error) error {
+	if err := s.repository.MarkEmbyPendingReview(ctx, accountID, cause, s.now().UTC()); err != nil {
+		return fmt.Errorf("record Emby pending review: %w", err)
+	}
+	return fmt.Errorf("%w: %v", ErrPendingReview, cause)
 }

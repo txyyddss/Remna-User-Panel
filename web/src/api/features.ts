@@ -1,5 +1,5 @@
 import { request, requestBlob } from './http'
-import type { CourtesyCredit } from './types'
+import type { CourtesyCredit, OperationReceipt } from './types'
 import type { ActivityOverview, ActivityResult, ActivitySettings, ActivitySettingsWrite, BetGame, LuckyDrawAdmin, LuckyDrawWrite } from './contracts/activity'
 import type { ActiveQuestionnaire, CouponDefinition, CouponGrant, CouponRedemption, QuestionnaireAdminRecord, QuestionnaireImportPreview, QuestionnaireImportState, QuestionnaireImportSummary, QuestionnaireParticipation } from './contracts/community'
 import type { EmbyAccount, EmbyOverview } from './contracts/commerce'
@@ -27,6 +27,11 @@ export interface FeaturePaymentReturnStatus {
   paidAt: import('./types').RFC3339 | null
 }
 
+export interface QuestionnaireSettlementStart {
+  operation: OperationReceipt
+  import: QuestionnaireImportPreview
+}
+
 const featureRequest = request
 
 export const featuresApi = {
@@ -48,12 +53,12 @@ export const featuresApi = {
     `/api/v1/questionnaires/${encodeURIComponent(questionnaireId)}/participation`, { method: 'POST', headers: { 'Idempotency-Key': idempotencyKey } },
   ),
   getEmby: () => featureRequest<EmbyOverview>('/api/v1/emby/account'),
-  setupEmby: (body: { password: string; maxParentalRating: number | null; disabledLibraryIds: string[] }) =>
-    featureRequest<EmbyAccount>('/api/v1/emby/setup', { method: 'POST', body }),
-  updateEmbyPreferences: (body: { maxParentalRating: number | null; disabledLibraryIds: string[] }) =>
-    featureRequest<EmbyAccount>('/api/v1/emby/preferences', { method: 'PUT', body }),
-  changeEmbyPassword: (password: string) => featureRequest<void>('/api/v1/emby/password', {
-    method: 'PUT', body: { password },
+  setupEmby: (body: { password: string; maxParentalRating: number | null; disabledLibraryIds: string[] }, idempotencyKey: string) =>
+    featureRequest<OperationReceipt>('/api/v1/emby/setup', { method: 'POST', body, headers: { 'Idempotency-Key': idempotencyKey } }),
+  updateEmbyPreferences: (body: { maxParentalRating: number | null; disabledLibraryIds: string[] }, idempotencyKey: string) =>
+    featureRequest<OperationReceipt>('/api/v1/emby/preferences', { method: 'PUT', body, headers: { 'Idempotency-Key': idempotencyKey } }),
+  changeEmbyPassword: (password: string, idempotencyKey: string) => featureRequest<OperationReceipt>('/api/v1/emby/password', {
+    method: 'PUT', body: { password }, headers: { 'Idempotency-Key': idempotencyKey },
   }),
   getAdminActivityGames: () => featureRequest<{ items: BetGame[] }>('/api/v1/admin/activity-games'),
   getAdminActivitySettings: () => featureRequest<ActivitySettings>('/api/v1/admin/activity-settings'),
@@ -110,21 +115,21 @@ export const featuresApi = {
     featureRequest<QuestionnaireImportSummary>(`/api/v1/admin/questionnaires/${encodeURIComponent(id)}/imports/${encodeURIComponent(uploadId)}/analyze`, {
       method: 'POST', body: { codeColumn },
     }),
-  settleQuestionnaireCsv: (id: string, uploadId: string) =>
-    featureRequest<QuestionnaireImportPreview>(`/api/v1/admin/questionnaires/${encodeURIComponent(id)}/imports/${encodeURIComponent(uploadId)}/settle`, {
-      method: 'POST',
+  settleQuestionnaireCsv: (id: string, uploadId: string, idempotencyKey: string) =>
+    featureRequest<QuestionnaireSettlementStart>(`/api/v1/admin/questionnaires/${encodeURIComponent(id)}/imports/${encodeURIComponent(uploadId)}/settle`, {
+      method: 'POST', headers: { 'Idempotency-Key': idempotencyKey },
     }),
   getQuestionnaireImportState: (id: string, uploadId: string) =>
     featureRequest<QuestionnaireImportState>(`/api/v1/admin/questionnaires/${encodeURIComponent(id)}/imports/${encodeURIComponent(uploadId)}`),
   getAdminEmbyAccounts: () => featureRequest<{ items: EmbyAccount[] }>('/api/v1/admin/emby-accounts'),
-  retryAdminEmbyAccount: (id: string) => featureRequest<EmbyAccount>(`/api/v1/admin/emby-accounts/${encodeURIComponent(id)}/retry`, {
-    method: 'POST',
+  retryAdminEmbyAccount: (id: string, idempotencyKey: string) => featureRequest<OperationReceipt>(`/api/v1/admin/emby-accounts/${encodeURIComponent(id)}/retry`, {
+    method: 'POST', headers: { 'Idempotency-Key': idempotencyKey },
   }),
   downloadBackup: async (id: string) => {
     return requestBlob(`/api/v1/admin/backups/${encodeURIComponent(id)}/download`)
   },
-  restoreBackup: (id: string, reason: string, confirmation: string) => featureRequest<RestoreOperation>(`/api/v1/admin/backups/${encodeURIComponent(id)}/restore`, {
-    method: 'POST', body: { reason, confirmation },
+  restoreBackup: (id: string, reason: string, confirmation: string, idempotencyKey: string) => featureRequest<RestoreOperation>(`/api/v1/admin/backups/${encodeURIComponent(id)}/restore`, {
+    method: 'POST', body: { reason, confirmation }, headers: { 'Idempotency-Key': idempotencyKey },
   }),
   deleteBackup: (id: string) => featureRequest<void>(`/api/v1/admin/backups/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   getRestoreStatus: (id: string) => featureRequest<RestoreOperation>(`/api/v1/admin/restores/${encodeURIComponent(id)}`),

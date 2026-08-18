@@ -8,7 +8,7 @@ The Emby module owns setup pricing, account linkage, temporary-password protecti
 
 ## Provisioning saga
 
-Setup validates the selected rating and libraries against live Emby options, derives the base name from the local Remnawave username, and seals the temporary password with the existing AES-GCM vault using `emby.provisioning.password:<localUserId>` as authenticated context. One transaction debits the snapshotted setup price, appends its ledger entry, stores the sealed secret and preferences, and queues `emby_provision_account`.
+Setup validates the selected rating and libraries against live Emby options, derives the base name from the local Remnawave username, and seals the temporary password with the existing AES-GCM vault using `emby.provisioning.password:<localUserId>` as authenticated context. One transaction debits the snapshotted setup price, appends its ledger entry, stores the sealed secret and preferences, and queues one `provider_operation` receipt. The legacy `emby_provision_account` handler remains registered only to drain jobs created before this command boundary existed.
 
 The kind-specific worker advances idempotently:
 
@@ -17,13 +17,13 @@ The kind-specific worker advances idempotently:
 3. If both candidates exist, fail instead of adopting an unknown account.
 4. Mark creation attempted before calling Emby. After an ambiguous error, reconcile only by the exact persisted candidate.
 5. Fetch the complete created user, set the password, fetch/overlay policy, and mark active.
-6. Erase durable ciphertext on success. A terminal failure erases it and appends one compensating TXB refund; a transient failure retains it for retry.
+6. Erase durable ciphertext on success. A terminal failure erases it and appends one compensating TXB refund; an outcome after a mutation boundary that cannot be reconciled becomes `pending_review` and retains the desired state for an explicit administrator command.
 
 ## Policy and secret boundary
 
 Every policy write starts from the current complete upstream policy. Local state stores only disabled folder IDs; migration gives existing accounts none, so all libraries are enabled by default. The overlay sets `EnableAllFolders=true`, clears `EnabledFolders`, sets `BlockedMediaFolders`, and forces the hardened restrictions while preserving `EnableRemoteAccess` and unrelated provider fields. The service submits the full documented policy, re-fetches it, verifies the requested overlay against actual upstream state, and only then persists disabled IDs. A failed verification leaves the prior local preferences intact.
 
-Plaintext passwords exist only in request memory or the short worker decryption window, are zeroed on return, and never enter responses, provider payload snapshots, audits, or logs. Linked password changes are synchronous and never persist either password. Options and account responses expose only safe identifiers, preferences, status, retryability, and redacted failure text.
+Plaintext passwords exist only in request memory or the short worker decryption window, are zeroed on return, and never enter responses, provider-operation rows, audits, or logs. Linked password changes store only an AES-GCM command target in the short-lived outbox row and use an HMAC request fingerprint, so idempotency evidence cannot be used for password guessing. Setup, preference, password, and reviewed retry endpoints require `Idempotency-Key`, return `202`, and expose only the sanitized operation receipt. Options and account responses expose only safe identifiers, preferences, status, retryability, and redacted failure text.
 
 ## Verification
 

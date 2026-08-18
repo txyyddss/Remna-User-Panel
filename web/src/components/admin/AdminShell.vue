@@ -23,8 +23,6 @@ const groups = [
   ] },
   { labelKey: 'adminNav.accounts', sections: [
     { value: 'users', labelKey: 'adminNav.users' },
-    { value: 'emby', labelKey: 'adminNav.emby' },
-    { value: 'entitlements', labelKey: 'adminNav.entitlements' },
   ] },
   { labelKey: 'adminNav.system', sections: [
     { value: 'settings', labelKey: 'adminNav.settings' },
@@ -39,7 +37,7 @@ const sectionItems = computed(() => groups.flatMap((group) => group.sections.map
   label: t('adminNav.sectionLabel', { group: t(group.labelKey), section: t(section.labelKey) }),
 }))))
 const selected = computed({
-  get: () => String(route.params.section || 'settings'),
+  get: () => String(route.params.section || route.meta.adminSection || 'settings'),
   set: (section: string) => void router.push(`/admin/${section}`),
 })
 

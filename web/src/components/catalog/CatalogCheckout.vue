@@ -17,7 +17,7 @@ const props = defineProps<{
   purchasing: boolean
   needsBalance: boolean
 }>()
-const emit = defineEmits<{ confirm: [] }>()
+const emit = defineEmits<{ back: []; confirm: [] }>()
 const router = useRouter()
 const { t } = useI18n()
 function couponEffect(): string {
@@ -35,6 +35,15 @@ function goToBalance(): void { void router.push({ path: '/home', query: { topUp:
 
 <template>
   <section class="catalog-checkout">
+    <UButton
+      class="catalog-checkout__back"
+      color="neutral"
+      variant="ghost"
+      icon="i-ph-arrow-left"
+      :label="$t('catalog.back')"
+      data-haptic
+      @click="emit('back')"
+    />
     <div class="section-heading section-heading--stacked">
       <h2>{{ $t('catalog.steps.review') }}</h2>
       <p>{{ $t('catalog.checkoutDescription') }}</p>
@@ -88,6 +97,7 @@ function goToBalance(): void { void router.push({ path: '/home', query: { topUp:
 
 <style scoped>
 .catalog-checkout, .catalog-checkout__summary { display: grid; gap: 0.7rem; }
+.catalog-checkout__back { justify-self: start; padding-inline: 0; }
 .catalog-checkout__summary { padding: 0.85rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface-raised); }
 .catalog-checkout__line { display: grid; gap: 0.22rem; padding-bottom: 0.65rem; border-bottom: 1px solid var(--line); }
 .catalog-checkout__line > span, .catalog-checkout__total > span, .catalog-checkout__total small { color: var(--text-faint); font-size: 0.68rem; }

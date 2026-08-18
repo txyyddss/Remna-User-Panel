@@ -1,0 +1,21 @@
+put:
+  tags: [Admin]
+  operationId: editAdminEntitlement
+  summary: Replace exposed entitlement fields with optimistic locking and audit
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/UserID'
+    - $ref: '../openapi.yaml#/components/parameters/EntitlementID'
+    - $ref: '../openapi.yaml#/components/parameters/IdempotencyKey'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema: { $ref: '../openapi.yaml#/components/schemas/EntitlementEditRequest' }
+  responses:
+    '200':
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/AdminEntitlement' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }

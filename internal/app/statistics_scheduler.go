@@ -1,0 +1,51 @@
+package app
+
+import (
+	"context"
+	"errors"
+	"time"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
+	productstats "github.com/txyyddss/Remna-User-Panel/internal/statistics"
+)
+
+const statisticsRefreshTimeout = 5 * time.Minute
+
+func nextStatisticsRefresh(now time.Time) time.Time {
+	return now.Truncate(30 * time.Minute).Add(30 * time.Minute)
+}
+
+func (a *Application) refreshProductStatistics(ctx context.Context, now time.Time) {
+	refreshCtx, cancelRefresh := context.WithTimeout(ctx, statisticsRefreshTimeout)
+	if err := a.statistics.Refresh(refreshCtx, now); err != nil && !errors.Is(err, context.Canceled) {
+		a.logger.Error("statistics partition refresh was partial", "error", err)
+	}
+	cancelRefresh()
+	hostCtx, cancelHosts := context.WithTimeout(ctx, statisticsRefreshTimeout)
+	defer cancelHosts()
+	actorID, err := a.statisticsActorID(hostCtx)
+	if errors.Is(err, database.ErrNotFound) {
+		a.logger.Warn("host multiplier update skipped until an administrator account exists")
+		return
+	}
+	if err != nil {
+		a.logger.Error("host multiplier actor lookup failed", "error", err)
+		return
+	}
+	if err := productstats.QueueHostMultiplierUpdates(hostCtx, newRemnaAdapter(a.settings, a.upstreams.remnawave), a.store, actorID, now); err != nil {
+		a.logger.Error("host multiplier operation scheduling was partial", "error", err)
+	}
+}
+
+func (a *Application) statisticsActorID(ctx context.Context) (string, error) {
+	for _, telegramID := range a.config.AdminTelegramIDs {
+		user, err := a.store.UserByTelegramID(ctx, telegramID)
+		if err == nil {
+			return user.ID, nil
+		}
+		if !errors.Is(err, database.ErrNotFound) {
+			return "", err
+		}
+	}
+	return "", database.ErrNotFound
+}

@@ -1,0 +1,39 @@
+import QRCode from 'qrcode'
+
+import type { FeaturePaymentMethod, FeaturePaymentOrder } from '@/api/features'
+import { moneyFromTxbInput, txbInputFromMinor } from '@/utils/format'
+
+export function isTerminalPaymentStatus(status: FeaturePaymentOrder['status']): boolean {
+  return ['paid', 'cancelled', 'expired', 'failed', 'refunded'].includes(status)
+}
+
+export function positivePaymentMinor(value: string | undefined, fallback: bigint): bigint {
+  return value && /^\d+$/.test(value) && BigInt(value) > 0n ? BigInt(value) : fallback
+}
+
+export function resolveReissueCandidate(
+  candidate: FeaturePaymentOrder,
+  methods: readonly FeaturePaymentMethod[],
+  minimumMinor: bigint,
+  maximumMinor: bigint,
+): { amount: string, methodId: string } | null {
+  const method = methods.find((item) => item.id === candidate.methodId && item.available)
+  const amount = candidate.txb.currency === 'TXB' ? txbInputFromMinor(candidate.txb.minor) : ''
+  const minor = moneyFromTxbInput(amount)
+  if (
+    (candidate.status !== 'expired' && candidate.status !== 'failed')
+    || !method || method.provider !== candidate.provider || method.rail !== candidate.providerRail
+    || minor === '' || BigInt(minor) < minimumMinor || BigInt(minor) > maximumMinor
+  ) return null
+  return { amount, methodId: method.id }
+}
+
+export function paymentQrDataUrl(order: FeaturePaymentOrder): Promise<string | null> {
+  if (!order.qrPayload) return Promise.resolve(null)
+  return QRCode.toDataURL(order.qrPayload, {
+    width: 360,
+    margin: 1,
+    color: { dark: '#111512', light: '#edf2ee' },
+    errorCorrectionLevel: 'M',
+  })
+}

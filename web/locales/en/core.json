@@ -17,7 +17,8 @@
     "skip": "Skip to content",
     "homeLabel": "TX Carpool home",
     "member": "Telegram member",
-    "memberFallback": "TX Member"
+    "memberFallback": "TX Member",
+    "fullscreenGreeting": "Hi, {name}"
   },
   "auth": {
     "telegramAccess": "Telegram access",

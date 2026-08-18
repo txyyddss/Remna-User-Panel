@@ -25,11 +25,6 @@ var ErrInsufficientBalance = errors.New("insufficient TXB balance")
 
 var ErrStockUnavailable = errors.New("squad stock is unavailable")
 
-// ErrPaymentCapacity indicates that all retained payment slots contain live,
-// non-prunable orders. Callers may retry after an order settles or expires.
-
-var ErrPaymentCapacity = errors.New("payment order capacity is full")
-
 // Store implements persistent repositories on top of SQLite.
 
 type Store struct {

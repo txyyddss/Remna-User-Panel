@@ -20,6 +20,8 @@ const (
 	StatusActive = "active"
 	// StatusFailed means setup terminated and its debit was refunded.
 	StatusFailed = "failed"
+	// StatusPendingReview means a provider mutation outcome needs explicit review.
+	StatusPendingReview = "pending_review"
 )
 
 var (
@@ -31,6 +33,8 @@ var (
 	ErrInvalidSetup = errors.New("invalid Emby setup")
 	// ErrRemoteAccountMissing means a previously linked Emby account disappeared upstream.
 	ErrRemoteAccountMissing = errors.New("linked Emby account is missing")
+	// ErrPendingReview means an automatic retry could duplicate an ambiguous mutation.
+	ErrPendingReview = errors.New("Emby provider outcome requires review")
 )
 
 // Policy holds a complete Emby Users.UserPolicy document. Raw values preserve
@@ -155,6 +159,7 @@ type Repository interface {
 	MarkEmbyCreateAttempted(context.Context, string, time.Time) error
 	SetEmbyRemoteIdentity(context.Context, string, string, string, time.Time) error
 	RequeueEmbyProvisioning(context.Context, string, error, time.Time) error
+	MarkEmbyPendingReview(context.Context, string, error, time.Time) error
 	MarkEmbyProvisioned(context.Context, string, Preferences, time.Time) error
 	FailAndRefundEmbySetup(context.Context, string, string, time.Time) (Account, error)
 	UpdateEmbyPreferences(context.Context, string, Preferences, time.Time) (Account, error)

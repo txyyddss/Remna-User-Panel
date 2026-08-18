@@ -71,6 +71,18 @@ func NewService(repository Repository, settings Settings, gateway Gateway, publi
 
 // CreateOrder computes authoritative pricing, persists the attempt, then requests checkout data.
 func (s *Service) CreateOrder(ctx context.Context, user model.User, methodID string, txbMinor int64) (model.PaymentOrder, error) {
+	order, err := s.prepareOrder(ctx, user, methodID, txbMinor)
+	if err != nil {
+		return model.PaymentOrder{}, err
+	}
+	order, err = s.repository.CreatePaymentOrder(ctx, order)
+	if err != nil {
+		return model.PaymentOrder{}, err
+	}
+	return s.createCheckout(ctx, user, order)
+}
+
+func (s *Service) prepareOrder(ctx context.Context, user model.User, methodID string, txbMinor int64) (model.PaymentOrder, error) {
 	provider, profileID, rail, err := ParseMethodSelection(methodID)
 	if err != nil {
 		return model.PaymentOrder{}, err
@@ -78,8 +90,8 @@ func (s *Service) CreateOrder(ctx context.Context, user model.User, methodID str
 	if provider == "coupon" {
 		return model.PaymentOrder{}, fmt.Errorf("%w: coupon funding is not a provider order", ErrInvalidOrder)
 	}
-	if txbMinor <= 0 || txbMinor > 100_000_000_00 {
-		return model.PaymentOrder{}, fmt.Errorf("%w: TXB amount is out of range", ErrInvalidOrder)
+	if err := s.validateAddTXBAmount(ctx, txbMinor); err != nil {
+		return model.PaymentOrder{}, err
 	}
 	providerEnabled, settingsErr := s.providerMethodEnabled(ctx, provider, profileID, rail)
 	if settingsErr != nil {
@@ -108,74 +120,9 @@ func (s *Service) CreateOrder(ctx context.Context, user model.User, methodID str
 		}
 		canonicalMethodID += ":" + rail
 	}
-	order := model.PaymentOrder{
+	return model.PaymentOrder{
 		UserID: user.ID, Provider: provider, MethodID: canonicalMethodID, ProviderRail: rail, Status: "creating", TXBMinor: txbMinor,
 		PayableAmount: payable, PayableCurrency: strings.ToUpper(currencyCode(provider)), RateSnapshot: rate.Canonical(),
 		RateDirection: "txb_per_currency", ExpiresAt: now.Add(30 * time.Minute),
-	}
-	order, err = s.repository.CreatePaymentOrder(ctx, order)
-	if err != nil {
-		return model.PaymentOrder{}, err
-	}
-	request := ProviderCreateRequest{
-		Provider: provider, ProfileID: profileID, MethodID: order.MethodID, Rail: rail, OrderID: order.ID, TelegramID: user.TelegramID, TXBMinor: txbMinor,
-		PayableAmount: payable, PayableCurrency: order.PayableCurrency,
-		NotifyURL:   s.absolute("/api/v1/webhooks/" + provider),
-		ReturnURL:   s.absolute("/api/v1/payments/return/" + provider + "/" + url.PathEscape(order.ID)),
-		RedirectURL: s.absolute("/api/v1/payments/return/" + provider + "/" + url.PathEscape(order.ID)),
-	}
-	if provider == "bepusdt" {
-		secret, secretErr := s.providerCredential(ctx, "bepusdt", profileID)
-		if secretErr != nil {
-			_ = s.repository.FailPaymentOrder(ctx, order.ID)
-			return model.PaymentOrder{}, fmt.Errorf("create callback capability: %w", secretErr)
-		}
-		request.NotifyURL = s.absolute("/api/v1/webhooks/bepusdt/" + callbackCapability(secret, order.ID))
-	}
-	checkout, err := s.gateway.Create(ctx, request)
-	if err != nil && provider == "bepusdt" && ctx.Err() == nil {
-		// BEPusdt duplicate order IDs are the safest way to resolve an ambiguous create timeout.
-		checkout, err = s.gateway.Create(ctx, request)
-	}
-	if err != nil {
-		_ = s.repository.FailPaymentOrder(ctx, order.ID)
-		return model.PaymentOrder{}, fmt.Errorf("create provider checkout: %w", err)
-	}
-	if checkout.PayableAmount == "" {
-		checkout.PayableAmount = order.PayableAmount
-	}
-	if checkout.PayableCurrency == "" {
-		checkout.PayableCurrency = order.PayableCurrency
-	}
-	// The provider response may add display and transaction metadata, but it
-	// must never replace the server-priced fiat snapshot used to validate the
-	// eventual callback.
-	if !strings.EqualFold(checkout.PayableCurrency, order.PayableCurrency) ||
-		!Equivalent(checkout.PayableAmount, order.PayableAmount) {
-		_ = s.repository.FailPaymentOrder(ctx, order.ID)
-		return model.PaymentOrder{}, fmt.Errorf("create provider checkout: %w: provider pricing conflicts with immutable order", ErrInvalidOrder)
-	}
-	checkout.PayableAmount = order.PayableAmount
-	checkout.PayableCurrency = order.PayableCurrency
-	if (checkout.ActualCryptoAmount == nil) != (checkout.ActualCryptoCurrency == nil) {
-		_ = s.repository.FailPaymentOrder(ctx, order.ID)
-		return model.PaymentOrder{}, fmt.Errorf("create provider checkout: %w: incomplete crypto pricing", ErrInvalidOrder)
-	}
-	if checkout.ActualCryptoAmount != nil {
-		actual, actualErr := ParseDecimal(*checkout.ActualCryptoAmount)
-		if provider != "bepusdt" || actualErr != nil || !actual.Positive() ||
-			!strings.EqualFold(*checkout.ActualCryptoCurrency, "USDT") {
-			_ = s.repository.FailPaymentOrder(ctx, order.ID)
-			return model.PaymentOrder{}, fmt.Errorf("create provider checkout: %w: invalid crypto pricing", ErrInvalidOrder)
-		}
-	}
-	if checkout.ExpiresAt.IsZero() {
-		checkout.ExpiresAt = order.ExpiresAt
-	}
-	if repository, ok := s.repository.(checkoutDetailsRepository); ok {
-		return repository.UpdatePaymentCheckoutDetails(ctx, order.ID, checkout.TradeID, checkout.PaymentURL, checkout.QRPayload, checkout.ReceivingAddress, checkout.ActualCryptoAmount, checkout.ActualCryptoCurrency,
-			checkout.PayableAmount, checkout.PayableCurrency, checkout.ExpiresAt)
-	}
-	return s.repository.UpdatePaymentCheckout(ctx, order.ID, checkout.TradeID, checkout.PaymentURL, checkout.QRPayload,
-		checkout.PayableAmount, checkout.PayableCurrency, checkout.ExpiresAt)
+	}, nil
 }

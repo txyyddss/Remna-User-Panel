@@ -3,12 +3,14 @@ package database
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"math"
 	"testing"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
 )
 
 func TestSettlePaymentCreditsExactlyOnce(t *testing.T) {
@@ -19,6 +21,9 @@ func TestSettlePaymentCreditsExactlyOnce(t *testing.T) {
 	user := createTestUser(t, store, 10004)
 	now := time.Date(2026, time.August, 7, 13, 0, 0, 0, time.UTC)
 	order := createTestPaymentOrder(t, store, user.ID, "ezpay", 2_500, now)
+	if _, err := store.DB().ExecContext(ctx, `UPDATE payment_orders SET provider_rail='alipay' WHERE id=?`, order.ID); err != nil {
+		t.Fatalf("seed payment channel: %v", err)
+	}
 
 	paid, applied, err := store.SettlePayment(ctx, "ezpay", "event-1", "payload-a", order.ID, "trade-1", "charge-1", now)
 	if err != nil {
@@ -57,7 +62,27 @@ func TestSettlePaymentCreditsExactlyOnce(t *testing.T) {
 	if got := countLedgerKind(entries, "payment_credit"); got != 1 {
 		t.Fatalf("payment credit count = %d, want 1", got)
 	}
+	var announcementJSON string
+	if err := store.DB().QueryRowContext(ctx, `SELECT payload FROM outbox_jobs WHERE kind=?`,
+		jobpayload.PaymentSuccessAnnouncementKind).Scan(&announcementJSON); err != nil {
+		t.Fatalf("load payment announcement job: %v", err)
+	}
+	var announcement jobpayload.PaymentSuccessAnnouncement
+	if err := json.Unmarshal([]byte(announcementJSON), &announcement); err != nil {
+		t.Fatalf("decode payment announcement job: %v", err)
+	}
+	if announcement.OrderID != order.ID || announcement.Provider != "ezpay" || announcement.Channel != "alipay" ||
+		announcement.TXBMinor != 2_500 || announcement.PayableAmount != "10.00" || announcement.PayableCurrency != "CNY" ||
+		announcement.Username != "@telegram10004" {
+		t.Fatalf("payment announcement snapshot = %+v", announcement)
+	}
+	var announcementCount int
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind=?`,
+		jobpayload.PaymentSuccessAnnouncementKind).Scan(&announcementCount); err != nil || announcementCount != 1 {
+		t.Fatalf("payment announcement jobs = %d, error %v", announcementCount, err)
+	}
 	assertRowCount(t, store, "webhook_events", 0)
+	assertRowCount(t, store, "payment_callback_tombstones", 1)
 }
 
 func TestSettlePaymentOverflowRollsBackWebhookAndCredit(t *testing.T) {
@@ -96,6 +121,7 @@ func TestSettlePaymentOverflowRollsBackWebhookAndCredit(t *testing.T) {
 	if got := countLedgerKind(entries, "payment_credit"); got != 0 {
 		t.Fatalf("payment credit count = %d, want 0", got)
 	}
+	assertRowCount(t, store, "outbox_jobs", 0)
 }
 
 func TestPaymentTerminalTransitionsMinimizeProviderData(t *testing.T) {

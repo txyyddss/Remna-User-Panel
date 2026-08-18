@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 	"strings"
 	"time"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 )
 
 const maxPasswordBytes = 1024
@@ -67,43 +68,55 @@ func (s *Service) Setup(ctx context.Context, userID, password string, preference
 	if err != nil && !errors.Is(err, ErrNotFound) {
 		return Account{}, false, err
 	}
+	input, err := s.prepareSetup(ctx, userID, password, preferences)
+	if err != nil {
+		return Account{}, false, err
+	}
+	account, created, err := s.repository.QueueEmbySetup(ctx, input, s.now().UTC())
+	if err != nil {
+		return Account{}, false, err
+	}
+	return account, created, nil
+}
+
+func (s *Service) prepareSetup(ctx context.Context, userID, password string,
+	preferences Preferences) (QueueSetupInput, error) {
+	if strings.TrimSpace(userID) == "" || len(password) == 0 || len(password) > maxPasswordBytes {
+		return QueueSetupInput{}, ErrInvalidSetup
+	}
 	preferences = normalizePreferences(preferences)
 	if err := s.validatePreferences(ctx, preferences); err != nil {
-		return Account{}, false, err
+		return QueueSetupInput{}, err
 	}
 	baseUsername, err := s.repository.EmbyBaseUsername(ctx, userID)
 	if err != nil {
-		return Account{}, false, fmt.Errorf("load Emby base username: %w", err)
+		return QueueSetupInput{}, fmt.Errorf("load Emby base username: %w", err)
 	}
 	baseUsername = strings.TrimSpace(baseUsername)
 	if baseUsername == "" {
-		return Account{}, false, fmt.Errorf("%w: local username is empty", ErrInvalidSetup)
+		return QueueSetupInput{}, fmt.Errorf("%w: local username is empty", ErrInvalidSetup)
 	}
 	price, err := s.prices.EmbySetupPriceTXBMinor(ctx)
 	if err != nil {
-		return Account{}, false, fmt.Errorf("load Emby setup price: %w", err)
+		return QueueSetupInput{}, fmt.Errorf("load Emby setup price: %w", err)
 	}
 	if price < 0 {
-		return Account{}, false, fmt.Errorf("%w: setup price is negative", ErrInvalidSetup)
+		return QueueSetupInput{}, fmt.Errorf("%w: setup price is negative", ErrInvalidSetup)
 	}
 	accountID, err := ids.New()
 	if err != nil {
-		return Account{}, false, err
+		return QueueSetupInput{}, err
 	}
 	passwordBytes := []byte(password)
 	defer zero(passwordBytes)
 	secretContext := passwordContext(userID)
 	ciphertext, err := s.secrets.Seal(secretContext, passwordBytes)
 	if err != nil {
-		return Account{}, false, fmt.Errorf("seal Emby provisioning password: %w", err)
+		return QueueSetupInput{}, fmt.Errorf("seal Emby provisioning password: %w", err)
 	}
-	account, created, err := s.repository.QueueEmbySetup(ctx, QueueSetupInput{
+	return QueueSetupInput{
 		ID: accountID, UserID: userID, BaseUsername: baseUsername,
 		PasswordCiphertext: ciphertext, PasswordContext: secretContext,
 		SetupPriceTXBMinor: price, Preferences: preferences,
-	}, s.now().UTC())
-	if err != nil {
-		return Account{}, false, err
-	}
-	return account, created, nil
+	}, nil
 }

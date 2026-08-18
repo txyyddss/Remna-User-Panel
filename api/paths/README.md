@@ -2,6 +2,8 @@
 
 Each YAML file is one complete OpenAPI Path Item Object. `../openapi.yaml` registers these files under their canonical URL paths.
 
+Member connection scans, purchase reset/refund resources, operation receipts, statistics, and admin bulk/backup mutations use the same signed-session and idempotency conventions as the existing paths.
+
 - `api-v1-auth-telegram.yaml`: `/api/v1/auth/telegram`
 - `api-v1-me.yaml`: `/api/v1/me`
 - `api-v1-onboarding-invites.yaml`: `/api/v1/onboarding/invites`
@@ -17,12 +19,20 @@ Each YAML file is one complete OpenAPI Path Item Object. `../openapi.yaml` regis
 - `api-v1-purchases-id-cancel.yaml`: `/api/v1/purchases/{id}/cancel`, owner-only queued cancellation with atomic TXB refund
 - `api-v1-purchases-id-rollover.yaml`: `/api/v1/purchases/{id}/rollover`, owner-only live aggregate rollover projection
 - `api-v1-purchases-id-auto-renewal.yaml`: `/api/v1/purchases/{id}/auto-renewal`, owner-only one-cycle automatic-renewal state and toggle
+- `api-v1-purchases-id-traffic-reset.yaml`: `/api/v1/purchases/{id}/traffic-reset`, authoritative quote and idempotent paid reset
+- `api-v1-purchases-id-refund.yaml`: `/api/v1/purchases/{id}/refund`, first-term zero-usage refund quote and mutation
+- `api-v1-operations-id.yaml`: `/api/v1/operations/{operationId}`, owner-scoped durable operation receipt
 - `api-v1-subscription-revoke.yaml`: `/api/v1/subscription/revoke`
+- `api-v1-subscription-connections.yaml`: `/api/v1/subscription/connections`, idempotent connection scan creation
+- `api-v1-subscription-connections-id.yaml`: `/api/v1/subscription/connections/{scanId}`, owner-scoped scan polling
+- `api-v1-subscription-connections-drop.yaml`: `/api/v1/subscription/connections/drop`, signed-handle connection removal
 - `api-v1-balance.yaml`: `/api/v1/balance`
 - `api-v1-ledger.yaml`: `/api/v1/ledger`
-- `api-v1-payments-orders.yaml`: `/api/v1/payments/orders`
+- `api-v1-statistics.yaml`: `/api/v1/statistics`, persisted 30-minute aggregate dashboard
+- `api-v1-statistics-nodes.yaml`: `/api/v1/statistics/nodes`, on-demand shared 10-second node snapshot
+- `api-v1-payments-orders.yaml`: `/api/v1/payments/orders`, idempotent durable checkout creation
 - `api-v1-payments-orders-id.yaml`: `/api/v1/payments/orders/{id}`
-- `api-v1-payments-orders-id-cancel.yaml`: `/api/v1/payments/orders/{id}/cancel`
+- `api-v1-payments-orders-id-cancel.yaml`: `/api/v1/payments/orders/{id}/cancel`, idempotent durable provider cancellation
 - `api-v1-emby-account.yaml`: `/api/v1/emby/account`
 - `api-v1-emby-setup.yaml`: `/api/v1/emby/setup`
 - `api-v1-emby-preferences.yaml`: `/api/v1/emby/preferences`
@@ -70,6 +80,13 @@ Each YAML file is one complete OpenAPI Path Item Object. `../openapi.yaml` regis
 - `api-v1-admin-users.yaml`: `/api/v1/admin/users`
 - `api-v1-admin-users-id.yaml`: `/api/v1/admin/users/{id}`
 - `api-v1-admin-users-id-balance-adjustments.yaml`: `/api/v1/admin/users/{id}/balance-adjustments`
+- `api-v1-admin-users-id-entitlements-entitlementid.yaml`: `/api/v1/admin/users/{userId}/entitlements/{entitlementId}`, optimistic entitlement overwrite
+- `api-v1-admin-users-id-entitlements-entitlementid-refund.yaml`: `/api/v1/admin/users/{userId}/entitlements/{entitlementId}/refund`, audited entitlement refund operation
+- `api-v1-admin-users-id-combo-replacement.yaml`: `/api/v1/admin/users/{userId}/combo-replacement`, no-charge combo and add-on replacement
+- `api-v1-admin-bulk-extensions-preview.yaml`: `/api/v1/admin/bulk-extensions/preview`, deduplicated inclusive-OR target preview
+- `api-v1-admin-bulk-extensions.yaml`: `/api/v1/admin/bulk-extensions`, durable bulk extension job
+- `api-v1-admin-operations-id-resolve.yaml`: `/api/v1/admin/operations/{operationId}/resolve`, audited ambiguous-operation resolution
+- `api-v1-admin-billing-amount-limits.yaml`: `/api/v1/admin/billing/amount-limits`, atomic global Add TXB bounds update
 - `api-v1-admin-entitlements.yaml`: `/api/v1/admin/entitlements`
 - `api-v1-admin-entitlements-id-cancel.yaml`: `/api/v1/admin/entitlements/{id}/cancel`
 - `api-v1-admin-payments.yaml`: `/api/v1/admin/payments`
@@ -82,6 +99,7 @@ Each YAML file is one complete OpenAPI Path Item Object. `../openapi.yaml` regis
 - `api-v1-admin-database-mutations-review.yaml`: `/api/v1/admin/database/mutations/review`
 - `api-v1-admin-database-mutations.yaml`: `/api/v1/admin/database/mutations`
 - `api-v1-admin-backups.yaml`: `/api/v1/admin/backups`
+- `api-v1-admin-backups-upload.yaml`: `/api/v1/admin/backups/upload`, bounded streamed SQLite validation and staging
 - `api-v1-admin-backups-id-download.yaml`: `/api/v1/admin/backups/{id}/download`
 - `api-v1-admin-backups-id.yaml`: `/api/v1/admin/backups/{id}`
 - `api-v1-admin-backups-id-restore.yaml`: `/api/v1/admin/backups/{id}/restore`

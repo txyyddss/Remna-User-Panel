@@ -2,15 +2,21 @@ post:
   tags: [Dashboard]
   operationId: revokeSubscription
   summary: Rotate the current Remnawave subscription URL
-  description: Calls Remnawave revoke with `revokeOnlyPasswords:false`. The old URL must be treated as invalid after success.
+  description: Queues a durable Remnawave revoke with `revokeOnlyPasswords:false`. Reload the dashboard after the receipt succeeds.
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/IdempotencyKey'
   responses:
-    '200':
-      description: Rotated subscription reference.
+    '202':
+      description: Credential rotation queued or replayed.
       content:
         application/json:
           schema:
-            $ref: '../openapi.yaml#/components/schemas/SubscriptionRotation'
+            $ref: '../openapi.yaml#/components/schemas/OperationReceipt'
+    '400':
+      $ref: '../openapi.yaml#/components/responses/BadRequest'
     '401':
       $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '409':
+      $ref: '../openapi.yaml#/components/responses/Conflict'
     '502':
       $ref: '../openapi.yaml#/components/responses/UpstreamFailure'

@@ -8,19 +8,28 @@ import (
 	"mime"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
 type DatabaseAdministrationHTTP struct {
-	editor     *databaseadmin.Service
-	backups    *backup.Service
-	migrations []string
+	editor         *databaseadmin.Service
+	backups        *backup.Service
+	migrations     []string
+	uploadMaxBytes int64
 }
 
 // NewDatabaseAdministrationHTTP constructs independently mountable handlers.
 
 func NewDatabaseAdministrationHTTP(editor *databaseadmin.Service, backups *backup.Service, migrations []string) *DatabaseAdministrationHTTP {
-	return &DatabaseAdministrationHTTP{editor: editor, backups: backups, migrations: append([]string(nil), migrations...)}
+	return &DatabaseAdministrationHTTP{editor: editor, backups: backups, migrations: append([]string(nil), migrations...), uploadMaxBytes: backup.DefaultUploadMaxBytes}
+}
+
+// SetBackupUploadMaxBytes configures the bounded streamed upload size.
+func (h *DatabaseAdministrationHTTP) SetBackupUploadMaxBytes(maximum int64) {
+	if maximum > 0 {
+		h.uploadMaxBytes = maximum
+	}
 }
 
 // Mount registers database, backup download, and staged restore routes on an
@@ -34,6 +43,7 @@ func (h *DatabaseAdministrationHTTP) Mount(router chi.Router) {
 	router.Post("/database/mutations/review", h.review)
 	router.Post("/database/mutations", h.apply)
 	router.Get("/backups/{id}/download", h.download)
+	router.Post("/backups/upload", h.upload)
 	router.Post("/backups/{id}/restore", h.stageRestore)
 	router.Get("/restores/{id}", h.restoreStatus)
 }
@@ -144,6 +154,11 @@ func (h *DatabaseAdministrationHTTP) download(w http.ResponseWriter, r *http.Req
 }
 
 func (h *DatabaseAdministrationHTTP) stageRestore(w http.ResponseWriter, r *http.Request) {
+	key := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
+	if key == "" || len(key) > 128 {
+		h.writeError(w, r, http.StatusBadRequest, "IDEMPOTENCY_KEY_REQUIRED", "Send an Idempotency-Key header containing 1 to 128 characters.")
+		return
+	}
 	var request struct {
 		Reason       string `json:"reason"`
 		Confirmation string `json:"confirmation"`
@@ -152,13 +167,15 @@ func (h *DatabaseAdministrationHTTP) stageRestore(w http.ResponseWriter, r *http
 		h.writeError(w, r, http.StatusBadRequest, "INVALID_RESTORE", "A reason and typed confirmation are required.")
 		return
 	}
-	job, err := h.backups.StageRestore(r.Context(), chi.URLParam(r, "id"), currentUser(r).ID, request.Reason, request.Confirmation, h.migrations)
+	job, err := h.backups.StageRestore(r.Context(), chi.URLParam(r, "id"), currentUser(r).ID, key, request.Reason, request.Confirmation, h.migrations)
 	if err != nil {
 		h.failure(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusAccepted, mapRestoreOperation(job))
-	h.backups.RequestRestart()
+	if job.Status == "ready" {
+		h.backups.RequestRestart()
+	}
 }
 
 func (h *DatabaseAdministrationHTTP) restoreStatus(w http.ResponseWriter, r *http.Request) {

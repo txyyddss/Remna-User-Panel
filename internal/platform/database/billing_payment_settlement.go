@@ -3,11 +3,16 @@ package database
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/txyyddss/Remna-User-Panel/internal/model"
-	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
+	"strconv"
+	"strings"
 	"time"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 )
 
 // CancelPaymentOrder marks a user-owned unpaid attempt cancelled. It deliberately
@@ -113,9 +118,20 @@ func (s *Store) SettlePayment(ctx context.Context, provider, dedupeKey, payloadH
 	if _, err := insertLedgerTx(ctx, tx, order.UserID, order.TXBMinor, balance, "payment_credit", order.ID, provider+" payment", now); err != nil {
 		return model.PaymentOrder{}, false, err
 	}
-	// The terminal order state plus provider trade/charge identifiers are the
-	// durable replay guard. The webhook row is only a transient concurrency
-	// claim and is removed in the same successful settlement transaction.
+	announcement, err := paymentSuccessAnnouncementTx(ctx, tx, order)
+	if err != nil {
+		return model.PaymentOrder{}, false, err
+	}
+	if err := insertOutboxTx(ctx, tx, jobpayload.PaymentSuccessAnnouncementKind, announcement, now, now); err != nil {
+		return model.PaymentOrder{}, false, fmt.Errorf("queue payment success announcement: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO payment_callback_tombstones(provider,dedupe_key,order_id,
+		payload_hash,received_at,processed_at) VALUES(?,?,?,?,?,?)`, provider, dedupeKey, order.ID,
+		payloadHash, stamp(now), stamp(now)); err != nil {
+		return model.PaymentOrder{}, false, fmt.Errorf("preserve payment callback tombstone: %w", err)
+	}
+	// The webhook row is only a transient concurrency claim. The compact
+	// callback tombstone remains after terminal payment detail is pruned.
 	if _, err := tx.ExecContext(ctx, `DELETE FROM webhook_events WHERE id=?`, eventID); err != nil {
 		return model.PaymentOrder{}, false, err
 	}
@@ -128,4 +144,30 @@ func (s *Store) SettlePayment(ctx context.Context, provider, dedupeKey, payloadH
 
 func paymentOrderTx(ctx context.Context, tx *sql.Tx, id string) (model.PaymentOrder, error) {
 	return scanPaymentOrder(tx.QueryRowContext(ctx, paymentSelect+` WHERE id=?`, id))
+}
+
+func paymentSuccessAnnouncementTx(ctx context.Context, tx *sql.Tx, order model.PaymentOrder) (string, error) {
+	var telegramUsername string
+	var localUsername sql.NullString
+	var telegramID int64
+	if err := tx.QueryRowContext(ctx, `SELECT telegram_username,username,telegram_id FROM users WHERE id=?`, order.UserID).
+		Scan(&telegramUsername, &localUsername, &telegramID); err != nil {
+		return "", fmt.Errorf("load payment announcement username: %w", err)
+	}
+	username := strings.TrimSpace(telegramUsername)
+	if username != "" {
+		username = "@" + strings.TrimLeft(username, "@")
+	} else if localUsername.Valid && strings.TrimSpace(localUsername.String) != "" {
+		username = strings.TrimSpace(localUsername.String)
+	} else {
+		username = "telegram:" + strconv.FormatInt(telegramID, 10)
+	}
+	payload, err := json.Marshal(jobpayload.PaymentSuccessAnnouncement{
+		OrderID: order.ID, Provider: order.Provider, Channel: order.ProviderRail, TXBMinor: order.TXBMinor,
+		PayableAmount: order.PayableAmount, PayableCurrency: order.PayableCurrency, Username: username,
+	})
+	if err != nil {
+		return "", fmt.Errorf("encode payment success announcement: %w", err)
+	}
+	return string(payload), nil
 }

@@ -103,9 +103,6 @@ func (s *Service) AuthorizeEvent(ctx context.Context, event ProviderEvent) (mode
 // Settle commits a previously cryptographically verified provider event exactly once.
 
 func (s *Service) Settle(ctx context.Context, event ProviderEvent) (model.PaymentOrder, bool, error) {
-	if _, err := s.ValidateEvent(ctx, event); err != nil {
-		return model.PaymentOrder{}, false, err
-	}
 	if event.DedupeKey == "" {
 		event.DedupeKey = event.TradeID
 	}
@@ -116,7 +113,31 @@ func (s *Service) Settle(ctx context.Context, event ProviderEvent) (model.Paymen
 		digest := sha256.Sum256([]byte(event.Provider + "\x00" + event.DedupeKey + "\x00" + event.OrderID + "\x00" + event.PayableAmount))
 		event.PayloadHash = hex.EncodeToString(digest[:])
 	}
-	return s.repository.SettlePayment(ctx, event.Provider, event.DedupeKey, event.PayloadHash, event.OrderID, event.TradeID, event.ChargeID, s.now().UTC())
+	if _, err := s.ValidateEvent(ctx, event); err != nil {
+		replays, ok := s.repository.(interface {
+			PaymentCallbackReplay(context.Context, string, string, string) (bool, error)
+		})
+		if !errors.Is(err, database.ErrNotFound) || !ok {
+			return model.PaymentOrder{}, false, err
+		}
+		replayed, replayErr := replays.PaymentCallbackReplay(ctx, event.Provider, event.DedupeKey, event.OrderID)
+		if replayErr != nil {
+			return model.PaymentOrder{}, false, replayErr
+		}
+		if !replayed {
+			return model.PaymentOrder{}, false, err
+		}
+		return model.PaymentOrder{ID: event.OrderID, Provider: event.Provider, Status: "paid"}, false, nil
+	}
+	order, changed, err := s.repository.SettlePayment(ctx, event.Provider, event.DedupeKey, event.PayloadHash,
+		event.OrderID, event.TradeID, event.ChargeID, s.now().UTC())
+	if err != nil {
+		return model.PaymentOrder{}, false, err
+	}
+	if err := s.resolvePaymentCreateOperation(ctx, event); err != nil {
+		return order, changed, err
+	}
+	return order, changed, nil
 }
 
 // OrderForUser returns durable status for payment-sheet polling.

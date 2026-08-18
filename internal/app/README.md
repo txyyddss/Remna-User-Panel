@@ -16,7 +16,13 @@ waits for the scheduler and provider workers to finish before returning.
 stopped.
 
 - `app.go` defines the application container and composes configuration, persistence, domain services, adapters, workers, and HTTP delivery.
+- `member_workflows.go` composes member connection/reset/refund services and registers member and administrator provider-operation kinds on one dispatcher.
+- `outbox_composition.go` registers core jobs, durable payment announcements, and the single shared provider-operation dispatcher.
+- `payment_operations.go` registers durable payment create and cancellation handlers on that dispatcher.
+- `mutation_operation_composition.go` registers subscription, Emby, questionnaire, retry, and refund command handlers.
+- `payment_refund_adapter.go` reconciles ambiguous Telegram Stars refunds from authoritative transaction history.
 - `application_lifecycle.go` starts and stops provider queues, the scheduler, HTTP serving, and database resources in dependency order.
+- Startup upload reconciliation receives an independent ten-minute context so a large verified candidate is not truncated by the ordinary bootstrap deadline.
 - `bootstrap_settings.go` validates and persists the encrypted provider settings required at first startup.
 - `provider_queues.go` configures, starts, and shuts down the independent Remnawave and Emby admission queues.
 - `adapters.go` implements Telegram identity/membership and payment-provider bridges used by domain services.
@@ -28,9 +34,19 @@ stopped.
 - `node_multiplier_cache.go` owns the copied five-minute node-multiplier cache shared by queued Remnawave projections and rollover usage mapping.
 - `node_multiplier_cache_test.go` covers cache expiry at the five-minute boundary.
 - `remna_entitlements_adapter.go` implements queued entitlement, traffic reset, removal, and rollover operations.
+- `remna_member_operations_adapter.go` implements queued connection, reconciliation, usage, quiesce, and restore calls.
+- `remna_statistics_adapter.go` implements queue-backed Remnawave digest, node,
+  traffic, and host operations for product statistics.
 - `emby_adapter.go` implements queued Emby client creation, account operations, policy updates, and metadata lookups.
 - `scheduler.go` runs automatic due-renewal revalidation before entitlement transitions, plus recurring outbox, rollover, backup, and maintenance work until application cancellation.
+- `statistics_scheduler.go` schedules the 30-minute statistics refresh and
+  queued host-multiplier reconciliation.
+- `statistics_setup.go` composes the statistics service and its provider adapter.
+- The scheduler delegates the daily backup-gated cleanup order to
+  `internal/maintenance`; the durable local-date lease prevents overlapping
+  runs across process instances.
 - `telegram_scheduler.go` configures Telegram delivery and reconciles Telegram Stars transactions.
+- `telegram_command_registration.go` installs localized private-chat and configured-group command menus.
 - `app_test.go` verifies normalized Telegram Stars transaction directions.
 - `adapter_queue_test.go` verifies Remnawave and Emby adapter calls enter their queue before client construction.
 - `remna_entitlements_adapter_test.go` verifies active expiry propagation and the disabled-user far-future expiry.

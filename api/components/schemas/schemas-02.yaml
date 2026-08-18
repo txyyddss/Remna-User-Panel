@@ -62,7 +62,7 @@ PaymentMethod:
 BalanceResponse:
   type: object
   additionalProperties: false
-  required: [balance, paymentMethods]
+  required: [balance, paymentMethods, addAmountLimits]
   properties:
     balance:
       $ref: '../../openapi.yaml#/components/schemas/Money'
@@ -70,10 +70,12 @@ BalanceResponse:
       type: array
       items:
         $ref: '../../openapi.yaml#/components/schemas/PaymentMethod'
+    addAmountLimits:
+      $ref: '../../openapi.yaml#/components/schemas/BillingAmountLimits'
 
 ResetStrategy:
   type: string
-  enum: [DAY, WEEK, MONTH, MONTH_ROLLING]
+  enum: [DAY, WEEK, MONTH_ROLLING]
 
 BroadbandSquadProfile:
   type: object

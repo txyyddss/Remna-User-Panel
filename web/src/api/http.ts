@@ -66,8 +66,7 @@ async function responseError(response: Response): Promise<ApiError> {
   return new ApiError(response.status, body)
 }
 
-export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const response = await send(path, options)
+async function responsePayload<T>(response: Response): Promise<T> {
   if (!response.ok) throw await responseError(response)
   if (response.status === 204) return undefined as T
   const contentType = response.headers.get('content-type') ?? ''
@@ -78,6 +77,22 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     return (payload as { data: T }).data
   }
   return payload as T
+}
+
+export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  return responsePayload<T>(await send(path, options))
+}
+
+// Backup candidates bypass body signing so the browser never materializes a
+// multi-gigabyte multipart body. The server accepts this one exact route only.
+export async function streamAdminBackupUpload<T>(body: FormData, idempotencyKey: string): Promise<T> {
+  const response = await fetch('/api/v1/admin/backups/upload', {
+    method: 'POST',
+    body,
+    credentials: 'include',
+    headers: { Accept: 'application/json', 'Idempotency-Key': idempotencyKey },
+  })
+  return responsePayload<T>(response)
 }
 
 export async function requestBlob(path: string, options: RequestOptions = {}): Promise<Blob> {

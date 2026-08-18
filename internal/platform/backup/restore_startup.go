@@ -25,8 +25,11 @@ func ApplyPendingRestore(ctx context.Context, databasePath string, supportedMigr
 	if err != nil {
 		return nil, err
 	}
-	if !samePath(marker.DatabasePath, databasePath) || (marker.Version != 1 && marker.Version != 2) {
+	if !samePath(marker.DatabasePath, databasePath) || marker.Version < 1 || marker.Version > 3 {
 		return nil, fmt.Errorf("%w: restore marker target or version is invalid", ErrRestoreConflict)
+	}
+	if marker.Version == 3 && !validRestoreReplayIdentity(marker) {
+		return nil, fmt.Errorf("%w: restore marker replay identity is invalid", ErrRestoreConflict)
 	}
 	if !validStagePath(databasePath, marker.StagedPath, marker.JobID) {
 		return nil, fmt.Errorf("%w: restore staging path is invalid", ErrRestoreConflict)
@@ -55,7 +58,7 @@ func ApplyPendingRestore(ctx context.Context, databasePath string, supportedMigr
 	if err != nil {
 		return nil, recordStartupFailure(databasePath, marker, "failed", fmt.Errorf("hash prepared staged restore: %w", err))
 	}
-	if marker.Version == 2 && !strings.EqualFold(preparedHash, marker.SourceSHA256) {
+	if marker.Version >= 2 && !strings.EqualFold(preparedHash, marker.SourceSHA256) {
 		return nil, recordStartupFailure(databasePath, marker, "failed", errors.New("prepared restore changed during startup preflight"))
 	}
 	marker.SourceSHA256 = preparedHash

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { shallowRef, watch } from 'vue'
+import { useRouter } from 'vue-router'
 
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { useClipboard } from '@/composables/useClipboard'
@@ -7,11 +8,13 @@ import { useClipboard } from '@/composables/useClipboard'
 const props = defineProps<{
   subscriptionUrl?: string | null
   revoking: boolean
+  revokeBlocked: boolean
 }>()
 
 const emit = defineEmits<{ revoke: [] }>()
 const confirmOpen = shallowRef(false)
 const { copied, copy } = useClipboard()
+const router = useRouter()
 
 watch(() => props.revoking, (next, previous) => {
   if (previous && !next) confirmOpen.value = false
@@ -19,6 +22,10 @@ watch(() => props.revoking, (next, previous) => {
 
 function copyLink(): void {
   if (props.subscriptionUrl) void copy(props.subscriptionUrl)
+}
+
+function openConnections(): void {
+  void router.push('/connections').catch(() => undefined)
 }
 </script>
 
@@ -43,10 +50,21 @@ function copyLink(): void {
         />
       </div>
       <UButton
+        block
+        color="neutral"
+        variant="outline"
+        icon="i-ph-devices"
+        trailing-icon="i-ph-arrow-right"
+        :label="$t('connections.manage')"
+        data-haptic
+        @click="openConnections"
+      />
+      <UButton
         class="home-subscription__revoke"
         color="error"
         variant="ghost"
         icon="i-ph-trash"
+        :disabled="revokeBlocked"
         :label="$t('common.revoke')"
         data-haptic
         @click="confirmOpen = true"

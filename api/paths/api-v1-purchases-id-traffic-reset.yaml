@@ -1,0 +1,29 @@
+get:
+  tags: [Billing]
+  operationId: quotePurchaseTrafficReset
+  summary: Quote a paid traffic reset from immutable purchase pricing
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+  responses:
+    '200':
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/TrafficResetQuote' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }
+post:
+  tags: [Billing]
+  operationId: resetPurchaseTraffic
+  summary: Debit and queue a paid traffic reset atomically
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+    - $ref: '../openapi.yaml#/components/parameters/IdempotencyKey'
+  responses:
+    '202':
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/OperationReceipt' }
+    '400': { $ref: '../openapi.yaml#/components/responses/BadRequest' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }
+    '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }

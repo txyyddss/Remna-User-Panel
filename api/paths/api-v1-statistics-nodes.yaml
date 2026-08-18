@@ -1,0 +1,10 @@
+get:
+  tags: [Dashboard]
+  operationId: getNodeStatistics
+  summary: Get the shared on-demand ten-second node metrics cache
+  responses:
+    '200':
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/StatisticsNodesSnapshot' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }

@@ -19,6 +19,7 @@ type Repository interface {
 	UserForPurchase(context.Context, string) (model.User, error)
 	UserByID(context.Context, string) (model.User, error)
 	DesiredEntitlement(context.Context, string, time.Time) (*model.Purchase, error)
+	ContinuityEntitlement(context.Context, string, time.Time) (*model.Purchase, error)
 	PurchaseTrafficResetPhase(context.Context, string) (string, error)
 	AdvancePurchaseTrafficReset(context.Context, string, string, string, time.Time) error
 	MarkPurchaseSyncResult(context.Context, string, bool, time.Time) error
@@ -85,6 +86,8 @@ func (w *Worker) HandleOutbox(ctx context.Context, job model.OutboxJob) error {
 
 func (w *Worker) process(ctx context.Context, job model.OutboxJob) error {
 	switch job.Kind {
+	case outbox.ContinuityKind:
+		return w.prepareContinuity(ctx, job)
 	case "remna_apply_entitlement":
 		purchaseID, err := outbox.TargetID(job, "purchaseId")
 		if err != nil {

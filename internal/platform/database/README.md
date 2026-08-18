@@ -40,6 +40,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `catalog_queries.go` — combo reads, scans, and normalized squad UUID lists.
 - `catalog_squads.go` — sparse local merchandising and normalized profile overrides for upstream squads.
 - `billing.go` — purchase normalization, quotes, creation, pricing, and debit helpers.
+- `billing_bounds.go` persists the singleton inclusive Add TXB range and atomically audits administrator updates.
 - `billing_renewal.go` — renewal quotes, contiguous batch creation, and idempotent replay.
 - `automatic_renewal_plan.go`, `automatic_renewal_coupon.go`, `automatic_renewal_state.go`, and `automatic_renewal_commit.go` — automatic-renewal current pricing, attached-coupon policy, owner state/failure records, and atomic one-successor debits.
 - `billing_purchase_helpers.go` — stock reservation checks, purchase fingerprints, catalog row loaders, and balance debit helpers.
@@ -52,8 +53,12 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
   and row scanning.
 - `billing_purchase_cancellation.go` — owner-scoped queued cancellation with
   atomic status transition, TXB refund, and immutable ledger entry.
-- `billing_payment_settlement.go` — customer cancellation and idempotent provider
-  settlement transitions.
+- `billing_payment_settlement.go` — customer cancellation, idempotent provider
+  settlement transitions, and atomic immutable payment-announcement queueing.
+- `payment_operations.go` atomically stores checkout/cancellation intents with provider-operation receipts.
+- `payment_operation_resolution.go` resolves checkout receipts from authoritative paid callbacks without another provider call.
+- `billing_callback_tombstones.go` keeps provider callback replays idempotent
+  after terminal payment detail has been compacted.
 - `billing_courtesy.go` — atomic terminal-payment courtesy credits with linked
   immutable ledger and audit records.
 - `billing_refunds.go` — transactional refunds, compensating ledger entries, and
@@ -68,6 +73,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `activity.go` — game configuration, bets, and daily check-ins.
 - `activity_draws.go` — lucky-draw configuration, listing, and atomic play results.
 - `activity_history.go` — combined activity history and group-message rewards.
+- `activity_group_facts.go` stores identity-independent, deduplicated configured-group message facts for cumulative statistics.
 - `activity_queries.go` — game, bet, check-in, draw, and result scanners.
 - `activity_extensions.go` — durable subscription-extension credits and activation
   application.
@@ -87,12 +93,40 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `outbox_jobs.go` — outbox claim, completion, retry, deletion, recovery, listing,
   scanning, and persisted-error sanitization.
 - `purchase_sync.go` — entitlement synchronization and traffic-reset phase state.
+- `questionnaire_operations.go` atomically confirms an import with its provider-operation receipt.
+- `emby_setup.go` owns the shared atomic setup debit, sealed state, and optional legacy outbox transaction.
+- `emby_operations.go` atomically binds setup and reviewed retry state to one provider-operation job.
+- `outbox_retry_operations.go` atomically reactivates a target job and completes its retry receipt.
+- `payment_refund_resolution.go` closes only open Stars refund receipts from authoritative callback evidence.
+- `member_operation_begin.go` and `member_operation_validation.go` atomically validate and create member reset/refund commands.
+- `member_reset_compensation.go` credits a failed paid-reset debit exactly once with terminal receipt state.
+- `member_refund_commit.go` atomically credits a first-term refund and advances the independent queued timeline.
+- `provider_operations.go`, `provider_operation_lifecycle.go`, `provider_operation_queries.go`, and `provider_operation_items.go` persist provider-neutral receipts, items, attempts, and replay facts.
+- `admin_entitlement_edit.go`, `admin_entitlement_refund.go`, and `admin_combo_replacement.go` atomically persist audited administrator mutations with their provider operations.
+- `admin_bulk_query.go`, `admin_bulk_shift.go`, and `admin_bulk_extension.go` preview inclusive-OR active targets, deduplicate users, shift queued successors, and create one durable bulk job.
+- `admin_user_operations.go` and `admin_user_refunds.go` supply the aggregate profile's open-operation and refund projections.
+- `admin_operation_resolution.go` atomically resolves review-required operations, stores replay fingerprints, and appends the audit event.
+- `admin_workflow_types.go` defines shared aggregate and administrator workflow persistence records.
+- `connection_scans.go` and `connection_scan_lifecycle.go` persist metadata-only provider scan progress.
+- `maintenance_runs.go` acquires the configured local-day maintenance lease and records backup-gated cleanup completion.
 - `administration_records.go` — audit events, administrator user lists, and backup
   run records.
 - `rollover.go` — durable rollover processing and finalization.
 - `payment_profiles.go` — provider-account profile masking and encrypted credential persistence with per-account channel lists.
 - `retention.go` — bounded cleanup of aged operational records.
+- `retention_activity_rollups.go`, `retention_payment_rollups.go`, and
+  `retention_purchase_rollups.go` preserve compact activity, payment, purchase,
+  and per-member rollover facts before pruning.
+- `retention_compaction.go` coordinates all backup-gated cleanup writes in one transaction.
+- `continuity.go` — three-minute queued-entitlement preparation jobs and
+  provider-expiry continuity projections.
 - `statistics.go` — catalog and activity administrator statistics.
+- `product_statistics.go` calculates range-free KPIs across live and compacted
+  facts, immutable spending flows, and database/WAL size.
+- `product_statistics_catalog.go` calculates active combo and squad distributions.
+- `product_statistics_payments.go` combines live and compacted payment status facts.
+- `product_statistics_usage.go` selects one current non-admin member combo for live weighted usage projection.
+- `statistics_snapshots.go` persists independent last-good statistics partitions.
 - `destructive.go` — audited feature deletion transactions.
 - `restore.go` — restore snapshot preparation and high-level validation.
 - `restore_schema.go` — canonical schema-shape types and database introspection.
@@ -103,9 +137,13 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 
 - `store_test.go` — core users, catalog guards, and store behavior.
 - `billing_purchase_test.go` — purchase creation, quoting, and idempotency.
+- `billing_bounds_test.go` covers default and inclusive administrator payment bounds.
+- `billing_renewal_core_gross_test.go` covers immutable purchase-time core gross pricing for renewal lineages.
 - `automatic_renewal_store_test.go` and `automatic_renewal_coupon_test.go` — automatic-renewal defaults, toggle/idempotency/failure behavior, and attached recurring-discount policy.
 - `billing_balance_test.go` — concurrent and bounded balance mutations.
 - `billing_payment_test.go` — payment settlement and deduplication.
+- `payment_callback_tombstones_test.go` covers replay protection after terminal
+  payment compaction.
 - `billing_refund_test.go` — refund, cancellation, and debt behavior.
 - `billing_test_helpers_test.go` — shared billing fixtures and payment constructors.
 - `activity_bet_test.go` — atomic bet outcomes and replay.
@@ -117,7 +155,18 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `questionnaire_features_test.go` — questionnaire CSV analysis and settlement.
 - `emby_test.go` — Emby setup, provisioning, retry, and refund atomicity.
 - `rollover_test.go` — rollover transitions and calculations.
+- `release1_commerce_migration_test.go` covers rolling-month conversion, immutable pricing backfill, and new release-one persistence tables.
 - `retention_test.go` — retained operational-record cleanup behavior.
+- `maintenance_runs_test.go` covers local-day locking and backup-gated maintenance state.
+- `continuity_test.go` covers three-minute provider-expiry preparation without an access gap.
+- `connection_scans_test.go` covers metadata-only scan lifecycle and expiry.
+- `member_operations_test.go` covers paid reset compensation and zero-usage first-term refunds.
+- `provider_operations_test.go` covers receipt state transitions, replay conflicts, and ambiguous outcomes.
+- `admin_entitlement_workflows_test.go` covers optimistic edits, immutable pricing, exactly-once credits, and zero-TXB replacements.
+- `admin_bulk_workflows_test.go` covers inclusive-OR matching, active-user deduplication, and equal queued-term shifts.
+- `admin_operation_projection_test.go` covers owned and bulk-target open-operation aggregation.
+- `product_statistics_test.go` verifies administrators are excluded from member population, spend, state, and active-catalog metrics.
+- `admin_workflow_test_helpers_test.go` contains shared administrator workflow fixtures and purchase builders.
 - `restore_test.go` — restore validation and schema compatibility.
 - `ledger_page_test.go` — cursor pagination order and validation.
 - `squad_profiles_test.go` — typed profile round trips and legacy Markdown preservation.

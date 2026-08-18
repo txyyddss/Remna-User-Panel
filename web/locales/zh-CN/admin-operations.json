@@ -5,6 +5,18 @@
     "working": "处理中"
   },
   "adminSettings": {
+    "amountLimits": {
+      "title": "添加 TXB 限额",
+      "copy": "所有支付渠道均使用此包含边界的金额范围。",
+      "minimum": "最低金额",
+      "minimumHint": "成员可提交的最小充值金额。",
+      "maximum": "最高金额",
+      "maximumHint": "成员可提交的最大充值金额。",
+      "rangeInvalid": "最高金额必须大于或等于最低金额。",
+      "save": "保存限额",
+      "saved": "添加 TXB 限额已保存。",
+      "updated": "最后更新于 {date}"
+    },
     "title": "系统设置",
     "copy": "密钥只写入，保存后继续保持遮罩。",
     "save": "保存设置",
@@ -25,6 +37,7 @@
     "settingLabels": {
       "telegram_group_chat_id": "Telegram 群组聊天 ID",
       "telegram_channel_chat_id": "Telegram 频道聊天 ID",
+      "telegram_payment_announcement_chat_id": "支付公告频道 ID",
       "telegram_webhook_secret": "Telegram Webhook 密钥",
       "remnawave_base_url": "Remnawave 基础地址",
       "remnawave_api_token": "Remnawave API 令牌",

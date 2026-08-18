@@ -2,7 +2,9 @@ put:
   tags: [Emby]
   operationId: updateEmbyPreferences
   summary: Replace the allowed Emby rating and library preferences
-  description: The server fetches the current upstream policy and overlays only approved preference fields plus mandatory restrictions.
+  description: The worker fetches the current upstream policy, applies the exact approved projection, and verifies it before completing.
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/IdempotencyKey'
   requestBody:
     required: true
     content:
@@ -10,14 +12,18 @@ put:
         schema:
           $ref: '../openapi.yaml#/components/schemas/EmbyPreferencesRequest'
   responses:
-    '200':
-      description: Updated safe account projection.
+    '202':
+      description: Preference update queued or replayed.
       content:
         application/json:
           schema:
-            $ref: '../openapi.yaml#/components/schemas/EmbyAccount'
+            $ref: '../openapi.yaml#/components/schemas/OperationReceipt'
+    '400':
+      $ref: '../openapi.yaml#/components/responses/BadRequest'
     '401':
       $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '409':
+      $ref: '../openapi.yaml#/components/responses/Conflict'
     '422':
       $ref: '../openapi.yaml#/components/responses/Unprocessable'
     '502':

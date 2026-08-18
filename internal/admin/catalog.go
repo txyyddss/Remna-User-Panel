@@ -16,7 +16,7 @@ func (s *Service) SaveCombo(ctx context.Context, actorID string, input database.
 		input.RolloverMinRemainingBPS < 0 || input.RolloverMinRemainingBPS > 10_000 {
 		return model.Combo{}, errors.New("invalid combo fields")
 	}
-	if input.ResetStrategy != "DAY" && input.ResetStrategy != "WEEK" && input.ResetStrategy != "MONTH" && input.ResetStrategy != "MONTH_ROLLING" {
+	if input.ResetStrategy != "DAY" && input.ResetStrategy != "WEEK" && input.ResetStrategy != "MONTH_ROLLING" {
 		return model.Combo{}, errors.New("invalid reset strategy")
 	}
 	live, err := s.liveSquads(ctx)

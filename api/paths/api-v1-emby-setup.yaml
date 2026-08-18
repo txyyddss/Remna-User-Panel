@@ -3,6 +3,8 @@ post:
   operationId: setupEmbyAccount
   summary: Debit and queue durable Emby provisioning
   description: The password is write-only, encrypted for the provisioning saga, and erased after terminal completion.
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/IdempotencyKey'
   requestBody:
     required: true
     content:
@@ -11,11 +13,13 @@ post:
           $ref: '../openapi.yaml#/components/schemas/EmbySetupRequest'
   responses:
     '202':
-      description: Setup was debited atomically and queued.
+      description: Setup command queued or replayed.
       content:
         application/json:
           schema:
-            $ref: '../openapi.yaml#/components/schemas/EmbyAccount'
+            $ref: '../openapi.yaml#/components/schemas/OperationReceipt'
+    '400':
+      $ref: '../openapi.yaml#/components/responses/BadRequest'
     '401':
       $ref: '../openapi.yaml#/components/responses/Unauthorized'
     '409':

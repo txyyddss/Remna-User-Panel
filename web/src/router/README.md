@@ -23,3 +23,8 @@ failure never changes or reloads the Telegram launch URL.
 `/payment-result` is an immersive provider-return landing route. Telegram opens it with owner-scoped durable order polling; a provider redirect opened in a regular browser uses the short-lived capability-return status endpoint and never boots the protected app shell. Failed or expired Telegram orders hand their ID to Home for an owner-scoped reissue fetch.
 
 `/balance` remains a compatibility redirect to `/home?topUp=1`; Home owns the real funding sheet.
+
+`/statistics` is a protected member route reached from Around TX and uses the
+shared shell back behavior instead of changing the Telegram launch URL.
+
+`/connections` is a protected thin route. The application shell owns route-level native Back, while the selected-IP confirmation temporarily takes overlay ownership and restores the route owner when it closes.

@@ -1,0 +1,20 @@
+post:
+  tags: [Admin]
+  operationId: replaceAdminUserCombo
+  summary: Replace active combo and add-ons without a TXB movement
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/UserID'
+    - $ref: '../openapi.yaml#/components/parameters/IdempotencyKey'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema: { $ref: '../openapi.yaml#/components/schemas/ComboReplacementRequest' }
+  responses:
+    '202':
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/OperationReceipt' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }

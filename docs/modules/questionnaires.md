@@ -14,7 +14,7 @@ Upload accepts one multipart `file`, at most 5 MiB. The parser accepts UTF-8 wit
 
 An administrator then selects one exact header as the validation-code column. Analysis is read-only and reports matched, duplicate, unknown, malformed, and already-awarded counts. The generated ASCII codes are trimmed and compared case-insensitively; after the first known match, later duplicate rows do not produce another candidate award.
 
-Confirmation changes the import to queued state and inserts a `questionnaire_settlement` outbox job in the same transaction. The kind-specific worker settles known, not-yet-rewarded participants. Each award record, TXB ledger credit, participant status update, and import progress update commits atomically with a semantic unique reference. Worker retries return the stored report and cannot duplicate credit.
+Confirmation requires `Idempotency-Key`, changes the import to queued state, and inserts a `questionnaire_settlement` provider-operation receipt and its shared outbox job in the same transaction. The kind-specific handler settles known, not-yet-rewarded participants and returns a sanitized operation result. Each award record, TXB ledger credit, participant status update, and import progress update commits atomically with a semantic unique reference. Interrupted local settlement may replay because the SQLite transaction and award references are atomic; it cannot duplicate credit.
 
 Only one questionnaire can be active. Activation retires the prior active definition transactionally. Upload, analysis, confirmation, and polling verify that the import belongs to the questionnaire in the route.
 

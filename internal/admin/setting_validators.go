@@ -41,6 +41,13 @@ func validateInteger(value string) error {
 	return nil
 }
 
+func validateOptionalInteger(value string) error {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	return validateInteger(value)
+}
+
 func validateNonnegativeInteger(value string) error {
 	parsed, err := strconv.ParseInt(value, 10, 64)
 	if err != nil || parsed < 0 {

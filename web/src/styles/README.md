@@ -6,6 +6,7 @@
 - `foundation-02.css` defines shared controls, surfaces, and utility patterns.
 - `shell-01.css` styles the application shell and primary navigation.
 - `shell-02.css` styles page framing, notices, and session states.
+- `shell-03.css` styles the fullscreen-only localized greeting and its safe-area reserve.
 - `onboarding-01.css` styles onboarding structure and progress.
 - `onboarding-02.css` styles onboarding forms and agreements.
 - `onboarding-03.css` styles onboarding completion and supporting states.
@@ -16,6 +17,9 @@
 - `home-02.css` styles traffic details, ride facts, and Around TX links on Home.
 - `home-03.css` styles the compact renewal term slider and separated quote total/date block.
 - `home-04.css` styles the accessible Your ride rollover flip card, its concise current-term detail, size-safe face swap, and reduced-motion fallback.
+- `connections-01.css` styles the responsive scan progress, node/IP rows, empty states, and selected connection confirmation detail.
+- `statistics-01.css` styles the statistics page structure, KPI panels, node cards, and compact states.
+- `statistics-02.css` styles the responsive SVG donut, labeled pies, nested payment rings, traffic tooltips, legends, and normalized stacked bars.
 - `catalog-01.css` styles catalog browsing and plan presentation.
 - `catalog-02.css` styles catalog selection and checkout details.
 - `billing-01.css` styles funding controls.
@@ -24,6 +28,7 @@
 - `admin-01.css` styles administrative navigation and section layouts.
 - `admin-02.css` styles administrative forms, lists, and data surfaces.
 - `admin-03.css` styles administrative drawers and review workflows.
+- `admin-04.css` styles aggregate user profiles, bulk previews, operation resolution, and streamed backup upload.
 - `motion-01.css` defines short transitions and state motion.
 - `responsive-01.css` adapts the shell and primary layouts.
 - `responsive-02.css` adapts member and administrative flows.

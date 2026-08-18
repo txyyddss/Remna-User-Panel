@@ -1,8 +1,11 @@
 import { detectTelegramWebApp } from './telegramContext'
 import { installHapticClickFeedback } from './telegramHaptics'
+import { requestTelegramFullscreen, syncTelegramFullscreen } from './telegramFullscreen'
 
 export { isTelegramUserAgent, waitForTelegramContext } from './telegramContext'
 export { haptic, installHapticClickFeedback, notifyHaptic, notifyBetOutcome, type HapticImpact } from './telegramHaptics'
+export { telegramFullscreenState } from './telegramFullscreen'
+export { openExternalLink, openTelegramInvoice } from './telegramLinks'
 
 export function getTelegramWebApp(): TelegramWebApp | undefined {
   return window.Telegram?.WebApp
@@ -91,7 +94,7 @@ export async function getTelegramInitData(timeoutMs = 3000): Promise<string | un
   return undefined
 }
 
-const telegramEvents = ['themeChanged', 'viewportChanged'] as const
+const telegramEvents = ['themeChanged', 'viewportChanged', 'fullscreenChanged', 'fullscreenFailed'] as const
 const safeAreaEvents = ['safeAreaChanged', 'contentSafeAreaChanged'] as const
 
 function syncTelegramEnvironment(): void {
@@ -142,6 +145,7 @@ export function initializeTelegram(): () => void {
   const syncAll = () => {
     const current = getTelegramWebApp()
     if (current) syncTelegramColors(current)
+    syncTelegramFullscreen(current)
     syncTelegramEnvironment()
   }
 
@@ -164,7 +168,7 @@ export function initializeTelegram(): () => void {
     if (next !== app) {
       unbind()
       app = next
-      events = supportsTelegramVersion('8.0') ? [...telegramEvents, ...safeAreaEvents] : telegramEvents
+      events = supportsTelegramVersion('8.0') ? [...telegramEvents, ...safeAreaEvents] : telegramEvents.slice(0, 2)
       for (const event of events) if (app.onEvent) tryTelegramCall(() => app?.onEvent?.(event, syncAll))
       tryTelegramCall(() => app?.expand())
     }
@@ -178,22 +182,15 @@ export function initializeTelegram(): () => void {
     unbind()
     window.removeEventListener('resize', syncTelegramEnvironment)
     disposeHapticClicks()
+    syncTelegramFullscreen(undefined)
   }
 }
 export function markTelegramReady(): void {
   syncTelegramEnvironment()
   const app = getTelegramWebApp()
-  if (app) tryTelegramCall(() => app.ready())
-}
-export function openExternalLink(url: string): void {
-  const app = getTelegramWebApp()
-  if (app && supportsTelegramVersion('6.1')) {
-    if (url.startsWith('https://t.me/') && tryTelegramCall(() => app.openTelegramLink(url))) return
-    if (tryTelegramCall(() => app.openLink(url))) return
+  if (app) {
+    tryTelegramCall(() => app.ready())
+    syncTelegramFullscreen(app)
+    if (supportsTelegramVersion('8.0')) requestTelegramFullscreen(app)
   }
-  tryTelegramCall(() => window.open(url, '_blank', 'noopener,noreferrer'))
-}
-export function openTelegramInvoice(url: string): boolean {
-  const app = getTelegramWebApp()
-  return Boolean(app && supportsTelegramVersion('6.1') && tryTelegramCall(() => app.openInvoice(url)))
 }

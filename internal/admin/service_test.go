@@ -41,7 +41,7 @@ func TestAdminSettingsAreForwardedAndAudited(t *testing.T) {
 func TestAdminSaveComboValidationAndAudit(t *testing.T) {
 	t.Parallel()
 
-	valid := database.ComboInput{Name: " Monthly ", PriceTXBMinor: 1000, ValidityDays: 30, TrafficLimitBytes: 1024, ResetStrategy: "MONTH", Active: true}
+	valid := database.ComboInput{Name: " Monthly ", PriceTXBMinor: 1000, ValidityDays: 30, TrafficLimitBytes: 1024, ResetStrategy: "MONTH_ROLLING", Active: true}
 	invalid := []struct {
 		name   string
 		mutate func(*database.ComboInput)
@@ -52,6 +52,7 @@ func TestAdminSaveComboValidationAndAudit(t *testing.T) {
 		{name: "excess validity", mutate: func(input *database.ComboInput) { input.ValidityDays = 3651 }},
 		{name: "zero traffic", mutate: func(input *database.ComboInput) { input.TrafficLimitBytes = 0 }},
 		{name: "reset strategy", mutate: func(input *database.ComboInput) { input.ResetStrategy = "YEAR" }},
+		{name: "legacy calendar month", mutate: func(input *database.ComboInput) { input.ResetStrategy = "MONTH" }},
 	}
 	for _, test := range invalid {
 		t.Run(test.name, func(t *testing.T) {

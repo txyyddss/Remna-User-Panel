@@ -5,13 +5,21 @@ post:
   parameters:
     - $ref: '../openapi.yaml#/components/parameters/ResourceID'
     - $ref: '../openapi.yaml#/components/parameters/ImportID'
+    - $ref: '../openapi.yaml#/components/parameters/IdempotencyKey'
   responses:
     '202':
-      description: Settlement queued; poll the import resource for its report.
+      description: Settlement queued or replayed; poll the import resource for its report.
       content:
         application/json:
           schema:
-            $ref: '../openapi.yaml#/components/schemas/QuestionnaireImportPreview'
+            type: object
+            required: [operation, import]
+            properties:
+              operation:
+                $ref: '../openapi.yaml#/components/schemas/OperationReceipt'
+              import:
+                $ref: '../openapi.yaml#/components/schemas/QuestionnaireImportPreview'
+    '400': { $ref: '../openapi.yaml#/components/responses/BadRequest' }
     '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
     '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
     '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }

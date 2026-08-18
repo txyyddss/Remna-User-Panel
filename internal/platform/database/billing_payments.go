@@ -35,47 +35,6 @@ func (s *Store) CreatePaymentOrder(ctx context.Context, order model.PaymentOrder
 		WHERE status IN ('creating','pending') AND cancelled_at IS NULL AND expires_at<=?`, stamp(now), stamp(now)); err != nil {
 		return model.PaymentOrder{}, fmt.Errorf("expire stale payment orders before insert: %w", err)
 	}
-	var count int
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM payment_orders`).Scan(&count); err != nil {
-		return model.PaymentOrder{}, fmt.Errorf("count payment orders: %w", err)
-	}
-	pruneCount := count - 199
-	if pruneCount > 0 {
-		rows, err := tx.QueryContext(ctx, `SELECT id FROM payment_orders
-			WHERE status IN ('paid','expired','failed','refunded') OR (cancelled_at IS NOT NULL AND expires_at<=?)
-			ORDER BY created_at,id LIMIT ?`, stamp(now), pruneCount)
-		if err != nil {
-			return model.PaymentOrder{}, fmt.Errorf("select prunable payment orders: %w", err)
-		}
-		idsToDelete := make([]string, 0, pruneCount)
-		for rows.Next() {
-			var id string
-			if err := rows.Scan(&id); err != nil {
-				_ = rows.Close()
-				return model.PaymentOrder{}, fmt.Errorf("scan prunable payment order: %w", err)
-			}
-			idsToDelete = append(idsToDelete, id)
-		}
-		if err := rows.Err(); err != nil {
-			_ = rows.Close()
-			return model.PaymentOrder{}, fmt.Errorf("iterate prunable payment orders: %w", err)
-		}
-		_ = rows.Close()
-		if len(idsToDelete) != pruneCount {
-			return model.PaymentOrder{}, ErrPaymentCapacity
-		}
-		for _, id := range idsToDelete {
-			if _, err := tx.ExecContext(ctx, `DELETE FROM webhook_events WHERE order_id=?`, id); err != nil {
-				return model.PaymentOrder{}, fmt.Errorf("prune payment webhook events: %w", err)
-			}
-			if _, err := tx.ExecContext(ctx, `DELETE FROM refunds WHERE payment_order_id=?`, id); err != nil {
-				return model.PaymentOrder{}, fmt.Errorf("prune payment refunds: %w", err)
-			}
-			if _, err := tx.ExecContext(ctx, `DELETE FROM payment_orders WHERE id=?`, id); err != nil {
-				return model.PaymentOrder{}, fmt.Errorf("prune payment order: %w", err)
-			}
-		}
-	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO payment_orders(id,user_id,provider,method_id,provider_rail,status,txb_minor,payable_amount,payable_currency,rate_snapshot,rate_direction,provider_payload,expires_at,created_at,updated_at)
 		VALUES(?,?,?,?,?,?,?,?,?,?,?,'{}',?,?,?)`, order.ID, order.UserID, order.Provider, order.MethodID, order.ProviderRail, order.Status, order.TXBMinor, order.PayableAmount,
 		order.PayableCurrency, order.RateSnapshot, order.RateDirection, stamp(order.ExpiresAt), stamp(now), stamp(now))

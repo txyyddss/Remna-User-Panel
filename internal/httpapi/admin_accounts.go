@@ -40,12 +40,12 @@ func (s *Server) adminUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) adminUser(w http.ResponseWriter, r *http.Request) {
-	user, err := s.deps.Store.UserByID(r.Context(), chiURLParam(r, "id"))
+	detail, err := s.deps.AdminUsers.UserDetail(r.Context(), chiURLParam(r, "id"))
 	if err != nil {
 		s.adminFailure(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, mapUser(user))
+	writeJSON(w, http.StatusOK, mapAdminUserDetail(detail))
 }
 
 func (s *Server) adminBalanceAdjustment(w http.ResponseWriter, r *http.Request) {

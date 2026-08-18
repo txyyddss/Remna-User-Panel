@@ -15,6 +15,10 @@ func (s *Server) createPaymentOrder(w http.ResponseWriter, r *http.Request) {
 	if !s.requireOnboarded(w, r, user) {
 		return
 	}
+	idempotencyKey, ok := s.requireIdempotencyKey(w, r)
+	if !ok {
+		return
+	}
 	var request struct {
 		MethodID string `json:"methodId"`
 		TXBMinor string `json:"txbMinor"`
@@ -28,7 +32,7 @@ func (s *Server) createPaymentOrder(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_AMOUNT", "TXB amount must be integer hundredths.")
 		return
 	}
-	order, err := s.deps.Billing.CreateOrder(r.Context(), user, strings.ToLower(request.MethodID), amount)
+	operation, err := s.deps.Billing.QueueOrder(r.Context(), user, strings.ToLower(request.MethodID), amount, idempotencyKey)
 	if err != nil {
 		if s.deps.Logger != nil {
 			s.deps.Logger.Warn("payment provider order creation failed", "request_id", middlewareRequestID(r), "method_id", strings.ToLower(request.MethodID), "amount_minor", amount, "error", err)
@@ -37,31 +41,34 @@ func (s *Server) createPaymentOrder(w http.ResponseWriter, r *http.Request) {
 			s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_PAYMENT_ORDER", "The provider or TXB amount is invalid.")
 		} else if errors.Is(err, billing.ErrProviderDisabled) {
 			s.writeError(w, r, http.StatusConflict, "PROVIDER_DISABLED", "This payment provider is not available.")
-		} else if errors.Is(err, database.ErrPaymentCapacity) {
-			w.Header().Set("Retry-After", "30")
-			s.writeError(w, r, http.StatusConflict, "PAYMENT_CAPACITY", "Too many unsettled payment orders. Retry after an existing order settles.")
+		} else if errors.Is(err, database.ErrConflict) {
+			s.writeError(w, r, http.StatusConflict, "IDEMPOTENCY_CONFLICT", "The idempotency key is already used for another payment request.")
 		} else {
-			s.writeError(w, r, http.StatusBadGateway, "PAYMENT_CREATE_FAILED", "The payment order could not be created.")
+			s.writeError(w, r, http.StatusInternalServerError, "PAYMENT_CREATE_FAILED", "The payment operation could not be created.")
 		}
 		return
 	}
-	writeJSON(w, http.StatusCreated, order)
+	writeJSON(w, http.StatusAccepted, operation)
 }
 
 func (s *Server) cancelPaymentOrder(w http.ResponseWriter, r *http.Request) {
-	order, err := s.deps.Billing.Cancel(r.Context(), chiURLParam(r, "id"), currentUser(r).ID)
+	idempotencyKey, ok := s.requireIdempotencyKey(w, r)
+	if !ok {
+		return
+	}
+	operation, err := s.deps.Billing.QueueCancellation(r.Context(), chiURLParam(r, "id"), currentUser(r).ID, idempotencyKey)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrNotFound):
 			s.writeError(w, r, http.StatusNotFound, "PAYMENT_NOT_FOUND", "Payment order not found.")
 		case errors.Is(err, database.ErrConflict):
-			s.writeError(w, r, http.StatusConflict, "PAYMENT_NOT_CANCELLABLE", "This payment can no longer be cancelled.")
+			s.writeError(w, r, http.StatusConflict, "PAYMENT_OPERATION_CONFLICT", "The payment cannot be cancelled or the idempotency key conflicts with another request.")
 		default:
 			s.writeError(w, r, http.StatusInternalServerError, "PAYMENT_CANCEL_FAILED", "The payment could not be cancelled.")
 		}
 		return
 	}
-	writeJSON(w, http.StatusOK, order)
+	writeJSON(w, http.StatusAccepted, operation)
 }
 
 func (s *Server) paymentOrder(w http.ResponseWriter, r *http.Request) {

@@ -1,0 +1,20 @@
+post:
+  tags: [Admin, Operations]
+  operationId: resolveAdminOperation
+  summary: Resolve a genuinely ambiguous provider operation with an audit reason
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/OperationID'
+    - $ref: '../openapi.yaml#/components/parameters/IdempotencyKey'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema: { $ref: '../openapi.yaml#/components/schemas/OperationResolutionRequest' }
+  responses:
+    '200':
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/OperationReceipt' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }

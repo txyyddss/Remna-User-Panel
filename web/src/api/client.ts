@@ -1,14 +1,16 @@
 import type {
   AdminResource,
   BackupRecord,
+  BillingAmountLimits,
   Catalog,
   Dashboard,
   DashboardNodeUsage,
   InviteLink,
   LedgerEntry,
   MembershipState,
+  OperationReceipt,
   Paginated,
-  PaymentOrder,
+  PaymentOperation,
   Purchase,
   PurchaseQuote,
   AutoRenewal,
@@ -16,10 +18,13 @@ import type {
   Session,
   SquadProduct,
   SquadProductWrite,
+  StatisticsNodesSnapshot,
+  StatisticsSnapshot,
 } from './types'
 import type { components } from './generated'
 import type { FeaturePaymentMethod, FeaturePaymentOrder, FeaturePaymentReturnStatus, PaymentReturnProvider } from './features'
 import { request, type QueryValue } from './http'
+import { createUuid } from '@/utils/browserCompatibility'
 
 export { ApiError } from './http'
 
@@ -58,6 +63,18 @@ function paymentProfileWriteBody(profile: AdminPaymentProfileWrite): AdminPaymen
   }
 }
 
+const legacyJobRetryKeys = new Map<string, string>()
+
+async function retryAdminJob(jobId: string, idempotencyKey?: string): Promise<OperationReceipt> {
+  const key = idempotencyKey ?? legacyJobRetryKeys.get(jobId) ?? createUuid()
+  if (!idempotencyKey) legacyJobRetryKeys.set(jobId, key)
+  const receipt = await request<OperationReceipt>(`/api/v1/admin/jobs/${encodeURIComponent(jobId)}/retry`, {
+    method: 'POST', headers: { 'Idempotency-Key': key },
+  })
+  if (!idempotencyKey) legacyJobRetryKeys.delete(jobId)
+  return receipt
+}
+
 export const api = {
   authTelegram: (initData: string) => request<Session>('/api/v1/auth/telegram', {
     method: 'POST',
@@ -92,6 +109,8 @@ export const api = {
   getDashboard: () => request<Dashboard>('/api/v1/dashboard'),
   getDashboardNodeUsage: (start: string, end: string) =>
     request<DashboardNodeUsage>('/api/v1/dashboard/node-usage', { query: { start, end } }),
+  getStatistics: () => request<StatisticsSnapshot>('/api/v1/statistics'),
+  getStatisticsNodes: () => request<StatisticsNodesSnapshot>('/api/v1/statistics/nodes'),
   getCatalog: () => request<Catalog>('/api/v1/catalog'),
   createPurchase: (comboId: string, squadProductIds: string[], couponGrantId: string | undefined, idempotencyKey: string, squadActivationCodes: Record<string, string> = {}) => request<Purchase>('/api/v1/purchases', {
     method: 'POST',
@@ -116,19 +135,22 @@ export const api = {
   setAutoRenewal: (purchaseId: string, enabled: boolean) => request<AutoRenewal>(`/api/v1/purchases/${encodeURIComponent(purchaseId)}/auto-renewal`, {
     method: 'PUT', body: { enabled } satisfies AutoRenewalUpdate,
   }),
-  revokeSubscription: () => request<{ subscriptionUrl: string }>('/api/v1/subscription/revoke', {
-    method: 'POST',
+  revokeSubscription: (idempotencyKey: string) => request<OperationReceipt>('/api/v1/subscription/revoke', {
+    method: 'POST', headers: { 'Idempotency-Key': idempotencyKey },
   }),
-  getBalance: () => request<{ balance: Dashboard['balance']; paymentMethods: FeaturePaymentMethod[] }>('/api/v1/balance'),
-  createPaymentOrder: (methodId: string, txbMinorUnits: string) => request<FeaturePaymentOrder>('/api/v1/payments/orders', {
+  getBalance: () => request<{ balance: Dashboard['balance']; paymentMethods: FeaturePaymentMethod[]; addAmountLimits: BillingAmountLimits }>('/api/v1/balance'),
+  createPaymentOrder: (methodId: string, txbMinorUnits: string, idempotencyKey: string) => request<PaymentOperation>('/api/v1/payments/orders', {
     method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
     body: { methodId, txbMinor: txbMinorUnits },
   }),
   getPaymentOrder: (id: string) => request<FeaturePaymentOrder>(`/api/v1/payments/orders/${encodeURIComponent(id)}`),
   getPaymentReturnStatus: (provider: PaymentReturnProvider, id: string, capability: string) => request<FeaturePaymentReturnStatus>(
     `/api/v1/payments/return/${provider}/${encodeURIComponent(id)}/status`, { query: { capability } },
   ),
-  cancelPaymentOrder: (id: string) => request<FeaturePaymentOrder>(`/api/v1/payments/orders/${encodeURIComponent(id)}/cancel`, { method: 'POST' }),
+  cancelPaymentOrder: (id: string, idempotencyKey: string) => request<PaymentOperation>(`/api/v1/payments/orders/${encodeURIComponent(id)}/cancel`, {
+    method: 'POST', headers: { 'Idempotency-Key': idempotencyKey },
+  }),
   getAdminResource: <T>(resource: AdminResource, query?: Record<string, QueryValue>) =>
     request<T>(`/api/v1/admin/${resource}`, { query }),
   updateAdminSetting: <T>(key: string, value: string) =>
@@ -146,8 +168,9 @@ export const api = {
     request<T>(`/api/v1/admin/${resource}/${encodeURIComponent(id)}`, { method: 'PUT', body }),
   deleteAdminResource: (resource: AdminResource, id: string) =>
     request<void>(`/api/v1/admin/${resource}/${encodeURIComponent(id)}`, { method: 'DELETE' }),
-  refundPayment: (paymentId: string, reason: string) => request<PaymentOrder>(`/api/v1/admin/payments/${encodeURIComponent(paymentId)}/refund`, {
+  refundPayment: (paymentId: string, reason: string, idempotencyKey: string) => request<OperationReceipt>(`/api/v1/admin/payments/${encodeURIComponent(paymentId)}/refund`, {
     method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
     body: { reason } satisfies RefundRequest,
   }),
   getAdminPaymentProfiles: () => request<{ items: AdminPaymentProfile[] }>('/api/v1/admin/payment-profiles'),
@@ -157,9 +180,7 @@ export const api = {
     method: 'POST',
     body: { reason } satisfies ReasonRequest,
   }),
-  retryAdminJob: (jobId: string) => request<void>(`/api/v1/admin/jobs/${encodeURIComponent(jobId)}/retry`, {
-    method: 'POST',
-  }),
+  retryAdminJob,
   deleteAdminJob: (jobId: string) => request<void>(`/api/v1/admin/jobs/${encodeURIComponent(jobId)}`, { method: 'DELETE' }),
   createAdminBackup: () => request<BackupRecord>('/api/v1/admin/backups', { method: 'POST' }),
   adjustBalance: (userId: string, amountMinor: string, reason: string) => request<LedgerEntry>(`/api/v1/admin/users/${encodeURIComponent(userId)}/balance-adjustments`, {

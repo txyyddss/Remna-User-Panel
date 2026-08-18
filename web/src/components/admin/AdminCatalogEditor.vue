@@ -11,11 +11,11 @@ import { moneyFromTxbInput, trafficBytesFromInput, txbInputFromMinor } from '@/u
 const props = defineProps<{ combo?: Combo; squads: readonly SquadProduct[]; busy: boolean }>()
 const emit = defineEmits<{ cancel: []; save: [payload: Record<string, unknown>] }>()
 const { t } = useI18n()
-const resetCadences: ResetCadence[] = ['DAY', 'WEEK', 'MONTH']
+const resetCadences: ResetCadence[] = ['DAY', 'WEEK', 'MONTH_ROLLING']
 const resetItems = computed(() => resetCadences.map((value) => ({ value, label: t(`adminCatalogEditor.reset.${value}`) })))
 const draft = reactive({
   name: '', description: '', priceTxb: '', validityDays: 30, trafficLimitBytes: '',
-  resetStrategy: 'MONTH' as ResetCadence, squadProductIds: [] as string[],
+  resetStrategy: 'MONTH_ROLLING' as ResetCadence, squadProductIds: [] as string[],
   rolloverMinRemainingPercent: 0, active: true,
 })
 const trafficInvalid = ref(false)
@@ -33,7 +33,7 @@ watch(() => props.combo, (combo) => {
     active: combo.active,
   } : {
     name: '', description: '', priceTxb: '', validityDays: 30,
-    trafficLimitBytes: '', resetStrategy: 'MONTH', squadProductIds: [], rolloverMinRemainingPercent: 0, active: true,
+    trafficLimitBytes: '', resetStrategy: 'MONTH_ROLLING', squadProductIds: [], rolloverMinRemainingPercent: 0, active: true,
   })
 }, { immediate: true })
 

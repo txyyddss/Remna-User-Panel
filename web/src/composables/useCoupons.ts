@@ -4,6 +4,7 @@ import type { CouponGrant } from '@/api/features'
 import { featuresApi } from '@/api/features'
 import { localizedError, t } from '@/i18n'
 import { createUuid } from '@/utils/browserCompatibility'
+import { isCouponGrantAvailable } from '@/utils/coupons'
 import { notifyHaptic } from '@/utils/telegram'
 
 export function useCoupons() {
@@ -18,7 +19,7 @@ export function useCoupons() {
   async function load(): Promise<void> {
     loading.value = true
     error.value = null
-    try { grants.value = (await featuresApi.getCouponWallet()).items } catch (caught) { error.value = localizedError(caught, 'errors.couponWallet') } finally { loading.value = false }
+    try { grants.value = (await featuresApi.getCouponWallet()).items.filter((grant) => isCouponGrantAvailable(grant)) } catch (caught) { error.value = localizedError(caught, 'errors.couponWallet') } finally { loading.value = false }
   }
 
   async function redeem(code: string): Promise<boolean> {
@@ -32,7 +33,7 @@ export function useCoupons() {
       redemptionKeys.set(canonicalCode, key)
       const result = await featuresApi.redeemCoupon(canonicalCode, key)
       redemptionKeys.delete(canonicalCode)
-      if (result.grant) grants.value = [result.grant, ...grants.value.filter((item) => item.id !== result.grant?.id)]
+      if (result.grant && isCouponGrantAvailable(result.grant)) grants.value = [result.grant, ...grants.value.filter((item) => item.id !== result.grant?.id)]
       message.value = result.grant
         ? t('coupons.addedToWallet', { name: result.coupon.name })
         : t('coupons.appliedToBalance', { name: result.coupon.name })

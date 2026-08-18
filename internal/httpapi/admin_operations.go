@@ -64,11 +64,16 @@ func (s *Server) adminJobs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) adminRetryJob(w http.ResponseWriter, r *http.Request) {
-	if err := s.deps.Admin.RetryJob(r.Context(), currentUser(r).ID, chiURLParam(r, "id")); err != nil {
+	key, ok := s.requireIdempotencyKey(w, r)
+	if !ok {
+		return
+	}
+	receipt, err := s.deps.Admin.QueueJobRetry(r.Context(), currentUser(r).ID, chiURLParam(r, "id"), key)
+	if err != nil {
 		s.adminFailure(w, r, err)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	writeJSON(w, http.StatusAccepted, receipt)
 }
 
 func (s *Server) adminDeleteJob(w http.ResponseWriter, r *http.Request) {

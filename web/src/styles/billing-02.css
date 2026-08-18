@@ -14,6 +14,13 @@
   background: var(--accent-soft);
 }
 
+.provider-option__icon img {
+  width: 28px;
+  height: 28px;
+  display: block;
+  object-fit: contain;
+}
+
 .provider-option strong,
 .provider-option small {
   display: block;

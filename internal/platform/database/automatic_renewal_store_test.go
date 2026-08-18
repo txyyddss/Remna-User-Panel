@@ -5,7 +5,49 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
 )
+
+func TestAutomaticRenewalCommitsAtContinuityBoundary(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := newTestStore(t)
+	user := createTestUser(t, store, 48_000)
+	combo := saveTestCombo(t, store, "automatic-continuity", 100, 30)
+	now := time.Date(2026, 8, 14, 12, 0, 0, 0, time.UTC)
+	if _, err := store.AdjustBalance(ctx, user.ID, 500, "automatic-continuity-seed", "seed", now); err != nil {
+		t.Fatal(err)
+	}
+	source, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID, IdempotencyKey: "automatic-continuity"}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tooEarly := source.ValidUntil.Add(-EntitlementContinuityLead - time.Second)
+	if due, err := store.DueAutoRenewals(ctx, tooEarly); err != nil || len(due) != 0 {
+		t.Fatalf("DueAutoRenewals(early) = (%v, %v)", due, err)
+	}
+	if _, err := store.CommitAutoRenewal(ctx, source.ID, tooEarly); !errors.Is(err, ErrConflict) {
+		t.Fatalf("CommitAutoRenewal(early) = %v, want ErrConflict", err)
+	}
+	boundary := source.ValidUntil.Add(-EntitlementContinuityLead)
+	if due, err := store.DueAutoRenewals(ctx, boundary); err != nil || len(due) != 1 || due[0].PurchaseID != source.ID {
+		t.Fatalf("DueAutoRenewals(boundary) = (%v, %v)", due, err)
+	}
+	successor, err := store.CommitAutoRenewal(ctx, source.ID, boundary)
+	if err != nil {
+		t.Fatalf("CommitAutoRenewal(boundary): %v", err)
+	}
+	var availableValue string
+	if err := store.DB().QueryRowContext(ctx, `SELECT available_at FROM outbox_jobs WHERE kind=? AND payload=?`, jobpayload.ContinuityKind,
+		`{"purchaseId":"`+successor.ID+`"}`).Scan(&availableValue); err != nil {
+		t.Fatalf("load automatic continuity job: %v", err)
+	}
+	available, err := parseStamp(availableValue)
+	if err != nil || !available.Equal(boundary) {
+		t.Fatalf("automatic continuity available_at = %s, %v", available, err)
+	}
+}
 
 func TestAutomaticRenewalDefaultsToggleAndSuccessorIdempotency(t *testing.T) {
 	t.Parallel()
@@ -28,7 +70,7 @@ func TestAutomaticRenewalDefaultsToggleAndSuccessorIdempotency(t *testing.T) {
 		t.Fatalf("SetAutoRenewal(on): %v", err)
 	}
 	successor, err := store.CommitAutoRenewal(ctx, first.ID, first.ValidUntil)
-	if err != nil || successor.Status != "queued" || !successor.AutoRenewEnabled {
+	if err != nil || successor.Status != "queued" || !successor.AutoRenewEnabled || successor.CoreGrossTXBMinor != combo.PriceTXBMinor {
 		t.Fatalf("CommitAutoRenewal() = (%+v, %v)", successor, err)
 	}
 	replayed, err := store.CommitAutoRenewal(ctx, first.ID, first.ValidUntil.Add(time.Second))

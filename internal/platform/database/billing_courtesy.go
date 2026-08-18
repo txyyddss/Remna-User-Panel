@@ -73,9 +73,6 @@ func (s *Store) CourtesyCreditPayment(ctx context.Context, actorID, orderID, rea
 	if err := insertAuditTx(ctx, tx, auditID, &actorID, "payment.courtesy_credit", "payment", order.ID, string(detail), now); err != nil {
 		return model.CourtesyCredit{}, fmt.Errorf("append payment courtesy audit: %w", err)
 	}
-	if err := pruneAuditTx(ctx, tx); err != nil {
-		return model.CourtesyCredit{}, fmt.Errorf("prune payment courtesy audit: %w", err)
-	}
 	if err := tx.Commit(); err != nil {
 		return model.CourtesyCredit{}, fmt.Errorf("commit payment courtesy credit: %w", err)
 	}

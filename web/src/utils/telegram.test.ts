@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { getTelegramInitData, installHapticClickFeedback, isTelegramUserAgent, isTelegramWebAppDetected, openExternalLink, supportsTelegramVersion, waitForTelegramContext } from './telegram'
+import { getTelegramInitData, initializeTelegram, installHapticClickFeedback, isTelegramUserAgent, isTelegramWebAppDetected, markTelegramReady, openExternalLink, supportsTelegramVersion, telegramFullscreenState, waitForTelegramContext } from './telegram'
 
 const defaultUserAgent = navigator.userAgent
 
@@ -118,6 +118,32 @@ describe('Telegram bootstrap', () => {
     expect(supportsTelegramVersion('6.1')).toBe(false)
     expect(openLink).not.toHaveBeenCalled()
     expect(browserOpen).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer')
+  })
+
+  it('requests fullscreen after ready and tracks fullscreen events', () => {
+    const calls: string[] = []
+    const eventHandlers = new Map<string, (...args: unknown[]) => void>()
+    const app = {
+      version: '9.0', initData: 'signed', initDataUnsafe: {}, colorScheme: 'dark' as const,
+      ready: vi.fn(() => calls.push('ready')), expand: vi.fn(), close: vi.fn(),
+      openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn(),
+      requestFullscreen: vi.fn(() => calls.push('fullscreen')), isFullscreen: false,
+      onEvent: vi.fn((event: string, handler: (...args: unknown[]) => void) => eventHandlers.set(event, handler)),
+      offEvent: vi.fn(),
+    }
+    window.Telegram = { WebApp: app }
+
+    const dispose = initializeTelegram()
+    markTelegramReady()
+
+    expect(calls).toEqual(['ready', 'fullscreen'])
+    expect(eventHandlers.has('fullscreenChanged')).toBe(true)
+    app.isFullscreen = true
+    eventHandlers.get('fullscreenChanged')?.()
+    expect(telegramFullscreenState().value).toBe(true)
+
+    dispose()
+    expect(telegramFullscreenState().value).toBe(false)
   })
 
   it('adds marked click feedback and disposes the delegated listener', () => {

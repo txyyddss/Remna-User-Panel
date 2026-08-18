@@ -162,7 +162,7 @@ func (s *Store) Renew(ctx context.Context, input RenewalInput, now time.Time) (m
 		if index == 0 {
 			requestKey = input.IdempotencyKey
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO purchases(id,user_id,combo_id,charged_txb_minor,valid_from,valid_until,status,coupon_grant_id,gross_price_txb_minor,coupon_discount_txb_minor,recurring_discount_attached,idempotency_key,request_fingerprint,renewal_batch_id,renewal_index,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, purchaseID, input.UserID, combo.ID, quote.PricePerTerm.MinorInt64(), stamp(from), stamp(until), status, quote.CouponGrantID, quote.GrossPrice.MinorInt64(), quote.Discount.MinorInt64(), boolInt(quote.CouponGrantID != nil), requestKey, fingerprint, batchID, index, stamp(now), stamp(now)); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO purchases(id,user_id,combo_id,charged_txb_minor,valid_from,valid_until,status,coupon_grant_id,gross_price_txb_minor,core_gross_txb_minor,coupon_discount_txb_minor,recurring_discount_attached,idempotency_key,request_fingerprint,renewal_batch_id,renewal_index,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, purchaseID, input.UserID, combo.ID, quote.PricePerTerm.MinorInt64(), stamp(from), stamp(until), status, quote.CouponGrantID, quote.GrossPrice.MinorInt64(), combo.PriceTXBMinor, quote.Discount.MinorInt64(), boolInt(quote.CouponGrantID != nil), requestKey, fingerprint, batchID, index, stamp(now), stamp(now)); err != nil {
 			return model.RenewalBatch{}, err
 		}
 		for _, addon := range addons {
@@ -170,10 +170,8 @@ func (s *Store) Renew(ctx context.Context, input RenewalInput, now time.Time) (m
 				return model.RenewalBatch{}, err
 			}
 		}
-		if index == 0 && status == "activating" {
-			if err := insertOutboxTx(ctx, tx, "remna_apply_entitlement", `{"purchaseId":"`+purchaseID+`"}`, now, now); err != nil {
-				return model.RenewalBatch{}, err
-			}
+		if err := enqueuePurchaseTransitionTx(ctx, tx, purchaseID, status, from, now); err != nil {
+			return model.RenewalBatch{}, err
 		}
 		idsForBatch = append(idsForBatch, purchaseID)
 	}

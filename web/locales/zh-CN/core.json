@@ -17,7 +17,8 @@
     "skip": "跳转到内容",
     "homeLabel": "TX Carpool 首页",
     "member": "Telegram 成员",
-    "memberFallback": "TX 成员"
+    "memberFallback": "TX 成员",
+    "fullscreenGreeting": "你好，{name}"
   },
   "auth": {
     "telegramAccess": "Telegram 访问",

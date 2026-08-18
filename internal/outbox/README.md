@@ -1,3 +1,4 @@
 # Outbox payload helpers
 
-- `payload.go` extracts and validates typed target identifiers from durable outbox job payloads.
+- `payload.go` extracts typed target identifiers and validates immutable successful-payment announcement snapshots.
+- `kinds.go` owns shared job-kind constants used by persistence and handlers, including durable payment announcements.

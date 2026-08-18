@@ -22,6 +22,8 @@ const emit = defineEmits<{
 }>()
 
 const paymentMethods = shallowRef<FeaturePaymentMethod[]>([])
+const minimumMinor = shallowRef('100')
+const maximumMinor = shallowRef('10000000000')
 const reissueOrder = shallowRef<FeaturePaymentOrder | null>(null)
 const paymentOpen = shallowRef(false)
 const paymentLoading = shallowRef(false)
@@ -43,6 +45,8 @@ async function loadTopUpPayment(reissueOrderId?: string): Promise<void> {
       reissueOrderId ? api.getPaymentOrder(reissueOrderId) : Promise.resolve(null),
     ])
     paymentMethods.value = response.paymentMethods
+    minimumMinor.value = response.addAmountLimits?.minimum.minor ?? '100'
+    maximumMinor.value = response.addAmountLimits?.maximum.minor ?? '10000000000'
     reissueOrder.value = restoredOrder
     paymentOpen.value = true
   } catch (caught) {
@@ -81,6 +85,13 @@ watch(() => props.reissueOrderId, (orderId) => {
       />
     </div>
     <InlineNotice v-if="paymentError" class="home-balance__notice" tone="warning">{{ paymentError }}</InlineNotice>
-    <BalancePaymentSheet v-model:open="paymentOpen" :methods="paymentMethods" :reissue-order="reissueOrder" @paid="emit('paid')" />
+    <BalancePaymentSheet
+      v-model:open="paymentOpen"
+      :methods="paymentMethods"
+      :reissue-order="reissueOrder"
+      :minimum-minor="minimumMinor"
+      :maximum-minor="maximumMinor"
+      @paid="emit('paid')"
+    />
   </section>
 </template>

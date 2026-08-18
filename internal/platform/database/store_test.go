@@ -149,7 +149,7 @@ func TestCatalogUpdatesCannotCreateUnknownRecords(t *testing.T) {
 
 	ctx := context.Background()
 	store := newTestStore(t)
-	comboInput := ComboInput{Name: "Known", PriceTXBMinor: 100, ValidityDays: 30, TrafficLimitBytes: 1024, ResetStrategy: "MONTH", Active: true}
+	comboInput := ComboInput{Name: "Known", PriceTXBMinor: 100, ValidityDays: 30, TrafficLimitBytes: 1024, ResetStrategy: "MONTH_ROLLING", Active: true}
 	combo, err := store.SaveCombo(ctx, comboInput)
 	if err != nil {
 		t.Fatalf("SaveCombo(create): %v", err)

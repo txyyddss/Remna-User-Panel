@@ -13,7 +13,7 @@ export interface EmbyRating {
 export interface EmbyAccount {
   id: string
   username: string
-  status: 'queued' | 'provisioning' | 'active' | 'failed'
+  status: 'queued' | 'provisioning' | 'active' | 'failed' | 'pending_review'
   maxParentalRating: number | null
   disabledLibraryIds: string[]
   retryable: boolean

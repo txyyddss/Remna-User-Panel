@@ -1,0 +1,110 @@
+OperationStatus:
+  type: string
+  enum: [queued, processing, succeeded, failed, compensated, pending_review, partial]
+
+OperationReceipt:
+  type: object
+  additionalProperties: false
+  required: [id, kind, status, createdAt, updatedAt]
+  properties:
+    id: { $ref: '../../openapi.yaml#/components/schemas/ID' }
+    kind: { type: string }
+    status: { $ref: '../../openapi.yaml#/components/schemas/OperationStatus' }
+    errorCode: { type: [string, 'null'] }
+    createdAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+    updatedAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+    completedAt: { type: [string, 'null'], format: date-time }
+
+PaymentOperation:
+  type: object
+  additionalProperties: false
+  required: [operation, paymentOrderId]
+  properties:
+    operation: { $ref: '../../openapi.yaml#/components/schemas/OperationReceipt' }
+    paymentOrderId: { $ref: '../../openapi.yaml#/components/schemas/ID' }
+
+ConnectionIP:
+  type: object
+  additionalProperties: false
+  required: [ip, lastSeen, handle]
+  properties:
+    ip: { type: string }
+    lastSeen: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+    handle:
+      type: string
+      description: Signed 15-minute handle binding the member, scan, node, and IP.
+
+ConnectionNode:
+  type: object
+  additionalProperties: false
+  required: [uuid, name, countryCode, ips]
+  properties:
+    uuid: { type: string, format: uuid }
+    name: { type: string }
+    countryCode: { type: string, pattern: '^[A-Z]{2}$' }
+    ips:
+      type: array
+      items: { $ref: '../../openapi.yaml#/components/schemas/ConnectionIP' }
+
+ConnectionScan:
+  type: object
+  additionalProperties: false
+  required: [id, isCompleted, isFailed, progressPercent, nodes, createdAt, expiresAt]
+  properties:
+    id: { $ref: '../../openapi.yaml#/components/schemas/ID' }
+    isCompleted: { type: boolean }
+    isFailed: { type: boolean }
+    progressPercent: { type: number, minimum: 0, maximum: 100 }
+    nodes:
+      type: array
+      items: { $ref: '../../openapi.yaml#/components/schemas/ConnectionNode' }
+    createdAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+    expiresAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+
+ConnectionDropRequest:
+  type: object
+  additionalProperties: false
+  required: [handle]
+  properties:
+    handle: { type: string, minLength: 16, maxLength: 4096 }
+
+TrafficResetQuote:
+  type: object
+  additionalProperties: false
+  required: [purchaseId, eligible, price, resetStrategy, quotedAt]
+  properties:
+    purchaseId: { $ref: '../../openapi.yaml#/components/schemas/ID' }
+    eligible: { type: boolean }
+    reasonCode: { type: [string, 'null'] }
+    price: { $ref: '../../openapi.yaml#/components/schemas/Money' }
+    resetStrategy: { $ref: '../../openapi.yaml#/components/schemas/ResetStrategy' }
+    quotedAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+
+MemberRefundQuote:
+  type: object
+  additionalProperties: false
+  required: [purchaseId, eligible, refund, quotedAt]
+  properties:
+    purchaseId: { $ref: '../../openapi.yaml#/components/schemas/ID' }
+    eligible: { type: boolean }
+    reasonCode: { type: [string, 'null'] }
+    refund: { $ref: '../../openapi.yaml#/components/schemas/Money' }
+    quotedAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+    eligibilityExpiresAt: { type: [string, 'null'], format: date-time }
+
+BillingAmountLimits:
+  type: object
+  additionalProperties: false
+  required: [minimum, maximum, updatedAt]
+  properties:
+    minimum: { $ref: '../../openapi.yaml#/components/schemas/Money' }
+    maximum: { $ref: '../../openapi.yaml#/components/schemas/Money' }
+    updatedAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+
+BillingAmountLimitsWrite:
+  type: object
+  additionalProperties: false
+  required: [minimumTxbMinor, maximumTxbMinor]
+  properties:
+    minimumTxbMinor: { type: string, pattern: '^[1-9]\d*$' }
+    maximumTxbMinor: { type: string, pattern: '^[1-9]\d*$' }

@@ -5,16 +5,21 @@ import type { BackupRecord, JobRecord } from '@/api/types'
 import type { RestoreOperation } from '@/api/features'
 import { featuresApi } from '@/api/features'
 import InlineNotice from '@/components/common/InlineNotice.vue'
+import OperationStatusNotice from '@/components/common/OperationStatusNotice.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import { useAdminSection } from '@/composables/useAdminSection'
+import { useDurableCommand } from '@/composables/useDurableCommand'
 import { localizedError, useI18n } from '@/i18n'
+import { createUuid } from '@/utils/browserCompatibility'
 import { formatBytes, formatDateTime } from '@/utils/format'
 import AdminSectionState from './AdminSectionState.vue'
 import RestoreBackupDialog from './backups/RestoreBackupDialog.vue'
+import BackupUploadPanel from './backups/BackupUploadPanel.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 
 const backups = useAdminSection<BackupRecord>('backups')
 const jobs = useAdminSection<JobRecord>('jobs')
+const jobRetry = useDurableCommand({ errorKey: 'errors.adminAction', onTerminal: (receipt) => receipt.status === 'succeeded' ? jobs.load() : undefined })
 const restoring = shallowRef(false)
 const restoreTarget = shallowRef<BackupRecord | null>(null)
 const restoreOperation = shallowRef<RestoreOperation | null>(null)
@@ -23,17 +28,20 @@ const backupDeleteTarget = shallowRef<BackupRecord | null>(null)
 const jobDeleteTarget = shallowRef<JobRecord | null>(null)
 const { t } = useI18n()
 let restorePollTimer: ReturnType<typeof globalThis.setTimeout> | undefined
+let restoreAttempt: { fingerprint: string; key: string } | undefined
+function restoreKey(fingerprint: string): string {
+  if (restoreAttempt?.fingerprint !== fingerprint) restoreAttempt = { fingerprint, key: createUuid() }
+  return restoreAttempt.key
+}
 
 function stopRestorePolling(): void {
   if (restorePollTimer !== undefined) globalThis.clearTimeout(restorePollTimer)
   restorePollTimer = undefined
 }
-
 function scheduleRestorePoll(): void {
   stopRestorePolling()
   restorePollTimer = globalThis.setTimeout(() => void pollRestore(), 2000)
 }
-
 async function pollRestore(): Promise<void> {
   if (!restoreOperation.value || ['complete', 'failed'].includes(restoreOperation.value.status)) return
   try {
@@ -44,15 +52,13 @@ async function pollRestore(): Promise<void> {
   }
   scheduleRestorePoll()
 }
-
 function createBackup(): void {
   void backups.perform(() => import('@/api/client').then(({ api }) => api.createAdminBackup()))
 }
 
 function retryJob(id: string): void {
-  void jobs.perform(() => import('@/api/client').then(({ api }) => api.retryAdminJob(id)))
+  void jobRetry.execute(id, `job-retry:${id}`, (key) => import('@/api/client').then(({ api }) => api.retryAdminJob(id, key)))
 }
-
 async function deleteBackup(): Promise<void> {
   if (!backupDeleteTarget.value) return
   actionError.value = null
@@ -108,8 +114,10 @@ async function restore(payload: { reason: string; confirmation: string }): Promi
   restoring.value = true
   actionError.value = null
   try {
-    restoreOperation.value = await featuresApi.restoreBackup(restoreTarget.value.id, payload.reason, payload.confirmation)
+    const fingerprint = JSON.stringify([restoreTarget.value.id, payload.reason, payload.confirmation])
+    restoreOperation.value = await featuresApi.restoreBackup(restoreTarget.value.id, payload.reason, payload.confirmation, restoreKey(fingerprint))
     restoreTarget.value = null
+    restoreAttempt = undefined
     scheduleRestorePoll()
   } catch (caught) {
     actionError.value = localizedError(caught, 'adminBackups.restoreFailed')
@@ -127,6 +135,7 @@ onScopeDispose(stopRestorePolling)
       <div><h2>{{ t('adminBackups.title') }}</h2><p>{{ t('adminBackups.copy') }}</p></div>
       <UButton icon="i-ph-archive" :disabled="backups.busy.value" :loading="backups.busy.value" :label="t('adminBackups.create')" @click="createBackup" />
     </div>
+    <BackupUploadPanel @uploaded="backups.load()" />
     <InlineNotice v-if="restoreOperation" :tone="restoreOperation.status === 'failed' ? 'warning' : 'success'" :title="restoreOperation.status === 'complete' ? t('adminBackups.restoreComplete') : restoreOperation.status === 'failed' ? t('adminBackups.restoreFailedTitle') : t('adminBackups.restoreStaged')">{{ t('adminBackups.operationStatus', { id: restoreOperation.id, status: t(`adminBackups.status.${restoreOperation.status}`) }) }} {{ restoreFollowUp(restoreOperation) }}</InlineNotice>
     <InlineNotice v-if="actionError" tone="warning">{{ actionError }}</InlineNotice>
     <AdminSectionState :loading="backups.loading.value" :error="backups.error.value" @retry="backups.load()">
@@ -144,6 +153,7 @@ onScopeDispose(stopRestorePolling)
     <ConfirmDialog :open="Boolean(backupDeleteTarget)" :title="t('adminBackups.deleteTitle', { name: backupDeleteTarget ? backupName(backupDeleteTarget) : t('adminBackups.backup') })" :description="t('adminBackups.deleteDescription')" :confirm-label="t('adminBackups.deleteBackup')" danger @update:open="!$event && (backupDeleteTarget = null)" @confirm="deleteBackup" />
 
     <div class="admin-subsection-heading"><div><h3>{{ t('adminBackups.jobs') }}</h3><p>{{ t('adminBackups.jobsHint') }}</p></div><UButton color="neutral" variant="ghost" icon="i-ph-arrow-clockwise" :label="t('common.refresh')" @click="jobs.load()" /></div>
+    <OperationStatusNotice :receipt="jobRetry.receipt.value" :error="jobRetry.error.value" :checking="jobRetry.checking.value" @refresh="jobRetry.refresh" />
     <AdminSectionState :loading="jobs.loading.value" :error="jobs.error.value" @retry="jobs.load()">
       <div v-auto-animate class="admin-list admin-list--compact">
         <article v-for="job in jobs.items.value.slice(0, 12)" :key="job.id" class="admin-list-row">
@@ -155,11 +165,12 @@ onScopeDispose(stopRestorePolling)
             color="neutral"
             variant="outline"
             icon="i-ph-arrow-clockwise"
-            :disabled="jobs.busy.value"
+            :disabled="jobs.busy.value || jobRetry.blocksMutations.value"
+            :loading="jobRetry.busy.value && jobRetry.activeCommandId.value === job.id"
             :label="t('adminBackups.retry')"
             @click="retryJob(job.id)"
           />
-          <UButton color="error" variant="ghost" icon="i-ph-trash" :disabled="job.status === 'processing' || jobs.busy.value" :aria-label="t('adminBackups.deleteJobLabel', { kind: job.kind })" @click="jobDeleteTarget = job" />
+          <UButton color="error" variant="ghost" icon="i-ph-trash" :disabled="job.status === 'processing' || jobs.busy.value || jobRetry.blocksMutations.value" :aria-label="t('adminBackups.deleteJobLabel', { kind: job.kind })" @click="jobDeleteTarget = job" />
         </article>
         <div v-if="!jobs.items.value.length" class="empty-inline"><div><h3>{{ t('adminBackups.noJobs') }}</h3><p>{{ t('adminBackups.noJobsHint') }}</p></div></div>
       </div>

@@ -1,0 +1,15 @@
+post:
+  tags: [Dashboard]
+  operationId: requestSubscriptionConnections
+  summary: Start a queued connection scan for the current member
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/IdempotencyKey'
+  responses:
+    '202':
+      description: Scan accepted.
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/ConnectionScan' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }
+    '502': { $ref: '../openapi.yaml#/components/responses/UpstreamFailure' }

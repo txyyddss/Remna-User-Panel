@@ -4,11 +4,11 @@ import { useRouter } from 'vue-router'
 
 import type { Purchase } from '@/api/types'
 import { api } from '@/api/client'
-import AutoRenewalControl from './AutoRenewalControl.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import RolloverFlipCard from './RolloverFlipCard.vue'
+import PurchaseActions from './PurchaseActions.vue'
 import { formatDate } from '@/utils/format'
 import { localizedError } from '@/i18n'
 import { notifyHaptic } from '@/utils/telegram'
@@ -78,7 +78,7 @@ function goToCatalog(): void {
           <InlineNotice v-if="queuedCancelError" tone="warning">{{ queuedCancelError }}</InlineNotice>
         </div>
       </div>
-      <AutoRenewalControl v-if="active" :purchase="active" @changed="emit('autoRenewalChanged')" />
+      <PurchaseActions v-if="active" :purchase="active" @changed="emit('autoRenewalChanged')" />
     </div>
 
     <div v-else class="empty-inline">

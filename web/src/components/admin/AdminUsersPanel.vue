@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, reactive, shallowRef } from 'vue'
+import { useRouter } from 'vue-router'
 
+import type { OperationReceipt } from '@/api/adminOperations'
 import type { AdminUserSummary } from '@/api/types'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
@@ -9,13 +11,16 @@ import { useAdminSection } from '@/composables/useAdminSection'
 import { useI18n } from '@/i18n'
 import { formatDate, formatMoney, moneyFromTxbInput } from '@/utils/format'
 import AdminSectionState from './AdminSectionState.vue'
+import AdminBulkExtensionDialog from './users/AdminBulkExtensionDialog.vue'
 
 const { items, loading, busy, error, load, perform } = useAdminSection<AdminUserSummary>('users')
 const { t } = useI18n()
+const router = useRouter()
 const query = shallowRef('')
 const selected = shallowRef<AdminUserSummary | null>(null)
 const form = reactive({ amountTxb: '', reason: '' })
 const success = shallowRef<string | null>(null)
+const bulkOpen = shallowRef(false)
 
 const filteredUsers = computed(() => {
   const needle = query.value.trim().toLowerCase()
@@ -42,13 +47,24 @@ async function adjust(sign: 1 | -1): Promise<void> {
     form.reason = ''
   }
 }
+
+function openProfile(summary: AdminUserSummary): void {
+  void router.push({ name: 'admin-user', params: { userId: summary.user.id } })
+}
+
+function bulkQueued(receipt: OperationReceipt): void {
+  success.value = t('adminBulkExtension.queuedNotice', { id: receipt.id })
+}
 </script>
 
 <template>
   <section class="admin-panel">
     <div class="admin-panel__heading">
       <div><h2>{{ t('adminUsers.title') }}</h2><p>{{ t('adminUsers.copy') }}</p></div>
-      <UInput v-model="query" type="search" icon="i-ph-magnifying-glass" :placeholder="t('adminUsers.search')" :aria-label="t('adminUsers.search')" />
+      <div class="row-actions">
+        <UInput v-model="query" type="search" icon="i-ph-magnifying-glass" :placeholder="t('adminUsers.search')" :aria-label="t('adminUsers.search')" />
+        <UButton color="neutral" variant="outline" icon="i-ph-calendar-plus" :label="t('adminBulkExtension.open')" @click="bulkOpen = true" />
+      </div>
     </div>
     <InlineNotice v-if="success" tone="success">{{ success }}</InlineNotice>
     <AdminSectionState :loading="loading" :error="error" @retry="load()">
@@ -61,7 +77,10 @@ async function adjust(sign: 1 | -1): Promise<void> {
           </div>
           <strong>{{ formatMoney(summary.balance) }}</strong>
           <StatusBadge :tone="summary.synchronization.status === 'synchronized' ? 'success' : 'warning'" :label="summary.synchronization.status === 'synchronized' ? t('adminUsers.synchronized') : t('adminUsers.notProvisioned')" />
-          <UButton size="sm" color="neutral" variant="outline" icon="i-ph-user-focus" :label="t('adminUsers.adjust')" @click="selected = summary" />
+          <div class="row-actions">
+            <UButton size="sm" color="neutral" variant="outline" icon="i-ph-user-focus" :label="t('adminUserProfile.open')" @click="openProfile(summary)" />
+            <UButton size="sm" color="neutral" variant="ghost" icon="i-ph-coins" :label="t('adminUsers.adjust')" @click="selected = summary" />
+          </div>
         </article>
         <div v-if="!filteredUsers.length" class="empty-inline"><div><h3>{{ t('adminUsers.none') }}</h3><p>{{ t('adminUsers.noneHint') }}</p></div></div>
       </div>
@@ -81,5 +100,6 @@ async function adjust(sign: 1 | -1): Promise<void> {
         </form>
       </template>
     </UDrawer>
+    <AdminBulkExtensionDialog v-model:open="bulkOpen" @queued="bulkQueued" />
   </section>
 </template>

@@ -75,3 +75,44 @@ All failures use the request-ID envelope. Unauthorized responses do not reveal t
 - Settings tests cover human-major TXB conversion, ordered rail validation, write-only secret rotation, nonce uniqueness, and redacted audits.
 - Database tests cover identifier injection, composite-key/rowid cursors, values beyond JavaScript's safe integer range, null/boolean/blob editing, optimistic conflicts, review replay, rescue backups, encrypted setting replacement, foreign keys, and redacted structured logs.
 - Restore tests cover source-ID confinement, confirmation mismatch, integrity/foreign-key/migration rejection, atomic success, simulated swap failure rollback, status import, and reauthentication after restart.
+
+## Aggregate user workflows
+
+`GET /api/v1/admin/users/{id}` composes identity, balance, synchronization,
+active and queued entitlements, the optional Emby account, payments, refunds,
+and open provider operations. Purchases and add-ons remain the source of truth;
+the projection does not copy subscription state onto `users`. Bulk operations
+appear for a member through their durable operation item even though the job
+itself has no single owner.
+
+Every provider mutation requires `Idempotency-Key`. A full entitlement edit
+uses the prior response's `updatedAt` as its optimistic `version`, writes only
+the exposed mutable configuration, and preserves IDs, charged/gross/core price
+facts, ledger history, and creation time. Refund credit, cancellation, audit,
+provider receipt, and outbox insertion commit together. No-charge replacement
+changes the active combo and add-on override without appending a TXB ledger row.
+
+Bulk extension filters use inclusive OR across combo IDs and add-on squad UUIDs.
+Only currently active purchases qualify, each user is targeted once, and every
+queued successor shifts by the same calendar-day count at both boundaries so
+its duration remains unchanged. The preview and job use the same target query.
+
+The shared provider-operation worker records operation and item intent before
+calling the queued Remnawave adapter. A completed target is never replayed. An
+interrupted attempt or uncertain network result becomes `pending_review`; mixed
+bulk results become `partial` and require audited resolution rather than a
+blind provider retry.
+
+## Streamed backup upload
+
+`POST /api/v1/admin/backups/upload` accepts exactly one multipart SQLite file
+with an `Idempotency-Key` and optional SHA-256. Intake streams to a private
+regular file with a configurable `BACKUP_UPLOAD_MAX_BYTES` cap (2 GiB by
+default), hashes while writing, then validates size, hash, integrity, foreign
+keys, and the ordered migration prefix in read-only mode.
+
+Publication is a durable filesystem/database saga. Startup reconciliation
+fails `receiving` or `validating` rows, resumes only a `publishing` row, rejects
+symlinks and escaped paths, revalidates the final file, and completes the backup
+run plus audit atomically. Only a complete upload enters the existing staged
+restore flow.

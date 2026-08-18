@@ -143,12 +143,24 @@ func TestStagedRestoreSwapsPreOpenAndRecordsCompletion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	job, err := service.StageRestore(ctx, source.ID, "", "Recover the verified snapshot", "RESTORE "+filepath.Base(source.Path), versions)
+	reason := "Recover the verified snapshot"
+	confirmation := "RESTORE " + filepath.Base(source.Path)
+	if _, err := service.StageRestore(ctx, source.ID, "", "", reason, confirmation, versions); !errors.Is(err, ErrRestoreConflict) {
+		t.Fatalf("StageRestore() without key error = %v", err)
+	}
+	job, err := service.StageRestore(ctx, source.ID, "", "restore-swap-1", reason, confirmation, versions)
 	if err != nil {
 		t.Fatalf("StageRestore(): %v", err)
 	}
 	if job.Status != "ready" || job.RescuePath == "" {
 		t.Fatalf("staged job = %+v", job)
+	}
+	replay, err := service.StageRestore(ctx, source.ID, "", "restore-swap-1", reason, confirmation, versions)
+	if err != nil || replay.ID != job.ID || replay.Status != "ready" {
+		t.Fatalf("StageRestore() replay = %+v, %v", replay, err)
+	}
+	if _, err := service.StageRestore(ctx, source.ID, "", "restore-swap-1", reason+" changed", confirmation, versions); !errors.Is(err, ErrRestoreConflict) {
+		t.Fatalf("StageRestore() conflicting replay error = %v", err)
 	}
 	if _, err := os.Stat(markerPath(databasePath)); err != nil {
 		t.Fatalf("restore marker: %v", err)
@@ -176,6 +188,16 @@ func TestStagedRestoreSwapsPreOpenAndRecordsCompletion(t *testing.T) {
 	if err := restoredDB.QueryRowContext(ctx, `SELECT status FROM restore_jobs WHERE id=?`, job.ID).Scan(&status); err != nil || status != "complete" {
 		t.Fatalf("restore status=%q, error=%v", status, err)
 	}
+	restoredService := NewService(restoredDB, database.NewStore(restoredDB), directory, 7*24*time.Hour)
+	replay, err = restoredService.StageRestore(ctx, source.ID, "", "restore-swap-1", reason, confirmation, versions)
+	if err != nil || replay.ID != job.ID || replay.Status != "complete" {
+		t.Fatalf("StageRestore() post-swap replay = %+v, %v", replay, err)
+	}
+	var storedKey, storedFingerprint string
+	if err := restoredDB.QueryRowContext(ctx, `SELECT idempotency_key,request_fingerprint FROM restore_jobs WHERE id=?`, job.ID).
+		Scan(&storedKey, &storedFingerprint); err != nil || storedKey != "restore-swap-1" || storedFingerprint != job.RequestFingerprint {
+		t.Fatalf("restore replay identity = %q/%q, error=%v", storedKey, storedFingerprint, err)
+	}
 	if _, err := os.Stat(resultPath(databasePath)); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("recorded result sidecar still exists: %v", err)
 	}
@@ -200,7 +222,7 @@ func TestCorruptStagedRestoreLeavesLiveDatabaseAndRecordsFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	versions, _ := database.MigrationVersions()
-	job, err := service.StageRestore(ctx, source.ID, "", "Test failed restore rollback", "RESTORE "+filepath.Base(source.Path), versions)
+	job, err := service.StageRestore(ctx, source.ID, "", "restore-failure-1", "Test failed restore rollback", "RESTORE "+filepath.Base(source.Path), versions)
 	if err != nil {
 		t.Fatal(err)
 	}

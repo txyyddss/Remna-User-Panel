@@ -6,6 +6,7 @@ import { localizedError, t } from '@/i18n'
 import { createUuid } from '@/utils/browserCompatibility'
 import { notifyHaptic } from '@/utils/telegram'
 import { useSessionStore } from '@/stores/session'
+import { isCouponGrantAvailable } from '@/utils/coupons'
 import { clearCatalogDraft, writeCatalogDraft } from '@/composables/catalogDraft'
 import { loadCatalogData } from '@/composables/catalogLoader'
 import { useCatalogQuote } from '@/composables/catalogQuoteState'
@@ -48,9 +49,7 @@ export function useCatalog() {
   const activationSquads = computed<SquadProduct[]>(() => visibleSquads.value.filter((squad) => squad.activationRequired && (includedSquadIds.value.includes(squad.id) || selectedSquadIds.value.includes(squad.id))))
   const eligibleCoupons = computed(() => couponGrants.value.filter((grant) => {
     const coupon = grant.coupon
-    if (!selectedCombo.value || grant.status !== 'active' || !coupon.active) return false
-    if (coupon.perUserUseLimit !== null && grant.useCount >= coupon.perUserUseLimit) return false
-    if (coupon.expiresAt && new Date(coupon.expiresAt).getTime() <= Date.now()) return false
+    if (!selectedCombo.value || !isCouponGrantAvailable(grant)) return false
     const unrestricted = coupon.eligibleComboIds.length === 0 && coupon.eligibleSquadIds.length === 0
     const comboEligible = coupon.eligibleComboIds.includes(selectedCombo.value.id)
     const squadEligible = selectedSquadIds.value.some((id) => coupon.eligibleSquadIds.includes(id))
@@ -87,6 +86,8 @@ export function useCatalog() {
   }
   async function load(): Promise<void> {
     await loadCatalogData({ loading, error, catalog, balance, couponGrants, draftRestored, selectedComboId, selectedSquadIds, selectedCouponGrantId, userID: () => sessionStore.user?.id, onError: blocksCatalog })
+    couponGrants.value = couponGrants.value.filter((grant) => isCouponGrantAvailable(grant))
+    if (!eligibleCoupons.value.some((grant) => grant.id === selectedCouponGrantId.value)) selectedCouponGrantId.value = null
     selectedSquadIds.value = selectedSquadIds.value.filter((id) => !paidAddonIsFull(id))
   }
   function selectCombo(id: string): void {

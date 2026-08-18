@@ -5,6 +5,7 @@ import type { AdminSetting } from '@/api/types'
 import type { ActivitySettings, ActivitySettingsWrite } from '@/api/features'
 import { featuresApi } from '@/api/features'
 import AdminActivitySettings from '@/components/admin/activity/AdminActivitySettings.vue'
+import AdminBillingAmountLimits from '@/components/admin/AdminBillingAmountLimits.vue'
 import AdminPaymentProfiles from '@/components/admin/AdminPaymentProfiles.vue'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import SwitchField from '@/components/common/SwitchField.vue'
@@ -24,6 +25,7 @@ const activitySettingKeys = new Set([
   'activity.timezone', 'activity.daily_reward_min_txb', 'activity.daily_reward_max_txb',
   'activity.group_message_threshold', 'activity.group_message_reward_txb',
 ])
+const clearableSettingKeys = new Set(['telegram.payment_announcement_chat_id'])
 const legacyPaymentSetting = (key: string): boolean => key.startsWith('billing.ezpay.') || key.startsWith('billing.bepusdt.')
 
 const grouped = computed(() => items.value.filter((item) => !activitySettingKeys.has(item.key) && !legacyPaymentSetting(item.key)).reduce<Record<string, AdminSetting[]>>((groups, item) => {
@@ -67,7 +69,11 @@ function setBoolean(key: string, value: boolean): void {
 }
 
 async function save(): Promise<void> {
-  const values = Object.entries(draft).filter(([key, value]) => !activitySettingKeys.has(key) && !legacyPaymentSetting(key) && value !== '')
+  const values = Object.entries(draft).filter(([key, value]) => {
+    const configured = items.value.some(item => item.key === key && item.configured)
+    return !activitySettingKeys.has(key) && !legacyPaymentSetting(key)
+      && (value !== '' || (configured && clearableSettingKeys.has(key)))
+  })
   const { api } = await import('@/api/client')
   saved.visible = await perform(() => Promise.all(values.map(([key, value]) => api.updateAdminSetting(key, value))))
 }
@@ -110,6 +116,7 @@ onMounted(() => void loadActivitySettings())
       <AdminActivitySettings :settings="activitySettings" :busy="activityBusy" @save="saveActivitySettings" />
       <InlineNotice v-if="activityError" tone="warning">{{ activityError }}</InlineNotice>
     </section>
+    <AdminBillingAmountLimits />
     <AdminPaymentProfiles />
     <AdminSectionState :loading="loading" :error="error" @retry="load()">
       <form class="settings-groups" @submit.prevent="save">

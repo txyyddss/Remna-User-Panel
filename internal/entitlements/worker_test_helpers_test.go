@@ -18,6 +18,8 @@ type entitlementRepository struct {
 	userByIDErr        error
 	desired            *model.Purchase
 	desiredErr         error
+	continuity         *model.Purchase
+	continuityErr      error
 	resetPhase         string
 	resetPhaseErr      error
 	advanceResetErr    error
@@ -58,6 +60,9 @@ func (r *entitlementRepository) UserByID(context.Context, string) (model.User, e
 }
 func (r *entitlementRepository) DesiredEntitlement(context.Context, string, time.Time) (*model.Purchase, error) {
 	return r.desired, r.desiredErr
+}
+func (r *entitlementRepository) ContinuityEntitlement(context.Context, string, time.Time) (*model.Purchase, error) {
+	return r.continuity, r.continuityErr
 }
 func (r *entitlementRepository) PurchaseTrafficResetPhase(context.Context, string) (string, error) {
 	if r.resetPhaseErr != nil {

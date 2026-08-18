@@ -95,6 +95,11 @@ func (r *serviceRepository) RequeueEmbyProvisioning(_ context.Context, _ string,
 	r.record.Status = StatusQueued
 	return nil
 }
+func (r *serviceRepository) MarkEmbyPendingReview(_ context.Context, _ string, provisionErr error, _ time.Time) error {
+	r.retryError = provisionErr
+	r.record.Status = StatusPendingReview
+	return nil
+}
 func (r *serviceRepository) MarkEmbyProvisioned(_ context.Context, _ string, preferences Preferences, _ time.Time) error {
 	r.record.Preferences = preferences
 	r.record.Status, r.record.PasswordCiphertext, r.record.PasswordContext = StatusActive, "", ""

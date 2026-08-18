@@ -224,7 +224,7 @@ EmbyAccount:
       type: string
     status:
       type: string
-      enum: [queued, provisioning, active, failed]
+      enum: [queued, provisioning, active, failed, pending_review]
     maxParentalRating:
       type: [integer, 'null']
       format: int32

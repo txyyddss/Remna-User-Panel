@@ -30,6 +30,7 @@ interface TelegramWebApp {
   contentSafeAreaInset?: TelegramInsets
   viewportHeight?: number
   viewportStableHeight?: number
+  isFullscreen?: boolean
   ready(): void
   expand(): void
   close(): void
@@ -40,6 +41,8 @@ interface TelegramWebApp {
   setBackgroundColor?(color: string): void
   setBottomBarColor?(color: string): void
   isVersionAtLeast?(version: string): boolean
+  requestFullscreen?(): void
+  exitFullscreen?(): void
   onEvent?(eventType: string, callback: (...args: unknown[]) => void): void
   offEvent?(eventType: string, callback: (...args: unknown[]) => void): void
   BackButton?: {

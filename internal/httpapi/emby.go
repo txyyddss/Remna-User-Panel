@@ -98,81 +98,6 @@ func (s *Server) embyAccount(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func decodeEmbyPreferences(w http.ResponseWriter, r *http.Request, withPassword bool) (emby.Preferences, string, error) {
-	type preferencesRequest struct {
-		MaxParentalRating  *int32    `json:"maxParentalRating"`
-		DisabledLibraryIDs *[]string `json:"disabledLibraryIds"`
-	}
-	if !withPassword {
-		var request preferencesRequest
-		if err := decodeJSON(w, r, &request); err != nil {
-			return emby.Preferences{}, "", err
-		}
-		if request.DisabledLibraryIDs == nil {
-			return emby.Preferences{}, "", emby.ErrInvalidSetup
-		}
-		return emby.Preferences{MaxParentalRating: request.MaxParentalRating, DisabledLibraryIDs: *request.DisabledLibraryIDs}, "", nil
-	}
-	request := struct {
-		Password string `json:"password"`
-		preferencesRequest
-	}{}
-	if err := decodeJSON(w, r, &request); err != nil {
-		return emby.Preferences{}, "", err
-	}
-	if request.Password == "" || request.DisabledLibraryIDs == nil {
-		return emby.Preferences{}, "", emby.ErrInvalidSetup
-	}
-	return emby.Preferences{MaxParentalRating: request.MaxParentalRating, DisabledLibraryIDs: *request.DisabledLibraryIDs}, request.Password, nil
-}
-
-func (s *Server) setupEmby(w http.ResponseWriter, r *http.Request) {
-	preferences, password, err := decodeEmbyPreferences(w, r, true)
-	if err != nil {
-		s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_EMBY_SETUP", "Choose a password and valid viewing preferences.")
-		return
-	}
-	account, _, err := s.deps.Emby.Setup(r.Context(), currentUser(r).ID, password, preferences)
-	if err != nil {
-		status, code := http.StatusConflict, "EMBY_SETUP_FAILED"
-		if errors.Is(err, database.ErrInsufficientBalance) {
-			code = "INSUFFICIENT_BALANCE"
-		}
-		s.writeError(w, r, status, code, "Emby setup could not be queued.")
-		return
-	}
-	writeJSON(w, http.StatusAccepted, mapEmbyAccount(account))
-}
-
-func (s *Server) updateEmbyPreferences(w http.ResponseWriter, r *http.Request) {
-	preferences, _, err := decodeEmbyPreferences(w, r, false)
-	if err != nil {
-		s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_EMBY_PREFERENCES", "Choose valid Emby preferences.")
-		return
-	}
-	account, err := s.deps.Emby.UpdatePreferences(r.Context(), currentUser(r).ID, preferences)
-	if err != nil {
-		s.writeError(w, r, http.StatusBadGateway, "EMBY_UPDATE_FAILED", "Emby preferences could not be updated.")
-		return
-	}
-	writeJSON(w, http.StatusOK, mapEmbyAccount(account))
-}
-
-func (s *Server) changeEmbyPassword(w http.ResponseWriter, r *http.Request) {
-	var request struct {
-		Password string `json:"password"`
-	}
-	if err := decodeJSON(w, r, &request); err != nil || request.Password == "" {
-		s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_EMBY_PASSWORD", "Enter a new password.")
-		return
-	}
-	if err := s.deps.Emby.ChangePassword(r.Context(), currentUser(r).ID, "", request.Password); err != nil {
-		s.writeError(w, r, http.StatusBadGateway, "EMBY_PASSWORD_FAILED", "The Emby password could not be changed.")
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
 func (s *Server) adminEmbyAccounts(w http.ResponseWriter, r *http.Request) {
 	accounts, err := s.deps.Emby.ListAccounts(r.Context(), 200)
 	if err != nil {
@@ -184,13 +109,4 @@ func (s *Server) adminEmbyAccounts(w http.ResponseWriter, r *http.Request) {
 		items = append(items, mapEmbyAccount(account))
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": items})
-}
-
-func (s *Server) retryAdminEmbyAccount(w http.ResponseWriter, r *http.Request) {
-	account, err := s.deps.Emby.RetryProvisioning(r.Context(), chiURLParam(r, "id"))
-	if err != nil {
-		s.writeError(w, r, http.StatusConflict, "EMBY_RETRY_FAILED", "This Emby setup cannot be retried.")
-		return
-	}
-	writeJSON(w, http.StatusAccepted, mapEmbyAccount(account))
 }

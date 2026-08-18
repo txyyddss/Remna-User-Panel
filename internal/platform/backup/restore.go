@@ -20,37 +20,41 @@ const (
 
 // ErrRestoreConflict reports an invalid confirmation, incompatible snapshot,
 // concurrent restore, or restore record that changed while being staged.
-
 var ErrRestoreConflict = errors.New("restore conflicts with current state")
 
 // RestoreJob describes a durable staged restore operation.
-
 type RestoreJob struct {
-	ID           string     `json:"id"`
-	BackupID     string     `json:"backupId"`
-	ActorUserID  *string    `json:"actorUserId,omitempty"`
-	Status       string     `json:"status"`
-	StagedPath   string     `json:"-"`
-	RescuePath   string     `json:"-"`
-	SourceSHA256 string     `json:"sourceSha256"`
-	Error        string     `json:"error,omitempty"`
-	CreatedAt    time.Time  `json:"createdAt"`
-	UpdatedAt    time.Time  `json:"updatedAt"`
-	CompletedAt  *time.Time `json:"completedAt,omitempty"`
+	ID                 string     `json:"id"`
+	BackupID           string     `json:"backupId"`
+	ActorUserID        *string    `json:"actorUserId,omitempty"`
+	RequestActorID     string     `json:"-"`
+	IdempotencyKey     string     `json:"-"`
+	RequestFingerprint string     `json:"-"`
+	Status             string     `json:"status"`
+	StagedPath         string     `json:"-"`
+	RescuePath         string     `json:"-"`
+	SourceSHA256       string     `json:"sourceSha256"`
+	Error              string     `json:"error,omitempty"`
+	CreatedAt          time.Time  `json:"createdAt"`
+	UpdatedAt          time.Time  `json:"updatedAt"`
+	CompletedAt        *time.Time `json:"completedAt,omitempty"`
 }
 
 type restoreMarker struct {
-	Version      int       `json:"version"`
-	JobID        string    `json:"jobId"`
-	BackupID     string    `json:"backupId"`
-	ActorUserID  *string   `json:"actorUserId,omitempty"`
-	DatabasePath string    `json:"databasePath"`
-	StagedPath   string    `json:"stagedPath"`
-	RescuePath   string    `json:"rescuePath"`
-	SourcePath   string    `json:"sourcePath"`
-	SourceSize   int64     `json:"sourceSize"`
-	SourceSHA256 string    `json:"sourceSha256"`
-	CreatedAt    time.Time `json:"createdAt"`
+	Version            int       `json:"version"`
+	JobID              string    `json:"jobId"`
+	BackupID           string    `json:"backupId"`
+	ActorUserID        *string   `json:"actorUserId,omitempty"`
+	RequestActorID     string    `json:"requestActorId,omitempty"`
+	IdempotencyKey     string    `json:"idempotencyKey,omitempty"`
+	RequestFingerprint string    `json:"requestFingerprint,omitempty"`
+	DatabasePath       string    `json:"databasePath"`
+	StagedPath         string    `json:"stagedPath"`
+	RescuePath         string    `json:"rescuePath"`
+	SourcePath         string    `json:"sourcePath"`
+	SourceSize         int64     `json:"sourceSize"`
+	SourceSHA256       string    `json:"sourceSha256"`
+	CreatedAt          time.Time `json:"createdAt"`
 }
 
 // StartupRestoreResult is written beside the database during the pre-open
@@ -67,13 +71,18 @@ type StartupRestoreResult struct {
 // creates a verified rescue backup, and publishes a durable pre-open marker.
 // No live database file is replaced by this method.
 
-func (s *Service) StageRestore(ctx context.Context, backupID, actorUserID, reason, confirmation string, supportedMigrations []string) (RestoreJob, error) {
+func (s *Service) StageRestore(ctx context.Context, backupID, actorUserID, idempotencyKey, reason, confirmation string, supportedMigrations []string) (RestoreJob, error) {
 	s.restoreMu.Lock()
 	defer s.restoreMu.Unlock()
 
-	reason = strings.TrimSpace(reason)
-	if len(reason) < 4 || len(reason) > 500 {
-		return RestoreJob{}, fmt.Errorf("%w: restore reason must contain 4 to 500 characters", ErrRestoreConflict)
+	request, err := normalizeRestoreRequest(backupID, actorUserID, idempotencyKey, reason, confirmation)
+	if err != nil {
+		return RestoreJob{}, err
+	}
+	if replay, ok, err := s.restoreReplay(ctx, request); err != nil {
+		return RestoreJob{}, err
+	} else if ok {
+		return replay, nil
 	}
 	if len(supportedMigrations) == 0 {
 		return RestoreJob{}, fmt.Errorf("%w: migration allowlist is empty", ErrRestoreConflict)
@@ -84,12 +93,12 @@ func (s *Service) StageRestore(ctx context.Context, backupID, actorUserID, reaso
 		return RestoreJob{}, fmt.Errorf("%w: another restore is already staged", ErrRestoreConflict)
 	}
 
-	download, err := s.OpenDownload(ctx, backupID)
+	download, err := s.OpenDownload(ctx, request.BackupID)
 	if err != nil {
 		return RestoreJob{}, err
 	}
 	defer func() { _ = download.File.Close() }()
-	if confirmation != "RESTORE "+download.Name {
+	if request.Confirmation != "RESTORE "+download.Name {
 		return RestoreJob{}, fmt.Errorf("%w: typed restore confirmation does not match", ErrRestoreConflict)
 	}
 	databasePath, err := s.mainDatabasePath(ctx)
@@ -130,24 +139,28 @@ func (s *Service) StageRestore(ctx context.Context, backupID, actorUserID, reaso
 	if err != nil {
 		return RestoreJob{}, fmt.Errorf("create rescue backup: %w", err)
 	}
-	actor := nullableActor(actorUserID)
+	actor := nullableActor(request.ActorID)
 	job := RestoreJob{
-		ID: jobID, BackupID: backupID, ActorUserID: actor, Status: "staging", StagedPath: stagePath,
-		RescuePath: rescue.Path, SourceSHA256: sourceHash, CreatedAt: now, UpdatedAt: now,
+		ID: jobID, BackupID: request.BackupID, ActorUserID: actor, RequestActorID: request.ActorID,
+		IdempotencyKey: request.IdempotencyKey, RequestFingerprint: request.Fingerprint,
+		Status: "staging", StagedPath: stagePath, RescuePath: rescue.Path,
+		SourceSHA256: sourceHash, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := s.insertRestoreJob(ctx, job); err != nil {
 		return RestoreJob{}, err
 	}
 	marker := restoreMarker{
-		Version: 2, JobID: jobID, BackupID: backupID, ActorUserID: actor, DatabasePath: databasePath,
-		StagedPath: stagePath, RescuePath: rescue.Path, SourcePath: filepath.Join(s.directory, download.Name),
+		Version: 3, JobID: jobID, BackupID: request.BackupID, ActorUserID: actor,
+		RequestActorID: request.ActorID, IdempotencyKey: request.IdempotencyKey, RequestFingerprint: request.Fingerprint,
+		DatabasePath: databasePath,
+		StagedPath:   stagePath, RescuePath: rescue.Path, SourcePath: filepath.Join(s.directory, download.Name),
 		SourceSize: download.Size, SourceSHA256: sourceHash, CreatedAt: now,
 	}
 	if err := writeJSONAtomic(markerPath(databasePath), marker); err != nil {
 		_ = s.failRestoreJob(ctx, jobID, err)
 		return RestoreJob{}, fmt.Errorf("publish restore marker: %w", err)
 	}
-	if err := s.markRestoreReady(ctx, job, reason, rescue.ID); err != nil {
+	if err := s.markRestoreReady(ctx, job, request.Reason, rescue.ID); err != nil {
 		_ = os.Remove(markerPath(databasePath))
 		_ = s.failRestoreJob(ctx, jobID, err)
 		return RestoreJob{}, err

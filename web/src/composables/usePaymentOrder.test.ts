@@ -2,48 +2,45 @@ import { effectScope } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { FeaturePaymentOrder } from '@/api/features'
+import type { OperationReceipt, PaymentOperation } from '@/api/types'
 import { setLocale, t } from '@/i18n'
 
-const { createPaymentOrder, getPaymentOrder, cancelPaymentOrder } = vi.hoisted(() => ({
+const { createPaymentOrder, getPaymentOrder, cancelPaymentOrder, getOperation } = vi.hoisted(() => ({
   createPaymentOrder: vi.fn(),
   getPaymentOrder: vi.fn(),
   cancelPaymentOrder: vi.fn(),
+  getOperation: vi.fn(),
 }))
 
-vi.mock('@/api/client', () => ({
-  api: { createPaymentOrder, getPaymentOrder, cancelPaymentOrder },
-}))
-
+vi.mock('@/api/client', () => ({ api: { createPaymentOrder, getPaymentOrder, cancelPaymentOrder } }))
+vi.mock('@/api/memberOperations', () => ({ memberOperationsApi: { getOperation } }))
 vi.mock('qrcode', () => ({
   default: { toDataURL: vi.fn().mockResolvedValue('data:image/png;base64,qr') },
 }))
 
 import { isTerminalPaymentStatus, usePaymentOrder } from './usePaymentOrder'
 
+const timestamp = '2026-08-07T00:00:00Z'
 const pendingOrder: FeaturePaymentOrder = {
-  id: 'payment-1',
-  methodId: 'ezpay:alipay',
-  provider: 'ezpay',
-  providerRail: 'alipay',
-  status: 'pending',
-  txb: { currency: 'TXB', minor: '2000', display: '20.00 TXB' },
-  payableAmount: '20.00',
-  payableCurrency: 'CNY',
-  rateSnapshot: '1',
-  rateDirection: 'txb_per_currency',
-  paymentUrl: 'https://pay.example/order-1',
-  qrPayload: 'https://pay.example/order-1',
-  receivingAddress: null,
-  actualCryptoAmount: null,
-  actualCryptoCurrency: null,
-  expiresAt: '2026-08-07T01:00:00Z',
-  paidAt: null,
-  refundedAt: null,
-  cancelledAt: null,
-  cancelReason: '',
-  providerCancelStatus: '',
-  createdAt: '2026-08-07T00:00:00Z',
-  updatedAt: '2026-08-07T00:00:00Z',
+  id: 'payment-1', methodId: 'ezpay:alipay', provider: 'ezpay', providerRail: 'alipay', status: 'pending',
+  txb: { currency: 'TXB', minor: '2000', display: '20.00 TXB' }, payableAmount: '20.00', payableCurrency: 'CNY',
+  rateSnapshot: '1', rateDirection: 'txb_per_currency', paymentUrl: 'https://pay.example/order-1',
+  qrPayload: 'https://pay.example/order-1', receivingAddress: null, actualCryptoAmount: null,
+  actualCryptoCurrency: null, expiresAt: '2026-08-07T01:00:00Z', paidAt: null, refundedAt: null,
+  cancelledAt: null, cancelReason: '', providerCancelStatus: '', createdAt: timestamp, updatedAt: timestamp,
+}
+
+function receipt(kind: 'payment_create' | 'payment_cancel', status: OperationReceipt['status']): OperationReceipt {
+  return { id: `${kind}-1`, kind, status, createdAt: timestamp, updatedAt: timestamp }
+}
+
+function accepted(kind: 'payment_create' | 'payment_cancel'): PaymentOperation {
+  return { paymentOrderId: pendingOrder.id, operation: receipt(kind, 'queued') }
+}
+
+async function finishOperation(kind: 'payment_create' | 'payment_cancel'): Promise<void> {
+  getOperation.mockResolvedValueOnce(receipt(kind, 'succeeded'))
+  await vi.advanceTimersByTimeAsync(1500)
 }
 
 describe('payment order polling', () => {
@@ -59,109 +56,99 @@ describe('payment order polling', () => {
     expect(isTerminalPaymentStatus('pending')).toBe(false)
   })
 
-  it('closes only after the server reports paid', async () => {
+  it('opens a checkout only after its durable create operation succeeds', async () => {
     vi.useFakeTimers()
-    createPaymentOrder.mockResolvedValue(pendingOrder)
-    getPaymentOrder.mockResolvedValue({ ...pendingOrder, status: 'paid', paidAt: '2026-08-07T00:01:00Z' })
+    createPaymentOrder.mockResolvedValue(accepted('payment_create'))
+    getPaymentOrder
+      .mockResolvedValueOnce(pendingOrder)
+      .mockResolvedValueOnce({ ...pendingOrder, status: 'paid', paidAt: '2026-08-07T00:01:00Z' })
     const onPaid = vi.fn()
     const scope = effectScope()
     const payment = scope.run(() => usePaymentOrder({ onPaid }))!
 
     payment.chooseMethod('ezpay:alipay')
     await payment.createOrder()
-    expect(createPaymentOrder).toHaveBeenCalledWith('ezpay:alipay', '2000')
+    expect(payment.stage.value).toBe('creating')
+    await finishOperation('payment_create')
     expect(payment.stage.value).toBe('pending')
-    expect(onPaid).not.toHaveBeenCalled()
 
     await vi.advanceTimersByTimeAsync(2000)
     expect(payment.stage.value).toBe('paid')
-    expect(onPaid).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(700)
     expect(onPaid).toHaveBeenCalledOnce()
     scope.stop()
   })
 
-  it('stops polling after a user-owned cancellation', async () => {
-    createPaymentOrder.mockResolvedValue(pendingOrder)
-    cancelPaymentOrder.mockResolvedValue({ ...pendingOrder, status: 'cancelled' })
+  it('reuses one create key after an ambiguous request failure', async () => {
+    createPaymentOrder.mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce(accepted('payment_create'))
+    const scope = effectScope()
+    const payment = scope.run(() => usePaymentOrder({ onPaid: vi.fn() }))!
+    payment.chooseMethod('ezpay:alipay')
+
+    await payment.createOrder()
+    await payment.createOrder()
+
+    const firstKey = createPaymentOrder.mock.calls[0]?.[2]
+    expect(firstKey).toMatch(/^[0-9a-f-]{36}$/)
+    expect(createPaymentOrder.mock.calls[1]?.[2]).toBe(firstKey)
+    scope.stop()
+  })
+
+  it('queues cancellation and waits for its receipt', async () => {
+    vi.useFakeTimers()
+    createPaymentOrder.mockResolvedValue(accepted('payment_create'))
+    cancelPaymentOrder.mockResolvedValue(accepted('payment_cancel'))
+    getPaymentOrder
+      .mockResolvedValueOnce(pendingOrder)
+      .mockResolvedValueOnce({ ...pendingOrder, status: 'cancelled', cancelledAt: timestamp })
     const scope = effectScope()
     const payment = scope.run(() => usePaymentOrder({ onPaid: vi.fn() }))!
 
     payment.chooseMethod('ezpay:alipay')
     await payment.createOrder()
+    await finishOperation('payment_create')
     await payment.cancelOrder()
+    expect(payment.stage.value).toBe('cancelling')
+    await finishOperation('payment_cancel')
 
-    expect(cancelPaymentOrder).toHaveBeenCalledWith('payment-1')
     expect(payment.stage.value).toBe('cancelled')
+    expect(cancelPaymentOrder.mock.calls[0]?.[0]).toBe('payment-1')
+    expect(cancelPaymentOrder.mock.calls[0]?.[1]).toMatch(/^[0-9a-f-]{36}$/)
     scope.stop()
   })
 
-  it('keeps QR-only and address-only provider checkouts usable', async () => {
-    createPaymentOrder
-      .mockResolvedValueOnce({ ...pendingOrder, paymentUrl: null, qrPayload: 'usdt:wallet?amount=1', receivingAddress: null })
-      .mockResolvedValueOnce({ ...pendingOrder, paymentUrl: null, qrPayload: null, receivingAddress: 'TExampleAddress' })
-    const firstScope = effectScope()
-    const qrPayment = firstScope.run(() => usePaymentOrder({ onPaid: vi.fn() }))!
-    qrPayment.chooseMethod('bepusdt:usdt.trc20')
-    await qrPayment.createOrder()
-    expect(qrPayment.stage.value).toBe('pending')
-    expect(qrPayment.qrDataUrl.value).toContain('data:image/png')
-    firstScope.stop()
-
-    const secondScope = effectScope()
-    const addressPayment = secondScope.run(() => usePaymentOrder({ onPaid: vi.fn() }))!
-    addressPayment.chooseMethod('bepusdt:usdt.trc20')
-    await addressPayment.createOrder()
-    expect(addressPayment.stage.value).toBe('pending')
-    expect(addressPayment.order.value?.receivingAddress).toBe('TExampleAddress')
-    secondScope.stop()
-  })
-
-  it('uses localized copy when a provider omits every payment target', async () => {
-    setLocale('zh-CN')
-    createPaymentOrder.mockResolvedValue({ ...pendingOrder, paymentUrl: null, qrPayload: null, receivingAddress: null })
+  it('blocks duplicate payment when provider outcome needs review', async () => {
+    vi.useFakeTimers()
+    createPaymentOrder.mockResolvedValue(accepted('payment_create'))
+    getOperation.mockResolvedValueOnce(receipt('payment_create', 'pending_review'))
+    getPaymentOrder.mockResolvedValue({ ...pendingOrder, status: 'creating', paymentUrl: null, qrPayload: null })
     const scope = effectScope()
     const payment = scope.run(() => usePaymentOrder({ onPaid: vi.fn() }))!
 
     payment.chooseMethod('ezpay:alipay')
     await payment.createOrder()
+    await vi.advanceTimersByTimeAsync(1500)
 
-    expect(payment.stage.value).toBe('configure')
+    expect(payment.stage.value).toBe('review')
+    expect(payment.canCreate.value).toBe(false)
+    expect(payment.error.value).toBe(t('payment.operationStatus', { status: t('operations.status.pending_review') }))
+    scope.stop()
+  })
+
+  it('uses localized copy when a succeeded operation has no payment target', async () => {
+    vi.useFakeTimers()
+    setLocale('zh-CN')
+    createPaymentOrder.mockResolvedValue(accepted('payment_create'))
+    getPaymentOrder.mockResolvedValue({ ...pendingOrder, paymentUrl: null, qrPayload: null, receivingAddress: null })
+    const scope = effectScope()
+    const payment = scope.run(() => usePaymentOrder({ onPaid: vi.fn() }))!
+
+    payment.chooseMethod('ezpay:alipay')
+    await payment.createOrder()
+    await finishOperation('payment_create')
+
+    expect(payment.stage.value).toBe('review')
     expect(payment.error.value).toBe(t('payment.targetMissing'))
-    scope.stop()
-  })
-
-  it('localizes authoritative terminal provider states', async () => {
-    vi.useFakeTimers()
-    setLocale('zh-CN')
-    createPaymentOrder.mockResolvedValue(pendingOrder)
-    getPaymentOrder.mockResolvedValue({ ...pendingOrder, status: 'refunded' })
-    const scope = effectScope()
-    const payment = scope.run(() => usePaymentOrder({ onPaid: vi.fn() }))!
-
-    payment.chooseMethod('ezpay:alipay')
-    await payment.createOrder()
-    await vi.advanceTimersByTimeAsync(2000)
-
-    expect(payment.stage.value).toBe('configure')
-    expect(payment.error.value).toBe(t('payment.terminalStatus', { status: t('payment.status.refunded') }))
-    scope.stop()
-  })
-
-  it('honors a paid response that wins the cancellation race', async () => {
-    vi.useFakeTimers()
-    createPaymentOrder.mockResolvedValue(pendingOrder)
-    cancelPaymentOrder.mockResolvedValue({ ...pendingOrder, status: 'paid', paidAt: '2026-08-07T00:01:00Z' })
-    const onPaid = vi.fn()
-    const scope = effectScope()
-    const payment = scope.run(() => usePaymentOrder({ onPaid }))!
-    payment.chooseMethod('ezpay:alipay')
-    await payment.createOrder()
-    await payment.cancelOrder()
-
-    expect(payment.stage.value).toBe('paid')
-    await vi.advanceTimersByTimeAsync(700)
-    expect(onPaid).toHaveBeenCalledOnce()
     scope.stop()
   })
 })

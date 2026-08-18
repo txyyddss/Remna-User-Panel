@@ -19,7 +19,7 @@ const combo = {
   price: { currency: 'TXB' as const, minor: '1000', display: '10.00 TXB' },
   validityDays: 30,
   trafficLimitBytes: '1',
-  resetStrategy: 'MONTH' as const,
+  resetStrategy: 'MONTH_ROLLING' as const,
   includedSquads: [],
   active: true,
   rolloverMinRemainingBps: 0,
@@ -94,6 +94,7 @@ describe('CatalogPage quote restoration', () => {
   beforeEach(() => {
     sessionStorage.clear()
     catalogMock.useCatalog.mockReset()
+    window.Telegram = undefined
   })
 
   it('does not request another quote after purchase confirmation', async () => {
@@ -126,6 +127,23 @@ describe('CatalogPage quote restoration', () => {
 
     expect(confirmPurchase).toHaveBeenCalledOnce()
     expect(sessionStorage.getItem('txc-catalog-step:user-1')).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('returns from purchase review through Telegram native Back', async () => {
+    const onClick = vi.fn()
+    window.Telegram = { WebApp: {
+      version: '9.0', initData: 'signed', initDataUnsafe: {}, colorScheme: 'dark',
+      ready: vi.fn(), expand: vi.fn(), close: vi.fn(), openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn(),
+      BackButton: { isVisible: false, show: vi.fn(), hide: vi.fn(), onClick, offClick: vi.fn() },
+    } }
+    const { wrapper } = await mountPage(null, 5)
+
+    expect(onClick).toHaveBeenCalledOnce()
+    onClick.mock.calls[0]?.[0]?.()
+    await nextTick()
+
+    expect(wrapper.find('[data-test="catalog-coupon-step"]').exists()).toBe(true)
     wrapper.unmount()
   })
 

@@ -59,6 +59,7 @@ type Purchase struct {
 	Price                     Money     `json:"price"`
 	GrossPriceTXBMinor        int64     `json:"-"`
 	GrossPrice                Money     `json:"grossPrice"`
+	CoreGrossTXBMinor         int64     `json:"-"`
 	CouponDiscountTXBMinor    int64     `json:"-"`
 	CouponDiscount            Money     `json:"couponDiscount"`
 	CouponGrantID             *string   `json:"couponGrantId"`

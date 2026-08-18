@@ -10,6 +10,8 @@ import { formatDateTime, formatMoney } from '@/utils/format'
 const props = defineProps<{
   methods: readonly FeaturePaymentMethod[]
   reissueOrder?: FeaturePaymentOrder | null
+  minimumMinor?: string
+  maximumMinor?: string
 }>()
 const emit = defineEmits<{ paid: [] }>()
 const open = defineModel<boolean>('open', { required: true })
@@ -34,6 +36,7 @@ const {
   chooseMethod,
   createOrder,
   cancelOrder,
+  retryOperation,
   openPaymentTarget,
   stopPolling,
 } = usePaymentOrder({
@@ -41,6 +44,8 @@ const {
     open.value = false
     emit('paid')
   },
+  minimumMinor: () => props.minimumMinor ?? '100',
+  maximumMinor: () => props.maximumMinor ?? '10000000000',
 })
 
 const description = computed(() => stage.value === 'configure'
@@ -76,7 +81,7 @@ watch(open, (next, previous) => {
     v-model:open="open"
     :title="$t('payment.addTxb')"
     :description="description"
-    :dismissible="!['pending', 'cancelling'].includes(stage)"
+    :dismissible="!['creating', 'pending', 'cancelling'].includes(stage)"
   >
     <template #body>
       <template v-if="!couponRedemption && (stage === 'configure' || stage === 'creating')">
@@ -89,8 +94,11 @@ watch(open, (next, previous) => {
           :amount-valid="amountValid"
           :can-create="canCreate"
           :can-reissue="canReissue"
+          :minimum-minor="minimumMinor ?? '100'"
+          :maximum-minor="maximumMinor ?? '10000000000'"
           @choose-method="chooseMethod"
           @create-order="createOrder"
+          @retry-operation="retryOperation"
           @coupon-redeemed="couponRedemption = $event"
         />
       </template>
@@ -106,6 +114,7 @@ watch(open, (next, previous) => {
         <p class="payment-expiry">{{ $t('payment.expires', { date: formatDateTime(order.expiresAt) }) }}</p>
         <UButton v-if="order.paymentUrl" block color="neutral" variant="outline" trailing-icon="i-ph-arrow-square-out" :label="$t('payment.openPage')" data-haptic @click="openPaymentTarget" />
         <div class="payment-waiting" role="status"><span class="payment-waiting__pulse" />{{ stage === 'cancelling' ? $t('payment.cancelling') : $t('payment.waiting') }}</div>
+        <UButton v-if="stage === 'cancelling' && error" block color="neutral" variant="outline" icon="i-ph-arrows-clockwise" :label="$t('operations.checkStatus')" data-haptic @click="retryOperation" />
         <UButton block color="error" variant="ghost" :disabled="stage === 'cancelling'" :label="$t('payment.cancelOrder')" data-haptic="medium" @click="cancelOrder" />
         <p class="field-hint">{{ $t('payment.callbackHint') }}</p>
         <UAlert v-if="error" color="error" variant="soft" :description="error" />
@@ -125,6 +134,14 @@ watch(open, (next, previous) => {
         <UIcon name="i-ph-x-circle-fill" class="payment-success__error-icon" aria-hidden="true" />
         <h2>{{ $t('payment.cancelled') }}</h2>
         <p>{{ $t('payment.cancelledClose') }}</p>
+        <UAlert v-if="error" color="warning" variant="soft" :description="error" />
+      </div>
+      <div v-else-if="stage === 'review'" class="payment-success payment-success--cancelled" role="status">
+        <UIcon name="i-ph-warning-circle-fill" class="payment-success__error-icon" aria-hidden="true" />
+        <h2>{{ $t('payment.reviewTitle') }}</h2>
+        <p>{{ $t('payment.reviewDescription') }}</p>
+        <UAlert v-if="error" color="warning" variant="soft" :description="error" />
+        <UButton block color="neutral" variant="outline" :label="$t('common.close')" data-haptic @click="closeSheet" />
       </div>
       <div v-else class="payment-success" role="status"><UIcon name="i-ph-check-circle-fill" /><h2>{{ $t('payment.added') }}</h2><p>{{ $t('payment.ready') }}</p></div>
     </template>

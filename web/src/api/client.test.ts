@@ -39,7 +39,7 @@ const entitlement: Purchase = {
   status: 'cancelled',
   autoRenewEnabled: false,
   trafficLimitBytes: '107374182400',
-  resetStrategy: 'MONTH',
+  resetStrategy: 'MONTH_ROLLING',
   squadUuids: [],
   rolloverMinRemainingBps: 0,
   createdAt: '2026-08-07T00:00:00Z',
@@ -161,16 +161,18 @@ describe('admin API mutations', () => {
       .mockResolvedValueOnce(jsonResponse({ id: 'payment-1', status: 'pending' }))
       .mockResolvedValueOnce(jsonResponse({ id: 'payment-1', status: 'cancelled' }))
 
-    await api.createPaymentOrder('bepusdt:usdt.trc20', '15000')
+    await api.createPaymentOrder('bepusdt:usdt.trc20', '15000', 'payment-create-1')
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toBe('/api/v1/payments/orders')
     expect(options.method).toBe('POST')
+    expect(new Headers(options.headers).get('Idempotency-Key')).toBe('payment-create-1')
     expect(JSON.parse(String(options.body))).toEqual({ methodId: 'bepusdt:usdt.trc20', txbMinor: '15000' })
 
-    await api.cancelPaymentOrder('payment/1')
+    await api.cancelPaymentOrder('payment/1', 'payment-cancel-1')
     const [cancelUrl, cancelOptions] = fetchMock.mock.calls[1] as [string, RequestInit]
     expect(cancelUrl).toBe('/api/v1/payments/orders/payment%2F1/cancel')
     expect(cancelOptions.method).toBe('POST')
+    expect(new Headers(cancelOptions.headers).get('Idempotency-Key')).toBe('payment-cancel-1')
     expect(cancelOptions.body).toBeUndefined()
   })
 

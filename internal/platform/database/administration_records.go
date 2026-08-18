@@ -25,9 +25,6 @@ func (s *Store) AppendAudit(ctx context.Context, actorUserID *string, action, ta
 	if err := insertAuditTx(ctx, tx, id, actorUserID, action, targetType, targetID, detail, now); err != nil {
 		return fmt.Errorf("append audit event: %w", err)
 	}
-	if err := pruneAuditTx(ctx, tx); err != nil {
-		return fmt.Errorf("prune audit events: %w", err)
-	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit audit retention: %w", err)
 	}
@@ -36,13 +33,6 @@ func (s *Store) AppendAudit(ctx context.Context, actorUserID *string, action, ta
 
 func insertAuditTx(ctx context.Context, tx *sql.Tx, id string, actorUserID *string, action, targetType, targetID, detail string, now time.Time) error {
 	_, err := tx.ExecContext(ctx, `INSERT INTO audit_events(id,actor_user_id,action,target_type,target_id,detail,created_at) VALUES(?,?,?,?,?,?,?)`, id, actorUserID, action, targetType, targetID, detail, stamp(now))
-	return err
-}
-
-func pruneAuditTx(ctx context.Context, tx *sql.Tx) error {
-	_, err := tx.ExecContext(ctx, `DELETE FROM audit_events WHERE id IN (
-		SELECT id FROM audit_events ORDER BY created_at DESC,id DESC LIMIT -1 OFFSET 200
-	)`)
 	return err
 }
 

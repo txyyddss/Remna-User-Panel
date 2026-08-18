@@ -29,7 +29,7 @@ func scanEmbyProvisioning(row rowScanner) (domain.ProvisioningRecord, error) {
 	record.RemoteUsername = remoteUsername.String
 	record.CandidateUsername = candidate.String
 	record.CreateAttempted = createAttempted == 1
-	record.Retryable = record.Status == domain.StatusQueued && record.PasswordCiphertext != ""
+	record.Retryable = (record.Status == domain.StatusQueued || record.Status == domain.StatusPendingReview) && record.PasswordCiphertext != ""
 	if parentalRating.Valid {
 		if parentalRating.Int64 < -2147483648 || parentalRating.Int64 > 2147483647 {
 			return domain.ProvisioningRecord{}, errors.New("invalid stored Emby parental rating")

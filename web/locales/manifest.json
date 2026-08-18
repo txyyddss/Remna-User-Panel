@@ -6,6 +6,7 @@
     "commerce",
     "community",
     "member",
+    "statistics",
     "home",
     "admin-core",
     "admin-onboarding",
@@ -14,6 +15,7 @@
     "admin-community",
     "admin-catalog",
     "squad-profile",
-    "admin-operations"
+    "admin-operations",
+    "admin-workflows"
   ]
 }

@@ -37,6 +37,7 @@
     "trafficLimitInvalid": "请输入字节数或类似 10 GB 的值。",
     "resetCadence": "重置周期",
     "reset": {
+      "MONTH_ROLLING": "滚动月度",
       "DAY": "每天",
       "WEEK": "每周",
       "MONTH": "每月"

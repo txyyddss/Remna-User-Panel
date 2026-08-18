@@ -32,6 +32,9 @@ func (a *Application) configureTelegram(ctx context.Context) {
 	if err := a.telegram.SetChatMenuButton(setupCtx, "Open TX Carpool", a.config.PublicBaseURL.String()); err != nil {
 		a.logger.Error("configure Telegram menu", "error", err)
 	}
+	if err := a.configureTelegramCommands(setupCtx); err != nil {
+		a.logger.Error("configure Telegram commands", "error", err)
+	}
 }
 
 func (a *Application) reconcileStars(ctx context.Context) {
@@ -54,6 +57,8 @@ func (a *Application) reconcileStars(ctx context.Context) {
 		if _, err := a.billing.ValidateEvent(ctx, event); err == nil {
 			if _, err := a.store.RefundPayment(ctx, nil, event.OrderID, "Telegram Stars reconciliation refund", time.Now().UTC()); err != nil && !errors.Is(err, database.ErrConflict) {
 				a.logger.Error("reconcile Stars refund", "transaction_id", transaction.ID, "error", err)
+			} else if err := a.store.ResolvePaymentRefundOperation(ctx, event.OrderID, transaction.ID, time.Now().UTC()); err != nil {
+				a.logger.Error("resolve Stars refund operation", "transaction_id", transaction.ID, "error", err)
 			}
 		} else if !errors.Is(err, database.ErrConflict) && !errors.Is(err, database.ErrNotFound) {
 			a.logger.Error("reconcile Stars refund", "transaction_id", transaction.ID, "error", err)

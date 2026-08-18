@@ -18,7 +18,7 @@ const purchase = {
   status: 'activating',
   autoRenewEnabled: true,
   trafficLimitBytes: '1073741824',
-  resetStrategy: 'MONTH',
+  resetStrategy: 'MONTH_ROLLING',
   squadUuids: [],
   rolloverMinRemainingBps: 0,
   createdAt: '2026-08-13T00:00:00Z',

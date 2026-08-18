@@ -3,6 +3,8 @@
     "addBalance": "充值"
   },
   "catalog": {
+    "rolloverThreshold": "剩余流量高于 {threshold}% 时可结转",
+    "occupancy": "已占用 {percentage}%",
     "activationRequired": "需要激活码", "activationTitle": "解锁此区域",
     "activationDescription": "请输入所选区域的激活码。激活码仅用于本次购买。", "activationCodeLabel": "激活码",
     "activationCodeHint": "激活码由服务器安全校验，不会保存在应用中。",
@@ -95,12 +97,14 @@
     "providerUnavailable": "不可用"
   },
   "amount": {
-    "hint": "最多输入 2 位小数。",
-    "invalidPrecision": "最多保留 2 位小数。",
-    "tooSmall": "请输入更大的金额。",
-    "tooLarge": "请输入更小的金额。"
+    "hint": "最多输入 2 位小数。", "invalidPrecision": "最多保留 2 位小数。",
+    "tooSmall": "请输入更大的金额。", "tooLarge": "请输入更小的金额。"
   },
   "payment": {
+    "operationStatus": "支付操作状态：{status}。",
+    "reviewTitle": "支付操作需要复核",
+    "reviewDescription": "支付服务商结果尚不明确。复核完成前请勿再次发起付款。",
+    "amountRange": "可输入范围：{min} 至 {max} TXB（含边界）。",
     "paymentAmountValue": "{amount}",
     "addTxb": "充值 TXB",
     "configureHint": "选择支付方和渠道。",
@@ -109,10 +113,8 @@
     "couponHint": "兑换余额优惠券",
     "amount": "金额",
     "minimumTopUp": "有最低充值金额。",
-    "provider": "支付方",
-    "chooseProvider": "选择支付方",
-    "chooseChannel": "选择支付渠道",
-    "continueToChannel": "选择渠道",
+    "provider": "支付方", "chooseProvider": "选择支付方",
+    "chooseChannel": "选择支付渠道", "continueToChannel": "选择渠道",
     "backToProvider": "更换支付方",
     "providers": {
       "ezpay": "EZPay",
@@ -161,15 +163,13 @@
     "cancelling": "正在取消订单",
     "waiting": "等待付款",
     "cancelOrder": "取消订单",
-    "rateUnavailable": "管理员必须先配置 TXB 汇率。",
+    "rateUnavailable": "管理员已禁用此渠道。",
     "targetMissing": "支付方未返回付款目标。",
     "orderExpired": "此支付订单已过期，请在准备好后创建新订单。",
     "terminalStatus": "付款状态：{status}。",
     "status": {
-      "creating": "创建中",
-      "pending": "处理中",
-      "paid": "已支付",
-      "cancelled": "已取消",
+      "creating": "创建中", "pending": "处理中",
+      "paid": "已支付", "cancelled": "已取消",
       "expired": "已过期",
       "failed": "失败",
       "refunded": "已退款"

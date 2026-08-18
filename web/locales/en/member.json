@@ -40,6 +40,107 @@
     "unavailable": "Dashboard unavailable",
     "loadFailed": "Dashboard data could not be loaded."
   },
+  "operations": {
+    "checkStatus": "Check status",
+    "statusUnavailable": "Operation status is temporarily unavailable.",
+    "status": {
+      "queued": "Queued",
+      "processing": "Processing",
+      "succeeded": "Completed",
+      "failed": "Failed",
+      "compensated": "Reversed",
+      "pending_review": "Pending review",
+      "partial": "Partially completed"
+    }
+  },
+  "connections": {
+    "manage": "Manage connections",
+    "eyebrow": "Subscription security",
+    "title": "Active connections",
+    "subtitle": "Review recently seen IP addresses and disconnect one when access is no longer yours.",
+    "scanAgain": "Scan again",
+    "scanning": "Scanning connections",
+    "progress": "{percent}% complete",
+    "scanUnavailable": "Connections unavailable",
+    "scanFailed": "The provider could not complete this scan.",
+    "emptyTitle": "No active connections",
+    "emptyDescription": "No recent IP addresses were reported for your subscription.",
+    "connectionCount": "{count} recent IP address(es)",
+    "lastSeen": "Last seen {date}",
+    "disconnectIp": "Disconnect {ip}",
+    "dropTitle": "Disconnect this IP?",
+    "dropDescription": "Disconnect {ip} from your subscription.",
+    "sharedIpWarning": "Other sessions sharing this public IP may also be interrupted.",
+    "disconnect": "Disconnect",
+    "disconnecting": "Disconnecting",
+    "operation": {
+      "queued": "The disconnect request is queued.",
+      "processing": "The provider is disconnecting this IP.",
+      "succeeded": "The IP was disconnected and a fresh scan has started.",
+      "failed": "The provider confirmed that the disconnect failed. Scan again before retrying.",
+      "compensated": "The disconnect was reversed. Scan again before taking another action.",
+      "pending_review": "The provider outcome is unclear. Do not retry; an administrator must review it.",
+      "partial": "Only part of the provider operation completed. Do not retry until it is reviewed."
+    },
+    "errors": {
+      "scanFailed": "A connection scan could not be started.",
+      "pollFailed": "Connection progress could not be refreshed.",
+      "dropFailed": "The disconnect request could not be accepted."
+    }
+  },
+  "purchaseOperations": {
+    "resetAction": "Reset traffic",
+    "refundAction": "Refund purchase",
+    "amount": "Amount",
+    "cadence": "Reset cadence",
+    "eligibleUntil": "Eligible until",
+    "ineligible": "This purchase is not eligible for the selected action.",
+    "quoteChanged": "Eligibility or pricing changed. Review the refreshed quote before confirming again.",
+    "reset": {
+      "title": "Reset traffic now?",
+      "description": "The server-calculated TXB price is charged before the provider reset starts.",
+      "confirm": "Pay and reset"
+    },
+    "refund": {
+      "title": "Refund this purchase?",
+      "description": "Access is paused and zero usage is checked again before the original net debit is credited.",
+      "confirm": "Confirm refund"
+    },
+    "reason": {
+      "PURCHASE_NOT_ACTIVE": "Only the current active purchase can use this action.",
+      "RESET_STRATEGY_UNSUPPORTED": "This purchase reset cadence is not supported.",
+      "RESET_PRICE_INVALID": "The immutable reset price is unavailable.",
+      "REFUND_NOT_FIRST_TERM": "Only the first term in this purchase lineage can be refunded.",
+      "REFUND_WINDOW_EXPIRED": "The strict 24-hour refund window has ended.",
+      "REFUND_TRAFFIC_USED": "Traffic has already been used for this purchase.",
+      "REMNAWAVE_IDENTITY_REQUIRED": "Account synchronization must finish first.",
+      "OPERATION_ALREADY_OPEN": "Another provider operation is already open for this purchase."
+    },
+    "operation": {
+      "reset": {
+        "queued": "Your paid traffic reset is queued.",
+        "processing": "The provider is resetting traffic.",
+        "succeeded": "Traffic was reset successfully.",
+        "failed": "The reset failed before completion.",
+        "compensated": "The reset failed and the exact TXB charge was restored.",
+        "pending_review": "The provider outcome is unclear. Do not retry while it is reviewed.",
+        "partial": "The reset completed only partially. Do not retry while it is reviewed."
+      },
+      "refund": {
+        "queued": "Your refund is queued.",
+        "processing": "Access is paused while zero usage is verified again.",
+        "succeeded": "The original net TXB debit was refunded.",
+        "failed": "The refund did not complete and access was restored when required.",
+        "compensated": "The refund was reversed and access was restored.",
+        "pending_review": "The provider outcome is unclear. Do not retry while it is reviewed.",
+        "partial": "The refund completed only partially. Do not retry while it is reviewed."
+      }
+    },
+    "errors": {
+      "quoteUnavailable": "The live operation quote is temporarily unavailable.",
+      "operationFailed": "The operation could not be accepted."
+    }
+  },
   "emby": {
     "disabledLibraries": "Disabled libraries",
     "disabledLibrariesHint": "All libraries are enabled by default. Check only the libraries this account must not access.",
@@ -72,7 +173,8 @@
       "queued": "Queued",
       "provisioning": "Provisioning",
       "active": "Active",
-      "failed": "Failed"
+      "failed": "Failed",
+      "pending_review": "Pending review"
     }
   }
 }

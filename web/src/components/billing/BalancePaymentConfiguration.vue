@@ -9,9 +9,9 @@ import { localizedError, useI18n } from '@/i18n'
 import { createUuid } from '@/utils/browserCompatibility'
 import PaymentChannelStep from './PaymentChannelStep.vue'
 import PaymentProviderStep from './PaymentProviderStep.vue'
-import type { PaymentChannelOption, PaymentProviderOption } from './paymentOptions'
+import { paymentChannelLogo, type PaymentChannelOption, type PaymentProviderOption } from './paymentOptions'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   methods: readonly FeaturePaymentMethod[]
   selectedMethodId: string | null
   stage: PaymentStage
@@ -19,10 +19,16 @@ const props = defineProps<{
   amountValid: boolean
   canCreate: boolean
   canReissue: boolean
-}>()
+  minimumMinor?: string
+  maximumMinor?: string
+}>(), {
+  minimumMinor: '100',
+  maximumMinor: '10000000000',
+})
 const emit = defineEmits<{
   chooseMethod: [id: string]
   createOrder: []
+  retryOperation: []
   couponRedeemed: [redemption: CouponRedemption]
 }>()
 const amount = defineModel<string>('amount', { required: true })
@@ -72,6 +78,7 @@ const channelItems = computed<PaymentChannelOption[]>(() => channels.value.map((
   value: method.id,
   description: method.available ? '' : methodNote(method),
   disabled: !method.available,
+  logo: paymentChannelLogo(method.provider, method.rail),
 })))
 const paymentStep = shallowRef<'provider' | 'channel'>('provider')
 const canContinue = computed(() => selectedProvider.value !== null && selectedProvider.value !== 'coupon' && channels.value.some((method) => method.available))
@@ -155,8 +162,11 @@ watch(() => props.stage, (stage) => {
     :error="error"
     :can-create="canCreate"
     :can-reissue="canReissue"
+    :minimum-minor="minimumMinor"
+    :maximum-minor="maximumMinor"
     @choose-method="emit('chooseMethod', $event)"
     @back="paymentStep = 'provider'"
     @create-order="emit('createOrder')"
+    @retry-operation="emit('retryOperation')"
   />
 </template>

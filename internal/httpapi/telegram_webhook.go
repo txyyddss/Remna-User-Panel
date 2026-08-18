@@ -93,6 +93,10 @@ func (s *Server) telegramWebhook(w http.ResponseWriter, r *http.Request) {
 			s.writeError(w, r, http.StatusInternalServerError, "REFUND_FAILED", "Telegram refund could not be applied.")
 			return
 		}
+		if err := s.deps.Store.ResolvePaymentRefundOperation(r.Context(), payment.InvoicePayload,
+			payment.TelegramPaymentChargeID, time.Now().UTC()); err != nil {
+			s.deps.Logger.Error("resolve Stars refund operation", "request_id", middlewareRequestID(r), "error", err)
+		}
 	}
 	if update.Message != nil {
 		s.processTelegramGroupMessage(r.Context(), update.Message)

@@ -12,12 +12,15 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/admin"
 	"github.com/txyyddss/Remna-User-Panel/internal/billing"
 	"github.com/txyyddss/Remna-User-Panel/internal/catalog"
+	"github.com/txyyddss/Remna-User-Panel/internal/connections"
 	"github.com/txyyddss/Remna-User-Panel/internal/coupons"
 	"github.com/txyyddss/Remna-User-Panel/internal/emby"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
+	"github.com/txyyddss/Remna-User-Panel/internal/purchaseops"
 	"github.com/txyyddss/Remna-User-Panel/internal/questionnaires"
 	"github.com/txyyddss/Remna-User-Panel/internal/requestauth"
+	productstats "github.com/txyyddss/Remna-User-Panel/internal/statistics"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -45,27 +48,33 @@ type bepusdtUnsignedVerifier interface {
 // Dependencies contains already-constructed application services.
 
 type Dependencies struct {
-	Accounts          *accounts.Service
-	Catalog           *catalog.Service
-	Billing           *billing.Service
-	Activity          *activity.Service
-	Coupons           *coupons.Service
-	Questionnaires    *questionnaires.Service
-	Emby              *emby.Service
-	EmbyPrice         emby.PriceSource
-	Admin             *admin.Service
-	Settings          *admin.SettingsService
-	DatabaseAdmin     *DatabaseAdministrationHTTP
-	Store             *database.Store
-	Telegram          *telegram.Client
-	Webhooks          PaymentWebhookVerifier
-	PublicURL         *url.URL
-	Static            fs.FS
-	Logger            *slog.Logger
-	RequestSigningKey []byte
-	SessionTTL        time.Duration
-	SecureCookies     bool
-	AdminTelegramIDs  []int64
+	Accounts           *accounts.Service
+	Catalog            *catalog.Service
+	Connections        *connections.Service
+	ConnectionDrops    *connections.DropService
+	PurchaseOperations *purchaseops.Service
+	Statistics         *productstats.Service
+	Billing            *billing.Service
+	Activity           *activity.Service
+	Coupons            *coupons.Service
+	Questionnaires     *questionnaires.Service
+	Emby               *emby.Service
+	EmbyOperations     *emby.OperationService
+	EmbyPrice          emby.PriceSource
+	Admin              *admin.Service
+	AdminUsers         *admin.UserWorkflows
+	Settings           *admin.SettingsService
+	DatabaseAdmin      *DatabaseAdministrationHTTP
+	Store              *database.Store
+	Telegram           *telegram.Client
+	Webhooks           PaymentWebhookVerifier
+	PublicURL          *url.URL
+	Static             fs.FS
+	Logger             *slog.Logger
+	RequestSigningKey  []byte
+	SessionTTL         time.Duration
+	SecureCookies      bool
+	AdminTelegramIDs   []int64
 }
 
 // Server owns HTTP routing and transport-only validation.
@@ -80,7 +89,7 @@ type Server struct {
 // New constructs all public, authenticated, admin, and webhook routes.
 
 func New(deps Dependencies) (*Server, error) {
-	if deps.Accounts == nil || deps.Catalog == nil || deps.Billing == nil || deps.Activity == nil || deps.Coupons == nil || deps.Questionnaires == nil || deps.Emby == nil || deps.EmbyPrice == nil || deps.Admin == nil || deps.Settings == nil || deps.Store == nil || deps.Telegram == nil || deps.Webhooks == nil || deps.PublicURL == nil || deps.Logger == nil || len(deps.AdminTelegramIDs) == 0 {
+	if deps.Accounts == nil || deps.Catalog == nil || deps.Connections == nil || deps.ConnectionDrops == nil || deps.PurchaseOperations == nil || deps.Statistics == nil || deps.Billing == nil || deps.Activity == nil || deps.Coupons == nil || deps.Questionnaires == nil || deps.Emby == nil || deps.EmbyOperations == nil || deps.EmbyPrice == nil || deps.Admin == nil || deps.AdminUsers == nil || deps.Settings == nil || deps.Store == nil || deps.Telegram == nil || deps.Webhooks == nil || deps.PublicURL == nil || deps.Logger == nil || len(deps.AdminTelegramIDs) == 0 {
 		return nil, errors.New("HTTP API dependencies are incomplete")
 	}
 	adminTelegramIDs := make(map[int64]struct{}, len(deps.AdminTelegramIDs))
@@ -125,6 +134,8 @@ func New(deps Dependencies) (*Server, error) {
 		authenticated.Get("/api/v1/onboarding/content", server.onboardingContent)
 		authenticated.Get("/api/v1/dashboard", server.dashboard)
 		authenticated.Get("/api/v1/dashboard/node-usage", server.dashboardNodeUsage)
+		authenticated.Get("/api/v1/statistics", server.statisticsSnapshot)
+		authenticated.Get("/api/v1/statistics/nodes", server.statisticsNodes)
 		authenticated.Get("/api/v1/catalog", server.catalog)
 		authenticated.Post("/api/v1/purchases/quote", server.purchaseQuote)
 		authenticated.Post("/api/v1/purchases", server.purchase)
@@ -134,6 +145,7 @@ func New(deps Dependencies) (*Server, error) {
 		authenticated.Get("/api/v1/purchases/{id}/auto-renewal", server.automaticRenewal)
 		authenticated.Put("/api/v1/purchases/{id}/auto-renewal", server.updateAutomaticRenewal)
 		authenticated.Post("/api/v1/subscription/revoke", server.revokeSubscription)
+		server.mountMemberOperations(authenticated)
 		authenticated.Get("/api/v1/balance", server.balance)
 		authenticated.Get("/api/v1/ledger", server.ledger)
 		authenticated.Post("/api/v1/payments/orders", server.createPaymentOrder)

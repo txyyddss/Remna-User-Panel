@@ -2,15 +2,7 @@ openapi: 3.1.0
 info:
   title: TX Carpool API
   version: 1.0.0
-  description: |
-    HTTP contract for the TX Carpool Telegram Mini App. User and admin endpoints use a Secure, HttpOnly session cookie established from validated Telegram Mini App `initData`.
-    Every authenticated browser request also carries a five-minute HMAC timestamp, unique nonce, and signature derived from a
-    same-origin companion key. Provider callbacks use provider-specific
-    signatures and are never authenticated by the browser session.
-    All identifiers and timestamps are strings. TXB values use integer hundredths
-    encoded as decimal strings. Traffic byte counts are decimal strings. The
-    server is authoritative for prices, exchange rates, entitlement dates, and
-    payment state.
+  description: "HTTP contract for the TX Carpool Telegram Mini App. User and admin endpoints use a Secure, HttpOnly session cookie established from validated Telegram Mini App `initData`. Every authenticated browser request also carries a five-minute HMAC timestamp, unique nonce, and signature derived from a same-origin companion key. Provider callbacks use provider-specific signatures and are never authenticated by the browser session. All identifiers and timestamps are strings. TXB values use integer hundredths encoded as decimal strings. Traffic byte counts are decimal strings. The server is authoritative for prices, exchange rates, entitlement dates, and payment state."
   license: { name: Proprietary }
 servers: [{ url: /, description: Same-origin API }]
 tags: [{ name: Authentication }, { name: Onboarding }, { name: Dashboard }, { name: Catalog }, { name: Billing }, { name: Activity }, { name: Coupons }, { name: Questionnaires }, { name: Emby }, { name: Admin }, { name: Database Administration }, { name: Webhooks }, { name: Operations }]
@@ -31,9 +23,17 @@ paths:
   /api/v1/purchases/{id}/cancel: { $ref: './paths/api-v1-purchases-id-cancel.yaml' }
   /api/v1/purchases/{id}/rollover: { $ref: './paths/api-v1-purchases-id-rollover.yaml' }
   /api/v1/purchases/{id}/auto-renewal: { $ref: './paths/api-v1-purchases-id-auto-renewal.yaml' }
+  /api/v1/purchases/{id}/traffic-reset: { $ref: './paths/api-v1-purchases-id-traffic-reset.yaml' }
+  /api/v1/purchases/{id}/refund: { $ref: './paths/api-v1-purchases-id-refund.yaml' }
+  /api/v1/operations/{operationId}: { $ref: './paths/api-v1-operations-id.yaml' }
   /api/v1/subscription/revoke: { $ref: './paths/api-v1-subscription-revoke.yaml' }
+  /api/v1/subscription/connections: { $ref: './paths/api-v1-subscription-connections.yaml' }
+  /api/v1/subscription/connections/{scanId}: { $ref: './paths/api-v1-subscription-connections-id.yaml' }
+  /api/v1/subscription/connections/drop: { $ref: './paths/api-v1-subscription-connections-drop.yaml' }
   /api/v1/balance: { $ref: './paths/api-v1-balance.yaml' }
   /api/v1/ledger: { $ref: './paths/api-v1-ledger.yaml' }
+  /api/v1/statistics: { $ref: './paths/api-v1-statistics.yaml' }
+  /api/v1/statistics/nodes: { $ref: './paths/api-v1-statistics-nodes.yaml' }
   /api/v1/payments/orders: { $ref: './paths/api-v1-payments-orders.yaml' }
   /api/v1/payments/orders/{id}: { $ref: './paths/api-v1-payments-orders-id.yaml' }
   /api/v1/payments/orders/{id}/cancel: { $ref: './paths/api-v1-payments-orders-id-cancel.yaml' }
@@ -84,6 +84,13 @@ paths:
   /api/v1/admin/users: { $ref: './paths/api-v1-admin-users.yaml' }
   /api/v1/admin/users/{id}: { $ref: './paths/api-v1-admin-users-id.yaml' }
   /api/v1/admin/users/{id}/balance-adjustments: { $ref: './paths/api-v1-admin-users-id-balance-adjustments.yaml' }
+  /api/v1/admin/users/{userId}/entitlements/{entitlementId}: { $ref: './paths/api-v1-admin-users-id-entitlements-entitlementid.yaml' }
+  /api/v1/admin/users/{userId}/entitlements/{entitlementId}/refund: { $ref: './paths/api-v1-admin-users-id-entitlements-entitlementid-refund.yaml' }
+  /api/v1/admin/users/{userId}/combo-replacement: { $ref: './paths/api-v1-admin-users-id-combo-replacement.yaml' }
+  /api/v1/admin/bulk-extensions/preview: { $ref: './paths/api-v1-admin-bulk-extensions-preview.yaml' }
+  /api/v1/admin/bulk-extensions: { $ref: './paths/api-v1-admin-bulk-extensions.yaml' }
+  /api/v1/admin/operations/{operationId}/resolve: { $ref: './paths/api-v1-admin-operations-id-resolve.yaml' }
+  /api/v1/admin/billing/amount-limits: { $ref: './paths/api-v1-admin-billing-amount-limits.yaml' }
   /api/v1/admin/entitlements: { $ref: './paths/api-v1-admin-entitlements.yaml' }
   /api/v1/admin/entitlements/{id}/cancel: { $ref: './paths/api-v1-admin-entitlements-id-cancel.yaml' }
   /api/v1/admin/payments: { $ref: './paths/api-v1-admin-payments.yaml' }
@@ -96,6 +103,7 @@ paths:
   /api/v1/admin/database/mutations/review: { $ref: './paths/api-v1-admin-database-mutations-review.yaml' }
   /api/v1/admin/database/mutations: { $ref: './paths/api-v1-admin-database-mutations.yaml' }
   /api/v1/admin/backups: { $ref: './paths/api-v1-admin-backups.yaml' }
+  /api/v1/admin/backups/upload: { $ref: './paths/api-v1-admin-backups-upload.yaml' }
   /api/v1/admin/backups/{id}/download: { $ref: './paths/api-v1-admin-backups-id-download.yaml' }
   /api/v1/admin/backups/{id}: { $ref: './paths/api-v1-admin-backups-id.yaml' }
   /api/v1/admin/backups/{id}/restore: { $ref: './paths/api-v1-admin-backups-id-restore.yaml' }
@@ -117,13 +125,13 @@ paths:
   /healthz: { $ref: './paths/healthz.yaml' }
   /readyz: { $ref: './paths/readyz.yaml' }
 components:
-  securitySchemes:
-    cookieSession: { $ref: './components/security-schemes.yaml#/cookieSession' }
-    requestTimestamp: { $ref: './components/security-schemes.yaml#/requestTimestamp' }
-    requestNonce: { $ref: './components/security-schemes.yaml#/requestNonce' }
-    requestSignature: { $ref: './components/security-schemes.yaml#/requestSignature' }
+  securitySchemes: { cookieSession: { $ref: './components/security-schemes.yaml#/cookieSession' }, requestTimestamp: { $ref: './components/security-schemes.yaml#/requestTimestamp' }, requestNonce: { $ref: './components/security-schemes.yaml#/requestNonce' }, requestSignature: { $ref: './components/security-schemes.yaml#/requestSignature' } }
   parameters:
     ResourceID: { $ref: './components/parameters.yaml#/ResourceID' }
+    UserID: { $ref: './components/parameters.yaml#/UserID' }
+    EntitlementID: { $ref: './components/parameters.yaml#/EntitlementID' }
+    OperationID: { $ref: './components/parameters.yaml#/OperationID' }
+    ConnectionScanID: { $ref: './components/parameters.yaml#/ConnectionScanID' }
     ImportID: { $ref: './components/parameters.yaml#/ImportID' }
     DatabaseTableName: { $ref: './components/parameters.yaml#/DatabaseTableName' }
     IdempotencyKey: { $ref: './components/parameters.yaml#/IdempotencyKey' }
@@ -210,6 +218,32 @@ components:
     AutoRenewalFailure: { $ref: './components/schemas/schemas-15.yaml#/AutoRenewalFailure' }
     RolloverWindow: { $ref: './components/schemas/schemas-16.yaml#/RolloverWindow' }
     RolloverProjection: { $ref: './components/schemas/schemas-16.yaml#/RolloverProjection' }
+    OperationStatus: { $ref: './components/schemas/schemas-17.yaml#/OperationStatus' }
+    OperationReceipt: { $ref: './components/schemas/schemas-17.yaml#/OperationReceipt' }
+    PaymentOperation: { $ref: './components/schemas/schemas-17.yaml#/PaymentOperation' }
+    ConnectionIP: { $ref: './components/schemas/schemas-17.yaml#/ConnectionIP' }
+    ConnectionNode: { $ref: './components/schemas/schemas-17.yaml#/ConnectionNode' }
+    ConnectionScan: { $ref: './components/schemas/schemas-17.yaml#/ConnectionScan' }
+    ConnectionDropRequest: { $ref: './components/schemas/schemas-17.yaml#/ConnectionDropRequest' }
+    TrafficResetQuote: { $ref: './components/schemas/schemas-17.yaml#/TrafficResetQuote' }
+    MemberRefundQuote: { $ref: './components/schemas/schemas-17.yaml#/MemberRefundQuote' }
+    BillingAmountLimits: { $ref: './components/schemas/schemas-17.yaml#/BillingAmountLimits' }
+    BillingAmountLimitsWrite: { $ref: './components/schemas/schemas-17.yaml#/BillingAmountLimitsWrite' }
+    EntitlementEditRequest: { $ref: './components/schemas/schemas-18.yaml#/EntitlementEditRequest' }
+    ComboReplacementRequest: { $ref: './components/schemas/schemas-18.yaml#/ComboReplacementRequest' }
+    BulkExtensionRequest: { $ref: './components/schemas/schemas-18.yaml#/BulkExtensionRequest' }
+    BulkExtensionPreview: { $ref: './components/schemas/schemas-18.yaml#/BulkExtensionPreview' }
+    BulkExtensionCreateRequest: { $ref: './components/schemas/schemas-18.yaml#/BulkExtensionCreateRequest' }
+    OperationResolutionRequest: { $ref: './components/schemas/schemas-18.yaml#/OperationResolutionRequest' }
+    AdminSynchronization: { $ref: './components/schemas/schemas-18.yaml#/AdminSynchronization' }
+    AdminUserDetail: { $ref: './components/schemas/schemas-18.yaml#/AdminUserDetail' }
+    MetricValue: { $ref: './components/schemas/schemas-19.yaml#/MetricValue' }
+    NamedShare: { $ref: './components/schemas/schemas-19.yaml#/NamedShare' }
+    NodeTrafficSeries: { $ref: './components/schemas/schemas-19.yaml#/NodeTrafficSeries' }
+    StatisticsSnapshot: { $ref: './components/schemas/schemas-19.yaml#/StatisticsSnapshot' }
+    NormalizedDistribution: { $ref: './components/schemas/schemas-19.yaml#/NormalizedDistribution' }
+    StatisticsNode: { $ref: './components/schemas/schemas-19.yaml#/StatisticsNode' }
+    StatisticsNodesSnapshot: { $ref: './components/schemas/schemas-19.yaml#/StatisticsNodesSnapshot' }
     PaymentProfile: { $ref: './components/schemas/schemas-15.yaml#/PaymentProfile' }
     PaymentProfileWrite: { $ref: './components/schemas/schemas-15.yaml#/PaymentProfileWrite' }
     PaymentOrder: { $ref: './components/schemas/schemas-05.yaml#/PaymentOrder' }

@@ -3,8 +3,10 @@ import { computed, nextTick, useTemplateRef, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
+import { useI18n } from '@/i18n'
 import { useSessionStore } from '@/stores/session'
 import { focusWithoutScrolling } from '@/utils/dom'
+import { telegramFullscreenState } from '@/utils/telegram'
 
 interface NavItem {
   labelKey: string
@@ -15,6 +17,7 @@ interface NavItem {
 const route = useRoute()
 const router = useRouter()
 const sessionStore = useSessionStore()
+const { t } = useI18n()
 
 const primaryItems: NavItem[] = [
   { labelKey: 'nav.home', to: '/home', icon: 'i-ph-house' },
@@ -27,6 +30,11 @@ const activePath = computed(() => route.path)
 const mobileItems = computed(() => sessionStore.isAdmin ? [...primaryItems, adminItem] : primaryItems)
 const showBackButton = computed(() => !['/', '/home'].includes(route.path))
 const mainContent = useTemplateRef<globalThis.HTMLElement>('mainContent')
+const isFullscreen = telegramFullscreenState()
+const greetingName = computed(() => t('nav.fullscreenGreeting', {
+  name: sessionStore.user?.firstName?.trim() || t('nav.memberFallback'),
+}))
+const greetingUsername = computed(() => sessionStore.user?.telegramUsername?.trim() || sessionStore.user?.username?.trim() || '')
 
 function goBack(): void {
   try {
@@ -58,7 +66,7 @@ function isActive(to: string): boolean {
 </script>
 
 <template>
-  <div class="app-frame">
+  <div class="app-frame" :class="{ 'app-frame--fullscreen': isFullscreen }">
     <a class="skip-link" href="#main-content">{{ $t('nav.skip') }}</a>
     <aside class="side-rail" :aria-label="$t('nav.primary')">
       <nav class="side-rail__nav">
@@ -87,6 +95,10 @@ function isActive(to: string): boolean {
     </aside>
 
     <div class="app-frame__content">
+      <div v-if="isFullscreen" class="app-greeting" role="status">
+        <strong>{{ greetingName }}</strong>
+        <span v-if="greetingUsername">@{{ greetingUsername }}</span>
+      </div>
       <main id="main-content" ref="mainContent" class="app-main" tabindex="-1">
         <slot />
       </main>

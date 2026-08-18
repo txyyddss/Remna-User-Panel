@@ -9,6 +9,9 @@ This package builds the live catalog, validates purchase selections against curr
 - `renewals.go` retains the internal legacy batch implementation only; manual renewal is no longer a public member flow.
 - `cancellation.go` exposes the authenticated member operation for cancelling a queued purchase through the transactional store refund path.
 - `dashboard.go` composes current balance and entitlement data with cached or live upstream statistics and handles subscription URL revocation.
+- `revoke_operations.go` stores credential-rotation intent with only a hash of the prior subscription URL.
+- `revoke_worker.go` performs one queued rotation and reconciles ambiguous provider outcomes.
+- `revoke_lifecycle.go` owns the single-item receipt lifecycle and dashboard-cache invalidation.
 - `nodes.go` resolves the queued upstream node preview for the exact combo and optional-squad selection used by a quote, and projects enabled, display-only node metadata into the catalog for Home's usage multiplier lookup. Node metadata is never persisted.
 - `nodes_test.go` verifies quote node projection, filtering, ordering, selection deduplication, and provider failure handling.
 - `usage.go` validates a member-selected UTC range and projects live, bounded per-node traffic through the optional queued provider reader.

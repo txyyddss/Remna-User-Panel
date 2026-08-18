@@ -4,6 +4,7 @@ import { api } from '@/api/client'
 import { localizedError, t } from '@/i18n'
 import type { Catalog, CatalogNode, Dashboard, DashboardNodeUsage } from '@/api/types'
 import { notifyHaptic } from '@/utils/telegram'
+import { useDurableCommand } from './useDurableCommand'
 
 const isoDate = /^\d{4}-\d{2}-\d{2}$/
 const maximumNodeUsageRangeMilliseconds = 30 * 24 * 60 * 60 * 1000
@@ -88,10 +89,19 @@ export function useDashboard() {
   const catalog = shallowRef<Catalog | null>(null)
   const loading = shallowRef(true)
   const refreshing = shallowRef(false)
-  const revoking = shallowRef(false)
-  const error = shallowRef<string | null>(null)
+  const loadError = shallowRef<string | null>(null)
   const nodeUsageController = createNodeUsageController()
   const { nodeUsage, nodeUsageLoading, nodeUsageError, nodeUsageStart, nodeUsageEnd, loadNodeUsage, setNodeUsageStart, setNodeUsageEnd } = nodeUsageController
+  const revokeCommand = useDurableCommand({
+    errorKey: 'errors.subscriptionRevoke',
+    onTerminal: async (receipt) => {
+      if (receipt.status === 'succeeded') {
+        await load({ quiet: true })
+        notifyHaptic('success')
+      } else notifyHaptic('error')
+    },
+  })
+  const error = computed(() => loadError.value ?? revokeCommand.error.value)
 
   const hasEntitlement = computed(() => dashboard.value?.activePurchase != null)
   const catalogNodes = computed<readonly CatalogNode[]>(() => catalog.value?.nodes ?? [])
@@ -115,7 +125,7 @@ export function useDashboard() {
   async function load(options: { quiet?: boolean } = {}): Promise<void> {
     if (options.quiet) refreshing.value = true
     else loading.value = true
-    error.value = null
+    loadError.value = null
     try {
       const [dashboardResponse, catalogResponse] = await Promise.all([
         api.getDashboard(),
@@ -124,7 +134,7 @@ export function useDashboard() {
       dashboard.value = dashboardResponse
       catalog.value = catalogResponse
     } catch (caught) {
-      error.value = localizedError(caught, 'errors.dashboardUnavailable')
+      loadError.value = localizedError(caught, 'errors.dashboardUnavailable')
     } finally {
       loading.value = false
       refreshing.value = false
@@ -132,25 +142,9 @@ export function useDashboard() {
   }
 
   async function revokeSubscription(): Promise<boolean> {
-    revoking.value = true
-    error.value = null
-    try {
-      const response = await api.revokeSubscription()
-      if (dashboard.value) {
-        dashboard.value = {
-          ...dashboard.value,
-          subscriptionUrl: response.subscriptionUrl,
-        }
-      }
-      notifyHaptic('success')
-      return true
-    } catch (caught) {
-      error.value = localizedError(caught, 'errors.subscriptionRevoke')
-      notifyHaptic('error')
-      return false
-    } finally {
-      revoking.value = false
-    }
+    const accepted = await revokeCommand.execute('subscription-revoke', 'subscription-revoke', api.revokeSubscription)
+    if (!accepted) notifyHaptic('error')
+    return accepted
   }
 
   provide(nodeUsageControllerKey, nodeUsageController)
@@ -161,7 +155,11 @@ export function useDashboard() {
     dashboard: readonly(dashboard),
     loading: readonly(loading),
     refreshing: readonly(refreshing),
-    revoking: readonly(revoking),
+    revoking: revokeCommand.busy,
+    revokeBlocked: revokeCommand.blocksMutations,
+    revokeReceipt: revokeCommand.receipt,
+    revokeChecking: revokeCommand.checking,
+    revokeError: revokeCommand.error,
     error: readonly(error),
     nodeUsage: readonly(nodeUsage),
     nodeUsageLoading: readonly(nodeUsageLoading),
@@ -174,6 +172,7 @@ export function useDashboard() {
     activeSquadNames,
     load,
     revokeSubscription,
+    refreshRevoke: revokeCommand.refresh,
     loadNodeUsage,
     setNodeUsageStart,
     setNodeUsageEnd,

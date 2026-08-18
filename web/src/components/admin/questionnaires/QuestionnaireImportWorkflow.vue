@@ -10,7 +10,7 @@ import { txbInputFromMinor } from '@/utils/format'
 const props = defineProps<{ questionnaire: QuestionnaireAdminRecord }>()
 const emit = defineEmits<{ close: [] }>()
 const file = shallowRef<globalThis.File | null>(null)
-const { preview, summary, codeColumn, busy, settlementImportId, report, error, upload, analyze, settle, reset } = useQuestionnaireImport(() => props.questionnaire.id)
+const { preview, summary, codeColumn, busy, settlementImportId, operationReceipt, operationChecking, report, error, upload, analyze, settle, refreshOperation, reset } = useQuestionnaireImport(() => props.questionnaire.id)
 const canSettle = computed(() => Boolean(summary.value && summary.value.matchedCount > 0 && !settlementImportId.value))
 const { t } = useI18n()
 const columnItems = computed(() => preview.value?.headers ?? [])
@@ -30,6 +30,7 @@ function startOver(): void {
   <UDrawer :open="true" :title="t('questionnaireImport.settle', { name: questionnaire.title })" :description="t('questionnaireImport.copy')" @update:open="!$event && emit('close')">
     <template #body>
       <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
+      <UButton v-if="operationReceipt && ['queued', 'processing'].includes(operationReceipt.status) && error" color="neutral" variant="outline" icon="i-ph-arrow-clockwise" :loading="operationChecking" :label="t('operations.checkStatus')" @click="refreshOperation" />
       <InlineNotice v-if="settlementImportId && preview?.status !== 'settled'" :tone="preview?.status === 'failed' ? 'warning' : 'success'" :title="preview?.status === 'processing' ? t('questionnaireImport.running') : preview?.status === 'failed' ? t('questionnaireImport.failed') : t('questionnaireImport.queued')">{{ t('questionnaireImport.durable', { id: settlementImportId }) }}</InlineNotice>
       <InlineNotice v-if="report" tone="success" :title="t('questionnaireImport.complete')">{{ t('questionnaireImport.completeCopy', { count: report.rewardedCount, reward: txbInputFromMinor(report.rewardTxbMinor) }) }}</InlineNotice>
       <div v-if="!preview" class="csv-drop">

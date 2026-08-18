@@ -4,6 +4,7 @@ post:
   summary: Verify and stage a stored snapshot for restart-time restore
   description: Creates a rescue backup, verifies integrity and migration compatibility, stages beside the live database, writes a restore marker, and requests graceful restart.
   parameters:
+    - $ref: '../openapi.yaml#/components/parameters/IdempotencyKey'
     - $ref: '../openapi.yaml#/components/parameters/ResourceID'
   requestBody:
     required: true

@@ -2,10 +2,11 @@
 import { computed, onMounted, shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
+import type { SquadProduct } from '@/api/types'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { useCatalog } from '@/composables/useCatalog'
-import { useI18n } from '@/i18n'
+import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
 import { useSessionStore } from '@/stores/session'
 import CatalogCheckout from './CatalogCheckout.vue'
 import CatalogConfirmation from './CatalogConfirmation.vue'
@@ -16,13 +17,11 @@ import CatalogNodes from './CatalogNodes.vue'
 import ComboOption from './ComboOption.vue'
 import SquadSelector from './SquadSelector.vue'
 import SquadActivationDialog from './SquadActivationDialog.vue'
-import type { SquadProduct } from '@/api/types'
 
 const activeStep = shallowRef(1)
 const sessionStore = useSessionStore()
 const router = useRouter()
 const stepKey = () => sessionStore.user?.id ? `txc-catalog-step:${sessionStore.user.id}` : null
-const { t } = useI18n()
 const {
   catalog,
   balance,
@@ -45,7 +44,6 @@ const {
   selectedSquads,
   activationSquads,
   includedSquadIds,
-  couponGrants,
   eligibleCoupons,
   load,
   selectCombo,
@@ -82,7 +80,6 @@ const nextDisabled = computed(() => {
   if (activeStep.value === 4) return !quoteUsable.value
   return true
 })
-const nextLabel = computed(() => t('catalog.continue'))
 const activationOpen = shallowRef(false)
 const activationTarget = shallowRef<SquadProduct | null>(null)
 const activationPrompting = shallowRef(false)
@@ -91,6 +88,9 @@ let activationResolver: ((code: string | null) => void) | null = null
 function goBack(): void {
   if (activeStep.value > 1) activeStep.value -= 1
 }
+
+const showCatalogBack = computed(() => !purchase.value && activeStep.value > 1)
+useTelegramBackButton(showCatalogBack, goBack)
 
 function clearPersistedStep(): void {
   try {
@@ -176,11 +176,11 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
             </div>
             <SquadSelector v-else-if="activeStep === 2" :squads="visibleSquads" :selected-ids="selectedSquadIds" :included-ids="includedSquadIds" @toggle="toggleSquad" />
             <CatalogNodes v-else-if="activeStep === 3" :quote="quote" :loading="quoting" />
-            <CatalogCouponStep v-else-if="activeStep === 4" v-model:coupon-grant-id="selectedCouponGrantId" :coupons="couponGrants" :eligible-ids="eligibleCoupons.map((grant) => grant.id)" :discarding="couponDiscarding" :discard-coupon="discardCoupon" :quoting="quoting" @redeemed="handleCouponRedeemed" />
-            <CatalogCheckout v-else-if="activeStep === 5" :combo="selectedCombo" :squads="selectedSquads" :coupon="selectedCoupon" :quote="quote" :quoting="quoting" :error="error" :purchasing="purchasing || activationPrompting" :needs-balance="needsBalance" @confirm="handlePurchase" />
+            <CatalogCouponStep v-else-if="activeStep === 4" v-model:coupon-grant-id="selectedCouponGrantId" :coupons="eligibleCoupons" :eligible-ids="eligibleCoupons.map((grant) => grant.id)" :discarding="couponDiscarding" :discard-coupon="discardCoupon" :quoting="quoting" @redeemed="handleCouponRedeemed" />
+            <CatalogCheckout v-else-if="activeStep === 5" :combo="selectedCombo" :squads="selectedSquads" :coupon="selectedCoupon" :quote="quote" :quoting="quoting" :error="error" :purchasing="purchasing || activationPrompting" :needs-balance="needsBalance" @back="goBack" @confirm="handlePurchase" />
           </section>
         </Transition>
-        <CatalogFlowControls v-if="activeStep < 5" :show-back="activeStep > 1" :next-disabled="nextDisabled" :loading="quoting" :next-label="nextLabel" @back="goBack" @next="advance" />
+        <CatalogFlowControls v-if="activeStep < 5" :show-back="activeStep > 1" :next-disabled="nextDisabled" :loading="quoting" :next-label="$t('catalog.continue')" @back="goBack" @next="advance" />
       </template>
       <div v-else class="error-state">
         <h1>{{ $t('catalog.unavailable') }}</h1>

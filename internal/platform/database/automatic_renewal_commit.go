@@ -40,7 +40,7 @@ func (s *Store) CommitAutoRenewal(ctx context.Context, purchaseID string, now ti
 	if err != nil {
 		return model.Purchase{}, err
 	}
-	if !plan.Purchase.AutoRenewEnabled || plan.ScheduledAt.After(now) || plan.IneligibleReason != "" {
+	if !plan.Purchase.AutoRenewEnabled || plan.ScheduledAt.After(now.Add(EntitlementContinuityLead)) || plan.IneligibleReason != "" {
 		return model.Purchase{}, ErrConflict
 	}
 	newBalance, err := debitBalanceTx(ctx, tx, userID, plan.NetMinor, now)
@@ -56,9 +56,9 @@ func (s *Store) CommitAutoRenewal(ctx context.Context, purchaseID string, now ti
 		couponGrantID = *plan.Purchase.CouponGrantID
 	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO purchases(id,user_id,combo_id,charged_txb_minor,valid_from,valid_until,status,coupon_grant_id,
-		gross_price_txb_minor,coupon_discount_txb_minor,auto_renew_enabled,recurring_discount_attached,auto_renew_source_purchase_id,request_fingerprint,created_at,updated_at)
-		VALUES(?,?,?,?,?,?,'queued',?,?,?,?,?,?,?,?,?)`, successorID, userID, plan.Combo.ID, plan.NetMinor,
-		stamp(plan.ScheduledAt), stamp(plan.NextCycleEndsAt), couponGrantID, plan.GrossMinor, plan.DiscountMinor, 1,
+		gross_price_txb_minor,core_gross_txb_minor,coupon_discount_txb_minor,auto_renew_enabled,recurring_discount_attached,auto_renew_source_purchase_id,request_fingerprint,created_at,updated_at)
+		VALUES(?,?,?,?,?,?,'queued',?,?,?,?,?,?,?,?,?,?)`, successorID, userID, plan.Combo.ID, plan.NetMinor,
+		stamp(plan.ScheduledAt), stamp(plan.NextCycleEndsAt), couponGrantID, plan.GrossMinor, plan.Combo.PriceTXBMinor, plan.DiscountMinor, 1,
 		boolInt(plan.Purchase.RecurringDiscountAttached), purchaseID, "automatic-renewal:"+purchaseID, stamp(now), stamp(now))
 	if err != nil {
 		if isUniqueConstraint(err) {
@@ -73,6 +73,9 @@ func (s *Store) CommitAutoRenewal(ctx context.Context, purchaseID string, now ti
 		if _, err := tx.ExecContext(ctx, `INSERT INTO purchase_addons(purchase_id,remna_squad_uuid,charged_txb_minor) VALUES(?,?,?)`, successorID, addon.RemnaSquadUUID, addon.PriceTXBMinor); err != nil {
 			return model.Purchase{}, fmt.Errorf("snapshot automatic renewal add-on: %w", err)
 		}
+	}
+	if err := enqueuePurchaseTransitionTx(ctx, tx, successorID, "queued", plan.ScheduledAt, now); err != nil {
+		return model.Purchase{}, err
 	}
 	if _, err := insertLedgerTx(ctx, tx, userID, -plan.NetMinor, newBalance, "automatic_renewal", successorID, plan.Combo.Name, now); err != nil {
 		return model.Purchase{}, err

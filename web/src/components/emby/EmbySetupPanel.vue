@@ -12,6 +12,7 @@ const props = defineProps<{
   ratings: readonly EmbyRating[]
   libraries: readonly EmbyLibrary[]
   busy: boolean
+  blocked: boolean
 }>()
 const emit = defineEmits<{ setup: [payload: { password: string; maxParentalRating: number | null; disabledLibraryIds: string[] }] }>()
 const { t } = useI18n()
@@ -39,14 +40,14 @@ function submit(): void {
   <form class="section-block emby-form" autocomplete="off" @submit.prevent="submit">
     <div class="section-heading section-heading--stacked"><h2>{{ $t('emby.createAccount') }}</h2><p>{{ $t('emby.setupCost', { amount: formatMoney(price) }) }}</p></div>
     <UFormField name="password" :label="$t('emby.initialPassword')" :description="$t('emby.passwordHint')" required>
-      <UInput v-model="draft.password" icon="i-ph-lock-key" type="password" :minlength="8" required autocomplete="new-password" />
+      <UInput v-model="draft.password" icon="i-ph-lock-key" type="password" :minlength="8" :disabled="blocked" required autocomplete="new-password" />
     </UFormField>
     <UFormField name="rating" :label="$t('emby.rating')">
-      <USelect v-model="draft.maxParentalRating" :items="ratingItems" value-key="value" />
+      <USelect v-model="draft.maxParentalRating" :items="ratingItems" value-key="value" :disabled="blocked" />
     </UFormField>
-    <EmbyLibraryPicker :libraries="libraries" :selected-ids="draft.disabledLibraryIds" :disabled="busy" @toggle="toggleLibrary" />
+    <EmbyLibraryPicker :libraries="libraries" :selected-ids="draft.disabledLibraryIds" :disabled="blocked || busy" @toggle="toggleLibrary" />
     <UAlert color="success" variant="soft" icon="i-ph-shield-check" :description="$t('emby.safetyControls')" />
-    <UButton type="submit" :disabled="busy || draft.password.length < 8" :loading="busy" :label="busy ? $t('emby.startingSetup') : $t('emby.payAndCreate', { amount: formatMoney(price) })" />
+    <UButton type="submit" :disabled="blocked || busy || draft.password.length < 8" :loading="busy" :label="busy ? $t('emby.startingSetup') : $t('emby.payAndCreate', { amount: formatMoney(price) })" />
   </form>
 </template>
 

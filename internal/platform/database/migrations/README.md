@@ -40,3 +40,13 @@ file instead.
   source-successor link while leaving legacy renewal records intact.
 - `019_rollover_activation_codes.sql` removes the persisted rollover cap and
   adds bcrypt-backed squad activation metadata.
+- `020_release1_commerce.sql` converts monthly cadence to `MONTH_ROLLING`, snapshots immutable core price, and adds billing limits, provider receipts, connection scans, upload metadata, and replay facts.
+- `021_admin_workflows.sql` adds purchase-level entitlement overrides and the durable backup-upload publication saga.
+- `022_release1_rollups.sql` adds cleanup leases, compact activity/payment/purchase rollups, and timestamped statistics partitions.
+- `023_payment_callback_tombstones.sql` keeps compact provider-callback replay
+  evidence after terminal payment detail is pruned.
+- `024_operation_durability.sql` allows review-required connection scans and
+  preserves actor-scoped staged-restore replay identity across a database swap.
+- `025_mutation_durability.sql` adds review-required Emby state and prevents concurrent open setup commands.
+- `026_group_message_facts.sql` stores deduplicated raw configured-group non-command message facts for cumulative statistics.
+- `027_host_operation_guard.sql` prevents a new host remark mutation while the same host still has an unresolved operation.

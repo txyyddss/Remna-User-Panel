@@ -93,7 +93,7 @@ func saveTestCombo(t *testing.T, store *Store, name string, price int64, validit
 		PriceTXBMinor:     price,
 		ValidityDays:      validityDays,
 		TrafficLimitBytes: 100 * 1024 * 1024,
-		ResetStrategy:     "MONTH",
+		ResetStrategy:     "MONTH_ROLLING",
 		Active:            true,
 		SquadProductIDs:   squadIDs,
 	})

@@ -11,9 +11,11 @@ in parity with the matching `zh-CN` file and preserve `{placeholder}` names.
 - `admin-onboarding.json` contains visual onboarding-editor copy.
 - `admin-data.json` contains database editor and backup-management copy.
 - `admin-operations.json` contains settings, audit, payment, and entitlement copy.
+- `admin-workflows.json` contains aggregate user profiles, bulk extensions, operation resolution, and backup-upload copy.
 - `commerce.json` contains funding, payment, catalog, and checkout copy.
 - `community.json` contains coupon and questionnaire participation copy.
 - `core.json` contains application, navigation, status, and shared action copy.
 - `home.json` contains member Home traffic, UTC range, term, and reset labels.
 - `member.json` contains dashboard, onboarding, account, and Emby member copy.
+- `statistics.json` contains product statistics, chart, node, and freshness copy.
 - `squad-profile.json` contains localized typed squad profile labels and validation copy.

@@ -71,14 +71,14 @@ func (s *Store) SetAutoRenewal(ctx context.Context, userID, purchaseID string, e
 	return ErrConflict
 }
 
-// DueAutoRenewals lists terms that must be revalidated before expiry work begins.
+// DueAutoRenewals lists terms entering the provider continuity window.
 func (s *Store) DueAutoRenewals(ctx context.Context, now time.Time) ([]DueAutoRenewal, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT id,user_id FROM purchases WHERE auto_renew_enabled=1
-		AND valid_until<=? AND EXISTS (SELECT 1 FROM purchase_rollovers WHERE purchase_id=purchases.id AND status IN ('credited','zero','exception'))
-		AND (status IN ('active','activating') OR status='expired')
+		AND valid_until<=? AND (status IN ('active','activating') OR (status='expired'
+			AND EXISTS (SELECT 1 FROM purchase_rollovers WHERE purchase_id=purchases.id AND status IN ('credited','zero','exception'))))
 		AND NOT EXISTS (SELECT 1 FROM purchases successor WHERE successor.auto_renew_source_purchase_id=purchases.id
 			AND successor.status IN ('queued','activating','active'))
-		ORDER BY valid_until,id`, stamp(now))
+		ORDER BY valid_until,id`, stamp(now.UTC().Add(EntitlementContinuityLead)))
 	if err != nil {
 		return nil, fmt.Errorf("list due automatic renewals: %w", err)
 	}
@@ -102,7 +102,7 @@ func (s *Store) MarkAutoRenewalFailed(ctx context.Context, purchaseID, reason st
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 	_, err := s.db.ExecContext(ctx, `UPDATE purchases SET auto_renew_enabled=0,auto_renew_failure_reason=?,auto_renew_failed_at=?,updated_at=?
-		WHERE id=? AND auto_renew_enabled=1 AND status IN ('active','activating','expired') AND valid_until<=?`, reason, stamp(now), stamp(now), purchaseID, stamp(now))
+		WHERE id=? AND auto_renew_enabled=1 AND status IN ('active','activating','expired') AND valid_until<=?`, reason, stamp(now), stamp(now), purchaseID, stamp(now.UTC().Add(EntitlementContinuityLead)))
 	if err != nil {
 		return fmt.Errorf("record automatic renewal failure: %w", err)
 	}

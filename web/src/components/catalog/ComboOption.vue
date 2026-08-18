@@ -36,6 +36,7 @@ defineEmits<{ select: [id: string] }>()
       <span><UIcon name="i-ph-clock" />{{ $t('catalog.days', { count: combo.validityDays }) }}</span>
       <span><UIcon name="i-ph-stack" />{{ $t('catalog.squads', { count: combo.includedSquads.length }) }}</span>
       <span><UIcon name="i-ph-arrow-clockwise" />{{ $t(`home.reset.${combo.resetStrategy}`) }}</span>
+      <span><UIcon name="i-ph-chart-line-up" />{{ $t('catalog.rolloverThreshold', { threshold: (combo.rolloverMinRemainingBps / 100).toFixed(2) }) }}</span>
     </span>
     <div v-if="combo.includedSquads.length" class="combo-option__squads">
       <SquadProfileSummary v-for="squad in combo.includedSquads" :key="squad.id" :name="squad.name" :profile="squad.profile" :description="squad.description" presentation="member" compact />

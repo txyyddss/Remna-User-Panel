@@ -6,6 +6,16 @@ Payment-method discovery, exact decimal arithmetic, checkout creation, provider 
 ## Files
 
 - `service.go` defines settings/repository contracts, service construction, and checkout creation.
+- `checkout.go` builds server-owned provider requests and validates checkout responses before persistence.
+- `payment_operations.go` creates idempotent payment create/cancel commands with their order targets.
+- `operation_worker.go` performs each provider mutation once after its durable attempt marker.
+- `operation_worker_reconcile.go` resolves interrupted attempts from stored payment state or leaves them pending review.
+- `payment_callback_operations.go` lets authoritative paid callbacks resolve matching checkout operations.
+- `payment_announcement.go` delivers immutable successful-payment snapshots to the optional standalone Telegram channel through the durable outbox.
+- `amount_bounds.go` loads the global inclusive Add TXB range and rejects checkout amounts outside it.
+- `amount_bounds_test.go` covers configured inclusive payment boundaries.
+- `payment_operations_test.go` covers atomic command queueing, idempotency conflicts, ambiguous outcomes, and callback resolution.
+- `payment_announcement_test.go` covers provider/channel formatting, missing configuration, and retryable Telegram failures.
 - `gateway_contracts.go` defines the server-owned provider checkout/event contracts and gateway interfaces.
 - `payment_methods.go` builds the configured rail list, including coupon funding and independently selectable provider-account profiles.
 - `events.go` validates and authorizes provider events, settles orders, exposes the narrow signed-return receipt projection, and handles cancellation.

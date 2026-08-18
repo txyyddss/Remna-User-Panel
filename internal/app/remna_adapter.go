@@ -18,11 +18,19 @@ type remnaClient interface {
 	GetUserByID(context.Context, int64) (*remnawave.User, error)
 	CreateUser(context.Context, remnawave.CreateUserRequest) (*remnawave.User, error)
 	GetUserStats(context.Context, int64, time.Time, time.Time, int) (*remnawave.UserStats, error)
+	GetStatsDigest(context.Context, time.Time, time.Time) (remnawave.StatsDigest, error)
+	GetNodesUsage(context.Context, time.Time, time.Time) (remnawave.NodesUsage, error)
+	GetNodesMetrics(context.Context) ([]remnawave.NodeMetric, error)
+	RequestUserConnections(context.Context, int64) (string, error)
+	UserConnections(context.Context, string) (remnawave.ConnectionScan, error)
+	DropConnectionByIP(context.Context, string, string) error
 	RevokeSubscription(context.Context, int64, bool) (*remnawave.User, error)
 	UpdateUser(context.Context, remnawave.UpdateUserRequest) (*remnawave.User, error)
 	ResetTraffic(context.Context, int64) (*remnawave.User, error)
 	ListInternalSquads(context.Context) ([]remnawave.InternalSquad, error)
 	ListNodes(context.Context) ([]remnawave.Node, error)
+	ListHosts(context.Context) ([]remnawave.Host, error)
+	UpdateHostRemark(context.Context, string, string) error
 	InternalSquadAccessibleNodes(context.Context, string) ([]remnawave.AccessibleNode, error)
 }
 

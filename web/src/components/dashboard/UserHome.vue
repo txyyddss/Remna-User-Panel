@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, shallowRef, watch } from 'vue'
+import { computed, shallowRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import InlineNotice from '@/components/common/InlineNotice.vue'
+import OperationStatusNotice from '@/components/common/OperationStatusNotice.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import LanguageControl from '@/components/layout/LanguageControl.vue'
 import { useDashboard } from '@/composables/useDashboard'
@@ -13,8 +14,7 @@ import EntitlementSummary from './EntitlementSummary.vue'
 import SubscriptionPanel from './SubscriptionPanel.vue'
 import UsagePanel from './UsagePanel.vue'
 
-const { dashboard, loading, revoking, error, usageRatio, catalogNodes, activeSquadNames, load, revokeSubscription } = useDashboard()
-const revoked = shallowRef(false)
+const { dashboard, loading, revoking, revokeBlocked, revokeReceipt, revokeChecking, revokeError, error, usageRatio, catalogNodes, activeSquadNames, load, revokeSubscription, refreshRevoke } = useDashboard()
 const queuedCancellationNotice = shallowRef(false)
 const route = useRoute()
 const router = useRouter()
@@ -30,12 +30,8 @@ const autoRenewalFailureMessage = computed(() => {
   return localized === key ? t('home.autoRenewalFailureGeneric') : localized
 })
 
-watch(revoking, (next, previous) => {
-  if (previous && !next) revoked.value = true
-})
-
 async function confirmRevoke(): Promise<void> {
-  revoked.value = await revokeSubscription()
+  await revokeSubscription()
 }
 
 async function handleQueuedCancelled(): Promise<void> {
@@ -81,7 +77,6 @@ function consumeReissueRequest(): void {
           @top-up-request-consumed="consumeTopUpRequest"
           @reissue-request-consumed="consumeReissueRequest"
         />
-        <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
         <InlineNotice v-if="catalogBlocked" tone="warning">{{ $t('home.autoRenewalCatalogBlocked') }}</InlineNotice>
         <InlineNotice v-if="autoRenewalFailureMessage" tone="warning" :title="$t('home.autoRenewalFailureTitle')">{{ autoRenewalFailureMessage }}</InlineNotice>
       </div>
@@ -89,9 +84,12 @@ function consumeReissueRequest(): void {
         <SubscriptionPanel
           :subscription-url="dashboard.subscriptionUrl"
           :revoking="revoking"
+          :revoke-blocked="revokeBlocked"
           @revoke="confirmRevoke"
         />
-        <InlineNotice v-if="revoked" tone="success" :title="$t('dashboard.linkReplaced')">{{ $t('dashboard.previousLinkInvalid') }}</InlineNotice>
+        <InlineNotice v-if="revokeReceipt?.status === 'succeeded'" tone="success" :title="$t('dashboard.linkReplaced')">{{ $t('dashboard.previousLinkInvalid') }}</InlineNotice>
+        <InlineNotice v-if="revokeReceipt?.status === 'succeeded' && error" tone="warning">{{ error }}</InlineNotice>
+        <OperationStatusNotice v-if="revokeReceipt?.status !== 'succeeded'" :receipt="revokeReceipt" :error="revokeError ?? error" :checking="revokeChecking" @refresh="refreshRevoke" />
         <InlineNotice v-if="queuedCancellationNotice" tone="success">{{ $t('home.queuedCancelled') }}</InlineNotice>
         <UsagePanel
           v-if="dashboard.statistics"

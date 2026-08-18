@@ -24,8 +24,14 @@ func (s *Store) RetryEmbyProvisioning(ctx context.Context, accountID string, now
 		err = hydrateEmbyPreferences(ctx, tx, &record)
 		return record.Account, err
 	}
-	if record.Status != domain.StatusQueued || record.PasswordCiphertext == "" {
+	if (record.Status != domain.StatusQueued && record.Status != domain.StatusPendingReview) || record.PasswordCiphertext == "" {
 		return domain.Account{}, ErrConflict
+	}
+	if record.Status == domain.StatusPendingReview {
+		if _, err := tx.ExecContext(ctx, `UPDATE emby_accounts SET status='queued',last_error='',updated_at=?
+			WHERE id=? AND status='pending_review'`, stamp(now), accountID); err != nil {
+			return domain.Account{}, fmt.Errorf("resume Emby provisioning review: %w", err)
+		}
 	}
 	payload, marshalErr := embyProvisionPayload(accountID, record.SetupAttempt)
 	if marshalErr != nil {
@@ -120,6 +126,19 @@ func (s *Store) RequeueEmbyProvisioning(ctx context.Context, accountID string, p
 		WHERE id=? AND status='provisioning'`, sanitizeError(provisionErr), stamp(now), accountID)
 	if err != nil {
 		return fmt.Errorf("requeue Emby provisioning: %w", err)
+	}
+	if affected, _ := result.RowsAffected(); affected == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
+// MarkEmbyPendingReview stops automatic retries while retaining the sealed desired state.
+func (s *Store) MarkEmbyPendingReview(ctx context.Context, accountID string, provisionErr error, now time.Time) error {
+	result, err := s.db.ExecContext(ctx, `UPDATE emby_accounts SET status='pending_review',last_error=?,updated_at=?
+		WHERE id=? AND status='provisioning'`, sanitizeError(provisionErr), stamp(now), accountID)
+	if err != nil {
+		return fmt.Errorf("mark Emby provisioning for review: %w", err)
 	}
 	if affected, _ := result.RowsAffected(); affected == 0 {
 		return domain.ErrNotFound

@@ -8,6 +8,7 @@ post:
     and Remnawave revocations are queued. Remaining debt blocks purchases.
   parameters:
     - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+    - $ref: '../openapi.yaml#/components/parameters/IdempotencyKey'
   requestBody:
     required: true
     content:
@@ -15,12 +16,12 @@ post:
         schema:
           $ref: '../openapi.yaml#/components/schemas/RefundRequest'
   responses:
-    '200':
-      description: Refunded payment order after the immutable reversal and compensating work were recorded.
+    '202':
+      description: Provider-aware refund queued or replayed.
       content:
         application/json:
           schema:
-            $ref: '../openapi.yaml#/components/schemas/PaymentOrder'
+            $ref: '../openapi.yaml#/components/schemas/OperationReceipt'
     '400':
       $ref: '../openapi.yaml#/components/responses/BadRequest'
     '401':

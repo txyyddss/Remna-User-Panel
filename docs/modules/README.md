@@ -7,6 +7,7 @@ These documents describe the implemented module boundaries. They are maintenance
 | Runtime, persistence, scheduler, and backups | [platform-runtime.md](platform-runtime.md) |
 | Telegram identity and onboarding | [accounts-onboarding.md](accounts-onboarding.md) |
 | Catalog, purchases, access terms, and rollover projection | [catalog-entitlements.md](catalog-entitlements.md) |
+| Member connection, paid reset, and first-term refund operations | [member-operations.md](member-operations.md) |
 | Typed internal squad profiles | [squad-profiles.md](squad-profiles.md) |
 | TXB ledger, top-ups, and refunds | [billing-payments.md](billing-payments.md) |
 | Games, daily check-ins, group-message rewards, and lucky draws | [activity.md](activity.md) |
@@ -41,6 +42,8 @@ These READMEs describe the direct files in each implementation package:
 | Application composition | [internal/app/README.md](../../internal/app/README.md) |
 | Billing | [internal/billing/README.md](../../internal/billing/README.md) |
 | Catalog | [internal/catalog/README.md](../../internal/catalog/README.md) |
+| Member connections | [internal/connections/README.md](../../internal/connections/README.md) |
+| Member purchase operations | [internal/purchaseops/README.md](../../internal/purchaseops/README.md) |
 | Coupons | [internal/coupons/README.md](../../internal/coupons/README.md) |
 | Emby domain | [internal/emby/README.md](../../internal/emby/README.md) |
 | Entitlements | [internal/entitlements/README.md](../../internal/entitlements/README.md) |
@@ -48,6 +51,7 @@ These READMEs describe the direct files in each implementation package:
 | Shared models | [internal/model/README.md](../../internal/model/README.md) |
 | Onboarding content | [internal/onboarding/README.md](../../internal/onboarding/README.md) |
 | Outbox payload helpers | [internal/outbox/README.md](../../internal/outbox/README.md) |
+| Provider operation contracts | [internal/providerops/README.md](../../internal/providerops/README.md) |
 | Questionnaires | [internal/questionnaires/README.md](../../internal/questionnaires/README.md) |
 | Purchase rollover | [internal/rollover/README.md](../../internal/rollover/README.md) |
 | Embedded web UI | [internal/webui/README.md](../../internal/webui/README.md) |

@@ -46,15 +46,27 @@ func (s *Server) adminAnalyzeQuestionnaireCSV(w http.ResponseWriter, r *http.Req
 }
 
 func (s *Server) adminSettleQuestionnaireCSV(w http.ResponseWriter, r *http.Request) {
+	key, ok := s.requireIdempotencyKey(w, r)
+	if !ok {
+		return
+	}
 	if !s.questionnaireImportBelongs(w, r) {
 		return
 	}
-	preview, err := s.deps.Questionnaires.ConfirmImport(r.Context(), chiURLParam(r, "importID"))
+	receipt, err := s.deps.Questionnaires.ConfirmImportOperation(r.Context(), currentUser(r).ID,
+		chiURLParam(r, "importID"), key)
 	if err != nil {
 		s.communityFailure(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusAccepted, mapQuestionnaireImportPreview(preview))
+	state, err := s.deps.Questionnaires.Import(r.Context(), chiURLParam(r, "importID"))
+	if err != nil {
+		s.communityFailure(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusAccepted, map[string]any{
+		"operation": receipt, "import": mapQuestionnaireImportPreview(state.Preview),
+	})
 }
 
 func (s *Server) adminQuestionnaireImport(w http.ResponseWriter, r *http.Request) {

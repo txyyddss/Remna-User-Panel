@@ -88,6 +88,8 @@
     "term": "Term",
     "rollover": "Rollover",
     "rolloverSummary": "Minimum remaining traffic {threshold}%",
+    "rolloverThreshold": "Rollover above {threshold}% remaining",
+    "occupancy": "{percentage}% occupied",
     "reviewAction": "Final purchase",
     "renewalTerms": "Renewal terms",
     "full": "Full",
@@ -95,12 +97,13 @@
     "providerUnavailable": "Unavailable"
   },
   "amount": {
-    "hint": "Use up to 2 decimals.",
-    "invalidPrecision": "Use up to 2 decimal places.",
-    "tooSmall": "Enter a larger amount.",
-    "tooLarge": "Enter a smaller amount."
+    "hint": "Use up to 2 decimals.", "invalidPrecision": "Use up to 2 decimal places.",
+    "tooSmall": "Enter a larger amount.", "tooLarge": "Enter a smaller amount."
   },
   "payment": {
+    "operationStatus": "Payment operation status: {status}.",
+    "reviewTitle": "Payment needs review",
+    "reviewDescription": "The provider outcome is unclear. Do not create another payment while this operation is reviewed.",
     "paymentAmountValue": "{amount}",
     "addTxb": "Add TXB",
     "configureHint": "Choose a payment provider and channel.",
@@ -113,10 +116,9 @@
     "balanceAfter": "Balance after redemption: {amount}",
     "amount": "Amount",
     "minimumTopUp": "Minimum top-up applies.",
-    "provider": "Provider",
-    "chooseProvider": "Choose a payment provider",
-    "chooseChannel": "Choose a payment channel",
-    "continueToChannel": "Choose channel",
+    "amountRange": "Inclusive range: {min} to {max} TXB.",
+    "provider": "Provider", "chooseProvider": "Choose a payment provider",
+    "chooseChannel": "Choose a payment channel", "continueToChannel": "Choose channel",
     "backToProvider": "Change provider",
     "providers": {
       "ezpay": "EZPay",
@@ -165,15 +167,13 @@
     "cancelling": "Cancelling order",
     "waiting": "Waiting for payment",
     "cancelOrder": "Cancel order",
-    "rateUnavailable": "An administrator must configure the TXB rate.",
+    "rateUnavailable": "Disabled by admin.",
     "targetMissing": "The provider did not return a payment target.",
     "orderExpired": "This payment order expired. Start a new one when you are ready.",
     "terminalStatus": "Payment status: {status}.",
     "status": {
-      "creating": "creating",
-      "pending": "pending",
-      "paid": "paid",
-      "cancelled": "cancelled",
+      "creating": "creating", "pending": "pending",
+      "paid": "paid", "cancelled": "cancelled",
       "expired": "expired",
       "failed": "failed",
       "refunded": "refunded"

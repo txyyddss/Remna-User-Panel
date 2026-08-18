@@ -33,10 +33,30 @@ type Node struct {
 	CountryCode           string        `json:"countryCode"`
 	ConsumptionMultiplier float64       `json:"consumptionMultiplier"`
 	IsDisabled            bool          `json:"isDisabled"`
+	IsConnected           bool          `json:"isConnected"`
+	UsersOnline           int64         `json:"usersOnline"`
+	System                *NodeSystem   `json:"system"`
+	Versions              *NodeVersions `json:"versions"`
 	Provider              *NodeProvider `json:"provider"`
 	ConfigProfile         struct {
 		ActiveInbounds []NodeInbound `json:"activeInbounds"`
 	} `json:"configProfile"`
+}
+
+// NodeSystem is the live network-rate subset returned by Get nodes.
+type NodeSystem struct {
+	Stats struct {
+		Interface *struct {
+			RXBytesPerSecond int64 `json:"rxBytesPerSec"`
+			TXBytesPerSecond int64 `json:"txBytesPerSec"`
+		} `json:"interface"`
+	} `json:"stats"`
+}
+
+// NodeVersions contains the node and Xray versions exposed by Remnawave.
+type NodeVersions struct {
+	Xray string `json:"xray"`
+	Node string `json:"node"`
 }
 
 // AccessibleNode is returned after Remnawave resolves squad inbounds to nodes.

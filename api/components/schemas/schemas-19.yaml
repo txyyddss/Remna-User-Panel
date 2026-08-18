@@ -1,0 +1,101 @@
+MetricValue:
+  type: object
+  additionalProperties: false
+  required: [value, unit]
+  properties:
+    value: { type: number }
+    unit: { type: string }
+
+NamedShare:
+  type: object
+  additionalProperties: false
+  required: [id, label, value]
+  properties:
+    id: { type: string }
+    label: { type: string }
+    value: { type: number, minimum: 0 }
+
+NodeTrafficSeries:
+  type: object
+  additionalProperties: false
+  required: [uuid, name, countryCode, dailyBytes]
+  properties:
+    uuid: { type: string, format: uuid }
+    name: { type: string }
+    countryCode: { type: string }
+    dailyBytes:
+      type: array
+      items: { type: string, pattern: '^\d+$' }
+
+StatisticsSnapshot:
+  type: object
+  additionalProperties: false
+  required: [generatedAt, remoteGeneratedAt, databaseGeneratedAt, remote, database, stalePartitions]
+  properties:
+    generatedAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+    remoteGeneratedAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+    databaseGeneratedAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+    stalePartitions:
+      type: array
+      items: { type: string }
+    remote:
+      type: object
+      additionalProperties: false
+      required: [weeklyUserIncrease, monthlyAverageUsagePercent, trafficDates, trafficSeries]
+      properties:
+        weeklyUserIncrease: { type: integer }
+        monthlyAverageUsagePercent: { type: number }
+        trafficDates: { type: array, items: { type: string, format: date } }
+        trafficSeries: { type: array, items: { $ref: '../../openapi.yaml#/components/schemas/NodeTrafficSeries' } }
+    database:
+      type: object
+      additionalProperties: false
+      required: [newUserConversionPercent, averageSpend, spendMinimum, spendMaximum, subscriptionStates, averageRollover, averageCheckInReward, comboShares, groupMessagesTotal, averageOptionalSquads, paymentStatuses, databaseBytes, squadByCombo, comboBySquad]
+      properties:
+        newUserConversionPercent: { type: number }
+        averageSpend: { $ref: '../../openapi.yaml#/components/schemas/Money' }
+        spendMinimum: { $ref: '../../openapi.yaml#/components/schemas/Money' }
+        spendMaximum: { $ref: '../../openapi.yaml#/components/schemas/Money' }
+        subscriptionStates: { type: array, items: { $ref: '../../openapi.yaml#/components/schemas/NamedShare' } }
+        averageRollover: { $ref: '../../openapi.yaml#/components/schemas/Money' }
+        averageCheckInReward: { $ref: '../../openapi.yaml#/components/schemas/Money' }
+        comboShares: { type: array, items: { $ref: '../../openapi.yaml#/components/schemas/NamedShare' } }
+        groupMessagesTotal: { type: integer, minimum: 0 }
+        averageOptionalSquads: { type: number, minimum: 0 }
+        paymentStatuses: { type: array, items: { $ref: '../../openapi.yaml#/components/schemas/NamedShare' } }
+        databaseBytes: { type: string, pattern: '^\d+$' }
+        squadByCombo: { type: array, items: { $ref: '../../openapi.yaml#/components/schemas/NormalizedDistribution' } }
+        comboBySquad: { type: array, items: { $ref: '../../openapi.yaml#/components/schemas/NormalizedDistribution' } }
+
+NormalizedDistribution:
+  type: object
+  additionalProperties: false
+  required: [id, label, segments]
+  properties:
+    id: { type: string }
+    label: { type: string }
+    segments: { type: array, items: { $ref: '../../openapi.yaml#/components/schemas/NamedShare' } }
+
+StatisticsNode:
+  type: object
+  additionalProperties: false
+  required: [uuid, name, countryCode, online, usersOnline, rxBytesPerSec, txBytesPerSec, xrayVersion, multiplier]
+  properties:
+    uuid: { type: string, format: uuid }
+    name: { type: string }
+    countryCode: { type: string }
+    online: { type: boolean }
+    usersOnline: { type: integer, minimum: 0 }
+    rxBytesPerSec: { type: string, pattern: '^\d+$' }
+    txBytesPerSec: { type: string, pattern: '^\d+$' }
+    xrayVersion: { type: string }
+    multiplier: { type: number, minimum: 0 }
+
+StatisticsNodesSnapshot:
+  type: object
+  additionalProperties: false
+  required: [generatedAt, stale, nodes]
+  properties:
+    generatedAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+    stale: { type: boolean }
+    nodes: { type: array, items: { $ref: '../../openapi.yaml#/components/schemas/StatisticsNode' } }

@@ -19,6 +19,14 @@ const fullAddon: SquadProduct = {
   updatedAt: '2026-08-14T00:00:00Z',
 }
 
+const occupiedAddon: SquadProduct = {
+  ...fullAddon,
+  id: 'squad-2',
+  name: 'Harbor transit',
+  stockLimit: 10,
+  stockRemaining: 4,
+}
+
 describe('SquadSelector', () => {
   it('marks a full paid add-on unavailable without affecting included squads', () => {
     const wrapper = mount(SquadSelector, {
@@ -27,5 +35,30 @@ describe('SquadSelector', () => {
 
     expect(wrapper.find('.squad-option').classes()).toContain('squad-option--full')
     expect(wrapper.text()).toContain('Full')
+  })
+
+  it('shows bounded squad occupancy as a whole percentage without exact counts', () => {
+    const wrapper = mount(SquadSelector, {
+      props: { squads: [occupiedAddon], selectedIds: [], includedIds: [] },
+    })
+
+    expect(wrapper.text()).toContain('60% occupied')
+    expect(wrapper.text()).not.toContain('6/10')
+  })
+
+  it('reserves zero and one hundred percent for empty and full squads', () => {
+    const wrapper = mount(SquadSelector, {
+      props: {
+        squads: [
+          { ...occupiedAddon, id: 'squad-low', stockLimit: 1_000, stockRemaining: 999 },
+          { ...occupiedAddon, id: 'squad-high', stockLimit: 1_000, stockRemaining: 1 },
+        ],
+        selectedIds: [],
+        includedIds: [],
+      },
+    })
+
+    expect(wrapper.findAll('.squad-option__occupancy').map(node => node.text()))
+      .toEqual(['1% occupied', '99% occupied'])
   })
 })

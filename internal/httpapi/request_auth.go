@@ -9,6 +9,13 @@ import (
 
 func (s *Server) requireSignedRequest(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if isStreamingBackupUpload(r) {
+			if !s.authorizeStreamingBackupUpload(w, r) {
+				return
+			}
+			next.ServeHTTP(w, r)
+			return
+		}
 		session, sessionErr := r.Cookie(sessionCookie)
 		clientKey, keyErr := r.Cookie(requestauth.ClientKeyCookie)
 		if sessionErr != nil || keyErr != nil {

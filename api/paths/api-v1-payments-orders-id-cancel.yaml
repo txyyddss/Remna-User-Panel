@@ -3,21 +3,24 @@ post:
   operationId: cancelPaymentOrder
   summary: Cancel a user-owned unpaid payment order
   description: |
-    Stops client polling, records a local cancellation, and asks BEPusdt to
-    cancel the direct transaction when that provider supports it. A later
-    authoritative paid event may still settle and credit the order exactly once.
+    Stops order polling and records a durable provider cancellation command.
+    Interrupted provider attempts are reconciled from stored state or remain
+    pending review. A later authoritative paid event may still settle once.
   parameters:
     - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+    - $ref: '../openapi.yaml#/components/parameters/IdempotencyKey'
   responses:
-    '200':
-      description: Current order state after the cancellation attempt.
+    '202':
+      description: Durable cancellation operation accepted.
       content:
         application/json:
           schema:
-            $ref: '../openapi.yaml#/components/schemas/PaymentOrder'
+            $ref: '../openapi.yaml#/components/schemas/PaymentOperation'
     '401':
       $ref: '../openapi.yaml#/components/responses/Unauthorized'
     '404':
       $ref: '../openapi.yaml#/components/responses/NotFound'
     '409':
       $ref: '../openapi.yaml#/components/responses/Conflict'
+    '500':
+      $ref: '../openapi.yaml#/components/responses/InternalFailure'

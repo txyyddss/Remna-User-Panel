@@ -5,6 +5,7 @@
 @import "./foundation-02.css";
 @import "./shell-01.css";
 @import "./shell-02.css";
+@import "./shell-03.css";
 @import "./onboarding-01.css";
 @import "./onboarding-02.css";
 @import "./onboarding-03.css";
@@ -15,6 +16,9 @@
 @import "./home-02.css";
 @import "./home-03.css";
 @import "./home-04.css";
+@import "./connections-01.css";
+@import "./statistics-01.css";
+@import "./statistics-02.css";
 @import "./catalog-01.css";
 @import "./catalog-02.css";
 @import "./billing-01.css";
@@ -23,6 +27,7 @@
 @import "./admin-01.css";
 @import "./admin-02.css";
 @import "./admin-03.css";
+@import "./admin-04.css";
 @import "./motion-01.css";
 @import "./responsive-01.css";
 @import "./responsive-02.css";

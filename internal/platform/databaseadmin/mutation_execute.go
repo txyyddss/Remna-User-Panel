@@ -87,9 +87,6 @@ func (s *Service) auditMutation(ctx context.Context, tx *sql.Tx, actor string, r
 		auditID, actor, "database_record_"+request.Action, "database_table", targetID, string(encoded), s.now().UTC().Format(time.RFC3339Nano)); err != nil {
 		return fmt.Errorf("record database edit audit: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM audit_events WHERE id IN (SELECT id FROM audit_events ORDER BY created_at DESC,id DESC LIMIT -1 OFFSET 200)`); err != nil {
-		return fmt.Errorf("retain database edit audits: %w", err)
-	}
 	return nil
 }
 

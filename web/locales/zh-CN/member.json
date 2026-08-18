@@ -40,6 +40,107 @@
     "unavailable": "仪表盘不可用",
     "loadFailed": "无法加载仪表盘数据。"
   },
+  "operations": {
+    "checkStatus": "检查状态",
+    "statusUnavailable": "暂时无法获取操作状态。",
+    "status": {
+      "queued": "排队中",
+      "processing": "处理中",
+      "succeeded": "已完成",
+      "failed": "失败",
+      "compensated": "已冲正",
+      "pending_review": "等待审核",
+      "partial": "部分完成"
+    }
+  },
+  "connections": {
+    "manage": "管理连接",
+    "eyebrow": "订阅安全",
+    "title": "活跃连接",
+    "subtitle": "查看最近出现的 IP 地址，并断开不再属于你的连接。",
+    "scanAgain": "重新扫描",
+    "scanning": "正在扫描连接",
+    "progress": "已完成 {percent}%",
+    "scanUnavailable": "无法获取连接",
+    "scanFailed": "服务商未能完成此次扫描。",
+    "emptyTitle": "暂无活跃连接",
+    "emptyDescription": "订阅暂未上报最近使用的 IP 地址。",
+    "connectionCount": "最近有 {count} 个 IP 地址",
+    "lastSeen": "最后出现于 {date}",
+    "disconnectIp": "断开 {ip}",
+    "dropTitle": "断开此 IP？",
+    "dropDescription": "从订阅中断开 {ip}。",
+    "sharedIpWarning": "共用此公网 IP 的其他会话也可能同时中断。",
+    "disconnect": "断开连接",
+    "disconnecting": "正在断开",
+    "operation": {
+      "queued": "断开请求已排队。",
+      "processing": "服务商正在断开此 IP。",
+      "succeeded": "此 IP 已断开，并已开始重新扫描。",
+      "failed": "服务商确认断开失败。请重新扫描后再尝试。",
+      "compensated": "断开操作已冲正。采取其他操作前请重新扫描。",
+      "pending_review": "服务商结果不明确。请勿重试，需由管理员审核。",
+      "partial": "服务商操作仅部分完成。审核完成前请勿重试。"
+    },
+    "errors": {
+      "scanFailed": "无法开始连接扫描。",
+      "pollFailed": "无法刷新连接扫描进度。",
+      "dropFailed": "断开请求未被接受。"
+    }
+  },
+  "purchaseOperations": {
+    "resetAction": "重置流量",
+    "refundAction": "申请退款",
+    "amount": "金额",
+    "cadence": "重置周期",
+    "eligibleUntil": "可申请至",
+    "ineligible": "当前购买不符合此操作条件。",
+    "quoteChanged": "资格或价格已变化，请检查刷新后的报价再确认。",
+    "reset": {
+      "title": "立即重置流量？",
+      "description": "开始服务商重置前，将按服务器计算的价格扣除 TXB。",
+      "confirm": "支付并重置"
+    },
+    "refund": {
+      "title": "退款此购买？",
+      "description": "系统会先暂停访问并再次确认用量为零，再退回原始 TXB 净扣款。",
+      "confirm": "确认退款"
+    },
+    "reason": {
+      "PURCHASE_NOT_ACTIVE": "只有当前生效的购买可以执行此操作。",
+      "RESET_STRATEGY_UNSUPPORTED": "此购买的流量重置周期暂不支持。",
+      "RESET_PRICE_INVALID": "无法获取不可变的重置价格。",
+      "REFUND_NOT_FIRST_TERM": "只有此购买链路的首个周期可以退款。",
+      "REFUND_WINDOW_EXPIRED": "严格的 24 小时退款期限已结束。",
+      "REFUND_TRAFFIC_USED": "此购买已经产生流量用量。",
+      "REMNAWAVE_IDENTITY_REQUIRED": "请先完成账户同步。",
+      "OPERATION_ALREADY_OPEN": "此购买已有另一项服务商操作正在进行。"
+    },
+    "operation": {
+      "reset": {
+        "queued": "付费流量重置已排队。",
+        "processing": "服务商正在重置流量。",
+        "succeeded": "流量已成功重置。",
+        "failed": "流量重置未能完成。",
+        "compensated": "流量重置失败，已原额退回本次 TXB 扣款。",
+        "pending_review": "服务商结果不明确，审核期间请勿重试。",
+        "partial": "流量重置仅部分完成，审核期间请勿重试。"
+      },
+      "refund": {
+        "queued": "退款请求已排队。",
+        "processing": "正在暂停访问并再次确认零用量。",
+        "succeeded": "原始 TXB 净扣款已退回。",
+        "failed": "退款未能完成，必要时访问权限已恢复。",
+        "compensated": "退款已冲正，访问权限已恢复。",
+        "pending_review": "服务商结果不明确，审核期间请勿重试。",
+        "partial": "退款仅部分完成，审核期间请勿重试。"
+      }
+    },
+    "errors": {
+      "quoteUnavailable": "暂时无法获取实时操作报价。",
+      "operationFailed": "操作请求未被接受。"
+    }
+  },
   "emby": {
     "disabledLibraries": "禁用的媒体库",
     "disabledLibrariesHint": "默认启用全部媒体库。仅勾选此账户不得访问的媒体库。",
@@ -72,7 +173,8 @@
       "queued": "排队中",
       "provisioning": "配置中",
       "active": "已启用",
-      "failed": "失败"
+      "failed": "失败",
+      "pending_review": "等待审核"
     }
   }
 }

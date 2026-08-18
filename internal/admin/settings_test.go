@@ -190,6 +190,7 @@ func TestSettingValidators(t *testing.T) {
 	}{
 		{name: "positive decimal", validate: validatePositiveDecimal, valid: []string{"0.01", "42"}, invalid: []string{"0", "-1", "one"}},
 		{name: "integer", validate: validateInteger, valid: []string{"1", "-1001"}, invalid: []string{"0", "1.5", "x"}},
+		{name: "optional integer", validate: validateOptionalInteger, valid: []string{"", "-1001"}, invalid: []string{"0", "1.5", "x"}},
 		{name: "HTTPS URL", validate: validateHTTPSURL, valid: []string{"https://example.test/path"}, invalid: []string{"http://example.test", "https://user@example.test", "/relative", "https:///missing"}},
 		{name: "HTTP or HTTPS URL", validate: validateHTTPOrHTTPSURL, valid: []string{"http://remnawave:3000", "https://example.test/path"}, invalid: []string{"https://user@example.test", "/relative", "http:///missing"}},
 		{name: "boolean", validate: validateBoolean, valid: []string{"true", "false"}, invalid: []string{"TRUE", "1", ""}},
