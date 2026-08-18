@@ -16,10 +16,22 @@ func (s *Service) createCheckout(ctx context.Context, user model.User, order mod
 		return model.PaymentOrder{}, err
 	}
 	checkout, err := s.gateway.Create(ctx, request)
+	if err != nil && order.Provider == "bepusdt" {
+		// The legacy direct-create path retains the same order ID when a
+		// provider response is ambiguous. HTTP callers use QueueOrder, whose
+		// worker records pending review instead of retrying provider writes.
+		checkout, err = s.gateway.Create(ctx, request)
+	}
 	if err != nil {
+		_ = s.repository.FailPaymentOrder(ctx, order.ID)
 		return model.PaymentOrder{}, fmt.Errorf("create provider checkout: %w", err)
 	}
-	return s.storeCheckout(ctx, order, checkout)
+	result, err := s.storeCheckout(ctx, order, checkout)
+	if err != nil {
+		_ = s.repository.FailPaymentOrder(ctx, order.ID)
+		return model.PaymentOrder{}, err
+	}
+	return result, nil
 }
 
 func (s *Service) providerCreateRequest(ctx context.Context, user model.User, order model.PaymentOrder) (ProviderCreateRequest, error) {
@@ -31,7 +43,7 @@ func (s *Service) providerCreateRequest(ctx context.Context, user model.User, or
 		Provider: provider, ProfileID: profileID, MethodID: order.MethodID, Rail: rail, OrderID: order.ID,
 		TelegramID: user.TelegramID, TXBMinor: order.TXBMinor, PayableAmount: order.PayableAmount,
 		PayableCurrency: order.PayableCurrency, NotifyURL: s.absolute("/api/v1/webhooks/" + provider),
-		ReturnURL: s.absolute("/api/v1/payments/return/" + provider + "/" + url.PathEscape(order.ID)),
+		ReturnURL:   s.absolute("/api/v1/payments/return/" + provider + "/" + url.PathEscape(order.ID)),
 		RedirectURL: s.absolute("/api/v1/payments/return/" + provider + "/" + url.PathEscape(order.ID)),
 	}
 	if provider == "bepusdt" {

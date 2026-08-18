@@ -30,4 +30,3 @@ func (s *Service) validateAddTXBAmount(ctx context.Context, amount int64) error 
 	}
 	return nil
 }
-

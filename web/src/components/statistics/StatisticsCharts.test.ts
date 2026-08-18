@@ -1,5 +1,7 @@
 import { mount } from '@vue/test-utils'
+import { h } from 'vue'
 import { describe, expect, it } from 'vitest'
+import UApp from '@nuxt/ui/runtime/components/App.vue'
 
 import type { StatisticsSnapshot } from '@/api/types'
 import StatisticsDistribution from './StatisticsDistribution.vue'
@@ -45,9 +47,9 @@ describe('statistics SVG charts', () => {
         segments: [{ id: 'combo-a', label: 'Combo A', value: 2 }, { id: 'combo-b', label: 'Combo B', value: 1 }],
       }],
     } satisfies StatisticsSnapshot['database']
-    const wrapper = mount(StatisticsDistribution, {
-      props: { database },
-      global: { stubs: { UTabs: true, UTooltip: { template: '<div><slot /></div>' }, UIcon: true } },
+    const wrapper = mount(UApp, {
+      global: { stubs: { UTabs: true, UIcon: true } },
+      slots: { default: () => h(StatisticsDistribution, { database }) },
     })
     const segments = wrapper.findAll('.statistics-distribution__segment')
 

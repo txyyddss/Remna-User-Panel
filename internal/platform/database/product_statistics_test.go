@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -23,14 +24,14 @@ func TestProductStatisticsExcludeAdministratorsFromMemberMetrics(t *testing.T) {
 	adminAddon := saveTestSquad(t, store, "admin-addon", 50, true)
 	memberCombo := saveTestCombo(t, store, "Member combo", 100, 30, memberSquad.ID)
 	adminCombo := saveTestCombo(t, store, "Admin combo", 900, 30, adminSquad.ID)
-	for _, seed := range []struct {
+	for index, seed := range []struct {
 		userID string
 		amount int64
 	}{
 		{userID: member.ID, amount: 100},
 		{userID: admin.ID, amount: 950},
 	} {
-		if _, err := store.AdjustBalance(ctx, seed.userID, seed.amount, "statistics_seed", "test", now); err != nil {
+		if _, err := store.AdjustBalance(ctx, seed.userID, seed.amount, fmt.Sprintf("statistics_seed:%d", index), "test", now); err != nil {
 			t.Fatalf("seed balance: %v", err)
 		}
 	}

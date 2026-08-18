@@ -94,7 +94,7 @@ func paymentCommand(userID, kind, key, fingerprint, orderID string) providerops.
 	return providerops.CreateInput{
 		ActorUserID: userID, OwnerUserID: userID, Kind: kind, IdempotencyKey: key,
 		RequestFingerprint: fingerprint,
-		Items: []providerops.ItemInput{{Key: "payment", TargetType: "payment_order", TargetID: orderID}},
+		Items:              []providerops.ItemInput{{Key: "payment", TargetType: "payment_order", TargetID: orderID}},
 	}
 }
 

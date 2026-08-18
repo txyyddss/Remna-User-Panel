@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -15,7 +16,7 @@ func createAdminWorkflowPurchase(t *testing.T, store *Store, telegramID int64, c
 	ctx := context.Background()
 	user := createTestUser(t, store, telegramID)
 	credit := combo.PriceTXBMinor + 10_000
-	if _, err := store.AdjustBalance(ctx, user.ID, credit, "admin-workflow-seed", "test credit", now); err != nil {
+	if _, err := store.AdjustBalance(ctx, user.ID, credit, fmt.Sprintf("admin-workflow-seed:%d", telegramID), "test credit", now); err != nil {
 		t.Fatalf("AdjustBalance(): %v", err)
 	}
 	purchase, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID,

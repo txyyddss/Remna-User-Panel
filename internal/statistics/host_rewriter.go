@@ -17,7 +17,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/providerops"
 )
 
-var standaloneDecimal = regexp.MustCompile(`(^|[^0-9.])([0-9]+\.[0-9]+)([^0-9.]|$)`)
+var standaloneDecimal = regexp.MustCompile(`(^|[^[:alnum:]_.])([0-9]+\.[0-9]+)([^[:alnum:]_.]|$)`)
 
 // HostUpdateRepository persists scheduled provider mutations before execution.
 type HostUpdateRepository interface {

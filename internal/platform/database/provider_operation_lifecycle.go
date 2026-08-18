@@ -85,4 +85,3 @@ func operationCode(value string) string {
 	}
 	return value
 }
-

@@ -56,7 +56,10 @@ func (s *Service) Provision(ctx context.Context, accountID string) error {
 		if s.remote.IsTerminal(err) {
 			return s.handleProvisionError(ctx, record.ID, wrapped)
 		}
-		return s.pendingReview(ctx, record.ID, wrapped)
+		if retryErr := s.repository.RequeueEmbyProvisioning(ctx, record.ID, wrapped, s.now().UTC()); retryErr != nil {
+			return fmt.Errorf("record Emby password retry: %w", retryErr)
+		}
+		return wrapped
 	}
 	if err := s.remote.UpdatePolicy(ctx, current.ID, HardenPolicy(current.Policy, record.Preferences)); err != nil {
 		wrapped := fmt.Errorf("apply restricted Emby policy: %w", err)

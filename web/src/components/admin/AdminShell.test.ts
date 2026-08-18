@@ -62,11 +62,12 @@ describe('AdminShell', () => {
     expect(wrapper.find('.button-row button').exists()).toBe(false)
   })
 
-  it('exposes user and Emby account sections', async () => {
+  it('exposes the combined user account section', async () => {
     const { wrapper } = await mountShell('complete')
     const items = wrapper.getComponent({ name: 'Select' }).props('items') as Array<{ value: string }>
 
-    expect(items.map(({ value }) => value)).toEqual(expect.arrayContaining(['users', 'emby']))
+    expect(items.map(({ value }) => value)).toEqual(expect.arrayContaining(['users']))
+    expect(items.map(({ value }) => value)).not.toContain('emby')
   })
 
   it('keeps the setup button inside the router history', async () => {

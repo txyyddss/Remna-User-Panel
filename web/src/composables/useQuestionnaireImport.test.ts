@@ -37,7 +37,18 @@ describe('questionnaire import workflow', () => {
     vi.useFakeTimers()
     previewQuestionnaireCsv.mockResolvedValue(preview)
     analyzeQuestionnaireCsv.mockResolvedValue({ importId: 'import-1', questionnaireId: 'questionnaire-1', codeColumn: 'Validation code', matchedCount: 1, duplicateCount: 0, unknownCount: 0, malformedCount: 0, alreadyAwardedCount: 0 })
-    settleQuestionnaireCsv.mockResolvedValue({ ...preview, status: 'queued' })
+    settleQuestionnaireCsv.mockResolvedValue({
+      operation: {
+        id: 'operation-1',
+        kind: 'questionnaire_settlement',
+        status: 'succeeded',
+        errorCode: null,
+        createdAt: '2026-08-08T00:00:00Z',
+        updatedAt: '2026-08-08T00:00:00Z',
+        completedAt: '2026-08-08T00:00:01Z',
+      },
+      import: { ...preview, status: 'processing' },
+    })
     getQuestionnaireImportState
       .mockResolvedValueOnce({ preview: { ...preview, status: 'processing' } })
       .mockResolvedValueOnce({

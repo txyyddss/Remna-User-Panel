@@ -34,4 +34,3 @@ type ConnectionScanUpdate struct {
 	ProgressPercent float64
 	ErrorCode       string
 }
-

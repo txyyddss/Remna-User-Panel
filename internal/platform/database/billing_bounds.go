@@ -85,4 +85,3 @@ func scanAddTXBBounds(row rowScanner) (model.AddTXBBounds, error) {
 	bounds.UpdatedAt = parsed
 	return bounds, nil
 }
-

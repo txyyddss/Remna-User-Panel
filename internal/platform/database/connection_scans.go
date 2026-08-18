@@ -84,4 +84,3 @@ func (s *Store) ConnectionScanForUser(ctx context.Context, scanID, userID string
 	return scanConnectionScan(s.db.QueryRowContext(ctx, connectionScanSelect+
 		` WHERE id=? AND user_id=?`, scanID, userID))
 }
-

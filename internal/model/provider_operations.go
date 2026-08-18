@@ -12,4 +12,3 @@ type OperationReceipt struct {
 	UpdatedAt   time.Time  `json:"updatedAt"`
 	CompletedAt *time.Time `json:"completedAt"`
 }
-

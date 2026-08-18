@@ -10,4 +10,3 @@ type AddTXBBounds struct {
 	Maximum         Money     `json:"maximum"`
 	UpdatedAt       time.Time `json:"updatedAt"`
 }
-
