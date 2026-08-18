@@ -1,16 +1,18 @@
 import { effectScope } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-const { previewQuestionnaireCsv, analyzeQuestionnaireCsv, settleQuestionnaireCsv, getQuestionnaireImportState } = vi.hoisted(() => ({
+const { previewQuestionnaireCsv, analyzeQuestionnaireCsv, settleQuestionnaireCsv, getQuestionnaireImportState, getOperation } = vi.hoisted(() => ({
   previewQuestionnaireCsv: vi.fn(),
   analyzeQuestionnaireCsv: vi.fn(),
   settleQuestionnaireCsv: vi.fn(),
   getQuestionnaireImportState: vi.fn(),
+  getOperation: vi.fn(),
 }))
 
 vi.mock('@/api/features', () => ({
   featuresApi: { previewQuestionnaireCsv, analyzeQuestionnaireCsv, settleQuestionnaireCsv, getQuestionnaireImportState },
 }))
+vi.mock('@/api/memberOperations', () => ({ memberOperationsApi: { getOperation } }))
 
 import { useQuestionnaireImport } from './useQuestionnaireImport'
 
@@ -41,13 +43,22 @@ describe('questionnaire import workflow', () => {
       operation: {
         id: 'operation-1',
         kind: 'questionnaire_settlement',
-        status: 'succeeded',
+        status: 'queued',
         errorCode: null,
         createdAt: '2026-08-08T00:00:00Z',
         updatedAt: '2026-08-08T00:00:00Z',
         completedAt: '2026-08-08T00:00:01Z',
       },
       import: { ...preview, status: 'processing' },
+    })
+    getOperation.mockResolvedValue({
+      id: 'operation-1',
+      kind: 'questionnaire_settlement',
+      status: 'processing',
+      errorCode: null,
+      createdAt: '2026-08-08T00:00:00Z',
+      updatedAt: '2026-08-08T00:00:00Z',
+      completedAt: null,
     })
     getQuestionnaireImportState
       .mockResolvedValueOnce({ preview: { ...preview, status: 'processing' } })
