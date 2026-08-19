@@ -54,46 +54,6 @@
       "partial": "Partially completed"
     }
   },
-  "connections": {
-    "manage": "Manage connections",
-    "open": "Connections",
-    "eyebrow": "Subscription security",
-    "title": "Active connections",
-    "subtitle": "Review recently seen IP addresses and disconnect one when access is no longer yours.",
-    "scanAgain": "Scan again",
-    "scanning": "Scanning connections",
-    "scanStatus": "Live scan",
-    "startingDescription": "Opening a secure scan with the connection provider.",
-    "scanDescription": "Checking recent activity across every connection node.",
-    "scanProgress": "Scan progress",
-    "progress": "{percent}% complete",
-    "scanUnavailable": "Connections unavailable",
-    "scanFailed": "The provider could not complete this scan.",
-    "emptyTitle": "No active connections",
-    "emptyDescription": "No recent IP addresses were reported for your subscription.",
-    "connectionCount": "{count} recent IP address(es)",
-    "lastSeen": "Last seen {date}",
-    "disconnectIp": "Disconnect {ip}",
-    "dropTitle": "Disconnect this IP?",
-    "dropDescription": "Disconnect {ip} from your subscription.",
-    "sharedIpWarning": "Other sessions sharing this public IP may also be interrupted.",
-    "disconnect": "Disconnect",
-    "disconnecting": "Disconnecting",
-    "operation": {
-      "queued": "The disconnect request is queued.",
-      "processing": "The provider is disconnecting this IP.",
-      "succeeded": "The IP was disconnected and a fresh scan has started.",
-      "failed": "The provider confirmed that the disconnect failed. Scan again before retrying.",
-      "compensated": "The disconnect was reversed. Scan again before taking another action.",
-      "pending_review": "The provider outcome is unclear. Do not retry; an administrator must review it.",
-      "partial": "Only part of the provider operation completed. Do not retry until it is reviewed."
-    },
-    "errors": {
-      "scanFailed": "A connection scan could not be started.",
-      "pollFailed": "Connection progress could not be refreshed.",
-      "dropFailed": "The disconnect request could not be accepted."
-    }
-  },
   "purchaseOperations": {
     "resetAction": "Reset traffic",
     "refundAction": "Refund purchase",

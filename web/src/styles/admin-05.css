@@ -1,0 +1,19 @@
+.admin-ip-blocks .admin-profile-row__main strong {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+}
+
+.admin-ip-blocks .admin-profile-row__main svg {
+  flex: 0 0 auto;
+  color: var(--warning);
+  font-size: 1rem;
+}
+
+@media (max-width: 560px) {
+  .admin-ip-blocks .admin-profile-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .admin-ip-blocks .admin-profile-row__actions { grid-column: 1 / -1; }
+  .admin-ip-blocks .admin-profile-row__actions > * { width: 100%; justify-content: center; }
+}

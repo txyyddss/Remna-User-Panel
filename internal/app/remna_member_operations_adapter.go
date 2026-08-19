@@ -45,6 +45,18 @@ func (a remnaAdapter) DropConnection(ctx context.Context, ip, nodeUUID string) e
 	})
 }
 
+func (a remnaAdapter) BlockIP(ctx context.Context, ip, nodeUUID string, timeoutSeconds int) error {
+	return remnaExecute(ctx, a, func(callCtx context.Context, client remnaClient) error {
+		return client.BlockIP(callCtx, ip, nodeUUID, timeoutSeconds)
+	})
+}
+
+func (a remnaAdapter) UnblockIP(ctx context.Context, ip, nodeUUID string) error {
+	return remnaExecute(ctx, a, func(callCtx context.Context, client remnaClient) error {
+		return client.UnblockIP(callCtx, ip, nodeUUID)
+	})
+}
+
 func (a remnaAdapter) MemberOperationState(ctx context.Context, remoteID string) (purchaseops.RemoteState, error) {
 	userID, err := remnaUserID(remoteID)
 	if err != nil {

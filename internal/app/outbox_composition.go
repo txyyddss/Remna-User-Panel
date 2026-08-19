@@ -19,7 +19,7 @@ import (
 
 func registerCoreOutboxHandlers(worker *outbox.Worker, store *database.Store, entitlementsWorker *entitlements.Worker,
 	rolloverWorker *rollover.Service, embyService *emby.Service, paymentAnnouncements *billing.PaymentAnnouncementWorker,
-	scanWorker *connections.Worker, dispatcher *providerops.Dispatcher) error {
+	scanWorker *connections.Worker, expiryWorker *connections.ExpiryWorker, dispatcher *providerops.Dispatcher) error {
 	if err := worker.Register(jobpayload.PaymentSuccessAnnouncementKind, paymentAnnouncements); err != nil {
 		return fmt.Errorf("register payment announcement outbox handler: %w", err)
 	}
@@ -32,6 +32,9 @@ func registerCoreOutboxHandlers(worker *outbox.Worker, store *database.Store, en
 		return err
 	}
 	if err := worker.Register(connections.ScanRequestOutboxKind, scanWorker); err != nil {
+		return err
+	}
+	if err := worker.Register(connections.BlockExpiryOutboxKind, expiryWorker); err != nil {
 		return err
 	}
 	if err := registerProviderDispatcher(worker, dispatcher); err != nil {

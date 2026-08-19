@@ -9,12 +9,12 @@ const props = withDefaults(defineProps<{
   disabled?: boolean
 }>(), { disabled: false })
 
-const emit = defineEmits<{ drop: [target: ConnectionTarget] }>()
+const emit = defineEmits<{ block: [target: ConnectionTarget] }>()
 
 function select(node: ConnectionNode, index: number): void {
   const connection = node.ips[index]
   if (!connection) return
-  emit('drop', { nodeName: node.name, countryCode: node.countryCode, connection })
+  emit('block', { nodeName: node.name, countryCode: node.countryCode, connection })
 }
 </script>
 
@@ -42,9 +42,9 @@ function select(node: ConnectionNode, index: number): void {
             color="error"
             variant="ghost"
             square
-            icon="i-ph-plugs-connected"
+            icon="i-ph-shield-warning"
             :disabled="disabled"
-            :aria-label="$t('connections.disconnectIp', { ip: connection.ip })"
+            :aria-label="$t('connections.blockIp', { ip: connection.ip })"
             data-haptic="heavy"
             @click="select(node, index)"
           />

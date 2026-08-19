@@ -15,7 +15,8 @@
 - `useClipboard.ts` provides safe clipboard feedback.
 - `useConnectionScan.ts` creates one idempotent provider scan and polls its owner-scoped progress without repeating an ambiguous start mutation.
 - `useConnectionScan.test.ts` covers accepted scan polling and ambiguous-start idempotency reuse.
-- `useConnectionDrop.ts` accepts one signed IP handle, retains its idempotency key across an ambiguous request failure, and delegates receipt polling without retrying the mutation.
+- `useConnectionBlocks.ts` loads active blocks, retains per-target block/unblock idempotency keys across ambiguous failures, and delegates receipt polling without replaying mutations.
+- `useConnectionBlocks.test.ts` covers key reuse, unblock polling, and active-list refresh.
 - `useCoupons.ts` manages coupon-wallet redemption and server-confirmed grant discards.
 - `useCoupons.test.ts` covers confirmed and failed coupon-wallet discards.
 - `useDashboard.ts` loads dashboard summaries and provides bounded per-node UTC traffic state to its Home descendants.

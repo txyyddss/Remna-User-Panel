@@ -49,7 +49,7 @@ type UserTraffic struct {
 	LastConnectedNodeUUID    *string    `json:"lastConnectedNodeUuid"`
 }
 
-// User is the non-secret portion of a Remnawave v3.2.1 user response.
+// User is the non-secret portion of a Remnawave v3.3.0 user response.
 // SubscriptionURL must be treated as a bearer credential by callers.
 
 type User struct {

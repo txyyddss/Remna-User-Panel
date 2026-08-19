@@ -12,24 +12,29 @@ import (
 )
 
 func insertOutboxTx(ctx context.Context, tx *sql.Tx, kind, payload string, availableAt, now time.Time) error {
+	_, err := insertOutboxJobTx(ctx, tx, kind, payload, availableAt, now)
+	return err
+}
+
+func insertOutboxJobTx(ctx context.Context, tx *sql.Tx, kind, payload string, availableAt, now time.Time) (string, error) {
 	kind = strings.TrimSpace(kind)
 	var typedPayload map[string]json.RawMessage
 	if kind == "" || json.Unmarshal([]byte(payload), &typedPayload) != nil || len(typedPayload) == 0 {
-		return errors.New("outbox kind and typed payload are required")
+		return "", errors.New("outbox kind and typed payload are required")
 	}
 	canonicalPayload, err := json.Marshal(typedPayload)
 	if err != nil {
-		return fmt.Errorf("canonicalize outbox payload: %w", err)
+		return "", fmt.Errorf("canonicalize outbox payload: %w", err)
 	}
 	id, err := ids.New()
 	if err != nil {
-		return err
+		return "", err
 	}
 	_, err = tx.ExecContext(ctx, `INSERT OR IGNORE INTO outbox_jobs(id,kind,payload,status,attempts,available_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)`, id, kind, string(canonicalPayload), "pending", 0, stamp(availableAt), stamp(now), stamp(now))
 	if err != nil {
-		return fmt.Errorf("enqueue outbox job: %w", err)
+		return "", fmt.Errorf("enqueue outbox job: %w", err)
 	}
-	return nil
+	return id, nil
 }
 
 // EnqueueOutbox appends a durable job.

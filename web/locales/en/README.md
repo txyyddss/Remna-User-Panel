@@ -14,6 +14,7 @@ in parity with the matching `zh-CN` file and preserve `{placeholder}` names.
 - `admin-workflows.json` contains aggregate user profiles, bulk extensions, operation resolution, and backup-upload copy.
 - `commerce.json` contains funding, payment, catalog, and checkout copy.
 - `community.json` contains coupon and questionnaire participation copy.
+- `connections.json` contains member scan, block, expiry, and unblock copy.
 - `core.json` contains application, navigation, status, and shared action copy.
 - `home.json` contains member Home traffic, UTC range, term, and reset labels.
 - `member.json` contains dashboard, onboarding, account, and Emby member copy.

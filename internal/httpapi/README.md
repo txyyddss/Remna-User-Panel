@@ -15,7 +15,8 @@
 - `handlers.go` serves onboarding actions, dashboard, catalog, purchases, balance, and ledger history.
 - `purchases.go` serves the authenticated queued-purchase cancellation and TXB refund endpoint.
 - `member_purchase_operations.go` serves paid reset/refund quotes, idempotent mutations, and owner-scoped receipts.
-- `member_connections.go` serves metadata-only scan creation/polling and signed-handle drop commands.
+- `member_connections.go` preserves scan and drop-route compatibility while the signed-handle command now queues a three-day block followed by disconnect.
+- `member_ip_blocks.go` lists owner-only active blocks, queues owner unblocks, and maps ownership mismatches to not found.
 - `member_routes.go` mounts the member connection, reset, refund, and operation resources.
 - `dashboard_usage.go` validates the authenticated member's UTC traffic range and serves the bounded per-node usage projection.
 - `statistics.go` serves the cached aggregate snapshot, on-demand shared
@@ -54,8 +55,8 @@
 - `admin_payment_profiles.go` lists, creates, and updates masked EZPay/BEPusdt account profiles with independently enabled channels.
 - `admin_catalog.go` manages combos, squad products, and statistics windows; node accessibility is read-only in member catalog quotes.
 - `admin_statistics_window.go` validates administrator statistics date ranges and buckets.
-- `admin_accounts.go` manages user lists, aggregate user detail, and balance adjustments.
-- `admin_user_detail.go` maps the non-duplicated aggregate profile to the public response.
+- `admin_accounts.go` manages user lists, aggregate user detail, balance adjustments, and admin-as-actor block removal.
+- `admin_user_detail.go` maps the non-duplicated aggregate profile and its active IP blocks to the public response.
 - `admin_user_commands.go` serves optimistic entitlement edits, entitlement refunds, and no-charge combo replacements.
 - `admin_bulk_extensions.go` serves inclusive-OR previews and idempotent bulk-extension jobs.
 - `admin_operation_resolution.go` records idempotent audited resolutions for pending-review and partial operations without provider retry.
@@ -80,6 +81,7 @@
 - `operations_commands_test.go` covers Telegram deduction command parsing.
 - `payment_callbacks_test.go` verifies that navigation returns accept only the documented payment providers.
 - `admin_user_detail_test.go` covers owner-ID restoration in nested aggregate records.
+- `member_ip_blocks_test.go` covers member isolation, administrator actor attribution, and open-operation conflicts.
 - `statistics_geocheck_test.go` covers cached image-only and unavailable node Geocheck responses.
 
 `README.md` is this direct-file ownership index. Unsigned routes remain limited to operational probes, Telegram authentication, provider-authenticated callbacks, the capability-limited payment return/status flow, and static assets.

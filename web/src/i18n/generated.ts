@@ -9,6 +9,7 @@ import enAdminWorkflows from '../../locales/en/admin-workflows.json'
 import enActivity from '../../locales/en/activity.json'
 import enCommerce from '../../locales/en/commerce.json'
 import enCommunity from '../../locales/en/community.json'
+import enConnections from '../../locales/en/connections.json'
 import enCore from '../../locales/en/core.json'
 import enHome from '../../locales/en/home.json'
 import enMember from '../../locales/en/member.json'
@@ -25,6 +26,7 @@ import zhAdminWorkflows from '../../locales/zh-CN/admin-workflows.json'
 import zhActivity from '../../locales/zh-CN/activity.json'
 import zhCommerce from '../../locales/zh-CN/commerce.json'
 import zhCommunity from '../../locales/zh-CN/community.json'
+import zhConnections from '../../locales/zh-CN/connections.json'
 import zhCore from '../../locales/zh-CN/core.json'
 import zhHome from '../../locales/zh-CN/home.json'
 import zhMember from '../../locales/zh-CN/member.json'
@@ -32,11 +34,11 @@ import zhSquadProfile from '../../locales/zh-CN/squad-profile.json'
 import zhStatistics from '../../locales/zh-CN/statistics.json'
 
 const en = {
-  ...enCore, ...enActivity, ...enCommerce, ...enCommunity, ...enMember, ...enHome, ...enAdminCore, ...enAdminOnboarding, ...enAdminData,
+  ...enCore, ...enActivity, ...enCommerce, ...enCommunity, ...enMember, ...enConnections, ...enHome, ...enAdminCore, ...enAdminOnboarding, ...enAdminData,
   ...enAdminActivity, ...enAdminCommunity, ...enAdminCatalog, ...enAdminOperations, ...enAdminWorkflows, ...enSquadProfile, ...enStatistics,
 }
 const zhCN: typeof en = {
-  ...zhCore, ...zhActivity, ...zhCommerce, ...zhCommunity, ...zhMember, ...zhHome, ...zhAdminCore, ...zhAdminOnboarding, ...zhAdminData,
+  ...zhCore, ...zhActivity, ...zhCommerce, ...zhCommunity, ...zhMember, ...zhConnections, ...zhHome, ...zhAdminCore, ...zhAdminOnboarding, ...zhAdminData,
   ...zhAdminActivity, ...zhAdminCommunity, ...zhAdminCatalog, ...zhAdminOperations, ...zhAdminWorkflows, ...zhSquadProfile, ...zhStatistics,
 }
 

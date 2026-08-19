@@ -131,7 +131,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	rolloverWorker := rollover.NewService(store, remna)
 	outboxWorker := outbox.NewWorker(store)
 	paymentAnnouncementWorker := billing.NewPaymentAnnouncementWorker(settings, telegramClient)
-	memberServices, scanWorker, operationDispatcher, err := newMemberWorkflows(store, remna, vault, cfg.MasterKey)
+	memberServices, scanWorker, blockExpiryWorker, operationDispatcher, err := newMemberWorkflows(store, remna, vault, cfg.MasterKey)
 	if err != nil {
 		return cleanup(err)
 	}
@@ -149,7 +149,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		return cleanup(err)
 	}
 	if err := registerCoreOutboxHandlers(outboxWorker, store, entitlementWorker, rolloverWorker, embyService,
-		paymentAnnouncementWorker, scanWorker, operationDispatcher); err != nil {
+		paymentAnnouncementWorker, scanWorker, blockExpiryWorker, operationDispatcher); err != nil {
 		return cleanup(err)
 	}
 	static, err := fs.Sub(webui.Dist, "dist")

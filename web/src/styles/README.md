@@ -19,6 +19,7 @@
 - `home-04.css` styles the accessible Your ride rollover flip card, its concise current-term detail, size-safe face swap, and reduced-motion fallback.
 - `connections-01.css` styles the connections page heading, node/IP rows, empty states, and selected connection confirmation detail.
 - `connections-02.css` styles the stable connection scan visualization, progress presentation, tablet split layout, and reduced-motion fallback.
+- `connections-03.css` styles active block rows, exact-expiry metadata, and compact unblock confirmation targets.
 - `statistics-01.css` styles the statistics page structure, centered refresh control, KPI panels, node cards, and compact states.
 - `statistics-02.css` styles the responsive generic SVG donut, labeled pies, traffic tooltips, legends, and normalized stacked bars.
 - `statistics-03.css` constrains the node Geocheck modal to Telegram safe areas and styles its touch zoom canvas and fixed icon controls.
@@ -31,6 +32,7 @@
 - `admin-02.css` styles administrative forms, lists, and data surfaces.
 - `admin-03.css` styles administrative drawers and review workflows.
 - `admin-04.css` styles aggregate user profiles, bulk previews, operation resolution, and streamed backup upload.
+- `admin-05.css` styles active IP blocks and mobile unblock controls in aggregate user profiles.
 - `motion-01.css` defines short transitions and state motion.
 - `responsive-01.css` adapts the shell and primary layouts.
 - `responsive-02.css` adapts member and administrative flows.

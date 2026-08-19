@@ -8,10 +8,10 @@ vi.mock('@/composables/useTelegramBackButton', () => ({ useTelegramBackButton: (
 const result = { nodeUuid: '373f14bc-089a-4c3a-91c3-3421e7c83367', checkedAt: '2026-08-19T12:00:00Z', image: { format: 'svg' as const, mediaType: 'image/svg+xml' as const, encoding: 'base64' as const, data: 'PHN2Zy8+' } }
 
 const stubs = {
-  UModal: { props: ['open'], template: '<div v-if="open"><slot name="body" /></div>' },
-  UButton: { template: '<div><slot /></div>' },
-  UTooltip: { template: '<span><slot /></span>' },
-  UIcon: { template: '<svg />' },
+  Modal: { props: ['open'], template: '<div v-if="open"><slot name="body" /></div>' },
+  Button: { template: '<div><slot /></div>' },
+  Tooltip: { template: '<span><slot /></span>' },
+  Icon: { template: '<svg />' },
 }
 
 describe('StatisticsGeocheckModal', () => {

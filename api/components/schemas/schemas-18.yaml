@@ -91,7 +91,7 @@ AdminSynchronization:
 AdminUserDetail:
   type: object
   additionalProperties: false
-  required: [user, balance, synchronization, entitlements, embyAccounts, payments, refunds, operations]
+  required: [user, balance, synchronization, entitlements, embyAccounts, payments, refunds, operations, ipBlocks]
   properties:
     user: { $ref: '../../openapi.yaml#/components/schemas/User' }
     balance: { $ref: '../../openapi.yaml#/components/schemas/Money' }
@@ -112,3 +112,6 @@ AdminUserDetail:
     operations:
       type: array
       items: { $ref: '../../openapi.yaml#/components/schemas/OperationReceipt' }
+    ipBlocks:
+      type: array
+      items: { $ref: '../../openapi.yaml#/components/schemas/IPBlock' }

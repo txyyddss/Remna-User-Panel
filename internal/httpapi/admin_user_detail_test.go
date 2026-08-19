@@ -23,4 +23,7 @@ func TestMapAdminUserDetailRestoresOwnerIDsOnNestedRecords(t *testing.T) {
 	if response.EmbyAccounts == nil {
 		t.Fatal("Emby accounts must serialize as an array")
 	}
+	if response.IPBlocks == nil {
+		t.Fatal("IP blocks must serialize as an array")
+	}
 }

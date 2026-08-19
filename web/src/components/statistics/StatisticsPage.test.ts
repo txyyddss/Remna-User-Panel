@@ -34,7 +34,7 @@ describe('StatisticsPage', () => {
       global: {
         stubs: {
           InlineNotice: true, SkeletonBlock: true, StatisticsFreshness: true, StatisticsOverview: true,
-          StatisticsTrafficChart: true, StatisticsShareCharts: true, StatisticsDistribution: true, UTooltip: true, UButton: true,
+          StatisticsTrafficChart: true, StatisticsShareCharts: true, StatisticsDistribution: true, Tooltip: true, Button: true,
           StatisticsNodes: { props: ['snapshot'], emits: ['openGeocheck'], template: '<div data-testid="geocheck-card" @click="$emit(\'openGeocheck\', snapshot.nodes[0])"></div>' },
           StatisticsGeocheckModal: { props: ['open', 'node', 'result'], template: '<output data-testid="geocheck-modal" :data-open="String(open)" :data-node="node && node.uuid" :data-image="result && result.image.data" />' },
         },

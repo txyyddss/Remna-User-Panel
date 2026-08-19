@@ -2,12 +2,12 @@
 - `types_part2.go` continues the focused implementation from its original package module.
 - `users_part2.go` continues the focused implementation from its original package module.
 
-This package implements the Remnawave v3.2.1 operations used by TX Carpool. Endpoint and response shapes follow `reference/Upstream/Remnawave/api.json`; the shared transport applies bearer authentication and sanitizes provider errors.
+This package implements the Remnawave v3.3.0 operations used by TX Carpool. Endpoint and response shapes follow `reference/Upstream/Remnawave/api.json`; the shared transport applies bearer authentication and sanitizes provider errors.
 
 - `client.go` owns client construction, authenticated HTTP transport, bounded response decoding, and sanitized API errors.
 - `users.go` implements user creation and identity lookup; `users_part2.go` implements documented stream pagination, update, credential revocation, and traffic reset operations.
 - `subscriptions.go` implements protected subscription retrieval and the documented `GET /api/bandwidth-stats/users/{userId}` date-bounded usage statistics.
-- `connections.go` implements queued user scans, polling, and selected-IP drops; `connection_types.go` keeps their transient provider contracts focused.
+- `connections.go` implements queued user scans, selected-IP drops, and exact `blockIps`/`unblockIps` node-plugin executor payloads; `connection_types.go` keeps transient provider contracts focused.
 - `geocheck.go` starts documented node Geocheck jobs and maps completed SVG results without retaining the upstream raw report.
 - `statistics.go` implements digest and raw node-usage reads; the documented node collection supplies the live node-card metrics in `squads.go`, including fractional number fields that are projected at the application boundary, and `hosts.go` owns the minimal host remark patch contract.
 - `squads.go` implements internal-squad, node, accessible-node, and inbound assignment operations.
@@ -17,6 +17,7 @@ This package implements the Remnawave v3.2.1 operations used by TX Carpool. Endp
 - `doc.go` supplies the package documentation and supported upstream version.
 - `client_test.go` verifies endpoint, method, payload, bearer, error-code, and lookup contracts.
 - `connections_test.go` verifies a completed scan with an unsuccessful upstream result is surfaced as failed.
+- `connection_ip_executor_test.go` verifies accepted IPv4/IPv6 block and unblock executor payloads plus strict target validation.
 - `geocheck_test.go` verifies the node Geocheck request, polling, empty-object payload, and completed failure contract.
 - `redirect_test.go` verifies provider redirects cannot receive the bearer credential.
 - `squad_identity_test.go` rejects a squad update response whose UUID differs from the requested squad.

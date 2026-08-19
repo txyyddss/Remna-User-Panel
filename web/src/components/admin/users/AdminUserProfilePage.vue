@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, shallowRef, toRef } from 'vue'
+import { computed, shallowRef, toRef, watch } from 'vue'
 
 import { adminOperationsApi, type AdminEntitlement, type AdminUserDetail, type ComboReplacementRequest, type CourtesyCredit, type EntitlementEditRequest, type OperationReceipt, type OperationResolution } from '@/api/adminOperations'
 import InlineNotice from '@/components/common/InlineNotice.vue'
+import ConnectionUnblockDialog from '@/components/connections/ConnectionUnblockDialog.vue'
+import { useOperationReceipt } from '@/composables/useOperationReceipt'
 import { useI18n } from '@/i18n'
 import { formatMoney } from '@/utils/format'
 import AdminReasonDialog from '../AdminReasonDialog.vue'
@@ -11,6 +13,7 @@ import AdminEntitlementEditor from './AdminEntitlementEditor.vue'
 import AdminOperationResolutionDialog from './AdminOperationResolutionDialog.vue'
 import AdminUserEntitlements from './AdminUserEntitlements.vue'
 import AdminUserHistory from './AdminUserHistory.vue'
+import AdminUserIPBlocks from './AdminUserIPBlocks.vue'
 import AdminUserOverview from './AdminUserOverview.vue'
 import { useAdminUserProfile } from './useAdminUserProfile'
 
@@ -27,6 +30,8 @@ const paymentReason = shallowRef('')
 const courtesyMessage = shallowRef<string | null>(null)
 const replacementOpen = shallowRef(false)
 const resolving = shallowRef<OperationReceipt | null>(null)
+const unblockingIP = shallowRef<AdminUserDetail['ipBlocks'][number] | null>(null)
+const unblockOperation = useOperationReceipt()
 const busy = computed(() => profile.busyAction.value !== null)
 const dialogError = computed(() => profile.optionsError.value ?? profile.error.value)
 
@@ -118,6 +123,28 @@ function refresh(): void {
   profile.clearActionError()
   void profile.load()
 }
+
+function openIPUnblock(block: AdminUserDetail['ipBlocks'][number]): void {
+  profile.clearActionError()
+  unblockOperation.reset()
+  unblockingIP.value = block
+}
+
+async function unblockIP(): Promise<void> {
+  const block = unblockingIP.value
+  if (!block) return
+  await profile.perform(`unblock-ip:${block.id}`, async (key) => {
+    const receipt = await adminOperationsApi.unblockIP(props.userId, block.id, key)
+    unblockOperation.track(receipt)
+    return receipt
+  })
+}
+
+watch(() => unblockOperation.receipt.value, (receipt) => {
+  if (!receipt || !unblockOperation.terminal.value) return
+  void profile.load()
+  if (receipt.status === 'succeeded') unblockingIP.value = null
+})
 </script>
 
 <template>
@@ -135,6 +162,7 @@ function refresh(): void {
     <template v-else-if="profile.detail.value">
       <AdminUserOverview :detail="profile.detail.value" />
       <AdminUserEntitlements :items="profile.detail.value.entitlements" :busy="busy" :can-replace="Boolean(profile.detail.value.activeCombo)" @edit="openEditor" @refund="openRefund" @replace="openReplacement" />
+      <AdminUserIPBlocks :items="profile.detail.value.ipBlocks" :busy="busy" @unblock="openIPUnblock" />
       <AdminUserHistory :detail="profile.detail.value" :busy="busy" @resolve="resolving = $event" @refund-payment="openPaymentRefund" @credit-payment="openPaymentCredit" />
     </template>
     <div v-else class="empty-inline"><div><h3>{{ t('adminUserProfile.unavailable') }}</h3><p>{{ t('adminUserProfile.unavailableHint') }}</p></div></div>
@@ -145,5 +173,6 @@ function refresh(): void {
     <AdminReasonDialog :open="creditingPayment !== null" v-model:reason="paymentReason" :title="t('adminUserProfile.courtesyCreditTitle')" :description="t('adminUserProfile.courtesyCreditHint')" :confirm-label="t('adminUserProfile.issueCourtesyCredit')" :busy="busy" :error="profile.error.value" @update:open="!$event && (creditingPayment = null)" @confirm="creditPayment" />
     <AdminComboReplacementDialog :open="replacementOpen" :current="profile.detail.value?.activeCombo ?? null" :combos="profile.options.value.combos" :squads="profile.options.value.squads" :busy="busy" :options-loading="profile.optionsLoading.value" :error="dialogError" @update:open="replacementOpen = $event" @replace="replaceCombo" />
     <AdminOperationResolutionDialog :open="resolving !== null" :operation="resolving" :busy="busy" :error="profile.error.value" @update:open="!$event && (resolving = null)" @resolve="resolveOperation" />
+    <ConnectionUnblockDialog :open="unblockingIP !== null" :block="unblockingIP" :receipt="unblockOperation.receipt.value" :busy="profile.busyAction.value?.startsWith('unblock-ip:')" :checking="unblockOperation.checking.value" :error="profile.error.value ?? unblockOperation.error.value" @update:open="!$event && (unblockingIP = null)" @confirm="unblockIP" @refresh="unblockOperation.refresh" />
   </section>
 </template>

@@ -1,7 +1,7 @@
 post:
   tags: [Dashboard]
   operationId: dropSubscriptionConnection
-  summary: Drop one connection using a signed scan handle
+  summary: Block one scanned IP on its node for 72 hours, then disconnect it
   parameters:
     - $ref: '../openapi.yaml#/components/parameters/IdempotencyKey'
   requestBody:
@@ -11,11 +11,12 @@ post:
         schema: { $ref: '../openapi.yaml#/components/schemas/ConnectionDropRequest' }
   responses:
     '202':
-      description: Drop accepted.
+      description: Block and disconnect workflow accepted.
       content:
         application/json:
           schema: { $ref: '../openapi.yaml#/components/schemas/OperationReceipt' }
     '400': { $ref: '../openapi.yaml#/components/responses/BadRequest' }
     '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }
     '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }
     '502': { $ref: '../openapi.yaml#/components/responses/UpstreamFailure' }

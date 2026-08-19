@@ -68,6 +68,18 @@ ConnectionDropRequest:
   properties:
     handle: { type: string, minLength: 16, maxLength: 4096 }
 
+IPBlock:
+  type: object
+  additionalProperties: false
+  required: [id, ip, nodeUuid, status, createdAt, expiresAt]
+  properties:
+    id: { $ref: '../../openapi.yaml#/components/schemas/ID' }
+    ip: { type: string, format: ip }
+    nodeUuid: { type: string, format: uuid }
+    status: { type: string, enum: [blocking, active, unblocking, pending_review] }
+    createdAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+    expiresAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+
 TrafficResetQuote:
   type: object
   additionalProperties: false

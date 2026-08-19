@@ -23,6 +23,10 @@ const keyHeader = (key: string) => ({ 'Idempotency-Key': key })
 
 export const adminOperationsApi = {
   getUser: (userId: string) => request<AdminUserDetail>(`/api/v1/admin/users/${encodeURIComponent(userId)}`),
+  unblockIP: (userId: string, blockId: string, key: string) =>
+    request<OperationReceipt>(`/api/v1/admin/users/${encodeURIComponent(userId)}/ip-blocks/${encodeURIComponent(blockId)}/unblock`, {
+      method: 'POST', headers: keyHeader(key),
+    }),
   getCatalogOptions: async (): Promise<AdminCatalogOptions> => {
     const [combos, squads] = await Promise.all([
       request<{ items: Combo[] }>('/api/v1/admin/combos'),

@@ -50,3 +50,5 @@ file instead.
 - `025_mutation_durability.sql` adds review-required Emby state and prevents concurrent open setup commands.
 - `026_group_message_facts.sql` stores deduplicated raw configured-group non-command message facts for cumulative statistics.
 - `027_host_operation_guard.sql` prevents a new host remark mutation while the same host still has an unresolved operation.
+- `028_connection_ip_blocks.sql` stores only active encrypted node-scoped IP
+  blocks and their scheduled three-day cleanup references.

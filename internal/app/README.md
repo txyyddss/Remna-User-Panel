@@ -16,8 +16,8 @@ waits for the scheduler and provider workers to finish before returning.
 stopped.
 
 - `app.go` defines the application container and composes configuration, persistence, domain services, adapters, workers, and HTTP delivery.
-- `member_workflows.go` composes member connection/reset/refund services and registers member and administrator provider-operation kinds on one dispatcher.
-- `outbox_composition.go` registers core jobs, durable payment announcements, and the single shared provider-operation dispatcher.
+- `member_workflows.go` composes member connection/reset/refund services and registers legacy drop plus block/unblock operation workers on one dispatcher.
+- `outbox_composition.go` registers core jobs, the scheduled IP-unblock backstop, durable payment announcements, and the shared provider-operation dispatcher.
 - `payment_operations.go` registers durable payment create and cancellation handlers on that dispatcher.
 - `mutation_operation_composition.go` registers subscription, Emby, questionnaire, retry, and refund command handlers.
 - `payment_refund_adapter.go` reconciles ambiguous Telegram Stars refunds from authoritative transaction history.
@@ -34,7 +34,7 @@ stopped.
 - `node_multiplier_cache.go` owns the copied five-minute node-multiplier cache shared by queued Remnawave projections and rollover usage mapping.
 - `node_multiplier_cache_test.go` covers cache expiry at the five-minute boundary.
 - `remna_entitlements_adapter.go` implements queued entitlement, traffic reset, removal, and rollover operations.
-- `remna_member_operations_adapter.go` implements queued connection, reconciliation, usage, quiesce, and restore calls.
+- `remna_member_operations_adapter.go` implements queued connection scans, plugin block/unblock execution, disconnect reconciliation, usage, quiesce, and restore calls.
 - `remna_statistics_adapter.go` implements queue-backed Remnawave digest, node,
   traffic, Geocheck, and host operations for product statistics; documented fractional
   live counts and byte rates are rounded into the integer public contract.

@@ -16,9 +16,9 @@ describe('StatisticsNodes', () => {
       global: {
         stubs: {
           CountryFlag: { template: '<span />' },
-          UIcon: { template: '<svg />' },
-          UTooltip: { template: '<span><slot /></span>' },
-          UButton: { emits: ['click'], template: '<div v-bind="$attrs" @click="$emit(\'click\', $event)"><slot /></div>' },
+          Icon: { template: '<svg />' },
+          Tooltip: { template: '<span><slot /></span>' },
+          Button: { emits: ['click'], template: '<div v-bind="$attrs" @click="$emit(\'click\', $event)"><slot /></div>' },
         },
         mocks: { $t: (key: string) => key },
       },

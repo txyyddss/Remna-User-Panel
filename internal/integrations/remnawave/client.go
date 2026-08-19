@@ -53,7 +53,7 @@ func IsNotFound(err error) bool {
 	return errors.As(err, &apiError) && apiError.HTTPStatus == http.StatusNotFound
 }
 
-// Client calls the protected Remnawave v3.2.1 API using bearer authentication.
+// Client calls the protected Remnawave v3.3.0 API using bearer authentication.
 type Client struct {
 	baseURL    *url.URL
 	token      string

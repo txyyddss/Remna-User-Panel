@@ -40,12 +40,34 @@ func (s *Server) adminUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) adminUser(w http.ResponseWriter, r *http.Request) {
-	detail, err := s.deps.AdminUsers.UserDetail(r.Context(), chiURLParam(r, "id"))
+	userID := chiURLParam(r, "id")
+	detail, err := s.deps.AdminUsers.UserDetail(r.Context(), userID)
 	if err != nil {
 		s.adminFailure(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, mapAdminUserDetail(detail))
+	blocks, err := s.deps.ConnectionDrops.List(r.Context(), userID)
+	if err != nil {
+		s.adminFailure(w, r, err)
+		return
+	}
+	response := mapAdminUserDetail(detail)
+	response.IPBlocks = blocks
+	writeJSON(w, http.StatusOK, response)
+}
+
+func (s *Server) adminUnblockIP(w http.ResponseWriter, r *http.Request) {
+	key, ok := s.requireIdempotencyKey(w, r)
+	if !ok {
+		return
+	}
+	receipt, err := s.deps.ConnectionDrops.Unblock(r.Context(), currentUser(r).ID,
+		chiURLParam(r, "userId"), chiURLParam(r, "blockId"), key)
+	if err != nil {
+		s.writeIPBlockError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusAccepted, receipt)
 }
 
 func (s *Server) adminBalanceAdjustment(w http.ResponseWriter, r *http.Request) {

@@ -27,6 +27,7 @@ func (s *Server) mountAdmin(router chi.Router) {
 	router.Post("/squad-products/import", s.adminImportSquads)
 	router.Get("/users", s.adminUsers)
 	router.Get("/users/{id}", s.adminUser)
+	router.Post("/users/{userId}/ip-blocks/{blockId}/unblock", s.adminUnblockIP)
 	router.Post("/users/{id}/balance-adjustments", s.adminBalanceAdjustment)
 	router.Put("/users/{userId}/entitlements/{entitlementId}", s.adminEditEntitlement)
 	router.Post("/users/{userId}/entitlements/{entitlementId}/refund", s.adminRefundEntitlement)

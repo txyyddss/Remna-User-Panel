@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"github.com/txyyddss/Remna-User-Panel/internal/admin"
+	"github.com/txyyddss/Remna-User-Panel/internal/connections"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 )
 
@@ -31,6 +32,7 @@ type adminUserDetailResponse struct {
 	Payments        []adminPaymentResponse       `json:"payments"`
 	Refunds         []model.Refund               `json:"refunds"`
 	Operations      []model.OperationReceipt     `json:"operations"`
+	IPBlocks        []connections.IPBlock        `json:"ipBlocks"`
 }
 
 func mapAdminUserDetail(detail admin.UserDetail) adminUserDetailResponse {
@@ -39,7 +41,8 @@ func mapAdminUserDetail(detail admin.UserDetail) adminUserDetailResponse {
 			RemoteUserID: detail.Synchronization.RemoteUserID, LastError: detail.Synchronization.LastError},
 		Entitlements: make([]adminEntitlementResponse, 0, len(detail.Entitlements)),
 		EmbyAccounts: make([]embyAccountResponse, 0, len(detail.EmbyAccounts)),
-		Payments:     make([]adminPaymentResponse, 0, len(detail.Payments)), Refunds: detail.Refunds, Operations: detail.Operations}
+		Payments:     make([]adminPaymentResponse, 0, len(detail.Payments)), Refunds: detail.Refunds,
+		Operations: detail.Operations, IPBlocks: []connections.IPBlock{}}
 	for _, item := range detail.Entitlements {
 		response.Entitlements = append(response.Entitlements, adminEntitlementResponse{Purchase: item, UserID: item.UserID})
 	}

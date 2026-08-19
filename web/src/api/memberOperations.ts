@@ -1,5 +1,6 @@
 import type {
   ConnectionScan,
+  IPBlock,
   MemberRefundQuote,
   OperationReceipt,
   TrafficResetQuote,
@@ -16,6 +17,11 @@ export const memberOperationsApi = {
     method: 'POST',
     headers: { 'Idempotency-Key': idempotencyKey },
     body: { handle },
+  }),
+  listIPBlocks: () => request<{ items: IPBlock[] }>('/api/v1/subscription/ip-blocks'),
+  unblockIP: (blockId: string, idempotencyKey: string) => request<OperationReceipt>(`/api/v1/subscription/ip-blocks/${encodeURIComponent(blockId)}/unblock`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
   }),
   getTrafficResetQuote: (purchaseId: string) => request<TrafficResetQuote>(`/api/v1/purchases/${encodeURIComponent(purchaseId)}/traffic-reset`),
   resetPurchaseTraffic: (purchaseId: string, idempotencyKey: string) => request<OperationReceipt>(`/api/v1/purchases/${encodeURIComponent(purchaseId)}/traffic-reset`, {

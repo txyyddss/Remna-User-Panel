@@ -19,10 +19,10 @@ type memberWorkflowServices struct {
 	purchases   *purchaseops.Service
 }
 
-func newMemberWorkflows(store *database.Store, remna remnaAdapter, vault *secret.Vault, signingKey []byte) (memberWorkflowServices, *connections.Worker, *providerops.Dispatcher, error) {
+func newMemberWorkflows(store *database.Store, remna remnaAdapter, vault *secret.Vault, signingKey []byte) (memberWorkflowServices, *connections.Worker, *connections.ExpiryWorker, *providerops.Dispatcher, error) {
 	signer, err := connections.NewSigner(signingKey)
 	if err != nil {
-		return memberWorkflowServices{}, nil, nil, err
+		return memberWorkflowServices{}, nil, nil, nil, err
 	}
 	secrets := emby.NewSecretBox(vault)
 	services := memberWorkflowServices{
@@ -34,13 +34,19 @@ func newMemberWorkflows(store *database.Store, remna remnaAdapter, vault *secret
 	purchaseWorker := purchaseops.NewWorker(store, remna)
 	for _, kind := range []string{purchaseops.OperationResetKind, purchaseops.OperationRefundKind} {
 		if err := dispatcher.Register(kind, purchaseWorker); err != nil {
-			return memberWorkflowServices{}, nil, nil, fmt.Errorf("register %s: %w", kind, err)
+			return memberWorkflowServices{}, nil, nil, nil, fmt.Errorf("register %s: %w", kind, err)
 		}
 	}
 	if err := dispatcher.Register(connections.DropOperationKind, connections.NewDropWorker(store, remna, signer, secrets)); err != nil {
-		return memberWorkflowServices{}, nil, nil, fmt.Errorf("register connection drop: %w", err)
+		return memberWorkflowServices{}, nil, nil, nil, fmt.Errorf("register connection drop: %w", err)
 	}
-	return services, connections.NewWorker(store, remna), dispatcher, nil
+	if err := dispatcher.Register(connections.BlockOperationKind, connections.NewBlockWorker(store, remna, secrets)); err != nil {
+		return memberWorkflowServices{}, nil, nil, nil, fmt.Errorf("register connection block: %w", err)
+	}
+	if err := dispatcher.Register(connections.UnblockOperationKind, connections.NewUnblockWorker(store, remna, secrets)); err != nil {
+		return memberWorkflowServices{}, nil, nil, nil, fmt.Errorf("register connection unblock: %w", err)
+	}
+	return services, connections.NewWorker(store, remna), connections.NewExpiryWorker(store, remna, secrets), dispatcher, nil
 }
 
 func registerAdminOperationHandlers(dispatcher *providerops.Dispatcher, store *database.Store, remna remnaAdapter) error {

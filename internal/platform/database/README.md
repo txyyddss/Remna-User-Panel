@@ -108,6 +108,8 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `admin_operation_resolution.go` atomically resolves review-required operations, stores replay fingerprints, and appends the audit event.
 - `admin_workflow_types.go` defines shared aggregate and administrator workflow persistence records.
 - `connection_scans.go` and `connection_scan_lifecycle.go` persist metadata-only provider scan progress.
+- `connection_ip_blocks.go` atomically creates an encrypted active block, its provider operation, and immediate/scheduled jobs; `connection_ip_blocks_mutations.go` owns owner reads and unblock transitions; `connection_ip_block_completion.go` and `connection_ip_block_expiry.go` atomically close linked receipts with sensitive-row transitions.
+- `connection_ip_blocks_test.go` and `connection_ip_block_expiry_test.go` cover replay, target uniqueness, owner isolation, ciphertext-only durability, job atomicity, manual cancellation, and expiry races.
 - `maintenance_runs.go` acquires the configured local-day maintenance lease and records backup-gated cleanup completion.
 - `administration_records.go` — audit events, administrator user lists, and backup
   run records.

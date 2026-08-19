@@ -25,7 +25,9 @@ Member connection scans, purchase reset/refund resources, operation receipts, st
 - `api-v1-subscription-revoke.yaml`: `/api/v1/subscription/revoke`
 - `api-v1-subscription-connections.yaml`: `/api/v1/subscription/connections`, idempotent connection scan creation
 - `api-v1-subscription-connections-id.yaml`: `/api/v1/subscription/connections/{scanId}`, owner-scoped scan polling
-- `api-v1-subscription-connections-drop.yaml`: `/api/v1/subscription/connections/drop`, signed-handle connection removal
+- `api-v1-subscription-connections-drop.yaml`: `/api/v1/subscription/connections/drop`, signed-handle three-day node block followed by disconnect
+- `api-v1-subscription-ip-blocks.yaml`: `/api/v1/subscription/ip-blocks`, owner-only active block list
+- `api-v1-subscription-ip-blocks-id-unblock.yaml`: `/api/v1/subscription/ip-blocks/{blockId}/unblock`, owner-only durable unblock
 - `api-v1-balance.yaml`: `/api/v1/balance`
 - `api-v1-ledger.yaml`: `/api/v1/ledger`
 - `api-v1-statistics.yaml`: `/api/v1/statistics`, persisted 30-minute aggregate dashboard
@@ -80,6 +82,7 @@ Member connection scans, purchase reset/refund resources, operation receipts, st
 - `api-v1-admin-squad-products-id-statistics.yaml`: `/api/v1/admin/squad-products/{id}/statistics`
 - `api-v1-admin-users.yaml`: `/api/v1/admin/users`
 - `api-v1-admin-users-id.yaml`: `/api/v1/admin/users/{id}`
+- `api-v1-admin-users-id-ip-blocks-blockid-unblock.yaml`: `/api/v1/admin/users/{userId}/ip-blocks/{blockId}/unblock`, admin-as-actor unblock only
 - `api-v1-admin-users-id-balance-adjustments.yaml`: `/api/v1/admin/users/{id}/balance-adjustments`
 - `api-v1-admin-users-id-entitlements-entitlementid.yaml`: `/api/v1/admin/users/{userId}/entitlements/{entitlementId}`, optimistic entitlement overwrite
 - `api-v1-admin-users-id-entitlements-entitlementid-refund.yaml`: `/api/v1/admin/users/{userId}/entitlements/{entitlementId}/refund`, audited entitlement refund operation

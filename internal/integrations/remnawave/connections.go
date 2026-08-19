@@ -66,17 +66,56 @@ func (c *Client) UserConnections(ctx context.Context, jobID string) (ConnectionS
 
 // DropConnectionByIP drops one selected IP on one selected node.
 func (c *Client) DropConnectionByIP(ctx context.Context, ip, nodeUUID string) error {
-	if net.ParseIP(strings.TrimSpace(ip)) == nil {
-		return errors.New("invalid connection IP address")
-	}
-	if _, err := uuid.Parse(nodeUUID); err != nil {
-		return errors.New("invalid connection node UUID")
+	ip, nodeUUID, err := validateIPPluginTarget(ip, nodeUUID)
+	if err != nil {
+		return err
 	}
 	payload := map[string]any{
 		"dropBy":      map[string]any{"by": "ipAddresses", "ipAddresses": []string{ip}},
 		"targetNodes": map[string]any{"target": "specificNodes", "nodeUuids": []string{nodeUUID}},
 	}
 	return c.do(ctx, http.MethodPost, "/api/connections/drop", nil, payload, nil)
+}
+
+// BlockIP executes the Remnawave node plugin blockIps command.
+func (c *Client) BlockIP(ctx context.Context, ip, nodeUUID string, timeoutSeconds int) error {
+	ip, nodeUUID, err := validateIPPluginTarget(ip, nodeUUID)
+	if err != nil {
+		return err
+	}
+	if timeoutSeconds <= 0 {
+		return errors.New("IP block timeout must be positive")
+	}
+	payload := map[string]any{
+		"command":     map[string]any{"command": "blockIps", "ips": []map[string]any{{"ip": ip, "timeout": timeoutSeconds}}},
+		"targetNodes": map[string]any{"target": "specificNodes", "nodeUuids": []string{nodeUUID}},
+	}
+	return c.do(ctx, http.MethodPost, "/api/node-plugins/executor", nil, payload, nil)
+}
+
+// UnblockIP executes the Remnawave node plugin unblockIps command.
+func (c *Client) UnblockIP(ctx context.Context, ip, nodeUUID string) error {
+	ip, nodeUUID, err := validateIPPluginTarget(ip, nodeUUID)
+	if err != nil {
+		return err
+	}
+	payload := map[string]any{
+		"command":     map[string]any{"command": "unblockIps", "ips": []string{ip}},
+		"targetNodes": map[string]any{"target": "specificNodes", "nodeUuids": []string{nodeUUID}},
+	}
+	return c.do(ctx, http.MethodPost, "/api/node-plugins/executor", nil, payload, nil)
+}
+
+func validateIPPluginTarget(ip, nodeUUID string) (string, string, error) {
+	parsedIP := net.ParseIP(strings.TrimSpace(ip))
+	if parsedIP == nil {
+		return "", "", errors.New("invalid connection IP address")
+	}
+	node, err := uuid.Parse(strings.TrimSpace(nodeUUID))
+	if err != nil {
+		return "", "", errors.New("invalid connection node UUID")
+	}
+	return parsedIP.String(), node.String(), nil
 }
 
 func validateConnectionScan(scan ConnectionScan) error {

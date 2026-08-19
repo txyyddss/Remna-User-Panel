@@ -81,7 +81,13 @@
     "resolveWarning": "Provider outcome is ambiguous",
     "resolveWarningHint": "Confirm the observed result from an independent check before recording it.",
     "resolution": "Resolution",
-    "recordResolution": "Record resolution"
+    "recordResolution": "Record resolution",
+    "ipBlocks": "Active IP blocks",
+    "ipBlocksHint": "Node-scoped three-day blocks created by this member. Administrators can only unblock them.",
+    "ipBlockExpiry": "Expires {date}",
+    "ipBlockStatus": { "blocking": "Blocking", "active": "Active", "unblocking": "Unblocking", "pending_review": "Pending review" },
+    "unblockIP": "Unblock IP",
+    "noIPBlocks": "This member has no active IP blocks."
   },
   "adminBulkExtension": {
     "open": "Bulk extension",
