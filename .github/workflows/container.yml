@@ -11,17 +11,22 @@ permissions:
   contents: read
 
 jobs:
+  quality:
+    uses: ./.github/workflows/ci.yml
+
   build:
     name: Build ${{ matrix.platform }} image
-    # Removed dependency on a non-existent `quality` job so this workflow can run standalone
-    runs-on: ubuntu-24.04
+    needs: quality
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: linux/amd64
+            runner: ubuntu-24.04
             arch: amd64
           - platform: linux/arm64
+            runner: ubuntu-24.04-arm
             arch: arm64
     permissions:
       contents: read
@@ -79,10 +84,6 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/digests"
           digest="${{ steps.build.outputs.digest }}"
-          if [[ -z "$digest" ]]; then
-            echo "No digest returned from the build step" >&2
-            exit 1
-          fi
           touch "$RUNNER_TEMP/digests/${digest#sha256:}"
 
       - name: Upload image digest
@@ -95,7 +96,7 @@ jobs:
 
   publish:
     name: Publish multi-platform image
-    needs: build
+    needs: [quality, build]
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -150,25 +151,20 @@ jobs:
             [[ -n "$tag" ]] && tag_args+=(--tag "$tag")
           done
 
-          mapfile -t digest_files < <(find "$DIGEST_DIR" -maxdepth 1 -type f -printf '%f\n' | sort || true)
+          mapfile -t digest_files < <(find "$DIGEST_DIR" -maxdepth 1 -type f -printf '%f\n' | sort)
           sources=()
           for digest in "${digest_files[@]}"; do
             sources+=("${IMAGE_NAME}@sha256:${digest}")
           done
 
-          if [ "${#sources[@]}" -lt 1 ]; then
-            echo "No digests found in $DIGEST_DIR" >&2
-            exit 1
-          fi
-
+          test "${#sources[@]}" -eq 2
           mkdir -p "$RUNNER_TEMP/manifest"
           docker buildx imagetools create \
             "${tag_args[@]}" \
             --metadata-file "$RUNNER_TEMP/manifest/metadata.json" \
             "${sources[@]}"
 
-          # Read the digest out of the metadata file produced by imagetools
-          digest="$(node -e "const fs=require('fs'); const d=JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); process.stdout.write(d['containerimage.descriptor'].digest);" "$RUNNER_TEMP/manifest/metadata.json")"
+          digest="$(node -e "const fs=require('fs'); const d=JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); process.stdout.write(d['containerimage.descriptor'].digest)" "$RUNNER_TEMP/manifest/metadata.json")"
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
 
       - name: Attest multi-platform image
