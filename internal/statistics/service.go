@@ -75,9 +75,31 @@ func (s *Service) Snapshot(ctx context.Context) (model.ProductStatisticsSnapshot
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	copy := s.snapshot
-	copy.StalePartitions = append([]string(nil), copy.StalePartitions...)
-	return copy, nil
+	return cloneSnapshot(s.snapshot), nil
+}
+
+func cloneSnapshot(value model.ProductStatisticsSnapshot) model.ProductStatisticsSnapshot {
+	result := value
+	result.StalePartitions = append([]string{}, value.StalePartitions...)
+	result.Remote.TrafficDates = append([]string{}, value.Remote.TrafficDates...)
+	result.Remote.TrafficSeries = append([]model.NodeTrafficSeries{}, value.Remote.TrafficSeries...)
+	for index := range result.Remote.TrafficSeries {
+		result.Remote.TrafficSeries[index].DailyBytes = append([]string{}, value.Remote.TrafficSeries[index].DailyBytes...)
+	}
+	result.Database.SubscriptionStates = append([]model.NamedShare{}, value.Database.SubscriptionStates...)
+	result.Database.ComboShares = append([]model.NamedShare{}, value.Database.ComboShares...)
+	result.Database.PaymentStatuses = append([]model.NamedShare{}, value.Database.PaymentStatuses...)
+	result.Database.SquadByCombo = cloneDistributions(value.Database.SquadByCombo)
+	result.Database.ComboBySquad = cloneDistributions(value.Database.ComboBySquad)
+	return result
+}
+
+func cloneDistributions(values []model.NormalizedDistribution) []model.NormalizedDistribution {
+	result := append([]model.NormalizedDistribution{}, values...)
+	for index := range result {
+		result[index].Segments = append([]model.NamedShare{}, values[index].Segments...)
+	}
+	return result
 }
 
 func (s *Service) refreshRemote(ctx context.Context, now time.Time) (model.RemoteStatistics, error) {

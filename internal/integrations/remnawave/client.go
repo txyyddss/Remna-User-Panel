@@ -136,12 +136,13 @@ func (c *Client) do(ctx context.Context, method, endpoint string, query url.Valu
 		return fmt.Errorf("remnawave request: %w", err)
 	}
 	defer func() { _ = response.Body.Close() }()
-	responseBody, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes+1))
+	responseLimit := responseByteLimit(method, endpoint)
+	responseBody, err := io.ReadAll(io.LimitReader(response.Body, int64(responseLimit)+1))
 	if err != nil {
 		return fmt.Errorf("remnawave read response: %w", err)
 	}
-	if len(responseBody) > maxResponseBytes {
-		return fmt.Errorf("remnawave response exceeds %d bytes", maxResponseBytes)
+	if len(responseBody) > responseLimit {
+		return fmt.Errorf("remnawave response exceeds %d bytes", responseLimit)
 	}
 	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
 		return decodeAPIError(response.StatusCode, responseBody)

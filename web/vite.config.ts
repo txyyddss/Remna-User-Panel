@@ -86,6 +86,18 @@ export default defineConfig({
       ui: {
         colors: { primary: 'emerald', neutral: 'zinc' },
         icons: uiIconRegistry,
+        button: {
+          slots: {
+            base: 'justify-center text-center',
+          },
+          variants: {
+            block: {
+              true: {
+                trailingIcon: 'ms-0',
+              },
+            },
+          },
+        },
       },
       icon: {
         clientBundle: {

@@ -3,8 +3,10 @@ package remnawave
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -68,5 +70,29 @@ func TestNodeGeocheckRejectsEmptyJobIDAndMarksUnsuccessfulCompletionFailed(t *te
 	result, err := client.NodeGeocheckResult(context.Background(), "job-1")
 	if err != nil || !result.Completed || !result.Failed {
 		t.Fatalf("NodeGeocheckResult() = %#v, %v", result, err)
+	}
+}
+
+func TestNodeGeocheckAllowsLargeSVGResult(t *testing.T) {
+	t.Parallel()
+	imageData := strings.Repeat("A", maxResponseBytes+4)
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(writer, `{"response":{"isCompleted":true,"isFailed":false,"result":{"success":true,"nodeUuid":"`+geocheckNodeUUID+`","image":{"format":"svg","media_type":"image/svg+xml","encoding":"base64","data":"`)
+		_, _ = io.WriteString(writer, imageData)
+		_, _ = io.WriteString(writer, `"}}}}`)
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "token", WithHTTPClient(server.Client()))
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	result, err := client.NodeGeocheckResult(context.Background(), "job-1")
+	if err != nil {
+		t.Fatalf("NodeGeocheckResult() error = %v", err)
+	}
+	if result.Image == nil || len(result.Image.Data) != len(imageData) {
+		t.Fatalf("NodeGeocheckResult() image = %#v", result.Image)
 	}
 }
