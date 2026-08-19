@@ -61,7 +61,10 @@ func (c *Client) UserConnections(ctx context.Context, jobID string) (ConnectionS
 			result.Failed = true
 		}
 	}
-	return result, validateConnectionScan(result)
+	if err := normalizeConnectionScan(&result); err != nil {
+		return ConnectionScan{}, err
+	}
+	return result, nil
 }
 
 // DropConnectionByIP drops one selected IP on one selected node.
@@ -107,30 +110,47 @@ func (c *Client) UnblockIP(ctx context.Context, ip, nodeUUID string) error {
 }
 
 func validateIPPluginTarget(ip, nodeUUID string) (string, string, error) {
-	parsedIP := net.ParseIP(strings.TrimSpace(ip))
-	if parsedIP == nil {
+	ip = canonicalConnectionIP(ip)
+	if ip == "" {
 		return "", "", errors.New("invalid connection IP address")
 	}
 	node, err := uuid.Parse(strings.TrimSpace(nodeUUID))
 	if err != nil {
 		return "", "", errors.New("invalid connection node UUID")
 	}
-	return parsedIP.String(), node.String(), nil
+	return ip, node.String(), nil
 }
 
-func validateConnectionScan(scan ConnectionScan) error {
+func normalizeConnectionScan(scan *ConnectionScan) error {
 	if scan.Progress < 0 || scan.Progress > 100 {
 		return errors.New("remnawave connection progress is outside 0..100")
 	}
-	for _, node := range scan.Nodes {
+	for nodeIndex := range scan.Nodes {
+		node := &scan.Nodes[nodeIndex]
 		if _, err := uuid.Parse(node.UUID); err != nil {
 			return errors.New("remnawave connection result has an invalid node UUID")
 		}
-		for _, item := range node.IPs {
-			if net.ParseIP(item.IP) == nil || item.LastSeen.IsZero() {
+		for ipIndex := range node.IPs {
+			item := &node.IPs[ipIndex]
+			item.IP = canonicalConnectionIP(item.IP)
+			if item.IP == "" || item.LastSeen.IsZero() {
 				return errors.New("remnawave connection result has an invalid IP observation")
 			}
 		}
 	}
 	return nil
+}
+
+func canonicalConnectionIP(value string) string {
+	value = strings.TrimSpace(value)
+	if host, _, err := net.SplitHostPort(value); err == nil {
+		value = host
+	} else if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
+		value = strings.TrimSuffix(strings.TrimPrefix(value, "["), "]")
+	}
+	parsed := net.ParseIP(value)
+	if parsed == nil {
+		return ""
+	}
+	return parsed.String()
 }
