@@ -34,6 +34,7 @@ paths:
   /api/v1/ledger: { $ref: './paths/api-v1-ledger.yaml' }
   /api/v1/statistics: { $ref: './paths/api-v1-statistics.yaml' }
   /api/v1/statistics/nodes: { $ref: './paths/api-v1-statistics-nodes.yaml' }
+  /api/v1/statistics/nodes/{nodeUuid}/geocheck: { $ref: './paths/api-v1-statistics-nodes-nodeuuid-geocheck.yaml' }
   /api/v1/payments/orders: { $ref: './paths/api-v1-payments-orders.yaml' }
   /api/v1/payments/orders/{id}: { $ref: './paths/api-v1-payments-orders-id.yaml' }
   /api/v1/payments/orders/{id}/cancel: { $ref: './paths/api-v1-payments-orders-id-cancel.yaml' }
@@ -145,16 +146,7 @@ components:
     StatisticsTo: { $ref: './components/parameters.yaml#/StatisticsTo' }
     StatisticsBucket: { $ref: './components/parameters.yaml#/StatisticsBucket' }
     StatisticsTimeZone: { $ref: './components/parameters.yaml#/StatisticsTimeZone' }
-  responses:
-    BadRequest: { $ref: './components/responses.yaml#/BadRequest' }
-    Unauthorized: { $ref: './components/responses.yaml#/Unauthorized' }
-    Forbidden: { $ref: './components/responses.yaml#/Forbidden' }
-    NotFound: { $ref: './components/responses.yaml#/NotFound' }
-    Conflict: { $ref: './components/responses.yaml#/Conflict' }
-    Unprocessable: { $ref: './components/responses.yaml#/Unprocessable' }
-    InternalFailure: { $ref: './components/responses.yaml#/InternalFailure' }
-    UpstreamFailure: { $ref: './components/responses.yaml#/UpstreamFailure' }
-    ServiceUnavailable: { $ref: './components/responses.yaml#/ServiceUnavailable' }
+  responses: { BadRequest: { $ref: './components/responses.yaml#/BadRequest' }, Unauthorized: { $ref: './components/responses.yaml#/Unauthorized' }, Forbidden: { $ref: './components/responses.yaml#/Forbidden' }, NotFound: { $ref: './components/responses.yaml#/NotFound' }, Conflict: { $ref: './components/responses.yaml#/Conflict' }, Unprocessable: { $ref: './components/responses.yaml#/Unprocessable' }, InternalFailure: { $ref: './components/responses.yaml#/InternalFailure' }, UpstreamFailure: { $ref: './components/responses.yaml#/UpstreamFailure' }, ServiceUnavailable: { $ref: './components/responses.yaml#/ServiceUnavailable' } }
   schemas:
     ID: { $ref: './components/schemas/schemas-01.yaml#/ID' }
     Timestamp: { $ref: './components/schemas/schemas-01.yaml#/Timestamp' }
@@ -244,6 +236,8 @@ components:
     NormalizedDistribution: { $ref: './components/schemas/schemas-19.yaml#/NormalizedDistribution' }
     StatisticsNode: { $ref: './components/schemas/schemas-19.yaml#/StatisticsNode' }
     StatisticsNodesSnapshot: { $ref: './components/schemas/schemas-19.yaml#/StatisticsNodesSnapshot' }
+    StatisticsNodeGeocheckImage: { $ref: './components/schemas/schemas-19.yaml#/StatisticsNodeGeocheckImage' }
+    StatisticsNodeGeocheck: { $ref: './components/schemas/schemas-19.yaml#/StatisticsNodeGeocheck' }
     PaymentProfile: { $ref: './components/schemas/schemas-15.yaml#/PaymentProfile' }
     PaymentProfileWrite: { $ref: './components/schemas/schemas-15.yaml#/PaymentProfileWrite' }
     PaymentOrder: { $ref: './components/schemas/schemas-05.yaml#/PaymentOrder' }

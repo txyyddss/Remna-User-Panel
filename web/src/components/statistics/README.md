@@ -1,10 +1,14 @@
 # Statistics components
 
 - `StatisticsPage.vue` is the thin page orchestrator for loading, stale, empty, and partial-error states.
+- `StatisticsPage.test.ts` covers the node-card selection flow into the on-demand Geocheck modal.
 - `StatisticsFreshness.vue` exposes independent Remnawave and database snapshot timestamps and stale state.
 - `StatisticsFreshness.test.ts` covers independent partition timestamps and stale/current disclosure.
 - `StatisticsOverview.vue` centers the weekly added-user total in the user donut, with its color legend below the chart, and combines usage, spend, rollover, activity, squad, and database KPIs.
-- `StatisticsNodes.vue` presents live node health, throughput, version, multiplier, and online-user cards.
+- `StatisticsNodes.vue` presents live node health, throughput, version, multiplier, online-user cards, and an explicit Geocheck result action.
+- `StatisticsNodes.test.ts` covers the card action's selected-node event.
+- `StatisticsGeocheckModal.vue` presents the on-demand cached SVG result with loading, unavailable, reset, and mobile zoom controls.
+- `StatisticsGeocheckModal.test.ts` covers data-URI rendering, loading/unavailable states, and close reset behavior.
 - `StatisticsTrafficChart.vue` renders the seven-day per-node traffic stack with keyboard-accessible Nuxt UI tooltips.
 - `StatisticsShareCharts.vue` composes member and payment proportions.
 - `StatisticsDistribution.vue` switches between squad-first and combo-first normalized SVG stacked bars.
@@ -12,7 +16,7 @@
 - `StatisticsPie.vue` renders accessible SVG pies with either outside labels or a compact label list.
 - `StatisticsConcentricDonut.vue` owns the reusable outer/inner ring geometry and grouped legends.
 - `StatisticsMembershipDonut.vue` combines subscription states and active combo choices with the active-member count at its center.
-- `StatisticsPaymentDonut.vue` renders EZPay outside BEPusdt and excludes failed or refunded payment facts.
+- `StatisticsPaymentDonut.vue` renders EZPay outside BEPusdt, excludes failed or refunded payment facts, and centers the included payment count.
 - `StatisticsCharts.test.ts` covers donut, labeled-pie, and normalized stacked-bar semantics.
 - `StatisticsPaymentDonut.test.ts` covers concentric payment-ring order, excluded payment states, and the explicit no-payment state.
 - `statisticsGeometry.ts` owns deterministic pie-path and ring-dash geometry.

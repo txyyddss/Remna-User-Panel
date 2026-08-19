@@ -76,6 +76,7 @@ export type NormalizedDistribution = DeepReadonly<components['schemas']['Normali
 export type StatisticsSnapshot = DeepReadonly<components['schemas']['StatisticsSnapshot']>
 export type StatisticsNode = DeepReadonly<components['schemas']['StatisticsNode']>
 export type StatisticsNodesSnapshot = DeepReadonly<components['schemas']['StatisticsNodesSnapshot']>
+export type StatisticsNodeGeocheck = DeepReadonly<components['schemas']['StatisticsNodeGeocheck']>
 export type OperationStatus = components['schemas']['OperationStatus']
 export type OperationReceipt = DeepReadonly<components['schemas']['OperationReceipt']>
 export type PaymentOperation = DeepReadonly<components['schemas']['PaymentOperation']>

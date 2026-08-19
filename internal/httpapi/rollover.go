@@ -21,6 +21,7 @@ func (s *Server) rolloverProjection(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, catalog.ErrRolloverNotActive):
 			s.writeError(w, r, http.StatusConflict, "ROLLOVER_NOT_ACTIVE", "Rollover details are available for the active ride only.")
 		default:
+			s.deps.Logger.Warn("load live rollover projection", "request_id", middlewareRequestID(r), "user_id", user.ID, "purchase_id", chiURLParam(r, "id"), "error", err)
 			s.writeError(w, r, http.StatusBadGateway, "ROLLOVER_UNAVAILABLE", "Live rollover details are temporarily unavailable.")
 		}
 		return

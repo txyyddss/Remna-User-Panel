@@ -174,7 +174,7 @@ func TestInternalSquadNodeWireContract(t *testing.T) {
 			if request.Method != http.MethodGet || request.URL.Path != "/api/nodes" {
 				t.Errorf("nodes request = %s %s", request.Method, request.URL.Path)
 			}
-			_, _ = writer.Write([]byte(`{"response":[{"uuid":"` + nodeUUID + `","name":"Singapore","countryCode":"SG","consumptionMultiplier":1.5,"isDisabled":false,"configProfile":{"activeInbounds":[{"uuid":"` + inboundUUID + `"}]}}]}`))
+			_, _ = writer.Write([]byte(`{"response":[{"uuid":"` + nodeUUID + `","name":"Singapore","countryCode":"SG","consumptionMultiplier":1.5,"isDisabled":false,"usersOnline":2.25,"system":{"stats":{"interface":{"rxBytesPerSec":12.5,"txBytesPerSec":7.25}}},"configProfile":{"activeInbounds":[{"uuid":"` + inboundUUID + `"}]}}]}`))
 		case 2:
 			if request.Method != http.MethodGet || request.URL.Path != "/api/internal-squads/"+squadUUID+"/accessible-nodes" {
 				t.Errorf("accessible nodes request = %s %s", request.Method, request.URL.Path)
@@ -205,7 +205,8 @@ func TestInternalSquadNodeWireContract(t *testing.T) {
 		t.Fatalf("NewClient() error = %v", err)
 	}
 	nodes, err := client.ListNodes(context.Background())
-	if err != nil || len(nodes) != 1 || nodes[0].ConfigProfile.ActiveInbounds[0].UUID != inboundUUID {
+	if err != nil || len(nodes) != 1 || nodes[0].ConfigProfile.ActiveInbounds[0].UUID != inboundUUID ||
+		nodes[0].UsersOnline != 2.25 || nodes[0].System.Stats.Interface.RXBytesPerSecond != 12.5 {
 		t.Fatalf("ListNodes() = (%+v, %v)", nodes, err)
 	}
 	accessible, err := client.InternalSquadAccessibleNodes(context.Background(), squadUUID)

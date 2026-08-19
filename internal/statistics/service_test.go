@@ -138,6 +138,12 @@ func (p *statisticsProviderStub) UsageSnapshotForRollover(_ context.Context, id 
 func (p *statisticsProviderStub) Nodes(context.Context) ([]Node, error) {
 	return append([]Node(nil), p.nodes...), nil
 }
+func (p *statisticsProviderStub) RequestNodeGeocheck(context.Context, string) (string, error) {
+	return "", errors.New("geocheck is not configured")
+}
+func (p *statisticsProviderStub) NodeGeocheckResult(context.Context, string) (GeocheckResult, error) {
+	return GeocheckResult{}, errors.New("geocheck is not configured")
+}
 func (p *statisticsProviderStub) Hosts(context.Context) ([]Host, error) {
 	return append([]Host(nil), p.hosts...), nil
 }

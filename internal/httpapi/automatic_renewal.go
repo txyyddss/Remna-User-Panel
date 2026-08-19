@@ -55,6 +55,8 @@ func (s *Server) writeAutomaticRenewalError(w http.ResponseWriter, r *http.Reque
 	case errors.Is(err, database.ErrConflict):
 		s.writeError(w, r, http.StatusConflict, "AUTO_RENEWAL_CONFLICT", "Automatic renewal is no longer available for this term.")
 	default:
+		user := currentUser(r)
+		s.deps.Logger.Warn("load automatic renewal state", "request_id", middlewareRequestID(r), "method", r.Method, "user_id", user.ID, "purchase_id", chi.URLParam(r, "id"), "error", err)
 		s.writeError(w, r, http.StatusBadGateway, "AUTO_RENEWAL_UNAVAILABLE", "Automatic renewal is temporarily unavailable.")
 	}
 }

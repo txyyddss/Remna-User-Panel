@@ -21,6 +21,8 @@
 - `useDashboard.ts` loads dashboard summaries and provides bounded per-node UTC traffic state to its Home descendants.
 - `useRolloverDetail.ts` fetches fresh aggregate rollover details when the active Home ride opens, with cancellation-safe retry/reset state and localized errors.
 - `useEmby.ts` manages Emby setup and preferences.
+- `useImageZoom.ts` owns bounded pinch, pan, double-tap, button, and reset state for image canvases.
+- `useImageZoom.test.ts` covers zoom bounds, reset, and two-finger gesture state.
 - `useIntroSequence.ts` drives the onboarding intro sequence.
 - `useIntroSequence.test.ts` covers intro timing and completion.
 - `onboardingState.ts` resolves the next onboarding step from the server-owned
@@ -43,6 +45,8 @@
 - `useQuestionnaireImport.ts` previews and settles questionnaire imports.
 - `useQuestionnaireImport.test.ts` covers import analysis and settlement.
 - `useQuestionnaires.ts` manages member questionnaire participation.
+- `useNodeGeocheck.ts` loads an image-only cached node Geocheck only after explicit card selection and clears its state on close.
+- `useNodeGeocheck.test.ts` covers selected-node loading, localized unavailability, and close reset behavior.
 - `useStatistics.ts` independently loads the 30-minute aggregate snapshot and
   ten-second node cache while preserving last-good data across partial failures.
 - `useTelegramBackButton.ts` coordinates one native Telegram BackButton across route and overlay owners; the most recently mounted visible sheet owns the action and all handlers are removed on teardown.

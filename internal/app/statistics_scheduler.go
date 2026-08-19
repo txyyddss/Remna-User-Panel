@@ -21,6 +21,9 @@ func (a *Application) refreshProductStatistics(ctx context.Context, now time.Tim
 		a.logger.Error("statistics partition refresh was partial", "error", err)
 	}
 	cancelRefresh()
+	if err := a.statistics.RefreshGeochecks(ctx, now); err != nil && !errors.Is(err, context.Canceled) {
+		a.logger.Error("node geocheck refresh scheduling failed", "error", err)
+	}
 	hostCtx, cancelHosts := context.WithTimeout(ctx, statisticsRefreshTimeout)
 	defer cancelHosts()
 	actorID, err := a.statisticsActorID(hostCtx)

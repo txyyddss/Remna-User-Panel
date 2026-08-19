@@ -1,0 +1,72 @@
+.statistics-node__geocheck { width: 44px; height: 44px; margin: -0.25rem -0.35rem -0.25rem 0; }
+
+.statistics-geocheck-modal {
+  --geocheck-safe-top: max(var(--tg-safe-area-inset-top, 0px), var(--tg-content-safe-area-inset-top, 0px), env(safe-area-inset-top, 0px));
+  --geocheck-safe-bottom: max(var(--tg-safe-area-inset-bottom, 0px), var(--tg-content-safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px));
+  --geocheck-safe-left: max(var(--tg-safe-area-inset-left, 0px), var(--tg-content-safe-area-inset-left, 0px), env(safe-area-inset-left, 0px));
+  --geocheck-safe-right: max(var(--tg-safe-area-inset-right, 0px), var(--tg-content-safe-area-inset-right, 0px), env(safe-area-inset-right, 0px));
+  width: min(58rem, calc(100vw - 1.5rem - var(--geocheck-safe-left) - var(--geocheck-safe-right)));
+  max-height: calc(var(--tg-viewport-stable-height, 100dvh) - var(--geocheck-safe-top) - var(--geocheck-safe-bottom) - 1rem);
+}
+
+.statistics-geocheck-modal__body { overflow: hidden; padding: 0; }
+
+.statistics-geocheck {
+  min-height: min(24rem, calc(var(--tg-viewport-stable-height, 100dvh) - var(--geocheck-safe-top) - var(--geocheck-safe-bottom) - 10rem));
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  background: var(--canvas);
+}
+
+.statistics-geocheck__state {
+  min-height: 16rem;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.7rem;
+  padding: 1rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.statistics-geocheck__state > svg { font-size: 1.4rem; }
+
+.statistics-geocheck__canvas {
+  min-height: 16rem;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 0.75rem;
+  touch-action: none;
+  user-select: none;
+  overscroll-behavior: contain;
+  outline: none;
+}
+
+.statistics-geocheck__canvas:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+
+.statistics-geocheck__canvas img {
+  max-width: 100%;
+  max-height: calc(var(--tg-viewport-stable-height, 100dvh) - var(--geocheck-safe-top) - var(--geocheck-safe-bottom) - 13rem);
+  object-fit: contain;
+  transform-origin: center;
+  transition: transform 140ms ease-out;
+  pointer-events: none;
+}
+
+.statistics-geocheck__controls {
+  display: grid;
+  grid-template-columns: repeat(3, 44px);
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.6rem max(0.75rem, var(--geocheck-safe-right)) max(0.75rem, var(--geocheck-safe-bottom)) max(0.75rem, var(--geocheck-safe-left));
+  border-top: 1px solid var(--line);
+}
+
+.statistics-geocheck__controls button { width: 44px; height: 44px; }
+
+@media (min-width: 640px) {
+  .statistics-geocheck { min-height: 30rem; }
+  .statistics-geocheck__canvas { padding: 1rem; }
+}

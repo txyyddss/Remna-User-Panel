@@ -35,6 +35,7 @@ type Service struct {
 	nodeMu     sync.Mutex
 	snapshot   model.ProductStatisticsSnapshot
 	nodes      nodeCache
+	geocheck   geocheckCache
 }
 
 // NewService creates the statistics cache.

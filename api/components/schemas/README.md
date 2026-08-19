@@ -20,4 +20,4 @@ Schema definitions are grouped into bounded sequential shards. The root componen
 - `schemas-16.yaml`: live `RolloverWindow` and `RolloverProjection` aggregate response schemas
 - `schemas-17.yaml`: durable operation and payment-operation receipts, signed connection projections, reset/refund quotes, and billing amount limits
 - `schemas-18.yaml`: admin entitlement/combo/bulk mutation requests and aggregate user detail
-- `schemas-19.yaml`: cached remote/database statistics and normalized distribution contracts
+- `schemas-19.yaml`: cached remote/database statistics, normalized distributions, and node Geocheck image contracts

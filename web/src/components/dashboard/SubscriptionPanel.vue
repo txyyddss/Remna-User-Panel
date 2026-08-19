@@ -62,7 +62,7 @@ function openConnections(): void {
         <UButton
           class="home-subscription__revoke"
           color="error"
-          variant="ghost"
+          variant="solid"
           icon="i-ph-trash"
           :disabled="revokeBlocked"
           :label="$t('common.revoke')"

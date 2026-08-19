@@ -21,7 +21,6 @@
 }
 
 .connections-heading p,
-.connections-progress p,
 .connections-empty p {
   max-width: 38rem;
   margin: 0.45rem 0 0;
@@ -30,13 +29,11 @@
   line-height: 1.55;
 }
 
-.connections-loading,
 .connection-nodes {
   display: grid;
   gap: 0.8rem;
 }
 
-.connections-progress,
 .connections-empty {
   min-height: 15rem;
   display: grid;
@@ -50,24 +47,6 @@
   text-align: center;
 }
 
-.connections-progress {
-  grid-template-columns: auto 1fr;
-  place-content: stretch;
-  align-content: center;
-  justify-items: stretch;
-  text-align: left;
-}
-
-.connections-progress > [role="progressbar"] {
-  grid-column: 1 / -1;
-  margin-top: 0.5rem;
-}
-
-.connections-progress__bar {
-  width: 100%;
-}
-
-.connections-progress h2,
 .connections-empty h2,
 .connection-node h2 {
   margin: 0;
@@ -75,7 +54,6 @@
   letter-spacing: 0;
 }
 
-.connections-progress__icon,
 .connections-state-icon {
   color: var(--accent);
   font-size: 1.8rem;

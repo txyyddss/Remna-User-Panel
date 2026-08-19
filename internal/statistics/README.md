@@ -8,6 +8,8 @@
 - `squad_names.go` resolves live queued Remnawave squad names independently of aggregate refreshes and retains the last resolved labels through the local distribution snapshot; `squad_names_test.go` covers mapping and cached-label isolation.
 - `usage_projection.go` averages each current non-admin member's live 30-day cadence and weighted-node usage projection, skipping only missing local or deleted upstream identities.
 - `node_cache.go` implements the shared on-demand ten-second node cache from the documented live node collection.
+- `geocheck_cache.go` refreshes validated node SVG Geocheck images in process memory every six hours with bounded workers, retry delay, and removed-node pruning.
+- `geocheck_cache_test.go` covers freshness reuse, retry, pruning, validation, bounded work, and cancellation cleanup.
 - `host_worker.go` maps queued host-multiplier updates onto provider-operation items.
 
 The aggregate service keeps remote and database partitions independently timestamped so a partial refresh serves the last good partition as stale.

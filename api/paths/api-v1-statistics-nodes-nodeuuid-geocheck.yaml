@@ -1,0 +1,16 @@
+get:
+  tags: [Dashboard]
+  operationId: getNodeGeocheck
+  summary: Get the latest successful process-local node Geocheck image
+  parameters:
+    - name: nodeUuid
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    '200':
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/StatisticsNodeGeocheck' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }

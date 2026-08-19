@@ -34,7 +34,7 @@ type Node struct {
 	ConsumptionMultiplier float64       `json:"consumptionMultiplier"`
 	IsDisabled            bool          `json:"isDisabled"`
 	IsConnected           bool          `json:"isConnected"`
-	UsersOnline           int64         `json:"usersOnline"`
+	UsersOnline           float64       `json:"usersOnline"`
 	System                *NodeSystem   `json:"system"`
 	Versions              *NodeVersions `json:"versions"`
 	Provider              *NodeProvider `json:"provider"`
@@ -47,8 +47,8 @@ type Node struct {
 type NodeSystem struct {
 	Stats struct {
 		Interface *struct {
-			RXBytesPerSecond int64 `json:"rxBytesPerSec"`
-			TXBytesPerSecond int64 `json:"txBytesPerSec"`
+			RXBytesPerSecond float64 `json:"rxBytesPerSec"`
+			TXBytesPerSecond float64 `json:"txBytesPerSec"`
 		} `json:"interface"`
 	} `json:"stats"`
 }

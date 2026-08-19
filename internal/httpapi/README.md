@@ -18,11 +18,11 @@
 - `member_connections.go` serves metadata-only scan creation/polling and signed-handle drop commands.
 - `member_routes.go` mounts the member connection, reset, refund, and operation resources.
 - `dashboard_usage.go` validates the authenticated member's UTC traffic range and serves the bounded per-node usage projection.
-- `statistics.go` serves the cached aggregate snapshot and on-demand shared
-  ten-second node snapshot.
-- `rollover.go` serves the authenticated owner's on-demand active-purchase rollover projection and maps ownership, inactive-term, and upstream failures to stable API errors.
+- `statistics.go` serves the cached aggregate snapshot, on-demand shared
+  ten-second node snapshot, and image-only process-local node Geocheck result; first-load provider failures are logged with the request ID.
+- `rollover.go` serves the authenticated owner's on-demand active-purchase rollover projection, maps ownership, inactive-term, and upstream failures to stable API errors, and correlates unexpected provider failures with the request ID.
 - `billing_orders.go` creates, polls, and cancels member payment orders.
-- `automatic_renewal.go` serves the owner-only automatic-renewal status and toggle resource; manual renewal routes are not public.
+- `automatic_renewal.go` serves the owner-only automatic-renewal status and toggle resource and logs unexpected provider failures with request, user, and purchase correlation; manual renewal routes are not public.
 - `onboarding.go` serves and administers localized onboarding content.
 - `emby.go` serves member and administrator Emby account projections.
 - `emby_commands.go` validates durable member setup/update and administrator retry commands.
@@ -80,6 +80,7 @@
 - `operations_commands_test.go` covers Telegram deduction command parsing.
 - `payment_callbacks_test.go` verifies that navigation returns accept only the documented payment providers.
 - `admin_user_detail_test.go` covers owner-ID restoration in nested aggregate records.
+- `statistics_geocheck_test.go` covers cached image-only and unavailable node Geocheck responses.
 
 `README.md` is this direct-file ownership index. Unsigned routes remain limited to operational probes, Telegram authentication, provider-authenticated callbacks, the capability-limited payment return/status flow, and static assets.
 - `handlers_part2.go` contains the remaining route handler implementations.

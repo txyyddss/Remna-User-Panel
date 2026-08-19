@@ -2,12 +2,12 @@
 import { computed, shallowRef, watch } from 'vue'
 
 import InlineNotice from '@/components/common/InlineNotice.vue'
-import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { useConnectionDrop } from '@/composables/useConnectionDrop'
 import { useConnectionScan } from '@/composables/useConnectionScan'
 import { t } from '@/i18n'
 import ConnectionDropDialog from './ConnectionDropDialog.vue'
 import ConnectionNodeList from './ConnectionNodeList.vue'
+import ConnectionScanStatus from './ConnectionScanStatus.vue'
 import type { ConnectionTarget } from './types'
 
 const scan = useConnectionScan()
@@ -64,16 +64,11 @@ watch(() => drop.receipt.value, (receipt) => {
       {{ operationMessage }}
     </InlineNotice>
 
-    <div v-if="scan.loading.value" class="connections-loading" aria-busy="true">
-      <SkeletonBlock height="7rem" />
-      <SkeletonBlock height="11rem" />
-    </div>
-
-    <section v-else-if="scan.polling.value" class="connections-progress" aria-live="polite">
-      <div class="connections-progress__icon"><UIcon name="i-ph-radar" aria-hidden="true" /></div>
-      <div><h2>{{ $t('connections.scanning') }}</h2><p>{{ $t('connections.progress', { percent: Math.round(scan.progressPercent.value) }) }}</p></div>
-      <UProgress class="connections-progress__bar" :model-value="scan.progressPercent.value" :max="100" />
-    </section>
+    <ConnectionScanStatus
+      v-if="scan.loading.value || scan.polling.value"
+      :starting="scan.loading.value"
+      :progress-percent="scan.progressPercent.value"
+    />
 
     <section v-else-if="scan.error.value || scan.failed.value" class="error-state error-state--compact">
       <UIcon name="i-ph-warning-circle" class="connections-state-icon" aria-hidden="true" />

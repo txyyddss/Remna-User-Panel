@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
+import { useNodeGeocheck } from '@/composables/useNodeGeocheck'
 import { useStatistics } from '@/composables/useStatistics'
 import { formatDateTime } from '@/utils/format'
 import StatisticsDistribution from './StatisticsDistribution.vue'
 import StatisticsFreshness from './StatisticsFreshness.vue'
+import StatisticsGeocheckModal from './StatisticsGeocheckModal.vue'
 import StatisticsNodes from './StatisticsNodes.vue'
 import StatisticsOverview from './StatisticsOverview.vue'
 import StatisticsShareCharts from './StatisticsShareCharts.vue'
 import StatisticsTrafficChart from './StatisticsTrafficChart.vue'
 
 const { snapshot, nodeSnapshot, loading, refreshing, nodesLoading, error, nodesError, load } = useStatistics()
+const geocheck = useNodeGeocheck()
 </script>
 
 <template>
@@ -48,7 +51,7 @@ const { snapshot, nodeSnapshot, loading, refreshing, nodesLoading, error, nodesE
       <InlineNotice v-if="nodesError" tone="warning">{{ nodesError }}</InlineNotice>
       <StatisticsFreshness :snapshot="snapshot" />
       <StatisticsOverview :snapshot="snapshot" />
-      <StatisticsNodes :snapshot="nodeSnapshot" :loading="nodesLoading" />
+      <StatisticsNodes :snapshot="nodeSnapshot" :loading="nodesLoading" @open-geocheck="geocheck.show" />
       <StatisticsTrafficChart :remote="snapshot.remote" />
       <StatisticsShareCharts :database="snapshot.database" />
       <StatisticsDistribution :database="snapshot.database" />
@@ -59,5 +62,6 @@ const { snapshot, nodeSnapshot, loading, refreshing, nodesLoading, error, nodesE
       <p>{{ error ?? $t('statistics.loadFailed') }}</p>
       <UButton icon="i-ph-arrows-clockwise" :label="$t('common.tryAgain')" @click="load()" />
     </div>
+    <StatisticsGeocheckModal v-model:open="geocheck.isOpen.value" :node="geocheck.selectedNode.value" :result="geocheck.result.value" :loading="geocheck.loading.value" :error="geocheck.error.value" />
   </div>
 </template>

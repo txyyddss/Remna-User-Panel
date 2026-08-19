@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"math"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/remnawave"
@@ -53,10 +54,10 @@ func (a remnaAdapter) Nodes(ctx context.Context) ([]productstats.Node, error) {
 	result := make([]productstats.Node, 0, len(nodes))
 	for _, node := range nodes {
 		item := productstats.Node{UUID: node.UUID, Name: node.Name, CountryCode: node.CountryCode,
-			Online: node.IsConnected && !node.IsDisabled, UsersOnline: node.UsersOnline, Multiplier: node.ConsumptionMultiplier}
+			Online: node.IsConnected && !node.IsDisabled, UsersOnline: roundedNonNegativeInt64(node.UsersOnline), Multiplier: node.ConsumptionMultiplier}
 		if node.System != nil && node.System.Stats.Interface != nil {
-			item.RXBytesPerSecond = node.System.Stats.Interface.RXBytesPerSecond
-			item.TXBytesPerSecond = node.System.Stats.Interface.TXBytesPerSecond
+			item.RXBytesPerSecond = roundedNonNegativeInt64(node.System.Stats.Interface.RXBytesPerSecond)
+			item.TXBytesPerSecond = roundedNonNegativeInt64(node.System.Stats.Interface.TXBytesPerSecond)
 		}
 		if node.Versions != nil {
 			item.XrayVersion = node.Versions.Xray
@@ -64,6 +65,38 @@ func (a remnaAdapter) Nodes(ctx context.Context) ([]productstats.Node, error) {
 		result = append(result, item)
 	}
 	return result, nil
+}
+
+func roundedNonNegativeInt64(value float64) int64 {
+	if value <= 0 || math.IsNaN(value) {
+		return 0
+	}
+	const maximum = int64(1<<63 - 1)
+	if value >= float64(maximum) {
+		return maximum
+	}
+	return int64(math.Round(value))
+}
+
+func (a remnaAdapter) RequestNodeGeocheck(ctx context.Context, nodeUUID string) (string, error) {
+	return remnaCall(ctx, a, func(callCtx context.Context, client remnaClient) (string, error) {
+		return client.RequestNodeGeocheck(callCtx, nodeUUID)
+	})
+}
+
+func (a remnaAdapter) NodeGeocheckResult(ctx context.Context, jobID string) (productstats.GeocheckResult, error) {
+	result, err := remnaCall(ctx, a, func(callCtx context.Context, client remnaClient) (remnawave.NodeGeocheck, error) {
+		return client.NodeGeocheckResult(callCtx, jobID)
+	})
+	if err != nil {
+		return productstats.GeocheckResult{}, err
+	}
+	mapped := productstats.GeocheckResult{Completed: result.Completed, Failed: result.Failed, Success: result.Success, NodeUUID: result.NodeUUID}
+	if result.Image != nil {
+		mapped.Image = &productstats.GeocheckImage{Format: result.Image.Format, MediaType: result.Image.MediaType,
+			Encoding: result.Image.Encoding, Data: result.Image.Data}
+	}
+	return mapped, nil
 }
 
 func (a remnaAdapter) Hosts(ctx context.Context) ([]productstats.Host, error) {

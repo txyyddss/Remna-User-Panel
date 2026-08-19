@@ -38,7 +38,6 @@ const hasPayments = computed(() => total.value > 0)
     :center-label="$t('statistics.paymentStates')"
     :center-value="formatStatisticNumber(total)"
     :chart-label="$t('statistics.paymentChartLabel')"
-    :center-icon="'i-ph-wallet'"
     :rings="rings"
   />
   <div v-else class="statistics-empty statistics-empty--panel">

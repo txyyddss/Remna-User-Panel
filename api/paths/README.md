@@ -30,6 +30,7 @@ Member connection scans, purchase reset/refund resources, operation receipts, st
 - `api-v1-ledger.yaml`: `/api/v1/ledger`
 - `api-v1-statistics.yaml`: `/api/v1/statistics`, persisted 30-minute aggregate dashboard
 - `api-v1-statistics-nodes.yaml`: `/api/v1/statistics/nodes`, on-demand shared 10-second node snapshot
+- `api-v1-statistics-nodes-nodeuuid-geocheck.yaml`: `/api/v1/statistics/nodes/{nodeUuid}/geocheck`, cached image-only Geocheck result
 - `api-v1-payments-orders.yaml`: `/api/v1/payments/orders`, idempotent durable checkout creation
 - `api-v1-payments-orders-id.yaml`: `/api/v1/payments/orders/{id}`
 - `api-v1-payments-orders-id-cancel.yaml`: `/api/v1/payments/orders/{id}/cancel`, idempotent durable provider cancellation

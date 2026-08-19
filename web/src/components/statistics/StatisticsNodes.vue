@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { StatisticsNodesSnapshot } from '@/api/types'
+import type { StatisticsNode, StatisticsNodesSnapshot } from '@/api/types'
 import CountryFlag from '@/components/common/CountryFlag.vue'
 import { formatBytes, formatDateTime } from '@/utils/format'
 import { formatStatisticNumber } from './statisticsFormat'
@@ -8,6 +8,8 @@ defineProps<{
   snapshot: StatisticsNodesSnapshot | null
   loading: boolean
 }>()
+
+const emit = defineEmits<{ openGeocheck: [node: StatisticsNode] }>()
 </script>
 
 <template>
@@ -25,6 +27,18 @@ defineProps<{
           <span class="statistics-node__state" :class="{ 'statistics-node__state--online': node.online }">
             {{ $t(node.online ? 'statistics.online' : 'statistics.offline') }}
           </span>
+          <UTooltip :text="$t('statistics.geocheck.open')">
+            <UButton
+              type="button"
+              color="neutral"
+              variant="ghost"
+              square
+              class="statistics-node__geocheck"
+              icon="i-ph-globe-hemisphere-west"
+              :aria-label="$t('statistics.geocheck.open')"
+              @click="emit('openGeocheck', node)"
+            />
+          </UTooltip>
         </header>
         <dl>
           <div><dt>{{ $t('statistics.usersOnline') }}</dt><dd>{{ formatStatisticNumber(node.usersOnline) }}</dd></div>
