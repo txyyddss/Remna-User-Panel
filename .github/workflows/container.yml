@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
- build:
+  build:
     name: Build ${{ matrix.platform }} image
     needs: quality
     runs-on: ${{ matrix.runner }}
