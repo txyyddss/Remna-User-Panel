@@ -8,7 +8,17 @@ describe('statistics formatting', () => {
   it('formats provider date buckets in UTC', () => {
     const originalDateTimeFormat = Intl.DateTimeFormat
     const formatter = vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(
-      class extends originalDateTimeFormat {},
+      class {
+        private readonly delegate: Intl.DateTimeFormat
+
+        constructor(locales?: Intl.LocalesArgument, options?: Intl.DateTimeFormatOptions) {
+          this.delegate = new originalDateTimeFormat(locales, options)
+        }
+
+        format(value?: number | Date): string {
+          return this.delegate.format(value)
+        }
+      } as unknown as typeof Intl.DateTimeFormat,
     )
 
     expect(formatShortStatisticDate('2026-08-17')).toBe('Mon')
