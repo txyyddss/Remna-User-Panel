@@ -28,7 +28,8 @@ func (s *Service) createCheckout(ctx context.Context, user model.User, order mod
 	}
 	result, err := s.storeCheckout(ctx, order, checkout)
 	if err != nil {
-		_ = s.repository.FailPaymentOrder(ctx, order.ID)
+		// The provider has accepted the create request, so the outcome must
+		// remain reconcilable instead of being marked terminal locally.
 		return model.PaymentOrder{}, err
 	}
 	return result, nil

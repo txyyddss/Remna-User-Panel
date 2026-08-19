@@ -6,7 +6,10 @@ describe('statistics formatting', () => {
   afterEach(() => vi.restoreAllMocks())
 
   it('formats provider date buckets in UTC', () => {
-    const formatter = vi.spyOn(Intl, 'DateTimeFormat')
+    const originalDateTimeFormat = Intl.DateTimeFormat
+    const formatter = vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(
+      (locales, options) => new originalDateTimeFormat(locales, options),
+    )
 
     expect(formatShortStatisticDate('2026-08-17')).toBe('Mon')
     expect(formatter).toHaveBeenLastCalledWith('en', { weekday: 'short', timeZone: 'UTC' })
