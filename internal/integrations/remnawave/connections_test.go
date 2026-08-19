@@ -43,11 +43,11 @@ func TestUserConnectionsPreservesCompletedNodesWhenResultSuccessIsFalse(t *testi
 		t.Fatalf("UserConnections() = (%+v, %v)", scan, err)
 	}
 }
-	
+
 func TestUserConnectionsNormalizesIPv6Observations(t *testing.T) {
 	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		_, _ = writer.Write([]byte(`{"response":{"isCompleted":true,"isFailed":false,"progress":{"percent":100},"result":{"success":true,"nodes":[{"nodeUuid":"6aa6d759-20de-4b11-8c0a-8e0daee3a4ee","nodeName":"Tokyo","countryCode":"JP","ips":[{"ip":"2602:fbf1:b002::1009","lastSeen":"2026-08-19T00:	00:00Z"},{"ip":"[2001:db8::7]:443","lastSeen":"2026-08-19T00:00:00Z"}] }]}}}`))
+		_, _ = writer.Write([]byte(`{"response":{"isCompleted":true,"isFailed":false,"progress":{"percent":100},"result":{"success":true,"nodes":[{"nodeUuid":"6aa6d759-20de-4b11-8c0a-8e0daee3a4ee","nodeName":"Tokyo","countryCode":"JP","ips":[{"ip":"2602:fbf1:b002::1009","lastSeen":"2026-08-19T00:00:00Z"},{"ip":"[2001:db8::7]:443","lastSeen":"2026-08-19T00:00:00Z"}] }]}}}`))
 	}))
 	defer server.Close()
 
