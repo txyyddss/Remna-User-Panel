@@ -11,10 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  quality:
-    uses: ./.github/workflows/ci.yml
-
-  build:
+ build:
     name: Build ${{ matrix.platform }} image
     needs: quality
     runs-on: ${{ matrix.runner }}
