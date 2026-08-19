@@ -14,7 +14,6 @@ const groups = [
   { labelKey: 'adminNav.commerce', sections: [
     { value: 'catalog', labelKey: 'adminNav.catalog' },
     { value: 'coupons', labelKey: 'adminNav.coupons' },
-    { value: 'payments', labelKey: 'adminNav.payments' },
   ] },
   { labelKey: 'adminNav.community', sections: [
     { value: 'activity', labelKey: 'adminNav.activity' },

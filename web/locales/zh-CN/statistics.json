@@ -21,6 +21,7 @@
     "notConverted": "未购买套餐",
     "conversionChartLabel": "{value} 的用户购买了套餐",
     "weeklyIncrease": "本周新增用户",
+    "weeklyIncreaseChartLabel": "本周新增用户：{value}",
     "monthlyUsage": "月均用量",
     "averageSpend": "用户平均消费",
     "spendRange": "用户消费范围",
@@ -58,6 +59,7 @@
     "comboChartLabel": "活跃套餐分布",
     "paymentStates": "支付状态",
     "paymentChartLabel": "支付状态分布",
+    "paymentLegend": "{provider}：{status}",
     "squadComposition": "区组构成",
     "bySquad": "按区组",
     "byCombo": "按套餐",
@@ -72,12 +74,15 @@
     },
     "provider": {
       "ezpay": "EZPay",
-      "bepusdt": "BEPusdt"
+      "bepusdt": "BEPusdt",
+      "stars": "Telegram Stars"
     },
     "paymentStatus": {
       "paid": "已支付",
       "expired": "已过期",
-      "cancelled": "已取消"
+      "cancelled": "已取消",
+      "failed": "失败",
+      "refunded": "已退款"
     }
   }
 }

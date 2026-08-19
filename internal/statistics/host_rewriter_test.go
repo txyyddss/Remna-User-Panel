@@ -14,7 +14,10 @@ func TestReplaceFirstStandaloneDecimal(t *testing.T) {
 		changed                  bool
 	}{
 		{"HK 1.0 premium 2.0", "1.5", "HK 1.5 premium 2.0", true},
+		{"HK 1.0x premium", "1.5", "HK 1.5 premium", true},
 		{"prefix1.0 suffix", "2", "prefix1.0 suffix", false},
+		{"version 1.0xbuild", "2", "version 1.0xbuild", false},
+		{"node 10.1.2.3", "2", "node 10.1.2.3", false},
 		{"no multiplier", "2", "no multiplier", false},
 	}
 	for _, test := range tests {

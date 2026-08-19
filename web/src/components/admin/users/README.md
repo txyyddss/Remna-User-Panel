@@ -5,7 +5,7 @@
 - `AdminEntitlementEditor.vue` validates the advanced optimistic-lock overwrite form.
 - `AdminOperationResolutionDialog.vue` records an audited resolution without retrying an ambiguous provider mutation.
 - `AdminUserEntitlements.vue` presents active and queued entitlements with edit, refund, and replacement actions.
-- `AdminUserHistory.vue` presents Emby accounts, payments, refunds, and open provider operations.
+- `AdminUserHistory.vue` presents Emby accounts, payments, refunds, and open provider operations, with refund and courtesy-credit actions only for that profile's eligible payment records.
 - `AdminUserOverview.vue` presents identity, balance, synchronization, and the active combo.
 - `AdminUserProfilePage.vue` composes the aggregate user workflow and its focused dialogs.
 - `adminUserFormat.ts` owns profile-specific status tones and date conversion helpers.

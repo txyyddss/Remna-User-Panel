@@ -22,7 +22,7 @@ const statusItems = computed(() => [
   { value: 'queued', label: t('common.queued') },
   { value: 'expired', label: t('adminEntitlements.expired') },
   { value: 'cancelled', label: t('adminEntitlements.cancelled') },
-  { value: 'failed', label: t('adminPayments.failed') },
+  { value: 'failed', label: t('adminEntitlements.failed') },
 ])
 const filtered = computed(() => statusFilter.value === 'all'
   ? entitlements.items.value
@@ -42,7 +42,7 @@ function tone(status: AdminEntitlement['status']): 'neutral' | 'success' | 'warn
 function statusLabel(status: AdminEntitlement['status']): string {
   if (status === 'active') return t('common.active')
   if (status === 'queued') return t('common.queued')
-  if (status === 'failed') return t('adminPayments.failed')
+  if (status === 'failed') return t('adminEntitlements.failed')
   return t(`adminEntitlements.${status}`)
 }
 

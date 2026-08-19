@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, shallowRef, watch } from 'vue'
+import { computed, onMounted, reactive, shallowRef, useTemplateRef, watch } from 'vue'
 
 import type { AdminSetting } from '@/api/types'
 import type { ActivitySettings, ActivitySettingsWrite } from '@/api/features'
@@ -18,8 +18,15 @@ const { items, loading, busy, error, load, perform } = useAdminSection<AdminSett
 const draft = reactive<Record<string, string>>({})
 const saved = reactive({ visible: false })
 const activitySettings = shallowRef<ActivitySettings | null>(null)
+const activityLoading = shallowRef(true)
 const activityBusy = shallowRef(false)
 const activityError = shallowRef<string | null>(null)
+const savingAll = shallowRef(false)
+type Saveable = { save: () => Promise<void>; loading: boolean }
+type PaymentProfilesSaveable = { saveAll: () => Promise<void>; loading: boolean }
+const activitySettingsRef = useTemplateRef<Saveable>('activitySettings')
+const billingLimitsRef = useTemplateRef<Saveable>('billingLimits')
+const paymentProfilesRef = useTemplateRef<PaymentProfilesSaveable>('paymentProfiles')
 const { t } = useI18n()
 const activitySettingKeys = new Set([
   'activity.timezone', 'activity.daily_reward_min_txb', 'activity.daily_reward_max_txb',
@@ -34,6 +41,11 @@ const grouped = computed(() => items.value.filter((item) => !activitySettingKeys
   groups[category].push(item)
   return groups
 }, {}))
+const sectionsLoading = computed(() => loading.value
+  || activityLoading.value
+  || billingLimitsRef.value?.loading === true
+  || paymentProfilesRef.value?.loading === true)
+const saving = computed(() => savingAll.value || busy.value || activityBusy.value)
 
 watch(items, (next) => {
   for (const item of next) draft[item.key] = item.encrypted ? '' : item.value
@@ -68,7 +80,7 @@ function setBoolean(key: string, value: boolean): void {
   draft[key] = value ? 'true' : 'false'
 }
 
-async function save(): Promise<void> {
+async function saveSettings(): Promise<void> {
   const values = Object.entries(draft).filter(([key, value]) => {
     const configured = items.value.some(item => item.key === key && item.configured)
     return !activitySettingKeys.has(key) && !legacyPaymentSetting(key)
@@ -78,12 +90,30 @@ async function save(): Promise<void> {
   saved.visible = await perform(() => Promise.all(values.map(([key, value]) => api.updateAdminSetting(key, value))))
 }
 
+async function saveAll(): Promise<void> {
+  if (saving.value || sectionsLoading.value) return
+  savingAll.value = true
+  try {
+    await Promise.all([
+      saveSettings(),
+      activitySettings.value ? activitySettingsRef.value?.save() ?? Promise.resolve() : Promise.resolve(),
+      billingLimitsRef.value?.save() ?? Promise.resolve(),
+      paymentProfilesRef.value?.saveAll() ?? Promise.resolve(),
+    ])
+  } finally {
+    savingAll.value = false
+  }
+}
+
 async function loadActivitySettings(): Promise<void> {
+  activityLoading.value = true
   activityError.value = null
   try {
     activitySettings.value = await featuresApi.getAdminActivitySettings()
   } catch (caught) {
     activityError.value = localizedError(caught, 'errors.adminLoad')
+  } finally {
+    activityLoading.value = false
   }
 }
 
@@ -109,17 +139,17 @@ onMounted(() => void loadActivitySettings())
   <section class="admin-panel">
     <div class="admin-panel__heading">
       <div><h2>{{ t('adminSettings.title') }}</h2><p>{{ t('adminSettings.copy') }}</p></div>
-      <UButton icon="i-ph-floppy-disk" :disabled="busy" :loading="busy" :label="busy ? t('common.saving') : t('adminSettings.save')" @click="save" />
+      <UButton icon="i-ph-floppy-disk" :disabled="saving || sectionsLoading" :loading="saving" :label="saving ? t('common.saving') : t('adminSettings.save')" @click="saveAll" />
     </div>
     <InlineNotice v-if="saved.visible" tone="success" :title="t('adminSettings.saved')">{{ t('adminSettings.savedHint') }}</InlineNotice>
     <section class="settings-activity">
-      <AdminActivitySettings :settings="activitySettings" :busy="activityBusy" @save="saveActivitySettings" />
+      <AdminActivitySettings ref="activitySettings" :settings="activitySettings" :busy="activityBusy" :save="saveActivitySettings" />
       <InlineNotice v-if="activityError" tone="warning">{{ activityError }}</InlineNotice>
     </section>
-    <AdminBillingAmountLimits />
-    <AdminPaymentProfiles />
+    <AdminBillingAmountLimits ref="billingLimits" />
+    <AdminPaymentProfiles ref="paymentProfiles" />
     <AdminSectionState :loading="loading" :error="error" @retry="load()">
-      <form class="settings-groups" @submit.prevent="save">
+      <form class="settings-groups" @submit.prevent="saveAll">
         <fieldset v-for="(settings, category) in grouped" :key="category" class="settings-group">
           <legend>{{ categoryLabel(String(category)) }}</legend>
           <div v-for="setting in settings" :key="setting.key" class="settings-field">

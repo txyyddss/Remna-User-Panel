@@ -1,11 +1,7 @@
 .statistics-donut-layout,
 .statistics-pie-layout { display: grid; align-items: center; gap: 1rem; }
-.statistics-donut,
-.statistics-payment-rings { width: 150px; aspect-ratio: 1; margin: 0 auto; border-radius: 50%; }
-.statistics-donut,
-.statistics-payment-rings { display: grid; place-items: center; }
-.statistics-donut svg,
-.statistics-payment-rings svg { width: 100%; height: 100%; grid-area: 1 / 1; overflow: visible; }
+.statistics-donut { width: 150px; aspect-ratio: 1; display: grid; place-items: center; margin: 0 auto; border-radius: 50%; }
+.statistics-donut svg { width: 100%; height: 100%; grid-area: 1 / 1; overflow: visible; }
 .statistics-ring-track,
 .statistics-ring-segment { fill: none; stroke-width: 22; transform: rotate(-90deg); transform-origin: center; }
 .statistics-ring-track { stroke: var(--line); }
@@ -49,13 +45,6 @@
 .statistics-pie-layout--labels .statistics-pie { width: 180px; }
 .statistics-pie__line { fill: none; stroke: var(--line-strong); stroke-width: 1; }
 .statistics-pie__label { fill: var(--text-muted); font-family: var(--font-mono); font-size: 8px; }
-
-.statistics-payment-layout,
-.statistics-payment-legends { display: grid; gap: 1rem; }
-.statistics-payment-ring--outer { stroke-width: 13; }
-.statistics-payment-ring--inner { stroke-width: 12; }
-.statistics-payment-rings__center { grid-area: 1 / 1; color: var(--text-muted); font-size: 1rem; }
-.statistics-payment-legends > div > strong { display: block; margin-bottom: 0.5rem; font-size: 0.68rem; }
 
 .statistics-traffic { min-height: 18rem; }
 .statistics-traffic__plot {
@@ -104,7 +93,7 @@
   .statistics-node-grid, .statistics-skeleton-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .statistics-share-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .statistics-share-grid > :last-child { grid-column: 1 / -1; }
-  .statistics-donut-layout, .statistics-pie-layout, .statistics-payment-layout { grid-template-columns: 180px minmax(0, 1fr); }
+  .statistics-donut-layout, .statistics-pie-layout { grid-template-columns: 180px minmax(0, 1fr); }
   .statistics-traffic__legend, .statistics-distribution__legend { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
@@ -112,6 +101,5 @@
   .statistics-share-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .statistics-share-grid > :last-child { grid-column: auto; }
   .statistics-share-grid .statistics-donut-layout,
-  .statistics-share-grid .statistics-pie-layout,
-  .statistics-share-grid .statistics-payment-layout { grid-template-columns: 1fr; }
+  .statistics-share-grid .statistics-pie-layout { grid-template-columns: 1fr; }
 }

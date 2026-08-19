@@ -60,6 +60,35 @@ func TestRefreshRemoteRejectsPartialMemberUsage(t *testing.T) {
 	}
 }
 
+func TestRefreshRemoteSkipsMembersWithoutUsableProviderIdentity(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC)
+	remoteID := "remote-1"
+	used := int64(250)
+	repository := &statisticsRepositoryStub{
+		purchases: []model.Purchase{
+			{ID: "missing-identity", UserID: "user-1", ValidFrom: now.AddDate(0, 0, -10), ValidUntil: now.AddDate(0, 0, 10)},
+			{ID: "missing-upstream", UserID: "user-2", ValidFrom: now.AddDate(0, 0, -10), ValidUntil: now.AddDate(0, 0, 10)},
+			{ID: "usable", UserID: "user-3", ValidFrom: now.AddDate(0, 0, -10), ValidUntil: now.AddDate(0, 0, 10)},
+		},
+		users: map[string]model.User{
+			"missing-identity": {ID: "user-1", Role: "user"},
+			"missing-upstream": {ID: "user-2", Role: "user", RemnaUserID: stringPointer("missing")},
+			"usable":           {ID: "user-3", Role: "user", RemnaUserID: &remoteID},
+		},
+	}
+	provider := &statisticsProviderStub{
+		snapshots:   map[string]rollover.UsageSnapshot{remoteID: {LimitBytes: 1_000, Strategy: "NO_RESET", CurrentUsedBytes: &used}},
+		usageErrors: map[string]error{"missing": rollover.ErrRemoteUserMissing},
+	}
+	remote, err := NewService(repository, provider).refreshRemote(context.Background(), now)
+	if err != nil || remote.MonthlyAverageUsageBPS != 2_500 {
+		t.Fatalf("refreshRemote() = (%+v, %v)", remote, err)
+	}
+}
+
+func stringPointer(value string) *string { return &value }
+
 type statisticsRepositoryStub struct {
 	purchases []model.Purchase
 	users     map[string]model.User

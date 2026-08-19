@@ -17,12 +17,11 @@ Admin section labels are locale-owned, use Nuxt UI controls, and avoid visual se
 - `AdminEntitlementsPanel.vue` manages entitlements.
 - `AdminOnboardingPanel.vue` loads, saves, and publishes visual onboarding drafts.
 - `onboarding/` contains visual bilingual welcome and agreement card editors.
-- `AdminPaymentsPanel.vue` manages payment records, refunds, and safe courtesy credits for failed or expired orders.
-- `AdminPaymentProfiles.vue` lists and edits multiple masked EZPay/BEPusdt account profiles, adds new accounts, and saves their independent Nuxt UI channel selections and custom names.
+- `AdminPaymentProfiles.vue` lists and edits multiple masked EZPay/BEPusdt account profiles, adds new accounts, and contributes its drafts to the single parent settings save.
 - `AdminQuestionnairesPanel.vue` manages questionnaire lifecycles.
 - `AdminReasonDialog.vue` collects audited reasons and keeps action failures visible in the dialog.
 - `AdminSectionState.vue` renders loading and error states.
-- `AdminSettingsPanel.vue` composes runtime settings, global payment bounds, and specialized calendar/reward controls.
+- `AdminSettingsPanel.vue` composes runtime settings, global payment bounds, specialized calendar/reward controls, and one coordinated Save action; payment interventions stay scoped to individual user histories.
 - `AdminShell.vue` provides admin section navigation and sends optional signup through Vue Router without native anchor navigation.
 - `AdminShell.test.ts` covers shell navigation and onboarding actions.
 - `AdminSquadEditor.vue` edits sparse squad overrides; node access remains a live Remnawave projection.

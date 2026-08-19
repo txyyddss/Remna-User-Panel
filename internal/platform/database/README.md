@@ -123,8 +123,8 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `statistics.go` — catalog and activity administrator statistics.
 - `product_statistics.go` calculates range-free KPIs across live and compacted
   facts, immutable spending flows, and database/WAL size.
-- `product_statistics_catalog.go` calculates active combo and squad distributions.
-- `product_statistics_payments.go` combines live and compacted payment status facts.
+- `product_statistics_catalog.go` calculates active combo and squad distributions with user-facing squad names when local merchandising data exists.
+- `product_statistics_payments.go` combines live and compacted EZPay, BEPusdt, and Telegram Stars terminal-status facts.
 - `product_statistics_usage.go` selects one current non-admin member combo for live weighted usage projection.
 - `statistics_snapshots.go` persists independent last-good statistics partitions.
 - `destructive.go` — audited feature deletion transactions.

@@ -39,14 +39,10 @@ const metrics = computed(() => {
       <article class="statistics-panel statistics-conversion">
         <StatisticsDonut
           :items="conversionItems"
-          :center-label="$t('statistics.conversion')"
-          :center-value="formatStatisticPercent(conversion)"
-          :chart-label="$t('statistics.conversionChartLabel', { value: formatStatisticPercent(conversion) })"
+          :center-label="$t('statistics.weeklyIncrease')"
+          :center-value="formatSignedStatistic(snapshot.remote.weeklyUserIncrease)"
+          :chart-label="$t('statistics.weeklyIncreaseChartLabel', { value: formatSignedStatistic(snapshot.remote.weeklyUserIncrease) })"
         />
-        <div class="statistics-weekly">
-          <span>{{ $t('statistics.weeklyIncrease') }}</span>
-          <strong>{{ formatSignedStatistic(snapshot.remote.weeklyUserIncrease) }}</strong>
-        </div>
       </article>
       <article class="statistics-panel statistics-metrics">
         <dl class="statistics-metrics__grid">

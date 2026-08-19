@@ -4,14 +4,24 @@ import StatusBadge from '@/components/common/StatusBadge.vue'
 import { useI18n } from '@/i18n'
 import { formatDateTime, formatMoney } from '@/utils/format'
 
+type Payment = AdminUserDetail['payments'][number]
+
 defineProps<{ detail: AdminUserDetail; busy: boolean }>()
-const emit = defineEmits<{ resolve: [operation: OperationReceipt] }>()
+const emit = defineEmits<{
+  resolve: [operation: OperationReceipt]
+  refundPayment: [payment: Payment]
+  creditPayment: [payment: Payment]
+}>()
 const { t } = useI18n()
 
 function operationTone(status: OperationReceipt['status']): 'neutral' | 'success' | 'warning' | 'danger' {
   if (status === 'succeeded' || status === 'compensated') return 'success'
   if (status === 'failed') return 'danger'
   return status === 'queued' || status === 'processing' ? 'neutral' : 'warning'
+}
+
+function canIssueCourtesyCredit(payment: Payment): boolean {
+  return payment.status === 'failed' || payment.status === 'expired'
 }
 </script>
 
@@ -36,6 +46,10 @@ function operationTone(status: OperationReceipt['status']): 'neutral' | 'success
           <article v-for="payment in detail.payments" :key="payment.id" class="admin-profile-row">
             <div class="admin-profile-row__main"><strong>{{ payment.provider }} / {{ payment.providerRail }}</strong><small>{{ formatDateTime(payment.createdAt) }} / {{ payment.id }}</small></div>
             <div class="admin-profile-row__meta"><strong>{{ formatMoney(payment.txb) }}</strong><StatusBadge :tone="payment.status === 'paid' ? 'success' : payment.status === 'failed' ? 'danger' : 'neutral'" :label="t(`adminUserProfile.paymentStatus.${payment.status}`)" /></div>
+            <div class="row-actions">
+              <UButton v-if="payment.status === 'paid'" size="sm" color="warning" variant="outline" icon="i-ph-arrow-counter-clockwise" :disabled="busy" :label="t('adminUserProfile.refundPayment')" @click="emit('refundPayment', payment)" />
+              <UButton v-if="canIssueCourtesyCredit(payment)" size="sm" color="primary" variant="outline" icon="i-ph-heart" :disabled="busy" :label="t('adminUserProfile.courtesyCredit')" @click="emit('creditPayment', payment)" />
+            </div>
           </article>
         </div>
         <p v-else class="admin-profile-empty">{{ t('adminUserProfile.noPayments') }}</p>

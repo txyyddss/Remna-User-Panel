@@ -36,7 +36,8 @@ stopped.
 - `remna_entitlements_adapter.go` implements queued entitlement, traffic reset, removal, and rollover operations.
 - `remna_member_operations_adapter.go` implements queued connection, reconciliation, usage, quiesce, and restore calls.
 - `remna_statistics_adapter.go` implements queue-backed Remnawave digest, node,
-  traffic, and host operations for product statistics.
+  traffic, and host operations for product statistics; node-list `UsersOnline`
+  remains a nonfatal fallback when the optional live-metrics endpoint is unavailable.
 - `emby_adapter.go` implements queued Emby client creation, account operations, policy updates, and metadata lookups.
 - `scheduler.go` runs automatic due-renewal revalidation before entitlement transitions, plus recurring outbox, rollover, backup, and maintenance work until application cancellation.
 - `statistics_scheduler.go` schedules the 30-minute statistics refresh and

@@ -20,13 +20,15 @@ func TestPaymentAnnouncementFormatting(t *testing.T) {
 		contains []string
 	}{
 		{name: "EZPay CNY", payload: paymentAnnouncementFixture("ezpay", "alipay", "12.34", "CNY"),
-			contains: []string{"Provider: EZPay", "Channel: Alipay", "TXB amount: 25.00 TXB", "Paid amount: 12.34 CNY", "Username: @ada"}},
+			contains: []string{"*Provider:* EZPay", "*Channel:* Alipay", "*TXB amount:* 25\\.00 TXB", "*Paid amount:* 12\\.34 CNY", "*Username:* @ada"}},
 		{name: "BEPUSDT USD", payload: paymentAnnouncementFixture("bepusdt", "usdt.trc20", "3.21", "USD"),
-			contains: []string{"Provider: BEPUSDT", "Channel: USDT TRC20", "Paid amount: 3.21 USD"}},
+			contains: []string{"*Provider:* BEPUSDT", "*Channel:* USDT TRC20", "*Paid amount:* 3\\.21 USD"}},
 		{name: "legacy EZPay channel", payload: paymentAnnouncementFixture("ezpay", "", "12.34", "CNY"),
-			contains: []string{"Provider: EZPay", "Channel: Alipay"}},
+			contains: []string{"*Provider:* EZPay", "*Channel:* Alipay"}},
 		{name: "Stars fallback", payload: paymentAnnouncementFixture("stars", "", "7", "XTR"),
-			contains: []string{"Provider: Telegram Stars", "Channel: Telegram Stars", "Paid amount: 7 XTR"}},
+			contains: []string{"*Provider:* Telegram Stars", "*Channel:* Telegram Stars", "*Paid amount:* 7 XTR"}},
+		{name: "MarkdownV2 dynamic text", payload: paymentAnnouncementFixture("ezpay", "fee_test", "12.34", "CNY"),
+			contains: []string{"fee\\_test", "@ada"}},
 	}
 	for _, test := range tests {
 		test := test
@@ -72,10 +74,10 @@ func TestPaymentAnnouncementWorkerSkipRetryAndDelivery(t *testing.T) {
 				t.Fatalf("HandleOutbox() error = %v, want error %t", err, test.wantErr)
 			}
 			if sender.calls != test.wantCalls {
-				t.Fatalf("SendMessage() calls = %d, want %d", sender.calls, test.wantCalls)
+				t.Fatalf("SendMarkdownV2Message() calls = %d, want %d", sender.calls, test.wantCalls)
 			}
 			if test.wantCalls == 1 && sender.chatID != -100123 {
-				t.Fatalf("SendMessage() chat ID = %d", sender.chatID)
+				t.Fatalf("SendMarkdownV2Message() chat ID = %d", sender.chatID)
 			}
 			if test.sendErr != nil && !errors.Is(err, sendFailure) {
 				t.Fatalf("HandleOutbox() error = %v, want wrapped send failure", err)
@@ -115,7 +117,7 @@ type paymentAnnouncementSenderStub struct {
 	err    error
 }
 
-func (s *paymentAnnouncementSenderStub) SendMessage(_ context.Context, chatID, _ int64, _ string) error {
+func (s *paymentAnnouncementSenderStub) SendMarkdownV2Message(_ context.Context, chatID, _ int64, _ string) error {
 	s.calls++
 	s.chatID = chatID
 	return s.err

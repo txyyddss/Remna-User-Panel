@@ -21,6 +21,7 @@
     "notConverted": "No combo purchase",
     "conversionChartLabel": "{value} of users purchased a combo",
     "weeklyIncrease": "Users added this week",
+    "weeklyIncreaseChartLabel": "Users added this week: {value}",
     "monthlyUsage": "Monthly average usage",
     "averageSpend": "Average user spend",
     "spendRange": "User spend range",
@@ -58,6 +59,7 @@
     "comboChartLabel": "Active combo distribution",
     "paymentStates": "Payment states",
     "paymentChartLabel": "Payment status distribution",
+    "paymentLegend": "{provider}: {status}",
     "squadComposition": "Squad composition",
     "bySquad": "By squad",
     "byCombo": "By combo",
@@ -72,12 +74,15 @@
     },
     "provider": {
       "ezpay": "EZPay",
-      "bepusdt": "BEPusdt"
+      "bepusdt": "BEPusdt",
+      "stars": "Telegram Stars"
     },
     "paymentStatus": {
       "paid": "Paid",
       "expired": "Expired",
-      "cancelled": "Cancelled"
+      "cancelled": "Cancelled",
+      "failed": "Failed",
+      "refunded": "Refunded"
     }
   }
 }

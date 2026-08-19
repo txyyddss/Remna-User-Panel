@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { computed, shallowRef } from 'vue'
+import { computed } from 'vue'
 
 import type { CatalogNode, RFC3339, UsageStatistics } from '@/api/types'
 import InlineNotice from '@/components/common/InlineNotice.vue'
-import SwitchField from '@/components/common/SwitchField.vue'
 import { formatBytes, formatDateTime } from '@/utils/format'
 import TrafficUsageBar from './TrafficUsageBar.vue'
 
@@ -18,21 +17,12 @@ const props = defineProps<{
 const percentage = computed(() => Math.min(100, Math.max(0, Math.round(props.ratio * 100))))
 const tone = computed(() => percentage.value >= 90 ? 'danger' : percentage.value >= 75 ? 'warning' : 'safe')
 const meterStyle = computed(() => ({ '--usage': `${percentage.value}%` }))
-const useTrafficMultiplier = shallowRef(true)
 </script>
 
 <template>
   <section class="section-block home-usage" :class="`home-usage--${tone}`">
     <div class="section-heading">
       <h2>{{ $t('dashboard.usage') }}</h2>
-      <div class="home-usage__heading-actions">
-        <SwitchField
-          id="usage-traffic-multiplier"
-          v-model="useTrafficMultiplier"
-          :label="$t('dashboard.useTrafficMultiplier')"
-          data-haptic
-        />
-      </div>
     </div>
 
     <InlineNotice v-if="stale" tone="warning">
@@ -62,7 +52,7 @@ const useTrafficMultiplier = shallowRef(true)
       :nodes="statistics.topNodes"
       :total-bytes="statistics.usedTrafficBytes"
       :catalog-nodes="catalogNodes"
-      :use-multiplier="useTrafficMultiplier"
+      :use-multiplier="false"
     />
   </section>
 </template>

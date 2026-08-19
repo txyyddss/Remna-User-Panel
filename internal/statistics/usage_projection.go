@@ -2,6 +2,7 @@ package statistics
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -31,16 +32,19 @@ func (s *Service) monthlyAverageUsageBPS(ctx context.Context, now time.Time) (in
 			continue
 		}
 		if user.RemnaUserID == nil || strings.TrimSpace(*user.RemnaUserID) == "" {
-			return 0, fmt.Errorf("active member for purchase %s has no provider identity", purchase.ID)
+			continue
 		}
 		start := windowFloor
 		if purchase.ValidFrom.After(start) {
 			start = purchase.ValidFrom.UTC()
 		}
 		if !now.After(start) {
-			return 0, fmt.Errorf("active purchase %s has no measurable usage window", purchase.ID)
+			continue
 		}
 		snapshot, snapshotErr := s.provider.UsageSnapshotForRollover(ctx, *user.RemnaUserID, start, now)
+		if errors.Is(snapshotErr, rollover.ErrRemoteUserMissing) {
+			continue
+		}
 		if snapshotErr != nil {
 			return 0, fmt.Errorf("fetch usage for purchase %s: %w", purchase.ID, snapshotErr)
 		}

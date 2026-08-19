@@ -1,10 +1,10 @@
 # Frontend API
 
 - `adminBilling.ts` owns the atomic administrator update for global Add TXB bounds.
-- `adminOperations.ts` owns aggregate user profiles, audited entitlement and combo mutations, bulk extensions, operation resolution, and streamed backup upload.
+- `adminOperations.ts` owns aggregate user profiles, profile-scoped payment refunds and courtesy credits, audited entitlement and combo mutations, bulk extensions, operation resolution, and streamed backup upload.
 - `client.ts` exposes typed member and administrator API operations, including idempotent payment, subscription-revoke, refund, and outbox-retry commands, connection scans, renewal batches, payment profiles, dashboard usage, and cached product statistics.
 - `client.test.ts` covers client request behavior.
-- `features.ts` exposes feature-specific endpoints and contract types, including durable Emby and questionnaire commands, the browser-safe payment-return receipt projection, member coupon soft-discard, and the administrator terminal-payment courtesy credit.
+- `features.ts` exposes feature-specific endpoints and contract types, including durable Emby and questionnaire commands, the browser-safe payment-return receipt projection, and member coupon soft-discard.
 - `features.test.ts` verifies feature request construction.
 - `generated.ts` contains the compact generated OpenAPI contract.
 - `http.ts` provides authenticated HTTP and error handling primitives.

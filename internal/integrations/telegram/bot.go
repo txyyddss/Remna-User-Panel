@@ -47,6 +47,15 @@ func (c *Client) SetMyCommands(ctx context.Context, commands []BotCommand, scope
 
 // SendMessage sends a bounded plain-text reply to a Telegram message.
 func (c *Client) SendMessage(ctx context.Context, chatID, replyToMessageID int64, text string) error {
+	return c.sendMessage(ctx, chatID, replyToMessageID, text, "")
+}
+
+// SendMarkdownV2Message sends a bounded MarkdownV2-formatted Telegram message.
+func (c *Client) SendMarkdownV2Message(ctx context.Context, chatID, replyToMessageID int64, text string) error {
+	return c.sendMessage(ctx, chatID, replyToMessageID, text, "MarkdownV2")
+}
+
+func (c *Client) sendMessage(ctx context.Context, chatID, replyToMessageID int64, text, parseMode string) error {
 	text = strings.TrimSpace(text)
 	if chatID == 0 || text == "" || utf8.RuneCountInString(text) > telegramMessageLimit {
 		return errors.New("telegram reply requires a chat id and 1-4096 characters")
@@ -54,18 +63,28 @@ func (c *Client) SendMessage(ctx context.Context, chatID, replyToMessageID int64
 	payload := struct {
 		ChatID          int64  `json:"chat_id"`
 		Text            string `json:"text"`
+		ParseMode       string `json:"parse_mode,omitempty"`
 		ReplyParameters *struct {
 			MessageID                int64 `json:"message_id"`
 			AllowSendingWithoutReply bool  `json:"allow_sending_without_reply"`
 		} `json:"reply_parameters,omitempty"`
-	}{ChatID: chatID, Text: text}
+	}{ChatID: chatID, Text: text, ParseMode: parseMode}
 	if replyToMessageID > 0 {
 		payload.ReplyParameters = &struct {
 			MessageID                int64 `json:"message_id"`
 			AllowSendingWithoutReply bool  `json:"allow_sending_without_reply"`
 		}{MessageID: replyToMessageID, AllowSendingWithoutReply: true}
 	}
-	return c.booleanCall(ctx, "sendMessage", payload)
+	var result struct {
+		MessageID int64 `json:"message_id"`
+	}
+	if err := c.call(ctx, "sendMessage", payload, &result); err != nil {
+		return err
+	}
+	if result.MessageID <= 0 {
+		return errors.New("telegram sendMessage returned an invalid message")
+	}
+	return nil
 }
 
 func validCommand(value string) bool {

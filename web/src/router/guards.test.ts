@@ -39,7 +39,7 @@ describe('protected route decisions', () => {
   })
 
   it('rejects non-admin users from every admin section', () => {
-    expect(resolveProtectedRoute(route('/admin/payments'), user())).toBe('/home')
+    expect(resolveProtectedRoute(route('/admin/users'), user())).toBe('/home')
   })
 
   it('sends a first-launch admin to settings instead of onboarding', () => {

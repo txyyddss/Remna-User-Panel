@@ -18,8 +18,8 @@
 - `home-03.css` styles the compact renewal term slider and separated quote total/date block.
 - `home-04.css` styles the accessible Your ride rollover flip card, its concise current-term detail, size-safe face swap, and reduced-motion fallback.
 - `connections-01.css` styles the responsive scan progress, node/IP rows, empty states, and selected connection confirmation detail.
-- `statistics-01.css` styles the statistics page structure, KPI panels, node cards, and compact states.
-- `statistics-02.css` styles the responsive SVG donut, labeled pies, nested payment rings, traffic tooltips, legends, and normalized stacked bars.
+- `statistics-01.css` styles the statistics page structure, centered refresh control, KPI panels, node cards, and compact states.
+- `statistics-02.css` styles the responsive generic SVG donut, labeled pies, traffic tooltips, legends, and normalized stacked bars.
 - `catalog-01.css` styles catalog browsing and plan presentation.
 - `catalog-02.css` styles catalog selection and checkout details.
 - `billing-01.css` styles funding controls.

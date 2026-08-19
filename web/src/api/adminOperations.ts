@@ -11,6 +11,7 @@ export type BulkExtensionPreview = components['schemas']['BulkExtensionPreview']
 export type BackupRun = components['schemas']['BackupRun']
 export type Combo = components['schemas']['Combo']
 export type SquadProduct = components['schemas']['SquadProduct']
+export type CourtesyCredit = components['schemas']['CourtesyCredit']
 export type OperationResolution = components['schemas']['OperationResolutionRequest']['resolution']
 
 export interface AdminCatalogOptions {
@@ -36,6 +37,14 @@ export const adminOperationsApi = {
   refundEntitlement: (userId: string, entitlementId: string, reason: string, key: string) =>
     request<OperationReceipt>(`/api/v1/admin/users/${encodeURIComponent(userId)}/entitlements/${encodeURIComponent(entitlementId)}/refund`, {
       method: 'POST', headers: keyHeader(key), body: { reason },
+    }),
+  refundPayment: (paymentId: string, reason: string, key: string) =>
+    request<OperationReceipt>(`/api/v1/admin/payments/${encodeURIComponent(paymentId)}/refund`, {
+      method: 'POST', headers: keyHeader(key), body: { reason },
+    }),
+  creditPayment: (paymentId: string, reason: string) =>
+    request<CourtesyCredit>(`/api/v1/admin/payments/${encodeURIComponent(paymentId)}/courtesy-credit`, {
+      method: 'POST', body: { reason },
     }),
   replaceCombo: (userId: string, body: ComboReplacementRequest, key: string) =>
     request<OperationReceipt>(`/api/v1/admin/users/${encodeURIComponent(userId)}/combo-replacement`, {

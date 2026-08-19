@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, shallowRef, useTemplateRef, watch } from 'vue'
 
 import type { Purchase } from '@/api/types'
+import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
 import RideSummaryFace from './RideSummaryFace.vue'
 import RolloverDetailFace from './RolloverDetailFace.vue'
 import { useRolloverDetail } from '@/composables/useRolloverDetail'
@@ -18,6 +19,7 @@ const { detail, loading, error, load, retry, reset } = useRolloverDetail()
 const summaryFace = useTemplateRef<globalThis.HTMLElement>('summaryFace')
 const rolloverFace = useTemplateRef<globalThis.HTMLElement>('rolloverFace')
 const flipInnerStyle = computed(() => cardHeight.value ? { height: cardHeight.value } : undefined)
+const ownsTelegramBackButton = computed(() => flipped.value)
 let changingFace = false
 let resizeObserver: globalThis.ResizeObserver | undefined
 let animationFrame: number | undefined
@@ -79,6 +81,8 @@ async function showSummary(): Promise<void> {
   haptic('light')
   await changeFace(false)
 }
+
+useTelegramBackButton(ownsTelegramBackButton, showSummary)
 
 watch(() => props.active.id, () => {
   flipped.value = false

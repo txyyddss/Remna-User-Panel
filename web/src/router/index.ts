@@ -38,7 +38,7 @@ const router = createRouter({
       meta: { adminSection: 'users' },
     },
     {
-      path: '/admin/:section(settings|catalog|activity|coupons|questionnaires|onboarding|users|payments|backups|database|audit)',
+      path: '/admin/:section(settings|catalog|activity|coupons|questionnaires|onboarding|users|backups|database|audit)',
       name: 'admin',
       component: () => import('@/views/AdminView.vue'),
     },

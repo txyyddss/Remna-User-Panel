@@ -75,11 +75,11 @@ useTelegramBackButton(ownsBack, closeDialog)
 <template>
   <div class="purchase-actions">
     <div class="purchase-actions__row">
-      <USkeleton v-if="operation.refundEligibilityLoading.value" class="purchase-actions__primary h-11" />
+      <AutoRenewalControl class="purchase-actions__primary" :purchase="purchase" @changed="emit('changed')" />
+      <USkeleton v-if="operation.refundEligibilityLoading.value" class="purchase-actions__refund h-11" />
       <UButton
         v-else-if="refundEligible"
-        block
-        class="purchase-actions__primary"
+        class="purchase-actions__refund"
         color="warning"
         variant="soft"
         icon="i-ph-arrow-u-up-left"
@@ -88,7 +88,6 @@ useTelegramBackButton(ownsBack, closeDialog)
         data-haptic
         @click="openQuote('refund')"
       />
-      <AutoRenewalControl v-else class="purchase-actions__primary" :purchase="purchase" @changed="emit('changed')" />
       <UTooltip :text="$t('purchaseOperations.resetAction')">
         <UButton
           class="purchase-actions__reset"
@@ -170,9 +169,10 @@ useTelegramBackButton(ownsBack, closeDialog)
 
 <style scoped>
 .purchase-actions, .purchase-operation-dialog { display: grid; gap: 0.75rem; }
-.purchase-actions__row { display: flex; align-items: stretch; gap: 0.55rem; }
+.purchase-actions__row { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.55rem; }
 .purchase-actions__primary { min-width: 0; flex: 1 1 auto; }
-.purchase-actions__reset { width: 44px; min-width: 44px; height: 44px; }
+.purchase-actions__refund { min-width: 0; flex: 1 1 8rem; }
+.purchase-actions__reset { width: 44px; min-width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
 .purchase-operation-quote { display: grid; gap: 0.5rem; margin: 0; }
 .purchase-operation-quote > div { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--line); }
 .purchase-operation-quote dt { color: var(--text-faint); font-size: 0.72rem; }

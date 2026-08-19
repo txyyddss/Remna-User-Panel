@@ -66,6 +66,8 @@ async function save(): Promise<void> {
   }
 }
 
+defineExpose({ save, loading })
+
 onMounted(() => void load())
 </script>
 
@@ -78,7 +80,7 @@ onMounted(() => void load())
       </div>
     </div>
     <USkeleton v-if="loading" class="billing-limits__skeleton" />
-    <form v-else class="billing-limits__form" @submit.prevent="save">
+    <form v-else class="billing-limits__form" @submit.prevent>
       <div class="billing-limits__fields">
         <TxbAmountField
           id="billing-minimum-txb"
@@ -104,9 +106,8 @@ onMounted(() => void load())
       <InlineNotice v-if="rangeInvalid" tone="warning">{{ t('adminSettings.amountLimits.rangeInvalid') }}</InlineNotice>
       <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
       <InlineNotice v-if="saved" tone="success">{{ t('adminSettings.amountLimits.saved') }}</InlineNotice>
-      <div class="button-row billing-limits__actions">
+      <div v-if="error" class="button-row billing-limits__actions">
         <UButton v-if="error" type="button" color="neutral" variant="outline" icon="i-ph-arrow-clockwise" :label="t('adminSection.retry')" @click="load" />
-        <UButton type="submit" icon="i-ph-floppy-disk" :loading="busy" :disabled="busy || !canSave" :label="busy ? t('common.saving') : t('adminSettings.amountLimits.save')" />
       </div>
       <small v-if="updatedAt" class="billing-limits__updated">{{ t('adminSettings.amountLimits.updated', { date: formatDateTime(updatedAt) }) }}</small>
     </form>

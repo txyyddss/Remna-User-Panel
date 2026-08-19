@@ -1,5 +1,5 @@
 import { request, requestBlob } from './http'
-import type { CourtesyCredit, OperationReceipt } from './types'
+import type { OperationReceipt } from './types'
 import type { ActivityOverview, ActivityResult, ActivitySettings, ActivitySettingsWrite, BetGame, LuckyDrawAdmin, LuckyDrawWrite } from './contracts/activity'
 import type { ActiveQuestionnaire, CouponDefinition, CouponGrant, CouponRedemption, QuestionnaireAdminRecord, QuestionnaireImportPreview, QuestionnaireImportState, QuestionnaireImportSummary, QuestionnaireParticipation } from './contracts/community'
 import type { EmbyAccount, EmbyOverview } from './contracts/commerce'
@@ -9,7 +9,6 @@ export type * from './contracts/activity'
 export type * from './contracts/community'
 export type * from './contracts/commerce'
 export type * from './contracts/admin'
-export type { CourtesyCredit } from './types'
 
 export type PaymentReturnProvider = 'ezpay' | 'bepusdt'
 
@@ -89,9 +88,6 @@ export const featuresApi = {
     { method: id ? 'PUT' : 'POST', body },
   ),
   deactivateAdminCoupon: (id: string) => featureRequest<void>(`/api/v1/admin/coupons/${encodeURIComponent(id)}`, { method: 'DELETE' }),
-  creditAdminTerminalPayment: (id: string, reason: string) => featureRequest<CourtesyCredit>(
-    `/api/v1/admin/payments/${encodeURIComponent(id)}/courtesy-credit`, { method: 'POST', body: { reason } },
-  ),
   getAdminQuestionnaires: () => featureRequest<{ items: QuestionnaireAdminRecord[] }>('/api/v1/admin/questionnaires'),
   saveAdminQuestionnaire: (id: string | null, body: Partial<QuestionnaireAdminRecord>) => featureRequest<QuestionnaireAdminRecord>(
     id ? `/api/v1/admin/questionnaires/${encodeURIComponent(id)}` : '/api/v1/admin/questionnaires',

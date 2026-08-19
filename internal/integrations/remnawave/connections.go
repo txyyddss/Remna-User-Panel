@@ -46,7 +46,8 @@ func (c *Client) UserConnections(ctx context.Context, jobID string) (ConnectionS
 				Percent float64 `json:"percent"`
 			} `json:"progress"`
 			Result *struct {
-				Nodes []ConnectionNode `json:"nodes"`
+				Success bool             `json:"success"`
+				Nodes   []ConnectionNode `json:"nodes"`
 			} `json:"result"`
 		} `json:"response"`
 	}
@@ -56,6 +57,9 @@ func (c *Client) UserConnections(ctx context.Context, jobID string) (ConnectionS
 	result := ConnectionScan{Completed: envelope.Response.Completed, Failed: envelope.Response.Failed, Progress: envelope.Response.Progress.Percent}
 	if envelope.Response.Result != nil {
 		result.Nodes = envelope.Response.Result.Nodes
+		if result.Completed && !envelope.Response.Result.Success {
+			result.Failed = true
+		}
 	}
 	return result, validateConnectionScan(result)
 }

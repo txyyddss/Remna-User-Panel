@@ -31,7 +31,6 @@ declare module 'vue' {
     AdminOnboardingPanel: typeof import('./src/components/admin/AdminOnboardingPanel.vue')['default']
     AdminOperationResolutionDialog: typeof import('./src/components/admin/users/AdminOperationResolutionDialog.vue')['default']
     AdminPaymentProfiles: typeof import('./src/components/admin/AdminPaymentProfiles.vue')['default']
-    AdminPaymentsPanel: typeof import('./src/components/admin/AdminPaymentsPanel.vue')['default']
     AdminQuestionnairesPanel: typeof import('./src/components/admin/AdminQuestionnairesPanel.vue')['default']
     AdminReasonDialog: typeof import('./src/components/admin/AdminReasonDialog.vue')['default']
     AdminSectionState: typeof import('./src/components/admin/AdminSectionState.vue')['default']

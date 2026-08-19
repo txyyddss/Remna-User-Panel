@@ -80,6 +80,12 @@ async function save(profile: AdminPaymentProfile): Promise<void> {
   } catch (caught) { error.value = localizedError(caught, 'errors.adminAction') } finally { busy.value = null }
 }
 
+async function saveAll(): Promise<void> {
+  for (const profile of profiles.value) await save(profile)
+}
+
+defineExpose({ saveAll, loading })
+
 onMounted(() => void load())
 </script>
 
@@ -118,7 +124,6 @@ onMounted(() => void load())
         <UFormField v-if="drafts[profile.id].provider === 'ezpay'" :label="t('adminPaymentProfiles.merchantId')"><UInput v-model="drafts[profile.id].merchantId" /></UFormField>
         <UFormField :label="t('adminPaymentProfiles.credential')"><UInput v-model="drafts[profile.id].credential" type="password" :placeholder="profile.configured ? t('adminPaymentProfiles.keepCredential') : ''" autocomplete="new-password" /></UFormField>
         <UFormField :label="t('adminPaymentProfiles.acknowledgement')"><UInput v-model="drafts[profile.id].acknowledgement" /></UFormField>
-        <UButton block :loading="busy === profile.id" :label="t('common.save')" data-haptic @click="save(profile)" />
       </article>
     </div>
   </section>

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, shallowRef, toRef } from 'vue'
 
-import { adminOperationsApi, type AdminEntitlement, type EntitlementEditRequest, type ComboReplacementRequest, type OperationReceipt, type OperationResolution } from '@/api/adminOperations'
+import { adminOperationsApi, type AdminEntitlement, type AdminUserDetail, type ComboReplacementRequest, type CourtesyCredit, type EntitlementEditRequest, type OperationReceipt, type OperationResolution } from '@/api/adminOperations'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import { useI18n } from '@/i18n'
+import { formatMoney } from '@/utils/format'
 import AdminReasonDialog from '../AdminReasonDialog.vue'
 import AdminComboReplacementDialog from './AdminComboReplacementDialog.vue'
 import AdminEntitlementEditor from './AdminEntitlementEditor.vue'
@@ -20,6 +21,10 @@ const profile = useAdminUserProfile(toRef(props, 'userId'))
 const editing = shallowRef<AdminEntitlement | null>(null)
 const refunding = shallowRef<AdminEntitlement | null>(null)
 const refundReason = shallowRef('')
+const refundingPayment = shallowRef<AdminUserDetail['payments'][number] | null>(null)
+const creditingPayment = shallowRef<AdminUserDetail['payments'][number] | null>(null)
+const paymentReason = shallowRef('')
+const courtesyMessage = shallowRef<string | null>(null)
 const replacementOpen = shallowRef(false)
 const resolving = shallowRef<OperationReceipt | null>(null)
 const busy = computed(() => profile.busyAction.value !== null)
@@ -35,6 +40,18 @@ function openRefund(item: AdminEntitlement): void {
   profile.clearActionError()
   refundReason.value = ''
   refunding.value = item
+}
+
+function openPaymentRefund(payment: AdminUserDetail['payments'][number]): void {
+  profile.clearActionError()
+  paymentReason.value = ''
+  refundingPayment.value = payment
+}
+
+function openPaymentCredit(payment: AdminUserDetail['payments'][number]): void {
+  profile.clearActionError()
+  paymentReason.value = ''
+  creditingPayment.value = payment
 }
 
 async function openReplacement(): Promise<void> {
@@ -57,6 +74,30 @@ async function refundEntitlement(): Promise<void> {
   const ok = await profile.perform(`refund:${item.id}`, (key) =>
     adminOperationsApi.refundEntitlement(props.userId, item.id, refundReason.value, key))
   if (ok) refunding.value = null
+}
+
+async function refundPayment(): Promise<void> {
+  const payment = refundingPayment.value
+  if (!payment) return
+  const ok = await profile.perform(`refund-payment:${payment.id}`, (key) =>
+    adminOperationsApi.refundPayment(payment.id, paymentReason.value, key))
+  if (ok) refundingPayment.value = null
+}
+
+async function creditPayment(): Promise<void> {
+  const payment = creditingPayment.value
+  if (!payment) return
+  const credit = shallowRef<CourtesyCredit | null>(null)
+  const ok = await profile.perform(`credit-payment:${payment.id}`, async () => {
+    credit.value = await adminOperationsApi.creditPayment(payment.id, paymentReason.value)
+    return credit.value
+  })
+  const completedCredit = credit.value
+  if (!ok || !completedCredit) return
+  courtesyMessage.value = completedCredit.replayed
+    ? t('adminUserProfile.courtesyCreditAlreadyRecorded')
+    : t('adminUserProfile.courtesyCreditSuccess', { amount: formatMoney(completedCredit.txb) })
+  creditingPayment.value = null
 }
 
 async function replaceCombo(body: ComboReplacementRequest): Promise<void> {
@@ -87,18 +128,21 @@ function refresh(): void {
     </div>
     <InlineNotice v-if="profile.conflict.value" tone="warning" :title="t('adminUserProfile.conflictTitle')">{{ t('adminUserProfile.conflict') }}</InlineNotice>
     <InlineNotice v-else-if="profile.error.value" tone="warning">{{ profile.error.value }}</InlineNotice>
+    <InlineNotice v-if="courtesyMessage" tone="success">{{ courtesyMessage }}</InlineNotice>
     <div v-if="profile.loading.value" class="admin-loading" :aria-label="t('adminUserProfile.loading')">
       <USkeleton class="h-24" /><USkeleton class="h-48" /><USkeleton class="h-36" />
     </div>
     <template v-else-if="profile.detail.value">
       <AdminUserOverview :detail="profile.detail.value" />
       <AdminUserEntitlements :items="profile.detail.value.entitlements" :busy="busy" :can-replace="Boolean(profile.detail.value.activeCombo)" @edit="openEditor" @refund="openRefund" @replace="openReplacement" />
-      <AdminUserHistory :detail="profile.detail.value" :busy="busy" @resolve="resolving = $event" />
+      <AdminUserHistory :detail="profile.detail.value" :busy="busy" @resolve="resolving = $event" @refund-payment="openPaymentRefund" @credit-payment="openPaymentCredit" />
     </template>
     <div v-else class="empty-inline"><div><h3>{{ t('adminUserProfile.unavailable') }}</h3><p>{{ t('adminUserProfile.unavailableHint') }}</p></div></div>
 
     <AdminEntitlementEditor :open="editing !== null" :item="editing" :combos="profile.options.value.combos" :squads="profile.options.value.squads" :busy="busy" :options-loading="profile.optionsLoading.value" :error="dialogError" @update:open="!$event && (editing = null)" @save="saveEntitlement" />
     <AdminReasonDialog :open="refunding !== null" v-model:reason="refundReason" :title="t('adminUserProfile.refundTitle')" :description="t('adminUserProfile.refundHint')" :confirm-label="t('adminUserProfile.issueRefund')" :busy="busy" :error="profile.error.value" danger @update:open="!$event && (refunding = null)" @confirm="refundEntitlement" />
+    <AdminReasonDialog :open="refundingPayment !== null" v-model:reason="paymentReason" :title="t('adminUserProfile.refundPaymentTitle')" :description="t('adminUserProfile.refundPaymentHint')" :confirm-label="t('adminUserProfile.issueRefundPayment')" :busy="busy" :error="profile.error.value" danger @update:open="!$event && (refundingPayment = null)" @confirm="refundPayment" />
+    <AdminReasonDialog :open="creditingPayment !== null" v-model:reason="paymentReason" :title="t('adminUserProfile.courtesyCreditTitle')" :description="t('adminUserProfile.courtesyCreditHint')" :confirm-label="t('adminUserProfile.issueCourtesyCredit')" :busy="busy" :error="profile.error.value" @update:open="!$event && (creditingPayment = null)" @confirm="creditPayment" />
     <AdminComboReplacementDialog :open="replacementOpen" :current="profile.detail.value?.activeCombo ?? null" :combos="profile.options.value.combos" :squads="profile.options.value.squads" :busy="busy" :options-loading="profile.optionsLoading.value" :error="dialogError" @update:open="replacementOpen = $event" @replace="replaceCombo" />
     <AdminOperationResolutionDialog :open="resolving !== null" :operation="resolving" :busy="busy" :error="profile.error.value" @update:open="!$event && (resolving = null)" @resolve="resolveOperation" />
   </section>

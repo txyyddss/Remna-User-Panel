@@ -34,7 +34,7 @@ const isFullscreen = telegramFullscreenState()
 const greetingName = computed(() => t('nav.fullscreenGreeting', {
   name: sessionStore.user?.firstName?.trim() || t('nav.memberFallback'),
 }))
-const greetingUsername = computed(() => sessionStore.user?.telegramUsername?.trim() || sessionStore.user?.username?.trim() || '')
+const greetingUsername = computed(() => sessionStore.user?.username?.trim() || sessionStore.user?.telegramUsername?.trim() || '')
 
 function goBack(): void {
   try {

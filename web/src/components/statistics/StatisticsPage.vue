@@ -27,6 +27,7 @@ const { snapshot, nodeSnapshot, loading, refreshing, nodesLoading, error, nodesE
           color="neutral"
           variant="outline"
           square
+          class="statistics-heading__refresh"
           icon="i-ph-arrows-clockwise"
           :loading="refreshing"
           :aria-label="$t('statistics.refresh')"

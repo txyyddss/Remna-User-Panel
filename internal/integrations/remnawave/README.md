@@ -15,6 +15,7 @@ This package implements the Remnawave v3.2.1 operations used by TX Carpool. Endp
 - `user_validation.go` strictly validates every reference-required user and nested traffic field during JSON decoding.
 - `doc.go` supplies the package documentation and supported upstream version.
 - `client_test.go` verifies endpoint, method, payload, bearer, error-code, and lookup contracts.
+- `connections_test.go` verifies a completed scan with an unsuccessful upstream result is surfaced as failed.
 - `redirect_test.go` verifies provider redirects cannot receive the bearer credential.
 - `squad_identity_test.go` rejects a squad update response whose UUID differs from the requested squad.
 - `user_validation_test.go` verifies strict required-field response validation and provides canonical user fixtures.

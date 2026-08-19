@@ -8,8 +8,8 @@ import (
 )
 
 type distributionFact struct {
-	comboID, comboName, squadUUID string
-	count                         float64
+	comboID, comboName, squadUUID, squadName string
+	count                                    float64
 }
 
 const activeEntitlementAssignments = `WITH active AS (
@@ -67,8 +67,10 @@ func (s *Store) activeCatalogStatistics(ctx context.Context, now time.Time) ([]m
 
 func (s *Store) activeDistributionFacts(ctx context.Context, now time.Time) ([]distributionFact, error) {
 	rows, err := s.db.QueryContext(ctx, activeEntitlementAssignments+`
-	SELECT c.id,c.name,assignments.squad_uuid,COUNT(DISTINCT assignments.user_id)
-	FROM assignments JOIN combos c ON c.id=assignments.combo_id GROUP BY c.id,c.name,assignments.squad_uuid ORDER BY c.name,assignments.squad_uuid`, stamp(now), stamp(now))
+	SELECT c.id,c.name,assignments.squad_uuid,COALESCE(NULLIF(product.name,''),assignments.squad_uuid),COUNT(DISTINCT assignments.user_id)
+	FROM assignments JOIN combos c ON c.id=assignments.combo_id
+	LEFT JOIN squad_products product ON product.remna_squad_uuid=assignments.squad_uuid
+	GROUP BY c.id,c.name,assignments.squad_uuid,product.name ORDER BY c.name,product.name,assignments.squad_uuid`, stamp(now), stamp(now))
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +78,7 @@ func (s *Store) activeDistributionFacts(ctx context.Context, now time.Time) ([]d
 	result := make([]distributionFact, 0)
 	for rows.Next() {
 		var fact distributionFact
-		if err := rows.Scan(&fact.comboID, &fact.comboName, &fact.squadUUID, &fact.count); err != nil {
+		if err := rows.Scan(&fact.comboID, &fact.comboName, &fact.squadUUID, &fact.squadName, &fact.count); err != nil {
 			return nil, err
 		}
 		result = append(result, fact)
@@ -88,9 +90,9 @@ func normalizeDistributions(facts []distributionFact, byCombo bool) []model.Norm
 	groups := make(map[string]*model.NormalizedDistribution)
 	order := make([]string, 0)
 	for _, fact := range facts {
-		groupID, groupLabel, segmentID, segmentLabel := fact.comboID, fact.comboName, fact.squadUUID, fact.squadUUID
+		groupID, groupLabel, segmentID, segmentLabel := fact.comboID, fact.comboName, fact.squadUUID, fact.squadName
 		if !byCombo {
-			groupID, groupLabel, segmentID, segmentLabel = fact.squadUUID, fact.squadUUID, fact.comboID, fact.comboName
+			groupID, groupLabel, segmentID, segmentLabel = fact.squadUUID, fact.squadName, fact.comboID, fact.comboName
 		}
 		group := groups[groupID]
 		if group == nil {

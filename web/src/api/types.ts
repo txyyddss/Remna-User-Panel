@@ -92,7 +92,6 @@ export type PaymentOrder = DeepReadonly<components['schemas']['PaymentOrder']>
 export type AdminPaymentOrder = DeepReadonly<components['schemas']['AdminPaymentOrder']>
 export type AdminEntitlement = DeepReadonly<components['schemas']['AdminEntitlement']>
 export type Refund = DeepReadonly<components['schemas']['Refund']>
-export type CourtesyCredit = DeepReadonly<components['schemas']['CourtesyCredit']>
 export type LedgerEntry = DeepReadonly<components['schemas']['LedgerEntry']>
 export type AdminSetting = DeepReadonly<components['schemas']['AdminSetting']>
 export type AdminUserSummary = DeepReadonly<components['schemas']['AdminUserSummary']>
