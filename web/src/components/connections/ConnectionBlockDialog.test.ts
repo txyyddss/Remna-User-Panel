@@ -16,8 +16,8 @@ describe('ConnectionBlockDialog', () => {
   it('owns native Back and includes shared-IP and three-day warnings', async () => {
     const wrapper = mount(ConnectionBlockDialog, {
       props: { open: true, target },
-      global: { stubs: { CountryFlag: true, InlineNotice: { template: '<div><slot /></div>' }, UButton: true,
-        UModal: { template: '<div><slot name="body" /><slot name="footer" /></div>' } } },
+      global: { stubs: { CountryFlag: true, InlineNotice: { template: '<div><slot /></div>' }, Button: true,
+        Modal: { template: '<div><slot name="body" /><slot name="footer" /></div>' } } },
     })
     const [visible, onBack] = useTelegramBackButton.mock.calls[0] as [ComputedRef<boolean>, () => void]
 

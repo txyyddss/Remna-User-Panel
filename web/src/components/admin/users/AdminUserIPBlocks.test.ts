@@ -8,8 +8,8 @@ describe('AdminUserIPBlocks', () => {
     const wrapper = mount(AdminUserIPBlocks, {
       props: { busy: false, items: [{ id: 'block-1', ip: '203.0.113.4', nodeUuid: 'node', status: 'active',
         createdAt: '2026-08-19T00:00:00Z', expiresAt: '2026-08-22T00:00:00Z' }] },
-      global: { stubs: { StatusBadge: true, UIcon: true,
-        UButton: { template: '<span data-button @click="$emit(\'click\')">unblock</span>' } } },
+      global: { stubs: { StatusBadge: true, Icon: true,
+        Button: { template: '<span data-button @click="$emit(\'click\')">unblock</span>' } } },
     })
 
     expect(wrapper.findAll('[data-button]')).toHaveLength(1)

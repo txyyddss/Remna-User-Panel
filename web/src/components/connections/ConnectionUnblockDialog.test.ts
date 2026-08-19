@@ -10,9 +10,9 @@ describe('ConnectionUnblockDialog', () => {
     const wrapper = mount(ConnectionUnblockDialog, {
       props: { open: true, block: { id: 'block-1', ip: '2001:db8::1', nodeUuid: 'node', status: 'active',
         createdAt: '2026-08-19T00:00:00Z', expiresAt: '2026-08-22T00:00:00Z' } },
-      global: { stubs: { InlineNotice: true, UIcon: true,
-        UButton: { template: '<span data-button @click="$emit(\'click\')"><slot /></span>' },
-        UModal: { template: '<div><slot name="body" /><slot name="footer" /></div>' } } },
+      global: { stubs: { InlineNotice: true, Icon: true,
+        Button: { template: '<span data-button @click="$emit(\'click\')"><slot /></span>' },
+        Modal: { template: '<div><slot name="body" /><slot name="footer" /></div>' } } },
     })
 
     expect(wrapper.text()).toContain('2001:db8::1')
