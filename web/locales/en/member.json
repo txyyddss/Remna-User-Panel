@@ -17,6 +17,8 @@
     "revokeDescription": "Every device using the current subscription URL will lose access. A new link will replace it.",
     "revokeLink": "Revoke link",
     "usage": "Usage",
+    "online": "ONLINE",
+    "offline": "OFFLINE",
     "lastKnownData": "Last known data",
     "remnawaveUnavailable": "Remnawave is temporarily unavailable.",
     "showingDataFrom": "Showing data from {date}.",

@@ -20,7 +20,7 @@ func (s *Server) telegramSubscriptionReply(ctx context.Context, user model.User,
 func (s *Server) telegramComboReply(ctx context.Context, user model.User, copy botcommands.Copy) string {
 	dashboard, err := s.deps.Catalog.Dashboard(ctx, user)
 	if err != nil || dashboard.ActivePurchase == nil {
-		return copy.NoSubscription
+		return botcommands.FormatNoSubscription(copy)
 	}
 	purchase := dashboard.ActivePurchase
 	names := s.telegramSquadNames(ctx, purchase.SquadUUIDs)

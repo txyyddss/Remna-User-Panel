@@ -54,9 +54,10 @@ func (s *Service) Refresh(ctx context.Context, now time.Time) error {
 	if remoteErr == nil {
 		remoteErr = s.saveRemote(ctx, remote, now)
 	}
+	squadNames := s.resolveSquadNames(ctx)
 	database, databaseErr := s.repository.ProductDatabaseStatistics(ctx, now)
 	if databaseErr == nil {
-		applySquadNames(&database, remote.SquadNames)
+		applySquadNames(&database, squadNames)
 		databaseErr = s.saveDatabase(ctx, database, now)
 	}
 	s.mu.Lock()
@@ -92,16 +93,9 @@ func (s *Service) refreshRemote(ctx context.Context, now time.Time) (model.Remot
 	if err != nil {
 		return model.RemoteStatistics{}, err
 	}
-	squadNames := s.cachedSquadNames()
-	if provider, ok := s.provider.(SquadNameProvider); ok {
-		if names, nameErr := provider.SquadNames(ctx); nameErr == nil {
-			squadNames = names
-		}
-	}
 	result := model.RemoteStatistics{WeeklyUserIncrease: digest.CreatedUsers,
 		MonthlyAverageUsageBPS: usageBPS, MonthlyAverageUsage: float64(usageBPS) / 100,
-		TrafficDates: append([]string(nil), traffic.Categories...), TrafficSeries: make([]model.NodeTrafficSeries, 0, len(traffic.Series)),
-		SquadNames: squadNames}
+		TrafficDates: append([]string(nil), traffic.Categories...), TrafficSeries: make([]model.NodeTrafficSeries, 0, len(traffic.Series))}
 	for _, series := range traffic.Series {
 		values := make([]string, 0, len(series.DailyBytes))
 		for _, value := range series.DailyBytes {

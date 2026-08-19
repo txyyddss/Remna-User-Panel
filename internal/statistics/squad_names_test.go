@@ -28,13 +28,15 @@ func TestApplySquadNames(t *testing.T) {
 
 func TestCachedSquadNamesReturnsCopy(t *testing.T) {
 	service := &Service{snapshot: model.ProductStatisticsSnapshot{
-		Remote: model.RemoteStatistics{SquadNames: map[string]string{"squad-1": "Singapore"}},
+		Database: model.DatabaseStatistics{ComboBySquad: []model.NormalizedDistribution{{
+			ID: "squad-1", Label: "Singapore",
+		}}},
 	}}
 
 	names := service.cachedSquadNames()
 	names["squad-1"] = "Changed"
 
-	if service.snapshot.Remote.SquadNames["squad-1"] != "Singapore" {
+	if service.snapshot.Database.ComboBySquad[0].Label != "Singapore" {
 		t.Fatal("cached squad names exposed shared state")
 	}
 }

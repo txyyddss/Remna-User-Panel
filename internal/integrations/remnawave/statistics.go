@@ -50,16 +50,3 @@ func (c *Client) GetNodesUsage(ctx context.Context, start, end time.Time) (Nodes
 	}
 	return envelope.Response, nil
 }
-
-// GetNodesMetrics returns the on-demand online-user counters.
-func (c *Client) GetNodesMetrics(ctx context.Context) ([]NodeMetric, error) {
-	var envelope struct {
-		Response struct {
-			Nodes []NodeMetric `json:"nodes"`
-		} `json:"response"`
-	}
-	if err := c.do(ctx, http.MethodGet, "/api/system/nodes/metrics", nil, nil, &envelope); err != nil {
-		return nil, err
-	}
-	return envelope.Response.Nodes, nil
-}

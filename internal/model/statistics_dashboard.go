@@ -31,7 +31,6 @@ type RemoteStatistics struct {
 	MonthlyAverageUsage    float64             `json:"monthlyAverageUsagePercent"`
 	TrafficDates           []string            `json:"trafficDates"`
 	TrafficSeries          []NodeTrafficSeries `json:"trafficSeries"`
-	SquadNames             map[string]string   `json:"-"`
 }
 
 // DatabaseStatistics is the compact local statistics partition.

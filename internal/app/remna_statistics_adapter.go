@@ -43,29 +43,17 @@ func (a remnaAdapter) SquadNames(ctx context.Context) (map[string]string, error)
 }
 
 func (a remnaAdapter) Nodes(ctx context.Context) ([]productstats.Node, error) {
+	// The documented node collection already carries the live health and rate fields.
 	nodes, err := remnaCall(ctx, a, func(callCtx context.Context, client remnaClient) ([]remnawave.Node, error) {
 		return client.ListNodes(callCtx)
 	})
 	if err != nil {
 		return nil, err
 	}
-	metrics, err := remnaCall(ctx, a, func(callCtx context.Context, client remnaClient) ([]remnawave.NodeMetric, error) {
-		return client.GetNodesMetrics(callCtx)
-	})
-	online := make(map[string]int64, len(metrics))
-	if err == nil {
-		for _, metric := range metrics {
-			online[metric.UUID] = metric.UsersOnline
-		}
-	}
 	result := make([]productstats.Node, 0, len(nodes))
 	for _, node := range nodes {
-		usersOnline := node.UsersOnline
-		if metricUsersOnline, ok := online[node.UUID]; ok {
-			usersOnline = metricUsersOnline
-		}
 		item := productstats.Node{UUID: node.UUID, Name: node.Name, CountryCode: node.CountryCode,
-			Online: node.IsConnected, UsersOnline: usersOnline, Multiplier: node.ConsumptionMultiplier}
+			Online: node.IsConnected && !node.IsDisabled, UsersOnline: node.UsersOnline, Multiplier: node.ConsumptionMultiplier}
 		if node.System != nil && node.System.Stats.Interface != nil {
 			item.RXBytesPerSecond = node.System.Stats.Interface.RXBytesPerSecond
 			item.TXBytesPerSecond = node.System.Stats.Interface.TXBytesPerSecond

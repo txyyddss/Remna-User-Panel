@@ -124,7 +124,7 @@ func TestProductStatisticsCountDeduplicatedRawGroupMessages(t *testing.T) {
 	}
 }
 
-func TestProductStatisticsExcludeFutureActiveRowsAndIncludeAllTerminalPayments(t *testing.T) {
+func TestProductStatisticsExcludeFutureActiveRowsAndIgnoredPaymentStates(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	store := newTestStore(t)
@@ -155,8 +155,8 @@ func TestProductStatisticsExcludeFutureActiveRowsAndIncludeAllTerminalPayments(t
 	if len(statistics.ComboShares) != 0 || shareValue(statistics.SubscriptionStates, "no_active") != 1 {
 		t.Fatalf("future active metrics = states %+v, combos %+v", statistics.SubscriptionStates, statistics.ComboShares)
 	}
-	if shareValue(statistics.PaymentStatuses, "bepusdt:failed") != 1 || shareValue(statistics.PaymentStatuses, "bepusdt:refunded") != 1 {
-		t.Fatalf("terminal payment shares = %+v", statistics.PaymentStatuses)
+	if len(statistics.PaymentStatuses) != 0 {
+		t.Fatalf("ignored payment shares = %+v", statistics.PaymentStatuses)
 	}
 }
 

@@ -31,13 +31,6 @@ type StatsDigest struct {
 	TrafficBytes int64
 }
 
-// NodeMetric is the live online-user portion of the metrics response.
-type NodeMetric struct {
-	UUID        string `json:"nodeUuid"`
-	Name        string `json:"nodeName"`
-	UsersOnline int64  `json:"usersOnline"`
-}
-
 // Host is the identity, remark, and linked-node subset used by remark upkeep.
 type Host struct {
 	UUID   string   `json:"uuid"`

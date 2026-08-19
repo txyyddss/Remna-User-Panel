@@ -11,6 +11,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/billing"
 	"github.com/txyyddss/Remna-User-Panel/internal/botcommands"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
+	"github.com/txyyddss/Remna-User-Panel/internal/model"
 )
 
 func (s *Server) processTelegramGroupMessage(ctx context.Context, message *telegram.Message) {
@@ -65,17 +66,15 @@ func telegramGroupMessageDate(configuredZone string, configErr error, now time.T
 func (s *Server) processTelegramCommand(ctx context.Context, message *telegram.Message, command botcommands.Command) {
 	copy := botcommands.Text(botcommands.LanguageFor(message.From.LanguageCode))
 	if command.Name == botcommands.Deduct {
-		if len(command.Args) == 1 {
-			s.processTelegramDeduction(ctx, message, command.Args[0])
-		}
+		s.processTelegramDeduction(ctx, message, command, copy)
 		return
 	}
 	if !command.Known || len(command.Args) > 0 && command.Name != botcommands.Start {
-		s.sendTelegramReply(ctx, message, copy.Unknown)
+		s.sendTelegramReply(ctx, message, botcommands.FormatUnknown(copy))
 		return
 	}
 	if command.Name == botcommands.Start {
-		s.sendTelegramReply(ctx, message, copy.Start)
+		s.sendTelegramReply(ctx, message, botcommands.FormatStart(copy))
 		return
 	}
 	target := message.From
@@ -84,7 +83,7 @@ func (s *Server) processTelegramCommand(ctx context.Context, message *telegram.M
 	}
 	user, err := s.deps.Store.UserByTelegramID(ctx, target.ID)
 	if err != nil {
-		s.sendTelegramReply(ctx, message, copy.Unavailable)
+		s.sendTelegramReply(ctx, message, botcommands.FormatUnavailable(copy))
 		return
 	}
 	var reply string
@@ -108,13 +107,13 @@ func (s *Server) processTelegramCommand(ctx context.Context, message *telegram.M
 		reply = s.telegramComboReply(ctx, user, copy)
 	}
 	if strings.TrimSpace(reply) == "" {
-		reply = copy.Unavailable
+		reply = botcommands.FormatUnavailable(copy)
 	}
 	s.sendTelegramReply(ctx, message, reply)
 }
 
 func (s *Server) sendTelegramReply(ctx context.Context, message *telegram.Message, reply string) {
-	if err := s.deps.Telegram.SendMessage(ctx, message.Chat.ID, message.MessageID, botcommands.Limit(reply)); err != nil {
+	if err := s.deps.Telegram.SendMarkdownV2Message(ctx, message.Chat.ID, message.MessageID, botcommands.Limit(reply)); err != nil {
 		s.deps.Logger.Warn("send Telegram command reply", "chat_id", message.Chat.ID, "message_id", message.MessageID, "error", err)
 	}
 }
@@ -129,27 +128,38 @@ func (s *Server) telegramGroupID(ctx context.Context) (int64, bool) {
 	return groupID, err == nil && groupID != 0
 }
 
-func (s *Server) processTelegramDeduction(ctx context.Context, message *telegram.Message, amountText string) {
-	if message.From == nil || !s.isAdminTelegramID(message.From.ID) || message.ReplyToMessage == nil || message.ReplyToMessage.From == nil || message.ReplyToMessage.From.IsBot {
+func (s *Server) processTelegramDeduction(ctx context.Context, message *telegram.Message, command botcommands.Command, copy botcommands.Copy) {
+	if len(command.Args) != 1 {
+		s.sendTelegramReply(ctx, message, botcommands.FormatDeductUsage(copy))
 		return
 	}
-	amount, err := billing.ParseTXBMajor(amountText)
+	amount, err := billing.ParseTXBMajor(command.Args[0])
 	if err != nil || amount <= 0 {
+		s.sendTelegramReply(ctx, message, botcommands.FormatDeductUsage(copy))
+		return
+	}
+	if message.From == nil || !s.isAdminTelegramID(message.From.ID) || message.ReplyToMessage == nil || message.ReplyToMessage.From == nil || message.ReplyToMessage.From.IsBot {
+		s.sendTelegramReply(ctx, message, botcommands.FormatDeductRejected(copy))
 		return
 	}
 	actor, err := s.deps.Store.UserByTelegramID(ctx, message.From.ID)
 	if err != nil {
 		s.deps.Logger.Warn("load Telegram administrator for deduction", "error", err)
+		s.sendTelegramReply(ctx, message, botcommands.FormatDeductRejected(copy))
 		return
 	}
 	target, err := s.deps.Store.UserByTelegramID(ctx, message.ReplyToMessage.From.ID)
 	if err != nil {
+		s.sendTelegramReply(ctx, message, botcommands.FormatDeductRejected(copy))
 		return
 	}
 	reason := fmt.Sprintf("Telegram /deduct in chat %d on message %d", message.Chat.ID, message.ReplyToMessage.MessageID)
 	if _, err := s.deps.Admin.DeductBalance(ctx, actor.ID, target.ID, amount, reason); err != nil {
 		s.deps.Logger.Warn("Telegram TXB deduction rejected", "actor_id", actor.ID, "target_id", target.ID, "amount_minor", amount, "error", err)
+		s.sendTelegramReply(ctx, message, botcommands.FormatDeductRejected(copy))
+		return
 	}
+	s.sendTelegramReply(ctx, message, botcommands.FormatDeductSucceeded(copy, model.TXBMoney(amount)))
 }
 
 func telegramDeductCommand(text string) (string, bool) {

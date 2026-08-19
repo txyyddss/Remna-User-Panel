@@ -17,7 +17,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/providerops"
 )
 
-var standaloneDecimal = regexp.MustCompile(`(^|[^[:alnum:]_.])([0-9]+\.[0-9]+(?:[xX])?)([^[:alnum:]_.]|$)`)
+var standaloneMultiplier = regexp.MustCompile(`(^|[^[:alnum:]_.])([0-9]+\.[0-9]+)x([^[:alnum:]_.]|$)`)
 
 // HostUpdateRepository persists scheduled provider mutations before execution.
 type HostUpdateRepository interface {
@@ -55,7 +55,7 @@ func QueueHostMultiplierUpdates(ctx context.Context, provider Provider, reposito
 		if !ok {
 			continue
 		}
-		next, changed := replaceFirstDecimal(host.Remark, multiplier)
+		next, changed := replaceFirstMultiplier(host.Remark, multiplier)
 		if !changed || next == host.Remark {
 			continue
 		}
@@ -114,8 +114,8 @@ func decodeHostRemarkTarget(value string) (hostRemarkTarget, error) {
 	return target, nil
 }
 
-func replaceFirstDecimal(value, replacement string) (string, bool) {
-	match := standaloneDecimal.FindStringSubmatchIndex(value)
+func replaceFirstMultiplier(value, replacement string) (string, bool) {
+	match := standaloneMultiplier.FindStringSubmatchIndex(value)
 	if match == nil {
 		return value, false
 	}

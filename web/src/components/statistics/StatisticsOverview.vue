@@ -42,6 +42,7 @@ const metrics = computed(() => {
           :center-label="$t('statistics.weeklyIncrease')"
           :center-value="formatSignedStatistic(snapshot.remote.weeklyUserIncrease)"
           :chart-label="$t('statistics.weeklyIncreaseChartLabel', { value: formatSignedStatistic(snapshot.remote.weeklyUserIncrease) })"
+          legend-below
         />
       </article>
       <article class="statistics-panel statistics-metrics">

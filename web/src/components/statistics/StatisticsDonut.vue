@@ -10,6 +10,7 @@ const props = defineProps<{
   centerLabel: string
   centerValue: string
   chartLabel: string
+  legendBelow?: boolean
 }>()
 
 const segments = computed(() => chartSegments(props.items))
@@ -17,7 +18,7 @@ const rings = computed(() => ringSegments(segments.value))
 </script>
 
 <template>
-  <div class="statistics-donut-layout">
+  <div class="statistics-donut-layout" :class="{ 'statistics-donut-layout--legend-below': legendBelow }">
     <div class="statistics-donut">
       <svg viewBox="0 0 120 120" role="img" :aria-label="chartLabel">
         <title>{{ chartLabel }}</title>

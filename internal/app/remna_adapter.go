@@ -20,7 +20,6 @@ type remnaClient interface {
 	GetUserStats(context.Context, int64, time.Time, time.Time, int) (*remnawave.UserStats, error)
 	GetStatsDigest(context.Context, time.Time, time.Time) (remnawave.StatsDigest, error)
 	GetNodesUsage(context.Context, time.Time, time.Time) (remnawave.NodesUsage, error)
-	GetNodesMetrics(context.Context) ([]remnawave.NodeMetric, error)
 	RequestUserConnections(context.Context, int64) (string, error)
 	UserConnections(context.Context, string) (remnawave.ConnectionScan, error)
 	DropConnectionByIP(context.Context, string, string) error

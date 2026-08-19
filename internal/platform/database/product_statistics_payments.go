@@ -15,18 +15,18 @@ func (s *Store) paymentStatusShares(ctx context.Context) ([]model.NamedShare, er
 			WHEN cancelled_at IS NOT NULL THEN 'cancelled'
 			WHEN status='expired' THEN 'expired'
 			ELSE '' END,1
-		FROM payment_orders WHERE provider IN ('bepusdt','ezpay','stars')
+		FROM payment_orders WHERE provider IN ('bepusdt','ezpay')
 		UNION ALL
 		SELECT provider,status,order_count FROM payment_status_rollups
-		WHERE provider IN ('bepusdt','ezpay','stars'))
+		WHERE provider IN ('bepusdt','ezpay'))
 	SELECT provider,terminal,SUM(order_count) FROM payment_facts
-	WHERE terminal IN ('paid','expired','cancelled','failed','refunded')
+	WHERE terminal IN ('paid','expired','cancelled')
 	GROUP BY provider,terminal ORDER BY provider,terminal`)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
-	result := make([]model.NamedShare, 0, 15)
+	result := make([]model.NamedShare, 0, 6)
 	for rows.Next() {
 		var provider, status string
 		var count float64

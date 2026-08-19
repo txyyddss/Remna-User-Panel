@@ -17,6 +17,8 @@
     "revokeDescription": "所有使用当前订阅 URL 的设备都将失去访问。",
     "revokeLink": "撤销链接",
     "usage": "用量",
+    "online": "在线",
+    "offline": "离线",
     "lastKnownData": "最后已知数据",
     "remnawaveUnavailable": "Remnawave 暂时不可用。",
     "showingDataFrom": "数据时间：{date}。",

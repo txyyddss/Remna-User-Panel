@@ -1,18 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-
-import type { NamedShare, StatisticsSnapshot } from '@/api/types'
-import { useI18n } from '@/i18n'
+import type { StatisticsSnapshot } from '@/api/types'
+import StatisticsMembershipDonut from './StatisticsMembershipDonut.vue'
 import StatisticsPaymentDonut from './StatisticsPaymentDonut.vue'
-import StatisticsPie from './StatisticsPie.vue'
 
 const props = defineProps<{ database: StatisticsSnapshot['database'] }>()
-const { t } = useI18n()
-
-const subscriptions = computed<NamedShare[]>(() => props.database.subscriptionStates.map((item) => ({
-  ...item,
-  label: t(`statistics.subscription.${item.id}`),
-})))
 </script>
 
 <template>
@@ -20,23 +11,12 @@ const subscriptions = computed<NamedShare[]>(() => props.database.subscriptionSt
     <div class="statistics-section__heading"><h2>{{ $t('statistics.distributions') }}</h2></div>
     <div class="statistics-share-grid">
       <article class="statistics-panel">
-        <h3>{{ $t('statistics.subscriptionStates') }}</h3>
-        <StatisticsPie
-          :items="subscriptions"
-          :chart-label="$t('statistics.subscriptionChartLabel')"
-          slice-labels
-        />
-      </article>
-      <article class="statistics-panel">
-        <h3>{{ $t('statistics.comboChoices') }}</h3>
-        <StatisticsPie
-          :items="database.comboShares"
-          :chart-label="$t('statistics.comboChartLabel')"
-        />
+        <h3>{{ $t('statistics.members') }}</h3>
+        <StatisticsMembershipDonut :database="props.database" />
       </article>
       <article class="statistics-panel">
         <h3>{{ $t('statistics.paymentStates') }}</h3>
-        <StatisticsPaymentDonut :items="database.paymentStatuses" />
+        <StatisticsPaymentDonut :items="props.database.paymentStatuses" />
       </article>
     </div>
   </section>

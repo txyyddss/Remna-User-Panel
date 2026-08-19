@@ -44,7 +44,7 @@ func TestRefreshRemoteUsesCreatedUsersAndCurrentMemberUsage(t *testing.T) {
 	}
 }
 
-func TestRefreshRemoteRejectsPartialMemberUsage(t *testing.T) {
+func TestRefreshRemoteSkipsUnavailableMemberUsage(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC)
 	remoteID := "remote-1"
@@ -54,9 +54,9 @@ func TestRefreshRemoteRejectsPartialMemberUsage(t *testing.T) {
 		users:     map[string]model.User{"purchase-1": {ID: "user-1", Role: "user", RemnaUserID: &remoteID}},
 	}
 	provider := &statisticsProviderStub{usageErrors: map[string]error{remoteID: sentinel}}
-	_, err := NewService(repository, provider).refreshRemote(context.Background(), now)
-	if !errors.Is(err, sentinel) {
-		t.Fatalf("refreshRemote() error = %v, want provider failure", err)
+	remote, err := NewService(repository, provider).refreshRemote(context.Background(), now)
+	if err != nil || remote.MonthlyAverageUsageBPS != 0 {
+		t.Fatalf("refreshRemote() = (%+v, %v)", remote, err)
 	}
 }
 

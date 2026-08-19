@@ -24,6 +24,30 @@ describe('UsagePanel', () => {
     })
     expect(wrapper.text()).toContain('Last known data')
     expect(wrapper.text()).toContain('Remnawave is temporarily unavailable.')
+    expect(wrapper.text()).toContain('OFFLINE')
     expect(wrapper.text()).toContain('25%')
+    wrapper.unmount()
+  })
+
+  it('marks a recent UTC online timestamp as online', () => {
+    const wrapper = mount(UsagePanel, {
+      props: {
+        ratio: 0,
+        stale: false,
+        fetchedAt: '2026-08-07T00:00:00Z',
+        statistics: {
+          usedTrafficBytes: '0',
+          lifetimeTrafficBytes: '0',
+          trafficLimitBytes: '107374182400',
+          onlineAt: new Date(Date.now() - 30_000).toISOString(),
+          categories: [],
+          sparklineData: [],
+          topNodes: [],
+        },
+        catalogNodes: [],
+      },
+    })
+    expect(wrapper.text()).toContain('ONLINE')
+    wrapper.unmount()
   })
 })

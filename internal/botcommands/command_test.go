@@ -25,7 +25,7 @@ func TestLanguageForChineseVariants(t *testing.T) {
 func TestLimitBoundsTelegramReply(t *testing.T) {
 	t.Parallel()
 	result := Limit(strings.Repeat("界", MessageLimit+100))
-	if len([]rune(result)) > MessageLimit || !strings.HasSuffix(result, "...") {
+	if len([]rune(result)) > MessageLimit || !strings.HasSuffix(result, markdownV2Ellipsis) {
 		t.Fatalf("bounded result has %d runes", len([]rune(result)))
 	}
 }
