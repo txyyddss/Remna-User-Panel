@@ -52,6 +52,11 @@ func TestAdminBulkExtensionUsesInclusiveORDeduplicationAndQueueShift(t *testing.
 	if !targetIDs[userOne.ID] || !targetIDs[userTwo.ID] {
 		t.Fatalf("targets = %+v", targets)
 	}
+	for _, target := range targets {
+		if target.UserID == userOne.ID && target.PurchaseID != second.ID {
+			t.Fatalf("user one target = %q, want current purchase %q", target.PurchaseID, second.ID)
+		}
+	}
 
 	operation, err := store.CreateAdminBulkExtension(ctx, AdminBulkExtensionInput{ActorUserID: actor.ID,
 		IdempotencyKey: "bulk-extension", RequestFingerprint: "bulk-extension-fingerprint", Reason: "service credit",

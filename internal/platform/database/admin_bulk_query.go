@@ -27,7 +27,7 @@ func adminBulkTargets(ctx context.Context, queryer adminBulkQueryer, filter Admi
 	queryArgs = append(queryArgs, args...)
 	rows, err := queryer.QueryContext(ctx, `SELECT purchases.id,purchases.user_id FROM purchases
 		WHERE purchases.status='active' AND purchases.valid_from<=? AND purchases.valid_until>? AND (`+clause+`)
-		ORDER BY purchases.user_id,purchases.valid_until DESC,purchases.id`, queryArgs...)
+		ORDER BY purchases.user_id,purchases.valid_until,purchases.id`, queryArgs...)
 	if err != nil {
 		return nil, AdminBulkExtensionPreview{}, err
 	}
