@@ -54,6 +54,7 @@
   },
   "connections": {
     "manage": "管理连接",
+    "open": "连接",
     "eyebrow": "订阅安全",
     "title": "活跃连接",
     "subtitle": "查看最近出现的 IP 地址，并断开不再属于你的连接。",

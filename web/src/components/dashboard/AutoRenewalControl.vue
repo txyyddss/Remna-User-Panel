@@ -71,7 +71,8 @@ async function updateRenewal(next: boolean): Promise<void> {
             <USwitch v-if="showSwitch" v-model="switchValue" :color="enabled ? 'success' : 'error'" :label="$t('home.autoRenewalSwitch')" :loading="updating" :disabled="updating" data-haptic @update:model-value="updateRenewal" />
             <InlineNotice v-else tone="warning">{{ eligibilityMessage }}</InlineNotice>
           </template>
-          <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
+          <InlineNotice v-else tone="warning">{{ error ?? $t('errors.autoRenewalFailed') }}</InlineNotice>
+          <InlineNotice v-if="error && renewal" tone="warning">{{ error }}</InlineNotice>
         </div>
       </template>
     </UModal>

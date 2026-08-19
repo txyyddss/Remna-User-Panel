@@ -57,3 +57,9 @@ type Provider interface {
 	Hosts(context.Context) ([]Host, error)
 	UpdateHostRemark(context.Context, string, string) error
 }
+
+// SquadNameProvider exposes the live Remnawave identity labels used only to
+// decorate statistics. The labels remain upstream-owned and are not stored.
+type SquadNameProvider interface {
+	SquadNames(context.Context) (map[string]string, error)
+}

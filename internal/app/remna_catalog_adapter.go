@@ -28,6 +28,15 @@ func (a remnaAdapter) Dashboard(ctx context.Context, remoteID string) (catalog.R
 	if err != nil {
 		return catalog.RemoteDashboard{}, err
 	}
+	multipliers := make(map[string]float64)
+	nodes, nodeErr := remnaCall(ctx, a, func(callCtx context.Context, client remnaClient) ([]remnawave.Node, error) {
+		return client.ListNodes(callCtx)
+	})
+	if nodeErr == nil {
+		for _, node := range nodes {
+			multipliers[node.UUID] = node.ConsumptionMultiplier
+		}
+	}
 	mapped := model.Statistics{
 		UsedTrafficBytes:     strconv.FormatInt(user.UserTraffic.UsedTrafficBytes, 10),
 		LifetimeTrafficBytes: strconv.FormatInt(user.UserTraffic.LifetimeUsedTrafficBytes, 10),
@@ -39,10 +48,14 @@ func (a remnaAdapter) Dashboard(ctx context.Context, remoteID string) (catalog.R
 		mapped.SparklineData = append(mapped.SparklineData, strconv.FormatInt(sample, 10))
 	}
 	for _, node := range stats.TopNodes {
-		mapped.TopNodes = append(mapped.TopNodes, model.TopNode{
+		item := model.TopNode{
 			UUID: node.UUID, Name: node.Name, CountryCode: node.CountryCode,
 			TotalBytes: strconv.FormatInt(node.Total, 10),
-		})
+		}
+		if multiplier, ok := multipliers[node.UUID]; ok {
+			item.ConsumptionMultiplier = &multiplier
+		}
+		mapped.TopNodes = append(mapped.TopNodes, item)
 	}
 	return catalog.RemoteDashboard{Statistics: mapped, SubscriptionURL: user.SubscriptionURL}, nil
 }

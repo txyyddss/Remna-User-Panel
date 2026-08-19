@@ -107,7 +107,9 @@ func (a remnaAdapter) UsageSnapshotForRollover(ctx context.Context, remoteID str
 		return rollover.UsageSnapshot{}, err
 	}
 	stats, err := remnaCall(ctx, a, func(callCtx context.Context, client remnaClient) (*remnawave.UserStats, error) {
-		return client.GetUserStats(callCtx, userID, start.UTC(), end.Add(-time.Nanosecond).UTC(), 20)
+		// Remnawave accepts date-only, inclusive ranges. Keep the final date so
+		// a newly activated term with equal start and end timestamps remains valid.
+		return client.GetUserStats(callCtx, userID, start.UTC(), end.UTC(), 20)
 	})
 	if remnawave.IsNotFound(err) {
 		return rollover.UsageSnapshot{}, rollover.ErrRemoteUserMissing

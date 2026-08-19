@@ -49,26 +49,27 @@ function openConnections(): void {
           @click="copyLink"
         />
       </div>
-      <UButton
-        block
-        color="neutral"
-        variant="outline"
-        icon="i-ph-devices"
-        trailing-icon="i-ph-arrow-right"
-        :label="$t('connections.manage')"
-        data-haptic
-        @click="openConnections"
-      />
-      <UButton
-        class="home-subscription__revoke"
-        color="error"
-        variant="ghost"
-        icon="i-ph-trash"
-        :disabled="revokeBlocked"
-        :label="$t('common.revoke')"
-        data-haptic
-        @click="confirmOpen = true"
-      />
+      <div class="home-subscription__actions">
+        <UButton
+          class="home-subscription__connections"
+          color="neutral"
+          variant="outline"
+          icon="i-ph-devices"
+          :label="$t('connections.open')"
+          data-haptic
+          @click="openConnections"
+        />
+        <UButton
+          class="home-subscription__revoke"
+          color="error"
+          variant="ghost"
+          icon="i-ph-trash"
+          :disabled="revokeBlocked"
+          :label="$t('common.revoke')"
+          data-haptic
+          @click="confirmOpen = true"
+        />
+      </div>
     </template>
     <div v-else class="empty-inline">
       <div>

@@ -49,6 +49,7 @@ const { t } = useI18n()
       :hint="t('payment.amountRange', { min: txbInputFromMinor(minimumMinor), max: txbInputFromMinor(maximumMinor) })"
       :min-minor="minimumMinor"
       :max-minor="maximumMinor"
+      integer-only
       required
       @update:model-value="emit('update:amount', String($event))"
     />

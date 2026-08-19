@@ -54,6 +54,7 @@
   },
   "connections": {
     "manage": "Manage connections",
+    "open": "Connections",
     "eyebrow": "Subscription security",
     "title": "Active connections",
     "subtitle": "Review recently seen IP addresses and disconnect one when access is no longer yours.",

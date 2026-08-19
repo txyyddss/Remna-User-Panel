@@ -100,8 +100,16 @@
   border-radius: 0;
 }
 
-.home-subscription__revoke {
+.home-subscription__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
   margin-top: 0.55rem;
+}
+
+.home-subscription__connections,
+.home-subscription__revoke {
+  min-width: 0;
 }
 
 .home-usage .notice {

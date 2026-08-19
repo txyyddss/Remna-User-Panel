@@ -51,5 +51,6 @@ stopped.
 - `app_test.go` verifies normalized Telegram Stars transaction directions.
 - `adapter_queue_test.go` verifies Remnawave and Emby adapter calls enter their queue before client construction.
 - `remna_entitlements_adapter_test.go` verifies active expiry propagation and the disabled-user far-future expiry.
+- `remna_entitlements_rollover_test.go` verifies that rollover usage keeps Remnawave's inclusive final date.
 - `provider_queues_test.go` verifies provider queue configuration and independent worker operation.
 - `adapters_part2.go` contains the remaining payment-provider verification and callback mapping helpers.

@@ -63,6 +63,10 @@
   margin-top: 0.5rem;
 }
 
+.connections-progress__bar {
+  width: 100%;
+}
+
 .connections-progress h2,
 .connections-empty h2,
 .connection-node h2 {

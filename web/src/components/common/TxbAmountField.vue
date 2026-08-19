@@ -10,12 +10,14 @@ const props = withDefaults(defineProps<{
   hint?: string
   minMinor?: string
   maxMinor?: string
+  integerOnly?: boolean
   required?: boolean
   disabled?: boolean
 }>(), {
   hint: undefined,
   minMinor: '0',
   maxMinor: undefined,
+  integerOnly: false,
   required: false,
   disabled: false,
 })
@@ -30,13 +32,18 @@ const numericModel = computed<number | null>({
     return Number.isFinite(value) ? value : null
   },
   set: (value) => {
-    model.value = value === null || !Number.isFinite(value) ? '' : value.toFixed(2)
+    if (value === null || !Number.isFinite(value)) {
+      model.value = ''
+      return
+    }
+    model.value = props.integerOnly ? String(Math.trunc(value)) : value.toFixed(2)
   },
 })
 const minimum = computed(() => minorToNumber(props.minMinor))
 const maximum = computed(() => props.maxMinor === undefined ? undefined : minorToNumber(props.maxMinor))
 const valid = computed(() => {
   if (minor.value === '') return false
+  if (props.integerOnly && !/^\d+$/.test(model.value.trim())) return false
   const value = BigInt(minor.value)
   return value >= BigInt(props.minMinor)
     && (props.maxMinor === undefined || value <= BigInt(props.maxMinor))
@@ -75,8 +82,8 @@ function minorToNumber(value: string): number | undefined {
         class="amount-number"
         :min="minimum"
         :max="maximum"
-        :step="0.01"
-        :format-options="{ useGrouping: false, minimumFractionDigits: 2, maximumFractionDigits: 2 }"
+        :step="integerOnly ? 1 : 0.01"
+        :format-options="{ useGrouping: false, minimumFractionDigits: integerOnly ? 0 : 2, maximumFractionDigits: integerOnly ? 0 : 2 }"
         increment
         decrement
         :required="required"

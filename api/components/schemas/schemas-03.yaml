@@ -191,6 +191,9 @@ TopNode:
     totalBytes:
       type: string
       pattern: '^\d+$'
+    consumptionMultiplier:
+      type: number
+      minimum: 0
 
 Statistics:
   type: object

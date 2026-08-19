@@ -44,6 +44,7 @@ function multiplierLabel(value: number | null): string {
   return t('home.trafficMultiplierValue', { value: formatted })
 }
 
+function finiteMultiplier(value: unknown): number | null { return typeof value === 'number' && Number.isFinite(value) ? value : null }
 const catalogByUuid = computed(() => new Map(props.catalogNodes.map((node) => [node.uuid, node])))
 function multiplierFactor(value: number | null): bigint {
   if (value === null || !Number.isFinite(value) || value < 0) return multiplierScale
@@ -54,7 +55,7 @@ const sourceNodes = computed<SourceNode[]>(() => props.nodes
   .map((node, index) => {
     const bytes = byteCount(node.totalBytes)
     const metadata = catalogByUuid.value.get(node.uuid)
-    const multiplier = metadata && Number.isFinite(metadata.consumptionMultiplier) ? metadata.consumptionMultiplier : null
+    const multiplier = finiteMultiplier(node.consumptionMultiplier) ?? finiteMultiplier(metadata?.consumptionMultiplier)
     const calculatedBytes = props.useMultiplier
       ? (bytes * multiplierFactor(multiplier)) / multiplierScale
       : bytes

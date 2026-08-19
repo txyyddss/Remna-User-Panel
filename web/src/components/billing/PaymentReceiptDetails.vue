@@ -5,6 +5,7 @@ import type { FeaturePaymentOrder, FeaturePaymentReturnStatus } from '@/api/feat
 import type { PaymentReturnState } from '@/composables/usePaymentReturn'
 import { useI18n } from '@/i18n'
 import { formatDateTime, formatMoney } from '@/utils/format'
+import { paymentChannelLabel } from './paymentOptions'
 
 type PaymentReceipt = FeaturePaymentOrder | FeaturePaymentReturnStatus
 type ReceiptColor = 'neutral' | 'success' | 'warning' | 'error'
@@ -53,7 +54,7 @@ const receiptFields = computed(() => {
   return [
     { key: 'id', label: t('payment.paymentId'), value: details.id, icon: 'i-ph-hash', mono: true },
     { key: 'provider', label: t('payment.provider'), value: localized(`payment.providers.${details.provider}`, details.provider), icon: 'i-ph-storefront' },
-    { key: 'channel', label: t('payment.channel'), value: localized(`payment.channels.${details.providerRail}`, details.providerRail), icon: 'i-ph-channels' },
+    { key: 'channel', label: t('payment.channel'), value: paymentChannelLabel(details.providerRail, details.providerRail), icon: 'i-ph-channels' },
     { key: 'paid', label: t('payment.successTime'), value: formatDateTime(details.paidAt ?? undefined), icon: 'i-ph-calendar-check' },
   ]
 })

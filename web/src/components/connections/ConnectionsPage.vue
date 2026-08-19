@@ -72,7 +72,7 @@ watch(() => drop.receipt.value, (receipt) => {
     <section v-else-if="scan.polling.value" class="connections-progress" aria-live="polite">
       <div class="connections-progress__icon"><UIcon name="i-ph-radar" aria-hidden="true" /></div>
       <div><h2>{{ $t('connections.scanning') }}</h2><p>{{ $t('connections.progress', { percent: Math.round(scan.progressPercent.value) }) }}</p></div>
-      <UProgress :model-value="scan.progressPercent.value" :max="100" />
+      <UProgress class="connections-progress__bar" :model-value="scan.progressPercent.value" :max="100" />
     </section>
 
     <section v-else-if="scan.error.value || scan.failed.value" class="error-state error-state--compact">

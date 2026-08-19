@@ -2,6 +2,7 @@ package billing
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -28,8 +29,11 @@ func (s *Service) createCheckout(ctx context.Context, user model.User, order mod
 	}
 	result, err := s.storeCheckout(ctx, order, checkout)
 	if err != nil {
+		if errors.Is(err, ErrInvalidOrder) {
+			_ = s.repository.FailPaymentOrder(ctx, order.ID)
+		}
 		// The provider has accepted the create request, so the outcome must
-		// remain reconcilable instead of being marked terminal locally.
+		// remain reconcilable when only the local checkout write failed.
 		return model.PaymentOrder{}, err
 	}
 	return result, nil

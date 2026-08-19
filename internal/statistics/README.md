@@ -5,6 +5,7 @@
 - `host_rewriter_test.go` pins decimal-token boundaries without making provider calls.
 - `service_test.go` pins seven-day created-user semantics, 30-day active-member usage, missing-identity/upstream-user skips, and all-or-stale refresh behavior.
 - `service.go` refreshes remote/database partitions independently; `partitions.go` persists and restores last-good values.
+- `squad_names.go` overlays live queued Remnawave squad names onto the local statistics distributions without persisting upstream identities; `squad_names_test.go` covers the mapping.
 - `usage_projection.go` averages each current non-admin member's live 30-day cadence and weighted-node usage projection, skipping only missing local or deleted upstream identities.
 - `node_cache.go` implements the shared on-demand ten-second node cache.
 - `host_worker.go` maps queued host-multiplier updates onto provider-operation items.

@@ -78,10 +78,11 @@ type Dashboard struct {
 
 // TopNode is an upstream node usage summary.
 type TopNode struct {
-	UUID        string `json:"uuid"`
-	Name        string `json:"name"`
-	CountryCode string `json:"countryCode"`
-	TotalBytes  string `json:"totalBytes"`
+	UUID                  string   `json:"uuid"`
+	Name                  string   `json:"name"`
+	CountryCode           string   `json:"countryCode"`
+	TotalBytes            string   `json:"totalBytes"`
+	ConsumptionMultiplier *float64 `json:"consumptionMultiplier,omitempty"`
 }
 
 // DashboardNodeUsage is the date-bounded, per-node traffic projection exposed

@@ -30,6 +30,18 @@ func (a remnaAdapter) Traffic(ctx context.Context, start, end time.Time) (produc
 	return result, nil
 }
 
+func (a remnaAdapter) SquadNames(ctx context.Context) (map[string]string, error) {
+	squads, err := a.listSquads(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]string, len(squads))
+	for _, squad := range squads {
+		result[squad.UUID] = squad.Name
+	}
+	return result, nil
+}
+
 func (a remnaAdapter) Nodes(ctx context.Context) ([]productstats.Node, error) {
 	nodes, err := remnaCall(ctx, a, func(callCtx context.Context, client remnaClient) ([]remnawave.Node, error) {
 		return client.ListNodes(callCtx)
@@ -84,3 +96,4 @@ func (a remnaAdapter) UpdateHostRemark(ctx context.Context, hostUUID, remark str
 }
 
 var _ productstats.Provider = remnaAdapter{}
+var _ productstats.SquadNameProvider = remnaAdapter{}

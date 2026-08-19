@@ -67,10 +67,9 @@ func (s *Store) activeCatalogStatistics(ctx context.Context, now time.Time) ([]m
 
 func (s *Store) activeDistributionFacts(ctx context.Context, now time.Time) ([]distributionFact, error) {
 	rows, err := s.db.QueryContext(ctx, activeEntitlementAssignments+`
-	SELECT c.id,c.name,assignments.squad_uuid,COALESCE(NULLIF(product.name,''),assignments.squad_uuid),COUNT(DISTINCT assignments.user_id)
+	SELECT c.id,c.name,assignments.squad_uuid,assignments.squad_uuid,COUNT(DISTINCT assignments.user_id)
 	FROM assignments JOIN combos c ON c.id=assignments.combo_id
-	LEFT JOIN squad_products product ON product.remna_squad_uuid=assignments.squad_uuid
-	GROUP BY c.id,c.name,assignments.squad_uuid,product.name ORDER BY c.name,product.name,assignments.squad_uuid`, stamp(now), stamp(now))
+	GROUP BY c.id,c.name,assignments.squad_uuid ORDER BY c.name,assignments.squad_uuid`, stamp(now), stamp(now))
 	if err != nil {
 		return nil, err
 	}

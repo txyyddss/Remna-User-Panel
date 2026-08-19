@@ -57,7 +57,7 @@ func (c *Client) UserConnections(ctx context.Context, jobID string) (ConnectionS
 	result := ConnectionScan{Completed: envelope.Response.Completed, Failed: envelope.Response.Failed, Progress: envelope.Response.Progress.Percent}
 	if envelope.Response.Result != nil {
 		result.Nodes = envelope.Response.Result.Nodes
-		if result.Completed && !envelope.Response.Result.Success {
+		if result.Completed && !envelope.Response.Result.Success && len(result.Nodes) == 0 {
 			result.Failed = true
 		}
 	}

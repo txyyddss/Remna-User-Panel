@@ -27,7 +27,8 @@ func (s *Store) HasEnabledAutoRenewal(ctx context.Context, userID string, _ time
 	return enabled == 1, nil
 }
 
-// SetAutoRenewal stores the member's explicit choice for the active term.
+// SetAutoRenewal stores the member's explicit choice for an active, activating,
+// or settled expired source term. Callers must validate eligibility first.
 func (s *Store) SetAutoRenewal(ctx context.Context, userID, purchaseID string, enabled bool, now time.Time) error {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
@@ -38,7 +39,7 @@ func (s *Store) SetAutoRenewal(ctx context.Context, userID, purchaseID string, e
 	defer func() { _ = tx.Rollback() }()
 	result, err := tx.ExecContext(ctx, `UPDATE purchases SET auto_renew_enabled=?,auto_renew_failure_reason=CASE WHEN ?=1 THEN '' ELSE auto_renew_failure_reason END,
 		auto_renew_failed_at=CASE WHEN ?=1 THEN NULL ELSE auto_renew_failed_at END,updated_at=?
-		WHERE id=? AND user_id=? AND status IN ('active','activating')`, boolInt(enabled), boolInt(enabled), boolInt(enabled), stamp(now), purchaseID, userID)
+		WHERE id=? AND user_id=? AND status IN ('active','activating','expired')`, boolInt(enabled), boolInt(enabled), boolInt(enabled), stamp(now), purchaseID, userID)
 	if err != nil {
 		return fmt.Errorf("set automatic renewal: %w", err)
 	}

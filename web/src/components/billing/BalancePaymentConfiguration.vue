@@ -9,7 +9,7 @@ import { localizedError, useI18n } from '@/i18n'
 import { createUuid } from '@/utils/browserCompatibility'
 import PaymentChannelStep from './PaymentChannelStep.vue'
 import PaymentProviderStep from './PaymentProviderStep.vue'
-import { paymentChannelLogo, type PaymentChannelOption, type PaymentProviderOption } from './paymentOptions'
+import { paymentChannelLabel, paymentChannelLogo, type PaymentChannelOption, type PaymentProviderOption } from './paymentOptions'
 
 const props = withDefaults(defineProps<{
   methods: readonly FeaturePaymentMethod[]
@@ -74,7 +74,7 @@ const providerItems = computed<PaymentProviderOption[]>(() => {
 })
 const channels = computed(() => externalMethods.value.filter((method) => profileKey(method) === selectedProfileKey.value))
 const channelItems = computed<PaymentChannelOption[]>(() => channels.value.map((method) => ({
-  label: method.name,
+  label: paymentChannelLabel(method.rail, method.name),
   value: method.id,
   description: method.available ? '' : methodNote(method),
   disabled: !method.available,

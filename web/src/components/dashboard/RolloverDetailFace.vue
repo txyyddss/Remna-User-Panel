@@ -71,7 +71,7 @@ const rolloverPresentation = computed(() => rolloverPresentationByState[rollover
           <span class="home-ride__detail-icon"><UIcon :name="rolloverPresentation.icon" aria-hidden="true" /></span>
           <strong>{{ $t(rolloverStatusKey) }}</strong>
         </div>
-        <section v-if="rolloverState !== 'alreadyExceeded'" class="home-ride__window">
+        <section class="home-ride__window">
           <h3>{{ $t('home.rolloverForecast') }}</h3>
           <dl class="home-ride__window-metrics">
             <div><dt>{{ $t('home.rolloverUsed') }}</dt><dd>{{ formatBytes(detail.actualUsedTrafficBytes ?? '0') }}</dd></div>
@@ -79,12 +79,14 @@ const rolloverPresentation = computed(() => rolloverPresentationByState[rollover
             <div><dt>{{ $t('home.rolloverMaximumUsage') }}</dt><dd>{{ formatBytes(detail.maximumAllowableUsageBytes ?? '0') }}</dd></div>
             <div>
               <dt>{{ $t(rolloverMetricLabelKey) }}</dt>
-              <dd v-if="rolloverState === 'predictedExceeded'">{{ formatBytes(detail.maximumDailyUsageBytes ?? '0') }}</dd>
+              <dd v-if="rolloverState === 'alreadyExceeded'">{{ $t('home.rolloverNotAvailable') }}</dd>
+              <dd v-else-if="rolloverState === 'predictedExceeded'">{{ formatBytes(detail.maximumDailyUsageBytes ?? '0') }}</dd>
               <dd v-else>{{ formatMoney(detail.predictedRollover!) }}</dd>
             </div>
           </dl>
         </section>
       </template>
     </template>
+    <InlineNotice v-else tone="warning">{{ $t('errors.rolloverFailed') }}</InlineNotice>
   </div>
 </template>
