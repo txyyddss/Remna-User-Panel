@@ -139,7 +139,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `billing_purchase_test.go` — purchase creation, quoting, and idempotency.
 - `billing_bounds_test.go` covers default and inclusive administrator payment bounds.
 - `billing_renewal_core_gross_test.go` covers immutable purchase-time core gross pricing for renewal lineages.
-- `automatic_renewal_store_test.go` and `automatic_renewal_coupon_test.go` — automatic-renewal defaults, toggle/idempotency/failure behavior, and attached recurring-discount policy.
+- `automatic_renewal_store_test.go`, `automatic_renewal_expired_store_test.go`, and `automatic_renewal_coupon_test.go` – automatic-renewal defaults, toggle/idempotency/failure behavior, eligibility after a settled expired term, and attached recurring-discount policy.
 - `billing_balance_test.go` — concurrent and bounded balance mutations.
 - `billing_payment_test.go` — payment settlement and deduplication.
 - `payment_callback_tombstones_test.go` covers replay protection after terminal
