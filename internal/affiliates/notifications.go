@@ -8,6 +8,7 @@ import (
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
+	"github.com/txyyddss/Remna-User-Panel/internal/telegramformat"
 )
 
 type NotificationSender interface {
@@ -80,8 +81,5 @@ func formatTXB(minor int64) string {
 }
 
 func md(value string) string {
-	replacer := strings.NewReplacer("\\", "\\\\", "_", "\\_", "*", "\\*", "[", "\\[", "]", "\\]", "(", "\\(", ")", "\\)",
-		"~", "\\~", "`", "\\`", ">", "\\>", "#", "\\#", "+", "\\+", "-", "\\-", "=", "\\=", "|", "\\|",
-		"{", "\\{", "}", "\\}", ".", "\\.", "!", "\\!")
-	return replacer.Replace(value)
+	return telegramformat.Escape(value)
 }

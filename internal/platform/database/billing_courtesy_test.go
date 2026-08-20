@@ -48,6 +48,7 @@ func TestCourtesyCreditPreservesTerminalPaymentState(t *testing.T) {
 	if err != nil || len(events) != 1 || events[0].Action != "payment.courtesy_credit" {
 		t.Fatalf("ListAuditEvents() = (%+v, %v), want courtesy audit", events, err)
 	}
+	assertNotificationCounts(t, store, 1, 1)
 
 	failed, err := store.CreatePaymentOrder(ctx, model.PaymentOrder{UserID: member.ID, Provider: "ezpay", Status: "creating", TXBMinor: 300,
 		PayableAmount: "3.00", PayableCurrency: "CNY", RateSnapshot: "1", ExpiresAt: now.Add(time.Hour)})

@@ -47,6 +47,25 @@ func TestAutomaticRenewalCommitsAtContinuityBoundary(t *testing.T) {
 	if err != nil || !available.Equal(boundary) {
 		t.Fatalf("automatic continuity available_at = %s, %v", available, err)
 	}
+	if err := store.MarkRolloverProcessing(ctx, source.ID, source.ValidUntil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.FinalizeRollover(ctx, source.ID, 1_000, 500, "", source.ValidUntil); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.MarkPurchaseSyncResult(ctx, successor.ID, true, source.ValidUntil); err != nil {
+		t.Fatal(err)
+	}
+	var kind, used, eligible string
+	if err := store.DB().QueryRowContext(ctx, `SELECT kind,json_extract(payload_json,'$.facts.usedBytes'),
+		json_extract(payload_json,'$.facts.eligibleBytes') FROM user_notification_events WHERE event_key=?`,
+		"auto-renewal:"+successor.ID).Scan(&kind, &used, &eligible); err != nil {
+		t.Fatal(err)
+	}
+	if kind != jobpayload.UserEventAutoRenewal || used != "500" || eligible != "500" {
+		t.Fatalf("automatic renewal notification = %q used %q eligible %q", kind, used, eligible)
+	}
+	assertNotificationCounts(t, store, 1, 1)
 }
 
 func TestAutomaticRenewalDefaultsToggleAndSuccessorIdempotency(t *testing.T) {

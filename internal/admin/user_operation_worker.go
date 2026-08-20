@@ -20,6 +20,10 @@ type UserOperationRepository interface {
 	DesiredEntitlement(context.Context, string, time.Time) (*model.Purchase, error)
 }
 
+type notificationItemCompleter interface {
+	CompleteProviderOperationItemAndReleaseNotifications(context.Context, string, string, providerops.Completion, time.Time) (providerops.Item, error)
+}
+
 // EntitlementRemote replaces the full upstream entitlement through its queue.
 type EntitlementRemote interface {
 	ApplyEntitlement(context.Context, string, int64, string, []string, time.Time) error
@@ -82,6 +86,12 @@ func (w *UserOperationWorker) processItem(ctx context.Context, operation provide
 		return providerops.Item{}, err
 	}
 	completion := w.applyExactState(ctx, started.TargetID)
+	if completion.Status == providerops.StatusSucceeded {
+		if repository, ok := w.repository.(notificationItemCompleter); ok {
+			return repository.CompleteProviderOperationItemAndReleaseNotifications(ctx, operation.Receipt.ID,
+				item.Key, completion, w.now().UTC())
+		}
+	}
 	return w.repository.CompleteProviderOperationItem(ctx, operation.Receipt.ID, item.Key, completion, w.now().UTC())
 }
 

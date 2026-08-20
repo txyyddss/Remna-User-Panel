@@ -16,6 +16,7 @@ type remnaClient interface {
 	FindUserByUsername(context.Context, string) (*remnawave.User, bool, error)
 	FindUserByTelegramID(context.Context, int64) (*remnawave.User, error)
 	GetUserByID(context.Context, int64) (*remnawave.User, error)
+	ListUsersStream(context.Context, string, int) ([]remnawave.User, *string, bool, error)
 	CreateUser(context.Context, remnawave.CreateUserRequest) (*remnawave.User, error)
 	GetUserStats(context.Context, int64, time.Time, time.Time, int) (*remnawave.UserStats, error)
 	GetStatsDigest(context.Context, time.Time, time.Time) (remnawave.StatsDigest, error)

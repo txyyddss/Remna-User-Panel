@@ -16,14 +16,27 @@ type courtesyCreditRepository interface {
 	CourtesyCreditPayment(context.Context, string, string, string, time.Time) (model.CourtesyCredit, error)
 }
 
+type atomicBalanceRepository interface {
+	AdjustAdminBalance(context.Context, string, string, int64, string, string, time.Time) (model.LedgerEntry, error)
+	DeductAdminBalance(context.Context, string, string, int64, string, string, time.Time) (model.LedgerEntry, error)
+}
+
+type atomicCancellationRepository interface {
+	CancelAdminPurchase(context.Context, string, string, string, time.Time) (model.Purchase, error)
+}
+
 // AdjustBalance appends an audited immutable ledger entry.
 func (s *Service) AdjustBalance(ctx context.Context, actorID, userID string, delta int64, reason string) (model.LedgerEntry, error) {
-	if delta == 0 || delta < -1_000_000_000_000 || delta > 1_000_000_000_000 || strings.TrimSpace(reason) == "" {
+	reason = strings.TrimSpace(reason)
+	if delta == 0 || delta < -1_000_000_000_000 || delta > 1_000_000_000_000 || reason == "" || len(reason) > 500 {
 		return model.LedgerEntry{}, errors.New("non-zero delta and reason are required")
 	}
 	referenceID, err := ids.New()
 	if err != nil {
 		return model.LedgerEntry{}, err
+	}
+	if repository, ok := s.repository.(atomicBalanceRepository); ok {
+		return repository.AdjustAdminBalance(ctx, actorID, userID, delta, referenceID, reason, s.now().UTC())
 	}
 	entry, err := s.repository.AdjustBalance(ctx, userID, delta, referenceID, reason, s.now().UTC())
 	if err != nil {
@@ -37,12 +50,16 @@ func (s *Service) AdjustBalance(ctx context.Context, actorID, userID string, del
 
 // DeductBalance appends an audited exact debit that cannot create debt.
 func (s *Service) DeductBalance(ctx context.Context, actorID, userID string, amount int64, reason string) (model.LedgerEntry, error) {
-	if amount <= 0 || amount > 1_000_000_000_000 || strings.TrimSpace(reason) == "" {
+	reason = strings.TrimSpace(reason)
+	if amount <= 0 || amount > 1_000_000_000_000 || reason == "" || len(reason) > 500 {
 		return model.LedgerEntry{}, errors.New("positive amount and reason are required")
 	}
 	referenceID, err := ids.New()
 	if err != nil {
 		return model.LedgerEntry{}, err
+	}
+	if repository, ok := s.repository.(atomicBalanceRepository); ok {
+		return repository.DeductAdminBalance(ctx, actorID, userID, amount, referenceID, reason, s.now().UTC())
 	}
 	entry, err := s.repository.DeductBalance(ctx, userID, amount, referenceID, reason, s.now().UTC())
 	if err != nil {
@@ -56,7 +73,8 @@ func (s *Service) DeductBalance(ctx context.Context, actorID, userID string, amo
 
 // Refund reverses one settled payment and applies the debt policy transactionally.
 func (s *Service) Refund(ctx context.Context, actorID, orderID, reason string) (model.PaymentOrder, error) {
-	if strings.TrimSpace(reason) == "" {
+	reason = strings.TrimSpace(reason)
+	if reason == "" || len(reason) > 500 {
 		return model.PaymentOrder{}, errors.New("refund reason is required")
 	}
 	order, err := s.repository.PaymentOrderByID(ctx, orderID)
@@ -97,8 +115,12 @@ func (s *Service) CourtesyCredit(ctx context.Context, actorID, orderID, reason s
 
 // CancelEntitlement applies a compensating credit and revokes active upstream access.
 func (s *Service) CancelEntitlement(ctx context.Context, actorID, purchaseID, reason string) (model.Purchase, error) {
-	if strings.TrimSpace(reason) == "" {
+	reason = strings.TrimSpace(reason)
+	if reason == "" || len(reason) > 500 {
 		return model.Purchase{}, errors.New("cancellation reason is required")
+	}
+	if repository, ok := s.repository.(atomicCancellationRepository); ok {
+		return repository.CancelAdminPurchase(ctx, actorID, purchaseID, reason, s.now().UTC())
 	}
 	purchase, err := s.repository.CancelPurchase(ctx, purchaseID, reason, s.now().UTC())
 	if err != nil {

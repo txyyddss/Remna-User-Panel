@@ -23,6 +23,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/httpapi"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
 	"github.com/txyyddss/Remna-User-Panel/internal/maintenance"
+	"github.com/txyyddss/Remna-User-Panel/internal/notifications"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/backup"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/config"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
@@ -37,20 +38,21 @@ import (
 
 // Application owns all context-managed process resources.
 type Application struct {
-	config      config.Config
-	logger      *slog.Logger
-	httpServer  *http.Server
-	store       *database.Store
-	outbox      *outbox.Worker
-	backups     *backup.Service
-	maintenance *maintenance.Service
-	telegram    *queuedTelegram
-	settings    *admin.SettingsService
-	catalog     *catalog.Service
-	billing     *billing.Service
-	statistics  *productstats.Service
-	affiliates  *affiliates.Service
-	upstreams   *providerQueues
+	config        config.Config
+	logger        *slog.Logger
+	httpServer    *http.Server
+	store         *database.Store
+	outbox        *outbox.Worker
+	backups       *backup.Service
+	maintenance   *maintenance.Service
+	telegram      *queuedTelegram
+	settings      *admin.SettingsService
+	catalog       *catalog.Service
+	billing       *billing.Service
+	statistics    *productstats.Service
+	affiliates    *affiliates.Service
+	notifications *notifications.Scanner
+	upstreams     *providerQueues
 }
 
 // New opens persistence, constructs integrations, and builds the HTTP router.
@@ -76,6 +78,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		return nil, err
 	}
 	store := database.NewStore(db)
+	store.SetLogger(logger)
 	if _, err := backup.RecordStartupRestore(ctx, db, cfg.DatabasePath); err != nil {
 		return cleanup(fmt.Errorf("record startup database restore: %w", err))
 	}
@@ -136,6 +139,8 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	outboxWorker := outbox.NewWorker(store)
 	paymentAnnouncementWorker := billing.NewPaymentAnnouncementWorker(settings, queuedTelegramClient)
 	affiliateNotificationWorker := affiliates.NewNotificationWorker(queuedTelegramClient)
+	userNotificationWorker := notifications.NewWorker(queuedTelegramClient, logger, cfg.Timezone)
+	userNotificationScanner := notifications.NewScanner(store, remna, logger)
 	memberServices, scanWorker, blockExpiryWorker, operationDispatcher, err := newMemberWorkflows(store, remna, vault, cfg.MasterKey)
 	if err != nil {
 		return cleanup(err)
@@ -154,7 +159,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		return cleanup(err)
 	}
 	if err := registerCoreOutboxHandlers(outboxWorker, store, entitlementWorker, rolloverWorker, embyService,
-		paymentAnnouncementWorker, affiliateNotificationWorker, scanWorker, blockExpiryWorker, operationDispatcher); err != nil {
+		paymentAnnouncementWorker, affiliateNotificationWorker, userNotificationWorker, scanWorker, blockExpiryWorker, operationDispatcher); err != nil {
 		return cleanup(err)
 	}
 	static, err := fs.Sub(webui.Dist, "dist")
@@ -186,6 +191,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	return &Application{
 		config: cfg, logger: logger, httpServer: httpServer, store: store, outbox: outboxWorker,
 		backups: backupService, maintenance: maintenanceService, telegram: queuedTelegramClient, settings: settings,
-		catalog: catalogService, billing: billingService, statistics: statisticsService, affiliates: affiliateService, upstreams: upstreams,
+		catalog: catalogService, billing: billingService, statistics: statisticsService, affiliates: affiliateService,
+		notifications: userNotificationScanner, upstreams: upstreams,
 	}, nil
 }

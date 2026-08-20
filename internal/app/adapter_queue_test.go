@@ -46,6 +46,10 @@ func TestRemnawaveAdapterMethodsEnterQueueBeforeClientCreation(t *testing.T) {
 		{name: "remove entitlement", call: func() error { return adapter.RemoveEntitlement(context.Background(), "1") }},
 		{name: "quiesce rollover", call: func() error { return adapter.QuiesceForRollover(context.Background(), "1") }},
 		{name: "read rollover traffic", call: func() error { _, _, err := adapter.TrafficForRollover(context.Background(), "1"); return err }},
+		{name: "list notification traffic", call: func() error {
+			_, _, _, err := adapter.ListNotificationUsers(context.Background(), "", 1000)
+			return err
+		}},
 		{name: "list admin squads", call: func() error { _, err := adapter.ListInternalSquads(context.Background()); return err }},
 		{name: "list catalog squads", call: func() error { _, err := adapter.ListCatalogSquads(context.Background()); return err }},
 		{name: "list catalog nodes", call: func() error { _, err := adapter.ListCatalogNodes(context.Background()); return err }},

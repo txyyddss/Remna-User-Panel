@@ -26,6 +26,10 @@ type Repository interface {
 	ExpirePurchase(context.Context, string, time.Time) error
 }
 
+type userSyncNotificationReleaser interface {
+	ReleaseUserSyncNotifications(context.Context, string, time.Time) error
+}
+
 // RemnawaveClient atomically replaces the complete entitlement view upstream.
 type RemnawaveClient interface {
 	ApplyEntitlement(ctx context.Context, remoteUserID string, trafficLimitBytes int64, resetStrategy string, squadUUIDs []string, expiresAt time.Time) error
@@ -151,17 +155,31 @@ func (w *Worker) process(ctx context.Context, job model.OutboxJob) error {
 			return err
 		}
 		if user.RemnaUserID == nil {
-			return nil
+			return w.releaseUserSyncNotifications(ctx, userID)
 		}
 		desired, err := w.repository.DesiredEntitlement(ctx, user.ID, w.now().UTC())
 		if err != nil {
 			return err
 		}
 		if desired == nil {
-			return w.remnawave.RemoveEntitlement(ctx, *user.RemnaUserID)
+			if err := w.remnawave.RemoveEntitlement(ctx, *user.RemnaUserID); err != nil {
+				return err
+			}
+			return w.releaseUserSyncNotifications(ctx, userID)
 		}
-		return w.remnawave.ApplyEntitlement(ctx, *user.RemnaUserID, desired.TrafficLimitBytes, desired.ResetStrategy, desired.SquadUUIDs, desired.ValidUntil)
+		if err := w.remnawave.ApplyEntitlement(ctx, *user.RemnaUserID, desired.TrafficLimitBytes, desired.ResetStrategy, desired.SquadUUIDs, desired.ValidUntil); err != nil {
+			return err
+		}
+		return w.releaseUserSyncNotifications(ctx, userID)
 	default:
 		return fmt.Errorf("unknown outbox job kind %q", job.Kind)
 	}
+}
+
+func (w *Worker) releaseUserSyncNotifications(ctx context.Context, userID string) error {
+	repository, ok := w.repository.(userSyncNotificationReleaser)
+	if !ok {
+		return nil
+	}
+	return repository.ReleaseUserSyncNotifications(ctx, userID, w.now().UTC())
 }

@@ -56,6 +56,7 @@ func TestGroupMessageRewardCountsEligibleMessagesAndReplaysAtomically(t *testing
 	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM ledger_entries WHERE user_id=? AND kind='activity_group_message_reward'`, user.ID).Scan(&rewardLedgerCount); err != nil || rewardLedgerCount != 1 {
 		t.Fatalf("reward ledger count = (%d, %v), want 1", rewardLedgerCount, err)
 	}
+	assertNotificationCounts(t, store, 1, 1)
 }
 
 func TestDeductBalanceRejectsInsufficientFunds(t *testing.T) {

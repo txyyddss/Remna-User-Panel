@@ -32,6 +32,8 @@ type entitlementRepository struct {
 	completedJobID     string
 	completedAttempts  int
 	completedErr       error
+	releaseCalls       int
+	releaseErr         error
 }
 
 func (r *entitlementRepository) ClaimOutboxJob(context.Context, time.Time) (*model.OutboxJob, error) {
@@ -90,6 +92,10 @@ func (r *entitlementRepository) MarkPurchaseSyncResult(_ context.Context, purcha
 func (r *entitlementRepository) ExpirePurchase(_ context.Context, purchaseID string, _ time.Time) error {
 	r.expiredPurchaseID = purchaseID
 	return r.expireErr
+}
+func (r *entitlementRepository) ReleaseUserSyncNotifications(context.Context, string, time.Time) error {
+	r.releaseCalls++
+	return r.releaseErr
 }
 
 type entitlementRemnawave struct {

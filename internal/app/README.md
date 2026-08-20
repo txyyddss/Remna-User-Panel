@@ -17,7 +17,7 @@ stopped.
 
 - `app.go` defines the application container and composes configuration, persistence, domain services, adapters, workers, and HTTP delivery.
 - `member_workflows.go` composes member connection/reset/refund services and registers legacy drop plus block/unblock operation workers on one dispatcher.
-- `outbox_composition.go` registers core jobs, the scheduled IP-unblock backstop, durable payment announcements, and the shared provider-operation dispatcher.
+- `outbox_composition.go` registers core jobs, user/payment/affiliate Telegram notifications, the scheduled IP-unblock backstop, and the shared provider-operation dispatcher.
 - `payment_operations.go` registers durable payment create and cancellation handlers on that dispatcher.
 - `mutation_operation_composition.go` registers subscription, Emby, questionnaire, retry, and refund command handlers.
 - `payment_refund_adapter.go` reconciles ambiguous Telegram Stars refunds from authoritative transaction history.
@@ -34,6 +34,8 @@ stopped.
 - `node_multiplier_cache.go` owns the copied five-minute node-multiplier cache shared by queued Remnawave projections and rollover usage mapping.
 - `node_multiplier_cache_test.go` covers cache expiry at the five-minute boundary.
 - `remna_entitlements_adapter.go` implements queued entitlement, traffic reset, removal, and rollover operations.
+- `remna_notifications_adapter.go` maps documented queued user-stream pages to
+  the narrow traffic-threshold projection.
 - `remna_member_operations_adapter.go` implements queued connection scans, plugin block/unblock execution, disconnect reconciliation, usage, quiesce, and restore calls.
 - `remna_statistics_adapter.go` implements queue-backed Remnawave digest, node,
   traffic, Geocheck, and host operations for product statistics; documented fractional
@@ -41,6 +43,8 @@ stopped.
 - `remna_statistics_adapter_test.go` covers bounded rounding of Remnawave live numeric fields.
 - `emby_adapter.go` implements queued Emby client creation, account operations, policy updates, and metadata lookups.
 - `scheduler.go` runs automatic due-renewal revalidation before entitlement transitions, plus recurring outbox, rollover, backup, and maintenance work until application cancellation.
+- `notification_scheduler.go` runs the bounded startup and five-minute reminder
+  and traffic scan independently from the outbox drain.
 - `statistics_scheduler.go` schedules the 30-minute statistics refresh, startup
   and six-hour node Geocheck cache work, and queued host-multiplier reconciliation.
 - `statistics_setup.go` composes the statistics service and its provider adapter.

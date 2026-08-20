@@ -11,6 +11,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/emby"
 	"github.com/txyyddss/Remna-User-Panel/internal/entitlements"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/notifications"
 	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/outbox"
@@ -20,7 +21,8 @@ import (
 
 func registerCoreOutboxHandlers(worker *outbox.Worker, store *database.Store, entitlementsWorker *entitlements.Worker,
 	rolloverWorker *rollover.Service, embyService *emby.Service, paymentAnnouncements *billing.PaymentAnnouncementWorker,
-	affiliateNotifications *affiliates.NotificationWorker, scanWorker *connections.Worker, expiryWorker *connections.ExpiryWorker, dispatcher *providerops.Dispatcher) error {
+	affiliateNotifications *affiliates.NotificationWorker, userNotifications *notifications.Worker,
+	scanWorker *connections.Worker, expiryWorker *connections.ExpiryWorker, dispatcher *providerops.Dispatcher) error {
 	if err := worker.Register(jobpayload.PaymentSuccessAnnouncementKind, paymentAnnouncements); err != nil {
 		return fmt.Errorf("register payment announcement outbox handler: %w", err)
 	}
@@ -28,6 +30,9 @@ func registerCoreOutboxHandlers(worker *outbox.Worker, store *database.Store, en
 		if err := worker.Register(kind, affiliateNotifications); err != nil {
 			return fmt.Errorf("register %s outbox handler: %w", kind, err)
 		}
+	}
+	if err := worker.Register(jobpayload.UserNotificationKind, userNotifications); err != nil {
+		return fmt.Errorf("register user notification outbox handler: %w", err)
 	}
 	for _, kind := range []string{"remna_apply_entitlement", "remna_sync_user", jobpayload.ContinuityKind} {
 		if err := worker.Register(kind, entitlementsWorker); err != nil {

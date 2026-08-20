@@ -149,6 +149,9 @@ func (s *Store) finalizeRolloverUsage(ctx context.Context, purchaseID string, su
 		if err := insertOutboxTx(ctx, tx, "remna_sync_user", `{"userId":"`+userID+`"}`, now, now); err != nil {
 			return model.PurchaseRollover{}, err
 		}
+		if err := s.insertExpirationNotificationTx(ctx, tx, purchaseID, userSyncGate(userID), now); err != nil {
+			return model.PurchaseRollover{}, err
+		}
 	} else {
 		return model.PurchaseRollover{}, err
 	}

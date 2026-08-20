@@ -10,7 +10,8 @@ queries; this package owns portable validation and locale normalization.
 - `projections.go` defines member and administrator API projections.
 - `validation.go` enforces tier ordering, monetary bounds, and reward unions.
 - `bot_identity.go` caches validated queued `getMe` results with stale fallback.
-- `notifications.go` formats and sends localized durable MarkdownV2 jobs.
+- `notifications.go` formats and sends localized durable MarkdownV2 jobs using
+  the shared dynamic-value escaper.
 - `service.go` coordinates member, administrator, referral, and discovery operations.
 - `validation_test.go` covers locale normalization and tier invariants without provider calls.
 - `bot_identity_test.go` covers 24-hour caching and stale-on-transient-failure behavior.

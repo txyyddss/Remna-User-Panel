@@ -4,7 +4,8 @@ The durable entitlement worker translates outbox jobs and desired purchase state
 
 ## Files
 
-- `worker.go` defines dependencies and implements job draining, dispatch, retry, expiration, and entitlement synchronization.
+- `worker.go` defines dependencies and implements job draining, dispatch, retry,
+  expiration, entitlement synchronization, and post-success notification release.
 - `continuity.go` reserves and applies a queued or renewed successor before upstream expiry without exposing an expired gap.
 - `continuity_test.go` covers the three-minute continuity window and boundary settlement behavior.
 - `worker_test.go` covers draining, retry behavior, traffic-reset resumption, and infrastructure errors.

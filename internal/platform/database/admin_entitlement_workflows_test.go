@@ -36,6 +36,16 @@ func TestEditAdminEntitlementUsesUpdatedAtAndPreservesPricingFacts(t *testing.T)
 		updated.CoreGrossTXBMinor != purchase.CoreGrossTXBMinor || !updated.CreatedAt.Equal(purchase.CreatedAt) {
 		t.Fatalf("immutable purchase facts changed: before=%+v after=%+v", purchase, updated)
 	}
+	var notificationKind string
+	var pending int
+	if err := store.DB().QueryRowContext(ctx, `SELECT kind,queued_at IS NULL FROM user_notification_events WHERE user_id=?`,
+		user.ID).Scan(&notificationKind, &pending); err != nil {
+		t.Fatal(err)
+	}
+	if notificationKind != jobpayload.UserEventAdminExtension || pending != 1 {
+		t.Fatalf("extension notification = %q pending %d", notificationKind, pending)
+	}
+	assertNotificationCounts(t, store, 1, 0)
 
 	input.IdempotencyKey = "stale-edit"
 	input.RequestFingerprint = "edit-fingerprint-0002"
@@ -120,6 +130,7 @@ func TestRefundAdminEntitlementCreditsOriginalDebitExactlyOnce(t *testing.T) {
 	if got := adminWorkflowLedgerCount(t, store, user.ID, "admin_entitlement_refund"); got != 1 {
 		t.Fatalf("refund ledger count = %d, want 1", got)
 	}
+	assertNotificationCounts(t, store, 1, 0)
 	refunded, err := store.PurchaseByID(ctx, purchase.ID)
 	if err != nil || refunded.Status != "cancelled" {
 		t.Fatalf("refunded purchase = %+v, %v", refunded, err)

@@ -6,7 +6,10 @@ import (
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/notifications"
+	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
 	"github.com/txyyddss/Remna-User-Panel/internal/providerops"
+	"strconv"
 )
 
 // RefundAdminEntitlement atomically credits one cancellation and queues exact sync.
@@ -60,6 +63,15 @@ func (s *Store) RefundAdminEntitlement(ctx context.Context, input AdminEntitleme
 	}
 	if err := insertEntitlementAudit(ctx, tx, input.ActorUserID, "entitlement.refund", purchase.ID, input.Reason,
 		operation.Receipt.ID, entitlementSnapshot(purchase), map[string]any{"status": "cancelled", "creditedTxbMinor": purchase.PriceTXBMinor}, now); err != nil {
+		return model.OperationReceipt{}, err
+	}
+	facts := adminNotificationBase("entitlement_refund", input.Reason, now)
+	facts[notifications.FactCombo] = purchase.ComboName
+	facts[notifications.FactCredited] = strconv.FormatInt(purchase.PriceTXBMinor, 10)
+	facts[notifications.FactBalance] = strconv.FormatInt(balance, 10)
+	facts[notifications.FactPreviousStatus], facts[notifications.FactNewStatus] = purchase.Status, "cancelled"
+	if _, err := s.insertUserNotificationTx(ctx, tx, "admin:"+operation.Receipt.ID+":"+input.UserID, input.UserID,
+		jobpayload.UserEventAdminUpdate, providerItemGate(operation.Receipt.ID, input.UserID), facts, now); err != nil {
 		return model.OperationReceipt{}, err
 	}
 	if err := tx.Commit(); err != nil {

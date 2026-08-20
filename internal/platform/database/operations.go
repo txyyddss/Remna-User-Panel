@@ -157,5 +157,8 @@ func (s *Store) ExpirePurchase(ctx context.Context, purchaseID string, now time.
 	if err := insertOutboxTx(ctx, tx, "remna_sync_user", `{"userId":"`+userID+`"}`, now, now); err != nil {
 		return err
 	}
+	if err := s.insertExpirationNotificationTx(ctx, tx, purchaseID, userSyncGate(userID), now); err != nil {
+		return err
+	}
 	return tx.Commit()
 }

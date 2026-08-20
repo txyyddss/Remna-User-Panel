@@ -3,9 +3,12 @@ package database
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/notifications"
+	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 	"github.com/txyyddss/Remna-User-Panel/internal/providerops"
 )
@@ -44,7 +47,24 @@ func (s *Store) CreateAdminBulkExtension(ctx context.Context, input AdminBulkExt
 		return operation.Receipt, nil
 	}
 	for _, target := range targets {
+		before, err := scanPurchase(tx.QueryRowContext(ctx, purchaseSelect+` WHERE purchases.id=?`, target.PurchaseID))
+		if err != nil {
+			return model.OperationReceipt{}, err
+		}
 		if err := shiftAdminSubscriptionTx(ctx, tx, target, input.Days, now); err != nil {
+			return model.OperationReceipt{}, err
+		}
+		newExpiry, err := addSubscriptionDays(before.ValidUntil, input.Days)
+		if err != nil {
+			return model.OperationReceipt{}, err
+		}
+		facts := adminNotificationBase("entitlement_edit", input.Reason, now)
+		facts[notifications.FactAddedSeconds] = strconv.FormatInt(int64(newExpiry.Sub(before.ValidUntil)/time.Second), 10)
+		facts[notifications.FactPreviousExpiry] = before.ValidUntil.Format(time.RFC3339Nano)
+		facts[notifications.FactNewExpiry] = newExpiry.Format(time.RFC3339Nano)
+		facts[notifications.FactCombo] = before.ComboName
+		if _, err := s.insertUserNotificationTx(ctx, tx, "admin:"+operation.Receipt.ID+":"+target.UserID, target.UserID,
+			jobpayload.UserEventAdminExtension, providerItemGate(operation.Receipt.ID, target.UserID), facts, now); err != nil {
 			return model.OperationReceipt{}, err
 		}
 	}

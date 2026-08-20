@@ -79,6 +79,15 @@ func (s *Store) EditAdminEntitlement(ctx context.Context, input AdminEntitlement
 			"trafficLimitBytes": input.TrafficLimitBytes, "resetStrategy": input.ResetStrategy, "squadUuids": input.SquadUUIDs}, now); err != nil {
 		return model.Purchase{}, err
 	}
+	var newComboName string
+	if err := tx.QueryRowContext(ctx, `SELECT name FROM combos WHERE id=?`, input.ComboID).Scan(&newComboName); err != nil {
+		return model.Purchase{}, err
+	}
+	kind, facts := adminEntitlementEditNotification(before, input, newComboName, now)
+	if _, err := s.insertUserNotificationTx(ctx, tx, "admin:"+operation.Receipt.ID+":"+input.UserID, input.UserID,
+		kind, providerItemGate(operation.Receipt.ID, input.UserID), facts, now); err != nil {
+		return model.Purchase{}, err
+	}
 	if err := tx.Commit(); err != nil {
 		return model.Purchase{}, err
 	}

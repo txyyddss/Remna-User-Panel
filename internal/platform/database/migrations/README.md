@@ -3,6 +3,8 @@
 Migration files are embedded and applied in lexical order by `database.go`.
 
 - `030_affiliates.sql` adds referral eligibility, immutable tier versions, settlements, and awards.
+- `031_user_notifications.sql` adds durable semantic notification deduplication
+  and provider-success release gates.
 Never edit a migration that may already have been deployed; add the next numbered
 file instead.
 

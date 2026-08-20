@@ -5,11 +5,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
+	"sync"
+	"time"
+
 	"github.com/txyyddss/Remna-User-Panel/internal/affiliates"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
-	"sync"
-	"time"
 )
 
 var ErrNotFound = errors.New("record not found")
@@ -26,6 +28,7 @@ var ErrStockUnavailable = errors.New("squad stock is unavailable")
 // Store implements persistent repositories on top of SQLite.
 type Store struct {
 	db           *sql.DB
+	logger       *slog.Logger
 	writeMu      sync.Mutex
 	groupFactsMu sync.Mutex
 	groupFacts   map[groupMessageFactKey]groupMessageFact
@@ -35,9 +38,6 @@ type Store struct {
 func NewStore(db *sql.DB) *Store {
 	return &Store{db: db, groupFacts: make(map[groupMessageFactKey]groupMessageFact)}
 }
-
-// DB exposes the connection pool for health checks and online backup.
-func (s *Store) DB() *sql.DB { return s.db }
 
 // UpsertTelegramUser creates or refreshes a user from validated Telegram data.
 func (s *Store) UpsertTelegramUser(ctx context.Context, profile model.TelegramProfile, isAdmin bool) (model.User, bool, error) {
