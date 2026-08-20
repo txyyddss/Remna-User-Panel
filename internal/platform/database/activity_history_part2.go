@@ -6,7 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/txyyddss/Remna-User-Panel/internal/activity"
+	"github.com/txyyddss/Remna-User-Panel/internal/notifications"
+	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -99,6 +102,13 @@ func (s *Store) RecordGroupMessage(ctx context.Context, userID string, chatID, m
 			return activity.GroupMessageRewardResult{}, fmt.Errorf("mark group-message reward: %w", err)
 		}
 		if _, err := insertLedgerTx(ctx, tx, userID, rewardMinor, balance, "activity_group_message_reward", rewardID, localDate, now); err != nil {
+			return activity.GroupMessageRewardResult{}, err
+		}
+		if _, err := s.insertUserNotificationTx(ctx, tx, "group-reward:"+rewardID, userID, jobpayload.UserEventGroupReward, "",
+			map[string]string{
+				notifications.FactMessages: strconv.Itoa(messageCount), notifications.FactReward: strconv.FormatInt(rewardMinor, 10),
+				notifications.FactBalance: strconv.FormatInt(balance, 10), notifications.FactTime: now.Format(time.RFC3339Nano),
+			}, now); err != nil {
 			return activity.GroupMessageRewardResult{}, err
 		}
 	}

@@ -1,6 +1,7 @@
 # Composables
 
 - `useActivity.ts` loads games, draws, and check-in actions.
+- `useAffiliateCentre.ts` loads member metrics and fixed five-row referral pages.
 - `useAdminDatabase.ts` coordinates protected database review and mutation flows.
 - `useAdminSection.ts` provides latest-request-safe administrator list operations and cursor accumulation.
 - `useCatalog.ts` prepares catalog selection, quote freshness, full paid add-on guards, automatic-renewal catalog blocking, and user-scoped session drafts.

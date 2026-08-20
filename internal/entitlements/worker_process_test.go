@@ -135,3 +135,29 @@ func TestWorkerProcessRejectsUnknownJob(t *testing.T) {
 		t.Fatal("process() unexpectedly accepted unknown job")
 	}
 }
+
+func TestWorkerReleasesNotificationsOnlyAfterLaterSyncSuccess(t *testing.T) {
+	remoteID := "remote-1"
+	repository := &entitlementRepository{
+		user: model.User{RemnaUserID: &remoteID},
+		desired: &model.Purchase{TrafficLimitBytes: 1024, ResetStrategy: "DAY",
+			ValidUntil: time.Date(2099, 8, 7, 0, 0, 0, 0, time.UTC)},
+	}
+	providerFailure := errors.New("provider failure")
+	remote := &entitlementRemnawave{applyErr: providerFailure}
+	worker := newEntitlementWorkerForTest(repository, remote)
+	job := model.OutboxJob{Kind: "remna_sync_user", Payload: `{"userId":"user-1"}`}
+	if err := worker.process(context.Background(), job); !errors.Is(err, providerFailure) {
+		t.Fatalf("failed sync = %v", err)
+	}
+	if repository.releaseCalls != 0 {
+		t.Fatalf("release calls after provider failure = %d", repository.releaseCalls)
+	}
+	remote.applyErr = nil
+	if err := worker.process(context.Background(), job); err != nil {
+		t.Fatalf("successful retry: %v", err)
+	}
+	if repository.releaseCalls != 1 {
+		t.Fatalf("release calls after success = %d", repository.releaseCalls)
+	}
+}

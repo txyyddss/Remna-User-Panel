@@ -46,6 +46,10 @@ func TestRemnawaveAdapterMethodsEnterQueueBeforeClientCreation(t *testing.T) {
 		{name: "remove entitlement", call: func() error { return adapter.RemoveEntitlement(context.Background(), "1") }},
 		{name: "quiesce rollover", call: func() error { return adapter.QuiesceForRollover(context.Background(), "1") }},
 		{name: "read rollover traffic", call: func() error { _, _, err := adapter.TrafficForRollover(context.Background(), "1"); return err }},
+		{name: "list notification traffic", call: func() error {
+			_, _, _, err := adapter.ListNotificationUsers(context.Background(), "", 1000)
+			return err
+		}},
 		{name: "list admin squads", call: func() error { _, err := adapter.ListInternalSquads(context.Background()); return err }},
 		{name: "list catalog squads", call: func() error { _, err := adapter.ListCatalogSquads(context.Background()); return err }},
 		{name: "list catalog nodes", call: func() error { _, err := adapter.ListCatalogNodes(context.Background()); return err }},
@@ -99,5 +103,23 @@ func TestEmbyAdapterMethodsEnterQueueBeforeClientCreation(t *testing.T) {
 				t.Fatalf("client factory calls = %d, want 0", calls)
 			}
 		})
+	}
+}
+
+func TestTelegramAdapterMethodsEnterQueue(t *testing.T) {
+	queue, err := upstreamqueue.New(upstreamqueue.Config{Name: "telegram-test", Capacity: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	adapter := &queuedTelegram{queue: queue}
+	tests := []func() error{
+		func() error { _, err := adapter.GetMe(context.Background()); return err },
+		func() error { return adapter.SendMarkdownV2Message(context.Background(), 42, 0, "hello") },
+		func() error { _, err := adapter.GetStarTransactions(context.Background(), 0, 100); return err },
+	}
+	for _, call := range tests {
+		if err := call(); !errors.Is(err, upstreamqueue.ErrNotRunning) {
+			t.Fatalf("adapter error = %v, want ErrNotRunning", err)
+		}
 	}
 }

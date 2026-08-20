@@ -9,6 +9,18 @@ import (
 
 const telegramMessageLimit = 4096
 
+// GetMe returns the authenticated bot identity used to construct referral links.
+func (c *Client) GetMe(ctx context.Context) (User, error) {
+	var user User
+	if err := c.call(ctx, "getMe", struct{}{}, &user); err != nil {
+		return User{}, err
+	}
+	if !user.IsBot || user.ID <= 0 || strings.TrimSpace(user.Username) == "" {
+		return User{}, errors.New("telegram getMe returned an invalid bot identity")
+	}
+	return user, nil
+}
+
 // BotCommand is one command advertised by Telegram's command menu.
 type BotCommand struct {
 	Command     string `json:"command"`

@@ -62,6 +62,7 @@
     "noNodes": "No nodes available",
     "sevenDayTraffic": "Seven-day traffic",
     "trafficChartLabel": "Daily traffic by node for the last seven days",
+    "trafficTouchHint": "Tap or slide across the bars to inspect each value.",
     "trafficPoint": "{node} on {date}: {value}",
     "noTraffic": "No traffic recorded",
     "distributions": "Distributions",

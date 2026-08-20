@@ -30,6 +30,8 @@ Member connection scans, purchase reset/refund resources, operation receipts, st
 - `api-v1-subscription-ip-blocks-id-unblock.yaml`: `/api/v1/subscription/ip-blocks/{blockId}/unblock`, owner-only durable unblock
 - `api-v1-balance.yaml`: `/api/v1/balance`
 - `api-v1-ledger.yaml`: `/api/v1/ledger`
+- `api-v1-affiliates.yaml`: `/api/v1/affiliates`, member metrics and tier progress
+- `api-v1-affiliates-referrals.yaml`: `/api/v1/affiliates/referrals`, fixed five-row registration pages
 - `api-v1-statistics.yaml`: `/api/v1/statistics`, persisted 30-minute aggregate dashboard
 - `api-v1-statistics-nodes.yaml`: `/api/v1/statistics/nodes`, on-demand shared 10-second node snapshot
 - `api-v1-statistics-nodes-nodeuuid-geocheck.yaml`: `/api/v1/statistics/nodes/{nodeUuid}/geocheck`, cached image-only Geocheck result
@@ -51,6 +53,7 @@ Member connection scans, purchase reset/refund resources, operation receipts, st
 - `api-v1-questionnaires-history.yaml`: `/api/v1/questionnaires/history`
 - `api-v1-questionnaires-id-participation.yaml`: `/api/v1/questionnaires/{id}/participation`
 - `api-v1-admin-activity-settings.yaml`: `/api/v1/admin/activity-settings`
+- `api-v1-admin-affiliates.yaml`: `/api/v1/admin/affiliates`, versioned tier configuration
 - `api-v1-admin-activity-games.yaml`: `/api/v1/admin/activity-games`
 - `api-v1-admin-activity-games-id.yaml`: `/api/v1/admin/activity-games/{id}`
 - `api-v1-admin-activity-games-id-statistics.yaml`: `/api/v1/admin/activity-games/{id}/statistics`

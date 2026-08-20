@@ -11,14 +11,33 @@ import (
 
 // MarkPurchaseSyncResult advances an activating purchase after upstream work.
 func (s *Store) MarkPurchaseSyncResult(ctx context.Context, purchaseID string, success bool, now time.Time) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
 	status := "failed"
 	predicate := "status='activating'"
 	if success {
 		status = "active"
 		predicate = "status IN ('activating','failed')"
 	}
-	_, err := s.db.ExecContext(ctx, `UPDATE purchases SET status=?,updated_at=? WHERE id=? AND `+predicate, status, stamp(now), purchaseID)
-	return err
+	result, err := tx.ExecContext(ctx, `UPDATE purchases SET status=?,updated_at=? WHERE id=? AND `+predicate, status, stamp(now), purchaseID)
+	if err != nil {
+		return err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if success && affected == 1 {
+		if err := s.insertActivationNotificationTx(ctx, tx, purchaseID, now); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 // PurchaseTrafficResetPhase returns the durable phase of a new-term reset.

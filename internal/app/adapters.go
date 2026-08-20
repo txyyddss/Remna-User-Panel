@@ -20,10 +20,11 @@ func (a initDataAdapter) Validate(raw string) (model.TelegramProfile, error) {
 	if err != nil {
 		return model.TelegramProfile{}, err
 	}
-	return model.TelegramProfile{ID: data.User.ID, FirstName: data.User.FirstName, LastName: data.User.LastName, Username: data.User.Username}, nil
+	return model.TelegramProfile{ID: data.User.ID, FirstName: data.User.FirstName, LastName: data.User.LastName,
+		Username: data.User.Username, LanguageCode: data.User.LanguageCode}, nil
 }
 
-type telegramAdapter struct{ client *telegram.Client }
+type telegramAdapter struct{ client *queuedTelegram }
 
 func (a telegramAdapter) CreateJoinRequestInvite(ctx context.Context, chatID, name string, expiresAt time.Time) (string, error) {
 	invite, err := a.client.CreateJoinRequestInvite(ctx, chatID, name, expiresAt)
@@ -52,7 +53,7 @@ func (a telegramAdapter) RevokeInviteLink(ctx context.Context, chatID, inviteLin
 
 type paymentAdapter struct {
 	settings *admin.SettingsService
-	telegram *telegram.Client
+	telegram *queuedTelegram
 	users    interface {
 		UserByID(context.Context, string) (model.User, error)
 	}

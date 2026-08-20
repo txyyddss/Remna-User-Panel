@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/notifications"
+	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 	"time"
 )
@@ -42,18 +44,20 @@ func (s *Store) RefundPayment(ctx context.Context, actorID *string, orderID, rea
 	if _, err := insertLedgerTx(ctx, tx, order.UserID, -order.TXBMinor, balance, "payment_reversal", order.ID, reason, now); err != nil {
 		return model.PaymentOrder{}, err
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT id,charged_txb_minor,status FROM purchases WHERE user_id=? AND status IN ('queued','activating','active') ORDER BY CASE status WHEN 'queued' THEN 0 ELSE 1 END,created_at DESC`, order.UserID)
+	rows, err := tx.QueryContext(ctx, `SELECT purchases.id,purchases.charged_txb_minor,purchases.status,combos.name
+		FROM purchases JOIN combos ON combos.id=purchases.combo_id WHERE purchases.user_id=?
+		AND purchases.status IN ('queued','activating','active') ORDER BY CASE purchases.status WHEN 'queued' THEN 0 ELSE 1 END,purchases.created_at DESC`, order.UserID)
 	if err != nil {
 		return model.PaymentOrder{}, err
 	}
 	type cancellation struct {
-		id, status string
-		price      int64
+		id, status, combo string
+		price             int64
 	}
 	cancellations := make([]cancellation, 0)
 	for rows.Next() {
 		var item cancellation
-		if err := rows.Scan(&item.id, &item.price, &item.status); err != nil {
+		if err := rows.Scan(&item.id, &item.price, &item.status, &item.combo); err != nil {
 			_ = rows.Close()
 			return model.PaymentOrder{}, err
 		}
@@ -64,6 +68,8 @@ func (s *Store) RefundPayment(ctx context.Context, actorID *string, orderID, rea
 		return model.PaymentOrder{}, err
 	}
 	_ = rows.Close()
+	cancelledNames := make([]string, 0)
+	requiresSync := false
 	for _, item := range cancellations {
 		if balance >= 0 {
 			break
@@ -79,13 +85,29 @@ func (s *Store) RefundPayment(ctx context.Context, actorID *string, orderID, rea
 			return model.PaymentOrder{}, err
 		}
 		if item.status != "queued" {
+			requiresSync = true
 			if err := insertOutboxTx(ctx, tx, "remna_sync_user", `{"userId":"`+order.UserID+`"}`, now, now); err != nil {
 				return model.PaymentOrder{}, err
 			}
 		}
+		cancelledNames = append(cancelledNames, item.combo)
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE payment_orders SET status='refunded',provider_payload='{}',payment_url=NULL,qr_payload=NULL,refunded_at=?,updated_at=? WHERE id=?`, stamp(now), stamp(now), order.ID); err != nil {
 		return model.PaymentOrder{}, err
+	}
+	if actorID != nil {
+		facts := adminFinanceFacts("payment_refund", -order.TXBMinor, balance, reason, now)
+		if len(cancelledNames) > 0 {
+			facts[notifications.FactCancelledCombos] = squadSummary(cancelledNames)
+		}
+		gate := ""
+		if requiresSync {
+			gate = userSyncGate(order.UserID)
+		}
+		if _, err := s.insertUserNotificationTx(ctx, tx, "admin:"+refundID+":"+order.UserID, order.UserID,
+			jobpayload.UserEventAdminUpdate, gate, facts, now); err != nil {
+			return model.PaymentOrder{}, err
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return model.PaymentOrder{}, err

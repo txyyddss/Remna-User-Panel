@@ -1,0 +1,50 @@
+.affiliate-page { display: grid; gap: 0.85rem; }
+.affiliate-heading h1, .affiliate-heading p { margin: 0; }
+.affiliate-heading h1 { margin-top: 0.25rem; font-size: clamp(1.8rem, 9vw, 3.2rem); letter-spacing: -0.05em; }
+.affiliate-heading > p:last-child { margin-top: 0.45rem; color: var(--text-muted); }
+.affiliate-section { min-width: 0; display: grid; gap: 0.9rem; padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface); }
+.affiliate-section__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
+.affiliate-section__heading > div { min-width: 0; }
+.affiliate-section__heading h2 { overflow-wrap: anywhere; }
+.affiliate-link-row { display: grid; gap: 0.75rem; }
+.affiliate-section__heading span, .affiliate-link-row span, .affiliate-metrics dt, .affiliate-tier__facts span { color: var(--text-muted); font-size: 0.74rem; }
+.affiliate-section__heading h2, .affiliate-link-row strong { margin: 0.2rem 0 0; font-size: 1rem; }
+.affiliate-link-row > div { min-width: 0; }
+.affiliate-link-row strong { display: block; overflow-wrap: anywhere; }
+.affiliate-copy-button { width: 100%; min-height: 44px; }
+.affiliate-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; border-top: 1px solid var(--line); }
+.affiliate-metrics div { min-width: 0; padding: 0.8rem 0.4rem 0; }
+.affiliate-metrics dd { margin: 0.2rem 0 0; overflow-wrap: anywhere; font-size: 1.15rem; font-weight: 700; }
+.affiliate-tier__facts { display: grid; gap: 0.65rem; }
+.affiliate-tier__facts div { display: grid; align-content: start; gap: 0.2rem; padding-top: 0.7rem; border-top: 1px solid var(--line); }
+.affiliate-tier__facts small { color: var(--text-muted); }
+.affiliate-top-tier { display: grid; justify-items: center; gap: 0.25rem; padding: 1rem; text-align: center; }
+.affiliate-top-tier > :first-child { color: var(--accent); font-size: 1.8rem; }
+.affiliate-top-tier span { color: var(--text-muted); font-size: 0.8rem; }
+.affiliate-referral-list { display: grid; }
+.affiliate-referral-row { min-height: 70px; display: grid; gap: 0.55rem; padding: 0.75rem 0; border-top: 1px solid var(--line); }
+.affiliate-referral-row > div { min-width: 0; display: grid; justify-items: start; gap: 0.2rem; }
+.affiliate-referral-row strong { overflow-wrap: anywhere; }
+.affiliate-referral-row small, .affiliate-empty { color: var(--text-muted); font-size: 0.74rem; }
+.affiliate-empty { margin: 0; padding: 1.5rem 0; text-align: center; }
+.affiliate-pagination { max-width: 100%; justify-self: center; overflow-x: auto; }
+@media (min-width: 480px) {
+  .affiliate-link-row { grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+  .affiliate-link-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .affiliate-copy-button { width: auto; }
+  .affiliate-tier__facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .affiliate-referral-row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .affiliate-referral-row > div:last-child { justify-items: end; text-align: right; }
+}
+@media (min-width: 720px) { .affiliate-metrics { grid-template-columns: repeat(4, 1fr); } .affiliate-page { max-width: 860px; } }
+.admin-affiliates { display: grid; gap: 1rem; }
+.admin-affiliates__identity { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.9rem 1rem; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.admin-affiliates__identity div { display: grid; gap: 0.2rem; }
+.admin-affiliates__identity span { color: var(--text-muted); font-size: 0.74rem; }
+.admin-affiliates__identity code { color: var(--accent); }
+.admin-affiliates__form { display: grid; gap: 0.85rem; padding: 0 1rem 1rem; }
+.affiliate-tier-editor { position: relative; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; margin: 0; padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius-panel); }
+.affiliate-tier-editor legend { padding: 0 0.35rem; font-weight: 700; }
+.affiliate-tier-editor__actions { position: absolute; top: 0.35rem; right: 0.45rem; display: flex; }
+.affiliate-tier-editor .w-full { width: 100%; }
+@media (max-width: 560px) { .affiliate-tier-editor { grid-template-columns: 1fr; padding-top: 1.4rem; } .admin-affiliates__identity { align-items: flex-start; flex-direction: column; } }

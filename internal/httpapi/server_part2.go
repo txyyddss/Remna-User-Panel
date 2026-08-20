@@ -11,6 +11,10 @@ import (
 	"time"
 )
 
+type contextKey string
+
+const userContextKey contextKey = "user"
+
 func (s *Server) requireSession(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(sessionCookie)

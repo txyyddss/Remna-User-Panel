@@ -13,6 +13,9 @@ import (
 )
 
 func (a *Application) configureTelegram(ctx context.Context) {
+	if err := a.affiliates.RefreshBotIdentity(ctx); err != nil {
+		a.logger.Warn("refresh Telegram bot identity", "error", err)
+	}
 	secret, err := a.settings.Plaintext(ctx, "telegram.webhook_secret")
 	if err != nil {
 		a.logger.Error("load Telegram webhook secret", "error", err)

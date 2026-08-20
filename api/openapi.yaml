@@ -1,11 +1,7 @@
 openapi: 3.1.0
-info:
-  title: TX Carpool API
-  version: 1.0.0
-  description: "HTTP contract for the TX Carpool Telegram Mini App. User and admin endpoints use a Secure, HttpOnly session cookie established from validated Telegram Mini App `initData`. Every authenticated browser request also carries a five-minute HMAC timestamp, unique nonce, and signature derived from a same-origin companion key. Provider callbacks use provider-specific signatures and are never authenticated by the browser session. All identifiers and timestamps are strings. TXB values use integer hundredths encoded as decimal strings. Traffic byte counts are decimal strings. The server is authoritative for prices, exchange rates, entitlement dates, and payment state."
-  license: { name: Proprietary }
+info: { title: TX Carpool API, version: 1.0.0, description: "HTTP contract for the TX Carpool Telegram Mini App. User and admin endpoints use a Secure, HttpOnly session cookie established from validated Telegram Mini App `initData`. Every authenticated browser request also carries a five-minute HMAC timestamp, unique nonce, and signature derived from a same-origin companion key. Provider callbacks use provider-specific signatures and are never authenticated by the browser session. All identifiers and timestamps are strings. TXB values use integer hundredths encoded as decimal strings. Traffic byte counts are decimal strings. The server is authoritative for prices, exchange rates, entitlement dates, and payment state.", license: { name: Proprietary } }
 servers: [{ url: /, description: Same-origin API }]
-tags: [{ name: Authentication }, { name: Onboarding }, { name: Dashboard }, { name: Catalog }, { name: Billing }, { name: Activity }, { name: Coupons }, { name: Questionnaires }, { name: Emby }, { name: Admin }, { name: Database Administration }, { name: Webhooks }, { name: Operations }]
+tags: [{ name: Authentication }, { name: Onboarding }, { name: Dashboard }, { name: Catalog }, { name: Billing }, { name: Affiliates }, { name: Activity }, { name: Coupons }, { name: Questionnaires }, { name: Emby }, { name: Admin }, { name: Database Administration }, { name: Webhooks }, { name: Operations }]
 security: [{ cookieSession: [], requestTimestamp: [], requestNonce: [], requestSignature: [] }]
 paths:
   /api/v1/auth/telegram: { $ref: './paths/api-v1-auth-telegram.yaml' }
@@ -34,6 +30,8 @@ paths:
   /api/v1/subscription/ip-blocks/{blockId}/unblock: { $ref: './paths/api-v1-subscription-ip-blocks-id-unblock.yaml' }
   /api/v1/balance: { $ref: './paths/api-v1-balance.yaml' }
   /api/v1/ledger: { $ref: './paths/api-v1-ledger.yaml' }
+  /api/v1/affiliates: { $ref: './paths/api-v1-affiliates.yaml' }
+  /api/v1/affiliates/referrals: { $ref: './paths/api-v1-affiliates-referrals.yaml' }
   /api/v1/statistics: { $ref: './paths/api-v1-statistics.yaml' }
   /api/v1/statistics/nodes: { $ref: './paths/api-v1-statistics-nodes.yaml' }
   /api/v1/statistics/nodes/{nodeUuid}/geocheck: { $ref: './paths/api-v1-statistics-nodes-nodeuuid-geocheck.yaml' }
@@ -55,6 +53,7 @@ paths:
   /api/v1/questionnaires/history: { $ref: './paths/api-v1-questionnaires-history.yaml' }
   /api/v1/questionnaires/{id}/participation: { $ref: './paths/api-v1-questionnaires-id-participation.yaml' }
   /api/v1/admin/activity-settings: { $ref: './paths/api-v1-admin-activity-settings.yaml' }
+  /api/v1/admin/affiliates: { $ref: './paths/api-v1-admin-affiliates.yaml' }
   /api/v1/admin/activity-games: { $ref: './paths/api-v1-admin-activity-games.yaml' }
   /api/v1/admin/activity-games/{id}: { $ref: './paths/api-v1-admin-activity-games-id.yaml' }
   /api/v1/admin/activity-games/{id}/statistics: { $ref: './paths/api-v1-admin-activity-games-id-statistics.yaml' }

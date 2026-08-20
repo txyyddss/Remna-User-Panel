@@ -7,7 +7,9 @@ Audited administrative operations for catalog data, settings, balances, refunds,
 
 - `service.go` defines admin-facing dependency contracts, service construction, backup deletion, and settings forwarding.
 - `catalog.go` manages combos, typed squad profiles, and upstream squad imports; Remnawave remains authoritative for node accessibility.
-- `finance.go` manages balance adjustments, deductions, refunds, terminal-payment courtesy credits, entitlement cancellation, backups, job retries, and audit recording.
+- `finance.go` validates balance adjustments, deductions, refunds,
+  terminal-payment courtesy credits, and entitlement cancellations; production
+  persistence commits their audit and user notification atomically.
 - `settings.go` defines editable settings, encrypted storage access, masked payment profiles, safe listing, and readiness checks.
 - `payment_profiles.go` validates, encrypts, and resolves multiple provider-account profiles with independently enabled channels.
 - `payment_profile_readiness.go` maps enabled provider profiles to stable readiness diagnostics.
@@ -22,7 +24,9 @@ Audited administrative operations for catalog data, settings, balances, refunds,
 - `user_entitlement_commands.go` validates full edits, exactly-once refunds, and no-charge combo replacements.
 - `user_bulk_commands.go` validates inclusive-OR bulk previews and durable extension jobs.
 - `user_operation_resolution.go` validates idempotent audited resolutions for ambiguous provider outcomes without dispatching another provider call.
-- `user_operation_worker.go` applies exact local entitlement state through the shared provider-operation dispatcher.
+- `user_operation_worker.go` applies exact local entitlement state through the
+  shared provider-operation dispatcher and releases user messages only after a
+  real successful provider item.
 - `service_test.go` covers settings forwarding and catalog operations.
 - `finance_test.go` covers balance, refund, cancellation, backup, and retry operations.
 - `service_test_helpers_test.go` contains shared admin service test doubles.

@@ -23,6 +23,7 @@
 - `statistics-01.css` styles the independently divided statistics sections, centered refresh control, KPI panels, dense icon-based node rows, and compact states.
 - `statistics-02.css` styles the responsive generic SVG donut, labeled pies, traffic tooltips, legends, and normalized stacked bars.
 - `statistics-03.css` constrains the node Geocheck modal to Telegram safe areas and styles its low-latency touch zoom canvas and fixed icon controls.
+- `affiliates-01.css` styles flat member metrics, tier progress, referral rows, and tablet expansion.
 - `catalog-01.css` styles catalog browsing and plan presentation.
 - `catalog-02.css` styles catalog selection and checkout details.
 - `billing-01.css` styles funding controls.

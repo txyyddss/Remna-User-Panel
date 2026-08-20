@@ -36,6 +36,11 @@ func (c *Client) listUsersStream(ctx context.Context, cursor string, size int, t
 	return envelope.Response.Users, envelope.Response.NextCursor, envelope.Response.HasMore, nil
 }
 
+// ListUsersStream returns one documented cursor page without a Telegram filter.
+func (c *Client) ListUsersStream(ctx context.Context, cursor string, size int) ([]User, *string, bool, error) {
+	return c.listUsersStream(ctx, cursor, size, nil)
+}
+
 func (c *Client) RevokeSubscription(ctx context.Context, userID int64, revokeOnlyPasswords bool) (*User, error) {
 	if userID <= 0 {
 		return nil, errors.New("remnawave user id must be positive")

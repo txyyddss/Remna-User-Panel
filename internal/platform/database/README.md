@@ -35,6 +35,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
   and exposes migration versions.
 - `store.go` — core store type, user/session persistence, membership, username,
   and Remnawave recovery state.
+- `store_access.go` exposes the database handle and optional structured logger.
 - `settings.go` — encrypted-or-plain application setting records.
 - `onboarding.go` — versioned onboarding content, agreement contracts, and
   onboarding completion.
@@ -60,6 +61,20 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `billing_payment_announcement.go` resolves the settlement-time username and
   administrator provider label and encodes the immutable outbox payload inside
   the payment transaction.
+- `affiliate_referrals.go` freezes valid private-start inviters before Mini App authentication.
+- `affiliate_config.go` reads and atomically versions audited tier configuration.
+- `affiliate_queries.go` projects member metrics, progress, and fixed referral pages with Telegram first/last names.
+- `affiliate_settlement.go` creates immutable first-payment commission snapshots and jobs.
+- `affiliate_rewards.go` applies exact-once tier rewards through shared transaction helpers.
+- `affiliate_settlement_test.go` covers first-payment uniqueness, floor rounding, pre-upgrade rates, and exact-once TXB awards.
+- `affiliate_referrals_test.go` covers missing, self, frozen, and authentication-locked inviters plus locale normalization.
+- `affiliate_config_test.go` covers immutable version increments and stale-write conflicts.
+- `notification_events.go` owns semantic event deduplication and atomic outbox
+  release; `notification_scans.go` owns 48-hour and reset-period eligibility.
+- `notification_purchases.go` snapshots expiration, queued activation, and
+  automatic-renewal rollover outcomes.
+- `notification_admin_finance.go`, `notification_admin_cancel.go`, and
+  `notification_admin_entitlements.go` snapshot detailed administrator changes.
 - `payment_operations.go` atomically stores checkout/cancellation intents with provider-operation receipts.
 - `payment_operation_resolution.go` resolves checkout receipts from authoritative paid callbacks without another provider call.
 - `billing_callback_tombstones.go` keeps provider callback replays idempotent
@@ -108,6 +123,8 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `member_reset_compensation.go` credits a failed paid-reset debit exactly once with terminal receipt state.
 - `member_refund_commit.go` atomically credits a first-term refund and advances the independent queued timeline.
 - `provider_operations.go`, `provider_operation_lifecycle.go`, `provider_operation_queries.go`, and `provider_operation_items.go` persist provider-neutral receipts, items, attempts, and replay facts.
+- `provider_operation_notification_completion.go` releases pending user messages
+  only for a real successful provider-worker item.
 - `admin_entitlement_edit.go`, `admin_entitlement_refund.go`, and `admin_combo_replacement.go` atomically persist audited administrator mutations with their provider operations.
 - `admin_bulk_query.go`, `admin_bulk_shift.go`, and `admin_bulk_extension.go` preview inclusive-OR active targets, deduplicate users, shift queued successors, and create one durable bulk job.
 - `admin_user_operations.go` and `admin_user_refunds.go` supply the aggregate profile's open-operation and refund projections.
@@ -170,6 +187,8 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `connection_scans_test.go` covers metadata-only scan lifecycle and expiry.
 - `member_operations_test.go` covers paid reset compensation and zero-usage first-term refunds.
 - `provider_operations_test.go` covers receipt state transitions, replay conflicts, and ambiguous outcomes.
+- `notification_events_test.go` covers provider-gate deduplication, reminder
+  eligibility, and traffic reset-period rearming.
 - `admin_entitlement_workflows_test.go` covers optimistic edits, immutable pricing, exactly-once credits, and zero-TXB replacements.
 - `admin_bulk_workflows_test.go` covers inclusive-OR matching, active-user deduplication, and equal queued-term shifts.
 - `admin_operation_projection_test.go` covers owned and bulk-target open-operation aggregation.

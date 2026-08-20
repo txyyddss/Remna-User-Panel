@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
 )
 
 func TestSetAutomaticRenewalAllowsSettledExpiredTerm(t *testing.T) {
@@ -32,6 +34,16 @@ func TestSetAutomaticRenewalAllowsSettledExpiredTerm(t *testing.T) {
 	if _, err := store.FinalizeRollover(ctx, purchase.ID, 100, 100, "", purchase.ValidUntil); err != nil {
 		t.Fatalf("FinalizeRollover(): %v", err)
 	}
+	var kind string
+	if err := store.DB().QueryRowContext(ctx, `SELECT kind FROM user_notification_events WHERE event_key=?`,
+		"expired:"+purchase.ID).Scan(&kind); err != nil || kind != jobpayload.UserEventExpiration {
+		t.Fatalf("expiration notification = %q, %v", kind, err)
+	}
+	assertNotificationCounts(t, store, 1, 0)
+	if err := store.ReleaseUserSyncNotifications(ctx, user.ID, purchase.ValidUntil); err != nil {
+		t.Fatal(err)
+	}
+	assertNotificationCounts(t, store, 1, 1)
 	plan, err := store.AutoRenewalPlan(ctx, user.ID, purchase.ID, purchase.ValidUntil)
 	if err != nil || plan.IneligibleReason != "" {
 		t.Fatalf("AutoRenewalPlan() = (%+v, %v), want eligible settled term", plan, err)

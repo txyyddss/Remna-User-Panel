@@ -1,0 +1,14 @@
+get:
+  tags: [Affiliates]
+  summary: List registered referrals in fixed five-row pages
+  operationId: getAffiliateReferrals
+  parameters:
+    - name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+  responses:
+    '200':
+      description: Referral registration page
+      content: { application/json: { schema: { $ref: '../components/schemas/schemas-20.yaml#/AffiliateReferralPage' } } }
+    '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+    '500': { $ref: '../components/responses.yaml#/InternalFailure' }

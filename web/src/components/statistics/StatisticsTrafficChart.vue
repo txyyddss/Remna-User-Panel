@@ -5,6 +5,7 @@ import type { StatisticsSnapshot } from '@/api/types'
 import StatisticsChartDetail from './StatisticsChartDetail.vue'
 import { statisticsColors, formatShortStatisticDate, formatStatisticBytes, formatStatisticPercent, safeStatisticBytes, sumStatisticBytes } from './statisticsFormat'
 import { useStatisticsChartSelection } from './useStatisticsChartSelection'
+import { useStatisticsTrafficScrub } from './useStatisticsTrafficScrub'
 
 const props = defineProps<{ remote: StatisticsSnapshot['remote'] }>()
 
@@ -40,14 +41,30 @@ const days = computed(() => {
 const hasTraffic = computed(() => days.value.some((day) => day.total > 0n))
 const trafficSegments = computed(() => days.value.flatMap((day) => day.segments))
 const { activeItem, hasActive, activate, deactivate, select, isActive, isSelected } = useStatisticsChartSelection(trafficSegments)
+const { isScrubbing, onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onClick } = useStatisticsTrafficScrub({ activate, deactivate, select })
 </script>
 
 <template>
   <section class="statistics-section">
     <div class="statistics-section__heading"><h2>{{ $t('statistics.sevenDayTraffic') }}</h2></div>
     <article v-if="hasTraffic" class="statistics-panel statistics-traffic">
-      <div class="statistics-traffic__plot" role="group" :aria-label="$t('statistics.trafficChartLabel')">
-        <div v-for="day in days" :key="day.date" class="statistics-traffic__day">
+      <p id="statistics-traffic-touch-hint" class="statistics-traffic__touch-hint">{{ $t('statistics.trafficTouchHint') }}</p>
+      <div
+        ref="trafficPlot"
+        class="statistics-traffic__plot"
+        :class="{ 'statistics-traffic__plot--scrubbing': isScrubbing }"
+        role="group"
+        data-haptic
+        :aria-label="$t('statistics.trafficChartLabel')"
+        aria-describedby="statistics-traffic-touch-hint"
+        @pointerdown="onPointerDown"
+        @pointermove="onPointerMove"
+        @pointerup="onPointerUp"
+        @pointercancel="onPointerCancel"
+        @lostpointercapture="onPointerCancel"
+        @click.capture="onClick"
+      >
+        <div v-for="day in days" :key="day.date" class="statistics-traffic__day" data-statistics-traffic-day>
           <div class="statistics-traffic__track">
             <div class="statistics-traffic__stack" :style="{ height: `${day.height}%` }">
               <UTooltip v-for="segment in day.segments" :key="segment.id" :content="{ side: 'top' }">
@@ -59,12 +76,12 @@ const { activeItem, hasActive, activate, deactivate, select, isActive, isSelecte
                   :aria-pressed="isSelected(segment.interactionId)"
                   role="button"
                   tabindex="0"
+                  :data-statistics-traffic-id="segment.interactionId"
                   data-haptic
                   @pointerenter="activate(segment.interactionId)"
                   @pointerleave="deactivate(segment.interactionId)"
                   @focus="activate(segment.interactionId)"
                   @blur="deactivate(segment.interactionId)"
-                  @click="select(segment.interactionId)"
                   @keydown.enter.prevent="select(segment.interactionId)"
                   @keydown.space.prevent="select(segment.interactionId)"
                 />

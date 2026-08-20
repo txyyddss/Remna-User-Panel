@@ -21,3 +21,4 @@ Schema definitions are grouped into bounded sequential shards. The root componen
 - `schemas-17.yaml`: durable operation and payment-operation receipts, signed connection projections, active IP blocks, reset/refund quotes, and billing amount limits
 - `schemas-18.yaml`: admin entitlement/combo/bulk mutation requests and aggregate user detail including active IP blocks
 - `schemas-19.yaml`: cached remote/database statistics, normalized distributions, and node Geocheck image contracts
+- `schemas-20.yaml`: affiliate member projections, tier rewards, bot identity, and optimistic administrator writes

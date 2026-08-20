@@ -6,6 +6,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
 )
 
 func TestMigrationClearsLegacySubscriptionCache(t *testing.T) {
@@ -254,6 +256,17 @@ func TestDueRenewalWaitsForRolloverThenEnqueuesExactlyOneActivation(t *testing.T
 	if count != 1 {
 		t.Fatalf("renewal activation job count after rollover = %d, want 1", count)
 	}
+	if err := store.MarkPurchaseSyncResult(ctx, renewal.ID, true, first.ValidUntil); err != nil {
+		t.Fatalf("MarkPurchaseSyncResult(renewal): %v", err)
+	}
+	var notificationKind string
+	if err := store.DB().QueryRowContext(ctx, `SELECT kind FROM user_notification_events WHERE user_id=?`, user.ID).Scan(&notificationKind); err != nil {
+		t.Fatal(err)
+	}
+	if notificationKind != jobpayload.UserEventQueuedActivation {
+		t.Fatalf("manual successor notification = %q", notificationKind)
+	}
+	assertNotificationCounts(t, store, 1, 1)
 }
 
 func TestRecoverOutboxReleasesAbandonedLease(t *testing.T) {

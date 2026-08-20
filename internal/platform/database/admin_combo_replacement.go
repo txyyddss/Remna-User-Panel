@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/notifications"
+	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
 	"github.com/txyyddss/Remna-User-Panel/internal/providerops"
 )
 
@@ -68,6 +70,19 @@ func (s *Store) ReplaceAdminCombo(ctx context.Context, input AdminComboReplaceme
 	if err := insertEntitlementAudit(ctx, tx, input.ActorUserID, "entitlement.combo_replace", purchase.ID, input.Reason,
 		operation.Receipt.ID, entitlementSnapshot(purchase), map[string]any{"comboId": input.ComboID,
 			"addonSquadUuids": input.AddonSquadUUIDs, "txbMovementMinor": 0}, now); err != nil {
+		return model.OperationReceipt{}, err
+	}
+	var newComboName string
+	if err := tx.QueryRowContext(ctx, `SELECT name FROM combos WHERE id=?`, input.ComboID).Scan(&newComboName); err != nil {
+		return model.OperationReceipt{}, err
+	}
+	facts := adminNotificationBase("combo_replacement", input.Reason, now)
+	facts[notifications.FactPreviousCombo], facts[notifications.FactNewCombo] = purchase.ComboName, newComboName
+	if len(input.AddonSquadUUIDs) > 0 {
+		facts[notifications.FactAddOns] = squadSummary(input.AddonSquadUUIDs)
+	}
+	if _, err := s.insertUserNotificationTx(ctx, tx, "admin:"+operation.Receipt.ID+":"+input.UserID, input.UserID,
+		jobpayload.UserEventAdminUpdate, providerItemGate(operation.Receipt.ID, input.UserID), facts, now); err != nil {
 		return model.OperationReceipt{}, err
 	}
 	if err := tx.Commit(); err != nil {

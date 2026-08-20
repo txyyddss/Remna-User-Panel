@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/notifications"
+	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 )
 
@@ -72,6 +74,13 @@ func (s *Store) CourtesyCreditPayment(ctx context.Context, actorID, orderID, rea
 	}
 	if err := insertAuditTx(ctx, tx, auditID, &actorID, "payment.courtesy_credit", "payment", order.ID, string(detail), now); err != nil {
 		return model.CourtesyCredit{}, fmt.Errorf("append payment courtesy audit: %w", err)
+	}
+	facts := adminFinanceFacts("courtesy_credit", 0, balance, reason, now)
+	delete(facts, notifications.FactAmount)
+	facts[notifications.FactCredited] = fmt.Sprintf("%d", order.TXBMinor)
+	if _, err := s.insertUserNotificationTx(ctx, tx, "admin:"+creditID+":"+order.UserID, order.UserID,
+		jobpayload.UserEventAdminUpdate, "", facts, now); err != nil {
+		return model.CourtesyCredit{}, err
 	}
 	if err := tx.Commit(); err != nil {
 		return model.CourtesyCredit{}, fmt.Errorf("commit payment courtesy credit: %w", err)

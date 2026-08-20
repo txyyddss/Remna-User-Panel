@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/activity"
+	"github.com/txyyddss/Remna-User-Panel/internal/affiliates"
 	"github.com/txyyddss/Remna-User-Panel/internal/billing"
 	"github.com/txyyddss/Remna-User-Panel/internal/botcommands"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
@@ -74,6 +75,19 @@ func (s *Server) processTelegramCommand(ctx context.Context, message *telegram.M
 		return
 	}
 	if command.Name == botcommands.Start {
+		if message.Chat.Type == "private" && len(command.Args) == 1 {
+			inviterID, err := parsePositiveTelegramID(command.Args[0])
+			if err == nil && inviterID > 0 {
+				name, accepted, acceptErr := s.deps.Affiliates.AcceptReferral(ctx, message.From.ID, inviterID)
+				if acceptErr != nil {
+					s.deps.Logger.Warn("accept Telegram referral", "telegram_id", message.From.ID, "error", acceptErr)
+				}
+				if accepted {
+					s.sendTelegramReply(ctx, message, affiliates.FormatReferralWelcome(affiliates.NormalizeLocale(message.From.LanguageCode), name)+"\n\n"+botcommands.FormatStart(copy))
+					return
+				}
+			}
+		}
 		s.sendTelegramReply(ctx, message, botcommands.FormatStart(copy))
 		return
 	}

@@ -13,8 +13,8 @@ the package never calls persistence or providers directly.
   structured authoritative rollover states.
 - `traffic.go` owns 1024-based byte labels, the eight-cell usage bar, and the
   five-node 30-cell traffic distribution.
-- `markdown.go` escapes dynamic content and truncates replies without leaving
-  incomplete MarkdownV2 escape sequences.
+- `markdown.go` delegates dynamic escaping and safe truncation to the shared
+  Telegram formatter while preserving the command package compatibility surface.
 - `command_test.go` covers suffix parsing, unknown-command exclusion, locale
   selection, and bounded output.
 - `format_test.go` covers both locales, exact start/balance copy, check-in and

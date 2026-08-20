@@ -38,7 +38,7 @@ func (s *Service) QueueJobRetry(ctx context.Context, actorID, jobID, key string)
 // QueueRefund creates or replays a provider-aware payment refund command.
 func (s *Service) QueueRefund(ctx context.Context, actorID, orderID, reason, key string) (model.OperationReceipt, error) {
 	reason = strings.TrimSpace(reason)
-	if reason == "" {
+	if reason == "" || len(reason) > 500 {
 		return model.OperationReceipt{}, errors.New("refund reason is required")
 	}
 	payload, err := json.Marshal(refundTarget{Reason: reason})

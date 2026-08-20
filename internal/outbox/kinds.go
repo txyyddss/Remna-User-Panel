@@ -7,3 +7,20 @@ const ContinuityKind = "remna_prepare_continuity"
 // PaymentSuccessAnnouncementKind sends one durable channel announcement for
 // the authoritative first transition of a provider payment to paid.
 const PaymentSuccessAnnouncementKind = "telegram_payment_success_announcement"
+
+const AffiliateSuccessKind = "telegram_affiliate_success"
+const AffiliateTierUpgradeKind = "telegram_affiliate_tier_upgrade"
+
+// UserNotificationKind delivers one immutable private-chat user event.
+const UserNotificationKind = "telegram_user_notification"
+
+const (
+	UserEventExpiration       = "expiration"
+	UserEventExpiryReminder   = "expiry_reminder"
+	UserEventQueuedActivation = "queued_activation"
+	UserEventAutoRenewal      = "auto_renewal"
+	UserEventTrafficThreshold = "traffic_threshold"
+	UserEventGroupReward      = "group_reward"
+	UserEventAdminExtension   = "admin_extension"
+	UserEventAdminUpdate      = "admin_update"
+)

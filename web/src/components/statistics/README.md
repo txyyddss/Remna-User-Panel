@@ -9,7 +9,7 @@
 - `StatisticsNodes.test.ts` covers the card action's selected-node event.
 - `StatisticsGeocheckModal.vue` presents the on-demand cached SVG result with loading, unavailable, reset, button, wheel, centered pinch, pan, and double-tap zoom controls.
 - `StatisticsGeocheckModal.test.ts` covers data-URI rendering, loading/unavailable states, and close reset behavior.
-- `StatisticsTrafficChart.vue` renders the seven-day per-node traffic stack with hover, focus, keyboard, and tap selection plus exact-value details.
+- `StatisticsTrafficChart.vue` renders the seven-day per-node traffic stack with hover, focus, keyboard, tap, and phone drag selection plus exact-value details.
 - `StatisticsShareCharts.vue` composes member and payment proportions.
 - `StatisticsDistribution.vue` switches between squad-first and combo-first normalized SVG stacked bars with interactive segment details.
 - `StatisticsDonut.vue` is the interactive reusable SVG donut-with-text and legend primitive.
@@ -24,3 +24,5 @@
 - `statisticsFormat.test.ts` covers UTC weekday buckets and invalid chart fact filtering.
 - `StatisticsChartDetail.vue` provides the stable exact-value readout shared by every chart.
 - `useStatisticsChartSelection.ts` centralizes hover, focus, and pinned tap selection state.
+- `useStatisticsTrafficScrub.ts` maps touch and pointer coordinates to the nearest rendered traffic segment while preserving vertical page scrolling.
+- `useStatisticsTrafficScrub.test.ts` covers nearest-day and nearest-segment touch hit testing.

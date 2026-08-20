@@ -62,6 +62,7 @@
     "noNodes": "暂无节点",
     "sevenDayTraffic": "近七日流量",
     "trafficChartLabel": "近七日按节点统计的每日流量",
+    "trafficTouchHint": "点按或滑动查看每个数值。",
     "trafficPoint": "{date} 的 {node}：{value}",
     "noTraffic": "暂无流量记录",
     "distributions": "分布",

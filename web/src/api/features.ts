@@ -4,11 +4,13 @@ import type { ActivityOverview, ActivityResult, ActivitySettings, ActivitySettin
 import type { ActiveQuestionnaire, CouponDefinition, CouponGrant, CouponRedemption, QuestionnaireAdminRecord, QuestionnaireImportPreview, QuestionnaireImportState, QuestionnaireImportSummary, QuestionnaireParticipation } from './contracts/community'
 import type { EmbyAccount, EmbyOverview } from './contracts/commerce'
 import type { AdminStatistics, DatabaseMutationInput, DatabaseMutationResult, DatabaseMutationReview, DatabaseQueryInput, DatabaseRowsPage, DatabaseTable, OnboardingBundle, OnboardingLocalizedContent, PublishedOnboarding, RestoreOperation, StatisticsQuery } from './contracts/admin'
+import type { AdminAffiliateView, AffiliateOverview, AffiliateReferralPage, AffiliateTier } from './contracts/affiliates'
 
 export type * from './contracts/activity'
 export type * from './contracts/community'
 export type * from './contracts/commerce'
 export type * from './contracts/admin'
+export type * from './contracts/affiliates'
 
 export type PaymentReturnProvider = 'ezpay' | 'bepusdt'
 
@@ -34,6 +36,12 @@ export interface QuestionnaireSettlementStart {
 const featureRequest = request
 
 export const featuresApi = {
+  getAffiliates: () => featureRequest<AffiliateOverview>('/api/v1/affiliates'),
+  getAffiliateReferrals: (page: number) => featureRequest<AffiliateReferralPage>('/api/v1/affiliates/referrals', { query: { page } }),
+  getAdminAffiliates: () => featureRequest<AdminAffiliateView>('/api/v1/admin/affiliates'),
+  saveAdminAffiliates: (expectedVersion: number, tiers: AffiliateTier[]) => featureRequest<AdminAffiliateView>('/api/v1/admin/affiliates', {
+    method: 'PUT', body: { expectedVersion, tiers },
+  }),
   getActivity: () => featureRequest<ActivityOverview>('/api/v1/activity'),
   checkIn: (idempotencyKey: string) => featureRequest<ActivityResult>('/api/v1/activity/check-ins', { method: 'POST', headers: { 'Idempotency-Key': idempotencyKey } }),
   placeBet: (gameId: string, stakeTxbMinor: string, idempotencyKey: string) => featureRequest<ActivityResult>('/api/v1/activity/bets', {
