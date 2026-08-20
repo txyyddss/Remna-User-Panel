@@ -14,14 +14,22 @@ const shares = [
 ]
 
 describe('statistics SVG charts', () => {
-  it('renders a donut with real SVG ring segments and center text', () => {
+  it('renders an interactive donut with exact-value selection details', async () => {
     const wrapper = mount(StatisticsDonut, {
       props: { items: shares, centerLabel: 'Members', centerValue: '4', chartLabel: 'Member split' },
     })
 
-    expect(wrapper.find('svg[role="img"]').attributes('aria-label')).toBe('Member split')
-    expect(wrapper.findAll('.statistics-ring-segment')).toHaveLength(2)
+    expect(wrapper.find('svg[role="group"]').attributes('aria-label')).toBe('Member split')
+    const segments = wrapper.findAll('.statistics-ring-segment')
+    expect(segments).toHaveLength(2)
     expect(wrapper.find('.statistics-donut__center').text()).toContain('4')
+    expect(wrapper.find('.statistics-chart-detail').text()).toContain('Active3 / 75%')
+
+    await segments[1]?.trigger('focus')
+    expect(wrapper.find('.statistics-chart-detail').text()).toContain('Queued1 / 25%')
+
+    await segments[1]?.trigger('click')
+    expect(segments[1]?.attributes('aria-pressed')).toBe('true')
     expect(wrapper.html()).not.toContain('conic-gradient')
   })
 
@@ -31,11 +39,12 @@ describe('statistics SVG charts', () => {
     })
 
     expect(wrapper.findAll('.statistics-pie > g > path:not(.statistics-pie__line)')).toHaveLength(2)
+    expect(wrapper.findAll('.statistics-pie .statistics-chart-segment[tabindex="0"]')).toHaveLength(2)
     expect(wrapper.findAll('.statistics-pie__label')).toHaveLength(2)
     expect(wrapper.findAll('.statistics-legend li')).toHaveLength(2)
   })
 
-  it('normalizes each DB12 stacked bar to one hundred percent', () => {
+  it('normalizes each DB12 stacked bar and exposes interactive exact values', async () => {
     const zero = { currency: 'TXB', minor: '0', display: '0.00 TXB' } as const
     const database = {
       newUserConversionPercent: 0, averageSpend: zero, spendMinimum: zero, spendMaximum: zero,
@@ -57,5 +66,9 @@ describe('statistics SVG charts', () => {
     expect(Number(segments[0]?.attributes('width'))).toBeCloseTo(66.667, 2)
     expect(Number(segments[1]?.attributes('x'))).toBeCloseTo(66.667, 2)
     expect(segments.reduce((total, segment) => total + Number(segment.attributes('width')), 0)).toBeCloseTo(100)
+
+    await segments[1]?.trigger('focus')
+    expect(wrapper.find('.statistics-chart-detail').text()).toContain('Squad A: Combo B')
+    expect(wrapper.find('.statistics-chart-detail').text()).toContain('1 / 33.3%')
   })
 })

@@ -2,7 +2,9 @@
 import { computed } from 'vue'
 
 import type { StatisticsSnapshot } from '@/api/types'
-import { statisticsColors, formatShortStatisticDate, formatStatisticBytes, safeStatisticBytes, sumStatisticBytes } from './statisticsFormat'
+import StatisticsChartDetail from './StatisticsChartDetail.vue'
+import { statisticsColors, formatShortStatisticDate, formatStatisticBytes, formatStatisticPercent, safeStatisticBytes, sumStatisticBytes } from './statisticsFormat'
+import { useStatisticsChartSelection } from './useStatisticsChartSelection'
 
 const props = defineProps<{ remote: StatisticsSnapshot['remote'] }>()
 
@@ -17,7 +19,9 @@ const days = computed(() => {
   const raw = props.remote.trafficDates.map((date, dayIndex) => {
     const segments = props.remote.trafficSeries.map((series, seriesIndex) => ({
       id: series.uuid,
+      interactionId: `${date}:${series.uuid}`,
       name: series.name,
+      date,
       color: statisticsColors[seriesIndex % statisticsColors.length],
       value: safeStatisticBytes(series.dailyBytes[dayIndex] ?? '0'),
     })).filter((segment) => segment.value > 0n)
@@ -34,6 +38,8 @@ const days = computed(() => {
   }))
 })
 const hasTraffic = computed(() => days.value.some((day) => day.total > 0n))
+const trafficSegments = computed(() => days.value.flatMap((day) => day.segments))
+const { activeItem, hasActive, activate, deactivate, select, isActive, isSelected } = useStatisticsChartSelection(trafficSegments)
 </script>
 
 <template>
@@ -47,9 +53,20 @@ const hasTraffic = computed(() => days.value.some((day) => day.total > 0n))
               <UTooltip v-for="segment in day.segments" :key="segment.id" :content="{ side: 'top' }">
                 <span
                   class="statistics-traffic__segment"
+                  :class="['statistics-chart-segment', { 'statistics-chart-segment--muted': hasActive && !isActive(segment.interactionId) }]"
                   :style="{ backgroundColor: segment.color, flexBasis: `${segment.share}%` }"
                   :aria-label="$t('statistics.trafficPoint', { node: segment.name, date: day.date, value: formatStatisticBytes(segment.value) })"
+                  :aria-pressed="isSelected(segment.interactionId)"
+                  role="button"
                   tabindex="0"
+                  data-haptic
+                  @pointerenter="activate(segment.interactionId)"
+                  @pointerleave="deactivate(segment.interactionId)"
+                  @focus="activate(segment.interactionId)"
+                  @blur="deactivate(segment.interactionId)"
+                  @click="select(segment.interactionId)"
+                  @keydown.enter.prevent="select(segment.interactionId)"
+                  @keydown.space.prevent="select(segment.interactionId)"
                 />
                 <template #content>
                   <div class="statistics-chart-tooltip"><strong>{{ segment.name }}</strong><span>{{ day.date }}</span><span>{{ formatStatisticBytes(segment.value) }}</span></div>
@@ -60,6 +77,12 @@ const hasTraffic = computed(() => days.value.some((day) => day.total > 0n))
           <span>{{ formatShortStatisticDate(day.date) }}</span>
         </div>
       </div>
+      <StatisticsChartDetail
+        v-if="activeItem"
+        :color="activeItem.color"
+        :label="$t('statistics.chartSeries', { series: activeItem.name, segment: activeItem.date })"
+        :value="$t('statistics.chartPointValue', { value: formatStatisticBytes(activeItem.value), percent: formatStatisticPercent(activeItem.share) })"
+      />
       <ul class="statistics-traffic__legend">
         <li v-for="series in legend" :key="series.id">
           <span class="statistics-legend__swatch" :style="{ backgroundColor: series.color }" />

@@ -9,12 +9,12 @@
 - `StatisticsNodes.test.ts` covers the card action's selected-node event.
 - `StatisticsGeocheckModal.vue` presents the on-demand cached SVG result with loading, unavailable, reset, button, wheel, centered pinch, pan, and double-tap zoom controls.
 - `StatisticsGeocheckModal.test.ts` covers data-URI rendering, loading/unavailable states, and close reset behavior.
-- `StatisticsTrafficChart.vue` renders the seven-day per-node traffic stack with keyboard-accessible Nuxt UI tooltips.
+- `StatisticsTrafficChart.vue` renders the seven-day per-node traffic stack with hover, focus, keyboard, and tap selection plus exact-value details.
 - `StatisticsShareCharts.vue` composes member and payment proportions.
-- `StatisticsDistribution.vue` switches between squad-first and combo-first normalized SVG stacked bars.
-- `StatisticsDonut.vue` is the reusable SVG donut-with-text and legend primitive.
-- `StatisticsPie.vue` renders accessible SVG pies with either outside labels or a compact label list.
-- `StatisticsConcentricDonut.vue` owns the reusable outer/inner ring geometry and grouped legends.
+- `StatisticsDistribution.vue` switches between squad-first and combo-first normalized SVG stacked bars with interactive segment details.
+- `StatisticsDonut.vue` is the interactive reusable SVG donut-with-text and legend primitive.
+- `StatisticsPie.vue` renders interactive accessible SVG pies with either outside labels or a compact label list.
+- `StatisticsConcentricDonut.vue` owns the interactive reusable outer/inner ring geometry and grouped legends.
 - `StatisticsMembershipDonut.vue` combines subscription states and active combo choices with the active-member count at its center.
 - `StatisticsPaymentDonut.vue` renders EZPay outside BEPusdt, excludes failed or refunded payment facts, and centers the included payment count.
 - `StatisticsCharts.test.ts` covers donut, labeled-pie, and normalized stacked-bar semantics.
@@ -22,3 +22,5 @@
 - `statisticsGeometry.ts` owns deterministic pie-path and ring-dash geometry.
 - `statisticsFormat.ts` owns stable chart colors plus localized number, percentage, date, and byte formatting.
 - `statisticsFormat.test.ts` covers UTC weekday buckets and invalid chart fact filtering.
+- `StatisticsChartDetail.vue` provides the stable exact-value readout shared by every chart.
+- `useStatisticsChartSelection.ts` centralizes hover, focus, and pinned tap selection state.

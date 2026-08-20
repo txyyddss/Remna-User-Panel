@@ -12,7 +12,7 @@
 - `coupons.test.ts` covers coupon visibility boundaries.
 - `telegram.ts` wraps Telegram Mini App integration helpers.
 - `telegramFullscreen.ts` owns fullscreen request state, event synchronization, and safe-area reserve behavior.
-- `telegramHaptics.ts` contains click feedback and distinct payment/bet outcome haptic behavior re-exported by `telegram.ts`.
+- `telegramHaptics.ts` contains click, semantic selection, and distinct payment/bet outcome haptic behavior re-exported by `telegram.ts`.
 - `telegramLinks.ts` opens Telegram-native links with a browser fallback.
 - `telegramContext.ts` classifies the native `TelegramWebviewProxy` bridge, launch markers, SDK-captured `WebView.initParams`, platforms, and user agents before route construction.
 - `telegram.test.ts` covers Telegram capability behavior.

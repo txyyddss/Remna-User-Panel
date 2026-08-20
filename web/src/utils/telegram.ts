@@ -3,7 +3,7 @@ import { installHapticClickFeedback } from './telegramHaptics'
 import { requestTelegramFullscreen, syncTelegramFullscreen } from './telegramFullscreen'
 
 export { isTelegramUserAgent, waitForTelegramContext } from './telegramContext'
-export { haptic, installHapticClickFeedback, notifyHaptic, notifyBetOutcome, type HapticImpact } from './telegramHaptics'
+export { haptic, installHapticClickFeedback, notifyHaptic, notifyBetOutcome, selectionHaptic, type HapticImpact } from './telegramHaptics'
 export { telegramFullscreenState } from './telegramFullscreen'
 export { openExternalLink, openTelegramInvoice } from './telegramLinks'
 

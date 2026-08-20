@@ -14,6 +14,8 @@
     "nodesLoadFailed": "Live node metrics could not be loaded.",
     "unavailable": "Statistics unavailable",
     "noData": "No data",
+    "chartPointValue": "{value} / {percent}",
+    "chartSeries": "{series}: {segment}",
     "noPayments": "No terminal payments recorded",
     "overview": "Overview",
     "conversion": "New-user conversion",

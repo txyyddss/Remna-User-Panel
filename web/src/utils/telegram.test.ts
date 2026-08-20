@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { getTelegramInitData, initializeTelegram, installHapticClickFeedback, isTelegramUserAgent, isTelegramWebAppDetected, markTelegramReady, openExternalLink, supportsTelegramVersion, telegramFullscreenState, waitForTelegramContext } from './telegram'
+import { getTelegramInitData, initializeTelegram, installHapticClickFeedback, isTelegramUserAgent, isTelegramWebAppDetected, markTelegramReady, openExternalLink, selectionHaptic, supportsTelegramVersion, telegramFullscreenState, waitForTelegramContext } from './telegram'
 
 const defaultUserAgent = navigator.userAgent
 
@@ -169,5 +169,18 @@ describe('Telegram bootstrap', () => {
     button.removeAttribute('disabled')
     button.click()
     expect(impactOccurred).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses Telegram semantic selection feedback when available', () => {
+    const selectionChanged = vi.fn()
+    window.Telegram = { WebApp: {
+      version: '9.0', initData: '', initDataUnsafe: {}, colorScheme: 'dark', ready: vi.fn(), expand: vi.fn(), close: vi.fn(),
+      openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn(),
+      HapticFeedback: { impactOccurred: vi.fn(), notificationOccurred: vi.fn(), selectionChanged },
+    } }
+
+    selectionHaptic()
+
+    expect(selectionChanged).toHaveBeenCalledOnce()
   })
 })

@@ -3,7 +3,9 @@ import { computed } from 'vue'
 
 import type { NamedShare } from '@/api/types'
 import { ringSegments } from './statisticsGeometry'
-import { chartSegments, formatStatisticPercent } from './statisticsFormat'
+import StatisticsChartDetail from './StatisticsChartDetail.vue'
+import { chartSegments, formatStatisticNumber, formatStatisticPercent } from './statisticsFormat'
+import { useStatisticsChartSelection } from './useStatisticsChartSelection'
 
 interface ConcentricRing {
   id: string
@@ -21,15 +23,21 @@ const props = defineProps<{
 
 const chartRings = computed(() => props.rings.map((ring) => ({
   ...ring,
-  segments: chartSegments(ring.items),
+  segments: chartSegments(ring.items).map((segment) => ({
+    ...segment,
+    interactionId: `${ring.id}:${segment.id}`,
+    ringLabel: ring.label,
+  })),
 })))
 const hasSegments = computed(() => chartRings.value.some((ring) => ring.segments.length > 0))
+const allSegments = computed(() => chartRings.value.flatMap((ring) => ring.segments))
+const { activeItem, hasActive, activate, deactivate, select, isActive, isSelected } = useStatisticsChartSelection(allSegments)
 </script>
 
 <template>
   <div v-if="hasSegments" class="statistics-concentric-layout">
     <div class="statistics-concentric-rings">
-      <svg viewBox="0 0 120 120" role="img" :aria-label="chartLabel">
+      <svg viewBox="0 0 120 120" role="group" :aria-label="chartLabel">
         <title>{{ chartLabel }}</title>
         <template v-for="(ring, index) in chartRings" :key="ring.id">
           <circle
@@ -42,9 +50,13 @@ const hasSegments = computed(() => chartRings.value.some((ring) => ring.segments
           />
           <circle
             v-for="segment in ringSegments(ring.segments)"
-            :key="segment.id"
+            :key="segment.interactionId"
             class="statistics-ring-segment"
-            :class="index === 0 ? 'statistics-concentric-ring--outer' : 'statistics-concentric-ring--inner'"
+            :class="[
+              'statistics-chart-segment',
+              index === 0 ? 'statistics-concentric-ring--outer' : 'statistics-concentric-ring--inner',
+              { 'statistics-chart-segment--muted': hasActive && !isActive(segment.interactionId) },
+            ]"
             cx="60"
             cy="60"
             :r="index === 0 ? 50 : 32"
@@ -52,6 +64,18 @@ const hasSegments = computed(() => chartRings.value.some((ring) => ring.segments
             :stroke="segment.color"
             :stroke-dasharray="segment.dasharray"
             :stroke-dashoffset="segment.dashoffset"
+            role="button"
+            tabindex="0"
+            data-haptic
+            :aria-label="$t('statistics.chartSeries', { series: segment.ringLabel, segment: $t('statistics.chartSeries', { series: segment.label, segment: $t('statistics.chartPointValue', { value: formatStatisticNumber(segment.value), percent: formatStatisticPercent(segment.percentage) }) }) })"
+            :aria-pressed="isSelected(segment.interactionId)"
+            @pointerenter="activate(segment.interactionId)"
+            @pointerleave="deactivate(segment.interactionId)"
+            @focus="activate(segment.interactionId)"
+            @blur="deactivate(segment.interactionId)"
+            @click="select(segment.interactionId)"
+            @keydown.enter.prevent="select(segment.interactionId)"
+            @keydown.space.prevent="select(segment.interactionId)"
           />
         </template>
       </svg>
@@ -65,7 +89,22 @@ const hasSegments = computed(() => chartRings.value.some((ring) => ring.segments
       <div v-for="ring in chartRings" :key="ring.id">
         <strong>{{ ring.label }}</strong>
         <ul v-if="ring.segments.length" class="statistics-legend">
-          <li v-for="segment in ring.segments" :key="segment.id">
+          <li
+            v-for="segment in ring.segments"
+            :key="segment.id"
+            class="statistics-chart-legend-item"
+            role="button"
+            tabindex="0"
+            data-haptic
+            :aria-pressed="isSelected(segment.interactionId)"
+            @pointerenter="activate(segment.interactionId)"
+            @pointerleave="deactivate(segment.interactionId)"
+            @focus="activate(segment.interactionId)"
+            @blur="deactivate(segment.interactionId)"
+            @click="select(segment.interactionId)"
+            @keydown.enter.prevent="select(segment.interactionId)"
+            @keydown.space.prevent="select(segment.interactionId)"
+          >
             <span class="statistics-legend__swatch" :style="{ backgroundColor: segment.color }" />
             <span class="statistics-legend__label" :title="segment.label">{{ segment.label }}</span>
             <strong>{{ formatStatisticPercent(segment.percentage) }}</strong>
@@ -73,5 +112,11 @@ const hasSegments = computed(() => chartRings.value.some((ring) => ring.segments
         </ul>
       </div>
     </div>
+    <StatisticsChartDetail
+      v-if="activeItem"
+      :color="activeItem.color"
+      :label="$t('statistics.chartSeries', { series: activeItem.ringLabel, segment: activeItem.label })"
+      :value="$t('statistics.chartPointValue', { value: formatStatisticNumber(activeItem.value), percent: formatStatisticPercent(activeItem.percentage) })"
+    />
   </div>
 </template>

@@ -14,6 +14,8 @@
     "nodesLoadFailed": "实时节点指标加载失败。",
     "unavailable": "统计暂不可用",
     "noData": "暂无数据",
+    "chartPointValue": "{value} / {percent}",
+    "chartSeries": "{series}：{segment}",
     "noPayments": "暂无终态支付记录",
     "overview": "概览",
     "conversion": "新用户转化",

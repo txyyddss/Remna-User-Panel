@@ -84,6 +84,25 @@
 .statistics-chart-tooltip { display: grid; gap: 0.16rem; max-width: 14rem; font-size: 0.68rem; }
 .statistics-chart-tooltip strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .statistics-chart-tooltip span { color: var(--text-muted); font-family: var(--font-mono); }
+.statistics-chart-segment { cursor: pointer; transition: opacity 160ms ease, filter 160ms ease; }
+.statistics-chart-segment--muted { opacity: 0.28; }
+.statistics-chart-segment:focus { outline: none; filter: brightness(1.18); }
+.statistics-chart-detail {
+  min-width: 0;
+  min-height: 2rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0;
+  border-top: 1px solid var(--line);
+  grid-column: 1 / -1;
+  font-size: 0.64rem;
+}
+.statistics-chart-detail > span:nth-child(2) { overflow: hidden; color: var(--text-muted); text-overflow: ellipsis; white-space: nowrap; }
+.statistics-chart-detail strong { font-family: var(--font-mono); font-size: 0.62rem; }
+.statistics-chart-legend-item { cursor: pointer; border-radius: 3px; outline-offset: 3px; }
+.statistics-chart-legend-item:focus-visible { outline: 1px solid var(--accent); }
 
 .statistics-distribution-heading { align-items: flex-end; }
 .statistics-distribution-heading > :last-child { max-width: 18rem; }
@@ -98,7 +117,7 @@
 .statistics-distribution__row > :first-child { min-width: 0; overflow: hidden; font-size: 0.66rem; text-overflow: ellipsis; white-space: nowrap; }
 .statistics-distribution__bar { width: 100%; height: 20px; display: block; overflow: hidden; border-radius: 3px; }
 .statistics-distribution__track { fill: var(--line); }
-.statistics-distribution__segment:focus { outline: none; opacity: 0.7; stroke: var(--text); stroke-width: 1; }
+.statistics-distribution__segment:focus { outline: none; opacity: 1; stroke: var(--text); stroke-width: 1; }
 .statistics-distribution__legend { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-top: 0.8rem; border-top: 1px solid var(--line); }
 
 @media (min-width: 640px) {

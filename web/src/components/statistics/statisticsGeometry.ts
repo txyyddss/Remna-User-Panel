@@ -1,11 +1,11 @@
 import type { StatisticSegment } from './statisticsFormat'
 
-export interface RingSegment extends StatisticSegment {
+export type RingSegment<T extends StatisticSegment = StatisticSegment> = T & {
   dasharray: string
   dashoffset: number
 }
 
-export interface PieSlice extends StatisticSegment {
+export type PieSlice<T extends StatisticSegment = StatisticSegment> = T & {
   path: string
   labelLine: string
   labelX: number
@@ -35,7 +35,7 @@ function piePath(center: number, radius: number, startAngle: number, endAngle: n
   return `M ${center} ${center} L ${pointText(start)} A ${radius} ${radius} 0 ${largeArc} 1 ${pointText(end)} Z`
 }
 
-export function ringSegments(segments: readonly StatisticSegment[]): RingSegment[] {
+export function ringSegments<T extends StatisticSegment>(segments: readonly T[]): RingSegment<T>[] {
   let cursor = 0
   return segments.map((segment) => {
     const dashoffset = -cursor
@@ -48,7 +48,7 @@ export function ringSegments(segments: readonly StatisticSegment[]): RingSegment
   })
 }
 
-export function pieSlices(segments: readonly StatisticSegment[]): PieSlice[] {
+export function pieSlices<T extends StatisticSegment>(segments: readonly T[]): PieSlice<T>[] {
   let cursor = -90
   return segments.map((segment) => {
     const sweep = Math.min(359.999, segment.percentage * 3.6)

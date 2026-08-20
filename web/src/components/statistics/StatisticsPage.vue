@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, shallowRef } from 'vue'
+import { computed, shallowRef, watch } from 'vue'
 
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
@@ -7,6 +7,7 @@ import { useNodeGeocheck } from '@/composables/useNodeGeocheck'
 import { useStatistics } from '@/composables/useStatistics'
 import { useI18n } from '@/i18n'
 import { formatDateTime } from '@/utils/format'
+import { selectionHaptic } from '@/utils/telegram'
 import StatisticsDistribution from './StatisticsDistribution.vue'
 import StatisticsFreshness from './StatisticsFreshness.vue'
 import StatisticsGeocheckModal from './StatisticsGeocheckModal.vue'
@@ -28,6 +29,8 @@ const tabs = computed(() => [
   { label: t('statistics.distributions'), value: 'distributions', slot: 'distributions' as const, icon: 'i-ph-chart-donut' },
   { label: t('statistics.squadComposition'), value: 'composition', slot: 'composition' as const, icon: 'i-ph-stack' },
 ])
+
+watch(activeTab, () => selectionHaptic())
 </script>
 
 <template>

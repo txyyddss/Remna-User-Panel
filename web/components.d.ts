@@ -123,6 +123,7 @@ declare module 'vue' {
     SquadPortField: typeof import('./src/components/admin/squad-profile/SquadPortField.vue')['default']
     SquadProfileSummary: typeof import('./src/components/squad-profile/SquadProfileSummary.vue')['default']
     SquadSelector: typeof import('./src/components/catalog/SquadSelector.vue')['default']
+    StatisticsChartDetail: typeof import('./src/components/statistics/StatisticsChartDetail.vue')['default']
     StatisticsConcentricDonut: typeof import('./src/components/statistics/StatisticsConcentricDonut.vue')['default']
     StatisticsDistribution: typeof import('./src/components/statistics/StatisticsDistribution.vue')['default']
     StatisticsDonut: typeof import('./src/components/statistics/StatisticsDonut.vue')['default']

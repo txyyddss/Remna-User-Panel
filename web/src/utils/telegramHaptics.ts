@@ -7,6 +7,15 @@ export function haptic(type: HapticImpact = 'light'): void {
   if (app?.HapticFeedback && supportsTelegramVersion('6.1')) tryTelegramCall(() => app.HapticFeedback?.impactOccurred(type))
 }
 
+export function selectionHaptic(): void {
+  const app = getTelegramWebApp()
+  if (!app?.HapticFeedback || !supportsTelegramVersion('6.1')) return
+  tryTelegramCall(() => {
+    if (app.HapticFeedback?.selectionChanged) app.HapticFeedback.selectionChanged()
+    else app.HapticFeedback?.impactOccurred('light')
+  })
+}
+
 function hapticImpactFor(element: Element): HapticImpact {
   const value = element.getAttribute('data-haptic')
   return value === 'medium' || value === 'heavy' ? value : 'light'

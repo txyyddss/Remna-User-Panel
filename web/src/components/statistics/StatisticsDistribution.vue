@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, shallowRef, watch } from 'vue'
 
 import type { NormalizedDistribution, StatisticsSnapshot } from '@/api/types'
 import { useI18n } from '@/i18n'
-import { statisticsColors, formatStatisticPercent } from './statisticsFormat'
+import { selectionHaptic } from '@/utils/telegram'
+import StatisticsChartDetail from './StatisticsChartDetail.vue'
+import { statisticsColors, formatStatisticNumber, formatStatisticPercent } from './statisticsFormat'
+import { useStatisticsChartSelection } from './useStatisticsChartSelection'
 
 const props = defineProps<{ database: StatisticsSnapshot['database'] }>()
 const { t } = useI18n()
-const mode = ref<'squad' | 'combo'>('squad')
+const mode = shallowRef<'squad' | 'combo'>('squad')
 const tabs = computed(() => [
   { label: t('statistics.bySquad'), value: 'squad' },
   { label: t('statistics.byCombo'), value: 'combo' },
@@ -26,12 +29,23 @@ const barRows = computed(() => rows.value.map((row) => {
   let cursor = 0
   const segments = row.segments.filter((segment) => segment.value > 0).map((segment) => {
     const width = total > 0 ? segment.value * 100 / total : 0
-    const result = { ...segment, x: cursor, width, color: colors.value.get(segment.id) ?? statisticsColors[0] }
+    const result = {
+      ...segment,
+      interactionId: `${row.id}:${segment.id}`,
+      groupLabel: row.label,
+      x: cursor,
+      width,
+      color: colors.value.get(segment.id) ?? statisticsColors[0],
+    }
     cursor += width
     return result
   })
   return { ...row, segments }
 }))
+const allSegments = computed(() => barRows.value.flatMap((row) => row.segments))
+const { activeItem, hasActive, activate, deactivate, select, isActive, isSelected } = useStatisticsChartSelection(allSegments)
+
+watch(mode, () => selectionHaptic())
 </script>
 
 <template>
@@ -54,18 +68,34 @@ const barRows = computed(() => rows.value.map((row) => {
           <rect
             v-for="segment in row.segments"
             :key="segment.id"
-            class="statistics-distribution__segment"
+            class="statistics-distribution__segment statistics-chart-segment"
+            :class="{ 'statistics-chart-segment--muted': hasActive && !isActive(segment.interactionId) }"
             :x="segment.x"
             y="0"
             :width="segment.width"
             height="20"
             :fill="segment.color"
-            role="img"
+            role="button"
             :aria-label="$t('statistics.compositionPoint', { group: row.label, segment: segment.label, value: formatStatisticPercent(segment.width) })"
+            :aria-pressed="isSelected(segment.interactionId)"
             tabindex="0"
+            data-haptic
+            @pointerenter="activate(segment.interactionId)"
+            @pointerleave="deactivate(segment.interactionId)"
+            @focus="activate(segment.interactionId)"
+            @blur="deactivate(segment.interactionId)"
+            @click="select(segment.interactionId)"
+            @keydown.enter.prevent="select(segment.interactionId)"
+            @keydown.space.prevent="select(segment.interactionId)"
           />
         </svg>
       </div>
+      <StatisticsChartDetail
+        v-if="activeItem"
+        :color="activeItem.color"
+        :label="$t('statistics.chartSeries', { series: activeItem.groupLabel, segment: activeItem.label })"
+        :value="$t('statistics.chartPointValue', { value: formatStatisticNumber(activeItem.value), percent: formatStatisticPercent(activeItem.width) })"
+      />
       <ul class="statistics-distribution__legend">
         <li v-for="item in legend" :key="item.id"><span class="statistics-legend__swatch" :style="{ backgroundColor: item.color }" /><span :title="item.label">{{ item.label }}</span></li>
       </ul>

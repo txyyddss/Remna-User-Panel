@@ -9,9 +9,11 @@ const apiMocks = vi.hoisted(() => ({
   getStatistics: vi.fn(),
   getStatisticsNodes: vi.fn(),
 }))
+const hapticMocks = vi.hoisted(() => ({ selectionHaptic: vi.fn() }))
 
 vi.mock('@/api/client', () => ({ api: apiMocks }))
 vi.mock('@/composables/useTelegramBackButton', () => ({ useTelegramBackButton: () => undefined }))
+vi.mock('@/utils/telegram', () => hapticMocks)
 
 const node: StatisticsNode = {
   uuid: '373f14bc-089a-4c3a-91c3-3421e7c83367', name: 'Tokyo', countryCode: 'JP', online: true,
@@ -65,6 +67,7 @@ describe('StatisticsPage', () => {
 
     await wrapper.get('[data-testid="tab-traffic"]').trigger('click')
 
+    expect(hapticMocks.selectionHaptic).toHaveBeenCalledOnce()
     expect(wrapper.find('[data-testid="overview"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="freshness"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="traffic"]').exists()).toBe(true)

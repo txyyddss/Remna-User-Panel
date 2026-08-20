@@ -14,7 +14,7 @@ describe('StatisticsPaymentDonut', () => {
       global: { stubs: { UIcon: true } },
     })
 
-    expect(wrapper.find('svg[role="img"]').exists()).toBe(true)
+    expect(wrapper.find('svg[role="group"]').exists()).toBe(true)
     expect(wrapper.findAll('.statistics-concentric-ring--outer.statistics-ring-segment')).toHaveLength(1)
     expect(wrapper.findAll('.statistics-concentric-ring--inner.statistics-ring-segment')).toHaveLength(1)
     expect(wrapper.find('.statistics-concentric__center').text()).toContain('4')
