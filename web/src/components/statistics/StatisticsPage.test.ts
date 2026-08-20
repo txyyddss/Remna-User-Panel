@@ -1,5 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { StatisticsNode, StatisticsNodesSnapshot, StatisticsSnapshot } from '@/api/types'
 import StatisticsPage from './StatisticsPage.vue'
@@ -25,25 +25,61 @@ const statistics: StatisticsSnapshot = {
   database: { newUserConversionPercent: 0, averageSpend: money, spendMinimum: money, spendMaximum: money, subscriptionStates: [], averageRollover: money, averageCheckInReward: money, comboShares: [], groupMessagesTotal: 0, averageOptionalSquads: 0, paymentStatuses: [], databaseBytes: '0', squadByCombo: [], comboBySquad: [] },
 }
 
+const TabsStub = {
+  props: ['items', 'modelValue'],
+  emits: ['update:modelValue'],
+  template: `<div>
+    <div v-for="item in items" :key="item.value" role="tab" tabindex="0" :data-testid="'tab-' + item.value" @click="$emit('update:modelValue', item.value)" @keydown.enter="$emit('update:modelValue', item.value)">{{ item.label }}</div>
+    <slot :name="modelValue" />
+  </div>`,
+}
+
+function mountPage() {
+  return mount(StatisticsPage, {
+    global: {
+      stubs: {
+        InlineNotice: true, SkeletonBlock: true, StatisticsFreshness: { template: '<div data-testid="freshness" />' },
+        StatisticsOverview: { template: '<div data-testid="overview" />' }, StatisticsTrafficChart: { template: '<div data-testid="traffic" />' },
+        StatisticsShareCharts: { template: '<div data-testid="distributions" />' }, StatisticsDistribution: { template: '<div data-testid="composition" />' },
+        UTabs: TabsStub, Tooltip: true, Button: true,
+        StatisticsNodes: { props: ['snapshot'], emits: ['openGeocheck'], template: '<div data-testid="nodes"><div role="button" tabindex="0" data-testid="geocheck-card" @click="$emit(\'openGeocheck\', snapshot.nodes[0])" /></div>' },
+        StatisticsGeocheckModal: { props: ['open', 'node', 'result'], template: '<output data-testid="geocheck-modal" :data-open="String(open)" :data-node="node && node.uuid" :data-image="result && result.image.data" />' },
+      },
+      mocks: { $t: (key: string) => key },
+    },
+  })
+}
+
 describe('StatisticsPage', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('shows each statistics section in its own tab', async () => {
+    apiMocks.getStatistics.mockResolvedValue(statistics)
+    apiMocks.getStatisticsNodes.mockResolvedValue(nodes)
+    const wrapper = mountPage()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="overview"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="freshness"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="traffic"]').exists()).toBe(false)
+
+    await wrapper.get('[data-testid="tab-traffic"]').trigger('click')
+
+    expect(wrapper.find('[data-testid="overview"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="freshness"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="traffic"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
   it('passes a selected card image into the Geocheck modal', async () => {
     apiMocks.getStatistics.mockResolvedValue(statistics)
     apiMocks.getStatisticsNodes.mockResolvedValue(nodes)
     apiMocks.getNodeGeocheck.mockResolvedValue({ nodeUuid: node.uuid, checkedAt: nodes.generatedAt, image: { format: 'svg', mediaType: 'image/svg+xml', encoding: 'base64', data: 'PHN2Zy8+' } })
-    const wrapper = mount(StatisticsPage, {
-      global: {
-        stubs: {
-          InlineNotice: true, SkeletonBlock: true, StatisticsFreshness: true, StatisticsOverview: true,
-          StatisticsTrafficChart: true, StatisticsShareCharts: true, StatisticsDistribution: true, Tooltip: true, Button: true,
-          StatisticsNodes: { props: ['snapshot'], emits: ['openGeocheck'], template: '<div data-testid="geocheck-card" @click="$emit(\'openGeocheck\', snapshot.nodes[0])"></div>' },
-          StatisticsGeocheckModal: { props: ['open', 'node', 'result'], template: '<output data-testid="geocheck-modal" :data-open="String(open)" :data-node="node && node.uuid" :data-image="result && result.image.data" />' },
-        },
-        mocks: { $t: (key: string) => key },
-      },
-    })
+    const wrapper = mountPage()
     await flushPromises()
     expect(apiMocks.getNodeGeocheck).not.toHaveBeenCalled()
 
+    await wrapper.get('[data-testid="tab-nodes"]').trigger('click')
     await wrapper.get('[data-testid="geocheck-card"]').trigger('click')
     await flushPromises()
 

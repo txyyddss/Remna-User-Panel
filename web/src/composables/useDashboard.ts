@@ -1,9 +1,10 @@
-import { computed, inject, onMounted, provide, readonly, shallowRef, type InjectionKey, type ShallowRef } from 'vue'
+import { computed, inject, onMounted, onScopeDispose, provide, readonly, shallowRef, type InjectionKey, type ShallowRef } from 'vue'
 
 import { api } from '@/api/client'
 import { localizedError, t } from '@/i18n'
 import type { Catalog, CatalogNode, Dashboard, DashboardNodeUsage } from '@/api/types'
 import { notifyHaptic } from '@/utils/telegram'
+import { createLatestRequest } from '@/utils/latestRequest'
 import { useDurableCommand } from './useDurableCommand'
 
 const isoDate = /^\d{4}-\d{2}-\d{2}$/
@@ -18,6 +19,7 @@ interface NodeUsageController {
   loadNodeUsage: () => Promise<void>
   setNodeUsageStart: (value: string) => void
   setNodeUsageEnd: (value: string) => void
+  dispose: () => void
 }
 
 const nodeUsageControllerKey: InjectionKey<NodeUsageController> = Symbol('dashboard-node-usage')
@@ -45,10 +47,13 @@ function createNodeUsageController(): NodeUsageController {
   const nodeUsageError = shallowRef<string | null>(null)
   const nodeUsageStart = shallowRef(utcDate(-6))
   const nodeUsageEnd = shallowRef(utcDate(0))
+  const latest = createLatestRequest()
 
   function resetNodeUsage(): void {
+    latest.invalidate()
     nodeUsage.value = null
     nodeUsageError.value = null
+    nodeUsageLoading.value = false
   }
 
   function setNodeUsageStart(value: string): void {
@@ -62,6 +67,7 @@ function createNodeUsageController(): NodeUsageController {
   }
 
   async function loadNodeUsage(): Promise<void> {
+    const token = latest.begin()
     const start = nodeUsageStart.value
     const end = nodeUsageEnd.value
     if (!validRange(start, end)) {
@@ -72,16 +78,18 @@ function createNodeUsageController(): NodeUsageController {
     nodeUsageLoading.value = true
     nodeUsageError.value = null
     try {
-      nodeUsage.value = await api.getDashboardNodeUsage(start, end)
+      const response = await api.getDashboardNodeUsage(start, end)
+      if (latest.isCurrent(token)) nodeUsage.value = response
     } catch (caught) {
+      if (!latest.isCurrent(token)) return
       nodeUsageError.value = localizedError(caught, 'errors.nodeUsageUnavailable')
       notifyHaptic('error')
     } finally {
-      nodeUsageLoading.value = false
+      if (latest.isCurrent(token)) nodeUsageLoading.value = false
     }
   }
 
-  return { nodeUsage, nodeUsageLoading, nodeUsageError, nodeUsageStart, nodeUsageEnd, loadNodeUsage, setNodeUsageStart, setNodeUsageEnd }
+  return { nodeUsage, nodeUsageLoading, nodeUsageError, nodeUsageStart, nodeUsageEnd, loadNodeUsage, setNodeUsageStart, setNodeUsageEnd, dispose: latest.dispose }
 }
 
 export function useDashboard() {
@@ -90,6 +98,7 @@ export function useDashboard() {
   const loading = shallowRef(true)
   const refreshing = shallowRef(false)
   const loadError = shallowRef<string | null>(null)
+  const latestLoad = createLatestRequest()
   const nodeUsageController = createNodeUsageController()
   const { nodeUsage, nodeUsageLoading, nodeUsageError, nodeUsageStart, nodeUsageEnd, loadNodeUsage, setNodeUsageStart, setNodeUsageEnd } = nodeUsageController
   const revokeCommand = useDurableCommand({
@@ -123,6 +132,7 @@ export function useDashboard() {
   })
 
   async function load(options: { quiet?: boolean } = {}): Promise<void> {
+    const token = latestLoad.begin()
     if (options.quiet) refreshing.value = true
     else loading.value = true
     loadError.value = null
@@ -131,13 +141,17 @@ export function useDashboard() {
         api.getDashboard(),
         api.getCatalog().catch(() => null),
       ])
+      if (!latestLoad.isCurrent(token)) return
       dashboard.value = dashboardResponse
       catalog.value = catalogResponse
     } catch (caught) {
+      if (!latestLoad.isCurrent(token)) return
       loadError.value = localizedError(caught, 'errors.dashboardUnavailable')
     } finally {
-      loading.value = false
-      refreshing.value = false
+      if (latestLoad.isCurrent(token)) {
+        loading.value = false
+        refreshing.value = false
+      }
     }
   }
 
@@ -150,23 +164,20 @@ export function useDashboard() {
   provide(nodeUsageControllerKey, nodeUsageController)
 
   onMounted(() => void load())
+  onScopeDispose(() => {
+    latestLoad.dispose()
+    nodeUsageController.dispose()
+  })
 
   return {
-    dashboard: readonly(dashboard),
-    loading: readonly(loading),
-    refreshing: readonly(refreshing),
-    revoking: revokeCommand.busy,
-    revokeBlocked: revokeCommand.blocksMutations,
-    revokeReceipt: revokeCommand.receipt,
-    revokeChecking: revokeCommand.checking,
+    dashboard: readonly(dashboard), loading: readonly(loading), refreshing: readonly(refreshing),
+    revoking: revokeCommand.busy, revokeBlocked: revokeCommand.blocksMutations,
+    revokeReceipt: revokeCommand.receipt, revokeChecking: revokeCommand.checking,
     revokeError: revokeCommand.error,
     error: readonly(error),
-    nodeUsage: readonly(nodeUsage),
-    nodeUsageLoading: readonly(nodeUsageLoading),
-    nodeUsageError: readonly(nodeUsageError),
-    nodeUsageStart: readonly(nodeUsageStart),
-    nodeUsageEnd: readonly(nodeUsageEnd),
-    hasEntitlement,
+    nodeUsage: readonly(nodeUsage), nodeUsageLoading: readonly(nodeUsageLoading),
+    nodeUsageError: readonly(nodeUsageError), nodeUsageStart: readonly(nodeUsageStart),
+    nodeUsageEnd: readonly(nodeUsageEnd), hasEntitlement,
     usageRatio,
     catalogNodes,
     activeSquadNames,
@@ -180,5 +191,9 @@ export function useDashboard() {
 }
 
 export function useDashboardNodeUsage(): NodeUsageController {
-  return inject(nodeUsageControllerKey, null) ?? createNodeUsageController()
+  const injected = inject(nodeUsageControllerKey, null)
+  if (injected) return injected
+  const controller = createNodeUsageController()
+  onScopeDispose(controller.dispose)
+  return controller
 }

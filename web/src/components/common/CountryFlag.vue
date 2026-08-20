@@ -9,6 +9,7 @@ const flags = {
   GB: 'i-circle-flags-gb',
   HK: 'i-circle-flags-hk',
   JP: 'i-circle-flags-jp',
+  NL: 'i-circle-flags-nl',
   SG: 'i-circle-flags-sg',
   US: 'i-circle-flags-us',
 } as const

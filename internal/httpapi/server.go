@@ -82,6 +82,7 @@ type Dependencies struct {
 type Server struct {
 	deps             Dependencies
 	requests         *requestauth.Verifier
+	authLimiter      *authLimiter
 	router           http.Handler
 	adminTelegramIDs map[int64]struct{}
 }
@@ -103,7 +104,7 @@ func New(deps Dependencies) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	server := &Server{deps: deps, requests: requestVerifier, adminTelegramIDs: adminTelegramIDs}
+	server := &Server{deps: deps, requests: requestVerifier, authLimiter: newAuthLimiter(), adminTelegramIDs: adminTelegramIDs}
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP)
 	router.Use(middleware.RequestID)
@@ -114,7 +115,7 @@ func New(deps Dependencies) (*Server, error) {
 
 	router.Get("/healthz", server.health)
 	router.Get("/readyz", server.ready)
-	router.Post("/api/v1/auth/telegram", server.authenticate)
+	router.With(server.limitAuthentication).Post("/api/v1/auth/telegram", server.authenticate)
 	router.Post("/api/v1/webhooks/telegram", server.telegramWebhook)
 	router.Get("/api/v1/webhooks/ezpay", server.ezpayWebhook)
 	router.Post("/api/v1/webhooks/bepusdt", server.bepusdtWebhook)

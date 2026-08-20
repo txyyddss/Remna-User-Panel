@@ -1,6 +1,7 @@
 package botcommands
 
 import (
+	"strconv"
 	"strings"
 	"unicode/utf8"
 )
@@ -14,6 +15,10 @@ var markdownV2Escaper = strings.NewReplacer(
 
 func escapeMarkdownV2(value string) string {
 	return markdownV2Escaper.Replace(value)
+}
+
+func safeMention(telegramID int64, label string) string {
+	return "[" + escapeMarkdownV2(label) + "](tg://user?id=" + strconv.FormatInt(telegramID, 10) + ")"
 }
 
 func limitMarkdownV2(value string) string {

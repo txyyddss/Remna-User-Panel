@@ -22,14 +22,14 @@
 }
 
 .home-footer .language-control {
-  min-height: 40px;
+  min-height: 44px;
   color: var(--text-faint);
 }
 
 .home-balance {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
+  align-items: center;
   gap: 1rem;
   padding: 1.15rem;
   border: 1px solid #355242;

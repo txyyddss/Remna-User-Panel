@@ -3,6 +3,7 @@ import { computed, onScopeDispose, readonly, shallowRef, watch } from 'vue'
 
 import type { FeaturePaymentOrder, FeaturePaymentReturnStatus, PaymentReturnProvider } from '@/api/features'
 import { api } from '@/api/client'
+import { createLatestRequest } from '@/utils/latestRequest'
 
 export type PaymentReturnState = 'checking' | 'pending' | 'confirmed' | 'terminal' | 'missing' | 'unavailable'
 
@@ -20,32 +21,40 @@ export function usePaymentReturn(orderId: Ref<string>, options: PaymentReturnOpt
   const returnDetails = shallowRef<FeaturePaymentReturnStatus | null>(null)
   const orderStatus = shallowRef<FeaturePaymentOrder['status'] | null>(null)
   let pollTimer: ReturnType<typeof setTimeout> | undefined
+  const latest = createLatestRequest()
 
   const isConfirmed = computed(() => state.value === 'confirmed')
 
   function stopPolling(): void {
+    latest.invalidate()
+    clearPollTimer()
+  }
+
+  function clearPollTimer(): void {
     if (pollTimer !== undefined) clearTimeout(pollTimer)
     pollTimer = undefined
   }
 
-  function schedulePoll(): void {
-    stopPolling()
-    pollTimer = setTimeout(() => void refresh(), 2000)
+  function schedulePoll(token: number): void {
+    clearPollTimer()
+    pollTimer = setTimeout(() => void refresh(token), 2000)
   }
 
-  function applyStatus(status: FeaturePaymentOrder['status']): void {
+  function applyStatus(status: FeaturePaymentOrder['status'], token: number): void {
     if (status === 'paid') {
       state.value = 'confirmed'
     } else if (terminalStatuses.has(status)) {
       state.value = 'terminal'
     } else {
       state.value = 'pending'
-      schedulePoll()
+      schedulePoll(token)
     }
   }
 
-  async function refresh(): Promise<void> {
-    stopPolling()
+  async function refresh(expectedToken?: number): Promise<void> {
+    const token = expectedToken ?? latest.begin()
+    clearPollTimer()
+    if (!latest.isCurrent(token)) return
     if (!orderId.value) {
       state.value = 'missing'
       return
@@ -60,20 +69,23 @@ export function usePaymentReturn(orderId: Ref<string>, options: PaymentReturnOpt
           return
         }
         const next = await api.getPaymentReturnStatus(provider, orderId.value, capability)
+        if (!latest.isCurrent(token)) return
         returnDetails.value = next
         orderStatus.value = next.status
-        applyStatus(next.status)
+        applyStatus(next.status, token)
       } else {
         returnDetails.value = null
         const next = await api.getPaymentOrder(orderId.value)
+        if (!latest.isCurrent(token)) return
         order.value = next
         orderStatus.value = next.status
-        applyStatus(next.status)
+        applyStatus(next.status, token)
       }
     } catch {
+      if (!latest.isCurrent(token)) return
       if (order.value || returnDetails.value) {
         state.value = 'pending'
-        schedulePoll()
+        schedulePoll(token)
       } else {
         state.value = 'unavailable'
       }
@@ -86,7 +98,10 @@ export function usePaymentReturn(orderId: Ref<string>, options: PaymentReturnOpt
     orderStatus.value = null
     void refresh()
   }, { immediate: true })
-  onScopeDispose(stopPolling)
+  onScopeDispose(() => {
+    clearPollTimer()
+    latest.dispose()
+  })
 
   const details = computed(() => order.value ?? returnDetails.value)
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, shallowRef } from 'vue'
+import { onScopeDispose, reactive, shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import type { OperationReceipt } from '@/api/adminOperations'
@@ -13,7 +13,7 @@ import { formatDate, formatMoney, moneyFromTxbInput } from '@/utils/format'
 import AdminSectionState from './AdminSectionState.vue'
 import AdminBulkExtensionDialog from './users/AdminBulkExtensionDialog.vue'
 
-const { items, loading, busy, error, load, perform } = useAdminSection<AdminUserSummary>('users')
+const { items, nextCursor, loading, busy, error, load, loadMore, perform } = useAdminSection<AdminUserSummary>('users')
 const { t } = useI18n()
 const router = useRouter()
 const query = shallowRef('')
@@ -22,13 +22,24 @@ const form = reactive({ amountTxb: '', reason: '' })
 const success = shallowRef<string | null>(null)
 const bulkOpen = shallowRef(false)
 
-const filteredUsers = computed(() => {
-  const needle = query.value.trim().toLowerCase()
-  if (!needle) return items.value
-  return items.value.filter(({ user }) =>
-    [user.firstName, user.lastName, user.username, String(user.telegramId)].some((value) => value?.toLowerCase().includes(needle)),
-  )
+let searchTimer: ReturnType<typeof globalThis.setTimeout> | undefined
+
+function userQuery(): Record<string, string | number | undefined> {
+  return { search: query.value.trim() || undefined, limit: 25 }
+}
+
+watch(query, () => {
+  if (searchTimer !== undefined) globalThis.clearTimeout(searchTimer)
+  searchTimer = globalThis.setTimeout(() => void load(userQuery()), 250)
 })
+
+onScopeDispose(() => {
+  if (searchTimer !== undefined) globalThis.clearTimeout(searchTimer)
+})
+
+function reloadUsers(): Promise<void> {
+  return load(userQuery())
+}
 
 function displayName(summary: AdminUserSummary): string {
   return [summary.user.firstName, summary.user.lastName].filter(Boolean).join(' ') || t('nav.member')
@@ -67,9 +78,9 @@ function bulkQueued(receipt: OperationReceipt): void {
       </div>
     </div>
     <InlineNotice v-if="success" tone="success">{{ success }}</InlineNotice>
-    <AdminSectionState :loading="loading" :error="error" @retry="load()">
+    <AdminSectionState :loading="loading" :error="error" @retry="reloadUsers">
       <div v-auto-animate class="admin-list">
-        <article v-for="summary in filteredUsers" :key="summary.user.id" class="admin-list-row admin-list-row--user">
+        <article v-for="summary in items" :key="summary.user.id" class="admin-list-row admin-list-row--user">
           <UAvatar :text="displayName(summary).slice(0, 2).toUpperCase()" size="sm" />
           <div>
             <strong>{{ displayName(summary) }}</strong>
@@ -82,8 +93,9 @@ function bulkQueued(receipt: OperationReceipt): void {
             <UButton size="sm" color="neutral" variant="ghost" icon="i-ph-coins" :label="t('adminUsers.adjust')" @click="selected = summary" />
           </div>
         </article>
-        <div v-if="!filteredUsers.length" class="empty-inline"><div><h3>{{ t('adminUsers.none') }}</h3><p>{{ t('adminUsers.noneHint') }}</p></div></div>
+        <div v-if="!items.length" class="empty-inline"><div><h3>{{ t('adminUsers.none') }}</h3><p>{{ t('adminUsers.noneHint') }}</p></div></div>
       </div>
+      <UButton v-if="nextCursor" class="database-load-more" color="neutral" variant="outline" icon="i-ph-arrow-down" :loading="loading" :disabled="loading" :label="t('adminUsers.loadMore')" @click="loadMore" />
     </AdminSectionState>
 
     <UDrawer :open="Boolean(selected)" :title="selected ? t('adminUsers.adjustNamed', { name: displayName(selected) }) : t('adminUsers.adjust')" :description="t('adminUsers.adjustHint')" @update:open="!$event && (selected = null)">

@@ -13,6 +13,18 @@ func TestParseExcludesUnknownSlashCommands(t *testing.T) {
 	}
 }
 
+func TestParseKeepsMyComboAsOnlyComboCommand(t *testing.T) {
+	t.Parallel()
+	myCombo, slash := Parse("/mycombo@txcarpool_bot")
+	if !slash || !myCombo.Known || myCombo.Name != MyCombo {
+		t.Fatalf("Parse(/mycombo) = (%+v, %t)", myCombo, slash)
+	}
+	combo, slash := Parse("/combo")
+	if !slash || combo.Known || combo.Name != "combo" {
+		t.Fatalf("Parse(/combo) = (%+v, %t)", combo, slash)
+	}
+}
+
 func TestLanguageForChineseVariants(t *testing.T) {
 	t.Parallel()
 	for _, code := range []string{"zh", "zh-CN", "zh-hans"} {

@@ -2,6 +2,7 @@
 import { computed, shallowRef, watch } from 'vue'
 
 import { useI18n } from '@/i18n'
+import { useTelegramProtection } from '@/composables/useTelegramProtection'
 
 const props = defineProps<{ open: boolean; backupName: string; busy: boolean }>()
 const emit = defineEmits<{ 'update:open': [value: boolean]; restore: [payload: { reason: string; confirmation: string }] }>()
@@ -10,6 +11,7 @@ const reason = shallowRef('')
 const confirmation = shallowRef('')
 const requiredConfirmation = computed(() => `${t('restoreBackup.confirmationPrefix')} ${props.backupName}`)
 const canRestore = computed(() => reason.value.trim().length >= 4 && confirmation.value === requiredConfirmation.value)
+useTelegramProtection(computed(() => props.open))
 
 watch(() => props.open, (open) => {
   if (open) { reason.value = ''; confirmation.value = '' }

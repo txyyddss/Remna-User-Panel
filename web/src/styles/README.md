@@ -20,9 +20,9 @@
 - `connections-01.css` styles the connections page heading, node/IP rows, empty states, and selected connection confirmation detail.
 - `connections-02.css` styles the stable connection scan visualization, progress presentation, tablet split layout, and reduced-motion fallback.
 - `connections-03.css` styles active block rows, exact-expiry metadata, and compact unblock confirmation targets.
-- `statistics-01.css` styles the statistics page structure, centered refresh control, KPI panels, node cards, and compact states.
+- `statistics-01.css` styles the independently divided statistics sections, centered refresh control, KPI panels, dense icon-based node rows, and compact states.
 - `statistics-02.css` styles the responsive generic SVG donut, labeled pies, traffic tooltips, legends, and normalized stacked bars.
-- `statistics-03.css` constrains the node Geocheck modal to Telegram safe areas and styles its touch zoom canvas and fixed icon controls.
+- `statistics-03.css` constrains the node Geocheck modal to Telegram safe areas and styles its low-latency touch zoom canvas and fixed icon controls.
 - `catalog-01.css` styles catalog browsing and plan presentation.
 - `catalog-02.css` styles catalog selection and checkout details.
 - `billing-01.css` styles funding controls.

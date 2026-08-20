@@ -4,6 +4,7 @@ import { featuresApi, type CouponGrant } from '@/api/features'
 import type { Catalog, Money } from '@/api/types'
 import { localizedError } from '@/i18n'
 import { readCatalogDraft } from '@/composables/catalogDraft'
+import type { LatestRequest } from '@/utils/latestRequest'
 
 export interface CatalogLoadState {
   loading: ShallowRef<boolean>
@@ -17,15 +18,18 @@ export interface CatalogLoadState {
   selectedCouponGrantId: ShallowRef<string | null>
   userID: () => string | null | undefined
   onError?: (caught: unknown) => boolean
+  latest: LatestRequest
 }
 
-export async function loadCatalogData(state: CatalogLoadState): Promise<void> {
+export async function loadCatalogData(state: CatalogLoadState): Promise<boolean> {
+  const token = state.latest.begin()
   state.loading.value = true
   state.error.value = null
   try {
     const [catalogResponse, balanceResponse, couponResponse] = await Promise.all([
       api.getCatalog(), api.getBalance(), featuresApi.getCouponWallet().catch(() => ({ items: [] })),
     ])
+    if (!state.latest.isCurrent(token)) return false
     state.catalog.value = catalogResponse
     state.balance.value = balanceResponse.balance
     state.couponGrants.value = couponResponse.items
@@ -42,9 +46,12 @@ export async function loadCatalogData(state: CatalogLoadState): Promise<void> {
     }
     const preferred = catalogResponse.combos.find((combo) => combo.active)
     if (!state.selectedComboId.value || !catalogResponse.combos.some((combo) => combo.active && combo.id === state.selectedComboId.value)) state.selectedComboId.value = preferred?.id ?? null
+    return true
   } catch (caught) {
+    if (!state.latest.isCurrent(token)) return false
     if (!state.onError?.(caught)) state.error.value = localizedError(caught, 'errors.catalogUnavailable')
+    return false
   } finally {
-    state.loading.value = false
+    if (state.latest.isCurrent(token)) state.loading.value = false
   }
 }

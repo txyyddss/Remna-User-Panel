@@ -15,3 +15,5 @@ get:
       $ref: '../openapi.yaml#/components/responses/Unauthorized'
     '409':
       $ref: '../openapi.yaml#/components/responses/Conflict'
+    '500':
+      $ref: '../openapi.yaml#/components/responses/InternalFailure'

@@ -1,4 +1,4 @@
-import { computed, getCurrentInstance, onMounted, readonly, shallowRef, watch } from 'vue'
+import { computed, getCurrentInstance, onMounted, onScopeDispose, readonly, shallowRef, watch } from 'vue'
 import { api, ApiError } from '@/api/client'
 import { featuresApi, type CouponGrant } from '@/api/features'
 import type { Catalog, Combo, Purchase, SquadProduct } from '@/api/types'
@@ -10,6 +10,7 @@ import { isCouponGrantAvailable } from '@/utils/coupons'
 import { clearCatalogDraft, writeCatalogDraft } from '@/composables/catalogDraft'
 import { loadCatalogData } from '@/composables/catalogLoader'
 import { useCatalogQuote } from '@/composables/catalogQuoteState'
+import { createLatestRequest } from '@/utils/latestRequest'
 export function useCatalog() {
   const sessionStore = useSessionStore()
   const catalog = shallowRef<Catalog | null>(null)
@@ -27,6 +28,7 @@ export function useCatalog() {
   const autoRenewalBlocked = shallowRef(false)
   const purchaseIdempotencyKey = shallowRef<string | null>(null)
   const draftRestored = shallowRef(false)
+  const latestLoad = createLatestRequest()
   function persistDraft(): void {
     if (purchase.value) return
     writeCatalogDraft(sessionStore.user?.id, {
@@ -85,7 +87,8 @@ export function useCatalog() {
     return fetchQuote()
   }
   async function load(): Promise<void> {
-    await loadCatalogData({ loading, error, catalog, balance, couponGrants, draftRestored, selectedComboId, selectedSquadIds, selectedCouponGrantId, userID: () => sessionStore.user?.id, onError: blocksCatalog })
+    const applied = await loadCatalogData({ loading, error, catalog, balance, couponGrants, draftRestored, selectedComboId, selectedSquadIds, selectedCouponGrantId, userID: () => sessionStore.user?.id, onError: blocksCatalog, latest: latestLoad })
+    if (!applied) return
     couponGrants.value = couponGrants.value.filter((grant) => isCouponGrantAvailable(grant))
     if (!eligibleCoupons.value.some((grant) => grant.id === selectedCouponGrantId.value)) selectedCouponGrantId.value = null
     selectedSquadIds.value = selectedSquadIds.value.filter((id) => !paidAddonIsFull(id))
@@ -165,16 +168,13 @@ export function useCatalog() {
     }
   }
   if (getCurrentInstance()) onMounted(() => void load())
+  if (getCurrentInstance()) onScopeDispose(latestLoad.dispose)
   return {
-    catalog: readonly(catalog),
-    balance: readonly(balance),
-    loading: readonly(loading),
-    purchasing: readonly(purchasing),
+    catalog: readonly(catalog), balance: readonly(balance),
+    loading: readonly(loading), purchasing: readonly(purchasing),
     quoting: readonly(quoting),
-    error: readonly(error),
-    purchase: readonly(purchase),
-    quote: readonly(quote),
-    quoteUsable,
+    error: readonly(error), purchase: readonly(purchase),
+    quote: readonly(quote), quoteUsable,
     autoRenewalBlocked: readonly(autoRenewalBlocked),
     selectedComboId,
     selectedSquadIds: readonly(selectedSquadIds),

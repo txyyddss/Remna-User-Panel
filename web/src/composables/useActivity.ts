@@ -1,4 +1,4 @@
-import { onMounted, readonly, shallowRef } from 'vue'
+import { onMounted, onScopeDispose, readonly, shallowRef } from 'vue'
 
 import { featuresApi } from '@/api/features'
 import type { ActivityOverview, ActivityResult } from '@/api/features'
@@ -6,6 +6,7 @@ import { activityNotification } from '@/components/activity/feedback'
 import { localizedError } from '@/i18n'
 import { createUuid } from '@/utils/browserCompatibility'
 import { notifyBetOutcome, notifyHaptic } from '@/utils/telegram'
+import { createLatestRequest } from '@/utils/latestRequest'
 
 export function useActivity() {
   const overview = shallowRef<ActivityOverview | null>(null)
@@ -14,6 +15,7 @@ export function useActivity() {
   const busy = shallowRef<'check-in' | 'bet' | 'draw' | null>(null)
   const error = shallowRef<string | null>(null)
   const actionKeys = new Map<string, string>()
+  const latestLoad = createLatestRequest()
 
   function idempotencyKey(action: string): string {
     const existing = actionKeys.get(action)
@@ -24,14 +26,17 @@ export function useActivity() {
   }
 
   async function load(options: { quiet?: boolean } = {}): Promise<void> {
+	const token = latestLoad.begin()
     if (!options.quiet) loading.value = true
     error.value = null
     try {
-      overview.value = await featuresApi.getActivity()
+	  const response = await featuresApi.getActivity()
+	  if (latestLoad.isCurrent(token)) overview.value = response
     } catch (caught) {
+	  if (!latestLoad.isCurrent(token)) return
       error.value = localizedError(caught, 'errors.activityUnavailable')
     } finally {
-      loading.value = false
+	  if (latestLoad.isCurrent(token)) loading.value = false
     }
   }
 
@@ -71,6 +76,7 @@ export function useActivity() {
   }
 
   onMounted(() => void load())
+  onScopeDispose(latestLoad.dispose)
 
   return {
     overview: readonly(overview),

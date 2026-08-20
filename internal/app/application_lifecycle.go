@@ -29,9 +29,16 @@ func (a *Application) Run(ctx context.Context) error {
 		listenerDone <- a.httpServer.ListenAndServe()
 	}()
 	schedulerDone := make(chan struct{})
+	schedulerStarted := make(chan struct{})
 	go func() {
 		defer close(schedulerDone)
-		a.runScheduler(runCtx)
+		a.runScheduler(runCtx, schedulerStarted)
+	}()
+	<-schedulerStarted
+	statisticsDone := make(chan struct{})
+	go func() {
+		defer close(statisticsDone)
+		a.runStatisticsScheduler(runCtx)
 	}()
 
 	var runErr error
@@ -44,10 +51,10 @@ func (a *Application) Run(ctx context.Context) error {
 			runErr = fmt.Errorf("serve HTTP: %w", err)
 		}
 	}
-	return errors.Join(runErr, a.shutdownRuntime(cancelRun, schedulerDone))
+	return errors.Join(runErr, a.shutdownRuntime(cancelRun, schedulerDone, statisticsDone))
 }
 
-func (a *Application) shutdownRuntime(cancelRun context.CancelFunc, schedulerDone <-chan struct{}) error {
+func (a *Application) shutdownRuntime(cancelRun context.CancelFunc, schedulerDone, statisticsDone <-chan struct{}) error {
 	cancelRun()
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), a.config.ShutdownTimeout)
 	serverErr := a.httpServer.Shutdown(shutdownCtx)
@@ -59,8 +66,15 @@ func (a *Application) shutdownRuntime(cancelRun context.CancelFunc, schedulerDon
 	// Database-dependent scheduler work and provider workers must be gone before
 	// Run returns and the owner invokes Close on SQLite.
 	<-schedulerDone
+	<-statisticsDone
+	flushCtx, cancelFlush := context.WithTimeout(context.Background(), 5*time.Second)
+	flushErr := a.store.FlushGroupMessageFacts(flushCtx)
+	cancelFlush()
+	if flushErr != nil {
+		flushErr = fmt.Errorf("flush group message facts: %w", flushErr)
+	}
 	queueErr := a.upstreams.shutdown(context.Background())
-	return errors.Join(serverErr, queueErr)
+	return errors.Join(serverErr, flushErr, queueErr)
 }
 
 // Close checkpoints the authoritative on-disk database after runtime workers stop.

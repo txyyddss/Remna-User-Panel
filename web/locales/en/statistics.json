@@ -84,6 +84,8 @@
       "auto_renew": "Auto renewal",
       "neither": "Active only"
     },
+    "remoteUpdatedAt": "Remnawave data update time",
+    "databaseUpdatedAt": "Database data update time",
     "provider": {
       "ezpay": "EZPay",
       "bepusdt": "BEPusdt",

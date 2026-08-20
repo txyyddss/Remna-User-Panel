@@ -8,22 +8,21 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 )
 
-func (a *Application) runScheduler(ctx context.Context) {
+func (a *Application) runScheduler(ctx context.Context, startupComplete chan<- struct{}) {
 	outboxTicker := time.NewTicker(5 * time.Second)
+	groupFactsTicker := time.NewTicker(time.Second)
 	transitionTicker := time.NewTicker(30 * time.Second)
 	maintenanceTicker := time.NewTicker(10 * time.Minute)
 	starsTicker := time.NewTicker(5 * time.Minute)
 	maintenanceTimer := time.NewTimer(time.Until(a.nextMaintenance(time.Now())))
-	statisticsTimer := time.NewTimer(time.Until(nextStatisticsRefresh(time.Now())))
 	defer outboxTicker.Stop()
+	defer groupFactsTicker.Stop()
 	defer transitionTicker.Stop()
 	defer maintenanceTicker.Stop()
 	defer starsTicker.Stop()
 	defer maintenanceTimer.Stop()
-	defer statisticsTimer.Stop()
 	a.configureTelegram(ctx)
 	startupNow := time.Now().UTC()
-	a.refreshProductStatistics(ctx, startupNow)
 	if err := a.store.RecoverOutbox(ctx, startupNow, startupNow); err != nil {
 		a.logger.Error("startup outbox recovery failed", "error", err)
 	}
@@ -42,6 +41,7 @@ func (a *Application) runScheduler(ctx context.Context) {
 	if err := a.store.EnqueueDueEntitlementTransitions(ctx, startupNow); err != nil {
 		a.logger.Error("startup successor transition scan failed", "error", err)
 	}
+	close(startupComplete)
 	for {
 		select {
 		case <-ctx.Done():
@@ -49,6 +49,10 @@ func (a *Application) runScheduler(ctx context.Context) {
 		case <-outboxTicker.C:
 			if err := a.outbox.Drain(ctx, 20); err != nil && !errors.Is(err, context.Canceled) {
 				a.logger.Error("outbox drain failed", "error", err)
+			}
+		case <-groupFactsTicker.C:
+			if err := a.store.FlushGroupMessageFacts(ctx); err != nil && !errors.Is(err, context.Canceled) {
+				a.logger.Error("group message fact flush failed", "error", err)
 			}
 		case now := <-transitionTicker.C:
 			if err := a.store.RecoverOutbox(ctx, now.UTC().Add(-2*time.Minute), now.UTC()); err != nil {
@@ -73,9 +77,6 @@ func (a *Application) runScheduler(ctx context.Context) {
 			a.configureTelegram(ctx)
 		case <-starsTicker.C:
 			a.reconcileStars(ctx)
-		case now := <-statisticsTimer.C:
-			a.refreshProductStatistics(ctx, now.UTC())
-			statisticsTimer.Reset(time.Until(nextStatisticsRefresh(time.Now())))
 		case <-maintenanceTimer.C:
 			maintenanceCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 			maintenanceNow := time.Now().UTC()

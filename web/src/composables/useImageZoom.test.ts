@@ -24,6 +24,7 @@ describe('useImageZoom', () => {
       hasPointerCapture: (pointerId: number) => captured.has(pointerId),
       releasePointerCapture: (pointerId: number) => captured.delete(pointerId),
       getBoundingClientRect: () => new DOMRect(0, 0, 200, 100),
+      querySelector: () => null,
     } as unknown as HTMLElement
     const pointer = (pointerId: number, clientX: number) => ({
       pointerId, clientX, clientY: 0, pointerType: 'touch', currentTarget: target,
@@ -31,10 +32,13 @@ describe('useImageZoom', () => {
 
     zoom.onPointerDown(pointer(1, 0))
     zoom.onPointerDown(pointer(2, 100))
+    expect(zoom.isInteracting.value).toBe(true)
     zoom.onPointerMove(pointer(2, 200))
 
     expect(zoom.scale.value).toBe(2)
     expect(zoom.isZoomed.value).toBe(true)
     zoom.onPointerUp(pointer(2, 200))
+    zoom.onPointerUp(pointer(1, 0))
+    expect(zoom.isInteracting.value).toBe(false)
   })
 })

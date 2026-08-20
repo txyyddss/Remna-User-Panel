@@ -5,7 +5,7 @@ import type { ConnectionScan } from '@/api/types'
 import { localizedError } from '@/i18n'
 import { createUuid } from '@/utils/browserCompatibility'
 
-export function useConnectionScan(intervalMilliseconds = 3000) {
+export function useConnectionScan(intervalMilliseconds = 500) {
   const scan = shallowRef<ConnectionScan | null>(null)
   const loading = shallowRef(true)
   const polling = shallowRef(false)

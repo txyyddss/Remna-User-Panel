@@ -95,7 +95,8 @@ func TestRequestAuthenticationErrorStatusMapping(t *testing.T) {
 		status int
 	}{
 		{name: "signed body overflow", err: requestauth.ErrBodyTooLarge, status: http.StatusRequestEntityTooLarge},
-		{name: "replay cache capacity", err: fmt.Errorf("%w: replay cache is at capacity", requestauth.ErrReplay), status: http.StatusConflict},
+		{name: "duplicate nonce", err: fmt.Errorf("%w: duplicate nonce", requestauth.ErrReplay), status: http.StatusConflict},
+		{name: "session nonce capacity", err: fmt.Errorf("%w: nonce capacity", requestauth.ErrRateLimited), status: http.StatusTooManyRequests},
 	}
 	for _, test := range tests {
 		test := test

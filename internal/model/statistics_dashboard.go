@@ -33,6 +33,12 @@ type RemoteStatistics struct {
 	TrafficSeries          []NodeTrafficSeries `json:"trafficSeries"`
 }
 
+// StatisticsUsageMember joins the current local entitlement to its upstream identity.
+type StatisticsUsageMember struct {
+	Purchase     Purchase
+	RemoteUserID string
+}
+
 // DatabaseStatistics is the compact local statistics partition.
 type DatabaseStatistics struct {
 	NewUserConversion     float64                  `json:"newUserConversionPercent"`

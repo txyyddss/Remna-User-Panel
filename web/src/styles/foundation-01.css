@@ -164,12 +164,6 @@ select:disabled {
 }
 
 .button:active:not(:disabled),
-.icon-button:active:not(:disabled),
-.text-button:active:not(:disabled) {
+.icon-button:active:not(:disabled) {
   transform: scale(0.98);
-}
-
-.button--primary {
-  color: var(--accent-ink);
-  background: var(--accent);
 }

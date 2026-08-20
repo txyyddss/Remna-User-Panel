@@ -55,12 +55,16 @@ func mapBackupRun(run model.BackupRun) backupRunResponse {
 }
 
 func (s *Server) adminJobs(w http.ResponseWriter, r *http.Request) {
-	items, err := s.deps.Store.ListOutboxJobs(r.Context(), 200)
-	if err != nil {
-		s.adminFailure(w, r, err)
+	query, ok := s.parseAdminInventoryQuery(w, r, jobPageStatuses)
+	if !ok {
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	items, nextCursor, err := s.deps.Store.ListAdminOutboxJobsPage(r.Context(), query.Cursor, query.Search, query.Status, query.Limit)
+	if err != nil {
+		s.writeAdminPageFailure(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items, "page": map[string]any{"nextCursor": nextCursor}})
 }
 
 func (s *Server) adminRetryJob(w http.ResponseWriter, r *http.Request) {

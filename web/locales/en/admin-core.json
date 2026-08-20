@@ -29,6 +29,7 @@
     "title": "Users",
     "copy": "Search accounts and append audited balance entries.",
     "search": "Search users",
+    "loadMore": "Load more users",
     "meta": "{identity} · joined {date}",
     "synchronized": "Synchronized",
     "notProvisioned": "Not provisioned",

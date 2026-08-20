@@ -10,6 +10,8 @@
 - The SPA fallback revalidates `index.html` while serving hashed assets with immutable caching to avoid stale WebView bundles.
 - `request_auth.go` requires the per-session HMAC contract on authenticated browser requests.
 - `request_auth_test.go` tests signed-route enforcement and session-cookie visibility rules.
+- `auth_rate_limit.go` bounds Telegram session exchange attempts by normalized client IP.
+- `auth_rate_limit_test.go` covers client-IP isolation, refill, and forwarded-address handling.
 - `request_validation.go` applies shared request validation, strict JSON decoding, and URL parameter normalization.
 - `authentication.go` exchanges verified Telegram init data for session and request-signing cookies.
 - `handlers.go` serves onboarding actions, dashboard, catalog, purchases, balance, and ledger history.
@@ -56,6 +58,7 @@
 - `admin_catalog.go` manages combos, squad products, and statistics windows; node accessibility is read-only in member catalog quotes.
 - `admin_statistics_window.go` validates administrator statistics date ranges and buckets.
 - `admin_accounts.go` manages user lists, aggregate user detail, balance adjustments, and admin-as-actor block removal.
+- `admin_inventory_page.go` validates shared cursor, limit, search, and status filters for administrative inventories.
 - `admin_user_detail.go` maps the non-duplicated aggregate profile and its active IP blocks to the public response.
 - `admin_user_commands.go` serves optimistic entitlement edits, entitlement refunds, and no-charge combo replacements.
 - `admin_bulk_extensions.go` serves inclusive-OR previews and idempotent bulk-extension jobs.
@@ -68,9 +71,12 @@
 
 - `operations.go` serves liveness and readiness probes.
 - `operations_shared.go` contains bounded-context and request-ID helpers.
-- `telegram_webhook.go` validates and processes Telegram membership and Stars payment updates.
+- `telegram_webhook.go` validates and dispatches Telegram membership and Stars payment updates.
 - `telegram_commands.go` dispatches localized slash commands before group-message rewards and preserves the unadvertised administrator deduction command.
-- `telegram_command_replies.go` composes subscription and combo replies from existing catalog domain services.
+- `telegram_command_replies.go` composes subscription/combo replies from
+  existing catalog services and reads the cached statistics average for check-in copy.
+- `telegram_membership.go` refreshes membership and independently welcomes
+  genuine non-bot joins in the configured group with a localized safe mention.
 - `payment_callbacks.go` handles EZPay/BEPusdt callbacks, short-lived payment-return capabilities, and navigation-only payment returns/receipt polling.
 
 ## Tests
@@ -83,6 +89,8 @@
 - `admin_user_detail_test.go` covers owner-ID restoration in nested aggregate records.
 - `member_ip_blocks_test.go` covers member isolation, administrator actor attribution, and open-operation conflicts.
 - `statistics_geocheck_test.go` covers cached image-only and unavailable node Geocheck responses.
+- `telegram_membership_test.go` covers joins, rejoins, promotions, departures,
+  bots, missing configuration, and unrelated chats through a pure transition predicate.
 
 `README.md` is this direct-file ownership index. Unsigned routes remain limited to operational probes, Telegram authentication, provider-authenticated callbacks, the capability-limited payment return/status flow, and static assets.
 - `handlers_part2.go` contains the remaining route handler implementations.

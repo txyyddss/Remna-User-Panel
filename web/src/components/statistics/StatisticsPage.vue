@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { computed, shallowRef } from 'vue'
+
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { useNodeGeocheck } from '@/composables/useNodeGeocheck'
 import { useStatistics } from '@/composables/useStatistics'
+import { useI18n } from '@/i18n'
 import { formatDateTime } from '@/utils/format'
 import StatisticsDistribution from './StatisticsDistribution.vue'
 import StatisticsFreshness from './StatisticsFreshness.vue'
@@ -12,8 +15,19 @@ import StatisticsOverview from './StatisticsOverview.vue'
 import StatisticsShareCharts from './StatisticsShareCharts.vue'
 import StatisticsTrafficChart from './StatisticsTrafficChart.vue'
 
+type StatisticsTab = 'overview' | 'nodes' | 'traffic' | 'distributions' | 'composition'
+
 const { snapshot, nodeSnapshot, loading, refreshing, nodesLoading, error, nodesError, load } = useStatistics()
 const geocheck = useNodeGeocheck()
+const { t } = useI18n()
+const activeTab = shallowRef<StatisticsTab>('overview')
+const tabs = computed(() => [
+  { label: t('statistics.overview'), value: 'overview', slot: 'overview' as const, icon: 'i-ph-squares-four' },
+  { label: t('statistics.nodes'), value: 'nodes', slot: 'nodes' as const, icon: 'i-ph-hard-drives' },
+  { label: t('statistics.sevenDayTraffic'), value: 'traffic', slot: 'traffic' as const, icon: 'i-ph-chart-line-up' },
+  { label: t('statistics.distributions'), value: 'distributions', slot: 'distributions' as const, icon: 'i-ph-chart-donut' },
+  { label: t('statistics.squadComposition'), value: 'composition', slot: 'composition' as const, icon: 'i-ph-stack' },
+])
 </script>
 
 <template>
@@ -49,12 +63,29 @@ const geocheck = useNodeGeocheck()
       <InlineNotice v-if="snapshot.stalePartitions.length" tone="warning">{{ $t('statistics.stalePartitions') }}</InlineNotice>
       <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
       <InlineNotice v-if="nodesError" tone="warning">{{ nodesError }}</InlineNotice>
-      <StatisticsFreshness :snapshot="snapshot" />
-      <StatisticsOverview :snapshot="snapshot" />
-      <StatisticsNodes :snapshot="nodeSnapshot" :loading="nodesLoading" @open-geocheck="geocheck.show" />
-      <StatisticsTrafficChart :remote="snapshot.remote" />
-      <StatisticsShareCharts :database="snapshot.database" />
-      <StatisticsDistribution :database="snapshot.database" />
+      <UTabs
+        v-model="activeTab"
+        :items="tabs"
+        class="min-w-0 w-full"
+        :ui="{ list: 'w-full overflow-x-auto overscroll-x-contain', trigger: 'min-h-11 grow-0 shrink-0 px-3' }"
+      >
+        <template #overview>
+          <StatisticsOverview :snapshot="snapshot" />
+          <StatisticsFreshness :snapshot="snapshot" />
+        </template>
+        <template #nodes>
+          <StatisticsNodes :snapshot="nodeSnapshot" :loading="nodesLoading" @open-geocheck="geocheck.show" />
+        </template>
+        <template #traffic>
+          <StatisticsTrafficChart :remote="snapshot.remote" />
+        </template>
+        <template #distributions>
+          <StatisticsShareCharts :database="snapshot.database" />
+        </template>
+        <template #composition>
+          <StatisticsDistribution :database="snapshot.database" />
+        </template>
+      </UTabs>
     </template>
 
     <div v-else class="error-state">

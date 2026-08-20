@@ -18,6 +18,10 @@ var usernamePattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{3,36}$`)
 // ErrInvalidAuthentication denotes untrusted or expired Telegram launch data.
 var ErrInvalidAuthentication = errors.New("invalid Telegram authentication")
 
+// ErrAuthenticationRateLimited denotes a verified Telegram identity exchanging
+// launch data too frequently.
+var ErrAuthenticationRateLimited = errors.New("Telegram authentication rate limited")
+
 // ErrMembershipRequired means both configured chats are not yet joined.
 var ErrMembershipRequired = errors.New("membership is required")
 
@@ -92,7 +96,7 @@ type Settings interface {
 // Repository is the persistence surface used by accounts.
 type Repository interface {
 	UpsertTelegramUser(context.Context, model.TelegramProfile, bool) (model.User, bool, error)
-	CreateSession(context.Context, []byte, string, time.Time) error
+	ReplaceSession(context.Context, []byte, string, time.Time) error
 	UserBySession(context.Context, []byte, time.Time) (model.User, error)
 	UserByID(context.Context, string) (model.User, error)
 	UserByTelegramID(context.Context, int64) (model.User, error)
@@ -105,14 +109,15 @@ type Repository interface {
 
 // Service coordinates authentication and onboarding state.
 type Service struct {
-	repository Repository
-	validator  InitDataValidator
-	telegram   TelegramClient
-	remnawave  RemnawaveClient
-	settings   Settings
-	adminIDs   map[int64]struct{}
-	sessionTTL time.Duration
-	now        func() time.Time
+	repository  Repository
+	validator   InitDataValidator
+	telegram    TelegramClient
+	remnawave   RemnawaveClient
+	settings    Settings
+	adminIDs    map[int64]struct{}
+	authLimiter *authIdentityLimiter
+	sessionTTL  time.Duration
+	now         func() time.Time
 }
 
 // NewService constructs an accounts service.
@@ -121,7 +126,8 @@ func NewService(repository Repository, validator InitDataValidator, telegram Tel
 	for _, adminID := range adminIDs {
 		configuredAdmins[adminID] = struct{}{}
 	}
-	return &Service{repository: repository, validator: validator, telegram: telegram, remnawave: remnawave, settings: settings, adminIDs: configuredAdmins, sessionTTL: sessionTTL, now: time.Now}
+	return &Service{repository: repository, validator: validator, telegram: telegram, remnawave: remnawave, settings: settings,
+		adminIDs: configuredAdmins, authLimiter: newAuthIdentityLimiter(), sessionTTL: sessionTTL, now: time.Now}
 }
 
 func (s *Service) isAdminTelegramID(telegramID int64) bool {
@@ -134,6 +140,9 @@ func (s *Service) Authenticate(ctx context.Context, raw string) (model.User, str
 	profile, err := s.validator.Validate(raw)
 	if err != nil {
 		return model.User{}, "", time.Time{}, fmt.Errorf("%w: %v", ErrInvalidAuthentication, err)
+	}
+	if !s.authLimiter.allow(profile.ID) {
+		return model.User{}, "", time.Time{}, ErrAuthenticationRateLimited
 	}
 	user, _, err := s.repository.UpsertTelegramUser(ctx, profile, s.isAdminTelegramID(profile.ID))
 	if err != nil {
@@ -163,7 +172,7 @@ func (s *Service) Authenticate(ctx context.Context, raw string) (model.User, str
 	}
 	expiresAt := s.now().UTC().Add(s.sessionTTL)
 	hash := sha256.Sum256([]byte(token))
-	if err := s.repository.CreateSession(ctx, hash[:], user.ID, expiresAt); err != nil {
+	if err := s.repository.ReplaceSession(ctx, hash[:], user.ID, expiresAt); err != nil {
 		return model.User{}, "", time.Time{}, err
 	}
 	return user, token, expiresAt, nil

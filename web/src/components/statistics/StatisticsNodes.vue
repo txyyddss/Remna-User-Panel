@@ -24,9 +24,16 @@ const emit = defineEmits<{ openGeocheck: [node: StatisticsNode] }>()
         <header>
           <CountryFlag :code="node.countryCode" />
           <UTooltip :text="node.name"><h3>{{ node.name }}</h3></UTooltip>
-          <span class="statistics-node__state" :class="{ 'statistics-node__state--online': node.online }">
-            {{ $t(node.online ? 'statistics.online' : 'statistics.offline') }}
-          </span>
+          <UTooltip :text="$t(node.online ? 'statistics.online' : 'statistics.offline')">
+            <span
+              class="statistics-node__state"
+              :class="{ 'statistics-node__state--online': node.online }"
+              role="img"
+              :aria-label="$t(node.online ? 'statistics.online' : 'statistics.offline')"
+            >
+              <UIcon :name="node.online ? 'i-ph-wifi-high' : 'i-ph-wifi-slash'" aria-hidden="true" />
+            </span>
+          </UTooltip>
           <UTooltip :text="$t('statistics.geocheck.open')">
             <UButton
               type="button"
@@ -41,11 +48,26 @@ const emit = defineEmits<{ openGeocheck: [node: StatisticsNode] }>()
           </UTooltip>
         </header>
         <dl>
-          <div><dt>{{ $t('statistics.usersOnline') }}</dt><dd>{{ formatStatisticNumber(node.usersOnline) }}</dd></div>
-          <div><dt>{{ $t('statistics.downloadRate') }}</dt><dd>{{ $t('statistics.perSecond', { value: formatBytes(node.rxBytesPerSec) }) }}</dd></div>
-          <div><dt>{{ $t('statistics.uploadRate') }}</dt><dd>{{ $t('statistics.perSecond', { value: formatBytes(node.txBytesPerSec) }) }}</dd></div>
-          <div><dt>{{ $t('statistics.xrayVersion') }}</dt><dd :title="node.xrayVersion">{{ node.xrayVersion || $t('common.notAvailable') }}</dd></div>
-          <div><dt>{{ $t('statistics.multiplier') }}</dt><dd>{{ $t('statistics.multiplierValue', { value: formatStatisticNumber(node.multiplier, 2) }) }}</dd></div>
+          <div>
+            <dt><UTooltip :text="$t('statistics.usersOnline')"><span class="statistics-node__metric-icon" role="img" :aria-label="$t('statistics.usersOnline')"><UIcon name="i-ph-users" aria-hidden="true" /></span></UTooltip></dt>
+            <dd>{{ formatStatisticNumber(node.usersOnline) }}</dd>
+          </div>
+          <div>
+            <dt><UTooltip :text="$t('statistics.downloadRate')"><span class="statistics-node__metric-icon" role="img" :aria-label="$t('statistics.downloadRate')"><UIcon name="i-ph-arrow-down" aria-hidden="true" /></span></UTooltip></dt>
+            <dd :title="$t('statistics.perSecond', { value: formatBytes(node.rxBytesPerSec) })">{{ $t('statistics.perSecond', { value: formatBytes(node.rxBytesPerSec) }) }}</dd>
+          </div>
+          <div>
+            <dt><UTooltip :text="$t('statistics.uploadRate')"><span class="statistics-node__metric-icon" role="img" :aria-label="$t('statistics.uploadRate')"><UIcon name="i-ph-arrow-up" aria-hidden="true" /></span></UTooltip></dt>
+            <dd :title="$t('statistics.perSecond', { value: formatBytes(node.txBytesPerSec) })">{{ $t('statistics.perSecond', { value: formatBytes(node.txBytesPerSec) }) }}</dd>
+          </div>
+          <div>
+            <dt><UTooltip :text="$t('statistics.xrayVersion')"><span class="statistics-node__metric-icon" role="img" :aria-label="$t('statistics.xrayVersion')"><UIcon name="i-ph-code" aria-hidden="true" /></span></UTooltip></dt>
+            <dd :title="node.xrayVersion">{{ node.xrayVersion || $t('common.notAvailable') }}</dd>
+          </div>
+          <div>
+            <dt><UTooltip :text="$t('statistics.multiplier')"><span class="statistics-node__metric-icon" role="img" :aria-label="$t('statistics.multiplier')"><UIcon name="i-ph-x" aria-hidden="true" /></span></UTooltip></dt>
+            <dd>{{ $t('statistics.multiplierValue', { value: formatStatisticNumber(node.multiplier, 2) }) }}</dd>
+          </div>
         </dl>
       </article>
     </div>

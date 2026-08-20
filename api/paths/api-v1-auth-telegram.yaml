@@ -35,5 +35,7 @@ post:
       $ref: '../openapi.yaml#/components/responses/BadRequest'
     '401':
       $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '429':
+      $ref: '../openapi.yaml#/components/responses/TooManyRequests'
     '503':
       $ref: '../openapi.yaml#/components/responses/ServiceUnavailable'

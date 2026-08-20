@@ -79,6 +79,7 @@
     "deleteBackup": "删除备份",
     "jobs": "同步任务",
     "jobsHint": "发件箱重试和计划的权益变更。",
+    "loadMoreJobs": "加载更多任务",
     "attempts": "已尝试 {count} 次",
     "jobError": "需要处理",
     "retry": "重试",

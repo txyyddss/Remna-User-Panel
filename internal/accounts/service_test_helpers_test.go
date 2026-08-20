@@ -11,7 +11,7 @@ type accountsRepository struct {
 	user                 model.User
 	sessionUser          model.User
 	upsertErr            error
-	createSessionErr     error
+	replaceSessionErr    error
 	sessionLookupErr     error
 	advanceErr           error
 	userByIDErr          error
@@ -39,9 +39,9 @@ func (r *accountsRepository) UpsertTelegramUser(_ context.Context, _ model.Teleg
 	r.upsertAdmin = admin
 	return r.user, true, r.upsertErr
 }
-func (r *accountsRepository) CreateSession(_ context.Context, hash []byte, userID string, expires time.Time) error {
+func (r *accountsRepository) ReplaceSession(_ context.Context, hash []byte, userID string, expires time.Time) error {
 	r.sessionHash, r.sessionUserID, r.sessionExpires = append([]byte(nil), hash...), userID, expires
-	return r.createSessionErr
+	return r.replaceSessionErr
 }
 func (r *accountsRepository) UserBySession(_ context.Context, hash []byte, _ time.Time) (model.User, error) {
 	r.lookupSessionHash = append([]byte(nil), hash...)

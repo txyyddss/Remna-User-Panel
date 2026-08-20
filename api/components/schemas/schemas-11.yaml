@@ -239,7 +239,7 @@ Job:
 JobPage:
   type: object
   additionalProperties: false
-  required: [items]
+  required: [items, page]
   properties:
     items:
       type: array

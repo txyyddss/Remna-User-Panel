@@ -40,6 +40,20 @@ Unprocessable:
       schema:
         $ref: '../openapi.yaml#/components/schemas/ApiError'
 
+PayloadTooLarge:
+  description: The request body exceeds the endpoint's configured limit.
+  content:
+    application/json:
+      schema:
+        $ref: '../openapi.yaml#/components/schemas/ApiError'
+
+TooManyRequests:
+  description: The caller exceeded an endpoint or per-session request limit.
+  content:
+    application/json:
+      schema:
+        $ref: '../openapi.yaml#/components/schemas/ApiError'
+
 InternalFailure:
   description: A required local operation failed unexpectedly.
   content:

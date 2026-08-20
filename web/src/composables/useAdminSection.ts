@@ -1,9 +1,10 @@
-import { onMounted, readonly, shallowRef } from 'vue'
+import { onMounted, onScopeDispose, readonly, shallowRef } from 'vue'
 
 import { api } from '@/api/client'
 import type { AdminResource, Paginated } from '@/api/types'
 import { notifyHaptic } from '@/utils/telegram'
 import { localizedError } from '@/i18n'
+import { createLatestRequest } from '@/utils/latestRequest'
 
 function extractItems<T>(payload: Paginated<T> | T[] | { items: T[] }): T[] {
   if (Array.isArray(payload)) return payload
@@ -15,18 +16,37 @@ export function useAdminSection<T>(resource: AdminResource, options: { immediate
   const loading = shallowRef(options.immediate !== false)
   const busy = shallowRef(false)
   const error = shallowRef<string | null>(null)
+  const nextCursor = shallowRef<string | null>(null)
+  const latestLoad = createLatestRequest()
+  type Query = Record<string, string | number | boolean | undefined>
+  let lastQuery: Query = {}
 
-  async function load(query?: Record<string, string | number | boolean | undefined>): Promise<void> {
+  async function load(query?: Query, options: { append?: boolean } = {}): Promise<void> {
+    const append = options.append === true
+    if (append && !nextCursor.value) return
+    const requestQuery = append
+      ? { ...lastQuery, cursor: nextCursor.value ?? undefined }
+      : { ...(query ?? lastQuery), cursor: undefined }
+    if (!append) lastQuery = requestQuery
+    const token = latestLoad.begin()
     loading.value = true
     error.value = null
     try {
-      const payload = await api.getAdminResource<Paginated<T> | T[] | { items: T[] }>(resource, query)
-      items.value = extractItems(payload)
+      const payload = await api.getAdminResource<Paginated<T> | T[] | { items: T[] }>(resource, requestQuery)
+      if (!latestLoad.isCurrent(token)) return
+      const nextItems = extractItems(payload)
+      items.value = append ? [...items.value, ...nextItems] : nextItems
+      nextCursor.value = Array.isArray(payload) || !("page" in payload) ? null : payload.page?.nextCursor ?? null
     } catch (caught) {
+      if (!latestLoad.isCurrent(token)) return
       error.value = localizedError(caught, 'errors.adminLoad')
     } finally {
-      loading.value = false
+      if (latestLoad.isCurrent(token)) loading.value = false
     }
+  }
+
+  function loadMore(): Promise<void> {
+    return load(undefined, { append: true })
   }
 
   async function perform(task: () => Promise<unknown>): Promise<boolean> {
@@ -34,7 +54,7 @@ export function useAdminSection<T>(resource: AdminResource, options: { immediate
     error.value = null
     try {
       await task()
-      await load()
+      await load(lastQuery)
       notifyHaptic('success')
       return true
     } catch (caught) {
@@ -59,13 +79,16 @@ export function useAdminSection<T>(resource: AdminResource, options: { immediate
   }
 
   if (options.immediate !== false) onMounted(() => void load())
+  onScopeDispose(latestLoad.dispose)
 
   return {
     items: readonly(items),
     loading: readonly(loading),
     busy: readonly(busy),
     error: readonly(error),
+    nextCursor: readonly(nextCursor),
     load,
+    loadMore,
     perform,
     create,
     update,

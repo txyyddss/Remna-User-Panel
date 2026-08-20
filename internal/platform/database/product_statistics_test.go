@@ -60,9 +60,9 @@ func TestProductStatisticsExcludeAdministratorsFromMemberMetrics(t *testing.T) {
 		len(statistics.ComboBySquad) != 1 || statistics.ComboBySquad[0].ID != memberSquad.RemnaSquadUUID {
 		t.Fatalf("member distributions = (%+v, %+v)", statistics.SquadByCombo, statistics.ComboBySquad)
 	}
-	purchases, err := store.ActiveMemberPurchasesForStatistics(ctx, now.Add(time.Minute))
-	if err != nil || len(purchases) != 1 || purchases[0].ID != memberPurchase.ID {
-		t.Fatalf("ActiveMemberPurchasesForStatistics() = (%+v, %v)", purchases, err)
+	members, err := store.ActiveMemberUsageForStatistics(ctx, now.Add(time.Minute))
+	if err != nil || len(members) != 1 || members[0].Purchase.ID != memberPurchase.ID || members[0].RemoteUserID == "" {
+		t.Fatalf("ActiveMemberUsageForStatistics() = (%+v, %v)", members, err)
 	}
 }
 

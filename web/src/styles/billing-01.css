@@ -9,8 +9,7 @@
   gap: 0.4rem;
 }
 
-.checkout-sheet .notice,
-.checkout-sheet .button--wide {
+.checkout-sheet .notice {
   margin-top: 1rem;
 }
 

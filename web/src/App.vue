@@ -6,6 +6,7 @@ import { en, zh_cn } from '@nuxt/ui/locale'
 import AppShell from '@/components/layout/AppShell.vue'
 import AuthGate from '@/components/session/AuthGate.vue'
 import LoadingScreen from '@/components/session/LoadingScreen.vue'
+import AppErrorBoundary from '@/components/session/AppErrorBoundary.vue'
 import { useSessionStore } from '@/stores/session'
 import { useI18n } from '@/i18n'
 import { isTelegramWebAppDetected } from '@/utils/telegram'
@@ -20,30 +21,32 @@ const uiLocale = computed(() => locale.value === 'zh-CN' ? zh_cn : en)
 
 <template>
   <UApp :locale="uiLocale" :toaster="{ position: 'top-center' }">
-    <RouterView v-if="browserPublic" v-slot="{ Component, route: currentRoute }">
-      <Transition name="route" mode="out-in">
-        <component :is="Component" :key="currentRoute.fullPath" />
-      </Transition>
-    </RouterView>
-    <LoadingScreen v-else-if="sessionStore.status === 'idle' || sessionStore.status === 'loading'" />
-    <AuthGate
-      v-else-if="sessionStore.status === 'error'"
-      :message="sessionStore.error ?? $t('auth.authenticationFailed')"
-      @retry="sessionStore.bootstrap(true)"
-    />
-    <template v-else>
-      <RouterView v-if="immersive" v-slot="{ Component, route: currentRoute }">
+    <AppErrorBoundary>
+      <RouterView v-if="browserPublic" v-slot="{ Component, route: currentRoute }">
         <Transition name="route" mode="out-in">
           <component :is="Component" :key="currentRoute.fullPath" />
         </Transition>
       </RouterView>
-      <AppShell v-else>
-        <RouterView v-slot="{ Component, route: currentRoute }">
+      <LoadingScreen v-else-if="sessionStore.status === 'idle' || sessionStore.status === 'loading'" />
+      <AuthGate
+        v-else-if="sessionStore.status === 'error'"
+        :message="sessionStore.error ?? $t('auth.authenticationFailed')"
+        @retry="sessionStore.bootstrap(true)"
+      />
+      <template v-else>
+        <RouterView v-if="immersive" v-slot="{ Component, route: currentRoute }">
           <Transition name="route" mode="out-in">
             <component :is="Component" :key="currentRoute.fullPath" />
           </Transition>
         </RouterView>
-      </AppShell>
-    </template>
+        <AppShell v-else>
+          <RouterView v-slot="{ Component, route: currentRoute }">
+            <Transition name="route" mode="out-in">
+              <component :is="Component" :key="currentRoute.fullPath" />
+            </Transition>
+          </RouterView>
+        </AppShell>
+      </template>
+    </AppErrorBoundary>
   </UApp>
 </template>

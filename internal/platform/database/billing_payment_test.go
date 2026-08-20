@@ -20,8 +20,14 @@ func TestSettlePaymentCreditsExactlyOnce(t *testing.T) {
 	store := newTestStore(t)
 	user := createTestUser(t, store, 10004)
 	now := time.Date(2026, time.August, 7, 13, 0, 0, 0, time.UTC)
+	if _, err := store.SavePaymentProfile(ctx, PaymentProfileInput{
+		ID: "ezpay-main", Provider: "ezpay", ProviderName: "TX 收款一号", EnabledChannels: []string{"alipay"},
+		Endpoint: "https://pay.example", MerchantID: "merchant", CredentialCiphertext: "ciphertext", Enabled: true,
+	}); err != nil {
+		t.Fatalf("SavePaymentProfile(): %v", err)
+	}
 	order := createTestPaymentOrder(t, store, user.ID, "ezpay", 2_500, now)
-	if _, err := store.DB().ExecContext(ctx, `UPDATE payment_orders SET provider_rail='alipay' WHERE id=?`, order.ID); err != nil {
+	if _, err := store.DB().ExecContext(ctx, `UPDATE payment_orders SET method_id='ezpay:ezpay-main:alipay',provider_rail='alipay' WHERE id=?`, order.ID); err != nil {
 		t.Fatalf("seed payment channel: %v", err)
 	}
 
@@ -71,7 +77,7 @@ func TestSettlePaymentCreditsExactlyOnce(t *testing.T) {
 	if err := json.Unmarshal([]byte(announcementJSON), &announcement); err != nil {
 		t.Fatalf("decode payment announcement job: %v", err)
 	}
-	if announcement.OrderID != order.ID || announcement.Provider != "ezpay" || announcement.Channel != "alipay" ||
+	if announcement.OrderID != order.ID || announcement.Provider != "ezpay" || announcement.ProviderName != "TX 收款一号" || announcement.Channel != "alipay" ||
 		announcement.TXBMinor != 2_500 || announcement.PayableAmount != "10.00" || announcement.PayableCurrency != "CNY" ||
 		announcement.Username != "@telegram10004" {
 		t.Fatalf("payment announcement snapshot = %+v", announcement)

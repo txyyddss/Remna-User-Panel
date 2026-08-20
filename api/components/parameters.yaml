@@ -82,6 +82,22 @@ Cursor:
   schema:
     type: string
 
+AdminPageLimit:
+  name: limit
+  in: query
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 100
+    default: 25
+
+Search:
+  name: search
+  in: query
+  schema:
+    type: string
+    maxLength: 100
+
 PageSize:
   name: size
   in: query

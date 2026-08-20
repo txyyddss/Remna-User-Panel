@@ -19,7 +19,7 @@ const (
 	// The envelope must cover the API's valid 5 MiB questionnaire CSV plus
 	// multipart framing. Format-specific handlers retain their tighter limits.
 	defaultMaxBody   = int64(6 << 20)
-	defaultMaxNonces = 32 << 10
+	defaultMaxNonces = 512
 	masterKeyBytes   = 32
 )
 
@@ -40,6 +40,8 @@ var (
 	ErrInvalid = errors.New("request signature is invalid")
 	// ErrReplay marks a nonce already accepted for the same session.
 	ErrReplay = errors.New("request signature nonce was replayed")
+	// ErrRateLimited marks a session that exhausted its bounded nonce window.
+	ErrRateLimited = errors.New("request signature rate limit exceeded")
 	// ErrBodyTooLarge marks a body beyond the signed-request limit.
 	ErrBodyTooLarge = errors.New("request body is too large")
 )
@@ -108,12 +110,8 @@ func (verifier *Verifier) Verify(request *http.Request, sessionToken, clientKey 
 		return ErrInvalid
 	}
 	sessionDigest := sha256.Sum256([]byte(sessionToken))
-	replayKey := string(sessionDigest[:]) + "\x00" + nonce
 	expiresAt := time.Unix(signedAtUnix, 0).Add(verifier.window)
-	if err := verifier.replays.add(replayKey, verifier.now(), expiresAt); err != nil {
-		if errors.Is(err, errReplayCapacity) {
-			return fmt.Errorf("%w: %v", ErrReplay, err)
-		}
+	if err := verifier.replays.add(string(sessionDigest[:]), nonce, verifier.now(), expiresAt); err != nil {
 		return err
 	}
 	return nil

@@ -13,7 +13,7 @@ User operations are `GET /api/v1/balance`, `GET /api/v1/ledger`, `POST /api/v1/p
 - The server computes `ceil(requestedTxbMinor / txbPerCurrency)` at the provider's currency precision and stores the requested TXB, method, provider, rail, payable value, rate value, and rate-direction/version snapshots. Existing pending legacy orders retain `currency_per_txb` snapshots and validate without reinterpretation.
 - Successful settlement credits exactly the requested `txbMinor`, not a value recomputed from a later rate.
 - Each provider transaction/charge ID is globally unique where the provider guarantees uniqueness. A webhook dedupe record and its ledger credit commit together.
-- The first authoritative transition to paid also commits one immutable Telegram announcement job containing the provider, channel, TXB amount, stored payable amount/currency, and resolved username. Callback replay cannot enqueue a second job.
+- The first authoritative transition to paid also commits one immutable Telegram announcement job containing the provider key, settlement-time administrator provider name, channel, TXB amount, stored payable amount/currency, and resolved username. Callback replay cannot enqueue a second job; legacy queued jobs without `providerName` use the provider fallback.
 
 ## Provider order lifecycle
 
@@ -27,7 +27,7 @@ EZPay checkout uses a signed CNY URL and signed GET notification. BEPusdt calls 
 
 Redirects and invoice-close UI events are navigation signals only. Settlement requires verified EZPay `TRADE_SUCCESS`, signed BEPusdt status `2`, or Telegram `successful_payment`. Order polling closes the payment sheet only after persisted state is `paid`.
 
-Successful-payment announcements use the optional `telegram.payment_announcement_chat_id` setting. A missing setting skips delivery without affecting settlement; Telegram failures retain the outbox job for retry. EZPay and BEPusdt announce their stored CNY and USD snapshots respectively, while Stars truthfully announces its stored XTR amount and uses `Telegram Stars` as the channel label.
+Successful-payment announcements use the optional `telegram.payment_announcement_chat_id` setting. A missing setting skips delivery without affecting settlement; Telegram failures retain the outbox job for retry. The Chinese MarkdownV2 receipt shows the stored payable amount/currency, administrator provider label, commerce-localized channel, TXB amount, and username. EZPay and BEPusdt announce their stored CNY and USD snapshots respectively, while Stars truthfully announces its stored XTR amount and uses `Telegram Stars` as both provider fallback and channel label.
 
 Failed or expired member orders retain their amount and method selection in the
 payment sheet. Its localized **Reissue payment** action creates a distinct

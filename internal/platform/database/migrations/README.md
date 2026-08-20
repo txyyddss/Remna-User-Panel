@@ -52,3 +52,5 @@ file instead.
 - `027_host_operation_guard.sql` prevents a new host remark mutation while the same host still has an unresolved operation.
 - `028_connection_ip_blocks.sql` stores only active encrypted node-scoped IP
   blocks and their scheduled three-day cleanup references.
+- `029_security_and_history_indexes.sql` bounds each user to one current session
+  and indexes stable administrative inventories plus questionnaire history.

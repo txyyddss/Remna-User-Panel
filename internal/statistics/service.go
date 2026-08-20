@@ -20,8 +20,7 @@ const (
 // Repository calculates local facts and persists independent last-good parts.
 type Repository interface {
 	ProductDatabaseStatistics(context.Context, time.Time) (model.DatabaseStatistics, error)
-	ActiveMemberPurchasesForStatistics(context.Context, time.Time) ([]model.Purchase, error)
-	UserForPurchase(context.Context, string) (model.User, error)
+	ActiveMemberUsageForStatistics(context.Context, time.Time) ([]model.StatisticsUsageMember, error)
 	LoadStatisticsPartition(context.Context, string) ([]byte, time.Time, error)
 	SaveStatisticsPartition(context.Context, string, []byte, time.Time) error
 }

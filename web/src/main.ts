@@ -1,4 +1,6 @@
-void bootstrap()
+import { showBootstrapFailure } from './utils/bootstrapFallback'
+
+void bootstrap().catch(showBootstrapFailure)
 
 async function bootstrap(): Promise<void> {
   const compatibility = await import('./utils/browserCompatibility')
@@ -13,6 +15,7 @@ async function bootstrap(): Promise<void> {
     ])
     const app = createApp(BrowserCapabilityGate)
     app.config.globalProperties.$t = t
+    app.config.errorHandler = () => showBootstrapFailure()
     app.mount('#app')
     return
   }
@@ -39,6 +42,7 @@ async function bootstrap(): Promise<void> {
   ])
   const app = createApp(App)
   app.config.globalProperties.$t = t
+  app.config.errorHandler = () => showBootstrapFailure()
   app.use(createPinia()).use(router).use(ui).use(autoAnimatePlugin)
   app.mount('#app')
   markTelegramReady()

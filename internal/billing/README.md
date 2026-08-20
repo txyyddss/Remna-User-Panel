@@ -11,11 +11,16 @@ Payment-method discovery, exact decimal arithmetic, checkout creation, provider 
 - `operation_worker.go` performs each provider mutation once after its durable attempt marker.
 - `operation_worker_reconcile.go` resolves interrupted attempts from stored payment state or leaves them pending review.
 - `payment_callback_operations.go` lets authoritative paid callbacks resolve matching checkout operations.
-- `payment_announcement.go` delivers immutable successful-payment snapshots as escaped Telegram MarkdownV2 to the optional standalone channel through the durable outbox.
+- `payment_announcement.go` delivers immutable successful-payment snapshots to
+  the optional standalone Telegram channel through the durable outbox.
+- `payment_announcement_format.go` renders the fixed Chinese receipt layout,
+  administrator provider snapshot, localized rails, and MarkdownV2 escaping.
 - `amount_bounds.go` loads the global inclusive Add TXB range and rejects checkout amounts outside it.
 - `amount_bounds_test.go` covers configured inclusive payment boundaries.
 - `payment_operations_test.go` covers atomic command queueing, idempotency conflicts, ambiguous outcomes, and callback resolution.
-- `payment_announcement_test.go` covers MarkdownV2 provider/channel formatting, missing configuration, and retryable Telegram failures.
+- `payment_announcement_test.go` covers the exact receipt layout, every
+  localized rail, legacy fallbacks, MarkdownV2 escaping, blank configuration,
+  and retryable Telegram failures.
 - `gateway_contracts.go` defines the server-owned provider checkout/event contracts and gateway interfaces.
 - `payment_methods.go` builds the configured rail list, including coupon funding and independently selectable provider-account profiles.
 - `events.go` validates and authorizes provider events, settles orders, exposes the narrow signed-return receipt projection, and handles cancellation.

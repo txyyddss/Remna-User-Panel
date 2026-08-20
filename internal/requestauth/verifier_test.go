@@ -93,10 +93,10 @@ func TestVerifyRejectsReplayAndCleansExpiredNonces(t *testing.T) {
 
 	cache := newReplayCache(1)
 	base := time.Unix(100, 0)
-	if err := cache.add("first", base, base.Add(time.Second)); err != nil {
+	if err := cache.add("session", "first", base, base.Add(time.Second)); err != nil {
 		t.Fatalf("cache first add: %v", err)
 	}
-	if err := cache.add("second", base.Add(2*time.Second), base.Add(3*time.Second)); err != nil {
+	if err := cache.add("session", "second", base.Add(2*time.Second), base.Add(3*time.Second)); err != nil {
 		t.Fatalf("cache did not clean expired entry: %v", err)
 	}
 }
@@ -140,7 +140,7 @@ func TestVerifyRejectsOversizedSignedBody(t *testing.T) {
 	}
 }
 
-func TestVerifyFailsClosedWhenReplayCacheIsFull(t *testing.T) {
+func TestVerifyReplayCapacityIsIsolatedPerSession(t *testing.T) {
 	t.Parallel()
 	verifier := newTestVerifier(t)
 	verifier.replays = newReplayCache(1)
@@ -153,8 +153,17 @@ func TestVerifyFailsClosedWhenReplayCacheIsFull(t *testing.T) {
 		t.Fatalf("first Verify(): %v", err)
 	}
 	second := signedRequest(t, verifier, "GET", "/api/v1/me", "", "BBBBBBBBBBBBBBBBBBBBBB", time.Unix(1_800_000_000, 0))
-	if err := verifier.Verify(second, testSessionToken, key); !errors.Is(err, ErrReplay) {
-		t.Fatalf("capacity Verify() error = %v, want wrapped %v", err, ErrReplay)
+	if err := verifier.Verify(second, testSessionToken, key); !errors.Is(err, ErrRateLimited) {
+		t.Fatalf("capacity Verify() error = %v, want %v", err, ErrRateLimited)
+	}
+	otherToken := "b3RoZXItc2Vzc2lvbi10b2tlbi0zMi1ieXRlcy0wMDAwMA"
+	otherKey, err := verifier.ClientKey(otherToken)
+	if err != nil {
+		t.Fatalf("other ClientKey(): %v", err)
+	}
+	other := signedRequestForSession(t, verifier, otherToken, "GET", "/api/v1/me", "", "CCCCCCCCCCCCCCCCCCCCCC", time.Unix(1_800_000_000, 0))
+	if err := verifier.Verify(other, otherToken, otherKey); err != nil {
+		t.Fatalf("other-session Verify(): %v", err)
 	}
 }
 
@@ -168,7 +177,7 @@ func TestReplayCacheSupportsConcurrentSessions(t *testing.T) {
 		workers.Add(1)
 		go func() {
 			defer workers.Done()
-			errorsChannel <- cache.add(strconv.Itoa(index), base, base.Add(time.Minute))
+			errorsChannel <- cache.add(strconv.Itoa(index), "nonce", base, base.Add(time.Minute))
 		}()
 	}
 	workers.Wait()
@@ -191,9 +200,13 @@ func newTestVerifier(t *testing.T) *Verifier {
 }
 
 func signedRequest(t *testing.T, verifier *Verifier, method, target, body, nonce string, at time.Time) *http.Request {
+	return signedRequestForSession(t, verifier, testSessionToken, method, target, body, nonce, at)
+}
+
+func signedRequestForSession(t *testing.T, verifier *Verifier, sessionToken, method, target, body, nonce string, at time.Time) *http.Request {
 	t.Helper()
 	request := httptest.NewRequest(method, target, strings.NewReader(body))
-	key, err := verifier.ClientKey(testSessionToken)
+	key, err := verifier.ClientKey(sessionToken)
 	if err != nil {
 		t.Fatalf("ClientKey(): %v", err)
 	}

@@ -118,6 +118,7 @@
     "expired": "已过期",
     "cancelled": "已取消",
     "failed": "失败",
+    "loadMore": "加载更多权益",
     "summary": "用户 {user} / {from} 至 {to}",
     "none": "当前视图暂无权益",
     "noneHint": "用户选择套餐后，购买会显示在这里。",

@@ -32,7 +32,7 @@ const snapshot: StatisticsSnapshot = {
 describe('StatisticsFreshness', () => {
   it('shows each partition timestamp with its own freshness state', () => {
     const wrapper = mount(StatisticsFreshness, { props: { snapshot } })
-    const entries = wrapper.findAll('.statistics-freshness > div')
+    const entries = wrapper.findAll('.statistics-freshness')
 
     expect(entries).toHaveLength(2)
     expect(entries[0]?.text()).toContain('Last known')

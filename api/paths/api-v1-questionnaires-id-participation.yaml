@@ -20,3 +20,5 @@ post:
       $ref: '../openapi.yaml#/components/responses/NotFound'
     '409':
       $ref: '../openapi.yaml#/components/responses/Conflict'
+    '500':
+      $ref: '../openapi.yaml#/components/responses/InternalFailure'

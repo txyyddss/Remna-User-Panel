@@ -14,6 +14,7 @@ import (
 type PaymentSuccessAnnouncement struct {
 	OrderID         string `json:"orderId"`
 	Provider        string `json:"provider"`
+	ProviderName    string `json:"providerName,omitempty"`
 	Channel         string `json:"channel"`
 	TXBMinor        int64  `json:"txbMinor"`
 	PayableAmount   string `json:"payableAmount"`
@@ -45,6 +46,7 @@ func DecodePaymentSuccessAnnouncement(job model.OutboxJob) (PaymentSuccessAnnoun
 	}
 	payload.OrderID = strings.TrimSpace(payload.OrderID)
 	payload.Provider = strings.ToLower(strings.TrimSpace(payload.Provider))
+	payload.ProviderName = strings.TrimSpace(payload.ProviderName)
 	payload.Channel = strings.ToLower(strings.TrimSpace(payload.Channel))
 	payload.PayableAmount = strings.TrimSpace(payload.PayableAmount)
 	payload.PayableCurrency = strings.ToUpper(strings.TrimSpace(payload.PayableCurrency))

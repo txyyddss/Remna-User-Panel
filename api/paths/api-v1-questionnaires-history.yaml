@@ -11,3 +11,5 @@ get:
             $ref: '../openapi.yaml#/components/schemas/QuestionnaireHistoryList'
     '401':
       $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '500':
+      $ref: '../openapi.yaml#/components/responses/InternalFailure'

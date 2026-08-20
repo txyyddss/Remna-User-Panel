@@ -1,16 +1,37 @@
 package httpapi
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 )
 
 func (s *Server) adminUsers(w http.ResponseWriter, r *http.Request) {
-	users, err := s.deps.Store.ListUsers(r.Context(), 200)
+	search := strings.TrimSpace(r.URL.Query().Get("search"))
+	if len(search) > 100 {
+		s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_SEARCH", "Search must contain at most 100 characters.")
+		return
+	}
+	limit := 25
+	if raw := r.URL.Query().Get("limit"); raw != "" {
+		parsed, parseErr := strconv.Atoi(raw)
+		if parseErr != nil || parsed < 1 || parsed > 100 {
+			s.writeError(w, r, http.StatusBadRequest, "INVALID_PAGE_SIZE", "Page size must be between 1 and 100.")
+			return
+		}
+		limit = parsed
+	}
+	users, nextCursor, err := s.deps.Store.ListAdminUsersPage(r.Context(), r.URL.Query().Get("cursor"), search, limit)
 	if err != nil {
+		if errors.Is(err, database.ErrInvalidCursor) {
+			s.writeError(w, r, http.StatusBadRequest, "INVALID_CURSOR", "The pagination cursor is invalid.")
+			return
+		}
 		s.adminFailure(w, r, err)
 		return
 	}
@@ -24,19 +45,15 @@ func (s *Server) adminUsers(w http.ResponseWriter, r *http.Request) {
 		Synchronization synchronization `json:"synchronization"`
 	}
 	items := make([]adminUser, 0, len(users))
-	for _, user := range users {
-		balance, balanceErr := s.deps.Store.Balance(r.Context(), user.ID)
-		if balanceErr != nil {
-			s.adminFailure(w, r, balanceErr)
-			return
-		}
+	for _, record := range users {
+		user := record.User
 		status := "not_provisioned"
 		if user.RemnaUserID != nil {
 			status = "synchronized"
 		}
-		items = append(items, adminUser{User: mapUser(user), Balance: balance, CreatedAt: user.CreatedAt, Synchronization: synchronization{Status: status}})
+		items = append(items, adminUser{User: mapUser(user), Balance: record.Balance, CreatedAt: user.CreatedAt, Synchronization: synchronization{Status: status}})
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	writeJSON(w, http.StatusOK, map[string]any{"items": items, "page": map[string]any{"nextCursor": nextCursor}})
 }
 
 func (s *Server) adminUser(w http.ResponseWriter, r *http.Request) {
@@ -93,9 +110,13 @@ func (s *Server) adminBalanceAdjustment(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Server) adminEntitlements(w http.ResponseWriter, r *http.Request) {
-	items, err := s.deps.Store.ListAllPurchases(r.Context(), 200)
+	query, ok := s.parseAdminInventoryQuery(w, r, entitlementPageStatuses)
+	if !ok {
+		return
+	}
+	items, nextCursor, err := s.deps.Store.ListAdminPurchasesPage(r.Context(), query.Cursor, query.Search, query.Status, query.Limit)
 	if err != nil {
-		s.adminFailure(w, r, err)
+		s.writeAdminPageFailure(w, r, err)
 		return
 	}
 	type adminEntitlement struct {
@@ -106,7 +127,7 @@ func (s *Server) adminEntitlements(w http.ResponseWriter, r *http.Request) {
 	for _, item := range items {
 		response = append(response, adminEntitlement{Purchase: item, UserID: item.UserID})
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": response})
+	writeJSON(w, http.StatusOK, map[string]any{"items": response, "page": map[string]any{"nextCursor": nextCursor}})
 }
 
 func (s *Server) adminCancelEntitlement(w http.ResponseWriter, r *http.Request) {

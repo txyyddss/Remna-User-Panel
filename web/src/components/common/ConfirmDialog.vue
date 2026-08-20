@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
+import { useTelegramProtection } from '@/composables/useTelegramProtection'
 import { useI18n } from '@/i18n'
 
 const open = defineModel<boolean>('open', { required: true })
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   title: string
   description: string
   confirmLabel: string
@@ -17,6 +20,7 @@ withDefaults(defineProps<{
 defineEmits<{ confirm: [] }>()
 
 const { t } = useI18n()
+useTelegramProtection(computed(() => open.value && (props.danger || props.busy)))
 </script>
 
 <template>

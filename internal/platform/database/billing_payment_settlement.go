@@ -3,11 +3,8 @@ package database
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
@@ -144,30 +141,4 @@ func (s *Store) SettlePayment(ctx context.Context, provider, dedupeKey, payloadH
 
 func paymentOrderTx(ctx context.Context, tx *sql.Tx, id string) (model.PaymentOrder, error) {
 	return scanPaymentOrder(tx.QueryRowContext(ctx, paymentSelect+` WHERE id=?`, id))
-}
-
-func paymentSuccessAnnouncementTx(ctx context.Context, tx *sql.Tx, order model.PaymentOrder) (string, error) {
-	var telegramUsername string
-	var localUsername sql.NullString
-	var telegramID int64
-	if err := tx.QueryRowContext(ctx, `SELECT telegram_username,username,telegram_id FROM users WHERE id=?`, order.UserID).
-		Scan(&telegramUsername, &localUsername, &telegramID); err != nil {
-		return "", fmt.Errorf("load payment announcement username: %w", err)
-	}
-	username := strings.TrimSpace(telegramUsername)
-	if username != "" {
-		username = "@" + strings.TrimLeft(username, "@")
-	} else if localUsername.Valid && strings.TrimSpace(localUsername.String) != "" {
-		username = strings.TrimSpace(localUsername.String)
-	} else {
-		username = "telegram:" + strconv.FormatInt(telegramID, 10)
-	}
-	payload, err := json.Marshal(jobpayload.PaymentSuccessAnnouncement{
-		OrderID: order.ID, Provider: order.Provider, Channel: order.ProviderRail, TXBMinor: order.TXBMinor,
-		PayableAmount: order.PayableAmount, PayableCurrency: order.PayableCurrency, Username: username,
-	})
-	if err != nil {
-		return "", fmt.Errorf("encode payment success announcement: %w", err)
-	}
-	return string(payload), nil
 }

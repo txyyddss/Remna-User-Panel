@@ -54,6 +54,11 @@ func (s *Server) authenticate(w http.ResponseWriter, r *http.Request) {
 	}
 	user, token, expiresAt, err := s.deps.Accounts.Authenticate(r.Context(), request.InitData)
 	if err != nil {
+		if errors.Is(err, accounts.ErrAuthenticationRateLimited) {
+			w.Header().Set("Retry-After", "30")
+			s.writeError(w, r, http.StatusTooManyRequests, "AUTH_RATE_LIMITED", "Too many authentication attempts. Please retry shortly.")
+			return
+		}
 		if errors.Is(err, accounts.ErrUpstreamUnavailable) {
 			s.writeError(w, r, http.StatusServiceUnavailable, "REMNAWAVE_UNAVAILABLE", "Account verification is temporarily unavailable. Please retry.")
 			return

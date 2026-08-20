@@ -24,7 +24,7 @@ func (s *Server) telegramComboReply(ctx context.Context, user model.User, copy b
 	}
 	purchase := dashboard.ActivePurchase
 	names := s.telegramSquadNames(ctx, purchase.SquadUUIDs)
-	return botcommands.FormatCombo(copy, purchase, names, s.telegramRolloverState(ctx, user, *purchase, copy))
+	return botcommands.FormatCombo(copy, purchase, names, s.telegramRolloverState(ctx, user, *purchase))
 }
 
 func (s *Server) telegramSquadNames(ctx context.Context, squadUUIDs []string) []string {
@@ -52,20 +52,43 @@ func (s *Server) telegramSquadNames(ctx context.Context, squadUUIDs []string) []
 	return result
 }
 
-func (s *Server) telegramRolloverState(ctx context.Context, user model.User, purchase model.Purchase, copy botcommands.Copy) string {
+func (s *Server) telegramRolloverState(ctx context.Context, user model.User, purchase model.Purchase) botcommands.RolloverSummary {
 	if !purchase.AutoRenewEnabled {
-		return copy.RolloverCannot
+		return botcommands.RolloverSummary{State: botcommands.RolloverDisabled}
 	}
 	projection, err := s.deps.Catalog.RolloverProjection(ctx, user, purchase.ID)
-	if err != nil || projection.WarningCode != nil || projection.PredictedRollover == nil {
-		return copy.RolloverUnavailable
+	if err != nil {
+		return botcommands.RolloverSummary{State: botcommands.RolloverUnavailable}
+	}
+	if projection.WarningCode != nil {
+		if *projection.WarningCode == "AUTO_RENEWAL_DISABLED" {
+			return botcommands.RolloverSummary{State: botcommands.RolloverDisabled}
+		}
+		return botcommands.RolloverSummary{State: botcommands.RolloverUnavailable}
+	}
+	if projection.PredictedRollover == nil {
+		return botcommands.RolloverSummary{State: botcommands.RolloverIneligible}
 	}
 	minor, err := strconv.ParseInt(projection.PredictedRollover.Minor, 10, 64)
 	if err != nil {
-		return copy.RolloverUnavailable
+		return botcommands.RolloverSummary{State: botcommands.RolloverUnavailable}
 	}
 	if minor > 0 {
-		return copy.RolloverWill
+		amount := *projection.PredictedRollover
+		return botcommands.RolloverSummary{State: botcommands.RolloverPredicted, Amount: &amount}
 	}
-	return copy.RolloverWillNot
+	return botcommands.RolloverSummary{State: botcommands.RolloverIneligible}
+}
+
+func (s *Server) telegramCheckInAverage(ctx context.Context) *int64 {
+	snapshot, err := s.deps.Statistics.Snapshot(ctx)
+	if err != nil || snapshot.DatabaseGeneratedAt.IsZero() {
+		return nil
+	}
+	minor, err := strconv.ParseInt(snapshot.Database.AverageCheckInReward.Minor, 10, 64)
+	if err != nil {
+		s.deps.Logger.Warn("parse cached average check-in reward", "value", snapshot.Database.AverageCheckInReward.Minor, "error", err)
+		return nil
+	}
+	return &minor
 }

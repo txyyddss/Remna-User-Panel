@@ -7,9 +7,13 @@ import (
 )
 
 func (s *Server) adminPayments(w http.ResponseWriter, r *http.Request) {
-	items, err := s.deps.Store.ListPaymentOrders(r.Context(), "", 200)
+	query, ok := s.parseAdminInventoryQuery(w, r, paymentPageStatuses)
+	if !ok {
+		return
+	}
+	items, nextCursor, err := s.deps.Store.ListAdminPaymentOrdersPage(r.Context(), query.Cursor, query.Search, query.Status, query.Limit)
 	if err != nil {
-		s.adminFailure(w, r, err)
+		s.writeAdminPageFailure(w, r, err)
 		return
 	}
 	type adminPayment struct {
@@ -20,7 +24,7 @@ func (s *Server) adminPayments(w http.ResponseWriter, r *http.Request) {
 	for _, item := range items {
 		response = append(response, adminPayment{PaymentOrder: item, UserID: item.UserID})
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": response})
+	writeJSON(w, http.StatusOK, map[string]any{"items": response, "page": map[string]any{"nextCursor": nextCursor}})
 }
 
 func (s *Server) adminRefundPayment(w http.ResponseWriter, r *http.Request) {
@@ -60,10 +64,14 @@ func (s *Server) adminCourtesyCreditPayment(w http.ResponseWriter, r *http.Reque
 }
 
 func (s *Server) adminRefunds(w http.ResponseWriter, r *http.Request) {
-	items, err := s.deps.Store.ListRefunds(r.Context(), 200)
-	if err != nil {
-		s.adminFailure(w, r, err)
+	query, ok := s.parseAdminInventoryQuery(w, r, refundPageStatuses)
+	if !ok {
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	items, nextCursor, err := s.deps.Store.ListAdminRefundsPage(r.Context(), query.Cursor, query.Search, query.Status, query.Limit)
+	if err != nil {
+		s.writeAdminPageFailure(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items, "page": map[string]any{"nextCursor": nextCursor}})
 }

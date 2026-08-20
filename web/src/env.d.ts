@@ -43,6 +43,10 @@ interface TelegramWebApp {
   isVersionAtLeast?(version: string): boolean
   requestFullscreen?(): void
   exitFullscreen?(): void
+  enableClosingConfirmation?(): void
+  disableClosingConfirmation?(): void
+  disableVerticalSwipes?(): void
+  enableVerticalSwipes?(): void
   onEvent?(eventType: string, callback: (...args: unknown[]) => void): void
   offEvent?(eventType: string, callback: (...args: unknown[]) => void): void
   BackButton?: {

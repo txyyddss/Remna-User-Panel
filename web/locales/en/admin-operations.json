@@ -118,6 +118,7 @@
     "expired": "Expired",
     "cancelled": "Cancelled",
     "failed": "Failed",
+    "loadMore": "Load more entitlements",
     "summary": "User {user} / {from} to {to}",
     "none": "No entitlements in this view",
     "noneHint": "Purchases appear here once users select a combo.",

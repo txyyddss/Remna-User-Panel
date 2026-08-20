@@ -46,6 +46,7 @@ declare module 'vue' {
     AdminUserProfilePage: typeof import('./src/components/admin/users/AdminUserProfilePage.vue')['default']
     AdminUsersPanel: typeof import('./src/components/admin/AdminUsersPanel.vue')['default']
     AgreementPanel: typeof import('./src/components/onboarding/AgreementPanel.vue')['default']
+    AppErrorBoundary: typeof import('./src/components/session/AppErrorBoundary.vue')['default']
     AppShell: typeof import('./src/components/layout/AppShell.vue')['default']
     AuthGate: typeof import('./src/components/session/AuthGate.vue')['default']
     AutoRenewalControl: typeof import('./src/components/dashboard/AutoRenewalControl.vue')['default']

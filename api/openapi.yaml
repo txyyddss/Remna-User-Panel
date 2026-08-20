@@ -142,6 +142,8 @@ components:
     OptionalIdempotencyKey: { $ref: './components/parameters.yaml#/OptionalIdempotencyKey' }
     SettingKey: { $ref: './components/parameters.yaml#/SettingKey' }
     Cursor: { $ref: './components/parameters.yaml#/Cursor' }
+    AdminPageLimit: { $ref: './components/parameters.yaml#/AdminPageLimit' }
+    Search: { $ref: './components/parameters.yaml#/Search' }
     PageSize: { $ref: './components/parameters.yaml#/PageSize' }
     DatabasePageLimit: { $ref: './components/parameters.yaml#/DatabasePageLimit' }
     OnboardingContentKind: { $ref: './components/parameters.yaml#/OnboardingContentKind' }
@@ -149,7 +151,7 @@ components:
     StatisticsTo: { $ref: './components/parameters.yaml#/StatisticsTo' }
     StatisticsBucket: { $ref: './components/parameters.yaml#/StatisticsBucket' }
     StatisticsTimeZone: { $ref: './components/parameters.yaml#/StatisticsTimeZone' }
-  responses: { BadRequest: { $ref: './components/responses.yaml#/BadRequest' }, Unauthorized: { $ref: './components/responses.yaml#/Unauthorized' }, Forbidden: { $ref: './components/responses.yaml#/Forbidden' }, NotFound: { $ref: './components/responses.yaml#/NotFound' }, Conflict: { $ref: './components/responses.yaml#/Conflict' }, Unprocessable: { $ref: './components/responses.yaml#/Unprocessable' }, InternalFailure: { $ref: './components/responses.yaml#/InternalFailure' }, UpstreamFailure: { $ref: './components/responses.yaml#/UpstreamFailure' }, ServiceUnavailable: { $ref: './components/responses.yaml#/ServiceUnavailable' } }
+  responses: { BadRequest: { $ref: './components/responses.yaml#/BadRequest' }, Unauthorized: { $ref: './components/responses.yaml#/Unauthorized' }, Forbidden: { $ref: './components/responses.yaml#/Forbidden' }, NotFound: { $ref: './components/responses.yaml#/NotFound' }, Conflict: { $ref: './components/responses.yaml#/Conflict' }, Unprocessable: { $ref: './components/responses.yaml#/Unprocessable' }, PayloadTooLarge: { $ref: './components/responses.yaml#/PayloadTooLarge' }, TooManyRequests: { $ref: './components/responses.yaml#/TooManyRequests' }, InternalFailure: { $ref: './components/responses.yaml#/InternalFailure' }, UpstreamFailure: { $ref: './components/responses.yaml#/UpstreamFailure' }, ServiceUnavailable: { $ref: './components/responses.yaml#/ServiceUnavailable' } }
   schemas:
     ID: { $ref: './components/schemas/schemas-01.yaml#/ID' }
     Timestamp: { $ref: './components/schemas/schemas-01.yaml#/Timestamp' }

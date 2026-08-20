@@ -23,3 +23,6 @@ post:
     '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
     '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
     '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }
+    '413': { $ref: '../openapi.yaml#/components/responses/PayloadTooLarge' }
+    '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }
+    '500': { $ref: '../openapi.yaml#/components/responses/InternalFailure' }

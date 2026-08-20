@@ -40,10 +40,7 @@ func (s *Server) telegramWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if update.ChatMember != nil {
-		member := update.ChatMember.NewChatMember.User
-		if _, err := s.deps.Accounts.RefreshMembershipByTelegramID(r.Context(), member.ID); err != nil {
-			s.deps.Logger.Warn("Telegram membership refresh failed", "request_id", middlewareRequestID(r), "chat_id", update.ChatMember.Chat.ID, "telegram_id", member.ID, "error", err)
-		}
+		s.processTelegramMembershipUpdate(r.Context(), middlewareRequestID(r), update.ChatMember)
 	}
 	if update.PreCheckoutQuery != nil {
 		query := update.PreCheckoutQuery

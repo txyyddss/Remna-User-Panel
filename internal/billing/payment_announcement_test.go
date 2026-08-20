@@ -13,34 +13,75 @@ import (
 
 func TestPaymentAnnouncementFormatting(t *testing.T) {
 	t.Parallel()
+	payload := paymentAnnouncementFixture("ezpay", "alipay", "12.34", "CNY")
+	payload.ProviderName = "收款_一号"
+	want := `💰 收款到账 \+12\.34CNY
+\=\=\=\=\=\=\=\=\=\=\=\=订单详情\=\=\=\=\=\=\=\=\=\=\=\=
+提供商: 收款\_一号
+渠道: 支付宝
+TXB金额: 25\.00 TXB
+用户名: @ada
 
+感谢您对TX的信任`
+	if got := formatPaymentSuccessAnnouncement(payload); got != want {
+		t.Errorf("formatPaymentSuccessAnnouncement() = %q, want %q", got, want)
+	}
+}
+
+func TestPaymentAnnouncementLocalizesEveryChannel(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
-		name     string
-		payload  jobpayload.PaymentSuccessAnnouncement
-		contains []string
+		provider string
+		channel  string
+		want     string
 	}{
-		{name: "EZPay CNY", payload: paymentAnnouncementFixture("ezpay", "alipay", "12.34", "CNY"),
-			contains: []string{"*Provider:* EZPay", "*Channel:* Alipay", "*TXB amount:* 25\\.00 TXB", "*Paid amount:* 12\\.34 CNY", "*Username:* @ada"}},
-		{name: "BEPUSDT USD", payload: paymentAnnouncementFixture("bepusdt", "usdt.trc20", "3.21", "USD"),
-			contains: []string{"*Provider:* BEPUSDT", "*Channel:* USDT TRC20", "*Paid amount:* 3\\.21 USD"}},
-		{name: "legacy EZPay channel", payload: paymentAnnouncementFixture("ezpay", "", "12.34", "CNY"),
-			contains: []string{"*Provider:* EZPay", "*Channel:* Alipay"}},
-		{name: "Stars fallback", payload: paymentAnnouncementFixture("stars", "", "7", "XTR"),
-			contains: []string{"*Provider:* Telegram Stars", "*Channel:* Telegram Stars", "*Paid amount:* 7 XTR"}},
-		{name: "MarkdownV2 dynamic text", payload: paymentAnnouncementFixture("ezpay", "fee_test", "12.34", "CNY"),
-			contains: []string{"fee\\_test", "@ada"}},
+		{provider: "ezpay", channel: "alipay", want: "支付宝"},
+		{provider: "ezpay", channel: "wxpay", want: "微信支付"},
+		{provider: "ezpay", channel: "wechat", want: "微信支付"},
+		{provider: "ezpay", channel: "qqpay", want: "QQ 钱包"},
+		{provider: "ezpay", channel: "bank", want: "银联"},
+		{provider: "ezpay", channel: "jdpay", want: "京东支付"},
+		{provider: "bepusdt", channel: "usdt.trc20", want: "USDT · TRC20"},
+		{provider: "bepusdt", channel: "usdt.erc20", want: "USDT · ERC20"},
+		{provider: "bepusdt", channel: "usdt.polygon", want: "USDT · Polygon"},
+		{provider: "bepusdt", channel: "usdt.bep20", want: "USDT · BEP20"},
+		{provider: "bepusdt", channel: "usdt.aptos", want: "USDT · Aptos"},
+		{provider: "bepusdt", channel: "usdt.solana", want: "USDT · Solana"},
+		{provider: "bepusdt", channel: "usdt.xlayer", want: "USDT · X Layer"},
+		{provider: "bepusdt", channel: "usdt.arbitrum", want: "USDT · Arbitrum"},
+		{provider: "bepusdt", channel: "usdt.plasma", want: "USDT · Plasma"},
+		{provider: "bepusdt", channel: "usdt.ton", want: "USDT · TON"},
+		{provider: "stars", want: "Telegram Stars"},
+		{provider: "ezpay", want: "支付宝"},
+		{provider: "bepusdt", want: "USDT · TRC20"},
 	}
 	for _, test := range tests {
-		test := test
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			message := formatPaymentSuccessAnnouncement(test.payload)
-			for _, fragment := range test.contains {
-				if !strings.Contains(message, fragment) {
-					t.Errorf("announcement %q does not contain %q", message, fragment)
-				}
+		t.Run(test.provider+"/"+test.channel, func(t *testing.T) {
+			if got := paymentAnnouncementChannel(test.provider, test.channel); got != test.want {
+				t.Errorf("paymentAnnouncementChannel() = %q, want %q", got, test.want)
 			}
 		})
+	}
+}
+
+func TestPaymentAnnouncementFallbackAndMarkdownEscaping(t *testing.T) {
+	t.Parallel()
+	payload := paymentAnnouncementFixture("ezpay", "fee_test", "12.34", "CNY")
+	payload.ProviderName = `Admin_*[]()~` + "`" + `>#+-=|{}.!\`
+	payload.Username = `user_*[]()~` + "`" + `>#+-=|{}.!\`
+	message := formatPaymentSuccessAnnouncement(payload)
+	for _, escaped := range []string{`\_`, `\*`, `\[`, `\]`, `\(`, `\)`, `\~`, "\\`", `\>`, `\#`, `\+`, `\-`, `\=`, `\|`, `\{`, `\}`, `\.`, `\!`, `\\`} {
+		if !strings.Contains(message, escaped) {
+			t.Errorf("announcement does not escape %q: %q", escaped, message)
+		}
+	}
+	legacy := paymentAnnouncementFixture("stars", "", "7", "XTR")
+	if message := formatPaymentSuccessAnnouncement(legacy); !strings.Contains(message, "提供商: Telegram Stars") || !strings.Contains(message, "渠道: Telegram Stars") {
+		t.Errorf("legacy fallback announcement = %q", message)
+	}
+	legacy = paymentAnnouncementFixture("ezpay", "", "12.34", "CNY")
+	if message := formatPaymentSuccessAnnouncement(legacy); !strings.Contains(message, "提供商: EZPay") || !strings.Contains(message, "渠道: 支付宝") {
+		t.Errorf("legacy EZPay fallback announcement = %q", message)
 	}
 }
 

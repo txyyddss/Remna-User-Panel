@@ -79,6 +79,7 @@
     "deleteBackup": "Delete backup",
     "jobs": "Synchronization jobs",
     "jobsHint": "Outbox retries and scheduled entitlement changes.",
+    "loadMoreJobs": "Load more jobs",
     "attempts": "{count} attempts",
     "jobError": "Needs attention",
     "retry": "Retry",

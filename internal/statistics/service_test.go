@@ -10,20 +10,14 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/rollover"
 )
 
-func TestRefreshRemoteUsesCreatedUsersAndCurrentMemberUsage(t *testing.T) {
+func TestRefreshRemoteUsesCreatedUsersAndRolloverTermUsage(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC)
 	firstID, secondID := "remote-1", "remote-2"
-	repository := &statisticsRepositoryStub{
-		purchases: []model.Purchase{
-			{ID: "purchase-1", UserID: "user-1", ValidFrom: now.AddDate(0, 0, -10), ValidUntil: now.AddDate(0, 0, 20)},
-			{ID: "purchase-2", UserID: "user-2", ValidFrom: now.AddDate(0, 0, -40), ValidUntil: now.AddDate(0, 0, 20)},
-		},
-		users: map[string]model.User{
-			"purchase-1": {ID: "user-1", Role: "user", RemnaUserID: &firstID},
-			"purchase-2": {ID: "user-2", Role: "user", RemnaUserID: &secondID},
-		},
-	}
+	repository := &statisticsRepositoryStub{members: []model.StatisticsUsageMember{
+		{Purchase: model.Purchase{ID: "purchase-1", UserID: "user-1", ValidFrom: now.AddDate(0, 0, -10), ValidUntil: now.AddDate(0, 0, 20)}, RemoteUserID: firstID},
+		{Purchase: model.Purchase{ID: "purchase-2", UserID: "user-2", ValidFrom: now.AddDate(0, 0, -40), ValidUntil: now.AddDate(0, 0, 20)}, RemoteUserID: secondID},
+	}}
 	firstUsed, secondUsed := int64(250), int64(750)
 	provider := &statisticsProviderStub{
 		digest: Digest{CreatedUsers: 9, ExpiredUsers: 4},
@@ -39,7 +33,7 @@ func TestRefreshRemoteUsesCreatedUsersAndCurrentMemberUsage(t *testing.T) {
 	if remote.WeeklyUserIncrease != 9 || remote.MonthlyAverageUsageBPS != 5_000 || remote.MonthlyAverageUsage != 50 {
 		t.Fatalf("remote statistics = %+v", remote)
 	}
-	if !provider.starts[firstID].Equal(now.AddDate(0, 0, -10)) || !provider.starts[secondID].Equal(now.AddDate(0, 0, -30)) {
+	if !provider.starts[firstID].Equal(now.AddDate(0, 0, -10)) || !provider.starts[secondID].Equal(now.AddDate(0, 0, -40)) {
 		t.Fatalf("usage starts = %+v", provider.starts)
 	}
 }
@@ -49,10 +43,9 @@ func TestRefreshRemoteSkipsUnavailableMemberUsage(t *testing.T) {
 	now := time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC)
 	remoteID := "remote-1"
 	sentinel := errors.New("provider unavailable")
-	repository := &statisticsRepositoryStub{
-		purchases: []model.Purchase{{ID: "purchase-1", UserID: "user-1", ValidFrom: now.Add(-time.Hour), ValidUntil: now.Add(time.Hour)}},
-		users:     map[string]model.User{"purchase-1": {ID: "user-1", Role: "user", RemnaUserID: &remoteID}},
-	}
+	repository := &statisticsRepositoryStub{members: []model.StatisticsUsageMember{{
+		Purchase: model.Purchase{ID: "purchase-1", UserID: "user-1", ValidFrom: now.Add(-time.Hour), ValidUntil: now.Add(time.Hour)}, RemoteUserID: remoteID,
+	}}}
 	provider := &statisticsProviderStub{usageErrors: map[string]error{remoteID: sentinel}}
 	remote, err := NewService(repository, provider).refreshRemote(context.Background(), now)
 	if err != nil || remote.MonthlyAverageUsageBPS != 0 {
@@ -65,18 +58,10 @@ func TestRefreshRemoteSkipsMembersWithoutUsableProviderIdentity(t *testing.T) {
 	now := time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC)
 	remoteID := "remote-1"
 	used := int64(250)
-	repository := &statisticsRepositoryStub{
-		purchases: []model.Purchase{
-			{ID: "missing-identity", UserID: "user-1", ValidFrom: now.AddDate(0, 0, -10), ValidUntil: now.AddDate(0, 0, 10)},
-			{ID: "missing-upstream", UserID: "user-2", ValidFrom: now.AddDate(0, 0, -10), ValidUntil: now.AddDate(0, 0, 10)},
-			{ID: "usable", UserID: "user-3", ValidFrom: now.AddDate(0, 0, -10), ValidUntil: now.AddDate(0, 0, 10)},
-		},
-		users: map[string]model.User{
-			"missing-identity": {ID: "user-1", Role: "user"},
-			"missing-upstream": {ID: "user-2", Role: "user", RemnaUserID: stringPointer("missing")},
-			"usable":           {ID: "user-3", Role: "user", RemnaUserID: &remoteID},
-		},
-	}
+	repository := &statisticsRepositoryStub{members: []model.StatisticsUsageMember{
+		{Purchase: model.Purchase{ID: "missing-upstream", UserID: "user-2", ValidFrom: now.AddDate(0, 0, -10), ValidUntil: now.AddDate(0, 0, 10)}, RemoteUserID: "missing"},
+		{Purchase: model.Purchase{ID: "usable", UserID: "user-3", ValidFrom: now.AddDate(0, 0, -10), ValidUntil: now.AddDate(0, 0, 10)}, RemoteUserID: remoteID},
+	}}
 	provider := &statisticsProviderStub{
 		snapshots:   map[string]rollover.UsageSnapshot{remoteID: {LimitBytes: 1_000, Strategy: "NO_RESET", CurrentUsedBytes: &used}},
 		usageErrors: map[string]error{"missing": rollover.ErrRemoteUserMissing},
@@ -87,21 +72,15 @@ func TestRefreshRemoteSkipsMembersWithoutUsableProviderIdentity(t *testing.T) {
 	}
 }
 
-func stringPointer(value string) *string { return &value }
-
 type statisticsRepositoryStub struct {
-	purchases []model.Purchase
-	users     map[string]model.User
+	members []model.StatisticsUsageMember
 }
 
 func (r *statisticsRepositoryStub) ProductDatabaseStatistics(context.Context, time.Time) (model.DatabaseStatistics, error) {
 	return model.DatabaseStatistics{}, nil
 }
-func (r *statisticsRepositoryStub) ActiveMemberPurchasesForStatistics(context.Context, time.Time) ([]model.Purchase, error) {
-	return append([]model.Purchase(nil), r.purchases...), nil
-}
-func (r *statisticsRepositoryStub) UserForPurchase(_ context.Context, id string) (model.User, error) {
-	return r.users[id], nil
+func (r *statisticsRepositoryStub) ActiveMemberUsageForStatistics(context.Context, time.Time) ([]model.StatisticsUsageMember, error) {
+	return append([]model.StatisticsUsageMember(nil), r.members...), nil
 }
 func (r *statisticsRepositoryStub) LoadStatisticsPartition(context.Context, string) ([]byte, time.Time, error) {
 	return nil, time.Time{}, ErrPartitionNotFound

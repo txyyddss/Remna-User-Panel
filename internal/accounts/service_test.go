@@ -75,7 +75,7 @@ func TestAuthenticationFailures(t *testing.T) {
 	}{
 		{name: "invalid init data", configure: func(_ *accountsRepository, validator *accountsValidator) { validator.err = testError }, want: ErrInvalidAuthentication},
 		{name: "upsert", configure: func(repository *accountsRepository, _ *accountsValidator) { repository.upsertErr = testError }, want: testError},
-		{name: "session persistence", configure: func(repository *accountsRepository, _ *accountsValidator) { repository.createSessionErr = testError }, want: testError},
+		{name: "session persistence", configure: func(repository *accountsRepository, _ *accountsValidator) { repository.replaceSessionErr = testError }, want: testError},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

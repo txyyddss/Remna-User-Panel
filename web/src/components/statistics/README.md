@@ -1,13 +1,13 @@
 # Statistics components
 
-- `StatisticsPage.vue` is the thin page orchestrator for loading, stale, empty, and partial-error states.
-- `StatisticsPage.test.ts` covers the node-card selection flow into the on-demand Geocheck modal.
-- `StatisticsFreshness.vue` exposes independent Remnawave and database snapshot timestamps and stale state.
+- `StatisticsPage.vue` is the thin page orchestrator for loading, stale, empty, and partial-error states, with separate Overview, Nodes, Seven-day traffic, Distributions, and Squad composition tabs. Overview also contains both source-freshness panels.
+- `StatisticsPage.test.ts` covers tab-panel separation and the node-card selection flow into the on-demand Geocheck modal.
+- `StatisticsFreshness.vue` exposes the Remnawave and database snapshot timestamps as independent Overview panels with separate stale state.
 - `StatisticsFreshness.test.ts` covers independent partition timestamps and stale/current disclosure.
 - `StatisticsOverview.vue` centers the weekly added-user total in the user donut, with its color legend below the chart, and combines usage, spend, rollover, activity, squad, and database KPIs.
-- `StatisticsNodes.vue` presents live node health, throughput, version, multiplier, online-user cards, and an explicit Geocheck result action.
+- `StatisticsNodes.vue` presents live node health in dense rows with icon-labeled throughput, version, multiplier, online-user metrics, and an explicit Geocheck result action.
 - `StatisticsNodes.test.ts` covers the card action's selected-node event.
-- `StatisticsGeocheckModal.vue` presents the on-demand cached SVG result with loading, unavailable, reset, and mobile zoom controls.
+- `StatisticsGeocheckModal.vue` presents the on-demand cached SVG result with loading, unavailable, reset, button, wheel, centered pinch, pan, and double-tap zoom controls.
 - `StatisticsGeocheckModal.test.ts` covers data-URI rendering, loading/unavailable states, and close reset behavior.
 - `StatisticsTrafficChart.vue` renders the seven-day per-node traffic stack with keyboard-accessible Nuxt UI tooltips.
 - `StatisticsShareCharts.vue` composes member and payment proportions.

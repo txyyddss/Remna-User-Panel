@@ -9,12 +9,12 @@ const props = defineProps<{ snapshot: StatisticsSnapshot }>()
 const partitions = computed(() => [
   {
     id: 'remote',
-    labelKey: 'statistics.remoteData',
+    labelKey: 'statistics.remoteUpdatedAt',
     generatedAt: props.snapshot.remoteGeneratedAt,
   },
   {
     id: 'database',
-    labelKey: 'statistics.databaseData',
+    labelKey: 'statistics.databaseUpdatedAt',
     generatedAt: props.snapshot.databaseGeneratedAt,
   },
 ].map((partition) => ({
@@ -24,15 +24,20 @@ const partitions = computed(() => [
 </script>
 
 <template>
-  <dl class="statistics-freshness" :aria-label="$t('statistics.freshnessLabel')">
-    <div v-for="partition in partitions" :key="partition.id">
-      <dt>{{ $t(partition.labelKey) }}</dt>
-      <dd>
-        <time :datetime="partition.generatedAt">{{ formatDateTime(partition.generatedAt) }}</time>
-        <span :class="{ 'statistics-freshness__stale': partition.stale }">
-          {{ $t(partition.stale ? 'statistics.partitionStale' : 'statistics.partitionCurrent') }}
-        </span>
-      </dd>
+  <section
+    v-for="partition in partitions"
+    :key="partition.id"
+    class="statistics-section statistics-freshness"
+    :aria-labelledby="`statistics-freshness-${partition.id}`"
+  >
+    <div class="statistics-section__heading">
+      <h2 :id="`statistics-freshness-${partition.id}`">{{ $t(partition.labelKey) }}</h2>
     </div>
-  </dl>
+    <div class="statistics-freshness__value">
+      <time :datetime="partition.generatedAt">{{ formatDateTime(partition.generatedAt) }}</time>
+      <span :class="{ 'statistics-freshness__stale': partition.stale }">
+        {{ $t(partition.stale ? 'statistics.partitionStale' : 'statistics.partitionCurrent') }}
+      </span>
+    </div>
+  </section>
 </template>

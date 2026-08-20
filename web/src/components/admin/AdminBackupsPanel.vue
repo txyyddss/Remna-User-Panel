@@ -156,7 +156,7 @@ onScopeDispose(stopRestorePolling)
     <OperationStatusNotice :receipt="jobRetry.receipt.value" :error="jobRetry.error.value" :checking="jobRetry.checking.value" @refresh="jobRetry.refresh" />
     <AdminSectionState :loading="jobs.loading.value" :error="jobs.error.value" @retry="jobs.load()">
       <div v-auto-animate class="admin-list admin-list--compact">
-        <article v-for="job in jobs.items.value.slice(0, 12)" :key="job.id" class="admin-list-row">
+        <article v-for="job in jobs.items.value" :key="job.id" class="admin-list-row">
           <div><strong>{{ job.kind }}</strong><small>{{ t('adminBackups.attempts', { count: job.attempts }) }} / {{ formatDateTime(job.createdAt) }}<template v-if="job.lastError"> / {{ t('adminBackups.jobError') }}</template></small></div>
           <StatusBadge :tone="job.status === 'done' ? 'success' : job.status === 'failed' ? 'danger' : 'warning'" :label="t(`adminBackups.status.${job.status}`)" />
           <UButton
@@ -174,11 +174,11 @@ onScopeDispose(stopRestorePolling)
         </article>
         <div v-if="!jobs.items.value.length" class="empty-inline"><div><h3>{{ t('adminBackups.noJobs') }}</h3><p>{{ t('adminBackups.noJobsHint') }}</p></div></div>
       </div>
+      <UButton v-if="jobs.nextCursor.value" class="database-load-more" color="neutral" variant="outline" icon="i-ph-arrow-down" :loading="jobs.loading.value" :disabled="jobs.loading.value" :label="t('adminBackups.loadMoreJobs')" @click="jobs.loadMore" />
     </AdminSectionState>
     <ConfirmDialog :open="Boolean(jobDeleteTarget)" :title="t('adminBackups.deleteJobTitle')" :description="t('adminBackups.deleteJobDescription')" :confirm-label="t('adminBackups.deleteJob')" danger @update:open="!$event && (jobDeleteTarget = null)" @confirm="deleteJob" />
   </section>
 </template>
-
 <style scoped>
 .backup-card__actions {
   grid-column: 1 / -1;

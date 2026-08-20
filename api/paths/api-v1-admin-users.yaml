@@ -2,6 +2,10 @@ get:
   tags: [Admin]
   operationId: listAdminUsers
   summary: List users through safe projections
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/Cursor'
+    - $ref: '../openapi.yaml#/components/parameters/AdminPageLimit'
+    - $ref: '../openapi.yaml#/components/parameters/Search'
   responses:
     '200':
       description: User page. Subscription bearer URLs are omitted from list results.
@@ -13,3 +17,7 @@ get:
       $ref: '../openapi.yaml#/components/responses/Unauthorized'
     '403':
       $ref: '../openapi.yaml#/components/responses/Forbidden'
+    '400':
+      $ref: '../openapi.yaml#/components/responses/BadRequest'
+    '422':
+      $ref: '../openapi.yaml#/components/responses/Unprocessable'

@@ -35,3 +35,4 @@ post:
     '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
     '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }
     '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }
+    '500': { $ref: '../openapi.yaml#/components/responses/InternalFailure' }

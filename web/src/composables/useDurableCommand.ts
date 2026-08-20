@@ -1,8 +1,9 @@
-import { computed, readonly, shallowRef, watch } from 'vue'
+import { computed, onScopeDispose, readonly, shallowRef, watch } from 'vue'
 
 import type { OperationReceipt } from '@/api/types'
 import { localizedError } from '@/i18n'
 import { createUuid } from '@/utils/browserCompatibility'
+import { createLatestRequest } from '@/utils/latestRequest'
 import { operationIsActive, useOperationReceipt } from './useOperationReceipt'
 
 interface DurableCommandOptions {
@@ -20,6 +21,7 @@ export function useDurableCommand(options: DurableCommandOptions) {
   const commandByOperation = new Map<string, string>()
   const notifiedOperations = new Set<string>()
   const tracker = useOperationReceipt()
+  const latestExecution = createLatestRequest()
 
   const busy = computed(() => submitting.value || operationIsActive(tracker.receipt.value?.status))
   const blocksMutations = computed(() => {
@@ -39,6 +41,7 @@ export function useDurableCommand(options: DurableCommandOptions) {
 
   async function execute(commandId: string, fingerprint: string, queue: QueueCommand): Promise<boolean> {
     if (submitting.value || blocksMutations.value) return false
+    const token = latestExecution.begin()
     submitting.value = true
     activeCommandId.value = commandId
     commandError.value = null
@@ -47,19 +50,22 @@ export function useDurableCommand(options: DurableCommandOptions) {
       const key = attempts.get(fingerprint) ?? createUuid()
       attempts.set(fingerprint, key)
       const receipt = await queue(key)
+      if (!latestExecution.isCurrent(token)) return false
       attempts.delete(fingerprint)
       commandByOperation.set(receipt.id, commandId)
       tracker.track(receipt)
       return true
     } catch (caught) {
+      if (!latestExecution.isCurrent(token)) return false
       commandError.value = localizedError(caught, options.errorKey)
       return false
     } finally {
-      submitting.value = false
+      if (latestExecution.isCurrent(token)) submitting.value = false
     }
   }
 
   function reset(): void {
+    latestExecution.invalidate()
     attempts.clear()
     commandByOperation.clear()
     notifiedOperations.clear()
@@ -68,6 +74,8 @@ export function useDurableCommand(options: DurableCommandOptions) {
     submitting.value = false
     tracker.reset()
   }
+
+  onScopeDispose(latestExecution.dispose)
 
   return {
     receipt: tracker.receipt,

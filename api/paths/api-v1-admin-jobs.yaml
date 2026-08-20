@@ -2,6 +2,13 @@ get:
   tags: [Admin]
   operationId: listAdminJobs
   summary: List persistent outbox and scheduler jobs
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/Cursor'
+    - $ref: '../openapi.yaml#/components/parameters/AdminPageLimit'
+    - $ref: '../openapi.yaml#/components/parameters/Search'
+    - name: status
+      in: query
+      schema: { $ref: '../openapi.yaml#/components/schemas/JobStatus' }
   responses:
     '200':
       description: Job page. Secret payload fields are redacted.
@@ -13,3 +20,7 @@ get:
       $ref: '../openapi.yaml#/components/responses/Unauthorized'
     '403':
       $ref: '../openapi.yaml#/components/responses/Forbidden'
+    '400':
+      $ref: '../openapi.yaml#/components/responses/BadRequest'
+    '422':
+      $ref: '../openapi.yaml#/components/responses/Unprocessable'

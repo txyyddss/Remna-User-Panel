@@ -105,9 +105,7 @@
   background: var(--surface-raised);
 }
 
-.home-ride__metrics > div:last-child {
-  grid-column: 1 / -1;
-}
+.home-ride__metrics > div:last-child { display: flex; flex-direction: column; align-items: center; justify-content: center; grid-column: 1 / -1; text-align: center; }
 
 .home-ride__metrics dt {
   display: flex;

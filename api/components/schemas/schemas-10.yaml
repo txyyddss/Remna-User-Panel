@@ -34,7 +34,7 @@ PaymentReturnStatus:
 PaymentPage:
   type: object
   additionalProperties: false
-  required: [items]
+  required: [items, page]
   properties:
     items:
       type: array
@@ -166,7 +166,7 @@ Refund:
 RefundPage:
   type: object
   additionalProperties: false
-  required: [items]
+  required: [items, page]
   properties:
     items:
       type: array

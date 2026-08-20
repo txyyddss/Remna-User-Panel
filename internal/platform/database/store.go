@@ -14,30 +14,28 @@ import (
 var ErrNotFound = errors.New("record not found")
 
 // ErrConflict indicates that a uniqueness or state transition invariant was violated.
-
 var ErrConflict = errors.New("record conflicts with current state")
 
 // ErrInsufficientBalance indicates that a debit would make an account negative.
-
 var ErrInsufficientBalance = errors.New("insufficient TXB balance")
 
 // ErrStockUnavailable indicates that a limited squad has no remaining user reservation.
-
 var ErrStockUnavailable = errors.New("squad stock is unavailable")
 
 // Store implements persistent repositories on top of SQLite.
-
 type Store struct {
-	db      *sql.DB
-	writeMu sync.Mutex
+	db           *sql.DB
+	writeMu      sync.Mutex
+	groupFactsMu sync.Mutex
+	groupFacts   map[groupMessageFactKey]groupMessageFact
 }
 
 // NewStore creates an application store.
-
-func NewStore(db *sql.DB) *Store { return &Store{db: db} }
+func NewStore(db *sql.DB) *Store {
+	return &Store{db: db, groupFacts: make(map[groupMessageFactKey]groupMessageFact)}
+}
 
 // DB exposes the connection pool for health checks and online backup.
-
 func (s *Store) DB() *sql.DB { return s.db }
 
 // UpsertTelegramUser creates or refreshes a user from validated Telegram data.
@@ -85,20 +83,28 @@ func (s *Store) UserByTelegramID(ctx context.Context, telegramID int64) (model.U
 	return scanUser(s.db.QueryRowContext(ctx, userSelect+` WHERE users.telegram_id=?`, telegramID))
 }
 
-const userSelect = `SELECT users.id,users.telegram_id,users.telegram_first_name,users.telegram_last_name,users.telegram_username,
+const userColumns = `users.id,users.telegram_id,users.telegram_first_name,users.telegram_last_name,users.telegram_username,
 	users.username,users.role,users.onboarding_state,users.group_joined,users.channel_joined,users.policy_accepted_at,
-	users.accepted_agreement_revision,users.remna_user_id,users.recovery_reason,users.created_at,users.updated_at FROM users`
+	users.accepted_agreement_revision,users.remna_user_id,users.recovery_reason,users.created_at,users.updated_at`
+
+const userSelect = `SELECT ` + userColumns + ` FROM users`
 
 type rowScanner interface{ Scan(dest ...any) error }
 
 func scanUser(row rowScanner) (model.User, error) {
+	return scanUserWith(row)
+}
+
+func scanUserWith(row rowScanner, extra ...any) (model.User, error) {
 	var user model.User
 	var username, policy, recoveryReason sql.NullString
 	var remnaID sql.NullString
 	var groupJoined, channelJoined int
 	var createdAt, updatedAt string
-	if err := row.Scan(&user.ID, &user.TelegramID, &user.TelegramFirstName, &user.TelegramLastName, &user.TelegramUsername,
-		&username, &user.Role, &user.OnboardingState, &groupJoined, &channelJoined, &policy, &user.AgreementRevision, &remnaID, &recoveryReason, &createdAt, &updatedAt); err != nil {
+	destinations := []any{&user.ID, &user.TelegramID, &user.TelegramFirstName, &user.TelegramLastName, &user.TelegramUsername,
+		&username, &user.Role, &user.OnboardingState, &groupJoined, &channelJoined, &policy, &user.AgreementRevision, &remnaID, &recoveryReason, &createdAt, &updatedAt}
+	destinations = append(destinations, extra...)
+	if err := row.Scan(destinations...); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.User{}, ErrNotFound
 		}
@@ -128,15 +134,26 @@ func scanUser(row rowScanner) (model.User, error) {
 	return user, nil
 }
 
-// CreateSession stores a hash of an opaque session token.
+// ReplaceSession stores one current opaque session per user.
 
-func (s *Store) CreateSession(ctx context.Context, tokenHash []byte, userID string, expiresAt time.Time) error {
+func (s *Store) ReplaceSession(ctx context.Context, tokenHash []byte, userID string, expiresAt time.Time) error {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 
 	now := time.Now().UTC()
-	if _, err := s.db.ExecContext(ctx, `INSERT INTO sessions(token_hash,user_id,expires_at,created_at) VALUES(?,?,?,?)`, tokenHash, userID, stamp(expiresAt), stamp(now)); err != nil {
-		return fmt.Errorf("create session: %w", err)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin session replacement: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id=?`, userID); err != nil {
+		return fmt.Errorf("remove previous session: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO sessions(token_hash,user_id,expires_at,created_at) VALUES(?,?,?,?)`, tokenHash, userID, stamp(expiresAt), stamp(now)); err != nil {
+		return fmt.Errorf("replace session: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit session replacement: %w", err)
 	}
 	return nil
 }

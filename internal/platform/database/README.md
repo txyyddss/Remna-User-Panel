@@ -29,6 +29,8 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 
 ## Production files
 
+- `timestamp_cursor.go` signs filter-bound timestamp/ID cursor payloads shared by administrative inventories.
+- `admin_users_page.go`, `admin_entitlements_page.go`, `admin_finance_pages.go`, and `admin_jobs_page.go` provide stable filtered pages without fixed-cap truncation.
 - `database.go` — opens SQLite, applies embedded migrations, checkpoints WAL,
   and exposes migration versions.
 - `store.go` — core store type, user/session persistence, membership, username,
@@ -55,6 +57,9 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
   atomic status transition, TXB refund, and immutable ledger entry.
 - `billing_payment_settlement.go` — customer cancellation, idempotent provider
   settlement transitions, and atomic immutable payment-announcement queueing.
+- `billing_payment_announcement.go` resolves the settlement-time username and
+  administrator provider label and encodes the immutable outbox payload inside
+  the payment transaction.
 - `payment_operations.go` atomically stores checkout/cancellation intents with provider-operation receipts.
 - `payment_operation_resolution.go` resolves checkout receipts from authoritative paid callbacks without another provider call.
 - `billing_callback_tombstones.go` keeps provider callback replays idempotent
@@ -73,7 +78,8 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `activity.go` — game configuration, bets, and daily check-ins.
 - `activity_draws.go` — lucky-draw configuration, listing, and atomic play results.
 - `activity_history.go` — combined activity history and group-message rewards.
-- `activity_group_facts.go` stores identity-independent, deduplicated configured-group message facts for cumulative statistics.
+- `activity_group_facts.go` buffers identity-independent configured-group facts and flushes deduplicated batches transactionally.
+- `activity_group_facts_test.go` covers buffered batch persistence and in-memory deduplication.
 - `activity_queries.go` — game, bet, check-in, draw, and result scanners.
 - `activity_extensions.go` — durable subscription-extension credits and activation
   application.
