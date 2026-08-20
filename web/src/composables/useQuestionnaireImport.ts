@@ -38,6 +38,7 @@ export function useQuestionnaireImport(questionnaireId: () => string) {
     const token = latestMutation.begin()
     stopPolling()
     if (file.size > 5 * 1024 * 1024) {
+      working.value = false
       mutationError.value = t('errors.csvLimit')
       return
     }

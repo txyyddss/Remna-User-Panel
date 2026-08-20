@@ -19,6 +19,16 @@ func TestProductStatisticsExcludeAdministratorsFromMemberMetrics(t *testing.T) {
 	if err != nil || !created {
 		t.Fatalf("create administrator = (%+v, %v, created=%v)", admin, err, created)
 	}
+	for _, identity := range []struct {
+		userID, remoteID string
+	}{
+		{userID: member.ID, remoteID: "member-remna-id"},
+		{userID: admin.ID, remoteID: "admin-remna-id"},
+	} {
+		if _, err := store.DB().ExecContext(ctx, `UPDATE users SET remna_user_id=? WHERE id=?`, identity.remoteID, identity.userID); err != nil {
+			t.Fatalf("set Remnawave identity: %v", err)
+		}
+	}
 	memberSquad := saveTestSquad(t, store, "member-squad", 0, true)
 	adminSquad := saveTestSquad(t, store, "admin-squad", 0, true)
 	adminAddon := saveTestSquad(t, store, "admin-addon", 50, true)

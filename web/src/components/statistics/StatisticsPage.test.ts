@@ -41,7 +41,7 @@ function mountPage() {
         InlineNotice: true, SkeletonBlock: true, StatisticsFreshness: { template: '<div data-testid="freshness" />' },
         StatisticsOverview: { template: '<div data-testid="overview" />' }, StatisticsTrafficChart: { template: '<div data-testid="traffic" />' },
         StatisticsShareCharts: { template: '<div data-testid="distributions" />' }, StatisticsDistribution: { template: '<div data-testid="composition" />' },
-        UTabs: TabsStub, Tooltip: true, Button: true,
+        Tabs: TabsStub, Tooltip: true, Button: true,
         StatisticsNodes: { props: ['snapshot'], emits: ['openGeocheck'], template: '<div data-testid="nodes"><div role="button" tabindex="0" data-testid="geocheck-card" @click="$emit(\'openGeocheck\', snapshot.nodes[0])" /></div>' },
         StatisticsGeocheckModal: { props: ['open', 'node', 'result'], template: '<output data-testid="geocheck-modal" :data-open="String(open)" :data-node="node && node.uuid" :data-image="result && result.image.data" />' },
       },

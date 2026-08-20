@@ -82,4 +82,24 @@ describe('questionnaire import workflow', () => {
     expect(state.report.value?.rewardedCount).toBe(1)
     scope.stop()
   })
+
+  it('clears busy when an oversized upload invalidates an in-flight upload', async () => {
+    let resolveUpload!: (value: typeof preview) => void
+    previewQuestionnaireCsv.mockReturnValue(new Promise((resolve) => { resolveUpload = resolve }))
+    const scope = effectScope()
+    const state = scope.run(() => useQuestionnaireImport(() => 'questionnaire-1'))!
+
+    const pending = state.upload(new File(['code'], 'pending.csv', { type: 'text/csv' }))
+    expect(state.busy.value).toBe(true)
+
+    const oversized = new File(['code'], 'oversized.csv', { type: 'text/csv' })
+    Object.defineProperty(oversized, 'size', { value: 5 * 1024 * 1024 + 1 })
+    await state.upload(oversized)
+    expect(state.busy.value).toBe(false)
+
+    resolveUpload(preview)
+    await pending
+    expect(state.preview.value).toBeNull()
+    scope.stop()
+  })
 })

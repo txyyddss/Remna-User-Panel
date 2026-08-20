@@ -18,7 +18,7 @@ NONCE
 LOWERCASE_HEX_SHA256_OF_EXACT_BODY_BYTES
 ```
 
-`canonical.go` defines that contract and per-session key derivation. `verifier.go` enforces strict header grammars, constant-time comparisons, body restoration, and timestamp freshness. `replay.go` provides a mutex-protected bounded nonce cache with opportunistic expiry cleanup. `verifier_test.go` covers canonical verification, body tampering, malformed values, expiry, replay, and cleanup.
+`canonical.go` defines that contract and per-session key derivation. `verifier.go` enforces strict header grammars, constant-time comparisons, body restoration, and timestamp freshness. `replay.go` provides a mutex-protected bounded nonce cache with opportunistic expiry cleanup. `verifier_test.go` covers canonical verification, body tampering, malformed values, expiry, replay, and cleanup. `verifier_test_helpers_test.go` builds valid per-session signed request fixtures.
 
 The signing envelope accepts up to 6 MiB so a valid 5 MiB questionnaire CSV and its multipart framing are not rejected. JSON and upload handlers keep their stricter format-specific limits.
 
