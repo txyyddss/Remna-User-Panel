@@ -76,7 +76,7 @@ func (s *Store) AffiliateReferrals(ctx context.Context, userID string, page int)
 		return result, err
 	}
 	result.TotalPages = (result.Total + affiliates.PageSize - 1) / affiliates.PageSize
-	rows, err := s.db.QueryContext(ctx, `SELECT COALESCE(NULLIF(i.username,''),NULLIF(i.telegram_username,''),''),i.created_at,
+	rows, err := s.db.QueryContext(ctx, `SELECT COALESCE(i.telegram_first_name,''),COALESCE(i.telegram_last_name,''),i.created_at,
 		a.settled_at,a.commission_txb_minor FROM users i LEFT JOIN affiliate_settlements a ON a.invited_user_id=i.id
 		WHERE i.inviter_id=? ORDER BY i.created_at DESC,i.id DESC LIMIT ? OFFSET ?`, telegramID, affiliates.PageSize, (page-1)*affiliates.PageSize)
 	if err != nil {
@@ -88,7 +88,7 @@ func (s *Store) AffiliateReferrals(ctx context.Context, userID string, page int)
 		var registered string
 		var paidAt sql.NullString
 		var amount sql.NullInt64
-		if err := rows.Scan(&item.Username, &registered, &paidAt, &amount); err != nil {
+		if err := rows.Scan(&item.FirstName, &item.LastName, &registered, &paidAt, &amount); err != nil {
 			return result, err
 		}
 		item.RegisteredAt, err = parseStamp(registered)

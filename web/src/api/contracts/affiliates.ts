@@ -24,7 +24,8 @@ export interface AffiliateOverview {
 }
 
 export interface AffiliateReferral {
-  username: string
+  firstName: string
+  lastName: string
   registeredAt: string
   status: 'pending' | 'successful'
   paybackAt?: string

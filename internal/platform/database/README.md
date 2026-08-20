@@ -62,7 +62,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
   the payment transaction.
 - `affiliate_referrals.go` freezes valid private-start inviters before Mini App authentication.
 - `affiliate_config.go` reads and atomically versions audited tier configuration.
-- `affiliate_queries.go` projects member metrics, progress, and fixed referral pages.
+- `affiliate_queries.go` projects member metrics, progress, and fixed referral pages with Telegram first/last names.
 - `affiliate_settlement.go` creates immutable first-payment commission snapshots and jobs.
 - `affiliate_rewards.go` applies exact-once tier rewards through shared transaction helpers.
 - `affiliate_settlement_test.go` covers first-payment uniqueness, floor rounding, pre-upgrade rates, and exact-once TXB awards.

@@ -74,9 +74,10 @@ AffiliateReferralStatus:
 AffiliateReferral:
   type: object
   additionalProperties: false
-  required: [username, registeredAt, status]
+  required: [firstName, lastName, registeredAt, status]
   properties:
-    username: { type: string }
+    firstName: { type: string }
+    lastName: { type: string }
     registeredAt: { $ref: './schemas-01.yaml#/Timestamp' }
     status: { $ref: '#/AffiliateReferralStatus' }
     paybackAt: { $ref: './schemas-01.yaml#/Timestamp' }

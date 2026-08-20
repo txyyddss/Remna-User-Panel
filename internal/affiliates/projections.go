@@ -20,7 +20,8 @@ type Overview struct {
 }
 
 type Referral struct {
-	Username         string     `json:"username"`
+	FirstName        string     `json:"firstName"`
+	LastName         string     `json:"lastName"`
 	RegisteredAt     time.Time  `json:"registeredAt"`
 	Status           string     `json:"status"`
 	PaybackAt        *time.Time `json:"paybackAt,omitempty"`
