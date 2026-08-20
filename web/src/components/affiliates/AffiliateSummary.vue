@@ -11,7 +11,7 @@ const clipboard = useClipboard()
     <div class="affiliate-link-row">
       <div><span>{{ $t('affiliates.inviteLink') }}</span><strong>{{ overview.inviteLink ?? $t('affiliates.linkUnavailable') }}</strong></div>
       <UButton
-        color="neutral" variant="outline" icon="i-ph-copy" :disabled="!overview.inviteLink"
+        class="affiliate-copy-button" color="neutral" variant="outline" icon="i-ph-copy" :disabled="!overview.inviteLink"
         :label="clipboard.copied.value ? $t('common.copied') : $t('affiliates.copy')"
         @click="overview.inviteLink && clipboard.copy(overview.inviteLink)"
       />
