@@ -60,6 +60,7 @@
 .statistics-pie__label { fill: var(--text-muted); font-family: var(--font-mono); font-size: 8px; }
 
 .statistics-traffic { min-height: 18rem; }
+.statistics-traffic__touch-hint { display: none; }
 .statistics-traffic__plot {
   height: 210px;
   display: grid;
@@ -67,6 +68,8 @@
   gap: 0.4rem;
   padding: 0.75rem 0 0;
   border-bottom: 1px solid var(--line);
+  touch-action: pan-y;
+  user-select: none;
 }
 .statistics-traffic__day { min-width: 0; display: grid; grid-template-rows: minmax(0, 1fr) 1.6rem; gap: 0.35rem; text-align: center; }
 .statistics-traffic__track { min-height: 0; display: flex; align-items: end; }
@@ -103,6 +106,18 @@
 .statistics-chart-detail strong { font-family: var(--font-mono); font-size: 0.62rem; }
 .statistics-chart-legend-item { cursor: pointer; border-radius: 3px; outline-offset: 3px; }
 .statistics-chart-legend-item:focus-visible { outline: 1px solid var(--accent); }
+
+@media (hover: none) and (pointer: coarse) {
+  .statistics-traffic__touch-hint {
+    display: block;
+    margin: -0.15rem 0 0.25rem;
+    color: var(--text-faint);
+    font-size: 0.62rem;
+    line-height: 1.45;
+  }
+  .statistics-traffic__plot { cursor: crosshair; overscroll-behavior-x: contain; }
+  .statistics-traffic__plot--scrubbing .statistics-chart-segment:not(.statistics-chart-segment--muted) { filter: brightness(1.18); }
+}
 
 .statistics-distribution-heading { align-items: flex-end; }
 .statistics-distribution-heading > :last-child { max-width: 18rem; }
