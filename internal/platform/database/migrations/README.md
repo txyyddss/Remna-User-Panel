@@ -1,6 +1,8 @@
 # Database migrations
 
 Migration files are embedded and applied in lexical order by `database.go`.
+
+- `030_affiliates.sql` adds referral eligibility, immutable tier versions, settlements, and awards.
 Never edit a migration that may already have been deployed; add the next numbered
 file instead.
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/txyyddss/Remna-User-Panel/internal/affiliates"
 	"github.com/txyyddss/Remna-User-Panel/internal/billing"
 	"github.com/txyyddss/Remna-User-Panel/internal/connections"
 	"github.com/txyyddss/Remna-User-Panel/internal/emby"
@@ -19,9 +20,14 @@ import (
 
 func registerCoreOutboxHandlers(worker *outbox.Worker, store *database.Store, entitlementsWorker *entitlements.Worker,
 	rolloverWorker *rollover.Service, embyService *emby.Service, paymentAnnouncements *billing.PaymentAnnouncementWorker,
-	scanWorker *connections.Worker, expiryWorker *connections.ExpiryWorker, dispatcher *providerops.Dispatcher) error {
+	affiliateNotifications *affiliates.NotificationWorker, scanWorker *connections.Worker, expiryWorker *connections.ExpiryWorker, dispatcher *providerops.Dispatcher) error {
 	if err := worker.Register(jobpayload.PaymentSuccessAnnouncementKind, paymentAnnouncements); err != nil {
 		return fmt.Errorf("register payment announcement outbox handler: %w", err)
+	}
+	for _, kind := range []string{jobpayload.AffiliateSuccessKind, jobpayload.AffiliateTierUpgradeKind} {
+		if err := worker.Register(kind, affiliateNotifications); err != nil {
+			return fmt.Errorf("register %s outbox handler: %w", kind, err)
+		}
 	}
 	for _, kind := range []string{"remna_apply_entitlement", "remna_sync_user", jobpayload.ContinuityKind} {
 		if err := worker.Register(kind, entitlementsWorker); err != nil {

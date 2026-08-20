@@ -15240,9 +15240,9 @@
     }
   },
   "info": {
-    "title": "Remnawave API v3.3.0",
+    "title": "Remnawave API v3.3.1",
     "description": "\nRemnawave is a powerful proxy managment tool, built on top of Xray-core, with a focus on simplicity and ease of use.\n\n## Resources\n* https://t.me/remnawave\n* https://github.com/remnawave\n* https://docs.rw\n",
-    "version": "3.3.0",
+    "version": "3.3.1",
     "contact": {},
     "license": {
       "name": "AGPL-3.0",

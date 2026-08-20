@@ -60,6 +60,14 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `billing_payment_announcement.go` resolves the settlement-time username and
   administrator provider label and encodes the immutable outbox payload inside
   the payment transaction.
+- `affiliate_referrals.go` freezes valid private-start inviters before Mini App authentication.
+- `affiliate_config.go` reads and atomically versions audited tier configuration.
+- `affiliate_queries.go` projects member metrics, progress, and fixed referral pages.
+- `affiliate_settlement.go` creates immutable first-payment commission snapshots and jobs.
+- `affiliate_rewards.go` applies exact-once tier rewards through shared transaction helpers.
+- `affiliate_settlement_test.go` covers first-payment uniqueness, floor rounding, pre-upgrade rates, and exact-once TXB awards.
+- `affiliate_referrals_test.go` covers missing, self, frozen, and authentication-locked inviters plus locale normalization.
+- `affiliate_config_test.go` covers immutable version increments and stale-write conflicts.
 - `payment_operations.go` atomically stores checkout/cancellation intents with provider-operation receipts.
 - `payment_operation_resolution.go` resolves checkout receipts from authoritative paid callbacks without another provider call.
 - `billing_callback_tombstones.go` keeps provider callback replays idempotent

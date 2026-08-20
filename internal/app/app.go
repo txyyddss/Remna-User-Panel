@@ -14,6 +14,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/accounts"
 	"github.com/txyyddss/Remna-User-Panel/internal/activity"
 	"github.com/txyyddss/Remna-User-Panel/internal/admin"
+	"github.com/txyyddss/Remna-User-Panel/internal/affiliates"
 	"github.com/txyyddss/Remna-User-Panel/internal/billing"
 	"github.com/txyyddss/Remna-User-Panel/internal/catalog"
 	"github.com/txyyddss/Remna-User-Panel/internal/coupons"
@@ -43,11 +44,12 @@ type Application struct {
 	outbox      *outbox.Worker
 	backups     *backup.Service
 	maintenance *maintenance.Service
-	telegram    *telegram.Client
+	telegram    *queuedTelegram
 	settings    *admin.SettingsService
 	catalog     *catalog.Service
 	billing     *billing.Service
 	statistics  *productstats.Service
+	affiliates  *affiliates.Service
 	upstreams   *providerQueues
 }
 
@@ -99,8 +101,10 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		return cleanup(err)
 	}
 	remna := newRemnaAdapter(settings, upstreams.remnawave)
-	telegramBridge := telegramAdapter{client: telegramClient}
-	paymentBridge := paymentAdapter{settings: settings, telegram: telegramClient, users: store}
+	queuedTelegramClient := &queuedTelegram{client: telegramClient, queue: upstreams.telegram}
+	affiliateService := affiliates.NewService(store, queuedTelegramClient)
+	telegramBridge := telegramAdapter{client: queuedTelegramClient}
+	paymentBridge := paymentAdapter{settings: settings, telegram: queuedTelegramClient, users: store}
 	backupService := backup.NewService(db, store, filepath.Join(cfg.DataDir, "backups"), cfg.BackupRetention)
 	reconcileCtx, reconcileCancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	reconcileErr := backupService.ReconcileUploads(reconcileCtx, migrationVersions)
@@ -130,7 +134,8 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	entitlementWorker := entitlements.NewWorker(store, remna)
 	rolloverWorker := rollover.NewService(store, remna)
 	outboxWorker := outbox.NewWorker(store)
-	paymentAnnouncementWorker := billing.NewPaymentAnnouncementWorker(settings, telegramClient)
+	paymentAnnouncementWorker := billing.NewPaymentAnnouncementWorker(settings, queuedTelegramClient)
+	affiliateNotificationWorker := affiliates.NewNotificationWorker(queuedTelegramClient)
 	memberServices, scanWorker, blockExpiryWorker, operationDispatcher, err := newMemberWorkflows(store, remna, vault, cfg.MasterKey)
 	if err != nil {
 		return cleanup(err)
@@ -149,7 +154,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		return cleanup(err)
 	}
 	if err := registerCoreOutboxHandlers(outboxWorker, store, entitlementWorker, rolloverWorker, embyService,
-		paymentAnnouncementWorker, scanWorker, blockExpiryWorker, operationDispatcher); err != nil {
+		paymentAnnouncementWorker, affiliateNotificationWorker, scanWorker, blockExpiryWorker, operationDispatcher); err != nil {
 		return cleanup(err)
 	}
 	static, err := fs.Sub(webui.Dist, "dist")
@@ -167,7 +172,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		Coupons: couponService, Questionnaires: questionnaireService, Emby: embyService,
 		EmbyOperations: embyOperations, EmbyPrice: embyPrice,
 		Admin: adminService, AdminUsers: adminUserWorkflows, Settings: settings, DatabaseAdmin: databaseAdminHTTP,
-		Store: store, Telegram: telegramClient, Webhooks: paymentBridge, PublicURL: cfg.PublicBaseURL, Static: static,
+		Store: store, Affiliates: affiliateService, Telegram: queuedTelegramClient, Webhooks: paymentBridge, PublicURL: cfg.PublicBaseURL, Static: static,
 		Logger: logger, SessionTTL: cfg.SessionTTL, SecureCookies: cfg.PublicBaseURL.Scheme == "https",
 		AdminTelegramIDs: cfg.AdminTelegramIDs, RequestSigningKey: cfg.MasterKey,
 	})
@@ -180,7 +185,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	}
 	return &Application{
 		config: cfg, logger: logger, httpServer: httpServer, store: store, outbox: outboxWorker,
-		backups: backupService, maintenance: maintenanceService, telegram: telegramClient, settings: settings,
-		catalog: catalogService, billing: billingService, statistics: statisticsService, upstreams: upstreams,
+		backups: backupService, maintenance: maintenanceService, telegram: queuedTelegramClient, settings: settings,
+		catalog: catalogService, billing: billingService, statistics: statisticsService, affiliates: affiliateService, upstreams: upstreams,
 	}, nil
 }

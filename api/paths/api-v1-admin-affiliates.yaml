@@ -1,0 +1,23 @@
+get:
+  tags: [Admin, Affiliates]
+  summary: Get the current affiliate configuration and bot identity status
+  operationId: getAdminAffiliates
+  responses:
+    '200':
+      description: Current immutable configuration version
+      content: { application/json: { schema: { $ref: '../components/schemas/schemas-20.yaml#/AdminAffiliateView' } } }
+    '403': { $ref: '../components/responses.yaml#/Forbidden' }
+put:
+  tags: [Admin, Affiliates]
+  summary: Atomically replace the affiliate tier configuration
+  operationId: updateAdminAffiliates
+  requestBody:
+    required: true
+    content: { application/json: { schema: { $ref: '../components/schemas/schemas-20.yaml#/AffiliateConfigWrite' } } }
+  responses:
+    '200':
+      description: New immutable configuration version
+      content: { application/json: { schema: { $ref: '../components/schemas/schemas-20.yaml#/AdminAffiliateView' } } }
+    '409': { $ref: '../components/responses.yaml#/Conflict' }
+    '422': { $ref: '../components/responses.yaml#/Unprocessable' }
+    '403': { $ref: '../components/responses.yaml#/Forbidden' }

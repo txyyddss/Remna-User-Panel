@@ -11,6 +11,7 @@ const panels: Record<string, Component> = {
   settings: AdminSettingsPanel,
   catalog: defineAsyncComponent(() => import('@/components/admin/AdminCatalogPanel.vue')),
   activity: defineAsyncComponent(() => import('@/components/admin/AdminActivityPanel.vue')),
+  affiliates: defineAsyncComponent(() => import('@/components/admin/affiliates/AdminAffiliatesPanel.vue')),
   coupons: defineAsyncComponent(() => import('@/components/admin/AdminCouponsPanel.vue')),
   questionnaires: defineAsyncComponent(() => import('@/components/admin/AdminQuestionnairesPanel.vue')),
   onboarding: defineAsyncComponent(() => import('@/components/admin/AdminOnboardingPanel.vue')),

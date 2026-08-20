@@ -11,6 +11,9 @@
 - `request_auth.go` requires the per-session HMAC contract on authenticated browser requests.
 - `request_auth_test.go` tests signed-route enforcement and session-cookie visibility rules.
 - `auth_rate_limit.go` bounds Telegram session exchange attempts by normalized client IP.
+- `affiliates.go` exposes member referral pages and optimistic administrator tier replacement.
+- `affiliate_commands.go` accepts exact positive-decimal private referral parameters.
+- `affiliate_commands_test.go` covers accepted and rejected referral parameters.
 - `auth_rate_limit_test.go` covers client-IP isolation, refill, and forwarded-address handling.
 - `request_validation.go` applies shared request validation, strict JSON decoding, and URL parameter normalization.
 - `authentication.go` exchanges verified Telegram init data for session and request-signing cookies.

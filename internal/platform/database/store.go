@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/txyyddss/Remna-User-Panel/internal/affiliates"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 	"sync"
@@ -39,7 +40,6 @@ func NewStore(db *sql.DB) *Store {
 func (s *Store) DB() *sql.DB { return s.db }
 
 // UpsertTelegramUser creates or refreshes a user from validated Telegram data.
-
 func (s *Store) UpsertTelegramUser(ctx context.Context, profile model.TelegramProfile, isAdmin bool) (model.User, bool, error) {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
@@ -53,11 +53,12 @@ func (s *Store) UpsertTelegramUser(ctx context.Context, profile model.TelegramPr
 	if err != nil {
 		return model.User{}, false, err
 	}
-	_, err = s.db.ExecContext(ctx, `INSERT INTO users(id,telegram_id,telegram_first_name,telegram_last_name,telegram_username,role,created_at,updated_at)
-		VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(telegram_id) DO UPDATE SET telegram_first_name=excluded.telegram_first_name,
+	locale := affiliates.NormalizeLocale(profile.LanguageCode)
+	_, err = s.db.ExecContext(ctx, `INSERT INTO users(id,telegram_id,telegram_first_name,telegram_last_name,telegram_username,role,new_user,notification_locale,created_at,updated_at)
+		VALUES(?,?,?,?,?,?,0,?,?,?) ON CONFLICT(telegram_id) DO UPDATE SET telegram_first_name=excluded.telegram_first_name,
 		telegram_last_name=excluded.telegram_last_name,telegram_username=excluded.telegram_username,
-		role=excluded.role,updated_at=excluded.updated_at`,
-		userID, profile.ID, profile.FirstName, profile.LastName, profile.Username, role, stamp(now), stamp(now))
+		role=excluded.role,new_user=0,notification_locale=excluded.notification_locale,updated_at=excluded.updated_at`,
+		userID, profile.ID, profile.FirstName, profile.LastName, profile.Username, role, locale, stamp(now), stamp(now))
 	if err != nil {
 		return model.User{}, false, fmt.Errorf("upsert Telegram user: %w", err)
 	}
@@ -72,20 +73,19 @@ func (s *Store) UpsertTelegramUser(ctx context.Context, profile model.TelegramPr
 }
 
 // UserByID returns a user by internal ID.
-
 func (s *Store) UserByID(ctx context.Context, userID string) (model.User, error) {
 	return scanUser(s.db.QueryRowContext(ctx, userSelect+` WHERE users.id=?`, userID))
 }
 
 // UserByTelegramID returns a user by trusted Telegram ID.
-
 func (s *Store) UserByTelegramID(ctx context.Context, telegramID int64) (model.User, error) {
 	return scanUser(s.db.QueryRowContext(ctx, userSelect+` WHERE users.telegram_id=?`, telegramID))
 }
 
 const userColumns = `users.id,users.telegram_id,users.telegram_first_name,users.telegram_last_name,users.telegram_username,
 	users.username,users.role,users.onboarding_state,users.group_joined,users.channel_joined,users.policy_accepted_at,
-	users.accepted_agreement_revision,users.remna_user_id,users.recovery_reason,users.created_at,users.updated_at`
+	users.accepted_agreement_revision,users.remna_user_id,users.recovery_reason,users.new_user,users.inviter_id,
+	users.notification_locale,users.created_at,users.updated_at`
 
 const userSelect = `SELECT ` + userColumns + ` FROM users`
 
@@ -99,10 +99,12 @@ func scanUserWith(row rowScanner, extra ...any) (model.User, error) {
 	var user model.User
 	var username, policy, recoveryReason sql.NullString
 	var remnaID sql.NullString
-	var groupJoined, channelJoined int
+	var groupJoined, channelJoined, newUser int
+	var inviterID sql.NullInt64
 	var createdAt, updatedAt string
 	destinations := []any{&user.ID, &user.TelegramID, &user.TelegramFirstName, &user.TelegramLastName, &user.TelegramUsername,
-		&username, &user.Role, &user.OnboardingState, &groupJoined, &channelJoined, &policy, &user.AgreementRevision, &remnaID, &recoveryReason, &createdAt, &updatedAt}
+		&username, &user.Role, &user.OnboardingState, &groupJoined, &channelJoined, &policy, &user.AgreementRevision, &remnaID, &recoveryReason,
+		&newUser, &inviterID, &user.NotificationLocale, &createdAt, &updatedAt}
 	destinations = append(destinations, extra...)
 	if err := row.Scan(destinations...); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -113,6 +115,10 @@ func scanUserWith(row rowScanner, extra ...any) (model.User, error) {
 	user.Username = nullableString(username)
 	user.GroupJoined = groupJoined == 1
 	user.ChannelJoined = channelJoined == 1
+	user.NewUser = newUser == 1
+	if inviterID.Valid {
+		user.InviterID = &inviterID.Int64
+	}
 	if policy.Valid {
 		parsed, err := parseStamp(policy.String)
 		if err != nil {
@@ -135,7 +141,6 @@ func scanUserWith(row rowScanner, extra ...any) (model.User, error) {
 }
 
 // ReplaceSession stores one current opaque session per user.
-
 func (s *Store) ReplaceSession(ctx context.Context, tokenHash []byte, userID string, expiresAt time.Time) error {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
@@ -159,7 +164,6 @@ func (s *Store) ReplaceSession(ctx context.Context, tokenHash []byte, userID str
 }
 
 // UserBySession returns the owner of a non-expired session.
-
 func (s *Store) UserBySession(ctx context.Context, tokenHash []byte, now time.Time) (model.User, error) {
 	return scanUser(s.db.QueryRowContext(ctx, userSelect+` JOIN sessions ON sessions.user_id=users.id WHERE sessions.token_hash=? AND sessions.expires_at>?`, tokenHash, stamp(now)))
 }

@@ -26,6 +26,7 @@ const router = createRouter({
     { path: '/activity', name: 'activity', component: () => import('@/views/ActivityView.vue') },
     { path: '/games', redirect: '/activity' },
     { path: '/statistics', name: 'statistics', component: () => import('@/views/StatisticsView.vue') },
+    { path: '/affiliates', name: 'affiliates', component: () => import('@/views/AffiliatesView.vue') },
     { path: '/questionnaire', name: 'questionnaire', component: () => import('@/views/QuestionnaireView.vue') },
     { path: '/emby', name: 'emby', component: () => import('@/views/EmbyView.vue') },
     { path: '/admin', redirect: '/admin/settings' },
@@ -38,7 +39,7 @@ const router = createRouter({
       meta: { adminSection: 'users' },
     },
     {
-      path: '/admin/:section(settings|catalog|activity|coupons|questionnaires|onboarding|users|backups|database|audit)',
+      path: '/admin/:section(settings|catalog|activity|affiliates|coupons|questionnaires|onboarding|users|backups|database|audit)',
       name: 'admin',
       component: () => import('@/views/AdminView.vue'),
     },

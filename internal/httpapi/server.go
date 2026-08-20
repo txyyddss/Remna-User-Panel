@@ -10,12 +10,12 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/accounts"
 	"github.com/txyyddss/Remna-User-Panel/internal/activity"
 	"github.com/txyyddss/Remna-User-Panel/internal/admin"
+	"github.com/txyyddss/Remna-User-Panel/internal/affiliates"
 	"github.com/txyyddss/Remna-User-Panel/internal/billing"
 	"github.com/txyyddss/Remna-User-Panel/internal/catalog"
 	"github.com/txyyddss/Remna-User-Panel/internal/connections"
 	"github.com/txyyddss/Remna-User-Panel/internal/coupons"
 	"github.com/txyyddss/Remna-User-Panel/internal/emby"
-	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 	"github.com/txyyddss/Remna-User-Panel/internal/purchaseops"
 	"github.com/txyyddss/Remna-User-Panel/internal/questionnaires"
@@ -31,11 +31,9 @@ import (
 const sessionCookie = "txc_session"
 
 type contextKey string
-
 const userContextKey contextKey = "user"
 
 // PaymentWebhookVerifier authenticates legacy provider callbacks before domain settlement.
-
 type PaymentWebhookVerifier interface {
 	VerifyEZPay(context.Context, url.Values) (billing.ProviderEvent, bool, error)
 	VerifyBEPusdt(context.Context, []byte) (billing.ProviderEvent, int, error)
@@ -45,8 +43,12 @@ type bepusdtUnsignedVerifier interface {
 	VerifyBEPusdtUnsigned(context.Context, []byte) (billing.ProviderEvent, int, error)
 }
 
-// Dependencies contains already-constructed application services.
+type telegramProvider interface {
+	SendMarkdownV2Message(context.Context, int64, int64, string) error
+	AnswerPreCheckoutQuery(context.Context, string, bool, string) error
+}
 
+// Dependencies contains already-constructed application services.
 type Dependencies struct {
 	Accounts           *accounts.Service
 	Catalog            *catalog.Service
@@ -66,7 +68,8 @@ type Dependencies struct {
 	Settings           *admin.SettingsService
 	DatabaseAdmin      *DatabaseAdministrationHTTP
 	Store              *database.Store
-	Telegram           *telegram.Client
+	Affiliates         *affiliates.Service
+	Telegram           telegramProvider
 	Webhooks           PaymentWebhookVerifier
 	PublicURL          *url.URL
 	Static             fs.FS
@@ -78,7 +81,6 @@ type Dependencies struct {
 }
 
 // Server owns HTTP routing and transport-only validation.
-
 type Server struct {
 	deps             Dependencies
 	requests         *requestauth.Verifier
@@ -88,9 +90,8 @@ type Server struct {
 }
 
 // New constructs all public, authenticated, admin, and webhook routes.
-
 func New(deps Dependencies) (*Server, error) {
-	if deps.Accounts == nil || deps.Catalog == nil || deps.Connections == nil || deps.ConnectionDrops == nil || deps.PurchaseOperations == nil || deps.Statistics == nil || deps.Billing == nil || deps.Activity == nil || deps.Coupons == nil || deps.Questionnaires == nil || deps.Emby == nil || deps.EmbyOperations == nil || deps.EmbyPrice == nil || deps.Admin == nil || deps.AdminUsers == nil || deps.Settings == nil || deps.Store == nil || deps.Telegram == nil || deps.Webhooks == nil || deps.PublicURL == nil || deps.Logger == nil || len(deps.AdminTelegramIDs) == 0 {
+	if deps.Accounts == nil || deps.Catalog == nil || deps.Connections == nil || deps.ConnectionDrops == nil || deps.PurchaseOperations == nil || deps.Statistics == nil || deps.Billing == nil || deps.Activity == nil || deps.Coupons == nil || deps.Questionnaires == nil || deps.Emby == nil || deps.EmbyOperations == nil || deps.EmbyPrice == nil || deps.Admin == nil || deps.AdminUsers == nil || deps.Settings == nil || deps.Store == nil || deps.Affiliates == nil || deps.Telegram == nil || deps.Webhooks == nil || deps.PublicURL == nil || deps.Logger == nil || len(deps.AdminTelegramIDs) == 0 {
 		return nil, errors.New("HTTP API dependencies are incomplete")
 	}
 	adminTelegramIDs := make(map[int64]struct{}, len(deps.AdminTelegramIDs))
@@ -150,6 +151,8 @@ func New(deps Dependencies) (*Server, error) {
 		server.mountMemberOperations(authenticated)
 		authenticated.Get("/api/v1/balance", server.balance)
 		authenticated.Get("/api/v1/ledger", server.ledger)
+		authenticated.Get("/api/v1/affiliates", server.affiliateOverview)
+		authenticated.Get("/api/v1/affiliates/referrals", server.affiliateReferrals)
 		authenticated.Post("/api/v1/payments/orders", server.createPaymentOrder)
 		authenticated.Get("/api/v1/payments/orders/{id}", server.paymentOrder)
 		authenticated.Post("/api/v1/payments/orders/{id}/cancel", server.cancelPaymentOrder)
@@ -176,7 +179,6 @@ func New(deps Dependencies) (*Server, error) {
 }
 
 // Handler returns the fully configured router.
-
 func (s *Server) Handler() http.Handler { return s.router }
 
 type apiError struct {

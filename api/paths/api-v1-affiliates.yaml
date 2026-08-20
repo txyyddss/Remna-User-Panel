@@ -1,0 +1,10 @@
+get:
+  tags: [Affiliates]
+  summary: Get Affiliate Centre metrics and tier progress
+  operationId: getAffiliates
+  responses:
+    '200':
+      description: Settlement-backed affiliate overview
+      content: { application/json: { schema: { $ref: '../components/schemas/schemas-20.yaml#/AffiliateOverview' } } }
+    '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+    '500': { $ref: '../components/responses.yaml#/InternalFailure' }

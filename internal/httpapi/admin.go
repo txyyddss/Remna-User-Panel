@@ -6,6 +6,8 @@ import (
 
 func (s *Server) mountAdmin(router chi.Router) {
 	s.mountCommunityAdmin(router)
+	router.Get("/affiliates", s.adminAffiliates)
+	router.Put("/affiliates", s.adminUpdateAffiliates)
 	router.Get("/emby-accounts", s.adminEmbyAccounts)
 	router.Post("/emby-accounts/{id}/retry", s.retryAdminEmbyAccount)
 	router.Get("/settings", s.adminSettings)

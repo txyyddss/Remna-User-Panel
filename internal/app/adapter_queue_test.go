@@ -101,3 +101,21 @@ func TestEmbyAdapterMethodsEnterQueueBeforeClientCreation(t *testing.T) {
 		})
 	}
 }
+
+func TestTelegramAdapterMethodsEnterQueue(t *testing.T) {
+	queue, err := upstreamqueue.New(upstreamqueue.Config{Name: "telegram-test", Capacity: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	adapter := &queuedTelegram{queue: queue}
+	tests := []func() error{
+		func() error { _, err := adapter.GetMe(context.Background()); return err },
+		func() error { return adapter.SendMarkdownV2Message(context.Background(), 42, 0, "hello") },
+		func() error { _, err := adapter.GetStarTransactions(context.Background(), 0, 100); return err },
+	}
+	for _, call := range tests {
+		if err := call(); !errors.Is(err, upstreamqueue.ErrNotRunning) {
+			t.Fatalf("adapter error = %v, want ErrNotRunning", err)
+		}
+	}
+}

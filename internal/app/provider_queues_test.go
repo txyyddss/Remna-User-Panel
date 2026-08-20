@@ -22,6 +22,7 @@ func TestProviderQueueConfiguration(t *testing.T) {
 	}{
 		{name: "Remnawave", queue: queues.remnawave, wantCapacity: remnawaveQueueCapacity, wantPace: remnawavePace},
 		{name: "Emby", queue: queues.emby, wantCapacity: embyQueueCapacity, wantPace: embyPace},
+		{name: "Telegram", queue: queues.telegram, wantCapacity: telegramQueueCapacity, wantPace: telegramPace},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

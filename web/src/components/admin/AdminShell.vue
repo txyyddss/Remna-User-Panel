@@ -17,6 +17,7 @@ const groups = [
   ] },
   { labelKey: 'adminNav.community', sections: [
     { value: 'activity', labelKey: 'adminNav.activity' },
+    { value: 'affiliates', labelKey: 'adminNav.affiliates' },
     { value: 'questionnaires', labelKey: 'adminNav.questionnaires' },
     { value: 'onboarding', labelKey: 'adminNav.onboarding' },
   ] },

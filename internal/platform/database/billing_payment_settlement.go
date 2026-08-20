@@ -115,6 +115,9 @@ func (s *Store) SettlePayment(ctx context.Context, provider, dedupeKey, payloadH
 	if _, err := insertLedgerTx(ctx, tx, order.UserID, order.TXBMinor, balance, "payment_credit", order.ID, provider+" payment", now); err != nil {
 		return model.PaymentOrder{}, false, err
 	}
+	if err := settleAffiliateTx(ctx, tx, order.ID, order.UserID, order.TXBMinor, now); err != nil {
+		return model.PaymentOrder{}, false, fmt.Errorf("settle affiliate: %w", err)
+	}
 	announcement, err := paymentSuccessAnnouncementTx(ctx, tx, order)
 	if err != nil {
 		return model.PaymentOrder{}, false, err

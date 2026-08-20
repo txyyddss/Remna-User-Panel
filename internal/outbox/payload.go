@@ -22,6 +22,25 @@ type PaymentSuccessAnnouncement struct {
 	Username        string `json:"username"`
 }
 
+type AffiliateSuccess struct {
+	SettlementID    string `json:"settlementId"`
+	ChatID          int64  `json:"chatId"`
+	Locale          string `json:"locale"`
+	InviteeName     string `json:"inviteeName"`
+	SettledAt       string `json:"settledAt"`
+	CommissionMinor int64  `json:"commissionMinor"`
+	TierName        string `json:"tierName"`
+}
+
+type AffiliateTierUpgrade struct {
+	AwardID           string `json:"awardId"`
+	ChatID            int64  `json:"chatId"`
+	Locale            string `json:"locale"`
+	TierName          string `json:"tierName"`
+	RewardDescription string `json:"rewardDescription"`
+	AwardedAt         string `json:"awardedAt"`
+}
+
 // TargetID extracts one required identifier from a canonical typed job payload.
 func TargetID(job model.OutboxJob, field string) (string, error) {
 	var payload map[string]string
@@ -54,6 +73,36 @@ func DecodePaymentSuccessAnnouncement(job model.OutboxJob) (PaymentSuccessAnnoun
 	if payload.OrderID == "" || payload.Provider == "" || payload.TXBMinor <= 0 ||
 		payload.PayableAmount == "" || payload.PayableCurrency == "" || payload.Username == "" {
 		return PaymentSuccessAnnouncement{}, errors.New("payment announcement payload is incomplete")
+	}
+	return payload, nil
+}
+
+func DecodeAffiliateSuccess(job model.OutboxJob) (AffiliateSuccess, error) {
+	var payload AffiliateSuccess
+	if job.Kind != AffiliateSuccessKind {
+		return payload, errors.New("unexpected affiliate success job kind")
+	}
+	if err := json.Unmarshal([]byte(job.Payload), &payload); err != nil {
+		return payload, fmt.Errorf("decode affiliate success payload: %w", err)
+	}
+	payload.InviteeName, payload.TierName = strings.TrimSpace(payload.InviteeName), strings.TrimSpace(payload.TierName)
+	if payload.SettlementID == "" || payload.ChatID <= 0 || payload.Locale == "" || payload.SettledAt == "" || payload.CommissionMinor < 0 || payload.TierName == "" {
+		return payload, errors.New("affiliate success payload is incomplete")
+	}
+	return payload, nil
+}
+
+func DecodeAffiliateTierUpgrade(job model.OutboxJob) (AffiliateTierUpgrade, error) {
+	var payload AffiliateTierUpgrade
+	if job.Kind != AffiliateTierUpgradeKind {
+		return payload, errors.New("unexpected affiliate upgrade job kind")
+	}
+	if err := json.Unmarshal([]byte(job.Payload), &payload); err != nil {
+		return payload, fmt.Errorf("decode affiliate upgrade payload: %w", err)
+	}
+	payload.TierName, payload.RewardDescription = strings.TrimSpace(payload.TierName), strings.TrimSpace(payload.RewardDescription)
+	if payload.AwardID == "" || payload.ChatID <= 0 || payload.Locale == "" || payload.TierName == "" || payload.RewardDescription == "" || payload.AwardedAt == "" {
+		return payload, errors.New("affiliate upgrade payload is incomplete")
 	}
 	return payload, nil
 }

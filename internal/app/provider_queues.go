@@ -12,13 +12,16 @@ import (
 const (
 	remnawaveQueueCapacity = 64
 	embyQueueCapacity      = 32
+	telegramQueueCapacity  = 64
 	remnawavePace          = 50 * time.Millisecond
 	embyPace               = 100 * time.Millisecond
+	telegramPace           = 35 * time.Millisecond
 )
 
 type providerQueues struct {
 	remnawave *upstreamqueue.Queue
 	emby      *upstreamqueue.Queue
+	telegram  *upstreamqueue.Queue
 }
 
 func newProviderQueues() (*providerQueues, error) {
@@ -34,11 +37,15 @@ func newProviderQueues() (*providerQueues, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create Emby queue: %w", err)
 	}
-	return &providerQueues{remnawave: remnawaveQueue, emby: embyQueue}, nil
+	telegramQueue, err := upstreamqueue.New(upstreamqueue.Config{Name: "telegram", Capacity: telegramQueueCapacity, MinInterval: telegramPace})
+	if err != nil {
+		return nil, fmt.Errorf("create Telegram queue: %w", err)
+	}
+	return &providerQueues{remnawave: remnawaveQueue, emby: embyQueue, telegram: telegramQueue}, nil
 }
 
 func (q *providerQueues) start(ctx context.Context) error {
-	if q == nil || q.remnawave == nil || q.emby == nil {
+	if q == nil || q.remnawave == nil || q.emby == nil || q.telegram == nil {
 		return errors.New("provider queues are incomplete")
 	}
 	if err := q.remnawave.Start(ctx); err != nil {
@@ -48,6 +55,11 @@ func (q *providerQueues) start(ctx context.Context) error {
 		_ = q.remnawave.Shutdown(context.Background())
 		return fmt.Errorf("start Emby queue: %w", err)
 	}
+	if err := q.telegram.Start(ctx); err != nil {
+		_ = q.emby.Shutdown(context.Background())
+		_ = q.remnawave.Shutdown(context.Background())
+		return fmt.Errorf("start Telegram queue: %w", err)
+	}
 	return nil
 }
 
@@ -55,8 +67,9 @@ func (q *providerQueues) shutdown(ctx context.Context) error {
 	if q == nil {
 		return nil
 	}
-	errorsByProvider := make(chan error, 2)
+	errorsByProvider := make(chan error, 3)
 	go func() { errorsByProvider <- q.remnawave.Shutdown(ctx) }()
 	go func() { errorsByProvider <- q.emby.Shutdown(ctx) }()
-	return errors.Join(<-errorsByProvider, <-errorsByProvider)
+	go func() { errorsByProvider <- q.telegram.Shutdown(ctx) }()
+	return errors.Join(<-errorsByProvider, <-errorsByProvider, <-errorsByProvider)
 }

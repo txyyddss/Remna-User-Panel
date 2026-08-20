@@ -4,6 +4,7 @@ Each JSON file owns the UI copy for the domain named by its filename. Keep keys
 in parity with the matching `zh-CN` file and preserve `{placeholder}` names.
 
 - `activity.json` contains member activity, check-in, game, and draw copy.
+- `affiliates.json` contains member referral and tier administration copy.
 - `admin-activity.json` contains activity-management and lucky-draw copy.
 - `admin-catalog.json` contains catalog, squad, and coupon administration copy.
 - `admin-community.json` contains questionnaire administration and import copy.
