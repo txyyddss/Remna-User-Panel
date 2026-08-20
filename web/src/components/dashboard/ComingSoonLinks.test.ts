@@ -15,27 +15,16 @@ describe('ComingSoonLinks navigation', () => {
     const wrapper = mount(ComingSoonLinks, { global: { plugins: [router] } })
     const launchURL = window.location.href
     const actions = wrapper.findAll('.home-around__link')
+    const destinations = ['/affiliates', '/questionnaire', '/emby', '/statistics']
 
-    expect(actions).toHaveLength(3)
-    expect(actions[0].attributes('href')).toBeUndefined()
-    expect(actions[1].attributes('href')).toBeUndefined()
-    expect(actions[2].attributes('href')).toBeUndefined()
-
-    await actions[0].trigger('click')
-    await new Promise<void>((resolve) => setTimeout(resolve, 0))
-    expect(router.currentRoute.value.path).toBe('/questionnaire')
-    expect(window.location.href).toBe(launchURL)
-
-    await router.push('/home')
-    await actions[1].trigger('click')
-    await new Promise<void>((resolve) => setTimeout(resolve, 0))
-    expect(router.currentRoute.value.path).toBe('/emby')
-    expect(window.location.href).toBe(launchURL)
-
-    await router.push('/home')
-    await actions[2].trigger('click')
-    await new Promise<void>((resolve) => setTimeout(resolve, 0))
-    expect(router.currentRoute.value.path).toBe('/statistics')
-    expect(window.location.href).toBe(launchURL)
+    expect(actions).toHaveLength(destinations.length)
+    for (const [index, destination] of destinations.entries()) {
+      expect(actions[index].attributes('href')).toBeUndefined()
+      await actions[index].trigger('click')
+      await new Promise<void>((resolve) => setTimeout(resolve, 0))
+      expect(router.currentRoute.value.path).toBe(destination)
+      expect(window.location.href).toBe(launchURL)
+      await router.push('/home')
+    }
   })
 })

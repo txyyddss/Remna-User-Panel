@@ -97,4 +97,4 @@
 
 `README.md` is this direct-file ownership index. Unsigned routes remain limited to operational probes, Telegram authentication, provider-authenticated callbacks, the capability-limited payment return/status flow, and static assets.
 - `handlers_part2.go` contains the remaining route handler implementations.
-- `server_part2.go` contains static asset and transport helper implementations.
+- `server_part2.go` contains authenticated request-context, static asset, and transport helper implementations.

@@ -30,9 +30,6 @@ import (
 
 const sessionCookie = "txc_session"
 
-type contextKey string
-const userContextKey contextKey = "user"
-
 // PaymentWebhookVerifier authenticates legacy provider callbacks before domain settlement.
 type PaymentWebhookVerifier interface {
 	VerifyEZPay(context.Context, url.Values) (billing.ProviderEvent, bool, error)
