@@ -47,7 +47,7 @@ func TestAutomaticRenewalCommitsAtContinuityBoundary(t *testing.T) {
 	if err != nil || !available.Equal(boundary) {
 		t.Fatalf("automatic continuity available_at = %s, %v", available, err)
 	}
-	if err := store.EnqueueDueEntitlementTransitions(ctx, boundary); err != nil {
+	if err := store.EnqueueDueEntitlementTransitions(ctx, source.ValidUntil); err != nil {
 		t.Fatalf("EnqueueDueEntitlementTransitions(): %v", err)
 	}
 	if err := store.MarkRolloverProcessing(ctx, source.ID, source.ValidUntil); err != nil {
