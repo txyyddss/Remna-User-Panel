@@ -5,22 +5,28 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/big"
 	"time"
 
+	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/rollover"
 )
 
-func (s *Service) monthlyAverageUsageBPS(ctx context.Context, now time.Time) (int, error) {
+type usageProjectionStatistics struct {
+	monthlyAverageUsageBPS   int
+	predictedAverageRollover model.Money
+}
+
+func (s *Service) usageProjectionStatistics(ctx context.Context, now time.Time) (usageProjectionStatistics, error) {
 	members, err := s.repository.ActiveMemberUsageForStatistics(ctx, now)
 	if err != nil {
-		return 0, fmt.Errorf("list active members for usage statistics: %w", err)
-	}
-	if len(members) == 0 {
-		return 0, nil
+		return usageProjectionStatistics{}, fmt.Errorf("list active members for usage statistics: %w", err)
 	}
 
-	var total float64
-	count := 0
+	var usageTotal float64
+	usageCount := 0
+	rolloverTotal := new(big.Int)
+	var rolloverCount int64
 	for _, member := range members {
 		purchase := member.Purchase
 		start := purchase.ValidFrom.UTC()
@@ -46,11 +52,31 @@ func (s *Service) monthlyAverageUsageBPS(ctx context.Context, now time.Time) (in
 		if ratio < 0 || math.IsNaN(ratio) || math.IsInf(ratio, 0) {
 			continue
 		}
-		total += ratio
-		count++
+		usageTotal += ratio
+		usageCount++
+		if !purchase.AutoRenewEnabled {
+			continue
+		}
+		rolloverCount++
+		if projection.PredictedRollover != nil {
+			rolloverTotal.Add(rolloverTotal, big.NewInt(projection.PredictedRollover.MinorInt64()))
+		}
 	}
-	if count == 0 {
-		return 0, nil
+	result := usageProjectionStatistics{predictedAverageRollover: model.TXBMoney(roundedAverageMinor(rolloverTotal, rolloverCount))}
+	if usageCount > 0 {
+		result.monthlyAverageUsageBPS = int(math.Round(usageTotal / float64(usageCount)))
 	}
-	return int(math.Round(total / float64(count))), nil
+	return result, nil
+}
+
+func roundedAverageMinor(total *big.Int, count int64) int64 {
+	if total == nil || total.Sign() <= 0 || count <= 0 {
+		return 0
+	}
+	quotient, remainder := new(big.Int), new(big.Int)
+	quotient.QuoRem(total, big.NewInt(count), remainder)
+	if remainder.Cmp(big.NewInt((count+1)/2)) >= 0 {
+		quotient.Add(quotient, big.NewInt(1))
+	}
+	return quotient.Int64()
 }

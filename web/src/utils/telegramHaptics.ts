@@ -25,6 +25,10 @@ function handleHapticClick(event: MouseEvent): void {
   if (!(event.target instanceof Element)) return
   const target = event.target.closest('[data-haptic]')
   if (!target || target.hasAttribute('disabled') || target.getAttribute('aria-disabled') === 'true') return
+  if (target.getAttribute('data-haptic') === 'selection') {
+    selectionHaptic()
+    return
+  }
   haptic(hapticImpactFor(target))
 }
 

@@ -20,9 +20,10 @@
 - `handlers.go` serves onboarding actions, dashboard, catalog, purchases, balance, and ledger history.
 - `purchases.go` serves the authenticated queued-purchase cancellation and TXB refund endpoint.
 - `member_purchase_operations.go` serves paid reset/refund quotes, idempotent mutations, and owner-scoped receipts.
+- `traffic_reset_automation.go` serves the onboarded member's account-wide automatic-reset preference and strict boolean update.
 - `member_connections.go` preserves scan and drop-route compatibility while the signed-handle command now queues a three-day block followed by disconnect.
 - `member_ip_blocks.go` lists owner-only active blocks, queues owner unblocks, and maps ownership mismatches to not found.
-- `member_routes.go` mounts the member connection, reset, refund, and operation resources.
+- `member_routes.go` mounts the member connection, reset automation, reset, refund, and operation resources.
 - `dashboard_usage.go` validates the authenticated member's UTC traffic range and serves the bounded per-node usage projection.
 - `statistics.go` serves the cached aggregate snapshot, on-demand shared
   ten-second node snapshot, and image-only process-local node Geocheck result; first-load provider failures are logged with the request ID.

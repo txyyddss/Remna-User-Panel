@@ -17,7 +17,6 @@ describe('CatalogFlowProgress', () => {
       'completed',
       'active',
       'inactive',
-      'inactive',
     ])
   })
 
@@ -34,7 +33,6 @@ describe('CatalogFlowProgress', () => {
     expect(icons.map((icon) => icon.classes().includes('catalog-progress__icon--completed'))).toEqual([
       true,
       true,
-      false,
       false,
       false,
     ])

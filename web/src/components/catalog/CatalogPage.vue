@@ -13,7 +13,6 @@ import CatalogConfirmation from './CatalogConfirmation.vue'
 import CatalogCouponStep from './CatalogCouponStep.vue'
 import CatalogFlowControls from './CatalogFlowControls.vue'
 import CatalogFlowProgress from './CatalogFlowProgress.vue'
-import CatalogNodes from './CatalogNodes.vue'
 import ComboOption from './ComboOption.vue'
 import SquadSelector from './SquadSelector.vue'
 import SquadActivationDialog from './SquadActivationDialog.vue'
@@ -21,7 +20,7 @@ import SquadActivationDialog from './SquadActivationDialog.vue'
 const activeStep = shallowRef(1)
 const sessionStore = useSessionStore()
 const router = useRouter()
-const stepKey = () => sessionStore.user?.id ? `txc-catalog-step:${sessionStore.user.id}` : null
+const stepKey = () => sessionStore.user?.id ? `txc-catalog-step:v2:${sessionStore.user.id}` : null
 const {
   catalog,
   balance,
@@ -54,14 +53,14 @@ const {
 } = useCatalog()
 
 async function restoreStepQuote(): Promise<void> {
-  if (![3, 4, 5].includes(activeStep.value) || loading.value || quoting.value || quoteUsable.value || purchase.value || !selectedCombo.value) return
+  if (![3, 4].includes(activeStep.value) || loading.value || quoting.value || quoteUsable.value || purchase.value || !selectedCombo.value) return
   await refreshQuote()
 }
 
 onMounted(() => {
   try {
     const value = Number(globalThis.sessionStorage?.getItem(stepKey() ?? ''))
-    if (value >= 1 && value <= 5) activeStep.value = value
+    if (value >= 1 && value <= 4) activeStep.value = value
   } catch { /* Storage is optional in restricted WebViews. */ }
   void restoreStepQuote()
 })
@@ -77,7 +76,6 @@ const selectedCoupon = computed(() => eligibleCoupons.value.find((grant) => gran
 const nextDisabled = computed(() => {
   if (activeStep.value === 1 || activeStep.value === 2) return !selectedCombo.value
   if (activeStep.value === 3) return !quoteUsable.value || !quote.value || quote.value.accessibleNodes.length === 0
-  if (activeStep.value === 4) return !quoteUsable.value
   return true
 })
 const activationOpen = shallowRef(false)
@@ -134,9 +132,9 @@ function goHome(): void {
 }
 
 async function advance(): Promise<void> {
-  if (!selectedCombo.value || activeStep.value >= 5) return
-  if (activeStep.value === 2 && !(await refreshQuote())) return
-  if (activeStep.value === 4 && (!quoteUsable.value || quoting.value)) return
+  if (!selectedCombo.value || activeStep.value >= 4) return
+  if (activeStep.value === 2 && (!(await refreshQuote()) || !quote.value?.accessibleNodes.length)) return
+  if (activeStep.value === 3 && (!quoteUsable.value || quoting.value)) return
   activeStep.value += 1
 }
 
@@ -164,7 +162,7 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
         </div>
       </template>
       <template v-else-if="catalog && balance">
-        <InlineNotice v-if="error && activeStep < 5" tone="warning">{{ error }}</InlineNotice>
+        <InlineNotice v-if="error && activeStep < 4" tone="warning">{{ error }}</InlineNotice>
         <Transition name="route" mode="out-in">
           <section :key="activeStep" class="catalog-flow-step">
             <div v-if="activeStep === 1" class="combo-section">
@@ -175,12 +173,11 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
               <div v-else class="empty-inline"><div><h3>{{ $t('catalog.noCombos') }}</h3><p>{{ $t('catalog.noCombosHint') }}</p></div><UButton color="neutral" variant="outline" :label="$t('common.refresh')" data-haptic @click="load" /></div>
             </div>
             <SquadSelector v-else-if="activeStep === 2" :squads="visibleSquads" :selected-ids="selectedSquadIds" :included-ids="includedSquadIds" @toggle="toggleSquad" />
-            <CatalogNodes v-else-if="activeStep === 3" :quote="quote" :loading="quoting" />
-            <CatalogCouponStep v-else-if="activeStep === 4" v-model:coupon-grant-id="selectedCouponGrantId" :coupons="eligibleCoupons" :eligible-ids="eligibleCoupons.map((grant) => grant.id)" :discarding="couponDiscarding" :discard-coupon="discardCoupon" :quoting="quoting" @redeemed="handleCouponRedeemed" />
-            <CatalogCheckout v-else-if="activeStep === 5" :combo="selectedCombo" :squads="selectedSquads" :coupon="selectedCoupon" :quote="quote" :quoting="quoting" :error="error" :purchasing="purchasing || activationPrompting" :needs-balance="needsBalance" @back="goBack" @confirm="handlePurchase" />
+            <CatalogCouponStep v-else-if="activeStep === 3" v-model:coupon-grant-id="selectedCouponGrantId" :coupons="eligibleCoupons" :eligible-ids="eligibleCoupons.map((grant) => grant.id)" :discarding="couponDiscarding" :discard-coupon="discardCoupon" :quoting="quoting" @redeemed="handleCouponRedeemed" />
+            <CatalogCheckout v-else-if="activeStep === 4" :combo="selectedCombo" :squads="selectedSquads" :coupon="selectedCoupon" :quote="quote" :quoting="quoting" :error="error" :purchasing="purchasing || activationPrompting" :needs-balance="needsBalance" @back="goBack" @confirm="handlePurchase" />
           </section>
         </Transition>
-        <CatalogFlowControls v-if="activeStep < 5" :show-back="activeStep > 1" :next-disabled="nextDisabled" :loading="quoting" :next-label="$t('catalog.continue')" @back="goBack" @next="advance" />
+        <CatalogFlowControls v-if="activeStep < 4" :show-back="activeStep > 1" :next-disabled="nextDisabled" :loading="quoting" :next-label="$t('catalog.continue')" @back="goBack" @next="advance" />
       </template>
       <div v-else class="error-state">
         <h1>{{ $t('catalog.unavailable') }}</h1>

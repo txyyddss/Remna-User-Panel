@@ -48,7 +48,7 @@ describe('statistics SVG charts', () => {
     const zero = { currency: 'TXB', minor: '0', display: '0.00 TXB' } as const
     const database = {
       newUserConversionPercent: 0, averageSpend: zero, spendMinimum: zero, spendMaximum: zero,
-      subscriptionStates: [], averageRollover: zero, averageCheckInReward: zero, comboShares: [],
+      subscriptionStates: [], averageCheckInReward: zero, comboShares: [],
       groupMessagesTotal: 0, averageOptionalSquads: 0, paymentStatuses: [], databaseBytes: '0',
       squadByCombo: [],
       comboBySquad: [{

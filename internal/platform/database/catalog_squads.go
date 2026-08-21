@@ -60,7 +60,8 @@ func (s *Store) SaveSquadProduct(ctx context.Context, input SquadProductInput) (
 func virtualSquad(input SquadProductInput, now time.Time) model.SquadProduct {
 	return model.SquadProduct{ID: input.RemnaSquadUUID, RemnaSquadUUID: input.RemnaSquadUUID, Name: input.Name,
 		Description: strings.TrimSpace(input.Description), PriceTXBMinor: input.PriceTXBMinor, Price: model.TXBMoney(input.PriceTXBMinor),
-		Profile: input.Profile, Visible: input.Visible, UpstreamPresent: true, StockLimit: input.StockLimit, ActivationRequired: input.ActivationRequired, CreatedAt: now, UpdatedAt: now}
+		Profile: input.Profile, Visible: input.Visible, UpstreamPresent: true, StockLimit: input.StockLimit, ActivationRequired: input.ActivationRequired,
+		AccessibleNodes: []model.CatalogNode{}, CreatedAt: now, UpdatedAt: now}
 }
 
 // SquadProductByRemnaUUID resolves a persisted local override.
@@ -161,6 +162,7 @@ func scanSquad(row rowScanner) (model.SquadProduct, error) {
 	product.UpstreamPresent = true
 	product.StockLimit = intPointer(stockLimit)
 	product.Price = model.TXBMoney(product.PriceTXBMinor)
+	product.AccessibleNodes = []model.CatalogNode{}
 	var err error
 	product.Profile, err = squadprofile.ParseJSON(profileJSON.String)
 	if err != nil {

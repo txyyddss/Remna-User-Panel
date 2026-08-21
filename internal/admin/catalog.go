@@ -114,7 +114,11 @@ func (s *Service) Squads(ctx context.Context) ([]model.SquadProduct, error) {
 	for _, squad := range upstream {
 		product, exists := overrideByUUID[squad.UUID]
 		if !exists {
-			product = model.SquadProduct{ID: squad.UUID, RemnaSquadUUID: squad.UUID, Visible: false, Price: model.TXBMoney(0)}
+			product = model.SquadProduct{ID: squad.UUID, RemnaSquadUUID: squad.UUID, Visible: false, Price: model.TXBMoney(0),
+				AccessibleNodes: []model.CatalogNode{}}
+		}
+		if product.AccessibleNodes == nil {
+			product.AccessibleNodes = []model.CatalogNode{}
 		}
 		product.ID = squad.UUID
 		product.RemnaSquadUUID = squad.UUID

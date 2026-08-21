@@ -14,6 +14,7 @@ const fullAddon: SquadProduct = {
   visible: true,
   upstreamPresent: true,
   activationRequired: false,
+  accessibleNodes: [],
   stockRemaining: 0,
   createdAt: '2026-08-14T00:00:00Z',
   updatedAt: '2026-08-14T00:00:00Z',
@@ -42,7 +43,8 @@ describe('SquadSelector', () => {
       props: { squads: [occupiedAddon], selectedIds: [], includedIds: [] },
     })
 
-    expect(wrapper.text()).toContain('60% occupied')
+    expect(wrapper.text()).toContain('60%')
+    expect(wrapper.text()).not.toContain('occupied')
     expect(wrapper.text()).not.toContain('6/10')
   })
 
@@ -58,7 +60,7 @@ describe('SquadSelector', () => {
       },
     })
 
-    expect(wrapper.findAll('.squad-option__occupancy').map(node => node.text()))
-      .toEqual(['1% occupied', '99% occupied'])
+    expect(wrapper.findAll('.squad-profile-summary__facts span').map(node => node.text()))
+      .toEqual(['1%', '99%'])
   })
 })

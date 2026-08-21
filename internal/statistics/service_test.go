@@ -15,8 +15,8 @@ func TestRefreshRemoteUsesCreatedUsersAndRolloverTermUsage(t *testing.T) {
 	now := time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC)
 	firstID, secondID := "remote-1", "remote-2"
 	repository := &statisticsRepositoryStub{members: []model.StatisticsUsageMember{
-		{Purchase: model.Purchase{ID: "purchase-1", UserID: "user-1", ValidFrom: now.AddDate(0, 0, -10), ValidUntil: now.AddDate(0, 0, 20)}, RemoteUserID: firstID},
-		{Purchase: model.Purchase{ID: "purchase-2", UserID: "user-2", ValidFrom: now.AddDate(0, 0, -40), ValidUntil: now.AddDate(0, 0, 20)}, RemoteUserID: secondID},
+		{Purchase: model.Purchase{ID: "purchase-1", UserID: "user-1", PriceTXBMinor: 1_000, AutoRenewEnabled: true, ValidFrom: now.AddDate(0, 0, -10), ValidUntil: now.AddDate(0, 0, 20)}, RemoteUserID: firstID},
+		{Purchase: model.Purchase{ID: "purchase-2", UserID: "user-2", PriceTXBMinor: 1_000, AutoRenewEnabled: true, ValidFrom: now.AddDate(0, 0, -40), ValidUntil: now.AddDate(0, 0, 20)}, RemoteUserID: secondID},
 	}}
 	firstUsed, secondUsed := int64(250), int64(750)
 	provider := &statisticsProviderStub{
@@ -32,6 +32,9 @@ func TestRefreshRemoteUsesCreatedUsersAndRolloverTermUsage(t *testing.T) {
 	}
 	if remote.WeeklyUserIncrease != 9 || remote.MonthlyAverageUsageBPS != 5_000 || remote.MonthlyAverageUsage != 50 {
 		t.Fatalf("remote statistics = %+v", remote)
+	}
+	if remote.PredictedAverageRollover.Minor != "125" {
+		t.Fatalf("predicted average rollover = %s, want 125 including one valid zero projection", remote.PredictedAverageRollover.Minor)
 	}
 	if !provider.starts[firstID].Equal(now.AddDate(0, 0, -10)) || !provider.starts[secondID].Equal(now.AddDate(0, 0, -40)) {
 		t.Fatalf("usage starts = %+v", provider.starts)

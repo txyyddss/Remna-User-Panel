@@ -4,6 +4,7 @@ import MarkdownContent from '@/components/common/MarkdownContent.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import SquadProfileSummary from '@/components/squad-profile/SquadProfileSummary.vue'
 import { formatBytes, formatMoney } from '@/utils/format'
+import SquadNodeBlocks from './SquadNodeBlocks.vue'
 
 defineProps<{
   combo: Combo
@@ -39,7 +40,10 @@ defineEmits<{ select: [id: string] }>()
       <span><UIcon name="i-ph-chart-line-up" />{{ $t('catalog.rolloverThreshold', { threshold: (combo.rolloverMinRemainingBps / 100).toFixed(2) }) }}</span>
     </span>
     <div v-if="combo.includedSquads.length" class="combo-option__squads">
-      <SquadProfileSummary v-for="squad in combo.includedSquads" :key="squad.id" :name="squad.name" :profile="squad.profile" :description="squad.description" presentation="member" compact />
+      <div v-for="squad in combo.includedSquads" :key="squad.id">
+        <SquadProfileSummary :name="squad.name" :profile="squad.profile" :description="squad.description" presentation="member" compact />
+        <SquadNodeBlocks :nodes="squad.accessibleNodes" />
+      </div>
     </div>
     <span class="combo-option__price">
       <strong>{{ formatMoney(combo.price) }}</strong>

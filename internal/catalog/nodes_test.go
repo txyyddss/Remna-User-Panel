@@ -96,58 +96,18 @@ func TestQuoteAccessibleNodesHandlesUnavailableProviders(t *testing.T) {
 			repository := nodeCatalogRepository()
 			remote := newCatalogNodeRemote()
 			test.configure(remote)
-			_, err := NewService(repository, remote, time.Minute).quoteAccessibleNodes(context.Background(), "core", []string{"addon-squad"})
+			_, err := NewService(repository, remote, time.Minute).Catalog(context.Background())
 			if !errors.Is(err, test.wantErr) {
-				t.Fatalf("quoteAccessibleNodes() error = %v, want %v", err, test.wantErr)
+				t.Fatalf("Catalog() node hydration error = %v, want %v", err, test.wantErr)
 			}
 		})
 	}
 
-	service := newCatalogServiceForTest(nodeCatalogRepository(), &catalogRemnawave{})
-	nodes, err := service.quoteAccessibleNodes(context.Background(), "core", []string{"addon-squad"})
-	if !errors.Is(err, ErrNoAccessibleNodes) || len(nodes) != 0 {
-		t.Fatalf("quoteAccessibleNodes() without node provider = (%v, %v), want ErrNoAccessibleNodes", nodes, err)
-	}
-}
-
-func TestSelectedSquadUUIDs(t *testing.T) {
-	t.Parallel()
-
-	catalog := model.Catalog{
-		Combos: []model.Combo{{
-			ID: "core",
-			IncludedSquads: []model.SquadProduct{
-				{RemnaSquadUUID: "core-squad"},
-				{RemnaSquadUUID: "shared-squad"},
-			},
-		}},
-		Addons: []model.SquadProduct{{ID: "addon-id", RemnaSquadUUID: "addon-squad"}},
-	}
-	tests := []struct {
-		name     string
-		comboID  string
-		addonIDs []string
-		want     []string
-	}{
-		{
-			name:     "deduplicates known selections",
-			comboID:  "core",
-			addonIDs: []string{" addon-id ", "addon-squad", "unknown"},
-			want:     []string{"addon-squad", "core-squad", "shared-squad"},
-		},
-		{
-			name:     "ignores unknown combo and add-ons",
-			comboID:  "unknown",
-			addonIDs: []string{"unknown"},
-			want:     []string{},
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			if got := selectedSquadUUIDs(catalog, test.comboID, test.addonIDs); !reflect.DeepEqual(got, test.want) {
-				t.Fatalf("selectedSquadUUIDs() = %v, want %v", got, test.want)
-			}
-		})
+	repository := &catalogQuoteRepository{catalogRepository: nodeCatalogRepository(), quote: model.PurchaseQuote{ComboID: "core"}}
+	service := newCatalogServiceForTest(repository, &catalogRemnawave{})
+	quote, err := service.Quote(context.Background(), model.User{ID: "user", OnboardingState: "complete"}, "core", []string{"addon-squad"}, "")
+	if !errors.Is(err, ErrNoAccessibleNodes) || len(quote.AccessibleNodes) != 0 {
+		t.Fatalf("Quote() without node provider = (%v, %v), want ErrNoAccessibleNodes", quote.AccessibleNodes, err)
 	}
 }
 

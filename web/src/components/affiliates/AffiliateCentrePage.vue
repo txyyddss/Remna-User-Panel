@@ -34,7 +34,7 @@ useTelegramBackButton(computed(() => true), async () => { await router.push('/ho
     </template>
     <div v-else class="error-state">
       <h2>{{ $t('affiliates.unavailable') }}</h2><p>{{ state.error.value }}</p>
-      <UButton icon="i-ph-arrows-clockwise" :label="$t('common.tryAgain')" @click="state.load" />
+      <UButton icon="i-ph-arrows-clockwise" :label="$t('common.tryAgain')" data-haptic @click="state.load" />
     </div>
   </main>
 </template>

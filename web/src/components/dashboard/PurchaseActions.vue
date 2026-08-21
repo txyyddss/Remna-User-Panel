@@ -8,6 +8,7 @@ import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
 import { t } from '@/i18n'
 import { formatDateTime, formatMoney } from '@/utils/format'
 import AutoRenewalControl from './AutoRenewalControl.vue'
+import TrafficResetAutomationControl from './TrafficResetAutomationControl.vue'
 
 const props = defineProps<{ purchase: Purchase }>()
 const emit = defineEmits<{ changed: [] }>()
@@ -114,6 +115,7 @@ useTelegramBackButton(ownsBack, closeDialog)
       icon="i-ph-arrow-clockwise"
       :loading="operation.checking.value"
       :label="$t('operations.checkStatus')"
+      data-haptic
       @click="operation.refresh"
     />
 
@@ -122,10 +124,19 @@ useTelegramBackButton(ownsBack, closeDialog)
       :title="$t(`purchaseOperations.${dialogKind ?? 'reset'}.title`)"
       :description="$t(`purchaseOperations.${dialogKind ?? 'reset'}.description`)"
       :dismissible="!operation.mutating.value"
+      :close="{ 'data-haptic': '' }"
       :ui="{ footer: 'justify-end' }"
     >
       <template #body>
         <div class="purchase-operation-dialog">
+          <TrafficResetAutomationControl
+            v-if="dialogKind === 'reset'"
+            :enabled="operation.resetAutomation.value?.enabled ?? null"
+            :loading="operation.resetAutomationLoading.value"
+            :saving="operation.resetAutomationSaving.value"
+            :error="operation.resetAutomationError.value"
+            @update="operation.setResetAutomation"
+          />
           <USkeleton v-if="operation.quoteLoading.value" class="h-28" />
           <template v-else-if="currentQuote">
             <dl class="purchase-operation-quote">
@@ -146,12 +157,13 @@ useTelegramBackButton(ownsBack, closeDialog)
             icon="i-ph-arrow-clockwise"
             :loading="operation.checking.value"
             :label="$t('operations.checkStatus')"
+            data-haptic
             @click="operation.refresh"
           />
         </div>
       </template>
       <template #footer>
-        <UButton color="neutral" variant="outline" :disabled="operation.mutating.value" :label="$t('common.close')" @click="closeDialog" />
+        <UButton color="neutral" variant="outline" :disabled="operation.mutating.value" :label="$t('common.close')" data-haptic @click="closeDialog" />
         <UButton
           v-if="!operation.receipt.value"
           :color="dialogKind === 'refund' ? 'warning' : 'primary'"

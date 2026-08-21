@@ -63,7 +63,8 @@ func scanCombo(row rowScanner) (model.Combo, error) {
 	}
 	combo.IncludedSquads = make([]model.SquadProduct, 0, len(squadUUIDs))
 	for _, uuid := range uniqueSorted(squadUUIDs) {
-		combo.IncludedSquads = append(combo.IncludedSquads, model.SquadProduct{ID: uuid, RemnaSquadUUID: uuid, UpstreamPresent: true})
+		combo.IncludedSquads = append(combo.IncludedSquads, model.SquadProduct{ID: uuid, RemnaSquadUUID: uuid, UpstreamPresent: true,
+			AccessibleNodes: []model.CatalogNode{}})
 	}
 	combo.Active = active == 1
 	combo.Price = model.TXBMoney(combo.PriceTXBMinor)

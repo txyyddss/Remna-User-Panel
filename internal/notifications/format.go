@@ -46,6 +46,13 @@ func notificationFields(payload jobpayload.UserNotification, copy copySet, locat
 		return renewalFields(copy, facts, location)
 	case jobpayload.UserEventTrafficThreshold:
 		return trafficFields(copy, facts)
+	case jobpayload.UserEventAutomaticReset:
+		return automaticResetFields(copy, facts, location)
+	case jobpayload.UserEventAutomaticResetInsufficient:
+		return automaticResetInsufficientFields(copy, facts)
+	case jobpayload.UserEventAutomaticResetFailed:
+		return requiredFields(copy, facts, pair("combo", FactCombo), moneyPair("refunded", FactAmount),
+			moneyPair("balance", FactBalance), pair("reason", FactReason), datePair("time", FactTime, location))
 	case jobpayload.UserEventGroupReward:
 		return requiredFields(copy, facts, pair("messages", FactMessages), moneyPair("reward", FactReward),
 			moneyPair("balance", FactBalance), datePair("time", FactTime, location))
@@ -54,6 +61,26 @@ func notificationFields(payload jobpayload.UserNotification, copy copySet, locat
 	default:
 		return nil, errors.New("unsupported notification format")
 	}
+}
+
+func automaticResetFields(copy copySet, facts map[string]string, location *time.Location) ([]cardField, error) {
+	usage, err := trafficUsage(facts)
+	if err != nil {
+		return nil, err
+	}
+	return requiredFields(copy, facts, pair("combo", FactCombo), literalPair("traffic", usage),
+		translatedPair("reset", FactReset, copy), moneyPair("charged", FactCharge), moneyPair("balance", FactBalance),
+		datePair("time", FactTime, location))
+}
+
+func automaticResetInsufficientFields(copy copySet, facts map[string]string) ([]cardField, error) {
+	usage, err := trafficUsage(facts)
+	if err != nil {
+		return nil, err
+	}
+	return requiredFields(copy, facts, pair("combo", FactCombo), literalPair("traffic", usage),
+		moneyPair("requiredCharge", FactCharge), moneyPair("currentBalance", FactBalance),
+		fixedPair("automation", "disabled", copy))
 }
 
 func activationFields(copy copySet, facts map[string]string, location *time.Location) ([]cardField, error) {
@@ -84,13 +111,20 @@ func renewalFields(copy copySet, facts map[string]string, location *time.Locatio
 }
 
 func trafficFields(copy copySet, facts map[string]string) ([]cardField, error) {
-	usage, err := byteRatio(facts, FactUsed, FactTrafficLimit)
+	usage, err := trafficUsage(facts)
 	if err != nil {
 		return nil, err
 	}
-	used, _ := strconv.ParseInt(facts[FactUsed], 10, 64)
-	limit, _ := strconv.ParseInt(facts[FactTrafficLimit], 10, 64)
-	usage += fmt.Sprintf(" (%.1f%%)", float64(used)*100/float64(limit))
 	return requiredFields(copy, facts, pair("combo", FactCombo), literalPair("traffic", usage),
 		bytesPair("remaining", FactRemaining), translatedPair("reset", FactReset, copy))
+}
+
+func trafficUsage(facts map[string]string) (string, error) {
+	usage, err := byteRatio(facts, FactUsed, FactTrafficLimit)
+	if err != nil {
+		return "", err
+	}
+	used, _ := strconv.ParseInt(facts[FactUsed], 10, 64)
+	limit, _ := strconv.ParseInt(facts[FactTrafficLimit], 10, 64)
+	return usage + fmt.Sprintf(" (%.1f%%)", float64(used)*100/float64(limit)), nil
 }

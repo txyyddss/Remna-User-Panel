@@ -3,7 +3,7 @@
 This package builds the live catalog, validates purchase selections against current Remnawave squads, and serves member purchase and dashboard workflows.
 
 - `service.go` defines repository/provider contracts and coordinates quotes, purchases, process-local dashboard caching, and subscription revocation without durable bearer storage.
-- `catalog.go` hydrates sparse local merchandising and typed squad profiles with live Remnawave squad identities and read-only node metadata.
+- `catalog.go` hydrates sparse local merchandising and typed squad profiles with live Remnawave squad identities and one read-only node snapshot.
 - `automatic_renewal.go` owns member toggle/status projections, catalog blocking, due-cycle queue revalidation, one-successor commits, and failure notices. It keeps provider access behind the existing queued adapter boundary.
 - `automatic_renewal_test.go` covers catalog blocking and enablement eligibility without running provider calls.
 - `renewals.go` retains the internal legacy batch implementation only; manual renewal is no longer a public member flow.
@@ -12,8 +12,9 @@ This package builds the live catalog, validates purchase selections against curr
 - `revoke_operations.go` stores credential-rotation intent with only a hash of the prior subscription URL.
 - `revoke_worker.go` performs one queued rotation and reconciles ambiguous provider outcomes.
 - `revoke_lifecycle.go` owns the single-item receipt lifecycle and dashboard-cache invalidation.
-- `nodes.go` resolves the queued upstream node preview for the exact combo and optional-squad selection used by a quote, and projects enabled, display-only node metadata into the catalog for Home's usage multiplier lookup. Node metadata is never persisted.
-- `nodes_test.go` verifies quote node projection, filtering, ordering, selection deduplication, and provider failure handling.
+- `nodes.go` queries accessibility once per unique live squad, filters disabled nodes, attaches deterministic node groups to each product, and derives the authoritative quote union from that hydrated snapshot. Node assignments are never persisted.
+- `node_selection.go` normalizes combo and add-on squad selection for quote node unioning.
+- `catalog_node_groups_test.go`, `nodes_test.go`, `node_projection_test.go`, and `node_selection_test.go` verify grouping, filtering, deterministic ordering, node/selection deduplication, quote reuse, and provider failure handling.
 - `usage.go` validates a member-selected UTC range and projects live, bounded per-node traffic through the optional queued provider reader.
 - `rollover.go` validates the active purchase owner and composes the fresh aggregate rollover projection through the optional queued usage-snapshot reader; it never stores provider series.
 - `service_test.go` verifies forwarding, validation errors, dashboard freshness, and subscription revocation behavior.

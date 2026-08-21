@@ -70,7 +70,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `affiliate_referrals_test.go` covers missing, self, frozen, and authentication-locked inviters plus locale normalization.
 - `affiliate_config_test.go` covers immutable version increments and stale-write conflicts.
 - `notification_events.go` owns semantic event deduplication and atomic outbox
-  release; `notification_scans.go` owns 48-hour and reset-period eligibility.
+  release, including provider-completion timestamps; `notification_scans.go` owns 48-hour and reset-period eligibility.
 - `notification_purchases.go` snapshots expiration, queued activation, and
   automatic-renewal rollover outcomes.
 - `notification_admin_finance.go`, `notification_admin_cancel.go`, and
@@ -121,6 +121,8 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `payment_refund_resolution.go` closes only open Stars refund receipts from authoritative callback evidence.
 - `member_operation_begin.go` and `member_operation_validation.go` atomically validate and create member reset/refund commands.
 - `member_reset_compensation.go` credits a failed paid-reset debit exactly once with terminal receipt state.
+- `traffic_reset_automation.go` reads and immediately saves the account-wide preference.
+- `automatic_traffic_reset.go` revalidates the preference and active purchase, deduplicates the reset period, then atomically disables-and-notifies or creates the paid provider operation, ledger debit, and gated success event.
 - `member_refund_commit.go` atomically credits a first-term refund and advances the independent queued timeline.
 - `provider_operations.go`, `provider_operation_lifecycle.go`, `provider_operation_queries.go`, and `provider_operation_items.go` persist provider-neutral receipts, items, attempts, and replay facts.
 - `provider_operation_notification_completion.go` releases pending user messages
@@ -186,6 +188,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `continuity_test.go` covers three-minute provider-expiry preparation without an access gap.
 - `connection_scans_test.go` covers metadata-only scan lifecycle and expiry.
 - `member_operations_test.go` covers paid reset compensation and zero-usage first-term refunds.
+- `automatic_traffic_reset_test.go` covers strict transactional debit replay, provider-gated success, insufficient-balance disablement, and failure compensation notice release.
 - `provider_operations_test.go` covers receipt state transitions, replay conflicts, and ambiguous outcomes.
 - `notification_events_test.go` covers provider-gate deduplication, reminder
   eligibility, and traffic reset-period rearming.

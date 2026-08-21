@@ -62,6 +62,12 @@
     "eligibleUntil": "可申请至",
     "ineligible": "当前购买不符合此操作条件。",
     "quoteChanged": "资格或价格已变化，请检查刷新后的报价再确认。",
+    "automation": {
+      "label": "自动流量重置",
+      "description": "当前或未来购买的用量超过 99% 后自动重置，并按正常重置价格扣款。",
+      "loadFailed": "暂时无法获取自动重置设置。",
+      "saveFailed": "无法保存自动重置设置。"
+    },
     "reset": {
       "title": "立即重置流量？",
       "description": "开始服务商重置前，将按服务器计算的价格扣除 TXB。",

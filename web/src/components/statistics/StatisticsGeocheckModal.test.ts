@@ -21,6 +21,7 @@ describe('StatisticsGeocheckModal', () => {
       global: { stubs, mocks: { $t: (key: string) => key } },
     })
     expect(wrapper.find('img').attributes('src')).toBe('data:image/svg+xml;base64,PHN2Zy8+')
+    expect(wrapper.findAll('.statistics-geocheck__controls [data-haptic]')).toHaveLength(3)
   })
 
   it('shows loading and unavailable states', async () => {

@@ -24,6 +24,9 @@ describe('StatisticsNodes', () => {
       },
     })
     const action = wrapper.find('[aria-label="statistics.geocheck.open"]')
+    expect(action.attributes('data-haptic')).toBeDefined()
+    expect(wrapper.text()).not.toContain('statistics.nodeXrayVersion')
+    expect(wrapper.text()).not.toContain('statistics.nodeMultiplier')
     await action.trigger('click')
     expect(wrapper.emitted('openGeocheck')).toEqual([[snapshot.nodes[0]]])
   })

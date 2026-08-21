@@ -75,7 +75,7 @@
     "continuePayment": "前往付款",
     "accessibleNodes": "可用节点",
     "accessibleNodesHint": "以下节点可用于当前选择。",
-    "nodeMultiplier": "{multiplier}× 流量倍率",
+    "nodeMultiplier": "{multiplier}x 流量倍率",
     "noAccessibleNodes": "暂时没有可用节点",
     "noAccessibleNodesHint": "服务器刷新当前选择后可继续。",
     "couponStepHint": "选择一个可用优惠券，或添加兑换码。",

@@ -7,14 +7,17 @@ const apiMocks = vi.hoisted(() => ({
   getOperation: vi.fn(),
   getPurchaseRefundQuote: vi.fn(),
   getTrafficResetQuote: vi.fn(),
+  getTrafficResetAutomation: vi.fn(),
+  updateTrafficResetAutomation: vi.fn(),
   refundPurchase: vi.fn(),
   resetPurchaseTraffic: vi.fn(),
 }))
 const createUuid = vi.hoisted(() => vi.fn())
+const hapticMocks = vi.hoisted(() => ({ notifyHaptic: vi.fn(), selectionHaptic: vi.fn() }))
 
 vi.mock('@/api/memberOperations', () => ({ memberOperationsApi: apiMocks }))
 vi.mock('@/utils/browserCompatibility', () => ({ createUuid }))
-vi.mock('@/utils/telegram', () => ({ notifyHaptic: vi.fn() }))
+vi.mock('@/utils/telegram', () => hapticMocks)
 
 import { ApiError } from '@/api/client'
 import { usePurchaseOperations } from './usePurchaseOperations'
@@ -79,6 +82,23 @@ describe('usePurchaseOperations', () => {
     await state.loadRefundEligibility()
 
     expect(state.refundQuote.value?.eligible).toBe(true)
+    scope.stop()
+  })
+
+  it('loads and immediately persists the account-wide reset preference', async () => {
+    apiMocks.getTrafficResetQuote.mockResolvedValue(quote)
+    apiMocks.getTrafficResetAutomation.mockResolvedValue({ enabled: true, updatedAt: '2026-08-18T00:00:00Z' })
+    apiMocks.updateTrafficResetAutomation.mockResolvedValue({ enabled: false, updatedAt: '2026-08-18T00:01:00Z' })
+    const scope = effectScope()
+    const state = scope.run(() => usePurchaseOperations(() => 'purchase-1'))!
+
+    await state.loadQuote('reset')
+    expect(state.resetAutomation.value?.enabled).toBe(true)
+    await state.setResetAutomation(false)
+
+    expect(apiMocks.updateTrafficResetAutomation).toHaveBeenCalledWith(false)
+    expect(hapticMocks.selectionHaptic).toHaveBeenCalledOnce()
+    expect(state.resetAutomation.value?.enabled).toBe(false)
     scope.stop()
   })
 })

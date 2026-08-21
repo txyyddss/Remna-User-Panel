@@ -62,6 +62,12 @@
     "eligibleUntil": "Eligible until",
     "ineligible": "This purchase is not eligible for the selected action.",
     "quoteChanged": "Eligibility or pricing changed. Review the refreshed quote before confirming again.",
+    "automation": {
+      "label": "Automatic traffic reset",
+      "description": "Reset any current or future purchase after usage rises above 99%. The server charges the normal reset price.",
+      "loadFailed": "The automatic reset preference is temporarily unavailable.",
+      "saveFailed": "The automatic reset preference could not be saved."
+    },
     "reset": {
       "title": "Reset traffic now?",
       "description": "The server-calculated TXB price is charged before the provider reset starts.",

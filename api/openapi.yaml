@@ -1,11 +1,11 @@
 openapi: 3.1.0
 info: { title: TX Carpool API, version: 1.0.0, description: "HTTP contract for the TX Carpool Telegram Mini App. User and admin endpoints use a Secure, HttpOnly session cookie established from validated Telegram Mini App `initData`. Every authenticated browser request also carries a five-minute HMAC timestamp, unique nonce, and signature derived from a same-origin companion key. Provider callbacks use provider-specific signatures and are never authenticated by the browser session. All identifiers and timestamps are strings. TXB values use integer hundredths encoded as decimal strings. Traffic byte counts are decimal strings. The server is authoritative for prices, exchange rates, entitlement dates, and payment state.", license: { name: Proprietary } }
 servers: [{ url: /, description: Same-origin API }]
-tags: [{ name: Authentication }, { name: Onboarding }, { name: Dashboard }, { name: Catalog }, { name: Billing }, { name: Affiliates }, { name: Activity }, { name: Coupons }, { name: Questionnaires }, { name: Emby }, { name: Admin }, { name: Database Administration }, { name: Webhooks }, { name: Operations }]
 security: [{ cookieSession: [], requestTimestamp: [], requestNonce: [], requestSignature: [] }]
 paths:
   /api/v1/auth/telegram: { $ref: './paths/api-v1-auth-telegram.yaml' }
   /api/v1/me: { $ref: './paths/api-v1-me.yaml' }
+  /api/v1/me/traffic-reset-automation: { $ref: './paths/api-v1-me-traffic-reset-automation.yaml' }
   /api/v1/onboarding/invites: { $ref: './paths/api-v1-onboarding-invites.yaml' }
   /api/v1/onboarding/membership/check: { $ref: './paths/api-v1-onboarding-membership-check.yaml' }
   /api/v1/onboarding/username: { $ref: './paths/api-v1-onboarding-username.yaml' }
@@ -223,6 +223,7 @@ components:
     ConnectionDropRequest: { $ref: './components/schemas/schemas-17.yaml#/ConnectionDropRequest' }
     IPBlock: { $ref: './components/schemas/schemas-17.yaml#/IPBlock' }
     TrafficResetQuote: { $ref: './components/schemas/schemas-17.yaml#/TrafficResetQuote' }
+    TrafficResetAutomation: { $ref: './components/schemas/schemas-17.yaml#/TrafficResetAutomation' }
     MemberRefundQuote: { $ref: './components/schemas/schemas-17.yaml#/MemberRefundQuote' }
     BillingAmountLimits: { $ref: './components/schemas/schemas-17.yaml#/BillingAmountLimits' }
     BillingAmountLimitsWrite: { $ref: './components/schemas/schemas-17.yaml#/BillingAmountLimitsWrite' }

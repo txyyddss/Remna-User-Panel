@@ -4,6 +4,7 @@
 - `eligibility.go` applies immutable reset pricing and refund eligibility rules.
 - `service.go` creates idempotent durable operations without provider calls in transactions.
 - `worker.go` owns shared durable phases and receipt completion.
+- `automation.go` owns the account preference service boundary and deterministic purchase-plus-reset-period command key.
 - `reset_worker.go` reconciles reset timestamps and requests once-only compensation.
 - `refund_worker.go` quiesces, rechecks usage, restores conflicts, and commits refunds.
 - `eligibility_test.go` covers cadence rounding and the strict refund boundary.

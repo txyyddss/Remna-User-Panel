@@ -12,9 +12,8 @@ const stepperIndex = computed(() => Math.max(0, step.value - 1))
 const items = computed(() => [
   { value: 1, title: t('catalog.steps.core'), icon: 'i-ph-cube' },
   { value: 2, title: t('catalog.steps.squads'), icon: 'i-ph-users-three' },
-  { value: 3, title: t('catalog.steps.nodes'), icon: 'i-ph-network' },
-  { value: 4, title: t('catalog.steps.coupon'), icon: 'i-ph-ticket' },
-  { value: 5, title: t('catalog.steps.review'), icon: 'i-ph-list-checks' },
+  { value: 3, title: t('catalog.steps.coupon'), icon: 'i-ph-ticket' },
+  { value: 4, title: t('catalog.steps.review'), icon: 'i-ph-list-checks' },
 ])
 
 </script>

@@ -5,9 +5,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
+	"github.com/txyyddss/Remna-User-Panel/internal/notifications"
+	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
 	"github.com/txyyddss/Remna-User-Panel/internal/providerops"
+	"github.com/txyyddss/Remna-User-Panel/internal/purchaseops"
 )
 
 // CompensateTrafficReset credits one failed reset debit and closes its receipt atomically.
@@ -65,6 +69,26 @@ func (s *Store) CompensateTrafficReset(ctx context.Context, operationID, errorCo
 	}
 	if affected, rowsErr := result.RowsAffected(); rowsErr != nil || affected != 1 {
 		return ErrConflict
+	}
+	if purchaseops.IsAutomaticTrafficResetKey(operation.IdempotencyKey) {
+		var combo string
+		if err := tx.QueryRowContext(ctx, `SELECT combos.name FROM provider_operation_items item
+			JOIN purchases ON purchases.id=item.target_id JOIN combos ON combos.id=purchases.combo_id
+			WHERE item.operation_id=? AND item.item_key='purchase'`, operationID).Scan(&combo); err != nil {
+			return err
+		}
+		balance, err := balanceTx(ctx, tx, userID)
+		if err != nil {
+			return err
+		}
+		if _, err := s.insertUserNotificationTx(ctx, tx, "automatic-reset-failed:"+operationID, userID,
+			jobpayload.UserEventAutomaticResetFailed, "", map[string]string{
+				notifications.FactCombo: combo, notifications.FactAmount: strconv.FormatInt(-debit, 10),
+				notifications.FactBalance: strconv.FormatInt(balance, 10), notifications.FactReason: code,
+				notifications.FactTime: now.UTC().Format(time.RFC3339Nano),
+			}, now); err != nil {
+			return err
+		}
 	}
 	return tx.Commit()
 }

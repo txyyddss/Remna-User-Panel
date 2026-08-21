@@ -27,19 +27,19 @@ const combo = {
   updatedAt: '2026-08-08T00:00:00Z',
 }
 
-async function mountPage(purchase: object | null, step = 5, confirmPurchase = vi.fn()) {
+async function mountPage(purchase: object | null, step = 4, confirmPurchase = vi.fn(), accessibleNodes: object[] | null = null) {
   const refreshQuote = vi.fn().mockResolvedValue(true)
   const autoRenewalBlocked = shallowRef(false)
   catalogMock.useCatalog.mockReturnValue({
-    catalog: shallowRef({ combos: [combo], addons: [] }),
+    catalog: shallowRef({ combos: [combo], addons: [], nodes: [] }),
     balance: shallowRef({ currency: 'TXB', minor: '1000', display: '10.00 TXB' }),
     loading: shallowRef(false),
     purchasing: shallowRef(false),
     quoting: shallowRef(false),
     error: shallowRef(null),
     purchase: shallowRef(purchase),
-    quote: shallowRef(null),
-    quoteUsable: shallowRef(false),
+    quote: shallowRef(accessibleNodes ? { accessibleNodes } : null),
+    quoteUsable: shallowRef(Boolean(accessibleNodes)),
     autoRenewalBlocked,
     selectedComboId: shallowRef(combo.id),
     selectedSquadIds: shallowRef<string[]>([]),
@@ -62,7 +62,7 @@ async function mountPage(purchase: object | null, step = 5, confirmPurchase = vi
     confirmPurchase,
   })
 
-  sessionStorage.setItem('txc-catalog-step:user-1', String(step))
+  sessionStorage.setItem('txc-catalog-step:v2:user-1', String(step))
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -79,10 +79,9 @@ async function mountPage(purchase: object | null, step = 5, confirmPurchase = vi
         CatalogConfirmation: { template: '<div data-test="catalog-confirmation" />' },
         CatalogCheckout: { template: '<div role="button" tabindex="0" data-test="confirm-purchase" @click="$emit(\'confirm\')" />' },
         CatalogCouponStep: { template: '<div data-test="catalog-coupon-step" />' },
-        CatalogFlowControls: { props: ['nextDisabled'], template: '<div data-test="catalog-flow-controls" :data-disabled="String(nextDisabled)" />' },
+        CatalogFlowControls: { props: ['nextDisabled'], emits: ['next'], template: '<div role="button" tabindex="0" data-test="catalog-flow-controls" :data-disabled="String(nextDisabled)" @click="$emit(\'next\')" />' },
         CatalogFlowProgress: { template: '<div data-test="catalog-flow-progress" />' },
-        CatalogNodes: true,
-        SquadSelector: true,
+        SquadSelector: { template: '<div data-test="squad-step" />' },
       },
     },
   })
@@ -109,7 +108,7 @@ describe('CatalogPage quote restoration', () => {
     wrapper.unmount()
   })
 
-  it('restores accessible nodes after returning to the catalog on step 3', async () => {
+  it('restores the quote after returning to the coupon step', async () => {
     const { refreshQuote, wrapper } = await mountPage(null, 3)
 
     await nextTick()
@@ -120,13 +119,13 @@ describe('CatalogPage quote restoration', () => {
 
   it('clears the persisted step after a successful purchase', async () => {
     const confirmPurchase = vi.fn().mockResolvedValue(true)
-    const { wrapper } = await mountPage(null, 5, confirmPurchase)
+    const { wrapper } = await mountPage(null, 4, confirmPurchase)
 
     await wrapper.get('[data-test="confirm-purchase"]').trigger('click')
     await nextTick()
 
     expect(confirmPurchase).toHaveBeenCalledOnce()
-    expect(sessionStorage.getItem('txc-catalog-step:user-1')).toBeNull()
+    expect(sessionStorage.getItem('txc-catalog-step:v2:user-1')).toBeNull()
     wrapper.unmount()
   })
 
@@ -137,7 +136,7 @@ describe('CatalogPage quote restoration', () => {
       ready: vi.fn(), expand: vi.fn(), close: vi.fn(), openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn(),
       BackButton: { isVisible: false, show: vi.fn(), hide: vi.fn(), onClick, offClick: vi.fn() },
     } }
-    const { wrapper } = await mountPage(null, 5)
+    const { wrapper } = await mountPage(null, 4)
 
     expect(onClick).toHaveBeenCalledOnce()
     onClick.mock.calls[0]?.[0]?.()
@@ -148,9 +147,20 @@ describe('CatalogPage quote restoration', () => {
   })
 
   it('disables Coupon-step continuation without a current usable quote', async () => {
-    const { wrapper } = await mountPage(null, 4)
+    const { wrapper } = await mountPage(null, 3)
 
     expect(wrapper.get('[data-test="catalog-flow-controls"]').attributes('data-disabled')).toBe('true')
+    wrapper.unmount()
+  })
+
+  it('refreshes the quote and blocks leaving squads without accessible nodes', async () => {
+    const { refreshQuote, wrapper } = await mountPage(null, 2)
+
+    await wrapper.get('[data-test="catalog-flow-controls"]').trigger('click')
+
+    expect(refreshQuote).toHaveBeenCalledOnce()
+    expect(wrapper.find('[data-test="squad-step"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="catalog-coupon-step"]').exists()).toBe(false)
     wrapper.unmount()
   })
 

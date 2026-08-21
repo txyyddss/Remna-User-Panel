@@ -5,6 +5,7 @@ import type { SquadProduct } from '@/api/types'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import SquadProfileSummary from '@/components/squad-profile/SquadProfileSummary.vue'
 import { formatMoney } from '@/utils/format'
+import SquadNodeBlocks from './SquadNodeBlocks.vue'
 
 const props = defineProps<{
   squads: readonly SquadProduct[]
@@ -55,10 +56,12 @@ const squadRows = computed(() => props.squads.map((squad) => ({
     <div v-if="squads.length" v-auto-animate class="squad-grid">
       <label v-for="row in squadRows" :key="row.squad.id" class="squad-option" :class="[profileClass(row.squad), { 'squad-option--selected': isSelected(row.squad.id), 'squad-option--included': isIncluded(row.squad.id), 'squad-option--full': isFullPaidAddon(row.squad) }]" :data-haptic="isIncluded(row.squad.id) || isFullPaidAddon(row.squad) ? undefined : 'light'">
         <div class="squad-option__copy">
-          <SquadProfileSummary :name="row.squad.name" :profile="row.squad.profile" :description="row.squad.description" presentation="member" compact />
-          <small v-if="row.occupancyPercentage !== null" class="squad-option__occupancy">
-            {{ $t('catalog.occupancy', { percentage: row.occupancyPercentage }) }}
-          </small>
+          <SquadProfileSummary :name="row.squad.name" :profile="row.squad.profile" :description="row.squad.description" presentation="member" compact>
+            <template v-if="row.occupancyPercentage !== null" #facts>
+              <span><UIcon name="i-ph-users-three" />{{ row.occupancyPercentage }}%</span>
+            </template>
+          </SquadProfileSummary>
+          <SquadNodeBlocks :nodes="row.squad.accessibleNodes" />
           <StatusBadge v-if="isIncluded(row.squad.id)" tone="neutral" :label="$t('catalog.included')" />
           <StatusBadge v-else-if="row.squad.activationRequired" tone="warning" :label="$t('catalog.activationRequired')" />
           <StatusBadge v-else-if="isFullPaidAddon(row.squad)" tone="neutral" :label="$t('catalog.full')" />
@@ -84,5 +87,4 @@ const squadRows = computed(() => props.squads.map((squad) => ({
 <style scoped>
 .squad-option--included { color: var(--text-faint); border-color: var(--squad-profile-tone-line, var(--line)); background: var(--squad-profile-tone-soft, var(--canvas-soft)); cursor: default; }
 .squad-option.squad-option--full { border-color: var(--line); color: var(--text-faint); background: var(--surface); cursor: not-allowed; opacity: 0.58; }
-.squad-option__occupancy { color: var(--text-faint); font-family: var(--font-mono); font-size: 0.68rem; }
 </style>

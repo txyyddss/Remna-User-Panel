@@ -3,7 +3,7 @@
 Schema definitions are grouped into bounded sequential shards. The root component registry references each definition by JSON Pointer.
 
 - `schemas-01.yaml`: `ID`, `Timestamp`, `DecimalInteger`, `ApiError`, `TelegramAuthRequest`, `OnboardingStep`, `User`, `AuthState`, `JoinInvite`, `OnboardingInvites`, `MembershipState`, `UsernameRequest`, `AgreementRequest`, `WelcomeMessage`, `OnboardingAgreement`, `LocalizedOnboardingContent`, `PublishedOnboarding`, `OnboardingBundle`
-- `schemas-02.yaml`: `OnboardingDraftWrite`, `OnboardingPublishRequest`, `Money`, `PaymentMethod` with provider display name, `BalanceResponse`, `ResetStrategy`, typed squad profiles, `SquadProduct`, `Combo`, `CatalogNode`, `Catalog`, `ComboWrite`, `SquadProductWrite`
+- `schemas-02.yaml`: `OnboardingDraftWrite`, `OnboardingPublishRequest`, `Money`, `PaymentMethod` with provider display name, `BalanceResponse`, `ResetStrategy`, typed squad profiles, `SquadProduct` with live accessible nodes, `Combo`, nullable-provider `CatalogNode`, `Catalog`, `ComboWrite`, `SquadProductWrite`
 - `schemas-03.yaml`: `RemnaNode`, `PurchaseRequest`, `PurchaseQuote`, `EntitlementStatus`, `Entitlement`, `Purchase`, `SubscriptionRotation`, `TopNode`, `Statistics`, `StatisticPoint`
 - `schemas-04.yaml`: `StatisticSlice`, `AdminStatistics`, `Dashboard`, `LedgerKind`, `LedgerEntry`, `PageInfo`, `LedgerPage`, `PaymentMethodID`, `PaymentOrderMethodID`, `PaymentProvider`, `PaymentStatus`, `PaymentOrderRequest`
 - `schemas-05.yaml`: `PaymentOrder`, `ActivityGame`, `ActivityGameWrite`, `ActivityGameList`, `LuckyDraw`, `NoPrizeReward`, `TXBDeltaReward`, `CouponGrantReward`, `SubscriptionExtensionReward`, `Reward`, `ActivityResult`
@@ -18,7 +18,7 @@ Schema definitions are grouped into bounded sequential shards. The root componen
 - `schemas-14.yaml`: `DashboardNodeUsage`
 - `schemas-15.yaml`: `AutoRenewal`, `AutoRenewalUpdate`, `AutoRenewalFailure`, stable-ID `PaymentProfile`, and `PaymentProfileWrite`
 - `schemas-16.yaml`: live `RolloverWindow` and `RolloverProjection` aggregate response schemas
-- `schemas-17.yaml`: durable operation and payment-operation receipts, signed connection projections, active IP blocks, reset/refund quotes, and billing amount limits
+- `schemas-17.yaml`: durable operation and payment-operation receipts, signed connection projections, active IP blocks, account-wide reset automation, reset/refund quotes, and billing amount limits
 - `schemas-18.yaml`: admin entitlement/combo/bulk mutation requests and aggregate user detail including active IP blocks
-- `schemas-19.yaml`: cached remote/database statistics, normalized distributions, and node Geocheck image contracts
+- `schemas-19.yaml`: cached remote/database statistics including live predicted rollover, normalized distributions, and node Geocheck image contracts
 - `schemas-20.yaml`: affiliate member projections, tier rewards, bot identity, and optimistic administrator writes

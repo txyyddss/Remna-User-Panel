@@ -3,10 +3,12 @@ package database
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/txyyddss/Remna-User-Panel/internal/notifications"
 	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
 )
 
@@ -83,7 +85,11 @@ func (s *Store) releaseNotificationGateTx(ctx context.Context, tx *sql.Tx, gateK
 	}
 	_ = rows.Close()
 	for _, item := range items {
-		if err := insertOutboxTx(ctx, tx, jobpayload.UserNotificationKind, item.payload, now, now); err != nil {
+		payload, err := notificationPayloadForRelease(item.payload, now)
+		if err != nil {
+			return 0, err
+		}
+		if err := insertOutboxTx(ctx, tx, jobpayload.UserNotificationKind, payload, now, now); err != nil {
 			return 0, err
 		}
 		if _, err := tx.ExecContext(ctx, `UPDATE user_notification_events SET queued_at=?
@@ -95,6 +101,20 @@ func (s *Store) releaseNotificationGateTx(ctx context.Context, tx *sql.Tx, gateK
 		s.logger.Info("user notification provider gate released", "gate_key", gateKey, "event_count", len(items))
 	}
 	return len(items), nil
+}
+
+func notificationPayloadForRelease(encoded string, now time.Time) (string, error) {
+	var payload jobpayload.UserNotification
+	if err := json.Unmarshal([]byte(encoded), &payload); err != nil {
+		return "", fmt.Errorf("decode gated notification: %w", err)
+	}
+	if payload.Kind != jobpayload.UserEventAutomaticReset {
+		return encoded, nil
+	}
+	completed := now.UTC().Format(time.RFC3339Nano)
+	payload.OccurredAt = completed
+	payload.Facts[notifications.FactTime] = completed
+	return jobpayload.EncodeUserNotification(payload)
 }
 
 // ReleaseUserSyncNotifications queues events after an exact user-state sync.

@@ -38,6 +38,7 @@ const squad = (id: string): SquadProduct => ({
   visible: true,
   upstreamPresent: true,
   activationRequired: false,
+  accessibleNodes: [],
   createdAt: '2026-08-08T00:00:00Z',
   updatedAt: '2026-08-08T00:00:00Z',
 })

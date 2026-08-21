@@ -2,10 +2,10 @@ import { computed, readonly, shallowRef } from 'vue'
 
 import { ApiError } from '@/api/client'
 import { memberOperationsApi } from '@/api/memberOperations'
-import type { MemberRefundQuote, TrafficResetQuote } from '@/api/types'
+import type { MemberRefundQuote, TrafficResetAutomation, TrafficResetQuote } from '@/api/types'
 import { localizedError, t } from '@/i18n'
 import { createUuid } from '@/utils/browserCompatibility'
-import { notifyHaptic } from '@/utils/telegram'
+import { notifyHaptic, selectionHaptic } from '@/utils/telegram'
 import { operationIsActive, useOperationReceipt } from './useOperationReceipt'
 
 export type PurchaseOperationKind = 'reset' | 'refund'
@@ -13,6 +13,10 @@ export type PurchaseOperationKind = 'reset' | 'refund'
 export function usePurchaseOperations(purchaseId: () => string) {
   const resetQuote = shallowRef<TrafficResetQuote | null>(null)
   const refundQuote = shallowRef<MemberRefundQuote | null>(null)
+  const resetAutomation = shallowRef<TrafficResetAutomation | null>(null)
+  const resetAutomationLoading = shallowRef(false)
+  const resetAutomationSaving = shallowRef(false)
+  const resetAutomationError = shallowRef<string | null>(null)
   const refundEligibilityLoading = shallowRef(true)
   const quoteLoading = shallowRef(false)
   const mutating = shallowRef(false)
@@ -41,15 +45,42 @@ export function usePurchaseOperations(purchaseId: () => string) {
   async function loadQuote(kind: PurchaseOperationKind): Promise<void> {
     quoteLoading.value = true
     mutationError.value = null
-    if (kind === 'reset') resetQuote.value = null
-    else refundQuote.value = null
+    if (kind === 'reset') {
+      resetQuote.value = null
+      resetAutomationLoading.value = true
+      resetAutomationError.value = null
+    } else refundQuote.value = null
     try {
-      if (kind === 'reset') resetQuote.value = await memberOperationsApi.getTrafficResetQuote(purchaseId())
-      else refundQuote.value = await memberOperationsApi.getPurchaseRefundQuote(purchaseId())
+      if (kind === 'reset') {
+        const [quoteResult, automationResult] = await Promise.allSettled([
+          memberOperationsApi.getTrafficResetQuote(purchaseId()),
+          memberOperationsApi.getTrafficResetAutomation(),
+        ])
+        if (automationResult.status === 'fulfilled') resetAutomation.value = automationResult.value
+        else resetAutomationError.value = localizedError(automationResult.reason, 'purchaseOperations.automation.loadFailed')
+        if (quoteResult.status === 'rejected') throw quoteResult.reason
+        resetQuote.value = quoteResult.value
+      } else refundQuote.value = await memberOperationsApi.getPurchaseRefundQuote(purchaseId())
     } catch (caught) {
       mutationError.value = localizedError(caught, 'purchaseOperations.errors.quoteUnavailable')
     } finally {
       quoteLoading.value = false
+      resetAutomationLoading.value = false
+    }
+  }
+
+  async function setResetAutomation(enabled: boolean): Promise<void> {
+    if (resetAutomationSaving.value) return
+    resetAutomationSaving.value = true
+    resetAutomationError.value = null
+    selectionHaptic()
+    try {
+      resetAutomation.value = await memberOperationsApi.updateTrafficResetAutomation(enabled)
+    } catch (caught) {
+      resetAutomationError.value = localizedError(caught, 'purchaseOperations.automation.saveFailed')
+      notifyHaptic('error')
+    } finally {
+      resetAutomationSaving.value = false
     }
   }
 
@@ -105,6 +136,8 @@ export function usePurchaseOperations(purchaseId: () => string) {
   function reset(): void {
     resetQuote.value = null
     refundQuote.value = null
+    resetAutomation.value = null
+    resetAutomationError.value = null
     mutationError.value = null
     activeKind.value = null
     keys.clear()
@@ -113,6 +146,10 @@ export function usePurchaseOperations(purchaseId: () => string) {
 
   return {
     resetQuote: readonly(resetQuote),
+    resetAutomation: readonly(resetAutomation),
+    resetAutomationLoading: readonly(resetAutomationLoading),
+    resetAutomationSaving: readonly(resetAutomationSaving),
+    resetAutomationError: readonly(resetAutomationError),
     refundQuote: readonly(refundQuote),
     refundEligibilityLoading: readonly(refundEligibilityLoading),
     quoteLoading: readonly(quoteLoading),
@@ -126,6 +163,7 @@ export function usePurchaseOperations(purchaseId: () => string) {
     blocksMutations,
     loadRefundEligibility,
     loadQuote,
+    setResetAutomation,
     start,
     refresh: operation.refresh,
     dismissOperation,

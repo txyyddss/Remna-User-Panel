@@ -51,6 +51,7 @@ watch(activeTab, () => selectionHaptic())
           icon="i-ph-arrows-clockwise"
           :loading="refreshing"
           :aria-label="$t('statistics.refresh')"
+          data-haptic
           @click="load({ quiet: true })"
         />
       </UTooltip>
@@ -94,7 +95,7 @@ watch(activeTab, () => selectionHaptic())
     <div v-else class="error-state">
       <h1>{{ $t('statistics.unavailable') }}</h1>
       <p>{{ error ?? $t('statistics.loadFailed') }}</p>
-      <UButton icon="i-ph-arrows-clockwise" :label="$t('common.tryAgain')" @click="load()" />
+      <UButton icon="i-ph-arrows-clockwise" :label="$t('common.tryAgain')" data-haptic @click="load()" />
     </div>
     <StatisticsGeocheckModal v-model:open="geocheck.isOpen.value" :node="geocheck.selectedNode.value" :result="geocheck.result.value" :loading="geocheck.loading.value" :error="geocheck.error.value" />
   </div>

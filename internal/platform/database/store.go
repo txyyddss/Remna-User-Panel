@@ -14,16 +14,15 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 )
 
-var ErrNotFound = errors.New("record not found")
-
-// ErrConflict indicates that a uniqueness or state transition invariant was violated.
-var ErrConflict = errors.New("record conflicts with current state")
-
-// ErrInsufficientBalance indicates that a debit would make an account negative.
-var ErrInsufficientBalance = errors.New("insufficient TXB balance")
-
-// ErrStockUnavailable indicates that a limited squad has no remaining user reservation.
-var ErrStockUnavailable = errors.New("squad stock is unavailable")
+var (
+	ErrNotFound = errors.New("record not found")
+	// ErrConflict indicates that a uniqueness or state transition invariant was violated.
+	ErrConflict = errors.New("record conflicts with current state")
+	// ErrInsufficientBalance indicates that a debit would make an account negative.
+	ErrInsufficientBalance = errors.New("insufficient TXB balance")
+	// ErrStockUnavailable indicates that a limited squad has no remaining user reservation.
+	ErrStockUnavailable = errors.New("squad stock is unavailable")
+)
 
 // Store implements persistent repositories on top of SQLite.
 type Store struct {
@@ -85,7 +84,7 @@ func (s *Store) UserByTelegramID(ctx context.Context, telegramID int64) (model.U
 const userColumns = `users.id,users.telegram_id,users.telegram_first_name,users.telegram_last_name,users.telegram_username,
 	users.username,users.role,users.onboarding_state,users.group_joined,users.channel_joined,users.policy_accepted_at,
 	users.accepted_agreement_revision,users.remna_user_id,users.recovery_reason,users.new_user,users.inviter_id,
-	users.notification_locale,users.created_at,users.updated_at`
+	users.notification_locale,users.auto_traffic_reset_enabled,users.created_at,users.updated_at`
 
 const userSelect = `SELECT ` + userColumns + ` FROM users`
 
@@ -99,12 +98,12 @@ func scanUserWith(row rowScanner, extra ...any) (model.User, error) {
 	var user model.User
 	var username, policy, recoveryReason sql.NullString
 	var remnaID sql.NullString
-	var groupJoined, channelJoined, newUser int
+	var groupJoined, channelJoined, newUser, autoTrafficReset int
 	var inviterID sql.NullInt64
 	var createdAt, updatedAt string
 	destinations := []any{&user.ID, &user.TelegramID, &user.TelegramFirstName, &user.TelegramLastName, &user.TelegramUsername,
 		&username, &user.Role, &user.OnboardingState, &groupJoined, &channelJoined, &policy, &user.AgreementRevision, &remnaID, &recoveryReason,
-		&newUser, &inviterID, &user.NotificationLocale, &createdAt, &updatedAt}
+		&newUser, &inviterID, &user.NotificationLocale, &autoTrafficReset, &createdAt, &updatedAt}
 	destinations = append(destinations, extra...)
 	if err := row.Scan(destinations...); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -116,6 +115,7 @@ func scanUserWith(row rowScanner, extra ...any) (model.User, error) {
 	user.GroupJoined = groupJoined == 1
 	user.ChannelJoined = channelJoined == 1
 	user.NewUser = newUser == 1
+	user.AutoTrafficResetEnabled = autoTrafficReset == 1
 	if inviterID.Valid {
 		user.InviterID = &inviterID.Int64
 	}

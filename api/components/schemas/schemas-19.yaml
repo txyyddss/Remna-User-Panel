@@ -41,23 +41,23 @@ StatisticsSnapshot:
     remote:
       type: object
       additionalProperties: false
-      required: [weeklyUserIncrease, monthlyAverageUsagePercent, trafficDates, trafficSeries]
+      required: [weeklyUserIncrease, monthlyAverageUsagePercent, predictedAverageRollover, trafficDates, trafficSeries]
       properties:
         weeklyUserIncrease: { type: integer }
         monthlyAverageUsagePercent: { type: number }
+        predictedAverageRollover: { $ref: '../../openapi.yaml#/components/schemas/Money' }
         trafficDates: { type: array, items: { type: string, format: date } }
         trafficSeries: { type: array, items: { $ref: '../../openapi.yaml#/components/schemas/NodeTrafficSeries' } }
     database:
       type: object
       additionalProperties: false
-      required: [newUserConversionPercent, averageSpend, spendMinimum, spendMaximum, subscriptionStates, averageRollover, averageCheckInReward, comboShares, groupMessagesTotal, averageOptionalSquads, paymentStatuses, databaseBytes, squadByCombo, comboBySquad]
+      required: [newUserConversionPercent, averageSpend, spendMinimum, spendMaximum, subscriptionStates, averageCheckInReward, comboShares, groupMessagesTotal, averageOptionalSquads, paymentStatuses, databaseBytes, squadByCombo, comboBySquad]
       properties:
         newUserConversionPercent: { type: number }
         averageSpend: { $ref: '../../openapi.yaml#/components/schemas/Money' }
         spendMinimum: { $ref: '../../openapi.yaml#/components/schemas/Money' }
         spendMaximum: { $ref: '../../openapi.yaml#/components/schemas/Money' }
         subscriptionStates: { type: array, items: { $ref: '../../openapi.yaml#/components/schemas/NamedShare' } }
-        averageRollover: { $ref: '../../openapi.yaml#/components/schemas/Money' }
         averageCheckInReward: { $ref: '../../openapi.yaml#/components/schemas/Money' }
         comboShares: { type: array, items: { $ref: '../../openapi.yaml#/components/schemas/NamedShare' } }
         groupMessagesTotal: { type: integer, minimum: 0 }

@@ -16,13 +16,15 @@ describe('ConnectionBlockDialog', () => {
   it('owns native Back and includes shared-IP and three-day warnings', async () => {
     const wrapper = mount(ConnectionBlockDialog, {
       props: { open: true, target },
-      global: { stubs: { CountryFlag: true, InlineNotice: { template: '<div><slot /></div>' }, Button: true,
+      global: { stubs: { CountryFlag: true, InlineNotice: { template: '<div><slot /></div>' }, Button: { template: '<div role="button" tabindex="0" v-bind="$attrs"><slot /></div>' },
         Modal: { template: '<div><slot name="body" /><slot name="footer" /></div>' } } },
     })
     const [visible, onBack] = useTelegramBackButton.mock.calls[0] as [ComputedRef<boolean>, () => void]
 
     expect(visible.value).toBe(true)
     expect(wrapper.text()).toContain('72')
+    expect(wrapper.find('[data-haptic="heavy"]').exists()).toBe(true)
+    expect(wrapper.find('[data-haptic=""]').exists()).toBe(true)
     onBack()
     await wrapper.vm.$nextTick()
     expect(wrapper.emitted('update:open')).toEqual([[false]])

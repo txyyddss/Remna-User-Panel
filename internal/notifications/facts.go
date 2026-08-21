@@ -42,4 +42,6 @@ const (
 	FactPreviousSquads    = "previousSquads"
 	FactNewSquads         = "newSquads"
 	FactReason            = "reason"
+	FactCharge            = "chargeMinor"
+	FactAutomationState   = "automationState"
 )

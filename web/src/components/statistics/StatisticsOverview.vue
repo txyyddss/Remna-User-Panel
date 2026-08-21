@@ -21,7 +21,7 @@ const metrics = computed(() => {
     { id: 'usage', icon: 'i-ph-gauge', label: t('statistics.monthlyUsage'), value: formatStatisticPercent(props.snapshot.remote.monthlyAverageUsagePercent) },
     { id: 'spend', icon: 'i-ph-coins', label: t('statistics.averageSpend'), value: formatMoney(database.averageSpend) },
     { id: 'range', icon: 'i-ph-arrows-left-right', label: t('statistics.spendRange'), value: t('statistics.valueRange', { minimum: formatMoney(database.spendMinimum), maximum: formatMoney(database.spendMaximum) }) },
-    { id: 'rollover', icon: 'i-ph-arrow-u-up-left', label: t('statistics.averageRollover'), value: formatMoney(database.averageRollover) },
+    { id: 'rollover', icon: 'i-ph-arrow-u-up-left', label: t('statistics.predictedAverageRollover'), value: formatMoney(props.snapshot.remote.predictedAverageRollover) },
     { id: 'checkin', icon: 'i-ph-gift', label: t('statistics.averageCheckIn'), value: formatMoney(database.averageCheckInReward) },
     { id: 'messages', icon: 'i-ph-chat-circle-dots', label: t('statistics.groupMessages'), value: formatStatisticNumber(database.groupMessagesTotal) },
     { id: 'squads', icon: 'i-ph-stack', label: t('statistics.optionalSquads'), value: formatStatisticNumber(database.averageOptionalSquads, 2) },

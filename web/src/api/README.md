@@ -8,7 +8,8 @@
 - `features.test.ts` verifies feature request construction.
 - `generated.ts` contains the compact generated OpenAPI contract.
 - `http.ts` provides authenticated HTTP and error handling primitives.
-- `memberOperations.ts` exposes generated-type connection scans, signed-handle blocks, active block listing/removal, reset/refund quotes, and durable operation receipts.
+- `memberOperations.ts` exposes generated-type connection scans, signed-handle blocks, active block listing/removal, the account-wide reset automation resource, reset/refund quotes, and durable operation receipts.
 - `request-signing.ts` signs every protected request with Web Crypto or the audited pure-JS HMAC/SHA-256 fallback; it never sends an unsigned fallback.
 - `request-signing.test.ts` covers signing, nonce behavior, and missing-Web-Crypto behavior.
-- `types.ts` exports stable aliases over generated schema types, including payment-operation envelopes, connection scans, durable operation receipts, statistics snapshots, member mutation quotes, and typed squad profile read/write unions.
+- `openapiContract.test.ts` compile-checks the reset automation resource, required squad-node groups, nullable provider fallback, and predicted-rollover partition ownership.
+- `types.ts` exports stable aliases over generated schema types, including payment-operation envelopes, connection scans, durable operation receipts, reset automation, statistics snapshots, member mutation quotes, and typed squad profile read/write unions.

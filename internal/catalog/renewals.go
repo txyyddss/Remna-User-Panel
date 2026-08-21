@@ -29,10 +29,11 @@ func (s *Service) RenewalQuote(ctx context.Context, user model.User, purchaseID 
 	if err != nil {
 		return model.RenewalQuote{}, err
 	}
-	quote.AccessibleNodes, err = s.quoteAccessibleNodes(ctx, quote.ComboID, quote.AddonSquadUUIDs)
+	catalog, err := s.Catalog(ctx)
 	if err != nil {
 		return model.RenewalQuote{}, err
 	}
+	quote.AccessibleNodes = quoteAccessibleNodes(catalog, quote.ComboID, quote.AddonSquadUUIDs)
 	if len(quote.AccessibleNodes) == 0 {
 		return model.RenewalQuote{}, ErrNoAccessibleNodes
 	}

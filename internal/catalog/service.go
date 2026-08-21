@@ -79,13 +79,11 @@ func (s *Service) PurchaseWithCoupon(ctx context.Context, user model.User, combo
 	if comboID == "" || len(addonIDs) > 100 || idempotencyKey == "" || len(idempotencyKey) > 128 {
 		return model.Purchase{}, errors.New("invalid purchase selection")
 	}
-	if err := s.validateLiveSelection(ctx, comboID, addonIDs); err != nil {
-		return model.Purchase{}, err
-	}
-	nodes, err := s.quoteAccessibleNodes(ctx, comboID, addonIDs)
+	catalog, err := s.validateLiveSelection(ctx, comboID, addonIDs)
 	if err != nil {
 		return model.Purchase{}, err
 	}
+	nodes := quoteAccessibleNodes(catalog, comboID, addonIDs)
 	if len(nodes) == 0 {
 		return model.Purchase{}, ErrNoAccessibleNodes
 	}
@@ -105,7 +103,8 @@ func (s *Service) Quote(ctx context.Context, user model.User, comboID string, ad
 	if comboID == "" || len(addonIDs) > 100 {
 		return model.PurchaseQuote{}, errors.New("invalid purchase selection")
 	}
-	if err := s.validateLiveSelection(ctx, comboID, addonIDs); err != nil {
+	catalog, err := s.validateLiveSelection(ctx, comboID, addonIDs)
+	if err != nil {
 		return model.PurchaseQuote{}, err
 	}
 	repository, ok := s.repository.(quoteRepository)
@@ -116,23 +115,20 @@ func (s *Service) Quote(ctx context.Context, user model.User, comboID string, ad
 	if err != nil {
 		return model.PurchaseQuote{}, err
 	}
-	quote.AccessibleNodes, err = s.quoteAccessibleNodes(ctx, comboID, addonIDs)
-	if err != nil {
-		return model.PurchaseQuote{}, err
-	}
+	quote.AccessibleNodes = quoteAccessibleNodes(catalog, comboID, addonIDs)
 	if len(quote.AccessibleNodes) == 0 {
 		return model.PurchaseQuote{}, ErrNoAccessibleNodes
 	}
 	return quote, nil
 }
 
-func (s *Service) validateLiveSelection(ctx context.Context, comboID string, addonIDs []string) error {
+func (s *Service) validateLiveSelection(ctx context.Context, comboID string, addonIDs []string) (model.Catalog, error) {
 	if _, ok := s.remnawave.(remoteSquadLister); !ok {
-		return nil
+		return s.Catalog(ctx)
 	}
 	catalog, err := s.Catalog(ctx)
 	if err != nil {
-		return err
+		return model.Catalog{}, err
 	}
 	comboFound := false
 	for _, combo := range catalog.Combos {
@@ -142,7 +138,7 @@ func (s *Service) validateLiveSelection(ctx context.Context, comboID string, add
 		}
 	}
 	if !comboFound {
-		return database.ErrNotFound
+		return model.Catalog{}, database.ErrNotFound
 	}
 	visible := make(map[string]struct{}, len(catalog.Addons))
 	for _, addon := range catalog.Addons {
@@ -150,10 +146,10 @@ func (s *Service) validateLiveSelection(ctx context.Context, comboID string, add
 	}
 	for _, addonID := range addonIDs {
 		if _, exists := visible[strings.TrimSpace(addonID)]; !exists {
-			return database.ErrNotFound
+			return model.Catalog{}, database.ErrNotFound
 		}
 	}
-	return nil
+	return catalog, nil
 }
 
 // Purchases returns the account's immutable purchase history.

@@ -15,6 +15,8 @@ const props = withDefaults(defineProps<{
   presentation?: 'default' | 'member'
 }>(), { name: '', description: '', compact: false, presentation: 'default' })
 
+defineSlots<{ facts?: () => unknown }>()
+
 const { locale, t } = useI18n()
 const typeMeta = computed(() => props.profile ? profileTypeMeta(props.profile.type) : null)
 const typeClass = computed(() => props.profile ? `squad-profile-summary--${props.profile.type}` : '')
@@ -42,23 +44,24 @@ const countryText = computed(() => {
         <span v-if="presentation === 'member' && name">{{ typeMeta ? t(typeMeta.labelKey) : t('squadProfile.unconfigured') }}</span>
       </div>
     </div>
-    <div v-if="profile" class="squad-profile-summary__facts">
-      <span v-if="profile.type === 'broadband'"><UIcon name="i-ph-broadcast" />{{ profile.isp }}</span>
-      <span v-if="profile.type === 'broadband'"><UIcon name="i-ph-gauge" />{{ profile.portMbps }} {{ t('squadProfile.mbps') }}</span>
-      <span v-if="profile.type === 'broadband'"><UIcon name="i-ph-arrows-clockwise" />{{ profile.dynamic ? t('squadProfile.dynamic') : t('squadProfile.static') }}</span>
-      <span v-if="profile.type === 'broadband'"><UIcon name="i-ph-map-pin" />{{ profile.location }}</span>
-      <template v-else-if="profile.type === 'china_optimized'">
+    <div v-if="profile || $slots.facts" class="squad-profile-summary__facts">
+      <span v-if="profile?.type === 'broadband'"><UIcon name="i-ph-broadcast" />{{ profile.isp }}</span>
+      <span v-if="profile?.type === 'broadband'"><UIcon name="i-ph-gauge" />{{ profile.portMbps }} {{ t('squadProfile.mbps') }}</span>
+      <span v-if="profile?.type === 'broadband'"><UIcon name="i-ph-arrows-clockwise" />{{ profile.dynamic ? t('squadProfile.dynamic') : t('squadProfile.static') }}</span>
+      <span v-if="profile?.type === 'broadband'"><UIcon name="i-ph-map-pin" />{{ profile.location }}</span>
+      <template v-else-if="profile?.type === 'china_optimized'">
         <span class="squad-profile-summary__carrier-route"><CarrierLogo carrier="telecom" :label="t('squadProfile.carriers.chinaTelecom')" />{{ profile.ct }}</span>
         <span class="squad-profile-summary__carrier-route"><CarrierLogo carrier="unicom" :label="t('squadProfile.carriers.chinaUnicom')" />{{ profile.cu }}</span>
         <span class="squad-profile-summary__carrier-route"><CarrierLogo carrier="mobile" :label="t('squadProfile.carriers.chinaMobile')" />{{ profile.cm }}</span>
         <span><UIcon name="i-ph-gauge" />{{ portText }}</span>
         <span><UIcon name="i-ph-map-pin" />{{ countryText }}</span>
       </template>
-      <template v-else>
+      <template v-else-if="profile">
         <span><UIcon name="i-ph-gauge" />{{ portText }}</span>
         <span><UIcon name="i-ph-map-pin" />{{ countryText }}</span>
         <span><UIcon name="i-ph-broadcast" />{{ profile.upstreamCarriers.join(', ') }}</span>
       </template>
+      <slot name="facts" />
     </div>
     <MarkdownContent v-if="description" class="squad-profile-summary__description" :source="description" compact />
   </div>

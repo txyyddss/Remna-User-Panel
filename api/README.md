@@ -7,6 +7,8 @@
 - `components/responses.yaml` contains reusable API error responses.
 - `components/schemas/` contains bounded definitions grouped into shards with a schema index.
 - Automatic renewal is represented by one owner-only `GET`/`PUT /api/v1/purchases/{id}/auto-renewal` resource. It always quotes and schedules one next cycle; manual multi-term renewal is not part of the public contract.
+- Account-wide automatic traffic reset is represented by `GET`/`PUT /api/v1/me/traffic-reset-automation`; the update body contains only `enabled`.
 - Squad profile schemas in `schemas-02.yaml` describe local Broadband, China Optimized, and International Network metadata; they do not alter the Remnawave upstream contract.
+- Each public squad product carries its required live `accessibleNodes` projection, including nullable provider names; purchase quotes retain the authoritative selected-squad union.
 
 Generate TypeScript types from the root entry point with `npm run generate:api` in `web/`. Authenticated operations inherit all four AND-combined security schemes. Telegram authentication, provider callbacks, payment returns, operational probes, and static delivery retain their explicit unsigned protocols.

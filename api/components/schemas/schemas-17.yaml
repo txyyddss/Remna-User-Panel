@@ -92,6 +92,14 @@ TrafficResetQuote:
     resetStrategy: { $ref: '../../openapi.yaml#/components/schemas/ResetStrategy' }
     quotedAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
 
+TrafficResetAutomation:
+  type: object
+  additionalProperties: false
+  required: [enabled, updatedAt]
+  properties:
+    enabled: { type: boolean }
+    updatedAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+
 MemberRefundQuote:
   type: object
   additionalProperties: false

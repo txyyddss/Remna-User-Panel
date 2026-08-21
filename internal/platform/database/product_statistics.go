@@ -35,15 +35,6 @@ func (s *Store) ProductDatabaseStatistics(ctx context.Context, now time.Time) (m
 	if result.SubscriptionStates, err = s.subscriptionStateShares(ctx, now); err != nil {
 		return result, err
 	}
-	rollover, err := aggregateAverageMinor(ctx, s.db, `SELECT COALESCE(SUM(total_minor),0),COALESCE(SUM(fact_count),0) FROM (
-		SELECT COALESCE(SUM(credited_txb_minor),0) total_minor,COUNT(*) fact_count
-		FROM purchase_rollovers WHERE status IN ('credited','zero')
-		UNION ALL
-		SELECT COALESCE(SUM(credited_txb_minor),0),COALESCE(SUM(settlement_count),0)
-		FROM rollover_member_daily_rollups)`)
-	if err != nil {
-		return result, err
-	}
 	checkIn, err := aggregateAverageMinor(ctx, s.db, `SELECT COALESCE(SUM(total_minor),0),COALESCE(SUM(fact_count),0) FROM (
 		SELECT COALESCE(SUM(reward_minor),0) total_minor,COUNT(*) fact_count FROM activity_daily_checkins
 		UNION ALL
@@ -51,7 +42,7 @@ func (s *Store) ProductDatabaseStatistics(ctx context.Context, now time.Time) (m
 	if err != nil {
 		return result, err
 	}
-	result.AverageRollover, result.AverageCheckInReward = model.TXBMoney(rollover), model.TXBMoney(checkIn)
+	result.AverageCheckInReward = model.TXBMoney(checkIn)
 	if result.GroupMessagesTotal, err = integerQuery(ctx, s.db, `SELECT
 		(SELECT COUNT(*) FROM activity_group_message_raw_events)+
 		(SELECT COALESCE(SUM(group_message_count),0) FROM activity_daily_rollups)`); err != nil {

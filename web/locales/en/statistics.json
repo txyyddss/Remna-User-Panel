@@ -28,7 +28,7 @@
     "averageSpend": "Average user spend",
     "spendRange": "User spend range",
     "valueRange": "{minimum} to {maximum}",
-    "averageRollover": "Average rollover",
+    "predictedAverageRollover": "Predicted average rollover",
     "averageCheckIn": "Average check-in reward",
     "groupMessages": "Group messages",
     "optionalSquads": "Average optional squads",

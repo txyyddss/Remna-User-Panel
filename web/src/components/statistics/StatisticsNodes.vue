@@ -43,6 +43,7 @@ const emit = defineEmits<{ openGeocheck: [node: StatisticsNode] }>()
               class="statistics-node__geocheck"
               icon="i-ph-globe-hemisphere-west"
               :aria-label="$t('statistics.geocheck.open')"
+              data-haptic
               @click="emit('openGeocheck', node)"
             />
           </UTooltip>
@@ -59,14 +60,6 @@ const emit = defineEmits<{ openGeocheck: [node: StatisticsNode] }>()
           <div>
             <dt><UTooltip :text="$t('statistics.uploadRate')"><span class="statistics-node__metric-icon" role="img" :aria-label="$t('statistics.uploadRate')"><UIcon name="i-ph-arrow-up" aria-hidden="true" /></span></UTooltip></dt>
             <dd :title="$t('statistics.perSecond', { value: formatBytes(node.txBytesPerSec) })">{{ $t('statistics.perSecond', { value: formatBytes(node.txBytesPerSec) }) }}</dd>
-          </div>
-          <div>
-            <dt><UTooltip :text="$t('statistics.xrayVersion')"><span class="statistics-node__metric-icon" role="img" :aria-label="$t('statistics.xrayVersion')"><UIcon name="i-ph-code" aria-hidden="true" /></span></UTooltip></dt>
-            <dd :title="node.xrayVersion">{{ node.xrayVersion || $t('common.notAvailable') }}</dd>
-          </div>
-          <div>
-            <dt><UTooltip :text="$t('statistics.multiplier')"><span class="statistics-node__metric-icon" role="img" :aria-label="$t('statistics.multiplier')"><UIcon name="i-ph-x" aria-hidden="true" /></span></UTooltip></dt>
-            <dd>{{ $t('statistics.multiplierValue', { value: formatStatisticNumber(node.multiplier, 2) }) }}</dd>
           </div>
         </dl>
       </article>

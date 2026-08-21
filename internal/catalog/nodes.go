@@ -26,17 +26,32 @@ type remoteNodeLister interface {
 }
 
 func projectCatalogNodes(nodes []RemoteNode) []model.CatalogNode {
-	result := make([]model.CatalogNode, 0, len(nodes))
+	unique := make(map[string]model.CatalogNode, len(nodes))
 	for _, node := range nodes {
-		if node.Disabled {
+		node.UUID = strings.TrimSpace(node.UUID)
+		if node.Disabled || node.UUID == "" {
 			continue
 		}
-		result = append(result, model.CatalogNode{
+		if _, exists := unique[node.UUID]; exists {
+			continue
+		}
+		var providerName *string
+		if trimmed := strings.TrimSpace(node.ProviderName); trimmed != "" {
+			providerName = &trimmed
+		}
+		unique[node.UUID] = model.CatalogNode{
 			UUID:                  node.UUID,
 			Name:                  node.Name,
 			CountryCode:           node.CountryCode,
 			ConsumptionMultiplier: node.ConsumptionMultiplier,
-		})
+			ProviderName:          providerName,
+			ActiveInboundUUIDs:    append([]string(nil), node.ActiveInboundUUIDs...),
+			ProviderFaviconURL:    node.ProviderFaviconURL,
+		}
+	}
+	result := make([]model.CatalogNode, 0, len(unique))
+	for _, node := range unique {
+		result = append(result, node)
 	}
 	sort.Slice(result, func(left, right int) bool {
 		if result[left].CountryCode == result[right].CountryCode {
@@ -50,41 +65,115 @@ func projectCatalogNodes(nodes []RemoteNode) []model.CatalogNode {
 	return result
 }
 
-func (s *Service) quoteAccessibleNodes(ctx context.Context, comboID string, addonIDs []string) ([]model.RemnaNode, error) {
-	provider, ok := s.remnawave.(remoteNodeLister)
-	if !ok {
-		return nil, ErrNoAccessibleNodes
-	}
-	catalog, err := s.Catalog(ctx)
+func hydrateSquadNodes(ctx context.Context, provider remoteNodeLister, squadUUIDs []string) ([]model.CatalogNode, map[string][]model.CatalogNode, error) {
+	remoteNodes, err := provider.ListCatalogNodes(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	squadUUIDs := selectedSquadUUIDs(catalog, comboID, addonIDs)
-	accessible := make(map[string]struct{})
+	allNodes := projectCatalogNodes(remoteNodes)
+	byUUID := make(map[string]model.CatalogNode, len(allNodes))
+	for _, node := range allNodes {
+		byUUID[node.UUID] = node
+	}
+	bySquad := make(map[string][]model.CatalogNode, len(squadUUIDs))
 	for _, squadUUID := range squadUUIDs {
-		nodes, lookupErr := provider.AccessibleCatalogNodeUUIDs(ctx, squadUUID)
+		accessible, lookupErr := provider.AccessibleCatalogNodeUUIDs(ctx, squadUUID)
 		if lookupErr != nil {
-			return nil, lookupErr
+			return nil, nil, lookupErr
 		}
-		for _, node := range nodes {
-			accessible[node] = struct{}{}
+		seen := make(map[string]struct{}, len(accessible))
+		for _, nodeUUID := range accessible {
+			node, exists := byUUID[strings.TrimSpace(nodeUUID)]
+			if !exists {
+				continue
+			}
+			if _, duplicate := seen[node.UUID]; duplicate {
+				continue
+			}
+			seen[node.UUID] = struct{}{}
+			bySquad[squadUUID] = append(bySquad[squadUUID], node)
+		}
+		sortCatalogNodes(bySquad[squadUUID])
+	}
+	return allNodes, bySquad, nil
+}
+
+func hydrateStoredCatalogNodes(ctx context.Context, provider remoteNodeLister, combos []model.Combo, addons []model.SquadProduct) (model.Catalog, error) {
+	unique := make(map[string]struct{})
+	for _, combo := range combos {
+		for _, squad := range combo.IncludedSquads {
+			unique[squad.RemnaSquadUUID] = struct{}{}
 		}
 	}
-	nodes, err := provider.ListCatalogNodes(ctx)
+	for _, squad := range addons {
+		unique[squad.RemnaSquadUUID] = struct{}{}
+	}
+	squadUUIDs := make([]string, 0, len(unique))
+	for squadUUID := range unique {
+		squadUUIDs = append(squadUUIDs, squadUUID)
+	}
+	sort.Strings(squadUUIDs)
+	nodes, bySquad, err := hydrateSquadNodes(ctx, provider, squadUUIDs)
 	if err != nil {
-		return nil, err
+		return model.Catalog{}, err
+	}
+	for comboIndex := range combos {
+		for squadIndex := range combos[comboIndex].IncludedSquads {
+			squad := &combos[comboIndex].IncludedSquads[squadIndex]
+			squad.AccessibleNodes = nonNilCatalogNodes(bySquad[squad.RemnaSquadUUID])
+		}
+	}
+	for index := range addons {
+		addons[index].AccessibleNodes = nonNilCatalogNodes(bySquad[addons[index].RemnaSquadUUID])
+	}
+	return model.Catalog{Combos: combos, Addons: addons, Nodes: nodes}, nil
+}
+
+func nonNilCatalogNodes(nodes []model.CatalogNode) []model.CatalogNode {
+	if nodes == nil {
+		return []model.CatalogNode{}
+	}
+	return nodes
+}
+
+func catalogWithEmptyNodes(combos []model.Combo, addons []model.SquadProduct) model.Catalog {
+	for comboIndex := range combos {
+		for squadIndex := range combos[comboIndex].IncludedSquads {
+			combos[comboIndex].IncludedSquads[squadIndex].AccessibleNodes = []model.CatalogNode{}
+		}
+	}
+	for index := range addons {
+		addons[index].AccessibleNodes = []model.CatalogNode{}
+	}
+	return model.Catalog{Combos: combos, Addons: addons, Nodes: []model.CatalogNode{}}
+}
+
+func quoteAccessibleNodes(catalog model.Catalog, comboID string, addonIDs []string) []model.RemnaNode {
+	squadUUIDs := selectedSquadUUIDs(catalog, comboID, addonIDs)
+	bySquad := make(map[string][]model.CatalogNode, len(catalog.Addons)+len(catalog.Combos))
+	for _, combo := range catalog.Combos {
+		for _, squad := range combo.IncludedSquads {
+			bySquad[squad.RemnaSquadUUID] = squad.AccessibleNodes
+		}
+	}
+	for _, squad := range catalog.Addons {
+		bySquad[squad.RemnaSquadUUID] = squad.AccessibleNodes
+	}
+	accessible := make(map[string]model.CatalogNode)
+	for _, squadUUID := range squadUUIDs {
+		for _, node := range bySquad[squadUUID] {
+			accessible[node.UUID] = node
+		}
 	}
 	result := make([]model.RemnaNode, 0, len(accessible))
-	for _, node := range nodes {
-		if node.Disabled {
-			continue
-		}
-		if _, ok := accessible[node.UUID]; !ok {
-			continue
+	for _, node := range accessible {
+		providerName := ""
+		if node.ProviderName != nil {
+			providerName = *node.ProviderName
 		}
 		result = append(result, model.RemnaNode{UUID: node.UUID, Name: node.Name, CountryCode: node.CountryCode,
 			ConsumptionMultiplier: node.ConsumptionMultiplier, ActiveInboundUUIDs: node.ActiveInboundUUIDs, Accessible: true,
-			ProviderName: node.ProviderName, ProviderFaviconURL: node.ProviderFaviconURL})
+			ProviderName: providerName, ProviderFaviconURL: node.ProviderFaviconURL})
 	}
 	sort.Slice(result, func(left, right int) bool {
 		if result[left].CountryCode == result[right].CountryCode {
@@ -92,33 +181,17 @@ func (s *Service) quoteAccessibleNodes(ctx context.Context, comboID string, addo
 		}
 		return result[left].CountryCode < result[right].CountryCode
 	})
-	return result, nil
+	return result
 }
 
-func selectedSquadUUIDs(catalog model.Catalog, comboID string, addonIDs []string) []string {
-	selected := make(map[string]struct{})
-	for _, combo := range catalog.Combos {
-		if combo.ID != comboID {
-			continue
-		}
-		for _, squad := range combo.IncludedSquads {
-			selected[squad.RemnaSquadUUID] = struct{}{}
-		}
-		break
-	}
-	for _, addonID := range addonIDs {
-		trimmed := strings.TrimSpace(addonID)
-		for _, addon := range catalog.Addons {
-			if addon.ID == trimmed || addon.RemnaSquadUUID == trimmed {
-				selected[addon.RemnaSquadUUID] = struct{}{}
-				break
+func sortCatalogNodes(nodes []model.CatalogNode) {
+	sort.Slice(nodes, func(left, right int) bool {
+		if nodes[left].CountryCode == nodes[right].CountryCode {
+			if nodes[left].Name == nodes[right].Name {
+				return nodes[left].UUID < nodes[right].UUID
 			}
+			return nodes[left].Name < nodes[right].Name
 		}
-	}
-	result := make([]string, 0, len(selected))
-	for squadUUID := range selected {
-		result = append(result, squadUUID)
-	}
-	sort.Strings(result)
-	return result
+		return nodes[left].CountryCode < nodes[right].CountryCode
+	})
 }

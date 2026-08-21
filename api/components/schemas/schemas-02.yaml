@@ -139,6 +139,7 @@ SquadProduct:
     - visible
     - upstreamPresent
     - activationRequired
+    - accessibleNodes
     - createdAt
     - updatedAt
   properties:
@@ -161,6 +162,10 @@ SquadProduct:
       type: boolean
     activationRequired:
       type: boolean
+    accessibleNodes:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/CatalogNode'
     upstreamPresent:
       type: boolean
     stockLimit:
@@ -227,7 +232,7 @@ Combo:
 CatalogNode:
   type: object
   additionalProperties: false
-  required: [uuid, name, countryCode, consumptionMultiplier]
+  required: [uuid, name, countryCode, consumptionMultiplier, providerName]
   properties:
     uuid:
       type: string
@@ -240,6 +245,8 @@ CatalogNode:
     consumptionMultiplier:
       type: number
       minimum: 0
+    providerName:
+      type: [string, 'null']
 
 Catalog:
   type: object

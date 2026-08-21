@@ -3,6 +3,7 @@ import type {
   IPBlock,
   MemberRefundQuote,
   OperationReceipt,
+  TrafficResetAutomation,
   TrafficResetQuote,
 } from './types'
 import { request } from './http'
@@ -24,6 +25,11 @@ export const memberOperationsApi = {
     headers: { 'Idempotency-Key': idempotencyKey },
   }),
   getTrafficResetQuote: (purchaseId: string) => request<TrafficResetQuote>(`/api/v1/purchases/${encodeURIComponent(purchaseId)}/traffic-reset`),
+  getTrafficResetAutomation: () => request<TrafficResetAutomation>('/api/v1/me/traffic-reset-automation'),
+  updateTrafficResetAutomation: (enabled: boolean) => request<TrafficResetAutomation>('/api/v1/me/traffic-reset-automation', {
+    method: 'PUT',
+    body: { enabled },
+  }),
   resetPurchaseTraffic: (purchaseId: string, idempotencyKey: string) => request<OperationReceipt>(`/api/v1/purchases/${encodeURIComponent(purchaseId)}/traffic-reset`, {
     method: 'POST',
     headers: { 'Idempotency-Key': idempotencyKey },

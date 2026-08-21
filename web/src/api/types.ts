@@ -85,6 +85,7 @@ export type ConnectionNode = DeepReadonly<components['schemas']['ConnectionNode'
 export type ConnectionScan = DeepReadonly<components['schemas']['ConnectionScan']>
 export type IPBlock = DeepReadonly<components['schemas']['IPBlock']>
 export type TrafficResetQuote = DeepReadonly<components['schemas']['TrafficResetQuote']>
+export type TrafficResetAutomation = DeepReadonly<components['schemas']['TrafficResetAutomation']>
 export type MemberRefundQuote = DeepReadonly<components['schemas']['MemberRefundQuote']>
 export type PaymentProvider = components['schemas']['PaymentProvider']
 export type PaymentStatus = components['schemas']['PaymentStatus']

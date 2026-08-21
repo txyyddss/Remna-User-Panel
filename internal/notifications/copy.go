@@ -8,12 +8,17 @@ type copySet struct {
 
 var englishCopy = copySet{
 	titles: map[string]string{
-		"expiration": "🛑 Subscription expired", "expiry_reminder": "⏳ Expires in 2 days",
+		"automatic_traffic_reset":              "🔄 Automatic traffic reset completed",
+		"automatic_traffic_reset_insufficient": "⏸ Automatic traffic reset disabled",
+		"automatic_traffic_reset_failed":       "↩️ Automatic traffic reset refunded",
+		"expiration":                           "🛑 Subscription expired", "expiry_reminder": "⏳ Expires in 2 days",
 		"queued_activation": "🚀 Queued combo activated", "auto_renewal": "♻️ Auto-renewed",
 		"traffic_threshold": "⚠️ Traffic above 90%", "group_reward": "🎁 Group reward received",
 		"admin_extension": "🎁 Extended by admin", "admin_update": "🛠 Updated by admin",
 	},
 	labels: map[string]string{
+		"charged": "Charged", "requiredCharge": "Required charge", "currentBalance": "Current balance",
+		"automation": "Automation", "refunded": "Refunded",
 		"combo": "Combo", "expires": "Expires", "expired": "Expired", "autoRenewal": "Auto-renewal",
 		"queuedCombo": "Queued combo", "traffic": "Traffic", "reset": "Reset", "addOns": "Add-ons",
 		"validUntil": "Valid until", "renewalDebit": "Renewal debit", "usedAllocated": "Used / Allocated",
@@ -24,7 +29,8 @@ var englishCopy = copySet{
 		"newCombo": "New combo", "validFrom": "Valid from", "status": "Status", "squads": "Squads", "reason": "Reason",
 	},
 	values: map[string]string{
-		"off": "Off", "none": "None", "unavailable": "Unavailable", "DAY": "Daily", "WEEK": "Weekly",
+		"disabled": "Disabled",
+		"off":      "Off", "none": "None", "unavailable": "Unavailable", "DAY": "Daily", "WEEK": "Weekly",
 		"MONTH": "Monthly", "MONTH_ROLLING": "Monthly rolling", "NO_RESET": "No reset",
 		"balance_adjustment": "TXB adjustment", "balance_deduction": "TXB deduction", "payment_refund": "Payment refund",
 		"courtesy_credit": "Courtesy credit", "entitlement_refund": "Entitlement refund",
@@ -35,12 +41,17 @@ var englishCopy = copySet{
 
 var chineseCopy = copySet{
 	titles: map[string]string{
-		"expiration": "🛑 订阅已到期", "expiry_reminder": "⏳ 订阅将在 2 天后到期",
+		"automatic_traffic_reset":              "🔄 自动流量重置已完成",
+		"automatic_traffic_reset_insufficient": "⏸ 自动流量重置已关闭",
+		"automatic_traffic_reset_failed":       "↩️ 自动流量重置已退款",
+		"expiration":                           "🛑 订阅已到期", "expiry_reminder": "⏳ 订阅将在 2 天后到期",
 		"queued_activation": "🚀 排队套餐已启用", "auto_renewal": "♻️ 自动续费成功",
 		"traffic_threshold": "⚠️ 流量已超过 90%", "group_reward": "🎁 群聊奖励到账",
 		"admin_extension": "🎁 管理员已延长订阅", "admin_update": "🛠 管理员已更新账户",
 	},
 	labels: map[string]string{
+		"charged": "已扣款", "requiredCharge": "所需费用", "currentBalance": "当前余额",
+		"automation": "自动重置", "refunded": "已退款",
 		"combo": "套餐", "expires": "到期时间", "expired": "到期时间", "autoRenewal": "自动续费",
 		"queuedCombo": "排队套餐", "traffic": "流量", "reset": "重置", "addOns": "附加项",
 		"validUntil": "有效期至", "renewalDebit": "续费扣款", "usedAllocated": "已用 / 总量",
@@ -51,7 +62,8 @@ var chineseCopy = copySet{
 		"newCombo": "新套餐", "validFrom": "生效时间", "status": "状态", "squads": "节点组", "reason": "原因",
 	},
 	values: map[string]string{
-		"off": "关闭", "none": "无", "unavailable": "不可用", "DAY": "每日", "WEEK": "每周",
+		"disabled": "已关闭",
+		"off":      "关闭", "none": "无", "unavailable": "不可用", "DAY": "每日", "WEEK": "每周",
 		"MONTH": "每月", "MONTH_ROLLING": "滚动月", "NO_RESET": "不重置",
 		"balance_adjustment": "TXB 调整", "balance_deduction": "TXB 扣除", "payment_refund": "支付退款",
 		"courtesy_credit": "补偿金", "entitlement_refund": "套餐退款",

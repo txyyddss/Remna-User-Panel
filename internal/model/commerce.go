@@ -27,6 +27,7 @@ type SquadProduct struct {
 	StockLimit         *int                  `json:"stockLimit"`
 	StockRemaining     *int                  `json:"stockRemaining"`
 	ActivationRequired bool                  `json:"activationRequired"`
+	AccessibleNodes    []CatalogNode         `json:"accessibleNodes"`
 	CreatedAt          time.Time             `json:"createdAt"`
 	UpdatedAt          time.Time             `json:"updatedAt"`
 }
@@ -142,10 +143,13 @@ type RolloverWindow struct {
 // CatalogNode is the display-only node identity and multiplier metadata used
 // by the member dashboard.
 type CatalogNode struct {
-	UUID                  string  `json:"uuid"`
-	Name                  string  `json:"name"`
-	CountryCode           string  `json:"countryCode"`
-	ConsumptionMultiplier float64 `json:"consumptionMultiplier"`
+	UUID                  string   `json:"uuid"`
+	Name                  string   `json:"name"`
+	CountryCode           string   `json:"countryCode"`
+	ConsumptionMultiplier float64  `json:"consumptionMultiplier"`
+	ProviderName          *string  `json:"providerName"`
+	ActiveInboundUUIDs    []string `json:"-"`
+	ProviderFaviconURL    *string  `json:"-"`
 }
 
 // Catalog is the complete customer-visible catalog snapshot.

@@ -4,10 +4,10 @@
 - `StatisticsPage.test.ts` covers tab-panel separation and the node-card selection flow into the on-demand Geocheck modal.
 - `StatisticsFreshness.vue` exposes the Remnawave and database snapshot timestamps as independent Overview panels with separate stale state.
 - `StatisticsFreshness.test.ts` covers independent partition timestamps and stale/current disclosure.
-- `StatisticsOverview.vue` centers the weekly added-user total in the user donut, with its color legend below the chart, and combines usage, spend, rollover, activity, squad, and database KPIs.
-- `StatisticsNodes.vue` presents live node health in dense rows with icon-labeled throughput, version, multiplier, online-user metrics, and an explicit Geocheck result action.
-- `StatisticsNodes.test.ts` covers the card action's selected-node event.
-- `StatisticsGeocheckModal.vue` presents the on-demand cached SVG result with loading, unavailable, reset, button, wheel, centered pinch, pan, and double-tap zoom controls.
+- `StatisticsOverview.vue` centers the weekly added-user total in the user donut, with its color legend below the chart, and combines live usage and predicted average rollover with spend, activity, squad, and database KPIs.
+- `StatisticsNodes.vue` presents live node health in dense rows with icon-labeled throughput and online-user metrics plus an explicit Geocheck result action; Xray version and traffic multiplier remain contract-only fields.
+- `StatisticsNodes.test.ts` covers the card action, light feedback marker, and removal of version/multiplier rows.
+- `StatisticsGeocheckModal.vue` presents the on-demand cached SVG result with loading, unavailable, light-feedback close/reset/button controls, wheel, centered pinch, pan, and double-tap zoom. Drag, wheel, and polling never trigger continuous feedback.
 - `StatisticsGeocheckModal.test.ts` covers data-URI rendering, loading/unavailable states, and close reset behavior.
 - `StatisticsTrafficChart.vue` renders the seven-day per-node traffic stack with hover, focus, keyboard, tap, and phone drag selection plus exact-value details.
 - `StatisticsShareCharts.vue` composes member and payment proportions.

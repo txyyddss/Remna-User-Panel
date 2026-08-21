@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"context"
+	"sort"
 	"strings"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
@@ -37,7 +38,10 @@ func (s *Service) Catalog(ctx context.Context) (model.Catalog, error) {
 func (s *Service) hydrateLiveCatalog(ctx context.Context, combos []model.Combo, overrides []model.SquadProduct) (model.Catalog, error) {
 	lister, ok := s.remnawave.(remoteSquadLister)
 	if !ok {
-		return model.Catalog{Combos: combos, Addons: overrides, Nodes: []model.CatalogNode{}}, nil
+		if nodeLister, available := s.remnawave.(remoteNodeLister); available {
+			return hydrateStoredCatalogNodes(ctx, nodeLister, combos, overrides)
+		}
+		return catalogWithEmptyNodes(combos, overrides), nil
 	}
 	remote, err := lister.ListCatalogSquads(ctx)
 	if err != nil {
@@ -46,6 +50,32 @@ func (s *Service) hydrateLiveCatalog(ctx context.Context, combos []model.Combo, 
 	live := make(map[string]string, len(remote))
 	for _, squad := range remote {
 		live[strings.TrimSpace(squad.UUID)] = strings.TrimSpace(squad.Name)
+	}
+	uniqueSquads := make(map[string]struct{})
+	for _, override := range overrides {
+		if _, present := live[override.RemnaSquadUUID]; present {
+			uniqueSquads[override.RemnaSquadUUID] = struct{}{}
+		}
+	}
+	for _, combo := range combos {
+		for _, included := range combo.IncludedSquads {
+			if _, present := live[included.RemnaSquadUUID]; present {
+				uniqueSquads[included.RemnaSquadUUID] = struct{}{}
+			}
+		}
+	}
+	squadUUIDs := make([]string, 0, len(uniqueSquads))
+	for squadUUID := range uniqueSquads {
+		squadUUIDs = append(squadUUIDs, squadUUID)
+	}
+	sort.Strings(squadUUIDs)
+	catalogNodes := []model.CatalogNode{}
+	nodesBySquad := make(map[string][]model.CatalogNode)
+	if nodeLister, ok := s.remnawave.(remoteNodeLister); ok {
+		catalogNodes, nodesBySquad, err = hydrateSquadNodes(ctx, nodeLister, squadUUIDs)
+		if err != nil {
+			return model.Catalog{}, err
+		}
 	}
 	overrideByUUID := make(map[string]model.SquadProduct, len(overrides))
 	addons := make([]model.SquadProduct, 0, len(overrides))
@@ -56,6 +86,10 @@ func (s *Service) hydrateLiveCatalog(ctx context.Context, combos []model.Combo, 
 		}
 		override.Name = name
 		override.UpstreamPresent = true
+		override.AccessibleNodes = nodesBySquad[override.RemnaSquadUUID]
+		if override.AccessibleNodes == nil {
+			override.AccessibleNodes = []model.CatalogNode{}
+		}
 		overrideByUUID[override.RemnaSquadUUID] = override
 		if override.Visible {
 			addons = append(addons, override)
@@ -73,21 +107,20 @@ func (s *Service) hydrateLiveCatalog(ctx context.Context, combos []model.Combo, 
 			}
 			product, hasOverride := overrideByUUID[placeholder.RemnaSquadUUID]
 			if !hasOverride {
-				product = model.SquadProduct{ID: placeholder.RemnaSquadUUID, RemnaSquadUUID: placeholder.RemnaSquadUUID, Visible: true}
+				product = model.SquadProduct{ID: placeholder.RemnaSquadUUID, RemnaSquadUUID: placeholder.RemnaSquadUUID, Visible: true,
+					AccessibleNodes: []model.CatalogNode{}}
 			}
 			product.Name = name
 			product.UpstreamPresent = true
+			product.AccessibleNodes = nodesBySquad[placeholder.RemnaSquadUUID]
+			if product.AccessibleNodes == nil {
+				product.AccessibleNodes = []model.CatalogNode{}
+			}
 			included = append(included, product)
 		}
 		if valid {
 			combo.IncludedSquads = included
 			liveCombos = append(liveCombos, combo)
-		}
-	}
-	catalogNodes := make([]model.CatalogNode, 0)
-	if nodeLister, ok := s.remnawave.(remoteNodeLister); ok {
-		if remoteNodes, nodeErr := nodeLister.ListCatalogNodes(ctx); nodeErr == nil {
-			catalogNodes = projectCatalogNodes(remoteNodes)
 		}
 	}
 	return model.Catalog{Combos: liveCombos, Addons: addons, Nodes: catalogNodes}, nil

@@ -22,6 +22,7 @@ const squad: SquadProduct = {
   visible: true,
   upstreamPresent: true,
   activationRequired: false,
+  accessibleNodes: [],
   createdAt: '2026-08-07T00:00:00Z',
   updatedAt: '2026-08-07T00:00:00Z',
 }

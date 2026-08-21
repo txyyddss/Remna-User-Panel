@@ -148,10 +148,11 @@ describe('Telegram bootstrap', () => {
 
   it('adds marked click feedback and disposes the delegated listener', () => {
     const impactOccurred = vi.fn()
+    const selectionChanged = vi.fn()
     window.Telegram = { WebApp: {
       version: '9.0', initData: '', initDataUnsafe: {}, colorScheme: 'dark', ready: vi.fn(), expand: vi.fn(), close: vi.fn(),
       openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn(),
-      HapticFeedback: { impactOccurred, notificationOccurred: vi.fn() },
+      HapticFeedback: { impactOccurred, notificationOccurred: vi.fn(), selectionChanged },
     } }
     const button = document.createElement('button')
     button.dataset.haptic = 'medium'
@@ -161,6 +162,10 @@ describe('Telegram bootstrap', () => {
     button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(impactOccurred).toHaveBeenCalledWith('medium')
 
+    button.dataset.haptic = 'selection'
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(selectionChanged).toHaveBeenCalledOnce()
+
     button.setAttribute('disabled', 'true')
     button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(impactOccurred).toHaveBeenCalledTimes(1)
@@ -169,6 +174,7 @@ describe('Telegram bootstrap', () => {
     button.removeAttribute('disabled')
     button.click()
     expect(impactOccurred).toHaveBeenCalledTimes(1)
+    expect(selectionChanged).toHaveBeenCalledTimes(1)
   })
 
   it('uses Telegram semantic selection feedback when available', () => {

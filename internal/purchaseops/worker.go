@@ -23,6 +23,10 @@ type WorkerRepository interface {
 	FinalizeMemberRefund(context.Context, string, string, time.Time) (RefundResult, error)
 }
 
+type notificationCompletionRepository interface {
+	CompleteProviderOperationItemAndReleaseNotifications(context.Context, string, string, providerops.Completion, time.Time) (providerops.Item, error)
+}
+
 // Worker reconciles and settles reset/refund provider operations.
 type Worker struct {
 	repository WorkerRepository
@@ -77,7 +81,13 @@ func (w *Worker) complete(ctx context.Context, operation providerops.Operation, 
 		}
 	}
 	if item.Status == providerops.StatusProcessing {
-		if _, err := w.repository.CompleteProviderOperationItem(ctx, operation.Receipt.ID, item.Key, completion, now); err != nil {
+		var err error
+		if repository, ok := w.repository.(notificationCompletionRepository); ok && status == providerops.StatusSucceeded {
+			_, err = repository.CompleteProviderOperationItemAndReleaseNotifications(ctx, operation.Receipt.ID, item.Key, completion, now)
+		} else {
+			_, err = w.repository.CompleteProviderOperationItem(ctx, operation.Receipt.ID, item.Key, completion, now)
+		}
+		if err != nil {
 			return err
 		}
 	}

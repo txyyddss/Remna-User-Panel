@@ -27,6 +27,6 @@ function referralName(referral: AffiliateReferral): string {
       </article>
     </div>
     <p v-else class="affiliate-empty">{{ $t('affiliates.noReferrals') }}</p>
-    <UPagination v-if="page.totalPages > 1" class="affiliate-pagination" :page="page.page" :items-per-page="page.pageSize" :total="page.total" @update:page="$emit('update:page', $event)" />
+    <UPagination v-if="page.totalPages > 1" class="affiliate-pagination" :page="page.page" :items-per-page="page.pageSize" :total="page.total" data-haptic="selection" @update:page="$emit('update:page', $event)" />
   </section>
 </template>
