@@ -5,6 +5,8 @@ import { t } from '@/i18n'
 
 defineProps<{ nodes: readonly CatalogNode[] }>()
 
+const emit = defineEmits<{ openGeocheck: [node: CatalogNode] }>()
+
 function formatMultiplier(value: number): string {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value)
 }
@@ -24,7 +26,22 @@ function providerLabel(node: CatalogNode): string {
           <strong>{{ node.name }}</strong>
           <small>{{ providerLabel(node) }}</small>
         </span>
-        <span class="squad-node__multiplier">{{ $t('catalog.nodeMultiplier', { multiplier: formatMultiplier(node.consumptionMultiplier) }) }}</span>
+        <span class="squad-node__actions">
+          <span class="squad-node__multiplier">{{ $t('catalog.nodeMultiplier', { multiplier: formatMultiplier(node.consumptionMultiplier) }) }}</span>
+          <UTooltip :text="$t('statistics.geocheck.open')">
+            <UButton
+              type="button"
+              color="neutral"
+              variant="ghost"
+              square
+              class="squad-node__geocheck"
+              icon="i-ph-globe-hemisphere-west"
+              :aria-label="$t('statistics.geocheck.open')"
+              data-haptic="open"
+              @click.stop="emit('openGeocheck', node)"
+            />
+          </UTooltip>
+        </span>
       </article>
     </div>
   </section>
@@ -39,6 +56,8 @@ function providerLabel(node: CatalogNode): string {
 .squad-node strong, .squad-node small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .squad-node strong { font-size: 0.7rem; }
 .squad-node small { color: var(--text-faint); font-size: 0.61rem; }
+.squad-node__actions { display: flex; align-items: center; gap: 0.2rem; }
 .squad-node__multiplier { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.62rem; white-space: nowrap; }
+.squad-node__geocheck { flex: 0 0 auto; }
 @media (min-width: 700px) { .squad-nodes__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>

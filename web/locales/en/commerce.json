@@ -41,7 +41,7 @@
     "perTerm": "per term",
     "optionalSquads": "Optional squads",
     "optionalSquadsHint": "Add regions to the same traffic budget and subscription term.",
-    "included": "Included",
+    "included": "Included", "featured": "Featured",
     "noSquads": "No optional squads today",
     "noSquadsHint": "Your combo still includes its standard regions.",
     "effectiveDate": "Effective date",

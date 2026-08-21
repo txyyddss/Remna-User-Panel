@@ -72,6 +72,7 @@ declare module 'vue' {
     CatalogFlowProgress: typeof import('./src/components/catalog/CatalogFlowProgress.vue')['default']
     CatalogPage: typeof import('./src/components/catalog/CatalogPage.vue')['default']
     CatalogPaymentStep: typeof import('./src/components/catalog/CatalogPaymentStep.vue')['default']
+    CatalogSquadStep: typeof import('./src/components/catalog/CatalogSquadStep.vue')['default']
     ChinaOptimizedProfileFields: typeof import('./src/components/admin/squad-profile/ChinaOptimizedProfileFields.vue')['default']
     ComboOption: typeof import('./src/components/catalog/ComboOption.vue')['default']
     ComingSoonLinks: typeof import('./src/components/dashboard/ComingSoonLinks.vue')['default']

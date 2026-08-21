@@ -47,8 +47,8 @@
 - `useQuestionnaireImport.ts` previews and settles questionnaire imports with reset-safe mutation and polling generations.
 - `useQuestionnaireImport.test.ts` covers import analysis and settlement.
 - `useQuestionnaires.ts` manages member questionnaire participation.
-- `useNodeGeocheck.ts` loads an image-only cached node Geocheck only after explicit card selection and clears its state on close.
-- `useNodeGeocheck.test.ts` covers selected-node loading, localized unavailability, and close reset behavior.
+- `useNodeGeocheck.ts` loads an image-only cached node Geocheck for a minimal UUID/name target shared by Statistics and Catalog, only after explicit selection, and clears its state on close.
+- `useNodeGeocheck.test.ts` covers selected-target loading, localized unavailability, and close reset behavior.
 - `useStatistics.ts` independently loads the 30-minute aggregate snapshot and
   ten-second node cache while preserving last-good data across partial failures.
 - `useTelegramBackButton.ts` coordinates one native Telegram BackButton across route and overlay owners, adds soft navigation feedback, and removes every handler on teardown.

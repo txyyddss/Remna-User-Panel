@@ -12,9 +12,13 @@ const props = defineProps<{
   squads: readonly SquadProduct[]
   selectedIds: readonly string[]
   includedIds: readonly string[]
+  featuredIds: readonly string[]
 }>()
 
-const emit = defineEmits<{ toggle: [id: string] }>()
+const emit = defineEmits<{
+  toggle: [id: string]
+  openGeocheck: [node: SquadProduct['accessibleNodes'][number]]
+}>()
 
 function isSelected(id: string): boolean {
   return props.selectedIds.includes(id)
@@ -22,6 +26,10 @@ function isSelected(id: string): boolean {
 
 function isIncluded(id: string): boolean {
   return props.includedIds.includes(id)
+}
+
+function isFeatured(id: string): boolean {
+  return props.featuredIds.includes(id)
 }
 
 function isFullPaidAddon(squad: SquadProduct): boolean {
@@ -61,14 +69,15 @@ const squadRows = computed(() => props.squads.map((squad) => ({
       <p>{{ $t('catalog.optionalSquadsHint') }}</p>
     </div>
     <div v-if="squads.length" v-auto-animate class="squad-grid">
-      <label v-for="row in squadRows" :key="row.squad.id" class="squad-option" :class="[profileClass(row.squad), { 'squad-option--selected': isSelected(row.squad.id), 'squad-option--included': isIncluded(row.squad.id), 'squad-option--full': isFullPaidAddon(row.squad) }]">
+      <article v-for="row in squadRows" :key="row.squad.id" class="squad-option" :class="[profileClass(row.squad), { 'squad-option--selected': isSelected(row.squad.id), 'squad-option--included': isIncluded(row.squad.id), 'squad-option--full': isFullPaidAddon(row.squad) }]" @click="toggleSquad(row.squad)">
         <div class="squad-option__copy">
+          <StatusBadge v-if="isFeatured(row.squad.id)" tone="success" :label="$t('catalog.featured')" />
           <SquadProfileSummary :name="row.squad.name" :profile="row.squad.profile" :description="row.squad.description" presentation="member" compact>
             <template v-if="row.occupancyPercentage !== null" #facts>
               <span><UIcon name="i-ph-users-three" />{{ row.occupancyPercentage }}%</span>
             </template>
           </SquadProfileSummary>
-          <SquadNodeBlocks :nodes="row.squad.accessibleNodes" />
+          <SquadNodeBlocks :nodes="row.squad.accessibleNodes" @open-geocheck="emit('openGeocheck', $event)" />
           <StatusBadge v-if="isIncluded(row.squad.id)" tone="neutral" :label="$t('catalog.included')" />
           <StatusBadge v-else-if="row.squad.activationRequired" tone="warning" :label="$t('catalog.activationRequired')" />
           <StatusBadge v-else-if="isFullPaidAddon(row.squad)" tone="neutral" :label="$t('catalog.full')" />
@@ -78,9 +87,10 @@ const squadRows = computed(() => props.squads.map((squad) => ({
           :model-value="isSelected(row.squad.id)"
           :disabled="isIncluded(row.squad.id) || isFullPaidAddon(row.squad)"
           :aria-label="row.squad.name"
+          @click.stop
           @update:model-value="toggleSquad(row.squad)"
         />
-      </label>
+      </article>
     </div>
     <div v-else class="empty-inline">
       <div>

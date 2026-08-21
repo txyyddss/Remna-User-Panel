@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed, useTemplateRef, watch } from 'vue'
 
-import type { StatisticsNode, StatisticsNodeGeocheck } from '@/api/types'
+import type { NodeGeocheckTarget, StatisticsNodeGeocheck } from '@/api/types'
 import { useImageZoom } from '@/composables/useImageZoom'
 import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
 import { t } from '@/i18n'
 import { formatDateTime } from '@/utils/format'
 
 const props = defineProps<{
-  node: StatisticsNode | null
+  node: NodeGeocheckTarget | null
   result: StatisticsNodeGeocheck | null
   loading: boolean
   error: string | null

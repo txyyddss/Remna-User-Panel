@@ -75,6 +75,7 @@ export type NamedShare = DeepReadonly<components['schemas']['NamedShare']>
 export type NormalizedDistribution = DeepReadonly<components['schemas']['NormalizedDistribution']>
 export type StatisticsSnapshot = DeepReadonly<components['schemas']['StatisticsSnapshot']>
 export type StatisticsNode = DeepReadonly<components['schemas']['StatisticsNode']>
+export type NodeGeocheckTarget = Pick<StatisticsNode, 'uuid' | 'name'>
 export type StatisticsNodesSnapshot = DeepReadonly<components['schemas']['StatisticsNodesSnapshot']>
 export type StatisticsNodeGeocheck = DeepReadonly<components['schemas']['StatisticsNodeGeocheck']>
 export type OperationStatus = components['schemas']['OperationStatus']

@@ -1,11 +1,11 @@
 import { computed, getCurrentInstance, onUnmounted, readonly, shallowRef } from 'vue'
 
 import { api } from '@/api/client'
-import type { StatisticsNode, StatisticsNodeGeocheck } from '@/api/types'
+import type { NodeGeocheckTarget, StatisticsNodeGeocheck } from '@/api/types'
 import { localizedError } from '@/i18n'
 
 export function useNodeGeocheck() {
-  const selectedNode = shallowRef<StatisticsNode | null>(null)
+  const selectedNode = shallowRef<NodeGeocheckTarget | null>(null)
   const result = shallowRef<StatisticsNodeGeocheck | null>(null)
   const loading = shallowRef(false)
   const error = shallowRef<string | null>(null)
@@ -16,7 +16,7 @@ export function useNodeGeocheck() {
     set: (open: boolean) => { if (!open) close() },
   })
 
-  async function show(node: StatisticsNode): Promise<void> {
+  async function show(node: NodeGeocheckTarget): Promise<void> {
     const version = ++requestVersion
     selectedNode.value = node
     result.value = null

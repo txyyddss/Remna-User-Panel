@@ -28,3 +28,8 @@ You may want to use the following projects for frontend:
 When finish, commit and push to main branch. Monitor related github actions run, and fix issue if failed.
 
 ---
+
+## Your task: Improve "Optional squads" page design
+
+- Add view geockeck button (same as the one in statistics)for every node on "Optional squads" page
+- Display "Featured" on squad which consists of the most part of Squad composition of the core combo

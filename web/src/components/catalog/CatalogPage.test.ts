@@ -81,7 +81,7 @@ async function mountPage(purchase: object | null, step = 4, confirmPurchase = vi
         CatalogCouponStep: { template: '<div data-test="catalog-coupon-step" />' },
         CatalogFlowControls: { props: ['nextDisabled'], emits: ['next'], template: '<div role="button" tabindex="0" data-test="catalog-flow-controls" :data-disabled="String(nextDisabled)" @click="$emit(\'next\')" />' },
         CatalogFlowProgress: { template: '<div data-test="catalog-flow-progress" />' },
-        SquadSelector: { template: '<div data-test="squad-step" />' },
+        CatalogSquadStep: { template: '<div data-test="squad-step" />' },
       },
     },
   })
