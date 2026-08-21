@@ -43,7 +43,7 @@ func TestAutomaticTrafficResetDebitIsIdempotentAndSuccessGated(t *testing.T) {
 	}
 	assertNotificationCounts(t, store, 1, 1)
 	var completion string
-	if err := store.DB().QueryRow(`SELECT json_extract(payload_json,'$.facts.time') FROM outbox_jobs
+	if err := store.DB().QueryRow(`SELECT json_extract(payload,'$.facts.time') FROM outbox_jobs
 		WHERE kind=?`, jobpayload.UserNotificationKind).Scan(&completion); err != nil || completion != completedAt.Format(time.RFC3339Nano) {
 		t.Fatalf("completion time = %q, %v", completion, err)
 	}
@@ -51,7 +51,7 @@ func TestAutomaticTrafficResetDebitIsIdempotentAndSuccessGated(t *testing.T) {
 
 func TestAutomaticTrafficResetInsufficientBalanceDisablesPreference(t *testing.T) {
 	t.Parallel()
-	store, userID, _, now := automaticResetFixture(t, 88_101, 10)
+	store, userID, _, now := automaticResetFixture(t, 88_101, 301)
 	ctx := context.Background()
 
 	result, err := store.ProcessAutomaticTrafficResetObservation(ctx, "88101", 991, 1_000, "NO_RESET", nil, now)
