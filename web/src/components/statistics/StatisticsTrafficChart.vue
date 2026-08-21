@@ -54,7 +54,6 @@ const { isScrubbing, onPointerDown, onPointerMove, onPointerUp, onPointerCancel,
         class="statistics-traffic__plot"
         :class="{ 'statistics-traffic__plot--scrubbing': isScrubbing }"
         role="group"
-        data-haptic
         :aria-label="$t('statistics.trafficChartLabel')"
         aria-describedby="statistics-traffic-touch-hint"
         @pointerdown="onPointerDown"
@@ -77,7 +76,6 @@ const { isScrubbing, onPointerDown, onPointerMove, onPointerUp, onPointerCancel,
                   role="button"
                   tabindex="0"
                   :data-statistics-traffic-id="segment.interactionId"
-                  data-haptic
                   @pointerenter="activate(segment.interactionId)"
                   @pointerleave="deactivate(segment.interactionId)"
                   @focus="activate(segment.interactionId)"

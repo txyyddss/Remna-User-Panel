@@ -5,6 +5,7 @@ import type { SquadProduct } from '@/api/types'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import SquadProfileSummary from '@/components/squad-profile/SquadProfileSummary.vue'
 import { formatMoney } from '@/utils/format'
+import { selectionHaptic } from '@/utils/telegram'
 import SquadNodeBlocks from './SquadNodeBlocks.vue'
 
 const props = defineProps<{
@@ -31,6 +32,12 @@ function profileClass(squad: SquadProduct): string {
   return squad.profile ? `squad-option--${squad.profile.type}` : ''
 }
 
+function toggleSquad(squad: SquadProduct): void {
+  if (isIncluded(squad.id) || isFullPaidAddon(squad)) return
+  selectionHaptic()
+  emit('toggle', squad.id)
+}
+
 function occupancyPercentage(squad: SquadProduct): number | null {
   if (squad.stockLimit === null || squad.stockLimit === undefined) return null
   if (squad.stockLimit <= 0) return 100
@@ -54,7 +61,7 @@ const squadRows = computed(() => props.squads.map((squad) => ({
       <p>{{ $t('catalog.optionalSquadsHint') }}</p>
     </div>
     <div v-if="squads.length" v-auto-animate class="squad-grid">
-      <label v-for="row in squadRows" :key="row.squad.id" class="squad-option" :class="[profileClass(row.squad), { 'squad-option--selected': isSelected(row.squad.id), 'squad-option--included': isIncluded(row.squad.id), 'squad-option--full': isFullPaidAddon(row.squad) }]" :data-haptic="isIncluded(row.squad.id) || isFullPaidAddon(row.squad) ? undefined : 'light'">
+      <label v-for="row in squadRows" :key="row.squad.id" class="squad-option" :class="[profileClass(row.squad), { 'squad-option--selected': isSelected(row.squad.id), 'squad-option--included': isIncluded(row.squad.id), 'squad-option--full': isFullPaidAddon(row.squad) }]">
         <div class="squad-option__copy">
           <SquadProfileSummary :name="row.squad.name" :profile="row.squad.profile" :description="row.squad.description" presentation="member" compact>
             <template v-if="row.occupancyPercentage !== null" #facts>
@@ -71,7 +78,7 @@ const squadRows = computed(() => props.squads.map((squad) => ({
           :model-value="isSelected(row.squad.id)"
           :disabled="isIncluded(row.squad.id) || isFullPaidAddon(row.squad)"
           :aria-label="row.squad.name"
-          @update:model-value="emit('toggle', row.squad.id)"
+          @update:model-value="toggleSquad(row.squad)"
         />
       </label>
     </div>

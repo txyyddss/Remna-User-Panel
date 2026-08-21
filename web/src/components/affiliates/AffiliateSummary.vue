@@ -13,7 +13,7 @@ const clipboard = useClipboard()
       <UButton
         class="affiliate-copy-button" color="neutral" variant="outline" icon="i-ph-copy" :disabled="!overview.inviteLink"
         :label="clipboard.copied.value ? $t('common.copied') : $t('affiliates.copy')"
-        data-haptic
+        data-haptic="copy"
         @click="overview.inviteLink && clipboard.copy(overview.inviteLink)"
       />
     </div>

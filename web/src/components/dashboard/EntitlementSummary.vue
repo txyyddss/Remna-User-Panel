@@ -72,7 +72,7 @@ function goToCatalog(): void {
             size="sm"
             icon="i-ph-x-circle"
             :label="$t('home.cancelQueued')"
-            data-haptic
+            data-haptic="open"
             @click="openQueuedCancellation"
           />
           <InlineNotice v-if="queuedCancelError" tone="warning">{{ queuedCancelError }}</InlineNotice>
@@ -91,7 +91,7 @@ function goToCatalog(): void {
         variant="outline"
         trailing-icon="i-ph-arrow-right"
         :label="$t('catalog.viewCombos')"
-        data-haptic
+        data-haptic="navigate"
         @click="goToCatalog"
       />
     </div>

@@ -47,13 +47,14 @@ useTelegramProtection(computed(() => open.value && (props.danger || props.busy))
         color="neutral"
         variant="outline"
         :disabled="busy"
+        data-haptic="dismiss"
         @click="close"
       />
       <UButton
         :label="busy ? t('common.working') : confirmLabel"
         :color="danger ? 'error' : 'primary'"
         :loading="busy"
-        :data-haptic="danger ? 'heavy' : 'light'"
+        :data-haptic="danger ? 'destructive' : 'confirm'"
         @click="$emit('confirm')"
       />
     </template>

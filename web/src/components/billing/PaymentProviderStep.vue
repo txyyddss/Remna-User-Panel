@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { useI18n } from '@/i18n'
+import { selectionHaptic } from '@/utils/telegram'
 import type { PaymentProviderOption } from './paymentOptions'
 
-defineProps<{
+const props = defineProps<{
   options: readonly PaymentProviderOption[]
   selectedValue: string | undefined
   canContinue: boolean
@@ -14,6 +15,12 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+
+function choose(value: string): void {
+  if (value === props.selectedValue) return
+  selectionHaptic()
+  emit('choose', value)
+}
 </script>
 
 <template>
@@ -28,8 +35,7 @@ const { t } = useI18n()
       variant="ghost"
       :disabled="!item.available"
       :aria-pressed="selectedValue === item.value"
-      data-haptic
-      @click="emit('choose', item.value)"
+      @click="choose(item.value)"
     >
       <span class="provider-option__icon"><UIcon :name="item.icon" aria-hidden="true" /></span>
       <span><strong>{{ item.label }}</strong><small>{{ item.description }}</small></span>
@@ -42,7 +48,7 @@ const { t } = useI18n()
     :disabled="!canContinue"
     :label="t('payment.continueToChannel')"
     data-test="choose-channel"
-    data-haptic
+    data-haptic="navigate"
     @click="emit('continue')"
   />
 </template>

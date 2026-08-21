@@ -148,7 +148,7 @@ watch(() => props.stage, (stage) => {
   <div v-if="paymentStep === 'provider' && selectedProvider === 'coupon'" class="coupon-redemption">
     <div class="coupon-redemption__form">
       <UInput v-model="couponCode" :placeholder="$t('payment.couponCode')" :aria-label="$t('payment.couponCode')" />
-      <UButton block :disabled="!couponCode.trim() || couponBusy" :loading="couponBusy" :label="$t('payment.redeemCoupon')" data-haptic @click="redeemCoupon" />
+      <UButton block :disabled="!couponCode.trim() || couponBusy" :loading="couponBusy" :label="$t('payment.redeemCoupon')" data-haptic="action" @click="redeemCoupon" />
     </div>
     <UAlert v-if="couponError" color="error" variant="soft" :description="couponError" />
   </div>

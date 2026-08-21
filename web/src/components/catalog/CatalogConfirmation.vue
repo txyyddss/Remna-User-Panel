@@ -78,7 +78,7 @@ function resetLabel(): string {
       :ui="{ trailingIcon: 'absolute end-3 top-1/2 -translate-y-1/2' }"
       trailing-icon="i-ph-house"
       :label="$t('catalog.returnHome')"
-      data-haptic
+      data-haptic="navigate"
       @click="emit('home')"
     />
   </section>

@@ -44,7 +44,7 @@ defineEmits<{ submit: [] }>()
         :disabled="!valid || loading"
         :loading="loading"
         :label="loading ? $t('onboarding.checkingAvailability') : $t('onboarding.reserveUsername')"
-        data-haptic
+        data-haptic="confirm"
       />
     </form>
   </section>

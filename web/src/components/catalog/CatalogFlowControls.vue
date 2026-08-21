@@ -11,8 +11,8 @@ defineEmits<{ back: []; next: [] }>()
 
 <template>
   <footer class="catalog-flow-controls">
-    <UButton v-if="showBack" color="neutral" variant="ghost" leading-icon="i-ph-arrow-left" :label="$t('catalog.back')" data-haptic @click="$emit('back')" />
-    <UButton class="catalog-flow-controls__next" :disabled="nextDisabled" :loading="loading" trailing-icon="i-ph-arrow-right" :label="nextLabel" data-haptic @click="$emit('next')" />
+    <UButton v-if="showBack" color="neutral" variant="ghost" leading-icon="i-ph-arrow-left" :label="$t('catalog.back')" data-haptic="navigate" @click="$emit('back')" />
+    <UButton class="catalog-flow-controls__next" :disabled="nextDisabled" :loading="loading" trailing-icon="i-ph-arrow-right" :label="nextLabel" data-haptic="navigate" @click="$emit('next')" />
   </footer>
 </template>
 

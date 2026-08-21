@@ -8,3 +8,5 @@
 - `UsagePanel.test.ts` verifies stale upstream data disclosure.
 - `EntitlementSummary.test.ts` verifies the catalog action stays in Vue Router history.
 - `TrafficResetAutomationControl.test.ts` verifies the switch remains controlled while emitting an immediate account preference update.
+
+Dashboard controls distinguish copy, open, navigation, retry, confirmation, and destructive intents. Automatic renewal and traffic-reset switches emit selection feedback only when their controlled value changes.

@@ -34,7 +34,7 @@ useTelegramBackButton(ownsBack, close)
 </script>
 
 <template>
-  <UModal v-model:open="open" :title="$t('connections.blockTitle')" :description="target ? $t('connections.blockDescription', { ip: target.connection.ip }) : ''" :dismissible="!busy" :close="{ 'data-haptic': '' }" :ui="{ footer: 'justify-end' }">
+  <UModal v-model:open="open" :title="$t('connections.blockTitle')" :description="target ? $t('connections.blockDescription', { ip: target.connection.ip }) : ''" :dismissible="!busy" :close="{ 'data-haptic': 'dismiss' }" :ui="{ footer: 'justify-end' }">
     <template #body>
       <div v-if="target" class="connection-drop">
         <div class="connection-drop__target">
@@ -45,12 +45,12 @@ useTelegramBackButton(ownsBack, close)
         <InlineNotice tone="info">{{ $t('connections.expiryWarning') }}</InlineNotice>
         <InlineNotice v-if="receipt" :tone="statusTone" :title="statusLabel(receipt.status)">{{ $t(`connections.blockOperation.${receipt.status}`) }}</InlineNotice>
         <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
-        <UButton v-if="receipt && error" color="neutral" variant="outline" icon="i-ph-arrow-clockwise" :loading="checking" :label="$t('operations.checkStatus')" data-haptic @click="emit('refresh')" />
+        <UButton v-if="receipt && error" color="neutral" variant="outline" icon="i-ph-arrow-clockwise" :loading="checking" :label="$t('operations.checkStatus')" data-haptic="retry" @click="emit('refresh')" />
       </div>
     </template>
     <template #footer>
-      <UButton color="neutral" variant="outline" :disabled="busy" :label="$t('common.close')" data-haptic @click="close" />
-      <UButton v-if="!receipt" color="error" icon="i-ph-shield-warning" :loading="busy" :disabled="busy || !target" :label="busy ? $t('connections.blocking') : $t('connections.block')" data-haptic="heavy" @click="emit('confirm')" />
+      <UButton color="neutral" variant="outline" :disabled="busy" :label="$t('common.close')" data-haptic="dismiss" @click="close" />
+      <UButton v-if="!receipt" color="error" icon="i-ph-shield-warning" :loading="busy" :disabled="busy || !target" :label="busy ? $t('connections.blocking') : $t('connections.block')" data-haptic="destructive" @click="emit('confirm')" />
     </template>
   </UModal>
 </template>

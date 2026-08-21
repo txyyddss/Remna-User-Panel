@@ -24,7 +24,7 @@ describe('StatisticsNodes', () => {
       },
     })
     const action = wrapper.find('[aria-label="statistics.geocheck.open"]')
-    expect(action.attributes('data-haptic')).toBeDefined()
+    expect(action.attributes('data-haptic')).toBe('open')
     expect(wrapper.text()).not.toContain('statistics.nodeXrayVersion')
     expect(wrapper.text()).not.toContain('statistics.nodeMultiplier')
     await action.trigger('click')

@@ -21,3 +21,4 @@
 
 Coupon purchase discounts are described as price reductions, including recurring
 discounts, rather than as balance additions.
+Combo, squad, and coupon feedback is emitted only when the selection changes; step navigation is soft and purchase confirmation is rigid.

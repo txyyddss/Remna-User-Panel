@@ -76,7 +76,7 @@ function isActive(to: string): boolean {
           :to="item.to"
           class="nav-item"
           :class="{ 'nav-item--active': isActive(item.to) }"
-          data-haptic
+          data-haptic="navigate"
         >
           <UIcon :name="item.icon" />
           <span>{{ $t(item.labelKey) }}</span>
@@ -86,7 +86,7 @@ function isActive(to: string): boolean {
           :to="adminItem.to"
           class="nav-item"
           :class="{ 'nav-item--active': isActive(adminItem.to) }"
-          data-haptic
+          data-haptic="navigate"
         >
           <UIcon :name="adminItem.icon" />
           <span>{{ $t(adminItem.labelKey) }}</span>
@@ -114,7 +114,7 @@ function isActive(to: string): boolean {
         class="bottom-nav__item"
         :class="{ 'bottom-nav__item--active': isActive(item.to) }"
         :aria-current="isActive(item.to) ? 'page' : undefined"
-        data-haptic
+        data-haptic="navigate"
         @click="goTo(item.to)"
       >
         <UIcon :name="item.icon" />

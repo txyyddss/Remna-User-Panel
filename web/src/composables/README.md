@@ -42,7 +42,7 @@
 - `usePaymentReturn.test.ts` covers durable payment-return confirmation and pending polling.
 - `useOperationReceipt.ts` performs bounded, read-only polling for durable member operation receipts and stops on every terminal or review state.
 - `useDurableCommand.ts` retains stable UUID keys for ambiguous command retries, invalidates disposed submissions, and delegates accepted receipt polling to `useOperationReceipt.ts`.
-- `usePurchaseOperations.ts` owns authoritative paid-reset/refund quotes, the account-wide reset automation load/save state, conflict refresh, mutation idempotency, and receipt state for an active purchase.
+- `usePurchaseOperations.ts` owns authoritative paid-reset/refund quotes, the account-wide reset automation load/save state, semantic feedback for actual preference changes and outcomes, conflict refresh, mutation idempotency, and receipt state for an active purchase.
 - `usePurchaseOperations.test.ts` covers quote conflict refresh, idempotency reuse, server-owned refund eligibility, and immediate automation persistence.
 - `useQuestionnaireImport.ts` previews and settles questionnaire imports with reset-safe mutation and polling generations.
 - `useQuestionnaireImport.test.ts` covers import analysis and settlement.
@@ -51,5 +51,5 @@
 - `useNodeGeocheck.test.ts` covers selected-node loading, localized unavailability, and close reset behavior.
 - `useStatistics.ts` independently loads the 30-minute aggregate snapshot and
   ten-second node cache while preserving last-good data across partial failures.
-- `useTelegramBackButton.ts` coordinates one native Telegram BackButton across route and overlay owners; the most recently mounted visible sheet owns the action and all handlers are removed on teardown.
+- `useTelegramBackButton.ts` coordinates one native Telegram BackButton across route and overlay owners, adds soft navigation feedback, and removes every handler on teardown.
 - `useTelegramProtection.ts` reference-counts active destructive, busy, or dirty workflows and enables native closing confirmation plus vertical-swipe suppression only while needed.

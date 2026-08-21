@@ -58,7 +58,7 @@ interface TelegramWebApp {
   }
   MainButton?: TelegramMainButton
   HapticFeedback?: {
-    impactOccurred(style: 'light' | 'medium' | 'heavy'): void
+        impactOccurred(style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft'): void
     notificationOccurred(type: 'error' | 'success' | 'warning'): void
     selectionChanged?(): void
   }

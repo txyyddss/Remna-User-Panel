@@ -63,7 +63,7 @@ function load(): void {
           <UInput type="date" :model-value="endDate" @update:model-value="updateEnd" />
         </UFormField>
       </div>
-      <UButton class="traffic-usage__apply" type="submit" :label="$t('home.trafficApply')" :disabled="!rangeValid" :loading="loading" data-haptic />
+      <UButton class="traffic-usage__apply" type="submit" :label="$t('home.trafficApply')" :disabled="!rangeValid" :loading="loading" data-haptic="action" />
       <p class="traffic-usage__hint">{{ $t('home.trafficRangeHint') }}</p>
     </form>
 

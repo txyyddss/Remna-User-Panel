@@ -45,7 +45,7 @@ function select(node: ConnectionNode, index: number): void {
             icon="i-ph-shield-warning"
             :disabled="disabled"
             :aria-label="$t('connections.blockIp', { ip: connection.ip })"
-            data-haptic="heavy"
+            data-haptic="open"
             @click="select(node, index)"
           />
         </div>

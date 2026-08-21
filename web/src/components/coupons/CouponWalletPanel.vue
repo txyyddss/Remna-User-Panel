@@ -49,7 +49,7 @@ async function confirmDiscard(): Promise<void> {
         :disabled="redeeming || !code"
         :loading="redeeming"
         :label="redeeming ? $t('coupons.redeeming') : $t('coupons.redeem')"
-        data-haptic
+        data-haptic="action"
       />
     </form>
     <InlineNotice v-if="message" tone="success">{{ message }}</InlineNotice>
@@ -70,8 +70,8 @@ async function confirmDiscard(): Promise<void> {
         <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
       </template>
       <template #footer="{ close }">
-        <UButton color="neutral" variant="outline" :label="$t('common.cancel')" :disabled="discarding" @click="close" />
-        <UButton color="error" icon="i-ph-trash" :loading="discarding" :disabled="discarding" :label="$t('coupons.discardConfirm')" data-haptic="heavy" @click="confirmDiscard" />
+        <UButton color="neutral" variant="outline" :label="$t('common.cancel')" :disabled="discarding" data-haptic="dismiss" @click="close" />
+        <UButton color="error" icon="i-ph-trash" :loading="discarding" :disabled="discarding" :label="$t('coupons.discardConfirm')" data-haptic="destructive" @click="confirmDiscard" />
       </template>
     </UModal>
   </section>

@@ -3,9 +3,10 @@ import type { PaymentStage } from '@/composables/usePaymentOrder'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
 import { useI18n } from '@/i18n'
 import { txbInputFromMinor } from '@/utils/format'
+import { selectionHaptic } from '@/utils/telegram'
 import type { PaymentChannelOption } from './paymentOptions'
 
-defineProps<{
+const props = defineProps<{
   channels: readonly PaymentChannelOption[]
   selectedMethodId: string | null
   amountValid: boolean
@@ -27,6 +28,12 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+
+function chooseMethod(id: string): void {
+  if (id === props.selectedMethodId) return
+  selectionHaptic()
+  emit('chooseMethod', id)
+}
 </script>
 
 <template>
@@ -38,7 +45,7 @@ const { t } = useI18n()
         variant="ghost"
         icon="i-ph-arrow-left"
         :aria-label="t('payment.backToProvider')"
-        data-haptic
+        data-haptic="navigate"
         @click="emit('back')"
       />
     </div>
@@ -64,8 +71,7 @@ const { t } = useI18n()
         variant="ghost"
         :disabled="item.disabled"
         :aria-pressed="selectedMethodId === item.value"
-        data-haptic
-        @click="emit('chooseMethod', item.value)"
+        @click="chooseMethod(item.value)"
       >
         <span class="provider-option__icon">
           <img v-if="item.logo" :src="item.logo" alt="" width="28" height="28" />
@@ -84,7 +90,7 @@ const { t } = useI18n()
       variant="outline"
       icon="i-ph-arrows-clockwise"
       :label="t('operations.checkStatus')"
-      data-haptic
+      data-haptic="retry"
       @click="emit('retryOperation')"
     />
     <UButton
@@ -95,7 +101,7 @@ const { t } = useI18n()
       :disabled="!canCreate || stage === 'creating' || !amountValid"
       :loading="stage === 'creating'"
       :label="stage === 'creating' ? t('payment.creating') : canReissue ? t('payment.reissue') : t('payment.proceedToPayment')"
-      data-haptic
+      data-haptic="confirm"
       @click="emit('createOrder')"
     />
   </div>

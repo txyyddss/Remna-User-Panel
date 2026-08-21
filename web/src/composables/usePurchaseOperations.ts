@@ -70,7 +70,7 @@ export function usePurchaseOperations(purchaseId: () => string) {
   }
 
   async function setResetAutomation(enabled: boolean): Promise<void> {
-    if (resetAutomationSaving.value) return
+    if (resetAutomationSaving.value || resetAutomation.value?.enabled === enabled) return
     resetAutomationSaving.value = true
     resetAutomationError.value = null
     selectionHaptic()

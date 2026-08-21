@@ -43,8 +43,8 @@ function goToBalance(): void {
         <strong>{{ quote ? formatMoney(quote.netPrice) : $t('common.notAvailable') }}</strong>
       </div>
       <UAlert v-if="error" color="warning" variant="soft" icon="i-ph-warning-circle" :description="error" />
-      <UButton v-if="needsBalance" block trailing-icon="i-ph-plus" :label="$t('catalog.addBalance')" data-haptic @click="goToBalance" />
-      <UButton v-else block :disabled="purchasing || !quote || !combo" :loading="purchasing" trailing-icon="i-ph-check" :label="purchasing ? $t('catalog.confirming') : $t('catalog.confirmPurchase')" data-haptic @click="$emit('confirm')" />
+      <UButton v-if="needsBalance" block trailing-icon="i-ph-plus" :label="$t('catalog.addBalance')" data-haptic="navigate" @click="goToBalance" />
+      <UButton v-else block :disabled="purchasing || !quote || !combo" :loading="purchasing" trailing-icon="i-ph-check" :label="purchasing ? $t('catalog.confirming') : $t('catalog.confirmPurchase')" data-haptic="confirm" @click="$emit('confirm')" />
     </template>
   </section>
 </template>

@@ -170,7 +170,7 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
               <div v-if="visibleCombos.length" v-auto-animate class="combo-grid">
                 <ComboOption v-for="combo in visibleCombos" :key="combo.id" :combo="combo" :selected="selectedComboId === combo.id" @select="selectCombo" />
               </div>
-              <div v-else class="empty-inline"><div><h3>{{ $t('catalog.noCombos') }}</h3><p>{{ $t('catalog.noCombosHint') }}</p></div><UButton color="neutral" variant="outline" :label="$t('common.refresh')" data-haptic @click="load" /></div>
+              <div v-else class="empty-inline"><div><h3>{{ $t('catalog.noCombos') }}</h3><p>{{ $t('catalog.noCombosHint') }}</p></div><UButton color="neutral" variant="outline" :label="$t('common.refresh')" data-haptic="refresh" @click="load" /></div>
             </div>
             <SquadSelector v-else-if="activeStep === 2" :squads="visibleSquads" :selected-ids="selectedSquadIds" :included-ids="includedSquadIds" @toggle="toggleSquad" />
             <CatalogCouponStep v-else-if="activeStep === 3" v-model:coupon-grant-id="selectedCouponGrantId" :coupons="eligibleCoupons" :eligible-ids="eligibleCoupons.map((grant) => grant.id)" :discarding="couponDiscarding" :discard-coupon="discardCoupon" :quoting="quoting" @redeemed="handleCouponRedeemed" />
@@ -182,7 +182,7 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
       <div v-else class="error-state">
         <h1>{{ $t('catalog.unavailable') }}</h1>
         <p>{{ error }}</p>
-        <UButton :label="$t('common.tryAgain')" data-haptic @click="load" />
+        <UButton :label="$t('common.tryAgain')" data-haptic="retry" @click="load" />
       </div>
     </template>
     <SquadActivationDialog v-model:open="activationOpen" :squad="activationTarget" @submit="resolveActivation" @cancel="resolveActivation(null)" />

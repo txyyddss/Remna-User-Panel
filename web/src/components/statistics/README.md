@@ -6,8 +6,8 @@
 - `StatisticsFreshness.test.ts` covers independent partition timestamps and stale/current disclosure.
 - `StatisticsOverview.vue` centers the weekly added-user total in the user donut, with its color legend below the chart, and combines live usage and predicted average rollover with spend, activity, squad, and database KPIs.
 - `StatisticsNodes.vue` presents live node health in dense rows with icon-labeled throughput and online-user metrics plus an explicit Geocheck result action; Xray version and traffic multiplier remain contract-only fields.
-- `StatisticsNodes.test.ts` covers the card action, light feedback marker, and removal of version/multiplier rows.
-- `StatisticsGeocheckModal.vue` presents the on-demand cached SVG result with loading, unavailable, light-feedback close/reset/button controls, wheel, centered pinch, pan, and double-tap zoom. Drag, wheel, and polling never trigger continuous feedback.
+- `StatisticsNodes.test.ts` covers the card action, open-intent feedback marker, and removal of version/multiplier rows.
+- `StatisticsGeocheckModal.vue` presents the on-demand cached SVG result with loading, unavailable, soft dismiss and light zoom controls, wheel, centered pinch, pan, and double-tap zoom. Drag, wheel, and polling never trigger continuous feedback.
 - `StatisticsGeocheckModal.test.ts` covers data-URI rendering, loading/unavailable states, and close reset behavior.
 - `StatisticsTrafficChart.vue` renders the seven-day per-node traffic stack with hover, focus, keyboard, tap, and phone drag selection plus exact-value details.
 - `StatisticsShareCharts.vue` composes member and payment proportions.
@@ -23,6 +23,6 @@
 - `statisticsFormat.ts` owns stable chart colors plus localized number, percentage, date, and byte formatting.
 - `statisticsFormat.test.ts` covers UTC weekday buckets and invalid chart fact filtering.
 - `StatisticsChartDetail.vue` provides the stable exact-value readout shared by every chart.
-- `useStatisticsChartSelection.ts` centralizes hover, focus, and pinned tap selection state.
+- `useStatisticsChartSelection.ts` centralizes hover, focus, and pinned tap selection state, emitting one semantic pulse only when a selection is committed or cleared.
 - `useStatisticsTrafficScrub.ts` maps touch and pointer coordinates to the nearest rendered traffic segment while preserving vertical page scrolling.
 - `useStatisticsTrafficScrub.test.ts` covers nearest-day and nearest-segment touch hit testing.

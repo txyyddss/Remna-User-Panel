@@ -50,7 +50,7 @@ const rolloverPresentation = computed(() => rolloverPresentationByState[rollover
 <template>
   <div class="home-ride__detail-face">
     <div class="home-ride__detail-heading">
-      <UButton color="neutral" variant="ghost" icon="i-ph-arrow-left" :label="$t('home.rolloverBack')" data-haptic @click="emit('back')" />
+      <UButton color="neutral" variant="ghost" icon="i-ph-arrow-left" :label="$t('home.rolloverBack')" data-haptic="navigate" @click="emit('back')" />
       <span class="home-ride__detail-title">{{ $t('home.rolloverTitle') }}</span>
     </div>
     <template v-if="loading">
@@ -58,7 +58,7 @@ const rolloverPresentation = computed(() => rolloverPresentationByState[rollover
       <p class="sr-only">{{ $t('home.rolloverLoading') }}</p>
     </template>
     <template v-else-if="error">
-      <div class="home-ride__detail-error"><InlineNotice tone="warning">{{ error }}</InlineNotice><UButton color="neutral" variant="outline" icon="i-ph-arrow-clockwise" :label="$t('home.rolloverRetry')" data-haptic @click="emit('retry')" /></div>
+      <div class="home-ride__detail-error"><InlineNotice tone="warning">{{ error }}</InlineNotice><UButton color="neutral" variant="outline" icon="i-ph-arrow-clockwise" :label="$t('home.rolloverRetry')" data-haptic="retry" @click="emit('retry')" /></div>
     </template>
     <template v-else-if="detail">
       <InlineNotice v-if="detail.warningCode" tone="warning">{{ $t(`home.rolloverWarning.${detail.warningCode}`) }}</InlineNotice>

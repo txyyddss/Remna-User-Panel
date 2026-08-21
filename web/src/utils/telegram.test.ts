@@ -146,7 +146,7 @@ describe('Telegram bootstrap', () => {
     expect(telegramFullscreenState().value).toBe(false)
   })
 
-  it('adds marked click feedback and disposes the delegated listener', () => {
+  it('maps semantic click intents and never delegates selection feedback', () => {
     const impactOccurred = vi.fn()
     const selectionChanged = vi.fn()
     window.Telegram = { WebApp: {
@@ -155,26 +155,34 @@ describe('Telegram bootstrap', () => {
       HapticFeedback: { impactOccurred, notificationOccurred: vi.fn(), selectionChanged },
     } }
     const button = document.createElement('button')
-    button.dataset.haptic = 'medium'
+    button.dataset.haptic = 'action'
     document.body.append(button)
     const dispose = installHapticClickFeedback()
 
     button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(impactOccurred).toHaveBeenCalledWith('medium')
 
+    for (const [intent, impact] of [
+      ['dismiss', 'soft'], ['copy', 'light'], ['confirm', 'rigid'], ['destructive', 'heavy'],
+    ] as const) {
+      button.dataset.haptic = intent
+      button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      expect(impactOccurred).toHaveBeenLastCalledWith(impact)
+    }
+
     button.dataset.haptic = 'selection'
     button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    expect(selectionChanged).toHaveBeenCalledOnce()
+    expect(selectionChanged).not.toHaveBeenCalled()
 
     button.setAttribute('disabled', 'true')
     button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    expect(impactOccurred).toHaveBeenCalledTimes(1)
+    expect(impactOccurred).toHaveBeenCalledTimes(5)
 
     dispose()
     button.removeAttribute('disabled')
     button.click()
-    expect(impactOccurred).toHaveBeenCalledTimes(1)
-    expect(selectionChanged).toHaveBeenCalledTimes(1)
+    expect(impactOccurred).toHaveBeenCalledTimes(5)
+    expect(selectionChanged).not.toHaveBeenCalled()
   })
 
   it('uses Telegram semantic selection feedback when available', () => {

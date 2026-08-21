@@ -23,7 +23,7 @@ export function useOnboardingMainButton(action: ComputedRef<OnboardingMainAction
 
   function handleClick(): void {
     if (!action.value?.disabled) {
-      haptic()
+      haptic('action')
       action.value?.run()
     }
   }

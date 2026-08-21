@@ -79,7 +79,6 @@ watch(mode, () => selectionHaptic())
             :aria-label="$t('statistics.compositionPoint', { group: row.label, segment: segment.label, value: formatStatisticPercent(segment.width) })"
             :aria-pressed="isSelected(segment.interactionId)"
             tabindex="0"
-            data-haptic
             @pointerenter="activate(segment.interactionId)"
             @pointerleave="deactivate(segment.interactionId)"
             @focus="activate(segment.interactionId)"

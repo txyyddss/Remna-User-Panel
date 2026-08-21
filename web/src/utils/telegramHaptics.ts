@@ -1,10 +1,36 @@
 import { getTelegramWebApp, supportsTelegramVersion, tryTelegramCall } from './telegram'
 
-export type HapticImpact = 'light' | 'medium' | 'heavy'
+export type HapticImpact = 'light' | 'medium' | 'heavy' | 'rigid' | 'soft'
+export type HapticIntent =
+  | 'action'
+  | 'confirm'
+  | 'copy'
+  | 'destructive'
+  | 'dismiss'
+  | 'navigate'
+  | 'open'
+  | 'refresh'
+  | 'retry'
+  | 'zoom'
 
-export function haptic(type: HapticImpact = 'light'): void {
+const impactByIntent: Readonly<Record<HapticIntent, HapticImpact>> = {
+  action: 'medium',
+  confirm: 'rigid',
+  copy: 'light',
+  destructive: 'heavy',
+  dismiss: 'soft',
+  navigate: 'soft',
+  open: 'soft',
+  refresh: 'light',
+  retry: 'light',
+  zoom: 'light',
+}
+
+export function haptic(intent: HapticIntent = 'action'): void {
   const app = getTelegramWebApp()
-  if (app?.HapticFeedback && supportsTelegramVersion('6.1')) tryTelegramCall(() => app.HapticFeedback?.impactOccurred(type))
+  if (app?.HapticFeedback && supportsTelegramVersion('6.1')) {
+    tryTelegramCall(() => app.HapticFeedback?.impactOccurred(impactByIntent[intent]))
+  }
 }
 
 export function selectionHaptic(): void {
@@ -16,20 +42,17 @@ export function selectionHaptic(): void {
   })
 }
 
-function hapticImpactFor(element: Element): HapticImpact {
-  const value = element.getAttribute('data-haptic')
-  return value === 'medium' || value === 'heavy' ? value : 'light'
+function hapticIntentFor(element: Element): HapticIntent | undefined {
+  const value = element.getAttribute('data-haptic') as HapticIntent | null
+  return value && value in impactByIntent ? value : undefined
 }
 
 function handleHapticClick(event: MouseEvent): void {
   if (!(event.target instanceof Element)) return
   const target = event.target.closest('[data-haptic]')
   if (!target || target.hasAttribute('disabled') || target.getAttribute('aria-disabled') === 'true') return
-  if (target.getAttribute('data-haptic') === 'selection') {
-    selectionHaptic()
-    return
-  }
-  haptic(hapticImpactFor(target))
+  const intent = hapticIntentFor(target)
+  if (intent) haptic(intent)
 }
 
 export function installHapticClickFeedback(): () => void {
@@ -46,7 +69,7 @@ export function notifyBetOutcome(outcome: 'win' | 'loss'): void {
   const app = getTelegramWebApp()
   if (!app?.HapticFeedback || !supportsTelegramVersion('6.1')) return
   tryTelegramCall(() => {
-    app.HapticFeedback?.impactOccurred(outcome === 'win' ? 'heavy' : 'light')
+    app.HapticFeedback?.impactOccurred(outcome === 'win' ? impactByIntent.confirm : impactByIntent.action)
     app.HapticFeedback?.notificationOccurred(outcome === 'win' ? 'success' : 'warning')
   })
 }

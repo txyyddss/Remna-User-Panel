@@ -71,14 +71,14 @@ async function changeFace(next: boolean): Promise<void> {
 
 async function showDetail(): Promise<void> {
   if (flipped.value || changingFace) return
-  haptic('light')
+  haptic('open')
   void load(props.active.id)
   await changeFace(true)
 }
 
 async function showSummary(): Promise<void> {
   if (!flipped.value || changingFace) return
-  haptic('light')
+  haptic('navigate')
   await changeFace(false)
 }
 
@@ -126,7 +126,6 @@ onUnmounted(() => {
           :aria-expanded="flipped"
           :aria-hidden="flipped"
           :inert="flipped"
-          data-haptic
           @click="showDetail"
         >
           <RideSummaryFace :active="active" :squad-names="squadNames" />

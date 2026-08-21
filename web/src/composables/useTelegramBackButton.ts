@@ -24,7 +24,7 @@ function activeOwner(): BackOwner | undefined {
 function handleBack(): void {
   const owner = activeOwner()
   if (!owner) return
-  haptic()
+  haptic('navigate')
   try {
     void Promise.resolve(owner.action()).catch(() => undefined)
   } catch {

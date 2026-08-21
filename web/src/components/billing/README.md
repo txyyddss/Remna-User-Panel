@@ -7,3 +7,5 @@
 - `paymentOptions.ts` owns the typed provider and channel option contracts shared by the two step components.
 - `PaymentReceiptDetails.vue` renders the browser-safe provider-return receipt with localized amount, payment ID, provider, channel, status, and timing metadata using Nuxt UI surfaces.
 - `BalancePaymentSheet.test.ts` verifies provider labels stay distinct from provider-owned payment channels, such as EZPay and Alipay, and verifies the two-step transition.
+
+Provider and channel changes use semantic selection feedback; navigation is soft, order confirmation is rigid, retries are light, and order cancellation is heavy.

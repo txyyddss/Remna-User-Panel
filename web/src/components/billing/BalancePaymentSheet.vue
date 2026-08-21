@@ -112,10 +112,10 @@ watch(open, (next, previous) => {
         <div v-if="qrDataUrl" class="qr-frame"><img :src="qrDataUrl" :alt="$t('payment.qrAlt')" width="260" height="260" /></div>
         <div v-if="order.receivingAddress" class="payment-address"><span>{{ $t('payment.receivingAddress') }}</span><code>{{ order.receivingAddress }}</code></div>
         <p class="payment-expiry">{{ $t('payment.expires', { date: formatDateTime(order.expiresAt) }) }}</p>
-        <UButton v-if="order.paymentUrl" block color="neutral" variant="outline" trailing-icon="i-ph-arrow-square-out" :label="$t('payment.openPage')" data-haptic @click="openPaymentTarget" />
+        <UButton v-if="order.paymentUrl" block color="neutral" variant="outline" trailing-icon="i-ph-arrow-square-out" :label="$t('payment.openPage')" data-haptic="open" @click="openPaymentTarget" />
         <div class="payment-waiting" role="status"><span class="payment-waiting__pulse" />{{ stage === 'cancelling' ? $t('payment.cancelling') : $t('payment.waiting') }}</div>
-        <UButton v-if="stage === 'cancelling' && error" block color="neutral" variant="outline" icon="i-ph-arrows-clockwise" :label="$t('operations.checkStatus')" data-haptic @click="retryOperation" />
-        <UButton block color="error" variant="ghost" :disabled="stage === 'cancelling'" :label="$t('payment.cancelOrder')" data-haptic="medium" @click="cancelOrder" />
+        <UButton v-if="stage === 'cancelling' && error" block color="neutral" variant="outline" icon="i-ph-arrows-clockwise" :label="$t('operations.checkStatus')" data-haptic="retry" @click="retryOperation" />
+        <UButton block color="error" variant="ghost" :disabled="stage === 'cancelling'" :label="$t('payment.cancelOrder')" data-haptic="destructive" @click="cancelOrder" />
         <p class="field-hint">{{ $t('payment.callbackHint') }}</p>
         <UAlert v-if="error" color="error" variant="soft" :description="error" />
       </template>
@@ -128,7 +128,7 @@ watch(open, (next, previous) => {
           <strong>{{ formatMoney({ currency: 'TXB', minor: couponRedemption.balanceDeltaMinor, display: '' }) }}</strong>
           <small>{{ $t('payment.balanceAfter', { amount: formatMoney({ currency: 'TXB', minor: couponRedemption.balanceAfterMinor, display: '' }) }) }}</small>
         </div>
-        <UButton block :label="$t('common.close')" data-haptic @click="closeSheet" />
+        <UButton block :label="$t('common.close')" data-haptic="dismiss" @click="closeSheet" />
       </div>
       <div v-else-if="stage === 'cancelled'" class="payment-success payment-success--cancelled" role="status">
         <UIcon name="i-ph-x-circle-fill" class="payment-success__error-icon" aria-hidden="true" />
@@ -141,7 +141,7 @@ watch(open, (next, previous) => {
         <h2>{{ $t('payment.reviewTitle') }}</h2>
         <p>{{ $t('payment.reviewDescription') }}</p>
         <UAlert v-if="error" color="warning" variant="soft" :description="error" />
-        <UButton block color="neutral" variant="outline" :label="$t('common.close')" data-haptic @click="closeSheet" />
+        <UButton block color="neutral" variant="outline" :label="$t('common.close')" data-haptic="dismiss" @click="closeSheet" />
       </div>
       <div v-else class="payment-success" role="status"><UIcon name="i-ph-check-circle-fill" /><h2>{{ $t('payment.added') }}</h2><p>{{ $t('payment.ready') }}</p></div>
     </template>

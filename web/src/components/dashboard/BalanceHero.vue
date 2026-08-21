@@ -80,7 +80,7 @@ watch(() => props.reissueOrderId, (orderId) => {
         icon="i-ph-plus-bold"
         :label="$t('billing.addBalance')"
         :loading="paymentLoading"
-        data-haptic
+        data-haptic="open"
         @click="openTopUpPayment()"
       />
     </div>

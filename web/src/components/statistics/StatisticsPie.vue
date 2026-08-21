@@ -41,7 +41,6 @@ const { activeItem, hasActive, activate, deactivate, select, isActive, isSelecte
           :fill="slice.color"
           role="button"
           tabindex="0"
-          data-haptic
           :aria-label="$t('statistics.chartSeries', { series: slice.label, segment: $t('statistics.chartPointValue', { value: formatStatisticNumber(slice.value), percent: formatStatisticPercent(slice.percentage) }) })"
           :aria-pressed="isSelected(slice.interactionId)"
           @pointerenter="activate(slice.interactionId)"
@@ -76,7 +75,6 @@ const { activeItem, hasActive, activate, deactivate, select, isActive, isSelecte
         class="statistics-chart-legend-item"
         role="button"
         tabindex="0"
-        data-haptic
         :aria-pressed="isSelected(segment.interactionId)"
         @pointerenter="activate(segment.interactionId)"
         @pointerleave="deactivate(segment.interactionId)"

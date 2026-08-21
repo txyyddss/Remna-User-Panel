@@ -86,7 +86,7 @@ useTelegramBackButton(ownsBack, closeDialog)
         icon="i-ph-arrow-u-up-left"
         :disabled="operation.blocksMutations.value"
         :label="$t('purchaseOperations.refundAction')"
-        data-haptic
+        data-haptic="open"
         @click="openQuote('refund')"
       />
       <UTooltip :text="$t('purchaseOperations.resetAction')">
@@ -99,7 +99,7 @@ useTelegramBackButton(ownsBack, closeDialog)
           :disabled="operation.blocksMutations.value"
           :aria-label="$t('purchaseOperations.resetAction')"
           :title="$t('purchaseOperations.resetAction')"
-          data-haptic
+          data-haptic="open"
           @click="openQuote('reset')"
         />
       </UTooltip>
@@ -115,7 +115,7 @@ useTelegramBackButton(ownsBack, closeDialog)
       icon="i-ph-arrow-clockwise"
       :loading="operation.checking.value"
       :label="$t('operations.checkStatus')"
-      data-haptic
+      data-haptic="retry"
       @click="operation.refresh"
     />
 
@@ -124,7 +124,7 @@ useTelegramBackButton(ownsBack, closeDialog)
       :title="$t(`purchaseOperations.${dialogKind ?? 'reset'}.title`)"
       :description="$t(`purchaseOperations.${dialogKind ?? 'reset'}.description`)"
       :dismissible="!operation.mutating.value"
-      :close="{ 'data-haptic': '' }"
+      :close="{ 'data-haptic': 'dismiss' }"
       :ui="{ footer: 'justify-end' }"
     >
       <template #body>
@@ -157,13 +157,13 @@ useTelegramBackButton(ownsBack, closeDialog)
             icon="i-ph-arrow-clockwise"
             :loading="operation.checking.value"
             :label="$t('operations.checkStatus')"
-            data-haptic
+            data-haptic="retry"
             @click="operation.refresh"
           />
         </div>
       </template>
       <template #footer>
-        <UButton color="neutral" variant="outline" :disabled="operation.mutating.value" :label="$t('common.close')" data-haptic @click="closeDialog" />
+        <UButton color="neutral" variant="outline" :disabled="operation.mutating.value" :label="$t('common.close')" data-haptic="dismiss" @click="closeDialog" />
         <UButton
           v-if="!operation.receipt.value"
           :color="dialogKind === 'refund' ? 'warning' : 'primary'"
@@ -171,7 +171,7 @@ useTelegramBackButton(ownsBack, closeDialog)
           :loading="operation.mutating.value"
           :disabled="operation.quoteLoading.value || !quoteEligible"
           :label="$t(`purchaseOperations.${dialogKind ?? 'reset'}.confirm`)"
-          data-haptic="heavy"
+          :data-haptic="dialogKind === 'refund' ? 'destructive' : 'confirm'"
           @click="dialogKind && operation.start(dialogKind)"
         />
       </template>

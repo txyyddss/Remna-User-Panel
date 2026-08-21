@@ -4,14 +4,21 @@ import MarkdownContent from '@/components/common/MarkdownContent.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import SquadProfileSummary from '@/components/squad-profile/SquadProfileSummary.vue'
 import { formatBytes, formatMoney } from '@/utils/format'
+import { selectionHaptic } from '@/utils/telegram'
 import SquadNodeBlocks from './SquadNodeBlocks.vue'
 
-defineProps<{
+const props = defineProps<{
   combo: Combo
   selected: boolean
 }>()
 
-defineEmits<{ select: [id: string] }>()
+const emit = defineEmits<{ select: [id: string] }>()
+
+function selectCombo(): void {
+  if (props.selected) return
+  selectionHaptic()
+  emit('select', props.combo.id)
+}
 </script>
 
 <template>
@@ -21,8 +28,7 @@ defineEmits<{ select: [id: string] }>()
     color="neutral"
     variant="ghost"
     :aria-pressed="selected"
-    data-haptic
-    @click="$emit('select', combo.id)"
+    @click="selectCombo"
   >
     <span class="combo-option__top">
       <span>

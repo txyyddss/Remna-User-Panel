@@ -6,6 +6,7 @@ import InlineNotice from '@/components/common/InlineNotice.vue'
 import { useAutoRenewal } from '@/composables/useAutoRenewal'
 import { t } from '@/i18n'
 import { formatDate, formatMoney } from '@/utils/format'
+import { selectionHaptic } from '@/utils/telegram'
 
 const props = defineProps<{ purchase: Purchase }>()
 const emit = defineEmits<{ changed: [] }>()
@@ -47,7 +48,9 @@ async function updateRenewal(next: boolean): Promise<void> {
     switchValue.value = previous
     return
   }
+  if (next === previous) return
   switchValue.value = next
+  selectionHaptic()
   if (await setEnabled(next)) emit('changed')
   else switchValue.value = previous
 }
@@ -55,7 +58,7 @@ async function updateRenewal(next: boolean): Promise<void> {
 
 <template>
   <div class="auto-renewal-control">
-    <UButton block class="auto-renewal-control__action" :color="actionColor" variant="soft" :label="actionLabel" data-haptic @click="open = true" />
+    <UButton block class="auto-renewal-control__action" :color="actionColor" variant="soft" :label="actionLabel" data-haptic="open" @click="open = true" />
     <UModal v-model:open="open" :title="$t('home.autoRenewalTitle')" :description="$t('home.autoRenewalHint')">
       <template #body>
         <div class="auto-renewal-control__dialog">
@@ -68,7 +71,7 @@ async function updateRenewal(next: boolean): Promise<void> {
               <div><dt>{{ $t('home.autoRenewalChargeDate') }}</dt><dd>{{ formatDate(renewal.scheduledAt) }}</dd></div>
               <div><dt>{{ $t('home.autoRenewalNextCycleDate') }}</dt><dd>{{ formatDate(renewal.nextCycleEndsAt) }}</dd></div>
             </dl>
-            <USwitch v-if="showSwitch" v-model="switchValue" :color="enabled ? 'success' : 'error'" :label="$t('home.autoRenewalSwitch')" :loading="updating" :disabled="updating" data-haptic @update:model-value="updateRenewal" />
+            <USwitch v-if="showSwitch" v-model="switchValue" :color="enabled ? 'success' : 'error'" :label="$t('home.autoRenewalSwitch')" :loading="updating" :disabled="updating" @update:model-value="updateRenewal" />
             <InlineNotice v-else tone="warning">{{ eligibilityMessage }}</InlineNotice>
           </template>
           <InlineNotice v-else tone="warning">{{ error ?? $t('errors.autoRenewalFailed') }}</InlineNotice>

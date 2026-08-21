@@ -3,6 +3,7 @@ import { shallowRef } from 'vue'
 
 import { useI18n } from '@/i18n'
 import type { Locale } from '@/i18n/generated'
+import { selectionHaptic } from '@/utils/telegram'
 
 interface Props {
   showLabel?: boolean
@@ -20,7 +21,12 @@ function localeLabel(value: Locale): string {
 }
 
 function selectLocale(value: Locale): void {
+  if (value === locale.value) {
+    open.value = false
+    return
+  }
   setLocale(value)
+  selectionHaptic()
   open.value = false
 }
 </script>
@@ -47,7 +53,6 @@ function selectLocale(value: Locale): void {
           color="neutral"
           :variant="locale === value ? 'soft' : 'ghost'"
           :aria-pressed="locale === value"
-          data-haptic
           @click="selectLocale(value)"
         >
           {{ localeLabel(value) }}

@@ -34,7 +34,7 @@ const { copied, copy } = useClipboard()
           variant="ghost"
           :icon="copied ? 'i-ph-check-circle' : 'i-ph-copy'"
           :aria-label="copied ? $t('questionnaire.codeCopied') : $t('questionnaire.copyCode')"
-          data-haptic
+          data-haptic="copy"
           @click="copy(participation.validationCode)"
         />
       </div>
@@ -47,7 +47,7 @@ const { copied, copy } = useClipboard()
         :disabled="joining"
         :loading="joining"
         :label="joining ? $t('questionnaire.preparing') : participation ? $t('questionnaire.openAgain') : $t('questionnaire.getCode')"
-        data-haptic
+        data-haptic="open"
         @click="$emit('open')"
       />
     </div>

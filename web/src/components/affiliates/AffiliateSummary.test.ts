@@ -10,7 +10,7 @@ describe('AffiliateSummary', () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
     const wrapper = mount(AffiliateSummary, { props: { overview } })
-    expect(wrapper.get('button').attributes('data-haptic')).toBeDefined()
+    expect(wrapper.get('button').attributes('data-haptic')).toBe('copy')
     await wrapper.get('button').trigger('click')
     expect(writeText).toHaveBeenCalledWith(overview.inviteLink)
     await wrapper.setProps({ overview: { ...overview, inviteLink: undefined } })

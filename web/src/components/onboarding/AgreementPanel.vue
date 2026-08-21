@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import type { OnboardingAgreement } from '@/api/features'
+import { selectionHaptic } from '@/utils/telegram'
 import { agreementIcon } from './agreementIcons'
 
-defineProps<{ agreements: readonly OnboardingAgreement[]; selectedIds: readonly string[]; allAccepted: boolean; loading: boolean; showAction?: boolean }>()
-defineEmits<{ submit: []; toggle: [id: string] }>()
+const props = defineProps<{ agreements: readonly OnboardingAgreement[]; selectedIds: readonly string[]; allAccepted: boolean; loading: boolean; showAction?: boolean }>()
+const emit = defineEmits<{ submit: []; toggle: [id: string] }>()
+
+function toggleAgreement(id: string): void {
+  if (!props.agreements.some((agreement) => agreement.id === id)) return
+  selectionHaptic()
+  emit('toggle', id)
+}
 </script>
 
 <template>
@@ -14,13 +21,13 @@ defineEmits<{ submit: []; toggle: [id: string] }>()
     </header>
 
     <div class="agreement-list">
-      <label v-for="agreement in agreements" :key="agreement.id" class="agreement-callout agreement-callout--selectable" :class="`agreement-callout--${agreement.color || 'warning'}`" data-haptic>
+      <label v-for="agreement in agreements" :key="agreement.id" class="agreement-callout agreement-callout--selectable" :class="`agreement-callout--${agreement.color || 'warning'}`">
         <UIcon :name="agreementIcon(agreement.icon)" aria-hidden="true" />
         <span><strong>{{ agreement.title }}</strong><small>{{ agreement.body }}</small></span>
         <UCheckbox
           :model-value="selectedIds.includes(agreement.id)"
           :aria-label="agreement.title"
-          @update:model-value="$emit('toggle', agreement.id)"
+          @update:model-value="toggleAgreement(agreement.id)"
         />
       </label>
     </div>
@@ -32,7 +39,7 @@ defineEmits<{ submit: []; toggle: [id: string] }>()
       :disabled="!allAccepted || loading"
       :loading="loading"
       :label="loading ? $t('onboarding.finishing') : $t('onboarding.finish')"
-      data-haptic
+      data-haptic="confirm"
       @click="$emit('submit')"
     />
   </section>

@@ -1,12 +1,19 @@
 <script setup lang="ts">
 import type { AffiliateReferral, AffiliateReferralPage } from '@/api/features'
 import { formatDate, formatDateTime } from '@/utils/format'
+import { selectionHaptic } from '@/utils/telegram'
 
-defineProps<{ page: AffiliateReferralPage; loading: boolean }>()
-defineEmits<{ 'update:page': [page: number] }>()
+const props = defineProps<{ page: AffiliateReferralPage; loading: boolean }>()
+const emit = defineEmits<{ 'update:page': [page: number] }>()
 
 function referralName(referral: AffiliateReferral): string {
   return [referral.firstName, referral.lastName].map((name) => name.trim()).filter(Boolean).join(' ')
+}
+
+function updatePage(page: number): void {
+  if (page === props.page.page) return
+  selectionHaptic()
+  emit('update:page', page)
 }
 </script>
 
@@ -27,6 +34,6 @@ function referralName(referral: AffiliateReferral): string {
       </article>
     </div>
     <p v-else class="affiliate-empty">{{ $t('affiliates.noReferrals') }}</p>
-    <UPagination v-if="page.totalPages > 1" class="affiliate-pagination" :page="page.page" :items-per-page="page.pageSize" :total="page.total" data-haptic="selection" @update:page="$emit('update:page', $event)" />
+    <UPagination v-if="page.totalPages > 1" class="affiliate-pagination" :page="page.page" :items-per-page="page.pageSize" :total="page.total" @update:page="updatePage" />
   </section>
 </template>

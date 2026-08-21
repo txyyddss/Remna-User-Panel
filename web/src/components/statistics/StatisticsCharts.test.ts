@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { h } from 'vue'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import UApp from '@nuxt/ui/runtime/components/App.vue'
 
 import type { StatisticsSnapshot } from '@/api/types'
@@ -8,12 +8,17 @@ import StatisticsDistribution from './StatisticsDistribution.vue'
 import StatisticsDonut from './StatisticsDonut.vue'
 import StatisticsPie from './StatisticsPie.vue'
 
+const hapticMocks = vi.hoisted(() => ({ selectionHaptic: vi.fn() }))
+vi.mock('@/utils/telegram', () => hapticMocks)
+
 const shares = [
   { id: 'active', label: 'Active', value: 3 },
   { id: 'queued', label: 'Queued', value: 1 },
 ]
 
 describe('statistics SVG charts', () => {
+  afterEach(() => vi.clearAllMocks())
+
   it('renders an interactive donut with exact-value selection details', async () => {
     const wrapper = mount(StatisticsDonut, {
       props: { items: shares, centerLabel: 'Members', centerValue: '4', chartLabel: 'Member split' },
@@ -30,6 +35,8 @@ describe('statistics SVG charts', () => {
 
     await segments[1]?.trigger('click')
     expect(segments[1]?.attributes('aria-pressed')).toBe('true')
+    expect(hapticMocks.selectionHaptic).toHaveBeenCalledOnce()
+    expect(wrapper.find('[data-haptic]').exists()).toBe(false)
     expect(wrapper.html()).not.toContain('conic-gradient')
   })
 

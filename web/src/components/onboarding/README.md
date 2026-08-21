@@ -5,3 +5,5 @@
 - `agreementIcons.ts` maps server-owned icon keys to external Iconify names.
 - `useOnboardingMainButton.ts` mirrors the decisive step action to Telegram's native MainButton with an in-app fallback.
 - `useOnboardingMainButton.test.ts` verifies native-button synchronization and teardown.
+
+Onboarding distinguishes soft navigation/opening, light membership refresh, medium native actions, rigid completion, and semantic agreement selection.

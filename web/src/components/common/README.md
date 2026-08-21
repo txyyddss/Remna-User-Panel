@@ -1,6 +1,6 @@
 # Common components
 
-- `ConfirmDialog.vue` provides the shared Nuxt UI confirmation modal.
+- `ConfirmDialog.vue` provides the shared Nuxt UI confirmation modal with soft cancellation, rigid confirmation, and heavy destructive confirmation feedback.
 - `CountryFlag.vue` renders bundled Iconify flags for common nodes, including the Netherlands, and an ISO regional-indicator flag fallback for every other valid country code.
 - `InlineNotice.vue`, `OperationStatusNotice.vue`, `SkeletonBlock.vue`, and `StatusBadge.vue` provide status feedback, including durable operation polling failures.
 - `LanguageSwitcher.vue` controls the active locale.

@@ -41,7 +41,7 @@ describe('useOnboardingMainButton', () => {
     const click = button.onClick.mock.calls[0]?.[0]
     click?.()
     expect(run).toHaveBeenCalledOnce()
-    expect(impactOccurred).toHaveBeenCalledWith('light')
+    expect(impactOccurred).toHaveBeenCalledWith('medium')
 
     text.value = 'Finish'
     await wrapper.vm.$nextTick()

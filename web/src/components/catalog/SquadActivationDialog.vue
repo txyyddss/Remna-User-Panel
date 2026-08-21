@@ -37,7 +37,7 @@ function cancel(close: () => void): void {
     </template>
     <template #footer="{ close }">
       <UButton color="neutral" variant="outline" :label="$t('common.cancel')" @click="cancel(close)" />
-      <UButton :label="$t('catalog.activationContinue')" :disabled="!code.trim()" data-haptic @click="submit" />
+      <UButton :label="$t('catalog.activationContinue')" :disabled="!code.trim()" data-haptic="confirm" @click="submit" />
     </template>
   </UModal>
 </template>

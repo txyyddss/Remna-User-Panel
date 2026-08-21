@@ -34,7 +34,7 @@ useTelegramBackButton(computed(() => open.value), () => { open.value = false })
     v-model:open="open"
     :title="title"
     :description="result ? $t('statistics.geocheck.checkedAt', { date: formatDateTime(result.checkedAt) }) : undefined"
-    :close="{ 'data-haptic': '' }"
+    :close="{ 'data-haptic': 'dismiss' }"
     :ui="{ content: 'statistics-geocheck-modal', body: 'statistics-geocheck-modal__body' }"
   >
     <template #body>
@@ -71,9 +71,9 @@ useTelegramBackButton(computed(() => open.value), () => { open.value = false })
             />
           </div>
           <div class="statistics-geocheck__controls" role="group" :aria-label="$t('statistics.geocheck.controls')">
-            <UTooltip :text="$t('statistics.geocheck.zoomOut')"><UButton color="neutral" variant="ghost" square icon="i-ph-magnifying-glass-minus" :disabled="zoom.scale.value <= 1" :aria-label="$t('statistics.geocheck.zoomOut')" data-haptic @click="zoomOut" /></UTooltip>
-            <UTooltip :text="$t('statistics.geocheck.resetZoom')"><UButton color="neutral" variant="ghost" square icon="i-ph-arrow-counter-clockwise" :disabled="!zoom.isZoomed.value" :aria-label="$t('statistics.geocheck.resetZoom')" data-haptic @click="zoom.reset" /></UTooltip>
-            <UTooltip :text="$t('statistics.geocheck.zoomIn')"><UButton color="neutral" variant="ghost" square icon="i-ph-magnifying-glass-plus" :disabled="zoom.scale.value >= 4" :aria-label="$t('statistics.geocheck.zoomIn')" data-haptic @click="zoomIn" /></UTooltip>
+            <UTooltip :text="$t('statistics.geocheck.zoomOut')"><UButton color="neutral" variant="ghost" square icon="i-ph-magnifying-glass-minus" :disabled="zoom.scale.value <= 1" :aria-label="$t('statistics.geocheck.zoomOut')" data-haptic="zoom" @click="zoomOut" /></UTooltip>
+            <UTooltip :text="$t('statistics.geocheck.resetZoom')"><UButton color="neutral" variant="ghost" square icon="i-ph-arrow-counter-clockwise" :disabled="!zoom.isZoomed.value" :aria-label="$t('statistics.geocheck.resetZoom')" data-haptic="zoom" @click="zoom.reset" /></UTooltip>
+            <UTooltip :text="$t('statistics.geocheck.zoomIn')"><UButton color="neutral" variant="ghost" square icon="i-ph-magnifying-glass-plus" :disabled="zoom.scale.value >= 4" :aria-label="$t('statistics.geocheck.zoomIn')" data-haptic="zoom" @click="zoomIn" /></UTooltip>
           </div>
         </template>
         <div v-else class="statistics-geocheck__state" role="status">

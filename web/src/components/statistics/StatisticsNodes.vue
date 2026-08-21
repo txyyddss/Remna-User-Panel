@@ -43,7 +43,7 @@ const emit = defineEmits<{ openGeocheck: [node: StatisticsNode] }>()
               class="statistics-node__geocheck"
               icon="i-ph-globe-hemisphere-west"
               :aria-label="$t('statistics.geocheck.open')"
-              data-haptic
+              data-haptic="open"
               @click="emit('openGeocheck', node)"
             />
           </UTooltip>

@@ -43,7 +43,6 @@ const { activeItem, hasActive, activate, deactivate, select, isActive, isSelecte
           :stroke-dashoffset="ring.dashoffset"
           role="button"
           tabindex="0"
-          data-haptic
           :aria-label="$t('statistics.chartSeries', { series: ring.label, segment: $t('statistics.chartPointValue', { value: formatStatisticNumber(ring.value), percent: formatStatisticPercent(ring.percentage) }) })"
           :aria-pressed="isSelected(ring.interactionId)"
           @pointerenter="activate(ring.interactionId)"
@@ -67,7 +66,6 @@ const { activeItem, hasActive, activate, deactivate, select, isActive, isSelecte
         class="statistics-chart-legend-item"
         role="button"
         tabindex="0"
-        data-haptic
         :aria-pressed="isSelected(segment.interactionId)"
         @pointerenter="activate(segment.interactionId)"
         @pointerleave="deactivate(segment.interactionId)"

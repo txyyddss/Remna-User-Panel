@@ -3,6 +3,7 @@
 Localized route-level panels and shared admin-only Nuxt UI.
 
 Admin section labels are locale-owned, use Nuxt UI controls, and avoid visual separator literals in component code.
+Admin add actions use medium feedback, audited confirmation uses rigid feedback, and destructive confirmation alone uses heavy feedback.
 
 - `AdminActivityPanel.vue` manages games and lucky draws; calendar and reward settings are in `AdminSettingsPanel.vue`.
 - `AdminAuditPanel.vue` filters the audit trail.

@@ -23,8 +23,8 @@ describe('ConnectionBlockDialog', () => {
 
     expect(visible.value).toBe(true)
     expect(wrapper.text()).toContain('72')
-    expect(wrapper.find('[data-haptic="heavy"]').exists()).toBe(true)
-    expect(wrapper.find('[data-haptic=""]').exists()).toBe(true)
+    expect(wrapper.find('[data-haptic="destructive"]').exists()).toBe(true)
+    expect(wrapper.find('[data-haptic="dismiss"]').exists()).toBe(true)
     onBack()
     await wrapper.vm.$nextTick()
     expect(wrapper.emitted('update:open')).toEqual([[false]])

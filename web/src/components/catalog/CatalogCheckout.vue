@@ -41,7 +41,7 @@ function goToBalance(): void { void router.push({ path: '/home', query: { topUp:
       variant="ghost"
       icon="i-ph-arrow-left"
       :label="$t('catalog.back')"
-      data-haptic
+      data-haptic="navigate"
       @click="emit('back')"
     />
     <div class="section-heading section-heading--stacked">
@@ -90,8 +90,8 @@ function goToBalance(): void { void router.push({ path: '/home', query: { topUp:
     </div>
     <UAlert v-if="error" color="warning" variant="soft" icon="i-ph-warning-circle" :description="error" />
     <USkeleton v-if="quoting" class="h-16" />
-    <UButton v-if="needsBalance" block trailing-icon="i-ph-plus" :label="$t('catalog.addBalance')" data-haptic @click="goToBalance" />
-    <UButton v-else block class="catalog-checkout__confirm" :disabled="purchasing || !quote || quote.accessibleNodes.length === 0" :loading="purchasing" :label="purchasing ? $t('catalog.confirming') : $t('catalog.confirmPurchase')" data-haptic @click="emit('confirm')" />
+    <UButton v-if="needsBalance" block trailing-icon="i-ph-plus" :label="$t('catalog.addBalance')" data-haptic="navigate" @click="goToBalance" />
+    <UButton v-else block class="catalog-checkout__confirm" :disabled="purchasing || !quote || quote.accessibleNodes.length === 0" :loading="purchasing" :label="purchasing ? $t('catalog.confirming') : $t('catalog.confirmPurchase')" data-haptic="confirm" @click="emit('confirm')" />
   </section>
 </template>
 

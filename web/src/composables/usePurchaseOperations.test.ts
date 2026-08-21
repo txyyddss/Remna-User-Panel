@@ -95,8 +95,10 @@ describe('usePurchaseOperations', () => {
     await state.loadQuote('reset')
     expect(state.resetAutomation.value?.enabled).toBe(true)
     await state.setResetAutomation(false)
+    await state.setResetAutomation(false)
 
     expect(apiMocks.updateTrafficResetAutomation).toHaveBeenCalledWith(false)
+    expect(apiMocks.updateTrafficResetAutomation).toHaveBeenCalledTimes(1)
     expect(hapticMocks.selectionHaptic).toHaveBeenCalledOnce()
     expect(state.resetAutomation.value?.enabled).toBe(false)
     scope.stop()

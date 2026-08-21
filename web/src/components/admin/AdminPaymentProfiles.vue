@@ -93,7 +93,7 @@ onMounted(() => void load())
   <section class="payment-profiles">
     <div class="admin-panel__heading">
       <div><h2>{{ t('adminPaymentProfiles.title') }}</h2><p>{{ t('adminPaymentProfiles.copy') }}</p></div>
-      <UButton icon="i-ph-plus" :label="t('adminPaymentProfiles.add')" data-haptic @click="addProfile" />
+      <UButton icon="i-ph-plus" :label="t('adminPaymentProfiles.add')" data-haptic="action" @click="addProfile" />
     </div>
     <InlineNotice v-if="saved" tone="success">{{ t('adminPaymentProfiles.saved') }}</InlineNotice>
     <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>

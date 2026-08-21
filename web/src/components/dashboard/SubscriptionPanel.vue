@@ -45,7 +45,7 @@ function openConnections(): void {
           variant="ghost"
           :icon="copied ? 'i-ph-check-bold' : 'i-ph-copy'"
           :aria-label="copied ? $t('common.copied') : $t('dashboard.copySubscription')"
-          data-haptic
+          data-haptic="copy"
           @click="copyLink"
         />
       </div>
@@ -56,7 +56,7 @@ function openConnections(): void {
           variant="outline"
           icon="i-ph-devices"
           :label="$t('connections.open')"
-          data-haptic
+          data-haptic="navigate"
           @click="openConnections"
         />
         <UButton
@@ -66,7 +66,7 @@ function openConnections(): void {
           icon="i-ph-trash"
           :disabled="revokeBlocked"
           :label="$t('common.revoke')"
-          data-haptic
+          data-haptic="open"
           @click="confirmOpen = true"
         />
       </div>

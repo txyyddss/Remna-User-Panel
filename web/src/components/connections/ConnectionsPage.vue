@@ -62,7 +62,7 @@ watch(() => blocks.receipt.value, (receipt) => {
   <div class="page page--connections">
     <header class="connections-heading">
       <div><span class="eyebrow">{{ $t('connections.eyebrow') }}</span><h1>{{ $t('connections.title') }}</h1><p>{{ $t('connections.subtitle') }}</p></div>
-      <UButton color="neutral" variant="outline" square icon="i-ph-arrow-clockwise" :loading="scan.loading.value || scan.polling.value || blocks.loading.value" :disabled="blocks.mutationActive.value" :aria-label="$t('connections.scanAgain')" data-haptic @click="refreshAll" />
+      <UButton color="neutral" variant="outline" square icon="i-ph-arrow-clockwise" :loading="scan.loading.value || scan.polling.value || blocks.loading.value" :disabled="blocks.mutationActive.value" :aria-label="$t('connections.scanAgain')" data-haptic="refresh" @click="refreshAll" />
     </header>
 
     <InlineNotice v-if="blocks.receipt.value && !blockDialogOpen && !unblockDialogOpen" :tone="operationTone" :title="$t(`operations.status.${blocks.receipt.value.status}`)">{{ operationMessage }}</InlineNotice>
@@ -72,12 +72,12 @@ watch(() => blocks.receipt.value, (receipt) => {
     <section v-else-if="scan.error.value || scan.failed.value" class="error-state error-state--compact">
       <UIcon name="i-ph-warning-circle" class="connections-state-icon" aria-hidden="true" />
       <h2>{{ $t('connections.scanUnavailable') }}</h2><p>{{ scan.error.value ?? $t('connections.scanFailed') }}</p>
-      <UButton icon="i-ph-arrow-clockwise" :label="$t('common.tryAgain')" data-haptic @click="scan.retry()" />
+      <UButton icon="i-ph-arrow-clockwise" :label="$t('common.tryAgain')" data-haptic="retry" @click="scan.retry()" />
     </section>
     <section v-else-if="scan.completed.value && !hasConnections" class="connections-empty">
       <UIcon name="i-ph-plugs" class="connections-state-icon" aria-hidden="true" />
       <h2>{{ $t('connections.emptyTitle') }}</h2><p>{{ $t('connections.emptyDescription') }}</p>
-      <UButton color="neutral" variant="outline" icon="i-ph-arrow-clockwise" :label="$t('connections.scanAgain')" data-haptic @click="scan.restart()" />
+      <UButton color="neutral" variant="outline" icon="i-ph-arrow-clockwise" :label="$t('connections.scanAgain')" data-haptic="refresh" @click="scan.restart()" />
     </section>
     <ConnectionNodeList v-else-if="scan.completed.value" :nodes="scan.nodes.value" :disabled="blocks.mutationActive.value" @block="selectTarget" />
 
