@@ -19,12 +19,44 @@ const combo: Combo = {
   updatedAt: '2026-08-07T00:00:00Z',
 }
 
+const comboWithIncludedSquad: Combo = {
+  ...combo,
+  includedSquads: [{
+    id: 'squad-1',
+    remnaSquadUuid: '00000000-0000-4000-8000-000000000001',
+    name: 'Private included squad',
+    description: 'Private included squad detail',
+    profile: null,
+    price: { currency: 'TXB', minor: '0', display: '0.00 TXB' },
+    visible: true,
+    upstreamPresent: true,
+    activationRequired: false,
+    accessibleNodes: [{
+      uuid: '00000000-0000-4000-8000-000000000002',
+      name: 'Private included node',
+      countryCode: 'US',
+      providerName: 'Private provider',
+      consumptionMultiplier: 1,
+    }],
+    createdAt: '2026-08-07T00:00:00Z',
+    updatedAt: '2026-08-07T00:00:00Z',
+  }],
+}
+
 describe('ComboOption', () => {
   it('renders server-formatted price and entitlement values', () => {
     const wrapper = mount(ComboOption, { props: { combo, selected: false } })
     expect(wrapper.text()).toContain('18.80 TXB')
     expect(wrapper.text()).toContain('100 GB')
     expect(wrapper.text()).toContain('30 days')
+  })
+
+  it('does not display included squad detail', () => {
+    const wrapper = mount(ComboOption, { props: { combo: comboWithIncludedSquad, selected: false } })
+
+    expect(wrapper.text()).not.toContain('Private included squad')
+    expect(wrapper.text()).not.toContain('Private included node')
+    expect(wrapper.text()).not.toContain('Private provider')
   })
 
   it('emits the stable combo id on selection', async () => {
