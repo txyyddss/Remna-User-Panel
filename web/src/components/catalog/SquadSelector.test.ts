@@ -77,6 +77,10 @@ describe('SquadSelector', () => {
     const squad = { ...occupiedAddon, accessibleNodes: [node] }
     const wrapper = mount(SquadSelector, {
       props: { squads: [squad], selectedIds: [], includedIds: [], featuredIds: [squad.id] },
+      global: { stubs: {
+        Tooltip: { template: '<span><slot /></span>' },
+        Button: { emits: ['click'], template: '<div v-bind="$attrs" @click="$emit(\'click\', $event)"><slot /></div>' },
+      } },
     })
 
     expect(wrapper.text()).toContain('Featured')

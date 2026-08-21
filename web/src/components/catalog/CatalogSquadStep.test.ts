@@ -73,7 +73,7 @@ describe('CatalogSquadStep', () => {
     await flushPromises()
 
     expect(apiMocks.getNodeGeocheck).toHaveBeenCalledWith(node.uuid)
-    expect(wrapper.getComponent(StatisticsGeocheckModal).props('node')).toBe(node)
+    expect(wrapper.getComponent(StatisticsGeocheckModal).props('node')).toStrictEqual(node)
     expect(wrapper.getComponent(StatisticsGeocheckModal).props('result')).toEqual(result)
   })
 })

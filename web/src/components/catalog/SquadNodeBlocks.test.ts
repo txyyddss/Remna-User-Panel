@@ -21,7 +21,13 @@ describe('SquadNodeBlocks', () => {
         providerName: null,
       },
     ]
-    const wrapper = mount(SquadNodeBlocks, { props: { nodes } })
+    const wrapper = mount(SquadNodeBlocks, {
+      props: { nodes },
+      global: { stubs: {
+        Tooltip: { template: '<span><slot /></span>' },
+        Button: { emits: ['click'], template: '<div v-bind="$attrs" @click="$emit(\'click\', $event)"><slot /></div>' },
+      } },
+    })
 
     expect(wrapper.text()).toContain('Transit provider')
     expect(wrapper.text()).toContain('1.5x traffic')
