@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"github.com/txyyddss/Remna-User-Panel/internal/billing"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/bepusdt"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/ezpay"
@@ -17,19 +18,25 @@ func (a paymentAdapter) bepusdtClient(ctx context.Context, profileID, rail strin
 	var err error
 	if profileID != "" {
 		profile, err = a.settings.PaymentProfileByID(ctx, profileID, rail)
+		if err != nil {
+			return nil, fmt.Errorf("load BEPusdt payment profile %q for %s: %w", profileID, rail, err)
+		}
+		if profile.Provider != "bepusdt" {
+			return nil, fmt.Errorf("payment profile %q belongs to %q, not bepusdt", profileID, profile.Provider)
+		}
 	} else {
 		profile, err = a.settings.PaymentProfile(ctx, "bepusdt", rail)
-	}
-	if err != nil {
-		baseURL, fallbackErr := a.settings.Plaintext(ctx, "billing.bepusdt.base_url")
-		if fallbackErr != nil {
-			return nil, err
+		if err != nil {
+			baseURL, fallbackErr := a.settings.Plaintext(ctx, "billing.bepusdt.base_url")
+			if fallbackErr != nil {
+				return nil, err
+			}
+			token, tokenErr := a.settings.Plaintext(ctx, "billing.bepusdt.api_token")
+			if tokenErr != nil {
+				return nil, tokenErr
+			}
+			return bepusdt.NewClient(baseURL, token)
 		}
-		token, tokenErr := a.settings.Plaintext(ctx, "billing.bepusdt.api_token")
-		if tokenErr != nil {
-			return nil, tokenErr
-		}
-		return bepusdt.NewClient(baseURL, token)
 	}
 	return bepusdt.NewClient(profile.Endpoint, profile.CredentialPlaintext)
 }

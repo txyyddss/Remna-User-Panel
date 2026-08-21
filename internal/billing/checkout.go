@@ -17,12 +17,6 @@ func (s *Service) createCheckout(ctx context.Context, user model.User, order mod
 		return model.PaymentOrder{}, err
 	}
 	checkout, err := s.gateway.Create(ctx, request)
-	if err != nil && order.Provider == "bepusdt" {
-		// The legacy direct-create path retains the same order ID when a
-		// provider response is ambiguous. HTTP callers use QueueOrder, whose
-		// worker records pending review instead of retrying provider writes.
-		checkout, err = s.gateway.Create(ctx, request)
-	}
 	if err != nil {
 		_ = s.repository.FailPaymentOrder(ctx, order.ID)
 		return model.PaymentOrder{}, fmt.Errorf("create provider checkout: %w", err)

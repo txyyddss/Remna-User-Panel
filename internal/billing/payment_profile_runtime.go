@@ -5,6 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 )
 
 func callbackCapability(secret, orderID string) string {
@@ -86,6 +87,9 @@ func (s *Service) providerCredential(ctx context.Context, provider, profileID st
 			profile, err := reader.PaymentProfileByID(ctx, profileID, "")
 			if err != nil {
 				return "", err
+			}
+			if profile.Provider != provider {
+				return "", fmt.Errorf("payment profile %q belongs to %q, not %s", profileID, profile.Provider, provider)
 			}
 			if profile.CredentialPlaintext != "" {
 				return profile.CredentialPlaintext, nil

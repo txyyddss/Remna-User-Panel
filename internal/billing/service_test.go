@@ -179,7 +179,7 @@ func TestServiceCreateOrderFailures(t *testing.T) {
 	}
 }
 
-func TestServiceRetriesAmbiguousBEPusdtCreateWithSameOrder(t *testing.T) {
+func TestServiceDoesNotRetryBEPusdtCreate(t *testing.T) {
 	t.Parallel()
 
 	repository := newBillingRepository()
@@ -189,11 +189,11 @@ func TestServiceRetriesAmbiguousBEPusdtCreateWithSameOrder(t *testing.T) {
 	}}
 	gateway := &bepusdtRetryGateway{firstErr: errors.New("ambiguous timeout")}
 	service := newBillingServiceForTest(repository, settings, gateway)
-	order, err := service.CreateOrder(context.Background(), model.User{ID: "user-1"}, "bepusdt", 100)
-	if err != nil {
-		t.Fatalf("CreateOrder(): %v", err)
+	_, err := service.CreateOrder(context.Background(), model.User{ID: "user-1"}, "bepusdt", 100)
+	if err == nil {
+		t.Fatal("CreateOrder() unexpectedly succeeded")
 	}
-	if gateway.calls != 2 || gateway.orderIDs[0] != "order-1" || gateway.orderIDs[1] != "order-1" || order.Status != "pending" {
-		t.Fatalf("retry calls/order IDs/status = %d/%v/%q", gateway.calls, gateway.orderIDs, order.Status)
+	if gateway.calls != 1 || len(gateway.orderIDs) != 1 || gateway.orderIDs[0] != "order-1" {
+		t.Fatalf("create calls/order IDs = %d/%v, want one call for order-1", gateway.calls, gateway.orderIDs)
 	}
 }
