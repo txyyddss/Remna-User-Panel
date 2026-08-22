@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { nextTick, shallowRef } from 'vue'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const catalogMock = vi.hoisted(() => ({ useCatalog: vi.fn() }))
 
@@ -97,6 +97,19 @@ describe('CatalogPage quote restoration', () => {
     sessionStorage.clear()
     catalogMock.useCatalog.mockReset()
     window.Telegram = undefined
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('scrolls to the top after continuing from core combos', async () => {
+    const scrollTo = vi.fn()
+    vi.stubGlobal('scrollTo', scrollTo)
+    const { wrapper } = await mountPage(null, 1)
+
+    await wrapper.get('[data-test="catalog-flow-controls"]').trigger('click')
+
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0 })
+    expect(wrapper.find('[data-test="squad-step"]').exists()).toBe(true)
+    wrapper.unmount()
   })
 
   it('does not request another quote after purchase confirmation', async () => {

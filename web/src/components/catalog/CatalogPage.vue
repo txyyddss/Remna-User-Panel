@@ -135,9 +135,11 @@ function goHome(): void {
 
 async function advance(): Promise<void> {
   if (!selectedCombo.value || activeStep.value >= 4) return
+  const leavingComboStep = activeStep.value === 1
   if (activeStep.value === 2 && (!(await refreshQuote()) || !quote.value?.accessibleNodes.length)) return
   if (activeStep.value === 3 && (!quoteUsable.value || quoting.value)) return
   activeStep.value += 1
+  if (leavingComboStep) globalThis.scrollTo?.({ top: 0 })
 }
 
 async function handleCouponRedeemed(grantId: string | null): Promise<void> {
