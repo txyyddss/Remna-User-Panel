@@ -35,10 +35,10 @@
 - `admin-03.css` styles administrative drawers and review workflows.
 - `admin-04.css` styles aggregate user profiles, bulk previews, operation resolution, and streamed backup upload.
 - `admin-05.css` styles active IP blocks and mobile unblock controls in aggregate user profiles.
-- `overlays-01.css` resolves Telegram safe-area bounds and responsive teleported overlay layouts.
+- `overlays-01.css` resolves Telegram safe-area bounds while retaining Nuxt UI's native centered position for teleported modals and responsive drawer/slideover layouts.
 - `motion-01.css` defines short transitions and state motion.
 - `responsive-01.css` owns shared motion keyframes used by compact surfaces.
-- `responsive-02.css` expands the phone-first shell into a sticky-rail desktop layout and restores wide route, dialog, catalog, settings, and administrative list arrangements.
+- `responsive-02.css` expands the phone-first shell into a sticky-rail desktop layout, keeps Home in its centered balance-first column, and restores wide route, dialog, catalog, settings, and administrative list arrangements.
 - `responsive-03.css` applies compact administrative rows below 640px and owns reduced-motion/transparency fallbacks.
 
 The system is dark-only, flat, gradient-free, and uses borders instead of decorative shadows.

@@ -29,11 +29,11 @@ const jobDeleteTarget = shallowRef<JobRecord | null>(null)
 const { t } = useI18n()
 let restorePollTimer: ReturnType<typeof globalThis.setTimeout> | undefined
 let restoreAttempt: { fingerprint: string; key: string } | undefined
+function isScheduled(job: JobRecord): boolean { return job.status === 'pending' && new Date(job.availableAt).getTime() > Date.now() }
 function restoreKey(fingerprint: string): string {
   if (restoreAttempt?.fingerprint !== fingerprint) restoreAttempt = { fingerprint, key: createUuid() }
   return restoreAttempt.key
 }
-
 function stopRestorePolling(): void {
   if (restorePollTimer !== undefined) globalThis.clearTimeout(restorePollTimer)
   restorePollTimer = undefined
@@ -157,8 +157,8 @@ onScopeDispose(stopRestorePolling)
     <AdminSectionState :loading="jobs.loading.value" :error="jobs.error.value" @retry="jobs.load()">
       <div v-auto-animate class="admin-list admin-list--compact">
         <article v-for="job in jobs.items.value" :key="job.id" class="admin-list-row">
-          <div><strong>{{ job.kind }}</strong><small>{{ t('adminBackups.attempts', { count: job.attempts }) }} / {{ formatDateTime(job.createdAt) }}<template v-if="job.lastError"> / {{ t('adminBackups.jobError') }}</template></small></div>
-          <StatusBadge :tone="job.status === 'done' ? 'success' : job.status === 'failed' ? 'danger' : 'warning'" :label="t(`adminBackups.status.${job.status}`)" />
+          <div><strong>{{ job.kind }}</strong><small>{{ t('adminBackups.attempts', { count: job.attempts }) }}<template v-if="job.status === 'pending'"> / {{ t('adminBackups.availableAt', { date: formatDateTime(job.availableAt) }) }}</template><template v-else> / {{ formatDateTime(job.updatedAt) }}</template><template v-if="job.lastError"> / {{ t('adminBackups.jobError') }}</template></small></div>
+          <StatusBadge :tone="job.status === 'done' ? 'success' : job.status === 'failed' ? 'danger' : 'warning'" :label="t(isScheduled(job) ? 'adminBackups.status.scheduled' : `adminBackups.status.${job.status}`)" />
           <UButton
             v-if="job.status === 'failed'"
             size="sm"

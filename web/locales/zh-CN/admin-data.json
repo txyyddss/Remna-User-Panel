@@ -44,6 +44,7 @@
   "adminBackups": {
     "status": {
       "running": "运行中",
+      "scheduled": "已计划",
       "pending": "待处理",
       "processing": "处理中",
       "done": "已完成",
@@ -78,9 +79,10 @@
     "deleteDescription": "已验证的文件及其元数据会一并删除。恢复正在暂存或重启时禁止删除。",
     "deleteBackup": "删除备份",
     "jobs": "同步任务",
-    "jobsHint": "发件箱重试和计划的权益变更。",
+    "jobsHint": "重试和计划的权益变更。连续性任务会在下一权益开始前三分钟运行。",
     "loadMoreJobs": "加载更多任务",
     "attempts": "已尝试 {count} 次",
+    "availableAt": "可执行时间 {date}",
     "jobError": "需要处理",
     "retry": "重试",
     "deleteJobLabel": "删除 {kind} 任务",

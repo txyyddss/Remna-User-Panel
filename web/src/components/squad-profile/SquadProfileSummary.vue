@@ -15,7 +15,7 @@ const props = withDefaults(defineProps<{
   presentation?: 'default' | 'member'
 }>(), { name: '', description: '', compact: false, presentation: 'default' })
 
-defineSlots<{ facts?: () => unknown, namePrefix?: () => unknown, headingMeta?: () => unknown }>()
+defineSlots<{ facts?: () => unknown, nameTags?: () => unknown, headingMeta?: () => unknown }>()
 
 const { locale, t } = useI18n()
 const typeMeta = computed(() => props.profile ? profileTypeMeta(props.profile.type) : null)
@@ -45,8 +45,8 @@ const memberProfileText = computed(() => {
       <div class="squad-profile-summary__heading-copy">
         <span v-if="presentation === 'member' && name" class="squad-profile-summary__name-row">
           <span class="squad-profile-summary__name-copy">
-            <slot v-if="$slots.namePrefix" name="namePrefix" />
             <strong>{{ name }}</strong>
+            <slot v-if="$slots.nameTags" name="nameTags" />
           </span>
           <slot name="headingMeta" />
         </span>
@@ -83,7 +83,7 @@ const memberProfileText = computed(() => {
 .squad-profile-summary__heading-copy { display: grid; min-width: 0; gap: 0.08rem; }
 .squad-profile-summary__name-row { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 .squad-profile-summary__name-copy { min-width: 0; display: flex; flex: 1 1 auto; align-items: center; gap: 0.35rem; }
-.squad-profile-summary__name-copy strong { min-width: 0; flex: 1 1 auto; }
+.squad-profile-summary__name-copy strong { min-width: 0; flex: 0 1 auto; }
 .squad-profile-summary__heading-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .squad-profile-summary__facts { display: flex; flex-wrap: wrap; gap: 0.35rem 0.7rem; color: var(--text-faint); font-size: 0.68rem; line-height: 1.45; }
 .squad-profile-summary__facts > span { display: inline-flex; align-items: center; gap: 0.25rem; min-width: 0; }

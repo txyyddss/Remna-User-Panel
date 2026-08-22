@@ -19,17 +19,14 @@
     var(--tg-safe-area-inset-left, 0px),
     var(--tg-content-safe-area-inset-left, 0px)
   );
+  --app-safe-block: max(var(--app-safe-top), var(--app-safe-bottom));
+  --app-safe-inline: max(var(--app-safe-left), var(--app-safe-right));
 }
 
 .tg-modal--windowed {
-  inset: calc(var(--app-safe-top) + 0.5rem) calc(var(--app-safe-right) + 0.5rem)
-    calc(var(--app-safe-bottom) + 0.5rem) calc(var(--app-safe-left) + 0.5rem);
-  width: min(32rem, calc(100vw - var(--app-safe-left) - var(--app-safe-right) - 1rem));
+  width: min(32rem, calc(100vw - var(--app-safe-inline) - var(--app-safe-inline) - 1rem));
   max-width: none;
-  height: fit-content;
-  max-height: calc(var(--tg-viewport-stable-height, 100dvh) - var(--app-safe-top) - var(--app-safe-bottom) - 1rem);
-  margin: auto;
-  transform: none;
+  max-height: calc(100dvh - var(--app-safe-block) - var(--app-safe-block) - 1rem);
 }
 
 .tg-modal--fullscreen {

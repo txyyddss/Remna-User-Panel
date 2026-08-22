@@ -77,17 +77,19 @@ const squadRows = computed(() => props.squads
       <article v-for="row in squadRows" :key="row.squad.id" class="squad-option" :class="[profileClass(row.squad), { 'squad-option--featured': isFeatured(row.squad.id), 'squad-option--selected': isSelected(row.squad.id), 'squad-option--included': isIncluded(row.squad.id), 'squad-option--full': isFullPaidAddon(row.squad) }]" @click="toggleSquad(row.squad)">
         <div class="squad-option__copy">
           <SquadProfileSummary :name="row.squad.name" :profile="row.squad.profile" :description="row.squad.description" presentation="member" compact>
-            <template v-if="isFeatured(row.squad.id)" #namePrefix>
-              <span class="squad-option__featured-tag">{{ $t('catalog.featured') }}</span>
+            <template v-if="isFeatured(row.squad.id) || isFullPaidAddon(row.squad)" #nameTags>
+              <span v-if="isFeatured(row.squad.id)" class="squad-option__featured-tag">{{ $t('catalog.featured') }}</span>
+              <span v-if="isFullPaidAddon(row.squad)" class="squad-option__full-tag">{{ $t('catalog.full') }}</span>
             </template>
             <template v-if="row.occupancyPercentage !== null" #headingMeta>
               <span class="squad-option__occupancy"><UIcon name="i-ph-users-three" />{{ row.occupancyPercentage }}%</span>
             </template>
+            <template v-if="row.squad.activationRequired" #facts>
+              <span class="squad-option__activation-tag"><UIcon name="i-ph-lock-key" />{{ $t('catalog.activationRequired') }}</span>
+            </template>
           </SquadProfileSummary>
           <SquadNodeBlocks :nodes="row.squad.accessibleNodes" @open-geocheck="emit('openGeocheck', $event)" />
           <StatusBadge v-if="isIncluded(row.squad.id)" tone="neutral" :label="$t('catalog.included')" />
-          <StatusBadge v-else-if="row.squad.activationRequired" tone="warning" :label="$t('catalog.activationRequired')" />
-          <StatusBadge v-else-if="isFullPaidAddon(row.squad)" tone="neutral" :label="$t('catalog.full')" />
           <span v-else>{{ formatMoney(row.squad.price) }}</span>
         </div>
         <UCheckbox
@@ -112,5 +114,6 @@ const squadRows = computed(() => props.squads
 .squad-option--included { color: var(--text-faint); border-color: var(--squad-profile-tone-line, var(--line)); background: var(--squad-profile-tone-soft, var(--canvas-soft)); cursor: default; }
 .squad-option.squad-option--full { border-color: var(--line); color: var(--text-faint); background: var(--surface); cursor: not-allowed; opacity: 0.58; }
 .squad-option__featured-tag { display: inline-flex; flex: 0 0 auto; align-items: center; padding: 0.16rem 0.3rem; border-radius: 4px; color: var(--canvas); background: var(--warning); font-size: 0.54rem; font-weight: 800; line-height: 1; white-space: nowrap; }
+.squad-option__full-tag { display: inline-flex; flex: 0 0 auto; align-items: center; padding: 0.16rem 0.3rem; border-radius: 4px; color: var(--canvas); background: var(--danger); font-size: 0.54rem; font-weight: 800; line-height: 1; white-space: nowrap; }
 .squad-option__occupancy { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 0.22rem; color: var(--text-muted); font-family: var(--font-mono); font-size: 0.68rem; }
 </style>

@@ -7,7 +7,7 @@ Admin add actions use medium feedback, audited confirmation uses rigid feedback,
 
 - `AdminActivityPanel.vue` manages games and lucky draws; calendar and reward settings are in `AdminSettingsPanel.vue`.
 - `AdminAuditPanel.vue` filters the audit trail.
-- `AdminBackupsPanel.vue` manages backup and restore jobs; provider diagnostics stay behind localized status summaries.
+- `AdminBackupsPanel.vue` manages backup and restore jobs; future continuity work shows its localized scheduled state and eligible time while provider diagnostics stay behind status summaries.
 - `backups/` contains focused staged-restore and streamed-upload controls.
 - `AdminBillingAmountLimits.vue` loads the global inclusive Add TXB range and atomically saves exact minor-unit bounds.
 - `AdminCatalogEditor.vue` edits combo terms.

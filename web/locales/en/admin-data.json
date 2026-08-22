@@ -44,6 +44,7 @@
   "adminBackups": {
     "status": {
       "running": "Running",
+      "scheduled": "Scheduled",
       "pending": "Pending",
       "processing": "Processing",
       "done": "Done",
@@ -78,9 +79,10 @@
     "deleteDescription": "The verified file and its metadata are removed together. Deletion is blocked while a restore is staging or restarting.",
     "deleteBackup": "Delete backup",
     "jobs": "Synchronization jobs",
-    "jobsHint": "Outbox retries and scheduled entitlement changes.",
+    "jobsHint": "Retries and scheduled entitlement changes. Continuity runs three minutes before the next term.",
     "loadMoreJobs": "Load more jobs",
     "attempts": "{count} attempts",
+    "availableAt": "Ready after {date}",
     "jobError": "Needs attention",
     "retry": "Retry",
     "deleteJobLabel": "Delete {kind} job",

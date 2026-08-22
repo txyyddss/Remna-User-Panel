@@ -28,6 +28,14 @@ const occupiedAddon: SquadProduct = {
   stockRemaining: 4,
 }
 
+const activationAddon: SquadProduct = {
+  ...occupiedAddon,
+  id: 'squad-activation',
+  name: 'Private transit',
+  profile: { type: 'broadband', isp: 'Harbor ISP', portMbps: 1_000, dynamic: false, location: 'Singapore' },
+  activationRequired: true,
+}
+
 const node = {
   uuid: '00000000-0000-4000-8000-000000000003',
   name: 'Harbor relay',
@@ -43,7 +51,12 @@ describe('SquadSelector', () => {
     })
 
     expect(wrapper.find('.squad-option').classes()).toContain('squad-option--full')
-    expect(wrapper.text()).toContain('Full')
+    const fullTag = wrapper.get('.squad-option__full-tag')
+    const nameCopy = wrapper.get('.squad-profile-summary__name-copy')
+    expect(fullTag.text()).toBe('Full')
+    expect(fullTag.element.previousElementSibling).toBe(nameCopy.get('strong').element)
+    expect(wrapper.find('.status-badge').exists()).toBe(false)
+    expect(wrapper.text()).toContain('1.00 TXB')
   })
 
   it('shows bounded squad occupancy as a whole percentage without exact counts', () => {
@@ -54,6 +67,18 @@ describe('SquadSelector', () => {
     expect(wrapper.text()).toContain('60%')
     expect(wrapper.text()).not.toContain('occupied')
     expect(wrapper.text()).not.toContain('6/10')
+  })
+
+  it('shows activation-required state with ISP-style squad facts instead of a footer badge', () => {
+    const wrapper = mount(SquadSelector, {
+      props: { squads: [activationAddon], selectedIds: [], includedIds: [], featuredIds: [], orderedIds: [activationAddon.id] },
+    })
+
+    const facts = wrapper.get('.squad-profile-summary__facts')
+    expect(facts.text()).toContain('Harbor ISP')
+    expect(facts.get('.squad-option__activation-tag').text()).toBe('Activation code required')
+    expect(wrapper.find('.status-badge').exists()).toBe(false)
+    expect(wrapper.text()).toContain('1.00 TXB')
   })
 
   it('reserves zero and one hundred percent for empty and full squads', () => {
@@ -90,8 +115,8 @@ describe('SquadSelector', () => {
     expect(options[0]!.classes()).toContain('squad-option--featured')
     expect(wrapper.findAll('.squad-option__featured-tag')).toHaveLength(1)
     expect(featuredTag.text()).toBe('Featured')
-    expect(nameCopy.element.children[0]).toBe(featuredTag.element)
     expect(nameCopy.get('strong').text()).toBe('Featured transit')
+    expect(nameCopy.get('strong').element.nextElementSibling).toBe(featuredTag.element)
     expect(options[1]!.find('.squad-option__featured-tag').exists()).toBe(false)
     await wrapper.get('[aria-label="View Geocheck result"]').trigger('click')
 

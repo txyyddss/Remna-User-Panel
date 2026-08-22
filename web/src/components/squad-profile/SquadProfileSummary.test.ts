@@ -32,4 +32,17 @@ describe('SquadProfileSummary', () => {
     expect(wrapper.text()).toContain('China Optimized Unlimited')
     expect(wrapper.text()).not.toMatch(/\b(?:CT|CU|CM)\b/)
   })
+
+  it('renders caller-owned state tags beside generated profile facts', () => {
+    const wrapper = mount(SquadProfileSummary, {
+      props: {
+        profile: { type: 'broadband', isp: 'Harbor ISP', portMbps: 1_000, dynamic: false, location: 'Singapore' },
+      },
+      slots: { facts: '<span class="hidden-squad-tag">Hidden</span>' },
+    })
+
+    const facts = wrapper.get('.squad-profile-summary__facts')
+    expect(facts.text()).toContain('Harbor ISP')
+    expect(facts.get('.hidden-squad-tag').text()).toBe('Hidden')
+  })
 })
