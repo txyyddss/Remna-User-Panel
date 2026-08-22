@@ -6,6 +6,7 @@ import type { FeaturePaymentMethod } from '@/api/features'
 import { setLocale } from '@/i18n'
 
 import BalancePaymentConfiguration from './BalancePaymentConfiguration.vue'
+import BalancePaymentSheet from './BalancePaymentSheet.vue'
 
 const methods: FeaturePaymentMethod[] = [
   { id: 'ezpay:profile-one:alipay', provider: 'ezpay', profileId: 'profile-one', providerName: 'Renminbi payment', rail: 'alipay', name: 'Alipay', currency: 'CNY', cryptoCurrency: '', network: '', networkName: '', available: true, note: '', mode: 'order' },
@@ -98,5 +99,43 @@ describe('BalancePaymentConfiguration', () => {
     expect(wrapper.get('[data-test="payment-submit"]').text()).toContain('Reissue payment')
     expect(wrapper.text()).toContain('BEPUSDT rejected the order')
     expect(wrapper.find('[data-test="choose-channel"]').exists()).toBe(false)
+  })
+})
+
+describe('BalancePaymentSheet', () => {
+  afterEach(() => {
+    setLocale('en')
+    document.body.innerHTML = ''
+  })
+
+  it('places channel navigation before the Add TXB title', async () => {
+    const wrapper = mount(BalancePaymentSheet, {
+      props: { open: true, methods },
+      global: {
+        stubs: {
+          Modal: {
+            props: ['title'],
+            template: '<section><header><slot name="actions" /><h2>{{ title }}</h2></header><main><slot name="body" /></main></section>',
+          },
+          Button: { template: '<button><slot /></button>' },
+          BalancePaymentConfiguration: {
+            emits: ['update:step'],
+            template: '<button data-test="show-channel" @click="$emit(\'update:step\', \'channel\')">Channel</button>',
+          },
+        },
+      },
+    })
+
+    await nextTick()
+    expect(wrapper.find('[aria-label="Change provider"]').exists()).toBe(false)
+    await wrapper.get('[data-test="show-channel"]').trigger('click')
+
+    const header = wrapper.get('header')
+    const back = header.get('[aria-label="Change provider"]')
+    expect(header.get('h2').text()).toBe('Add TXB')
+    expect(back.element.compareDocumentPosition(header.get('h2').element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    await back.trigger('click')
+    expect(wrapper.find('[aria-label="Change provider"]').exists()).toBe(false)
   })
 })

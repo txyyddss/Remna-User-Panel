@@ -124,8 +124,8 @@ useTelegramBackButton(ownsBack, closeDialog)
       :title="$t(`purchaseOperations.${dialogKind ?? 'reset'}.title`)"
       :description="$t(`purchaseOperations.${dialogKind ?? 'reset'}.description`)"
       :dismissible="!operation.mutating.value"
-      :close="{ 'data-haptic': 'dismiss' }"
-      :ui="{ footer: 'justify-end' }"
+      :close="dialogKind === 'reset' ? false : { 'data-haptic': 'dismiss' }"
+      :ui="dialogKind === 'reset' ? { header: 'justify-center', wrapper: 'text-center', footer: 'justify-end' } : { footer: 'justify-end' }"
     >
       <template #body>
         <div class="purchase-operation-dialog">

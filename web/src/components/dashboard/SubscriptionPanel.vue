@@ -84,6 +84,8 @@ function openConnections(): void {
       :description="$t('dashboard.revokeDescription')"
       :confirm-label="$t('dashboard.revokeLink')"
       :busy="revoking"
+      :show-close="false"
+      centered
       danger
       @confirm="emit('revoke')"
     />

@@ -32,6 +32,7 @@ const emit = defineEmits<{
   couponRedeemed: [redemption: CouponRedemption]
 }>()
 const amount = defineModel<string>('amount', { required: true })
+const paymentStep = defineModel<'provider' | 'channel'>('step', { default: 'provider' })
 const { t } = useI18n()
 const couponCode = shallowRef('')
 const couponBusy = shallowRef(false)
@@ -83,7 +84,6 @@ const channelItems = computed<PaymentChannelOption[]>(() => channels.value.map((
   network: method.network || undefined,
   networkName: method.networkName || undefined,
 })))
-const paymentStep = shallowRef<'provider' | 'channel'>('provider')
 const canContinue = computed(() => selectedProvider.value !== null && selectedProvider.value !== 'coupon' && channels.value.some((method) => method.available))
 
 function profileKey(method: FeaturePaymentMethod): string {
@@ -173,7 +173,6 @@ watch(() => props.stage, (stage, previousStage) => {
     :minimum-minor="minimumMinor"
     :maximum-minor="maximumMinor"
     @choose-method="emit('chooseMethod', $event)"
-    @back="paymentStep = 'provider'"
     @create-order="emit('createOrder')"
     @retry-operation="emit('retryOperation')"
   />

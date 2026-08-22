@@ -25,7 +25,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:amount': [value: string]
   chooseMethod: [id: string]
-  back: []
   createOrder: []
   retryOperation: []
 }>()
@@ -42,17 +41,6 @@ function chooseMethod(id: string): void {
 
 <template>
   <div class="payment-channel-step">
-    <div class="payment-step-heading">
-      <UButton
-        class="payment-step-heading__back"
-        color="neutral"
-        variant="ghost"
-        icon="i-ph-arrow-left"
-        :aria-label="t('payment.backToProvider')"
-        data-haptic="navigate"
-        @click="emit('back')"
-      />
-    </div>
     <TxbAmountField
       id="txb-amount"
       :model-value="amount"
@@ -119,5 +107,5 @@ function chooseMethod(id: string): void {
 
 <style scoped>
 .payment-channel-step { display: grid; min-width: 0; gap: 0.75rem; }
-.payment-channel-step :deep(.amount-field), .payment-channel-step .provider-picker, .payment-channel-step .payment-step-heading, .payment-channel-step .payment-submit { margin: 0; }
+.payment-channel-step :deep(.amount-field), .payment-channel-step .provider-picker, .payment-channel-step .payment-submit { margin: 0; }
 </style>

@@ -12,14 +12,22 @@ const props = withDefaults(defineProps<{
   confirmLabel: string
   busy?: boolean
   danger?: boolean
+  showClose?: boolean
+  centered?: boolean
 }>(), {
   busy: false,
   danger: false,
+  showClose: true,
+  centered: false,
 })
 
 defineEmits<{ confirm: [] }>()
 
 const { t } = useI18n()
+const modalUi = computed(() => ({
+  footer: 'justify-end',
+  ...(props.centered ? { header: 'justify-center', wrapper: 'text-center' } : {}),
+}))
 useTelegramProtection(computed(() => open.value && (props.danger || props.busy)))
 </script>
 
@@ -28,7 +36,8 @@ useTelegramProtection(computed(() => open.value && (props.danger || props.busy))
     v-model:open="open"
     :description="description"
     :dismissible="!busy"
-    :ui="{ footer: 'justify-end' }"
+    :close="showClose"
+    :ui="modalUi"
   >
     <template #title>
       <span class="dialog-title">

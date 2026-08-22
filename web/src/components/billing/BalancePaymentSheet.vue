@@ -22,6 +22,7 @@ const { t } = useI18n()
 const methods = computed(() => props.methods)
 const externalMethods = computed(() => methods.value.filter((method) => method.mode === 'order'))
 const couponRedemption = shallowRef<CouponRedemption | null>(null)
+const paymentStep = shallowRef<'provider' | 'channel'>('provider')
 
 const {
   amount,
@@ -61,6 +62,7 @@ const description = computed(() => stage.value === 'configure'
 
 async function prepareOrder(): Promise<void> {
   couponRedemption.value = null
+  paymentStep.value = 'provider'
   reset(externalMethods.value)
   if (props.pendingOrder && await hydratePendingOrder(props.pendingOrder, externalMethods.value)) return
   if (props.reissueOrder) hydrateReissueOrder(props.reissueOrder, externalMethods.value)
@@ -89,10 +91,24 @@ watch(open, (next, previous) => {
     :description="description"
     :dismissible="!['creating', 'pending', 'cancelling'].includes(stage)"
   >
+    <template #actions>
+      <UButton
+        v-if="paymentStep === 'channel'"
+        class="payment-sheet-header-back"
+        color="neutral"
+        variant="ghost"
+        icon="i-ph-arrow-left"
+        :aria-label="t('payment.backToProvider')"
+        data-haptic="navigate"
+        @click="paymentStep = 'provider'"
+      />
+    </template>
+
     <template #body>
       <template v-if="!couponRedemption && (stage === 'configure' || stage === 'creating')">
         <BalancePaymentConfiguration
           v-model:amount="amount"
+          v-model:step="paymentStep"
           :methods="methods"
           :selected-method-id="selectedMethodId"
           :stage="stage"
@@ -167,6 +183,7 @@ watch(open, (next, previous) => {
 </template>
 
 <style scoped>
+.payment-sheet-header-back { order: -1; margin-inline-start: -0.65rem; }
 .payment-success--coupon { gap: 0.8rem; }
 .payment-success--coupon > .payment-amount { width: 100%; }
 .payment-success__coupon-icon { width: 5rem; height: 5rem; color: var(--success); font-size: 5rem; }
