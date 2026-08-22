@@ -73,9 +73,9 @@ func (c *Client) availableMethods(ctx context.Context, tradeID string) ([]Availa
 		RequestID  string      `json:"request_id"`
 		Data       struct {
 			Methods []struct {
-				Currency     string `json:"currency"`
-				Network      string `json:"network"`
-				NetworkName  string `json:"token_net_name"`
+				Currency    string `json:"currency"`
+				Network     string `json:"network"`
+				NetworkName string `json:"token_net_name"`
 			} `json:"methods"`
 		} `json:"data"`
 	}

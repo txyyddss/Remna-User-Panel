@@ -13,7 +13,10 @@ func TestPaymentChannelsReturnsStableProviderOrderAndCopy(t *testing.T) {
 		want     []string
 	}{
 		{provider: "ezpay", want: []string{"alipay", "wxpay", "qqpay", "bank", "jdpay"}},
-		{provider: "bepusdt", want: []string{"usdt.trc20", "usdt.erc20", "usdt.polygon", "usdt.bep20", "usdt.aptos", "usdt.solana", "usdt.xlayer", "usdt.arbitrum", "usdt.plasma", "usdt.ton"}},
+		{provider: "bepusdt", want: []string{
+			"usdt.trc20", "usdt.erc20", "usdt.polygon", "usdt.bep20", "usdt.aptos", "usdt.solana", "usdt.xlayer", "usdt.arbitrum", "usdt.plasma", "usdt.ton",
+			"usdc.trc20", "usdc.erc20", "usdc.polygon", "usdc.bep20", "usdc.aptos", "usdc.solana", "usdc.xlayer", "usdc.arbitrum", "usdc.base",
+		}},
 		{provider: "unknown", want: nil},
 	}
 	for _, test := range tests {

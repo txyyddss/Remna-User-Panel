@@ -25,6 +25,15 @@ func TestDocumentedPaymentMethodIDs(t *testing.T) {
 		{methodID: "bepusdt:usdt.arbitrum", provider: "bepusdt", rail: "usdt.arbitrum"},
 		{methodID: "bepusdt:usdt.plasma", provider: "bepusdt", rail: "usdt.plasma"},
 		{methodID: "bepusdt:usdt.ton", provider: "bepusdt", rail: "usdt.ton"},
+		{methodID: "bepusdt:usdc.trc20", provider: "bepusdt", rail: "usdc.trc20"},
+		{methodID: "bepusdt:usdc.erc20", provider: "bepusdt", rail: "usdc.erc20"},
+		{methodID: "bepusdt:usdc.polygon", provider: "bepusdt", rail: "usdc.polygon"},
+		{methodID: "bepusdt:usdc.bep20", provider: "bepusdt", rail: "usdc.bep20"},
+		{methodID: "bepusdt:usdc.aptos", provider: "bepusdt", rail: "usdc.aptos"},
+		{methodID: "bepusdt:usdc.solana", provider: "bepusdt", rail: "usdc.solana"},
+		{methodID: "bepusdt:usdc.xlayer", provider: "bepusdt", rail: "usdc.xlayer"},
+		{methodID: "bepusdt:usdc.arbitrum", provider: "bepusdt", rail: "usdc.arbitrum"},
+		{methodID: "bepusdt:usdc.base", provider: "bepusdt", rail: "usdc.base"},
 		{methodID: "stars", provider: "stars"},
 	}
 	for _, test := range tests {
@@ -41,10 +50,10 @@ func TestDocumentedPaymentMethodIDs(t *testing.T) {
 	}
 }
 
-func TestPaymentMethodIDRejectsUnknownAndAmbiguousRails(t *testing.T) {
+func TestPaymentMethodIDRejectsUnknownAndMalformedRails(t *testing.T) {
 	t.Parallel()
 
-	for _, methodID := range []string{"", "ezpay:", "unknown:rail", "ezpay:crypto", "bepusdt:usdc.trc20", "stars:default"} {
+	for _, methodID := range []string{"", "ezpay:", "unknown:rail", "ezpay:crypto", "bepusdt:usdc.unknown", "stars:default"} {
 		methodID := methodID
 		t.Run(methodID, func(t *testing.T) {
 			t.Parallel()
