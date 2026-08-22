@@ -88,7 +88,8 @@ export default defineConfig({
         icons: uiIconRegistry,
         button: {
           slots: {
-            base: 'min-h-11 justify-center text-center',
+            base: 'min-h-11 min-w-11 justify-center text-center',
+            label: 'whitespace-normal text-wrap',
           },
           variants: {
             block: {
@@ -96,11 +97,10 @@ export default defineConfig({
                 trailingIcon: 'ms-0',
               },
             },
-            square: { true: { base: 'min-w-11' } },
           },
         },
         input: { slots: { base: 'min-h-11' } },
-        inputNumber: { slots: { base: 'min-h-11' } },
+        inputNumber: { slots: { base: 'min-h-11 !px-12', increment: 'w-11 justify-center !pe-0', decrement: 'w-11 justify-center !ps-0' } },
         select: { slots: { base: 'min-h-11', item: 'min-h-11 items-center' } },
         selectMenu: { slots: { base: 'min-h-11', item: 'min-h-11 items-center' } },
         modal: {
