@@ -1,40 +1,18 @@
 <script setup lang="ts">
-import { computed, onMounted, onScopeDispose, shallowRef } from 'vue'
-
-import { api } from '@/api/client'
-import type { NormalizedDistribution, SquadProduct } from '@/api/types'
+import type { SquadProduct } from '@/api/types'
 import StatisticsGeocheckModal from '@/components/statistics/StatisticsGeocheckModal.vue'
 import { useNodeGeocheck } from '@/composables/useNodeGeocheck'
-import { featuredCatalogSquadIds } from './catalogFeaturedSquads'
 import SquadSelector from './SquadSelector.vue'
 
-const props = defineProps<{
-  comboId: string | null
+defineProps<{
   squads: readonly SquadProduct[]
   selectedIds: readonly string[]
   includedIds: readonly string[]
+  featuredIds: readonly string[]
 }>()
 
 const emit = defineEmits<{ toggle: [id: string] }>()
-const composition = shallowRef<readonly NormalizedDistribution[]>([])
 const geocheck = useNodeGeocheck()
-let disposed = false
-
-const featuredIds = computed(() => featuredCatalogSquadIds(
-  props.squads,
-  props.includedIds,
-  composition.value,
-  props.comboId,
-))
-
-onMounted(async () => {
-  try {
-    const snapshot = await api.getStatistics()
-    if (!disposed) composition.value = snapshot.database.squadByCombo
-  } catch { /* Featured analytics must not block catalog selection. */ }
-})
-
-onScopeDispose(() => { disposed = true })
 </script>
 
 <template>

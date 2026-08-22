@@ -1,14 +1,15 @@
 # Catalog components
 
-- `CatalogPage.vue` owns the four-step combo, squads, coupon, and review journey, its versioned user-scoped step restoration, and authoritative quote refresh when leaving squads or restoring later steps. `CatalogSquadStep.vue` keeps squad selection usable while it opportunistically loads composition statistics and owns the shared node Geocheck flow.
-- `CatalogSquadStep.test.ts` covers non-blocking statistics failure, composition ranking handoff, and the catalog node Geocheck target.
+- `CatalogPage.vue` owns the four-step combo, squads, coupon, and review journey, its versioned user-scoped step restoration, authoritative quote refresh, and featured-squad preload before the optional-squad step. `CatalogSquadStep.vue` presents the prepared ranking and owns the shared node Geocheck flow.
+- `useCatalogFeaturedSquads.ts` starts non-blocking composition-statistics loading with the catalog page and returns the selected combo's featured squad IDs.
+- `CatalogSquadStep.test.ts` covers prepared ranking handoff and the catalog node Geocheck target.
 - `CatalogFlowProgress.vue` and `CatalogFlowControls.vue` present the current step and navigation controls; completed catalog steps use a check indicator while current and future steps retain their own icons. Controls stay in normal document flow on mobile.
 - `catalogFlowProgress.ts` contains the pure completed-step icon rule used by the progress component.
 - `CatalogFlowProgress.test.ts` verifies one-based catalog steps map to the stepper index and completed steps use check indicators.
-- `ComboOption.vue` collects the core-combo selection and summarizes included squads by count without displaying their squad or node detail. `SquadSelector.vue` collects optional-squad selections, shows success-tone Featured labels without changing catalog order, and keeps nested node actions outside checkbox behavior; bundled squads remain server-validated selections.
+- `ComboOption.vue` collects the core-combo selection and summarizes included squads by count without displaying their squad or node detail. `SquadSelector.vue` collects optional-squad selections, stably sorts featured squads first, colors their names gold, and keeps nested node actions outside checkbox behavior; bundled squads remain server-validated selections.
 - `catalogFeaturedSquads.ts` ranks selectable add-ons against the selected combo's squad composition, excludes Included and Full squads, and returns every tied positive leader. `catalogFeaturedSquads.test.ts` covers ties, exclusions, and missing or non-positive data.
-- Standalone optional-squad cards use the member presentation of `../squad-profile/SquadProfileSummary.vue` for a named, profile-icon-led summary with localized generated facts and extra Markdown. They carry the profile color across their outer surface; customer-facing occupancy is rendered as an exact percentage-only fact without exposing stock counts, and only full paid add-ons are greyed, disabled, and labeled with localized Full copy.
-- `SquadNodeBlocks.vue` presents each optional squad's live server-projected nodes with country flag, name, decimal lowercase-`x` multiplier, provider fallback, and the shared explicit Geocheck action in a phone-first compact grid.
+- Standalone optional-squad cards use the member presentation of `../squad-profile/SquadProfileSummary.vue` for a larger unframed type icon, combined localized type/speed line, right-aligned occupancy, generated non-location facts, and extra Markdown. Only full paid add-ons are greyed, disabled, and labeled with localized Full copy.
+- `SquadNodeBlocks.vue` presents full-width live server-projected node rows with country flag, name, decimal lowercase-`x` multiplier, provider fallback, and the shared explicit Geocheck action without a redundant section heading.
 - `CatalogCouponStep.vue` selects an eligible wallet coupon or redeems a new code while its Continue action waits for a quote matching the current selection.
 - `CatalogConfirmation.vue` presents the localized post-purchase summary and emits the Home navigation action.
 - `CatalogConfirmation.test.ts` verifies purchase details and the Home action.

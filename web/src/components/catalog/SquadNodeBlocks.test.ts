@@ -30,7 +30,8 @@ describe('SquadNodeBlocks', () => {
     })
 
     expect(wrapper.text()).toContain('Transit provider')
-    expect(wrapper.text()).toContain('1.5x traffic')
+    expect(wrapper.text()).toContain('1.5x')
+    expect(wrapper.text()).not.toContain('Accessible nodes')
     expect(wrapper.text()).toContain('Unavailable')
     const actions = wrapper.findAll('[aria-label="View Geocheck result"]')
     expect(actions).toHaveLength(nodes.length)

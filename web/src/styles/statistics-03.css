@@ -68,9 +68,4 @@
 
 .statistics-geocheck__controls button { width: 44px; height: 44px; }
 
-@media (min-width: 640px) {
-  .statistics-geocheck { min-height: 30rem; }
-  .statistics-geocheck__canvas { padding: 1rem; }
-}
-
 @media (prefers-reduced-motion: reduce) { .statistics-geocheck__image { transition: none; } }

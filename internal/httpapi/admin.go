@@ -17,6 +17,7 @@ func (s *Server) mountAdmin(router chi.Router) {
 	router.Get("/payment-profiles", s.adminPaymentProfiles)
 	router.Post("/payment-profiles", s.adminCreatePaymentProfile)
 	router.Put("/payment-profiles/{id}", s.adminSavePaymentProfile)
+	router.Delete("/payment-profiles/{id}", s.adminDeletePaymentProfile)
 	router.Get("/combos", s.adminCombos)
 	router.Post("/combos", s.adminCreateCombo)
 	router.Put("/combos/{id}", s.adminUpdateCombo)

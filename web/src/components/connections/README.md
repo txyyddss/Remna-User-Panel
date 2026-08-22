@@ -1,6 +1,6 @@
 # Connection components
 
-- `ConnectionsPage.vue` composes scans, active blocks, focused dialogs, and cross-refresh after terminal mutations.
+- `ConnectionsPage.vue` composes scans, focused dialogs, and cross-refresh after terminal mutations; active blocks remain hidden until the connection scan completes.
 - `ConnectionScanStatus.vue` presents the stable starting and polling surface with localized progress, a reduced-motion-safe radar, and no scan mutations.
 - `ConnectionNodeList.vue` presents provider nodes, recent IP addresses, and one explicit block command per signed handle.
 - `ConnectionBlockList.vue` presents loading, error, empty, active, expiry, and unblock states with precise retry and open feedback.

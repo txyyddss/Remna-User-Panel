@@ -14,6 +14,7 @@ import enConnections from '../../locales/en/connections.json'
 import enCore from '../../locales/en/core.json'
 import enHome from '../../locales/en/home.json'
 import enMember from '../../locales/en/member.json'
+import enPaymentCrypto from '../../locales/en/payment-crypto.json'
 import enSquadProfile from '../../locales/en/squad-profile.json'
 import enStatistics from '../../locales/en/statistics.json'
 import zhAdminActivity from '../../locales/zh-CN/admin-activity.json'
@@ -32,15 +33,16 @@ import zhConnections from '../../locales/zh-CN/connections.json'
 import zhCore from '../../locales/zh-CN/core.json'
 import zhHome from '../../locales/zh-CN/home.json'
 import zhMember from '../../locales/zh-CN/member.json'
+import zhPaymentCrypto from '../../locales/zh-CN/payment-crypto.json'
 import zhSquadProfile from '../../locales/zh-CN/squad-profile.json'
 import zhStatistics from '../../locales/zh-CN/statistics.json'
 
 const en = {
-  ...enCore, ...enAffiliates, ...enActivity, ...enCommerce, ...enCommunity, ...enMember, ...enConnections, ...enHome, ...enAdminCore, ...enAdminOnboarding, ...enAdminData,
+  ...enCore, ...enAffiliates, ...enActivity, ...enCommerce, ...enPaymentCrypto, ...enCommunity, ...enMember, ...enConnections, ...enHome, ...enAdminCore, ...enAdminOnboarding, ...enAdminData,
   ...enAdminActivity, ...enAdminCommunity, ...enAdminCatalog, ...enAdminOperations, ...enAdminWorkflows, ...enSquadProfile, ...enStatistics,
 }
 const zhCN: typeof en = {
-  ...zhCore, ...zhAffiliates, ...zhActivity, ...zhCommerce, ...zhCommunity, ...zhMember, ...zhConnections, ...zhHome, ...zhAdminCore, ...zhAdminOnboarding, ...zhAdminData,
+  ...zhCore, ...zhAffiliates, ...zhActivity, ...zhCommerce, ...zhPaymentCrypto, ...zhCommunity, ...zhMember, ...zhConnections, ...zhHome, ...zhAdminCore, ...zhAdminOnboarding, ...zhAdminData,
   ...zhAdminActivity, ...zhAdminCommunity, ...zhAdminCatalog, ...zhAdminOperations, ...zhAdminWorkflows, ...zhSquadProfile, ...zhStatistics,
 }
 

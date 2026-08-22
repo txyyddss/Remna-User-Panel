@@ -100,6 +100,17 @@ func (s *Server) bepusdtWebhook(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(ack))
 }
 
+// bepusdtProbeWebhook acknowledges short-lived method-discovery orders only.
+func (s *Server) bepusdtProbeWebhook(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	if _, err := io.Copy(io.Discard, r.Body); err != nil {
+		s.writeError(w, r, http.StatusBadRequest, "INVALID_WEBHOOK", "Webhook body is invalid.")
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	_, _ = w.Write([]byte("ok"))
+}
+
 // paymentReturn is deliberately navigation-only and never changes payment or balance state.
 func (s *Server) paymentReturn(w http.ResponseWriter, r *http.Request) {
 	provider := chiURLParam(r, "provider")

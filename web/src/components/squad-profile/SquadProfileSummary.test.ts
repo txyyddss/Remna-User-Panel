@@ -19,6 +19,7 @@ describe('SquadProfileSummary', () => {
   it('uses carrier marks without CT, CU, or CM prefixes for China routes', () => {
     const wrapper = mount(SquadProfileSummary, {
       props: {
+        name: 'China route',
         profile: { type: 'china_optimized', ct: 'CN2', cu: 'CUG', cm: 'CMI', portMbps: null, countryCode: 'CN' },
         presentation: 'member',
       },
@@ -28,6 +29,7 @@ describe('SquadProfileSummary', () => {
     expect(wrapper.find('.carrier-logo--telecom').attributes('aria-label')).toBe('China Telecom')
     expect(wrapper.find('.carrier-logo--unicom').attributes('aria-label')).toBe('China Unicom')
     expect(wrapper.find('.carrier-logo--mobile').attributes('aria-label')).toBe('China Mobile')
+    expect(wrapper.text()).toContain('China Optimized Unlimited')
     expect(wrapper.text()).not.toMatch(/\b(?:CT|CU|CM)\b/)
   })
 })

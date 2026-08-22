@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const catalogMock = vi.hoisted(() => ({ useCatalog: vi.fn() }))
 
 vi.mock('@/composables/useCatalog', () => catalogMock)
+vi.mock('./useCatalogFeaturedSquads', () => ({ useCatalogFeaturedSquads: () => [] }))
 vi.mock('@/stores/session', () => ({
   useSessionStore: () => ({ user: { id: 'user-1' } }),
 }))

@@ -48,10 +48,10 @@ func TestMapBEPusdtCheckoutKeepsOnlySettlementFields(t *testing.T) {
 	checkout := mapBEPusdtCheckout(&bepusdt.Transaction{
 		Fiat: "USD", TradeID: "trade-1", OrderID: "order-1", Amount: "1.00", ActualAmount: "0.95",
 		Status: 1, Token: "TReceiveAddress", ExpirationTime: 1200, PaymentURL: "https://pay.example/order-1",
-	}, "1.00", createdAt)
+	}, "1.00", "usdt.trc20", createdAt)
 
 	if checkout.TradeID == nil || *checkout.TradeID != "trade-1" ||
-		checkout.PaymentURL == nil || *checkout.PaymentURL != "https://pay.example/order-1" ||
+		checkout.PaymentURL != nil ||
 		checkout.ReceivingAddress == nil || *checkout.ReceivingAddress != "TReceiveAddress" {
 		t.Fatalf("checkout identity/display fields = %+v", checkout)
 	}

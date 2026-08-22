@@ -1,0 +1,105 @@
+.crypto-instructions {
+  display: grid;
+  min-width: 0;
+  gap: 0.75rem;
+}
+
+.crypto-instructions__qr-skeleton {
+  width: 100%;
+  height: 100%;
+}
+
+.payment-address--copy {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+}
+
+.payment-address--copy > span {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.payment-address--copy code {
+  min-width: 0;
+}
+
+.crypto-countdown {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0.8rem;
+  border-block: 1px solid var(--line);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.crypto-countdown time {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.crypto-countdown--expired time {
+  color: var(--warning);
+}
+
+.crypto-picker {
+  display: grid;
+  min-width: 0;
+  gap: 0.55rem;
+  padding: 0;
+  border: 0;
+}
+
+.crypto-picker legend {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.crypto-picker__currencies,
+.crypto-picker__networks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.crypto-currency {
+  min-height: 60px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  text-align: left;
+}
+
+.crypto-currency img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.crypto-currency--selected {
+  border-color: var(--line-strong);
+  background: var(--accent-soft);
+}
+
+.crypto-network {
+  min-height: 62px;
+}
+
+@media (max-width: 360px) {
+  .crypto-picker__networks {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

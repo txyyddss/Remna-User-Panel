@@ -65,10 +65,7 @@ describe('AppShell accessibility', () => {
     expect(impactOccurred).toHaveBeenCalledWith('soft')
 
     const launchURL = window.location.href
-    await wrapper.get('.side-rail a[href="/catalog"]').trigger('click')
-    await nextTick()
-    expect(router.currentRoute.value.path).toBe('/catalog')
-    expect(window.location.href).toBe(launchURL)
+    expect(wrapper.find('.side-rail').exists()).toBe(false)
 
     await router.push('/home')
     await nextTick()

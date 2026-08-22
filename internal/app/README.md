@@ -15,10 +15,12 @@ waits for the scheduler and provider workers to finish before returning.
 `Application.Close` checkpoints and closes SQLite only after that runtime has
 stopped.
 
-- `app.go` defines the application container and composes configuration, persistence, domain services, adapters, workers, and HTTP delivery.
+- `app.go` composes configuration, persistence, domain services, adapters, workers, and HTTP delivery.
+- `application.go` defines the process-owned application resource container.
 - `member_workflows.go` composes member connection/reset/refund services and registers legacy drop plus block/unblock operation workers on one dispatcher.
 - `outbox_composition.go` registers core jobs, user/payment/affiliate Telegram notifications, the scheduled IP-unblock backstop, and the shared provider-operation dispatcher.
 - `payment_operations.go` registers durable payment create and cancellation handlers on that dispatcher.
+- `payment_profile_manager.go` probes BEPUSDT profiles at startup and after saves, publishes process-local discovered rails, and reports disabled profiles to every Telegram administrator.
 - `mutation_operation_composition.go` registers subscription, Emby, questionnaire, retry, and refund command handlers.
 - `payment_refund_adapter.go` reconciles ambiguous Telegram Stars refunds from authoritative transaction history.
 - `application_lifecycle.go` starts and stops provider queues, the scheduler, HTTP serving, and database resources in dependency order.

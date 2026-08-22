@@ -24,6 +24,7 @@ const emit = defineEmits<{
 const paymentMethods = shallowRef<FeaturePaymentMethod[]>([])
 const minimumMinor = shallowRef('100')
 const maximumMinor = shallowRef('10000000000')
+const pendingOrder = shallowRef<FeaturePaymentOrder | null>(null)
 const reissueOrder = shallowRef<FeaturePaymentOrder | null>(null)
 const paymentOpen = shallowRef(false)
 const paymentLoading = shallowRef(false)
@@ -33,6 +34,7 @@ function openTopUpPayment(reissueOrderId?: string): boolean {
   if (paymentLoading.value) return false
   paymentLoading.value = true
   paymentError.value = null
+  pendingOrder.value = null
   reissueOrder.value = null
   void loadTopUpPayment(reissueOrderId)
   return true
@@ -45,6 +47,7 @@ async function loadTopUpPayment(reissueOrderId?: string): Promise<void> {
       reissueOrderId ? api.getPaymentOrder(reissueOrderId) : Promise.resolve(null),
     ])
     paymentMethods.value = response.paymentMethods
+    pendingOrder.value = response.pendingPaymentOrder
     minimumMinor.value = response.addAmountLimits?.minimum.minor ?? '100'
     maximumMinor.value = response.addAmountLimits?.maximum.minor ?? '10000000000'
     reissueOrder.value = restoredOrder
@@ -88,6 +91,7 @@ watch(() => props.reissueOrderId, (orderId) => {
     <BalancePaymentSheet
       v-model:open="paymentOpen"
       :methods="paymentMethods"
+      :pending-order="pendingOrder"
       :reissue-order="reissueOrder"
       :minimum-minor="minimumMinor"
       :maximum-minor="maximumMinor"

@@ -7,7 +7,7 @@ post:
     requested USD amount, and actual crypto amount are checked before the idempotent
     ledger transaction. When the callback's overloaded `token` field carries a receiving
     address, it must exactly match the checkout address; the reference-compatible literal
-    `USDT` token is treated as a currency marker. Status `3` is validated against the same
+    `USDT` or `USDC` token is treated as a currency marker. Status `3` is validated against the same
     durable order snapshot before the order is marked expired.
   security: []
   requestBody:

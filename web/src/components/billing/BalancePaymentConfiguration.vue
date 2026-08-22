@@ -79,6 +79,9 @@ const channelItems = computed<PaymentChannelOption[]>(() => channels.value.map((
   description: method.available ? '' : methodNote(method),
   disabled: !method.available,
   logo: paymentChannelLogo(method.provider, method.rail),
+  cryptoCurrency: method.cryptoCurrency || undefined,
+  network: method.network || undefined,
+  networkName: method.networkName || undefined,
 })))
 const paymentStep = shallowRef<'provider' | 'channel'>('provider')
 const canContinue = computed(() => selectedProvider.value !== null && selectedProvider.value !== 'coupon' && channels.value.some((method) => method.available))

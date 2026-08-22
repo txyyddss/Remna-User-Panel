@@ -11,7 +11,8 @@ Audited administrative operations for catalog data, settings, balances, refunds,
   terminal-payment courtesy credits, and entitlement cancellations; production
   persistence commits their audit and user notification atomically.
 - `settings.go` defines editable settings, encrypted storage access, masked payment profiles, safe listing, and readiness checks.
-- `payment_profiles.go` validates, encrypts, and resolves multiple provider-account profiles with independently enabled channels.
+- `payment_profiles.go` validates, encrypts, resolves, and safely deletes provider-account profiles when no open order references them.
+- `payment_profile_channels.go` discovers BEPUSDT currency/network rails through the queued readiness probe and disables profiles whose probe fails.
 - `payment_profile_readiness.go` maps enabled provider profiles to stable readiness diagnostics.
 - `setting_validators.go` contains the individual setting-value validators.
 - `mutation_operations.go` creates idempotent administrator outbox-retry and payment-refund receipts.

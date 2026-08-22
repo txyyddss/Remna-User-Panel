@@ -18,7 +18,7 @@ Admin add actions use medium feedback, audited confirmation uses rigid feedback,
 - `AdminEntitlementsPanel.vue` manages entitlements.
 - `AdminOnboardingPanel.vue` loads, saves, and publishes visual onboarding drafts.
 - `onboarding/` contains visual bilingual welcome and agreement card editors.
-- `AdminPaymentProfiles.vue` lists and edits multiple masked EZPay/BEPusdt account profiles, adds new accounts, and contributes its drafts to the single parent settings save.
+- `AdminPaymentProfiles.vue` lists and edits masked provider accounts, keeps BEPUSDT channels discovery-owned, deletes profiles through a protected confirmation, and contributes remaining drafts to the parent settings save.
 - `AdminQuestionnairesPanel.vue` manages questionnaire lifecycles.
 - `AdminReasonDialog.vue` collects audited reasons and keeps action failures visible in the dialog.
 - `AdminSectionState.vue` renders loading and error states.

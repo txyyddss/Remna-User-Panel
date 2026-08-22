@@ -92,7 +92,7 @@ func commitPaymentOperationReplay(tx *sql.Tx, operation providerops.Operation, r
 func expireStalePaymentsTx(ctx context.Context, tx *sql.Tx, now time.Time) error {
 	_, err := tx.ExecContext(ctx, `UPDATE payment_orders SET status='expired',provider_payload='{}',payment_url=NULL,
 		qr_payload=CASE WHEN receiving_address IS NOT NULL THEN NULL ELSE qr_payload END,updated_at=?
-		WHERE status IN ('creating','pending') AND cancelled_at IS NULL AND expires_at<=?`, stamp(now), stamp(now))
+		WHERE provider<>'bepusdt' AND status IN ('creating','pending') AND cancelled_at IS NULL AND expires_at<=?`, stamp(now), stamp(now))
 	if err != nil {
 		return fmt.Errorf("expire stale payments for provider command: %w", err)
 	}

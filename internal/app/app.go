@@ -36,25 +36,6 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/webui"
 )
 
-// Application owns all context-managed process resources.
-type Application struct {
-	config        config.Config
-	logger        *slog.Logger
-	httpServer    *http.Server
-	store         *database.Store
-	outbox        *outbox.Worker
-	backups       *backup.Service
-	maintenance   *maintenance.Service
-	telegram      *queuedTelegram
-	settings      *admin.SettingsService
-	catalog       *catalog.Service
-	billing       *billing.Service
-	statistics    *productstats.Service
-	affiliates    *affiliates.Service
-	notifications *notifications.Scanner
-	upstreams     *providerQueues
-}
-
 // New opens persistence, constructs integrations, and builds the HTTP router.
 func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -88,6 +69,8 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	}
 	settings := admin.NewSettingsService(store, vault)
 	settings.SetPaymentProfileRepository(store)
+	paymentChannels := billing.NewPaymentChannelCache()
+	settings.SetPaymentProfileChannels(paymentChannels)
 	if err := ensureBootstrapSettings(ctx, store, vault); err != nil {
 		return cleanup(err)
 	}
@@ -107,7 +90,8 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	queuedTelegramClient := &queuedTelegram{client: telegramClient, queue: upstreams.telegram}
 	affiliateService := affiliates.NewService(store, queuedTelegramClient)
 	telegramBridge := telegramAdapter{client: queuedTelegramClient}
-	paymentBridge := paymentAdapter{settings: settings, telegram: queuedTelegramClient, users: store}
+	paymentBridge := paymentAdapter{settings: settings, telegram: queuedTelegramClient, queue: upstreams.payment, users: store}
+	paymentProfiles := newPaymentProfileManager(settings, paymentChannels, upstreams.payment, queuedTelegramClient, cfg.AdminTelegramIDs, cfg.PublicBaseURL, logger)
 	backupService := backup.NewService(db, store, filepath.Join(cfg.DataDir, "backups"), cfg.BackupRetention)
 	reconcileCtx, reconcileCancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	reconcileErr := backupService.ReconcileUploads(reconcileCtx, migrationVersions)
@@ -177,7 +161,8 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		Coupons: couponService, Questionnaires: questionnaireService, Emby: embyService,
 		EmbyOperations: embyOperations, EmbyPrice: embyPrice,
 		Admin: adminService, AdminUsers: adminUserWorkflows, Settings: settings, DatabaseAdmin: databaseAdminHTTP,
-		Store: store, Affiliates: affiliateService, Telegram: queuedTelegramClient, Webhooks: paymentBridge, PublicURL: cfg.PublicBaseURL, Static: static,
+		PaymentProfiles: paymentProfiles,
+		Store:           store, Affiliates: affiliateService, Telegram: queuedTelegramClient, Webhooks: paymentBridge, PublicURL: cfg.PublicBaseURL, Static: static,
 		Logger: logger, SessionTTL: cfg.SessionTTL, SecureCookies: cfg.PublicBaseURL.Scheme == "https",
 		AdminTelegramIDs: cfg.AdminTelegramIDs, RequestSigningKey: cfg.MasterKey,
 	})
@@ -192,6 +177,6 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		config: cfg, logger: logger, httpServer: httpServer, store: store, outbox: outboxWorker,
 		backups: backupService, maintenance: maintenanceService, telegram: queuedTelegramClient, settings: settings,
 		catalog: catalogService, billing: billingService, statistics: statisticsService, affiliates: affiliateService,
-		notifications: userNotificationScanner, upstreams: upstreams,
+		notifications: userNotificationScanner, upstreams: upstreams, paymentProfiles: paymentProfiles,
 	}, nil
 }

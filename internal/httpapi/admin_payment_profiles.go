@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -8,6 +9,11 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 )
+
+type paymentProfileLifecycle interface {
+	RefreshPaymentProfile(context.Context, string) (model.PaymentProfile, error)
+	DeletePaymentProfile(context.Context, string) error
+}
 
 func (s *Server) adminPaymentProfiles(w http.ResponseWriter, r *http.Request) {
 	items, err := s.deps.Settings.PaymentProfiles(r.Context())
@@ -64,9 +70,27 @@ func (s *Server) adminSavePaymentProfileWithID(w http.ResponseWriter, r *http.Re
 	}
 	actorID := currentUser(r).ID
 	_ = s.deps.Store.AppendAudit(r.Context(), &actorID, "payment_profile.update", "payment_profile", saved.ID, "{}", time.Now().UTC())
+	if saved.Provider == "bepusdt" {
+		saved, err = s.deps.PaymentProfiles.RefreshPaymentProfile(r.Context(), saved.ID)
+		if err != nil {
+			s.adminFailure(w, r, err)
+			return
+		}
+	}
 	status := http.StatusOK
 	if created {
 		status = http.StatusCreated
 	}
 	writeJSON(w, status, saved)
+}
+
+func (s *Server) adminDeletePaymentProfile(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if err := s.deps.PaymentProfiles.DeletePaymentProfile(r.Context(), id); err != nil {
+		s.adminFailure(w, r, err)
+		return
+	}
+	actorID := currentUser(r).ID
+	_ = s.deps.Store.AppendAudit(r.Context(), &actorID, "payment_profile.delete", "payment_profile", id, "{}", time.Now().UTC())
+	w.WriteHeader(http.StatusNoContent)
 }

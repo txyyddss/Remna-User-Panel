@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 )
 
@@ -34,6 +36,13 @@ func (s *Store) ListPaymentOrders(ctx context.Context, userID string, limit int)
 		orders = append(orders, order)
 	}
 	return orders, rows.Err()
+}
+
+// LatestValidUnpaidPaymentOrder returns the newest checkout that can still be paid.
+func (s *Store) LatestValidUnpaidPaymentOrder(ctx context.Context, userID string, now time.Time) (model.PaymentOrder, error) {
+	return scanPaymentOrder(s.db.QueryRowContext(ctx, paymentSelect+` WHERE user_id=? AND status='pending'
+		AND paid_at IS NULL AND cancelled_at IS NULL AND expires_at>? ORDER BY created_at DESC,id DESC LIMIT 1`,
+		userID, stamp(now.UTC())))
 }
 
 const paymentSelect = `SELECT id,user_id,provider,method_id,provider_rail,status,txb_minor,payable_amount,payable_currency,rate_snapshot,rate_direction,provider_trade_id,provider_charge_id,payment_url,qr_payload,receiving_address,actual_crypto_amount,actual_crypto_currency,expires_at,paid_at,refunded_at,cancelled_at,cancel_reason,provider_cancel_status,created_at,updated_at FROM payment_orders`

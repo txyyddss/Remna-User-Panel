@@ -22,8 +22,9 @@
 .affiliate-top-tier > :first-child { color: var(--accent); font-size: 1.8rem; }
 .affiliate-top-tier span { color: var(--text-muted); font-size: 0.8rem; }
 .affiliate-referral-list { display: grid; }
-.affiliate-referral-row { min-height: 70px; display: grid; gap: 0.55rem; padding: 0.75rem 0; border-top: 1px solid var(--line); }
+.affiliate-referral-row { min-height: 70px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0.55rem; padding: 0.75rem 0; border-top: 1px solid var(--line); }
 .affiliate-referral-row > div { min-width: 0; display: grid; justify-items: start; gap: 0.2rem; }
+.affiliate-referral-row > div:last-child { justify-items: end; text-align: right; }
 .affiliate-referral-row strong { overflow-wrap: anywhere; }
 .affiliate-referral-row small, .affiliate-empty { color: var(--text-muted); font-size: 0.74rem; }
 .affiliate-empty { margin: 0; padding: 1.5rem 0; text-align: center; }
@@ -33,8 +34,6 @@
   .affiliate-link-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .affiliate-copy-button { width: auto; }
   .affiliate-tier__facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .affiliate-referral-row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
-  .affiliate-referral-row > div:last-child { justify-items: end; text-align: right; }
 }
 @media (min-width: 720px) { .affiliate-metrics { grid-template-columns: repeat(4, 1fr); } .affiliate-page { max-width: 860px; } }
 .admin-affiliates { display: grid; gap: 1rem; }

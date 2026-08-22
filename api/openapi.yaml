@@ -1,6 +1,5 @@
 openapi: 3.1.0
 info: { title: TX Carpool API, version: 1.0.0, description: "HTTP contract for the TX Carpool Telegram Mini App. User and admin endpoints use a Secure, HttpOnly session cookie established from validated Telegram Mini App `initData`. Every authenticated browser request also carries a five-minute HMAC timestamp, unique nonce, and signature derived from a same-origin companion key. Provider callbacks use provider-specific signatures and are never authenticated by the browser session. All identifiers and timestamps are strings. TXB values use integer hundredths encoded as decimal strings. Traffic byte counts are decimal strings. The server is authoritative for prices, exchange rates, entitlement dates, and payment state.", license: { name: Proprietary } }
-servers: [{ url: /, description: Same-origin API }]
 security: [{ cookieSession: [], requestTimestamp: [], requestNonce: [], requestSignature: [] }]
 paths:
   /api/v1/auth/telegram: { $ref: './paths/api-v1-auth-telegram.yaml' }
@@ -121,6 +120,7 @@ paths:
   /api/v1/webhooks/telegram: { $ref: './paths/api-v1-webhooks-telegram.yaml' }
   /api/v1/webhooks/ezpay: { $ref: './paths/api-v1-webhooks-ezpay.yaml' }
   /api/v1/webhooks/bepusdt: { $ref: './paths/api-v1-webhooks-bepusdt.yaml' }
+  /api/v1/webhooks/bepusdt/probe: { $ref: './paths/api-v1-webhooks-bepusdt-probe.yaml' }
   /api/v1/webhooks/bepusdt/{capability}: { $ref: './paths/api-v1-webhooks-bepusdt-capability.yaml' }
   /api/v1/payments/return/{provider}: { $ref: './paths/api-v1-payments-return-provider.yaml' }
   /api/v1/payments/return/{provider}/{orderID}: { $ref: './paths/api-v1-payments-return-provider-orderid.yaml' }
@@ -173,8 +173,8 @@ components:
     OnboardingDraftWrite: { $ref: './components/schemas/schemas-02.yaml#/OnboardingDraftWrite' }
     OnboardingPublishRequest: { $ref: './components/schemas/schemas-02.yaml#/OnboardingPublishRequest' }
     Money: { $ref: './components/schemas/schemas-02.yaml#/Money' }
-    PaymentMethod: { $ref: './components/schemas/schemas-02.yaml#/PaymentMethod' }
-    BalanceResponse: { $ref: './components/schemas/schemas-02.yaml#/BalanceResponse' }
+    PaymentMethod: { $ref: './components/schemas/schemas-21.yaml#/PaymentMethod' }
+    BalanceResponse: { $ref: './components/schemas/schemas-21.yaml#/BalanceResponse' }
     ResetStrategy: { $ref: './components/schemas/schemas-02.yaml#/ResetStrategy' }
     SquadProfile: { $ref: './components/schemas/schemas-02.yaml#/SquadProfile' }
     BroadbandSquadProfile: { $ref: './components/schemas/schemas-02.yaml#/BroadbandSquadProfile' }

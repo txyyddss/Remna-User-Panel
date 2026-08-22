@@ -139,12 +139,15 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `administration_records.go` — audit events, administrator user lists, and backup
   run records.
 - `rollover.go` — durable rollover processing and finalization.
-- `payment_profiles.go` — provider-account profile masking and encrypted credential persistence with per-account channel lists.
+- `payment_profiles.go` — provider-account profile masking, protected deletion, and encrypted credential persistence.
 - `retention.go` — bounded cleanup of aged operational records.
 - `retention_activity_rollups.go`, `retention_payment_rollups.go`, and
   `retention_purchase_rollups.go` preserve compact activity, payment, purchase,
   and per-member rollover facts before pruning.
 - `retention_compaction.go` coordinates all backup-gated cleanup writes in one transaction.
+- `retention_operations.go` fails stale open provider operations after 24 hours, resolves linked local state, and removes processed receipts plus their queue records.
+- `retention_operation_compensation.go` refunds stale traffic-reset and Emby-setup debits before their operations are removed.
+- `retention_housekeeping.go` prunes completed notification events, expired or superseded sessions, abandoned pre-membership users, and old maintenance runs.
 - `continuity.go` — three-minute queued-entitlement preparation jobs and
   provider-expiry continuity projections.
 - `statistics.go` — catalog and activity administrator statistics.

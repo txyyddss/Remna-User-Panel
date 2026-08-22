@@ -9,7 +9,9 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/ezpay"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/upstreamqueue"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -54,6 +56,7 @@ func (a telegramAdapter) RevokeInviteLink(ctx context.Context, chatID, inviteLin
 type paymentAdapter struct {
 	settings *admin.SettingsService
 	telegram *queuedTelegram
+	queue    *upstreamqueue.Queue
 	users    interface {
 		UserByID(context.Context, string) (model.User, error)
 	}
@@ -105,19 +108,21 @@ func (a paymentAdapter) createBEPusdt(ctx context.Context, request billing.Provi
 	if err != nil {
 		return billing.ProviderCheckout{}, err
 	}
-	transaction, err := client.CreateTransaction(ctx, bepusdt.CreateTransactionRequest{OrderID: request.OrderID, Amount: request.PayableAmount,
-		Fiat: "USD", TradeType: request.Rail, Name: "TXB balance", NotifyURL: request.NotifyURL, RedirectURL: request.RedirectURL, TimeoutSeconds: 1200})
+	transaction, err := upstreamqueue.Do(ctx, a.queue, func(callCtx context.Context) (*bepusdt.Transaction, error) {
+		return client.CreateTransaction(callCtx, bepusdt.CreateTransactionRequest{OrderID: request.OrderID, Amount: request.PayableAmount,
+			Fiat: "USD", TradeType: request.Rail, Name: "TXB balance", NotifyURL: request.NotifyURL, RedirectURL: request.RedirectURL, TimeoutSeconds: 1200})
+	})
 	if err != nil {
 		return billing.ProviderCheckout{}, err
 	}
-	return mapBEPusdtCheckout(transaction, request.PayableAmount, time.Now().UTC()), nil
+	return mapBEPusdtCheckout(transaction, request.PayableAmount, request.Rail, time.Now().UTC()), nil
 }
 
-func mapBEPusdtCheckout(transaction *bepusdt.Transaction, payableAmount string, createdAt time.Time) billing.ProviderCheckout {
-	tradeID, paymentURL, address := transaction.TradeID, transaction.PaymentURL, transaction.Token
-	actualAmount, actualCurrency := transaction.ActualAmount, "USDT"
+func mapBEPusdtCheckout(transaction *bepusdt.Transaction, payableAmount, rail string, createdAt time.Time) billing.ProviderCheckout {
+	tradeID, address := transaction.TradeID, transaction.Token
+	actualAmount, actualCurrency := transaction.ActualAmount, strings.ToUpper(strings.SplitN(rail, ".", 2)[0])
 	expiresAt := transaction.ExpiresAt(createdAt)
-	return billing.ProviderCheckout{TradeID: &tradeID, PaymentURL: &paymentURL, ReceivingAddress: &address,
+	return billing.ProviderCheckout{TradeID: &tradeID, ReceivingAddress: &address,
 		ActualCryptoAmount: &actualAmount, ActualCryptoCurrency: &actualCurrency, PayableAmount: payableAmount,
 		PayableCurrency: "USD", ExpiresAt: expiresAt}
 }
@@ -134,7 +139,9 @@ func (a paymentAdapter) Cancel(ctx context.Context, order model.PaymentOrder) er
 	if err != nil {
 		return err
 	}
-	return client.CancelTransaction(ctx, *order.ProviderTradeID)
+	return upstreamqueue.Execute(ctx, a.queue, func(callCtx context.Context) error {
+		return client.CancelTransaction(callCtx, *order.ProviderTradeID)
+	})
 }
 
 func (a paymentAdapter) createStars(ctx context.Context, request billing.ProviderCreateRequest) (billing.ProviderCheckout, error) {

@@ -8,9 +8,9 @@ import { setLocale } from '@/i18n'
 import BalancePaymentConfiguration from './BalancePaymentConfiguration.vue'
 
 const methods: FeaturePaymentMethod[] = [
-  { id: 'ezpay:profile-one:alipay', provider: 'ezpay', profileId: 'profile-one', providerName: 'Main EZPay', rail: 'alipay', name: 'Alipay', currency: 'CNY', available: true, note: '', mode: 'order' },
-  { id: 'ezpay:profile-one:wxpay', provider: 'ezpay', profileId: 'profile-one', providerName: 'Main EZPay', rail: 'wxpay', name: 'WeChat Pay', currency: 'CNY', available: true, note: '', mode: 'order' },
-  { id: 'bepusdt:profile-two:usdt.trc20', provider: 'bepusdt', profileId: 'profile-two', providerName: 'USDT Account', rail: 'usdt.trc20', name: 'USDT TRC20', currency: 'USDT', available: true, note: '', mode: 'order' },
+  { id: 'ezpay:profile-one:alipay', provider: 'ezpay', profileId: 'profile-one', providerName: 'Main EZPay', rail: 'alipay', name: 'Alipay', currency: 'CNY', cryptoCurrency: '', network: '', networkName: '', available: true, note: '', mode: 'order' },
+  { id: 'ezpay:profile-one:wxpay', provider: 'ezpay', profileId: 'profile-one', providerName: 'Main EZPay', rail: 'wxpay', name: 'WeChat Pay', currency: 'CNY', cryptoCurrency: '', network: '', networkName: '', available: true, note: '', mode: 'order' },
+  { id: 'bepusdt:profile-two:usdt.trc20', provider: 'bepusdt', profileId: 'profile-two', providerName: 'USDT Account', rail: 'usdt.trc20', name: 'USDT TRC20', currency: 'USD', cryptoCurrency: 'USDT', network: 'tron', networkName: 'TRC20', available: true, note: '', mode: 'order' },
 ]
 
 describe('BalancePaymentConfiguration', () => {

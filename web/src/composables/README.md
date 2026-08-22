@@ -33,10 +33,11 @@
   refreshing the server-owned state before moving a returning user through a
   revised agreement.
 - `usePaymentOrder.ts` coordinates durable checkout/cancellation receipts with payment-sheet presentation states.
+- `usePaymentCountdown.ts` owns a disposal-safe one-second payment-window countdown used only for presentation and replacement prompts.
 - `usePaymentConfiguration.ts` owns exact TXB bounds, amount conversion, and selected payment method state.
 - `usePaymentOrderOperations.ts` retains stable mutation keys and polls payment provider-operation receipts without replaying provider calls.
 - `usePaymentTarget.ts` opens accepted provider targets and read-only polls authoritative payment status.
-- `paymentOrderHelpers.ts` validates exact payment bounds and replacement candidates, classifies terminal orders, and renders provider QR payloads.
+- `paymentOrderHelpers.ts` validates exact payment bounds and replacement candidates, classifies terminal orders, and renders address-first provider QR payloads.
 - `usePaymentOrder.test.ts` covers payment-order state transitions.
 - `usePaymentReturn.ts` polls a provider-returned payment order until it is confirmed or terminal.
 - `usePaymentReturn.test.ts` covers durable payment-return confirmation and pending polling.

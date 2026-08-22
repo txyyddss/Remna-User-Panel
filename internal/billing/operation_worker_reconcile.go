@@ -9,12 +9,16 @@ import (
 )
 
 func (w *OperationWorker) complete(ctx context.Context, operation providerops.Operation, item providerops.Item,
-	status providerops.Status, code, providerReference string) error {
+	status providerops.Status, code, providerReference string, providerMessage ...string) error {
 	if providerops.Terminal(providerops.Status(operation.Receipt.Status)) {
 		return nil
 	}
 	now := w.now().UTC()
-	result, err := json.Marshal(map[string]string{"paymentOrderId": item.TargetID})
+	resultFields := map[string]string{"paymentOrderId": item.TargetID}
+	if len(providerMessage) > 0 && providerMessage[0] != "" {
+		resultFields["providerMessage"] = providerMessage[0]
+	}
+	result, err := json.Marshal(resultFields)
 	if err != nil {
 		return err
 	}

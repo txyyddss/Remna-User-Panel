@@ -1,4 +1,4 @@
-@media (max-width: 639px) {
+@media (min-width: 0) {
   .page--admin {
     padding-right: 0.75rem;
     padding-left: 0.75rem;
@@ -145,33 +145,6 @@
     font-size: 0.65rem;
     line-height: 1.4;
     overflow-wrap: anywhere;
-  }
-}
-@media (min-width: 1180px) {
-  .app-frame {
-    grid-template-columns: 250px minmax(0, 1fr);
-  }
-
-  .side-rail {
-    width: 250px;
-    padding: calc(var(--shell-safe-top) + 1.2rem) 1.2rem max(1.2rem, var(--shell-safe-bottom));
-  }
-
-  .content-grid--dashboard {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
-
-  .content-grid--dashboard > :nth-child(1),
-  .content-grid--dashboard > :nth-child(2) {
-    grid-column: span 3;
-  }
-
-  .content-grid--dashboard > :nth-child(3) {
-    grid-column: span 4;
-  }
-
-  .content-grid--dashboard > :nth-child(4) {
-    grid-column: span 2;
   }
 }
 @keyframes dialog-in {

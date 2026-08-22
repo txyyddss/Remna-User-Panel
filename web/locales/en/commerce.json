@@ -73,7 +73,7 @@
     "continuePayment": "Continue to payment",
     "accessibleNodes": "Accessible nodes",
     "accessibleNodesHint": "Nodes available to this selection.",
-    "nodeMultiplier": "{multiplier}x traffic",
+    "nodeMultiplier": "{multiplier}x",
     "noAccessibleNodes": "No nodes are available yet",
     "noAccessibleNodesHint": "Continue after the server refreshes this selection.",
     "couponStepHint": "Choose one eligible coupon or add a code.",

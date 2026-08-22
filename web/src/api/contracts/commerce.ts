@@ -37,6 +37,9 @@ export interface FeaturePaymentMethod {
   rail: string
   name: string
   currency: 'TXB' | 'CNY' | 'USD' | 'USDT' | 'XTR'
+  cryptoCurrency: '' | 'USDT' | 'USDC'
+  network: string
+  networkName: string
   available: boolean
   note: string
   mode: 'order' | 'coupon_redemption'
@@ -57,7 +60,7 @@ export interface FeaturePaymentOrder {
   qrPayload: string | null
   receivingAddress: string | null
   actualCryptoAmount: string | null
-  actualCryptoCurrency: 'USDT' | null
+  actualCryptoCurrency: 'USDT' | 'USDC' | null
   expiresAt: RFC3339
   paidAt: RFC3339 | null
   refundedAt: RFC3339 | null

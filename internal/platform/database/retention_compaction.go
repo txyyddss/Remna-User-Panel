@@ -20,8 +20,8 @@ func (s *Store) CompactAndPrune(ctx context.Context, cutoff7Days, cutoff24Hours,
 	}
 	defer func() { _ = tx.Rollback() }()
 	counts := make(map[string]int64)
-	if counts["sessions"], err = deleteCount(ctx, tx, `DELETE FROM sessions WHERE expires_at<=?`, stamp(now)); err != nil {
-		return nil, fmt.Errorf("prune expired sessions: %w", err)
+	if err := pruneProviderOperationsTx(ctx, tx, cutoff24Hours, now, counts); err != nil {
+		return nil, err
 	}
 	if err := compactPaymentsTx(ctx, tx, cutoff7Days, now, counts); err != nil {
 		return nil, err
@@ -35,6 +35,9 @@ func (s *Store) CompactAndPrune(ctx context.Context, cutoff7Days, cutoff24Hours,
 	if counts["connection_scans"], err = deleteCount(ctx, tx,
 		`DELETE FROM connection_scans WHERE expires_at<=? AND status IN ('succeeded','failed')`, stamp(now)); err != nil {
 		return nil, fmt.Errorf("prune expired connection scans: %w", err)
+	}
+	if err := pruneHousekeepingTx(ctx, tx, cutoff7Days, cutoff24Hours, now, counts); err != nil {
+		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("commit retention compaction: %w", err)

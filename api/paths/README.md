@@ -122,6 +122,7 @@ Member connection scans, purchase reset/refund resources, operation receipts, st
 - `api-v1-webhooks-telegram.yaml`: `/api/v1/webhooks/telegram`
 - `api-v1-webhooks-ezpay.yaml`: `/api/v1/webhooks/ezpay`
 - `api-v1-webhooks-bepusdt.yaml`: `/api/v1/webhooks/bepusdt`
+- `api-v1-webhooks-bepusdt-probe.yaml`: `/api/v1/webhooks/bepusdt/probe`, no-op acknowledgement for discovery-only probe orders
 - `api-v1-webhooks-bepusdt-capability.yaml`: `/api/v1/webhooks/bepusdt/{capability}`
 - `api-v1-payments-return-provider.yaml`: `/api/v1/payments/return/{provider}`
 - `api-v1-payments-return-provider-orderid.yaml`: `/api/v1/payments/return/{provider}/{orderID}`

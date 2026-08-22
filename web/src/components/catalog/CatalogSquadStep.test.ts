@@ -1,14 +1,13 @@
 import { flushPromises, shallowMount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { CatalogNode, SquadProduct, StatisticsSnapshot } from '@/api/types'
+import type { CatalogNode, SquadProduct } from '@/api/types'
 import CatalogSquadStep from './CatalogSquadStep.vue'
 import SquadSelector from './SquadSelector.vue'
 import StatisticsGeocheckModal from '../statistics/StatisticsGeocheckModal.vue'
 
 const apiMocks = vi.hoisted(() => ({
   getNodeGeocheck: vi.fn(),
-  getStatistics: vi.fn(),
 }))
 
 vi.mock('@/api/client', () => ({ api: apiMocks }))
@@ -26,46 +25,23 @@ const squad: SquadProduct = {
   activationRequired: false, accessibleNodes: [node], stockRemaining: 4,
   createdAt: '2026-08-21T00:00:00Z', updatedAt: '2026-08-21T00:00:00Z',
 }
-const money = { currency: 'TXB', minor: '0', display: '0.00 TXB' } as const
-const statistics: StatisticsSnapshot = {
-  generatedAt: '2026-08-21T00:00:00Z', remoteGeneratedAt: '2026-08-21T00:00:00Z', databaseGeneratedAt: '2026-08-21T00:00:00Z', stalePartitions: [],
-  remote: { weeklyUserIncrease: 0, monthlyAverageUsagePercent: 0, predictedAverageRollover: money, trafficDates: [], trafficSeries: [] },
-  database: {
-    newUserConversionPercent: 0, averageSpend: money, spendMinimum: money, spendMaximum: money, subscriptionStates: [], averageCheckInReward: money,
-    comboShares: [], groupMessagesTotal: 0, averageOptionalSquads: 0, paymentStatuses: [], databaseBytes: '0', comboBySquad: [],
-    squadByCombo: [{ id: 'combo-1', label: 'Core', segments: [{ id: squad.remnaSquadUuid, label: squad.name, value: 12 }] }],
-  },
-}
-
-function mountStep() {
+function mountStep(featuredIds: string[] = []) {
   return shallowMount(CatalogSquadStep, {
-    props: { comboId: 'combo-1', squads: [squad], selectedIds: [], includedIds: [] },
+    props: { squads: [squad], selectedIds: [], includedIds: [], featuredIds },
   })
 }
 
 describe('CatalogSquadStep', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('hands the selected combo leaders to the selector', async () => {
-    apiMocks.getStatistics.mockResolvedValue(statistics)
-    const wrapper = mountStep()
-    await flushPromises()
+  it('hands preloaded featured leaders to the selector', () => {
+    const wrapper = mountStep([squad.id])
 
     expect(wrapper.getComponent(SquadSelector).props('featuredIds')).toEqual([squad.id])
   })
 
-  it('keeps squad selection available when statistics fail', async () => {
-    apiMocks.getStatistics.mockRejectedValue(new Error('unavailable'))
-    const wrapper = mountStep()
-    expect(wrapper.getComponent(SquadSelector).props('featuredIds')).toEqual([])
-
-    await flushPromises()
-    expect(wrapper.getComponent(SquadSelector).props('featuredIds')).toEqual([])
-  })
-
   it('opens the shared modal for the exact catalog node', async () => {
     const result = { nodeUuid: node.uuid, checkedAt: '2026-08-21T00:00:00Z', image: { format: 'svg', mediaType: 'image/svg+xml', encoding: 'base64', data: 'PHN2Zy8+' } }
-    apiMocks.getStatistics.mockResolvedValue(statistics)
     apiMocks.getNodeGeocheck.mockResolvedValue(result)
     const wrapper = mountStep()
 

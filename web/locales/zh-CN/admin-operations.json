@@ -67,7 +67,7 @@
   },
   "adminPaymentProfiles": {
     "title": "支付配置档案",
-    "copy": "添加一个或多个支付账户，再分别启用可用支付渠道。",
+    "copy": "添加支付账户。服务启动或保存档案时会自动检查 BEPUSDT 渠道。",
     "add": "添加供应商",
     "provider": "供应商",
     "unnamed": "新供应商",
@@ -76,6 +76,12 @@
     "channels": "启用渠道",
     "channelHint": "选择用户可以使用的支付渠道。",
     "noChannels": "至少选择一个渠道。",
+    "discoveryHint": "BEPUSDT 渠道会自动发现。保存已启用的档案时会验证当前可用的币种和网络。",
+    "delete": "删除支付档案",
+    "deleteTitle": "删除 {name}？",
+    "deleteDescription": "这将移除支付账户。仍有创建中或待支付订单的档案无法删除。",
+    "deleteConfirm": "删除档案",
+    "deleted": "支付档案已删除。",
     "channelNames": {
       "alipay": "支付宝",
       "wxpay": "微信支付",

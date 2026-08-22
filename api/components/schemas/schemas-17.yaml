@@ -11,6 +11,9 @@ OperationReceipt:
     kind: { type: string }
     status: { $ref: '../../openapi.yaml#/components/schemas/OperationStatus' }
     errorCode: { type: [string, 'null'] }
+    errorMessage:
+      type: [string, 'null']
+      description: Bounded provider rejection detail exposed only when safe for the operation owner.
     createdAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
     updatedAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
     completedAt: { type: [string, 'null'], format: date-time }

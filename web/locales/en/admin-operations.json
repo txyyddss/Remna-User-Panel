@@ -67,7 +67,7 @@
   },
   "adminPaymentProfiles": {
     "title": "Payment profiles",
-    "copy": "Add one or more provider accounts, then enable their payment channels separately.",
+    "copy": "Add provider accounts. BEPUSDT channels are checked automatically when the service starts or a profile is saved.",
     "add": "Add provider",
     "provider": "Provider",
     "unnamed": "New provider",
@@ -76,6 +76,12 @@
     "channels": "Enabled channels",
     "channelHint": "Choose the channels members can use.",
     "noChannels": "Choose at least one channel.",
+    "discoveryHint": "BEPUSDT channels are discovered automatically. Saving an enabled profile verifies its current currencies and networks.",
+    "delete": "Delete payment profile",
+    "deleteTitle": "Delete {name}?",
+    "deleteDescription": "This removes the provider account. Profiles with creating or pending payment orders cannot be deleted.",
+    "deleteConfirm": "Delete profile",
+    "deleted": "Payment profile deleted.",
     "channelNames": {
       "alipay": "Alipay",
       "wxpay": "WeChat Pay",

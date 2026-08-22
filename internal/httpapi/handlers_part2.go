@@ -7,6 +7,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 func (s *Server) purchaseQuote(w http.ResponseWriter, r *http.Request) {
@@ -88,8 +89,16 @@ func (s *Server) balance(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, http.StatusInternalServerError, "BILLING_LIMITS_UNAVAILABLE", "Payment amount limits could not be loaded.")
 		return
 	}
+	var pending *model.PaymentOrder
+	order, pendingErr := s.deps.Store.LatestValidUnpaidPaymentOrder(r.Context(), currentUser(r).ID, time.Now().UTC())
+	if pendingErr == nil {
+		pending = &order
+	} else if !errors.Is(pendingErr, database.ErrNotFound) {
+		s.writeError(w, r, http.StatusInternalServerError, "PAYMENT_ORDER_UNAVAILABLE", "Pending payment could not be loaded.")
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"balance": balance, "paymentMethods": methods, "addAmountLimits": limits,
+		"balance": balance, "paymentMethods": methods, "addAmountLimits": limits, "pendingPaymentOrder": pending,
 	})
 }
 

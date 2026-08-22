@@ -28,51 +28,6 @@ Money:
       type: string
       description: Server-formatted display value; never parse this for calculations.
 
-PaymentMethod:
-  type: object
-  additionalProperties: false
-  required: [id, provider, profileId, providerName, rail, name, currency, available, note, mode]
-  properties:
-    id:
-      $ref: '../../openapi.yaml#/components/schemas/PaymentMethodID'
-    provider:
-      $ref: '../../openapi.yaml#/components/schemas/PaymentProvider'
-    profileId:
-      type: string
-      description: Stable provider profile ID; empty for Telegram Stars and coupons.
-    providerName:
-      type: string
-      description: Administrator-defined provider display name.
-    rail:
-      type: string
-      description: Provider-owned rail identifier; empty for Telegram Stars.
-    name:
-      type: string
-    currency:
-      type: string
-      enum: [TXB, CNY, USD, USDT, XTR]
-    available:
-      type: boolean
-    note:
-      type: string
-    mode:
-      type: string
-      enum: [order, coupon_redemption]
-
-BalanceResponse:
-  type: object
-  additionalProperties: false
-  required: [balance, paymentMethods, addAmountLimits]
-  properties:
-    balance:
-      $ref: '../../openapi.yaml#/components/schemas/Money'
-    paymentMethods:
-      type: array
-      items:
-        $ref: '../../openapi.yaml#/components/schemas/PaymentMethod'
-    addAmountLimits:
-      $ref: '../../openapi.yaml#/components/schemas/BillingAmountLimits'
-
 ResetStrategy:
   type: string
   enum: [DAY, WEEK, MONTH_ROLLING]

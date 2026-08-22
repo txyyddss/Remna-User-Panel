@@ -66,7 +66,7 @@ watch(() => blocks.receipt.value, (receipt) => {
     </header>
 
     <InlineNotice v-if="blocks.receipt.value && !blockDialogOpen && !unblockDialogOpen" :tone="operationTone" :title="$t(`operations.status.${blocks.receipt.value.status}`)">{{ operationMessage }}</InlineNotice>
-    <ConnectionBlockList :items="blocks.items.value" :loading="blocks.loading.value" :error="blocks.loadError.value" :disabled="blocks.mutationActive.value" @refresh="blocks.load" @unblock="selectBlock" />
+    <ConnectionBlockList v-if="scan.completed.value" :items="blocks.items.value" :loading="blocks.loading.value" :error="blocks.loadError.value" :disabled="blocks.mutationActive.value" @refresh="blocks.load" @unblock="selectBlock" />
 
     <ConnectionScanStatus v-if="scan.loading.value || scan.polling.value" :starting="scan.loading.value" :progress-percent="scan.progressPercent.value" />
     <section v-else-if="scan.error.value || scan.failed.value" class="error-state error-state--compact">

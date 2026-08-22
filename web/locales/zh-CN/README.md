@@ -19,6 +19,7 @@ than in Vue templates, composables, or API clients.
 - `core.json` contains application, navigation, status, and shared action copy.
 - `home.json` contains member Home traffic, UTC range, term, and reset labels.
 - `member.json` contains dashboard, onboarding, account, and Emby member copy.
+- `payment-crypto.json` contains crypto currency/network selection, countdown, address-copy, and provider-rejection copy.
 - `recovery.json` contains pre-mount and render-boundary recovery copy.
 - `statistics.json` contains product statistics, chart, node, and freshness copy.
 - `squad-profile.json` contains localized typed squad profile labels and validation copy.

@@ -24,7 +24,7 @@ PaymentReturnStatus:
       pattern: '^\d+(\.\d+)?$'
     actualCryptoCurrency:
       type: [string, 'null']
-      enum: [USDT, null]
+      enum: [USDT, USDC, null]
     createdAt:
       $ref: '../../openapi.yaml#/components/schemas/Timestamp'
     paidAt:
@@ -110,7 +110,7 @@ AdminPaymentOrder:
       pattern: '^\d+(\.\d+)?$'
     actualCryptoCurrency:
       type: [string, 'null']
-      enum: [USDT, null]
+      enum: [USDT, USDC, null]
     expiresAt:
       $ref: '../../openapi.yaml#/components/schemas/Timestamp'
     paidAt:

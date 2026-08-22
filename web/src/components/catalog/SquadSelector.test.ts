@@ -69,21 +69,22 @@ describe('SquadSelector', () => {
       },
     })
 
-    expect(wrapper.findAll('.squad-profile-summary__facts span').map(node => node.text()))
+    expect(wrapper.findAll('.squad-option__occupancy').map(node => node.text()))
       .toEqual(['1%', '99%'])
   })
 
-  it('renders Featured and opens the exact node without toggling its squad', async () => {
-    const squad = { ...occupiedAddon, accessibleNodes: [node] }
+  it('sorts Featured first and opens the exact node without toggling its squad', async () => {
+    const squad = { ...occupiedAddon, id: 'featured', accessibleNodes: [node] }
     const wrapper = mount(SquadSelector, {
-      props: { squads: [squad], selectedIds: [], includedIds: [], featuredIds: [squad.id] },
+      props: { squads: [occupiedAddon, squad], selectedIds: [], includedIds: [], featuredIds: [squad.id] },
       global: { stubs: {
         Tooltip: { template: '<span><slot /></span>' },
         Button: { emits: ['click'], template: '<div v-bind="$attrs" @click="$emit(\'click\', $event)"><slot /></div>' },
       } },
     })
 
-    expect(wrapper.text()).toContain('Featured')
+    expect(wrapper.findAll('.squad-option')[0]?.classes()).toContain('squad-option--featured')
+    expect(wrapper.text()).not.toContain('Featured')
     await wrapper.get('[aria-label="View Geocheck result"]').trigger('click')
 
     expect(wrapper.emitted('openGeocheck')).toEqual([[node]])

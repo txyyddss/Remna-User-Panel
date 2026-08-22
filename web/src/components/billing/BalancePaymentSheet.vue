@@ -2,6 +2,7 @@
 import { computed, shallowRef, watch } from 'vue'
 import type { CouponRedemption, FeaturePaymentMethod, FeaturePaymentOrder } from '@/api/features'
 import BalancePaymentConfiguration from '@/components/billing/BalancePaymentConfiguration.vue'
+import CryptoPaymentInstructions from '@/components/billing/CryptoPaymentInstructions.vue'
 import { usePaymentOrder } from '@/composables/usePaymentOrder'
 import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
 import { useI18n } from '@/i18n'
@@ -9,6 +10,7 @@ import { formatDateTime, formatMoney } from '@/utils/format'
 
 const props = defineProps<{
   methods: readonly FeaturePaymentMethod[]
+  pendingOrder?: FeaturePaymentOrder | null
   reissueOrder?: FeaturePaymentOrder | null
   minimumMinor?: string
   maximumMinor?: string
@@ -29,13 +31,16 @@ const {
   qrDataUrl,
   error,
   canReissue,
+  canRecreate,
   amountValid,
   canCreate,
   reset,
   hydrateReissueOrder,
+  hydratePendingOrder,
   chooseMethod,
   createOrder,
   cancelOrder,
+  recreateOrder,
   retryOperation,
   openPaymentTarget,
   stopPolling,
@@ -54,9 +59,10 @@ const description = computed(() => stage.value === 'configure'
     ? t('payment.cancelledHint')
     : t('payment.providerHint'))
 
-function prepareOrder(): void {
+async function prepareOrder(): Promise<void> {
   couponRedemption.value = null
   reset(externalMethods.value)
+  if (props.pendingOrder && await hydratePendingOrder(props.pendingOrder, externalMethods.value)) return
   if (props.reissueOrder) hydrateReissueOrder(props.reissueOrder, externalMethods.value)
 }
 
@@ -68,7 +74,7 @@ const showTelegramBack = computed(() => open.value)
 useTelegramBackButton(showTelegramBack, closeSheet)
 
 watch(open, (next, previous) => {
-  if (next) prepareOrder()
+  if (next) void prepareOrder()
   else {
     stopPolling()
     if (previous && couponRedemption.value) emit('paid')
@@ -104,20 +110,32 @@ watch(open, (next, previous) => {
       </template>
 
       <template v-else-if="(stage === 'pending' || stage === 'cancelling') && order">
-        <div class="payment-amount">
-          <span>{{ $t('payment.exactAmount') }}</span>
-          <strong>{{ order.actualCryptoAmount ?? order.payableAmount }} {{ order.actualCryptoCurrency ?? order.payableCurrency }}</strong>
-          <small>{{ $t('payment.creditsAfter', { amount: formatMoney(order.txb) }) }}</small>
-        </div>
-        <div v-if="qrDataUrl" class="qr-frame"><img :src="qrDataUrl" :alt="$t('payment.qrAlt')" width="260" height="260" /></div>
-        <div v-if="order.receivingAddress" class="payment-address"><span>{{ $t('payment.receivingAddress') }}</span><code>{{ order.receivingAddress }}</code></div>
-        <p class="payment-expiry">{{ $t('payment.expires', { date: formatDateTime(order.expiresAt) }) }}</p>
-        <UButton v-if="order.paymentUrl" block color="neutral" variant="outline" trailing-icon="i-ph-arrow-square-out" :label="$t('payment.openPage')" data-haptic="open" @click="openPaymentTarget" />
-        <div class="payment-waiting" role="status"><span class="payment-waiting__pulse" />{{ stage === 'cancelling' ? $t('payment.cancelling') : $t('payment.waiting') }}</div>
-        <UButton v-if="stage === 'cancelling' && error" block color="neutral" variant="outline" icon="i-ph-arrows-clockwise" :label="$t('operations.checkStatus')" data-haptic="retry" @click="retryOperation" />
-        <UButton block color="error" variant="ghost" :disabled="stage === 'cancelling'" :label="$t('payment.cancelOrder')" data-haptic="destructive" @click="cancelOrder" />
-        <p class="field-hint">{{ $t('payment.callbackHint') }}</p>
-        <UAlert v-if="error" color="error" variant="soft" :description="error" />
+        <CryptoPaymentInstructions
+          v-if="order.provider === 'bepusdt'"
+          :order="order"
+          :stage="stage"
+          :qr-data-url="qrDataUrl"
+          :error="error"
+          :can-recreate="canRecreate"
+          @cancel="cancelOrder"
+          @recreate="recreateOrder"
+          @retry="retryOperation"
+        />
+        <template v-else>
+          <div class="payment-amount">
+            <span>{{ $t('payment.exactAmount') }}</span>
+            <strong>{{ order.payableAmount }} {{ order.payableCurrency }}</strong>
+            <small>{{ $t('payment.creditsAfter', { amount: formatMoney(order.txb) }) }}</small>
+          </div>
+          <div v-if="qrDataUrl" class="qr-frame"><img :src="qrDataUrl" :alt="$t('payment.qrAlt')" width="260" height="260" /></div>
+          <p class="payment-expiry">{{ $t('payment.expires', { date: formatDateTime(order.expiresAt) }) }}</p>
+          <UButton v-if="order.paymentUrl" block color="neutral" variant="outline" trailing-icon="i-ph-arrow-square-out" :label="$t('payment.openPage')" data-haptic="open" @click="openPaymentTarget" />
+          <div class="payment-waiting" role="status"><span class="payment-waiting__pulse" />{{ stage === 'cancelling' ? $t('payment.cancelling') : $t('payment.waiting') }}</div>
+          <UButton v-if="stage === 'cancelling' && error" block color="neutral" variant="outline" icon="i-ph-arrows-clockwise" :label="$t('operations.checkStatus')" data-haptic="retry" @click="retryOperation" />
+          <UButton block color="error" variant="ghost" :disabled="stage === 'cancelling'" :label="$t('payment.cancelOrder')" data-haptic="destructive" @click="cancelOrder" />
+          <p class="field-hint">{{ $t('payment.callbackHint') }}</p>
+          <UAlert v-if="error" color="error" variant="soft" :description="error" />
+        </template>
       </template>
 
       <div v-else-if="couponRedemption" class="payment-success payment-success--coupon" role="status">

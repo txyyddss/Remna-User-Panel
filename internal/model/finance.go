@@ -74,16 +74,27 @@ type PaymentReturnDetails struct {
 
 // PaymentMethod is one selectable provider rail exposed to a member.
 type PaymentMethod struct {
-	ID           string `json:"id"`
-	Provider     string `json:"provider"`
-	ProfileID    string `json:"profileId"`
-	ProviderName string `json:"providerName"`
-	Rail         string `json:"rail"`
-	Name         string `json:"name"`
-	Currency     string `json:"currency"`
-	Available    bool   `json:"available"`
-	Note         string `json:"note"`
-	Mode         string `json:"mode"`
+	ID             string `json:"id"`
+	Provider       string `json:"provider"`
+	ProfileID      string `json:"profileId"`
+	ProviderName   string `json:"providerName"`
+	Rail           string `json:"rail"`
+	Name           string `json:"name"`
+	Currency       string `json:"currency"`
+	CryptoCurrency string `json:"cryptoCurrency"`
+	Network        string `json:"network"`
+	NetworkName    string `json:"networkName"`
+	Available      bool   `json:"available"`
+	Note           string `json:"note"`
+	Mode           string `json:"mode"`
+}
+
+// PaymentChannel is one provider-discovered crypto currency and network pair.
+type PaymentChannel struct {
+	Rail        string
+	Currency    string
+	Network     string
+	NetworkName string
 }
 
 // PaymentProfile is the masked administrative representation of one provider account.

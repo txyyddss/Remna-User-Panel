@@ -134,20 +134,3 @@
 .statistics-distribution__track { fill: var(--line); }
 .statistics-distribution__segment:focus { outline: none; opacity: 1; stroke: var(--text); stroke-width: 1; }
 .statistics-distribution__legend { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-top: 0.8rem; border-top: 1px solid var(--line); }
-
-@media (min-width: 640px) {
-  .statistics-overview { grid-template-columns: minmax(15rem, 0.72fr) minmax(0, 1.28fr); }
-  .statistics-node-grid, .statistics-skeleton-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .statistics-share-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .statistics-donut-layout, .statistics-pie-layout { grid-template-columns: 180px minmax(0, 1fr); }
-  .statistics-donut-layout--legend-below { grid-template-columns: minmax(0, 1fr); }
-  .statistics-concentric-layout { grid-template-columns: 180px minmax(0, 1fr); }
-  .statistics-traffic__legend, .statistics-distribution__legend { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-
-@media (min-width: 900px) {
-  .statistics-share-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .statistics-share-grid .statistics-donut-layout,
-  .statistics-share-grid .statistics-pie-layout,
-  .statistics-share-grid .statistics-concentric-layout { grid-template-columns: 1fr; }
-}

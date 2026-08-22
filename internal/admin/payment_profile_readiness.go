@@ -6,7 +6,7 @@ func (s *SettingsService) paymentProfileReadiness(ctx context.Context, provider 
 	if s.profiles == nil {
 		return nil, false
 	}
-	profiles, err := s.profiles.ListPaymentProfiles(ctx)
+	profiles, err := s.PaymentProfiles(ctx)
 	if err != nil || len(profiles) == 0 {
 		return nil, false
 	}

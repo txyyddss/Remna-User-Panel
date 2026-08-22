@@ -1,0 +1,57 @@
+PaymentMethod:
+  type: object
+  additionalProperties: false
+  required: [id, provider, profileId, providerName, rail, name, currency, cryptoCurrency, network, networkName, available, note, mode]
+  properties:
+    id:
+      $ref: '../../openapi.yaml#/components/schemas/PaymentMethodID'
+    provider:
+      $ref: '../../openapi.yaml#/components/schemas/PaymentProvider'
+    profileId:
+      type: string
+      description: Stable provider profile ID; empty for Telegram Stars and coupons.
+    providerName:
+      type: string
+      description: Administrator-defined provider display name.
+    rail:
+      type: string
+      description: Provider-owned rail identifier; empty for Telegram Stars.
+    name:
+      type: string
+    currency:
+      type: string
+      enum: [TXB, CNY, USD, USDT, XTR]
+    cryptoCurrency:
+      type: string
+      enum: ['', USDT, USDC]
+    network:
+      type: string
+      description: Provider network identifier; empty for non-crypto methods.
+    networkName:
+      type: string
+      description: Provider display name for the crypto token standard.
+    available:
+      type: boolean
+    note:
+      type: string
+    mode:
+      type: string
+      enum: [order, coupon_redemption]
+
+BalanceResponse:
+  type: object
+  additionalProperties: false
+  required: [balance, paymentMethods, addAmountLimits, pendingPaymentOrder]
+  properties:
+    balance:
+      $ref: '../../openapi.yaml#/components/schemas/Money'
+    paymentMethods:
+      type: array
+      items:
+        $ref: '../../openapi.yaml#/components/schemas/PaymentMethod'
+    addAmountLimits:
+      $ref: '../../openapi.yaml#/components/schemas/BillingAmountLimits'
+    pendingPaymentOrder:
+      oneOf:
+        - $ref: '../../openapi.yaml#/components/schemas/PaymentOrder'
+        - type: 'null'

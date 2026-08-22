@@ -28,6 +28,7 @@
 - `catalog-02.css` styles catalog selection and checkout details.
 - `billing-01.css` styles funding controls.
 - `billing-02.css` styles provider-payment details.
+- `billing-03.css` styles crypto currency/network selection, address copy, QR loading, and the fixed payment countdown.
 - `feedback-01.css` styles feedback, empty, and loading states.
 - `admin-01.css` styles administrative navigation and section layouts.
 - `admin-02.css` styles administrative forms, lists, and data surfaces.
@@ -35,8 +36,8 @@
 - `admin-04.css` styles aggregate user profiles, bulk previews, operation resolution, and streamed backup upload.
 - `admin-05.css` styles active IP blocks and mobile unblock controls in aggregate user profiles.
 - `motion-01.css` defines short transitions and state motion.
-- `responsive-01.css` adapts the shell and primary layouts.
-- `responsive-02.css` adapts member and administrative flows.
-- `responsive-03.css` handles compact screens and reduced motion.
+- `responsive-01.css` owns shared motion keyframes used by compact surfaces.
+- `responsive-02.css` records the intentional single phone-first shell policy across viewports.
+- `responsive-03.css` applies compact administrative rows at every viewport and owns reduced-motion/transparency fallbacks.
 
 The system is dark-only, flat, gradient-free, and uses borders instead of decorative shadows.

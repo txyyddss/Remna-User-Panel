@@ -63,6 +63,57 @@ func (s *Store) ListPaymentProfiles(ctx context.Context) ([]model.PaymentProfile
 	return result, rows.Err()
 }
 
+// SetPaymentProfileEnabled changes availability without rewriting credentials.
+func (s *Store) SetPaymentProfileEnabled(ctx context.Context, id string, enabled bool) (model.PaymentProfile, error) {
+	result, err := s.db.ExecContext(ctx, `UPDATE payment_profiles SET enabled=?,updated_at=? WHERE id=?`,
+		boolInt(enabled), stamp(nowUTC()), id)
+	if err != nil {
+		return model.PaymentProfile{}, fmt.Errorf("set payment profile enabled: %w", err)
+	}
+	if affected, rowsErr := result.RowsAffected(); rowsErr != nil || affected != 1 {
+		if rowsErr != nil {
+			return model.PaymentProfile{}, rowsErr
+		}
+		return model.PaymentProfile{}, ErrNotFound
+	}
+	record, err := s.PaymentProfileRecordByID(ctx, id, "")
+	return record.PaymentProfile, err
+}
+
+// DeletePaymentProfile removes a profile only after its provider attempts are gone.
+func (s *Store) DeletePaymentProfile(ctx context.Context, id string) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin payment profile deletion: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	var provider string
+	if err := tx.QueryRowContext(ctx, `SELECT provider FROM payment_profiles WHERE id=?`, id).Scan(&provider); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("load payment profile for deletion: %w", err)
+	}
+	prefix := provider + ":" + id + ":"
+	var active int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM payment_orders WHERE status IN ('creating','pending')
+		AND substr(method_id,1,length(?))=?`, prefix, prefix).Scan(&active); err != nil {
+		return fmt.Errorf("check payment profile orders: %w", err)
+	}
+	if active > 0 {
+		return ErrConflict
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM payment_profiles WHERE id=?`, id); err != nil {
+		return fmt.Errorf("delete payment profile: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit payment profile deletion: %w", err)
+	}
+	return nil
+}
+
 func (s *Store) PaymentProfile(ctx context.Context, provider, rail string) (model.PaymentProfile, error) {
 	record, err := s.paymentProfileRecord(ctx, provider, rail)
 	return record.PaymentProfile, err

@@ -27,6 +27,10 @@ type paymentProfileReader interface {
 	PaymentProfiles(context.Context) ([]model.PaymentProfile, error)
 }
 
+type paymentProfileChannelReader interface {
+	PaymentProfileChannels(string) []model.PaymentChannel
+}
+
 type paymentProfileRuntimeReader interface {
 	PaymentProfile(context.Context, string, string) (model.PaymentProfileRuntime, error)
 }

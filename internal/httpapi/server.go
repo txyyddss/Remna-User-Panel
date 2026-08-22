@@ -63,6 +63,7 @@ type Dependencies struct {
 	Admin              *admin.Service
 	AdminUsers         *admin.UserWorkflows
 	Settings           *admin.SettingsService
+	PaymentProfiles    paymentProfileLifecycle
 	DatabaseAdmin      *DatabaseAdministrationHTTP
 	Store              *database.Store
 	Affiliates         *affiliates.Service
@@ -88,7 +89,7 @@ type Server struct {
 
 // New constructs all public, authenticated, admin, and webhook routes.
 func New(deps Dependencies) (*Server, error) {
-	if deps.Accounts == nil || deps.Catalog == nil || deps.Connections == nil || deps.ConnectionDrops == nil || deps.PurchaseOperations == nil || deps.Statistics == nil || deps.Billing == nil || deps.Activity == nil || deps.Coupons == nil || deps.Questionnaires == nil || deps.Emby == nil || deps.EmbyOperations == nil || deps.EmbyPrice == nil || deps.Admin == nil || deps.AdminUsers == nil || deps.Settings == nil || deps.Store == nil || deps.Affiliates == nil || deps.Telegram == nil || deps.Webhooks == nil || deps.PublicURL == nil || deps.Logger == nil || len(deps.AdminTelegramIDs) == 0 {
+	if deps.Accounts == nil || deps.Catalog == nil || deps.Connections == nil || deps.ConnectionDrops == nil || deps.PurchaseOperations == nil || deps.Statistics == nil || deps.Billing == nil || deps.Activity == nil || deps.Coupons == nil || deps.Questionnaires == nil || deps.Emby == nil || deps.EmbyOperations == nil || deps.EmbyPrice == nil || deps.Admin == nil || deps.AdminUsers == nil || deps.Settings == nil || deps.PaymentProfiles == nil || deps.Store == nil || deps.Affiliates == nil || deps.Telegram == nil || deps.Webhooks == nil || deps.PublicURL == nil || deps.Logger == nil || len(deps.AdminTelegramIDs) == 0 {
 		return nil, errors.New("HTTP API dependencies are incomplete")
 	}
 	adminTelegramIDs := make(map[int64]struct{}, len(deps.AdminTelegramIDs))
@@ -117,6 +118,7 @@ func New(deps Dependencies) (*Server, error) {
 	router.Post("/api/v1/webhooks/telegram", server.telegramWebhook)
 	router.Get("/api/v1/webhooks/ezpay", server.ezpayWebhook)
 	router.Post("/api/v1/webhooks/bepusdt", server.bepusdtWebhook)
+	router.Post("/api/v1/webhooks/bepusdt/probe", server.bepusdtProbeWebhook)
 	router.Post("/api/v1/webhooks/bepusdt/{capability}", server.bepusdtWebhook)
 	router.Get("/api/v1/payments/return/{provider}/{orderID}/status", server.paymentReturnStatus)
 	router.Get("/api/v1/payments/return/{provider}", server.paymentReturn)

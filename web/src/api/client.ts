@@ -140,7 +140,7 @@ export const api = {
   revokeSubscription: (idempotencyKey: string) => request<OperationReceipt>('/api/v1/subscription/revoke', {
     method: 'POST', headers: { 'Idempotency-Key': idempotencyKey },
   }),
-  getBalance: () => request<{ balance: Dashboard['balance']; paymentMethods: FeaturePaymentMethod[]; addAmountLimits: BillingAmountLimits }>('/api/v1/balance'),
+  getBalance: () => request<{ balance: Dashboard['balance']; paymentMethods: FeaturePaymentMethod[]; addAmountLimits: BillingAmountLimits; pendingPaymentOrder: FeaturePaymentOrder | null }>('/api/v1/balance'),
   createPaymentOrder: (methodId: string, txbMinorUnits: string, idempotencyKey: string) => request<PaymentOperation>('/api/v1/payments/orders', {
     method: 'POST',
     headers: { 'Idempotency-Key': idempotencyKey },
@@ -178,6 +178,7 @@ export const api = {
   getAdminPaymentProfiles: () => request<{ items: AdminPaymentProfile[] }>('/api/v1/admin/payment-profiles'),
   createAdminPaymentProfile: (body: AdminPaymentProfileWrite) => request<AdminPaymentProfile>('/api/v1/admin/payment-profiles', { method: 'POST', body: paymentProfileWriteBody(body) }),
   updateAdminPaymentProfile: (id: string, body: AdminPaymentProfileWrite) => request<AdminPaymentProfile>(`/api/v1/admin/payment-profiles/${encodeURIComponent(id)}`, { method: 'PUT', body: paymentProfileWriteBody(body) }),
+  deleteAdminPaymentProfile: (id: string) => request<void>(`/api/v1/admin/payment-profiles/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   cancelAdminEntitlement: (entitlementId: string, reason: string) => request<Purchase>(`/api/v1/admin/entitlements/${encodeURIComponent(entitlementId)}/cancel`, {
     method: 'POST',
     body: { reason } satisfies ReasonRequest,

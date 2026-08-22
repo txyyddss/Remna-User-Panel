@@ -160,10 +160,19 @@ PaymentMethodID:
         - bepusdt:usdt.arbitrum
         - bepusdt:usdt.plasma
         - bepusdt:usdt.ton
+        - bepusdt:usdc.trc20
+        - bepusdt:usdc.erc20
+        - bepusdt:usdc.polygon
+        - bepusdt:usdc.bep20
+        - bepusdt:usdc.aptos
+        - bepusdt:usdc.solana
+        - bepusdt:usdc.xlayer
+        - bepusdt:usdc.arbitrum
+        - bepusdt:usdc.base
         - stars
         - coupon
     - type: string
-      pattern: '^(ezpay|bepusdt):[^:]+:(alipay|wxpay|qqpay|bank|jdpay|usdt\.trc20|usdt\.erc20|usdt\.polygon|usdt\.bep20|usdt\.aptos|usdt\.solana|usdt\.xlayer|usdt\.arbitrum|usdt\.plasma|usdt\.ton)$'
+      pattern: '^(ezpay|bepusdt):[^:]+:(alipay|wxpay|qqpay|bank|jdpay|usdt\.trc20|usdt\.erc20|usdt\.polygon|usdt\.bep20|usdt\.aptos|usdt\.solana|usdt\.xlayer|usdt\.arbitrum|usdt\.plasma|usdt\.ton|usdc\.trc20|usdc\.erc20|usdc\.polygon|usdc\.bep20|usdc\.aptos|usdc\.solana|usdc\.xlayer|usdc\.arbitrum|usdc\.base)$'
 
 PaymentOrderMethodID:
   description: Stable method ID for new orders; legacy pending snapshots may expose an empty value or provider alias.

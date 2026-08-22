@@ -1,0 +1,13 @@
+{
+  "cryptoPayment": {
+    "chooseCurrency": "选择币种",
+    "chooseNetwork": "选择网络",
+    "copyAddress": "复制收款地址",
+    "timeRemaining": "剩余时间",
+    "expired": "订单时限已结束",
+    "expiredTitle": "创建新订单",
+    "expiredDescription": "此收款地址的付款时限已结束。如果已经转账，请等待支付服务商确认，不要重复付款。",
+    "recreate": "创建新订单",
+    "rejected": "{message} 请将此消息报告给管理员。"
+  }
+}

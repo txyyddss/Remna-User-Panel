@@ -23,7 +23,7 @@ export interface FeaturePaymentReturnStatus {
   payableAmount: string
   payableCurrency: 'CNY' | 'USD' | 'USDT' | 'XTR'
   actualCryptoAmount: string | null
-  actualCryptoCurrency: 'USDT' | null
+  actualCryptoCurrency: 'USDT' | 'USDC' | null
   createdAt: import('./types').RFC3339
   paidAt: import('./types').RFC3339 | null
 }

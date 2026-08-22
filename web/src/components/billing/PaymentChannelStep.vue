@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import type { PaymentStage } from '@/composables/usePaymentOrder'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
 import { useI18n } from '@/i18n'
 import { txbInputFromMinor } from '@/utils/format'
 import { selectionHaptic } from '@/utils/telegram'
+import PaymentCryptoChannelPicker from './PaymentCryptoChannelPicker.vue'
 import type { PaymentChannelOption } from './paymentOptions'
 
 const props = defineProps<{
@@ -28,6 +31,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const isCrypto = computed(() => props.channels.some((channel) => channel.cryptoCurrency))
 
 function chooseMethod(id: string): void {
   if (id === props.selectedMethodId) return
@@ -60,6 +64,12 @@ function chooseMethod(id: string): void {
       @update:model-value="emit('update:amount', String($event))"
     />
     <UAlert v-if="!channels.length" color="warning" variant="soft" icon="i-ph-warning-circle" :description="t('payment.noChannel')" />
+    <PaymentCryptoChannelPicker
+      v-else-if="isCrypto"
+      :channels="channels"
+      :selected-method-id="selectedMethodId"
+      @choose="chooseMethod"
+    />
     <fieldset v-else class="provider-picker" role="radiogroup">
       <legend class="sr-only">{{ t('payment.chooseChannel') }}</legend>
       <UButton

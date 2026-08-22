@@ -1,0 +1,22 @@
+post:
+  tags: [Webhooks]
+  operationId: receiveBEPusdtProbeWebhook
+  summary: Acknowledge notifications for startup payment-method discovery orders
+  description: |
+    Probe orders exist only to discover available currency and network pairs. Their
+    notifications never read or mutate member payment state and are not cancelled locally.
+  security: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: true
+  responses:
+    '200':
+      description: Probe notification acknowledged without settlement processing.
+      content:
+        text/plain:
+          schema: { type: string, const: ok }
+    '400': { $ref: '../openapi.yaml#/components/responses/BadRequest' }

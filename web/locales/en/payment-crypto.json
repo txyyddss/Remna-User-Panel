@@ -1,0 +1,13 @@
+{
+  "cryptoPayment": {
+    "chooseCurrency": "Choose a currency",
+    "chooseNetwork": "Choose a network",
+    "copyAddress": "Copy receiving address",
+    "timeRemaining": "Time remaining",
+    "expired": "Order window ended",
+    "expiredTitle": "Create a fresh order",
+    "expiredDescription": "This address window has ended. If you already sent payment, wait for provider confirmation instead of paying again.",
+    "recreate": "Create new order",
+    "rejected": "{message} Report this message to an administrator."
+  }
+}

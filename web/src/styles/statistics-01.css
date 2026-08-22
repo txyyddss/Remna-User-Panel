@@ -185,5 +185,3 @@
   border: 1px dashed var(--line-strong);
   border-radius: 8px;
 }
-
-@media (min-width: 640px) { .statistics-node dl { grid-template-columns: repeat(5, minmax(0, 1fr)); } }

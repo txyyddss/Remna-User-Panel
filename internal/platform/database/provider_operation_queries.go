@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -73,6 +74,14 @@ func scanProviderOperation(row rowScanner) (providerops.Operation, error) {
 	operation.Receipt.Status = status
 	if errorCode != "" {
 		operation.Receipt.ErrorCode = &errorCode
+	}
+	if operation.Receipt.Kind == "payment_create" && errorCode == "PAYMENT_CREATE_REJECTED" {
+		var result struct {
+			ProviderMessage string `json:"providerMessage"`
+		}
+		if json.Unmarshal([]byte(operation.ResultJSON), &result) == nil && result.ProviderMessage != "" {
+			operation.Receipt.ErrorMessage = &result.ProviderMessage
+		}
 	}
 	if operation.Receipt.CreatedAt, err = parseStamp(created); err != nil {
 		return providerops.Operation{}, fmt.Errorf("parse provider operation creation: %w", err)

@@ -62,6 +62,7 @@ type SettingsService struct {
 	repository SettingsRepository
 	vault      *secret.Vault
 	profiles   PaymentProfileRepository
+	channels   paymentProfileChannelReader
 }
 
 // NewSettingsService creates the runtime settings facade.

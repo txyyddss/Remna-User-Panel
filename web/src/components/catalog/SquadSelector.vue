@@ -56,10 +56,9 @@ function occupancyPercentage(squad: SquadProduct): number | null {
   return Math.max(1, Math.min(99, Math.round(occupied * 100 / squad.stockLimit)))
 }
 
-const squadRows = computed(() => props.squads.map((squad) => ({
-  squad,
-  occupancyPercentage: occupancyPercentage(squad),
-})))
+const squadRows = computed(() => props.squads
+  .map((squad, index) => ({ squad, index, occupancyPercentage: occupancyPercentage(squad) }))
+  .sort((left, right) => Number(isFeatured(right.squad.id)) - Number(isFeatured(left.squad.id)) || left.index - right.index))
 </script>
 
 <template>
@@ -69,12 +68,11 @@ const squadRows = computed(() => props.squads.map((squad) => ({
       <p>{{ $t('catalog.optionalSquadsHint') }}</p>
     </div>
     <div v-if="squads.length" v-auto-animate class="squad-grid">
-      <article v-for="row in squadRows" :key="row.squad.id" class="squad-option" :class="[profileClass(row.squad), { 'squad-option--selected': isSelected(row.squad.id), 'squad-option--included': isIncluded(row.squad.id), 'squad-option--full': isFullPaidAddon(row.squad) }]" @click="toggleSquad(row.squad)">
+      <article v-for="row in squadRows" :key="row.squad.id" class="squad-option" :class="[profileClass(row.squad), { 'squad-option--featured': isFeatured(row.squad.id), 'squad-option--selected': isSelected(row.squad.id), 'squad-option--included': isIncluded(row.squad.id), 'squad-option--full': isFullPaidAddon(row.squad) }]" @click="toggleSquad(row.squad)">
         <div class="squad-option__copy">
-          <StatusBadge v-if="isFeatured(row.squad.id)" tone="success" :label="$t('catalog.featured')" />
           <SquadProfileSummary :name="row.squad.name" :profile="row.squad.profile" :description="row.squad.description" presentation="member" compact>
-            <template v-if="row.occupancyPercentage !== null" #facts>
-              <span><UIcon name="i-ph-users-three" />{{ row.occupancyPercentage }}%</span>
+            <template v-if="row.occupancyPercentage !== null" #headingMeta>
+              <span class="squad-option__occupancy"><UIcon name="i-ph-users-three" />{{ row.occupancyPercentage }}%</span>
             </template>
           </SquadProfileSummary>
           <SquadNodeBlocks :nodes="row.squad.accessibleNodes" @open-geocheck="emit('openGeocheck', $event)" />
@@ -104,4 +102,6 @@ const squadRows = computed(() => props.squads.map((squad) => ({
 <style scoped>
 .squad-option--included { color: var(--text-faint); border-color: var(--squad-profile-tone-line, var(--line)); background: var(--squad-profile-tone-soft, var(--canvas-soft)); cursor: default; }
 .squad-option.squad-option--full { border-color: var(--line); color: var(--text-faint); background: var(--surface); cursor: not-allowed; opacity: 0.58; }
+.squad-option--featured :deep(.squad-profile-summary__heading-copy strong) { color: var(--warning); }
+.squad-option__occupancy { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 0.22rem; color: var(--text-muted); font-family: var(--font-mono); font-size: 0.68rem; }
 </style>

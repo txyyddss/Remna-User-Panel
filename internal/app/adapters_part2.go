@@ -117,7 +117,7 @@ func bepusdtEvent(webhook *bepusdt.Webhook, body []byte, profileID string) (bill
 		dedupe = webhook.TradeID + ":" + strconv.Itoa(webhook.Status)
 	}
 	event := billing.ProviderEvent{Provider: "bepusdt", ProfileID: profileID, OrderID: webhook.OrderID, TradeID: webhook.TradeID,
-		ChargeID: webhook.BlockTransactionID, PayableAmount: webhook.ActualAmount, PayableCurrency: "USDT",
+		ChargeID: webhook.BlockTransactionID, PayableAmount: webhook.ActualAmount,
 		FiatAmount: webhook.Amount, FiatCurrency: "USD", Recipient: webhook.Token, DedupeKey: dedupe, PayloadHash: hex.EncodeToString(digest[:])}
 	return event, webhook.Status, nil
 }
@@ -133,7 +133,7 @@ func (a paymentAdapter) VerifyBEPusdtUnsigned(_ context.Context, body []byte) (b
 		dedupe = webhook.OrderID + ":" + strconv.Itoa(webhook.Status) + ":" + hex.EncodeToString(digest[:8])
 	}
 	event := billing.ProviderEvent{Provider: "bepusdt", OrderID: webhook.OrderID, TradeID: webhook.TradeID,
-		ChargeID: webhook.BlockTransactionID, PayableAmount: webhook.ActualAmount, PayableCurrency: "USDT",
+		ChargeID: webhook.BlockTransactionID, PayableAmount: webhook.ActualAmount,
 		FiatAmount: webhook.Amount, FiatCurrency: "USD", Recipient: webhook.Token, DedupeKey: dedupe, PayloadHash: hex.EncodeToString(digest[:])}
 	return event, webhook.Status, nil
 }

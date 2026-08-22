@@ -22,6 +22,16 @@ func (a *Application) Run(ctx context.Context) error {
 		_ = a.upstreams.shutdown(context.Background())
 		return fmt.Errorf("start upstream queues: %w", err)
 	}
+	profileCtx, cancelProfiles := context.WithTimeout(runCtx, 5*time.Minute)
+	if err := a.paymentProfiles.RefreshAll(profileCtx); err != nil && !errors.Is(err, context.Canceled) {
+		a.logger.Error("BEPUSDT payment profile refresh was partial", "error", err)
+	}
+	cancelProfiles()
+	if err := runCtx.Err(); err != nil {
+		cancelRun()
+		_ = a.upstreams.shutdown(context.Background())
+		return err
+	}
 
 	listenerDone := make(chan error, 1)
 	go func() {

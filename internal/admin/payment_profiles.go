@@ -30,7 +30,14 @@ func (s *SettingsService) PaymentProfiles(ctx context.Context) ([]model.PaymentP
 	if s.profiles == nil {
 		return []model.PaymentProfile{}, nil
 	}
-	return s.profiles.ListPaymentProfiles(ctx)
+	profiles, err := s.profiles.ListPaymentProfiles(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for index := range profiles {
+		s.applyDiscoveredChannels(&profiles[index])
+	}
+	return profiles, nil
 }
 
 // PaymentProfile returns one decrypted profile for trusted provider adapters.
@@ -38,10 +45,15 @@ func (s *SettingsService) PaymentProfile(ctx context.Context, provider, rail str
 	if s.profiles == nil {
 		return model.PaymentProfileRuntime{}, database.ErrNotFound
 	}
-	record, err := s.profiles.PaymentProfileRecord(ctx, provider, rail)
+	queryRail := rail
+	if provider == "bepusdt" {
+		queryRail = ""
+	}
+	record, err := s.profiles.PaymentProfileRecord(ctx, provider, queryRail)
 	if err != nil {
 		return model.PaymentProfileRuntime{}, err
 	}
+	s.applyDiscoveredChannels(&record.PaymentProfile)
 	if rail != "" && !containsPaymentChannel(record.EnabledChannels, rail) {
 		return model.PaymentProfileRuntime{}, database.ErrNotFound
 	}
@@ -70,7 +82,7 @@ func (s *SettingsService) PaymentProfileByID(ctx context.Context, id, rail strin
 	var record database.PaymentProfileRecord
 	var err error
 	if repository, ok := s.profiles.(paymentProfileByIDRepository); ok {
-		record, err = repository.PaymentProfileRecordByID(ctx, id, rail)
+		record, err = repository.PaymentProfileRecordByID(ctx, id, "")
 	} else {
 		profiles, listErr := s.profiles.ListPaymentProfiles(ctx)
 		if listErr != nil {
@@ -78,7 +90,7 @@ func (s *SettingsService) PaymentProfileByID(ctx context.Context, id, rail strin
 		}
 		for _, profile := range profiles {
 			if profile.ID == id {
-				record, err = s.profiles.PaymentProfileRecord(ctx, profile.Provider, rail)
+				record, err = s.profiles.PaymentProfileRecord(ctx, profile.Provider, "")
 				break
 			}
 		}
@@ -89,6 +101,7 @@ func (s *SettingsService) PaymentProfileByID(ctx context.Context, id, rail strin
 	if err != nil {
 		return model.PaymentProfileRuntime{}, err
 	}
+	s.applyDiscoveredChannels(&record.PaymentProfile)
 	if rail != "" && !containsPaymentChannel(record.EnabledChannels, rail) {
 		return model.PaymentProfileRuntime{}, database.ErrNotFound
 	}
@@ -146,11 +159,13 @@ func (s *SettingsService) SavePaymentProfile(ctx context.Context, actorID string
 		return model.PaymentProfile{}, errors.New("payment profile provider name is required")
 	}
 	channels := make([]string, 0, len(input.EnabledChannels))
-	for _, channel := range input.EnabledChannels {
-		channels = append(channels, strings.ToLower(strings.TrimSpace(channel)))
-	}
-	if err := billing.ValidatePaymentChannels(input.Provider, channels); err != nil {
-		return model.PaymentProfile{}, database.ErrConflict
+	if input.Provider == "ezpay" {
+		for _, channel := range input.EnabledChannels {
+			channels = append(channels, strings.ToLower(strings.TrimSpace(channel)))
+		}
+		if err := billing.ValidatePaymentChannels(input.Provider, channels); err != nil {
+			return model.PaymentProfile{}, database.ErrConflict
+		}
 	}
 	ciphertext := ""
 	credential := strings.TrimSpace(input.Credential)

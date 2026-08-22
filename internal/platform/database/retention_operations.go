@@ -1,0 +1,61 @@
+package database
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"time"
+)
+
+const maintenanceTimeoutCode = "MAINTENANCE_TIMEOUT"
+
+func pruneProviderOperationsTx(ctx context.Context, tx *sql.Tx, cutoff, now time.Time,
+	counts map[string]int64) error {
+	if _, err := tx.ExecContext(ctx, `CREATE TEMP TABLE maintenance_operation_candidates(id TEXT PRIMARY KEY)`); err != nil {
+		return fmt.Errorf("create stale operation set: %w", err)
+	}
+	_, err := tx.ExecContext(ctx, `INSERT INTO maintenance_operation_candidates(id)
+		SELECT id FROM provider_operations WHERE status IN ('queued','processing','pending_review','partial') AND created_at<?`, stamp(cutoff))
+	if err != nil {
+		return fmt.Errorf("select stale operations: %w", err)
+	}
+	if err := compensateStaleOperationDebitsTx(ctx, tx, now); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE payment_orders SET status='failed',provider_payload='{}',payment_url=NULL,
+		qr_payload=CASE WHEN receiving_address IS NOT NULL THEN NULL ELSE qr_payload END,updated_at=?
+		WHERE status='creating' AND id IN (SELECT item.target_id FROM provider_operation_items item
+			JOIN maintenance_operation_candidates candidate ON candidate.id=item.operation_id
+			JOIN provider_operations operation ON operation.id=candidate.id AND operation.kind='payment_create'
+			WHERE item.target_type='payment_order')`, stamp(now)); err != nil {
+		return fmt.Errorf("fail stale payment creation: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE connection_ip_blocks SET status='pending_review',updated_at=?
+		WHERE status IN ('blocking','unblocking') AND (block_operation_id IN (SELECT id FROM maintenance_operation_candidates)
+			OR unblock_operation_id IN (SELECT id FROM maintenance_operation_candidates))`, stamp(now)); err != nil {
+		return fmt.Errorf("flag stale IP block operation: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE provider_operation_items SET status='failed',error_code=?,completed_at=?,updated_at=?
+		WHERE operation_id IN (SELECT id FROM maintenance_operation_candidates)
+		AND status IN ('queued','processing','pending_review')`, maintenanceTimeoutCode, stamp(now), stamp(now)); err != nil {
+		return fmt.Errorf("fail stale operation items: %w", err)
+	}
+	if counts["stale_provider_operations"], err = deleteCount(ctx, tx, `UPDATE provider_operations SET status='failed',
+		error_code=?,completed_at=?,updated_at=? WHERE id IN (SELECT id FROM maintenance_operation_candidates)`,
+		maintenanceTimeoutCode, stamp(now), stamp(now)); err != nil {
+		return fmt.Errorf("fail stale operations: %w", err)
+	}
+	if counts["provider_operation_jobs"], err = deleteCount(ctx, tx, `DELETE FROM outbox_jobs WHERE kind='provider_operation'
+		AND json_extract(payload,'$.operationId') IN (SELECT id FROM provider_operations
+			WHERE status IN ('succeeded','failed','compensated'))`); err != nil {
+		return fmt.Errorf("prune provider operation jobs: %w", err)
+	}
+	if counts["provider_operations"], err = deleteCount(ctx, tx, `DELETE FROM provider_operations
+		WHERE status IN ('succeeded','failed','compensated')`); err != nil {
+		return fmt.Errorf("prune processed provider operations: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `DROP TABLE maintenance_operation_candidates`); err != nil {
+		return fmt.Errorf("drop stale operation set: %w", err)
+	}
+	return nil
+}

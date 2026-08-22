@@ -99,13 +99,18 @@
 
 .home-ride__metrics > div {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   padding: 0.8rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-control);
   background: var(--surface-raised);
+  text-align: center;
 }
 
-.home-ride__metrics > div:last-child { display: flex; flex-direction: column; align-items: center; justify-content: center; grid-column: 1 / -1; text-align: center; }
+.home-ride__metrics > div:last-child { grid-column: 1 / -1; }
 
 .home-ride__metrics dt {
   display: flex;
@@ -180,18 +185,4 @@
   margin-top: 0.17rem;
   color: var(--text-faint);
   font-size: 0.7rem;
-}
-
-@media (min-width: 640px) {
-  .home-balance {
-    padding: 1.4rem;
-  }
-
-  .home-ride__metrics {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .home-ride__metrics > div:last-child {
-    grid-column: auto;
-  }
 }

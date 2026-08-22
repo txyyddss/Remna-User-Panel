@@ -24,9 +24,16 @@ func (s *Service) Methods(ctx context.Context) ([]model.PaymentMethod, error) {
 				}
 				rate, rateErr := s.loadNewRate(ctx, profile.Provider)
 				available := profile.Enabled && profile.Configured && rateErr == nil && rate.Positive()
+				channels := paymentChannelsByRail(s.settings, profile.ID)
 				for _, rail := range profile.EnabledChannels {
-					result = append(result, model.PaymentMethod{ID: profile.Provider + ":" + profile.ID + ":" + rail, Provider: profile.Provider, ProfileID: profile.ID, ProviderName: profile.ProviderName, Rail: rail,
-						Name: methodName(profile.Provider, rail), Currency: strings.ToUpper(currencyCode(profile.Provider)), Available: available, Mode: "order"})
+					method := model.PaymentMethod{ID: profile.Provider + ":" + profile.ID + ":" + rail, Provider: profile.Provider, ProfileID: profile.ID, ProviderName: profile.ProviderName, Rail: rail,
+						Name: methodName(profile.Provider, rail), Currency: strings.ToUpper(currencyCode(profile.Provider)), Available: available, Mode: "order"}
+					if channel, ok := channels[rail]; ok {
+						method.CryptoCurrency = channel.Currency
+						method.Network = channel.Network
+						method.NetworkName = channel.NetworkName
+					}
+					result = append(result, method)
 				}
 			}
 			starsEnabled, starsErr := s.settings.Optional(ctx, "billing.stars.enabled")
@@ -75,4 +82,17 @@ func (s *Service) Methods(ctx context.Context) ([]model.PaymentMethod, error) {
 		}
 	}
 	return result, nil
+}
+
+func paymentChannelsByRail(settings Settings, profileID string) map[string]model.PaymentChannel {
+	reader, ok := settings.(paymentProfileChannelReader)
+	if !ok {
+		return nil
+	}
+	channels := reader.PaymentProfileChannels(profileID)
+	result := make(map[string]model.PaymentChannel, len(channels))
+	for _, channel := range channels {
+		result[channel.Rail] = channel
+	}
+	return result
 }

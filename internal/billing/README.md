@@ -10,6 +10,7 @@ Payment-method discovery, exact decimal arithmetic, checkout creation, provider 
 - `payment_operations.go` creates idempotent payment create/cancel commands with their order targets.
 - `operation_worker.go` performs each provider mutation once after its durable attempt marker.
 - `operation_worker_reconcile.go` resolves interrupted attempts from stored payment state or leaves them pending review.
+- `operation_worker_errors.go` extracts bounded provider rejection copy for member-safe failed operation receipts.
 - `payment_callback_operations.go` lets authoritative paid callbacks resolve matching checkout operations.
 - `payment_announcement.go` delivers immutable successful-payment snapshots to
   the optional standalone Telegram channel through the durable outbox.
@@ -23,9 +24,11 @@ Payment-method discovery, exact decimal arithmetic, checkout creation, provider 
   and retryable Telegram failures.
 - `gateway_contracts.go` defines the server-owned provider checkout/event contracts and gateway interfaces.
 - `payment_methods.go` builds the configured rail list, including coupon funding and independently selectable provider-account profiles.
+- `payment_channel_cache.go` stores the current process-local BEPUSDT currency/network rails discovered by queued readiness probes.
 - `events.go` validates and authorizes provider events, settles orders, exposes the narrow signed-return receipt projection, and handles cancellation.
 - `payment_profile_runtime.go` gates channels from stable-ID profiles and derives each BEPusdt callback capability from the selected account credential.
-- `methods.go` defines canonical payment method identifiers and enabled-rail ordering.
+- `methods.go` defines and validates canonical payment method identifiers.
+- `method_rails.go` owns provider rail names, ordering, and enabled-channel validation.
 - `decimal.go` parses and computes exact TXB and provider-currency amounts without floating point.
 - `service_test.go` covers checkout creation and provider failure paths.
 - `events_test.go` covers event validation, authorization, settlement, and BEPUSDT compatibility.
