@@ -117,10 +117,10 @@ describe('BalancePaymentSheet', () => {
             props: ['title'],
             template: '<section><header><slot name="actions" /><h2>{{ title }}</h2></header><main><slot name="body" /></main></section>',
           },
-          Button: { template: '<button><slot /></button>' },
+          Button: { template: '<span><slot /></span>' },
           BalancePaymentConfiguration: {
             emits: ['update:step'],
-            template: '<button data-test="show-channel" @click="$emit(\'update:step\', \'channel\')">Channel</button>',
+            template: '<span data-test="show-channel" @click="$emit(\'update:step\', \'channel\')">Channel</span>',
           },
         },
       },
