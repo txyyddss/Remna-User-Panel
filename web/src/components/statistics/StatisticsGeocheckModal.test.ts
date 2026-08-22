@@ -9,19 +9,17 @@ const result = { nodeUuid: '373f14bc-089a-4c3a-91c3-3421e7c83367', checkedAt: '2
 
 const stubs = {
   Modal: { props: ['open'], template: '<div v-if="open"><slot name="body" /></div>' },
-  Button: { template: '<div><slot /></div>' },
-  Tooltip: { template: '<span><slot /></span>' },
   Icon: { template: '<svg />' },
 }
 
 describe('StatisticsGeocheckModal', () => {
-  it('renders the server image as a data URI', () => {
+  it('renders the server image as a data URI without zoom controls', () => {
     const wrapper = mount(StatisticsGeocheckModal, {
       props: { open: true, node: { uuid: result.nodeUuid, name: 'Tokyo', countryCode: 'JP', online: true, usersOnline: 0, rxBytesPerSec: '0', txBytesPerSec: '0', xrayVersion: '', multiplier: 1 }, result, loading: false, error: null },
       global: { stubs, mocks: { $t: (key: string) => key } },
     })
     expect(wrapper.find('img').attributes('src')).toBe('data:image/svg+xml;base64,PHN2Zy8+')
-    expect(wrapper.findAll('.statistics-geocheck__controls [data-haptic="zoom"]')).toHaveLength(3)
+    expect(wrapper.find('.statistics-geocheck__controls').exists()).toBe(false)
   })
 
   it('shows loading and unavailable states', async () => {

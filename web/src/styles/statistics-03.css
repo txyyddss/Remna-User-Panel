@@ -14,7 +14,7 @@
 .statistics-geocheck {
   min-height: min(24rem, calc(var(--tg-viewport-stable-height, 100dvh) - var(--geocheck-safe-top) - var(--geocheck-safe-bottom) - 10rem));
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr);
   background: var(--canvas);
 }
 
@@ -56,16 +56,5 @@
 }
 
 .statistics-geocheck__image--interacting { transition: none; will-change: transform; }
-
-.statistics-geocheck__controls {
-  display: grid;
-  grid-template-columns: repeat(3, 44px);
-  justify-content: center;
-  gap: 0.35rem;
-  padding: 0.6rem max(0.75rem, var(--geocheck-safe-right)) max(0.75rem, var(--geocheck-safe-bottom)) max(0.75rem, var(--geocheck-safe-left));
-  border-top: 1px solid var(--line);
-}
-
-.statistics-geocheck__controls button { width: 44px; height: 44px; }
 
 @media (prefers-reduced-motion: reduce) { .statistics-geocheck__image { transition: none; } }

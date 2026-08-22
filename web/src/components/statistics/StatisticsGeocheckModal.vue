@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useTemplateRef, watch } from 'vue'
+import { computed, watch } from 'vue'
 
 import type { NodeGeocheckTarget, StatisticsNodeGeocheck } from '@/api/types'
 import { useImageZoom } from '@/composables/useImageZoom'
@@ -16,13 +16,9 @@ const props = defineProps<{
 
 const open = defineModel<boolean>('open', { required: true })
 const zoom = useImageZoom()
-const canvas = useTemplateRef<globalThis.HTMLElement>('canvas')
 const title = computed(() => t('statistics.geocheck.title', { node: props.node?.name ?? '' }))
 const imageSource = computed(() => props.result ? `data:${props.result.image.mediaType};${props.result.image.encoding},${props.result.image.data}` : '')
 const imageLabel = computed(() => t('statistics.geocheck.canvasLabel', { node: props.node?.name ?? '' }))
-
-function zoomIn(): void { zoom.zoomIn(canvas.value ?? undefined) }
-function zoomOut(): void { zoom.zoomOut(canvas.value ?? undefined) }
 
 watch(open, (visible) => { if (!visible) zoom.reset() })
 watch(imageSource, () => zoom.reset())
@@ -69,11 +65,6 @@ useTelegramBackButton(computed(() => open.value), () => { open.value = false })
               :style="zoom.imageStyle.value"
               draggable="false"
             />
-          </div>
-          <div class="statistics-geocheck__controls" role="group" :aria-label="$t('statistics.geocheck.controls')">
-            <UTooltip :text="$t('statistics.geocheck.zoomOut')"><UButton color="neutral" variant="ghost" square icon="i-ph-magnifying-glass-minus" :disabled="zoom.scale.value <= 1" :aria-label="$t('statistics.geocheck.zoomOut')" data-haptic="zoom" @click="zoomOut" /></UTooltip>
-            <UTooltip :text="$t('statistics.geocheck.resetZoom')"><UButton color="neutral" variant="ghost" square icon="i-ph-arrow-counter-clockwise" :disabled="!zoom.isZoomed.value" :aria-label="$t('statistics.geocheck.resetZoom')" data-haptic="zoom" @click="zoom.reset" /></UTooltip>
-            <UTooltip :text="$t('statistics.geocheck.zoomIn')"><UButton color="neutral" variant="ghost" square icon="i-ph-magnifying-glass-plus" :disabled="zoom.scale.value >= 4" :aria-label="$t('statistics.geocheck.zoomIn')" data-haptic="zoom" @click="zoomIn" /></UTooltip>
           </div>
         </template>
         <div v-else class="statistics-geocheck__state" role="status">

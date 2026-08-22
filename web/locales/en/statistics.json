@@ -52,11 +52,7 @@
       "checkedAt": "Checked {date}",
       "loading": "Loading Geocheck result",
       "unavailable": "No current Geocheck result is available.",
-      "canvasLabel": "Geocheck result for {node}",
-      "controls": "Image zoom controls",
-      "zoomIn": "Zoom in",
-      "zoomOut": "Zoom out",
-      "resetZoom": "Reset zoom"
+      "canvasLabel": "Geocheck result for {node}"
     },
     "loadingNodes": "Loading node metrics",
     "noNodes": "No nodes available",
