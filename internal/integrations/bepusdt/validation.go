@@ -20,17 +20,6 @@ func validateCallbackURL(rawURL string) error {
 	return nil
 }
 
-func validateHTTPSPaymentURL(rawURL string) error {
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		return err
-	}
-	if u.Scheme != "https" || u.Host == "" || u.User != nil {
-		return errors.New("URL must be absolute HTTPS without credentials")
-	}
-	return nil
-}
-
 func validatePositiveDecimal(value string) error {
 	if err := validateDecimal(value); err != nil {
 		return err

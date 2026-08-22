@@ -37,7 +37,6 @@ type Transaction struct {
 	Status         int
 	Token          string
 	ExpirationTime int64
-	PaymentURL     string
 }
 
 // ExpiresAt converts BEPusdt's expiration_time duration (seconds) into an instant.
@@ -133,7 +132,6 @@ func (c *Client) CreateTransaction(ctx context.Context, input CreateTransactionR
 			Status         flexibleInt    `json:"status"`
 			Token          string         `json:"token"`
 			ExpirationTime flexibleInt    `json:"expiration_time"`
-			PaymentURL     string         `json:"payment_url"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(responseBody, &envelope); err != nil {
@@ -146,9 +144,9 @@ func (c *Client) CreateTransaction(ctx context.Context, input CreateTransactionR
 		Fiat: envelope.Data.Fiat, TradeID: envelope.Data.TradeID, OrderID: envelope.Data.OrderID,
 		Amount: string(envelope.Data.Amount), ActualAmount: string(envelope.Data.ActualAmount),
 		Status: int(envelope.Data.Status), Token: envelope.Data.Token,
-		ExpirationTime: int64(envelope.Data.ExpirationTime), PaymentURL: envelope.Data.PaymentURL,
+		ExpirationTime: int64(envelope.Data.ExpirationTime),
 	}
-	if transaction.TradeID == "" || transaction.OrderID == "" || transaction.Token == "" || transaction.PaymentURL == "" {
+	if transaction.TradeID == "" || transaction.OrderID == "" || transaction.Token == "" {
 		return nil, errors.New("bepusdt success response is missing payment data")
 	}
 	if transaction.OrderID != input.OrderID || !strings.EqualFold(transaction.Fiat, input.Fiat) || !decimalEquivalent(transaction.Amount, input.Amount) {
@@ -159,9 +157,6 @@ func (c *Client) CreateTransaction(ctx context.Context, input CreateTransactionR
 	}
 	if transaction.ExpirationTime <= 0 {
 		return nil, errors.New("bepusdt success response expiration is invalid")
-	}
-	if err := validateHTTPSPaymentURL(transaction.PaymentURL); err != nil {
-		return nil, fmt.Errorf("bepusdt success response payment URL: %w", err)
 	}
 	return transaction, nil
 }

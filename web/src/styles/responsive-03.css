@@ -1,4 +1,4 @@
-@media (min-width: 0) {
+@media (max-width: 639px) {
   .page--admin {
     padding-right: 0.75rem;
     padding-left: 0.75rem;

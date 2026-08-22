@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { NormalizedDistribution, SquadProduct } from '@/api/types'
-import { featuredCatalogSquadIds } from './catalogFeaturedSquads'
+import { catalogSquadPresentation } from './catalogSquadPresentation'
 
 function squad(id: string, remnaSquadUuid: string, stockRemaining: number | null = null): SquadProduct {
   return {
@@ -41,15 +41,20 @@ const distributions: readonly NormalizedDistribution[] = [{
   ],
 }]
 
-describe('featuredCatalogSquadIds', () => {
-  it('marks every tied leader after excluding included and full squads', () => {
-    expect(featuredCatalogSquadIds(squads, ['included'], distributions, 'combo-1'))
-      .toEqual(['featured-a', 'featured-b'])
+describe('catalogSquadPresentation', () => {
+  it('sorts selectable squads by composition and moves included and full squads to the bottom', () => {
+    expect(catalogSquadPresentation(squads, ['included'], distributions, 'combo-1'))
+      .toEqual({
+        featuredIds: ['featured-a', 'featured-b'],
+        orderedIds: ['featured-a', 'featured-b', 'other', 'included', 'full'],
+      })
   })
 
-  it('returns no badge without matching positive composition data', () => {
-    expect(featuredCatalogSquadIds(squads, [], distributions, 'missing')).toEqual([])
-    expect(featuredCatalogSquadIds(squads, [], [], 'combo-1')).toEqual([])
-    expect(featuredCatalogSquadIds(squads, [], [{ id: 'combo-1', label: 'Core', segments: [] }], 'combo-1')).toEqual([])
+  it('keeps selectable and bottom groups stable without matching composition data', () => {
+    expect(catalogSquadPresentation(squads, ['included'], distributions, 'missing'))
+      .toEqual({
+        featuredIds: [],
+        orderedIds: ['featured-a', 'featured-b', 'other', 'included', 'full'],
+      })
   })
 })

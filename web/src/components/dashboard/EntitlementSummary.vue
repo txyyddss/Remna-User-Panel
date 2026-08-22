@@ -87,6 +87,7 @@ function goToCatalog(): void {
         <p>{{ $t('dashboard.choosePlan') }}</p>
       </div>
       <UButton
+        class="home-ride__catalog"
         color="neutral"
         variant="outline"
         trailing-icon="i-ph-arrow-right"

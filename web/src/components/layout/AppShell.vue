@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, useTemplateRef, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
 import { useI18n } from '@/i18n'
@@ -68,6 +68,22 @@ function isActive(to: string): boolean {
 <template>
   <div class="app-frame" :class="{ 'app-frame--fullscreen': isFullscreen }">
     <a class="skip-link" href="#main-content">{{ $t('nav.skip') }}</a>
+    <aside class="side-rail" :aria-label="$t('nav.primary')">
+      <nav class="side-rail__nav">
+        <RouterLink
+          v-for="item in mobileItems"
+          :key="item.to"
+          :to="item.to"
+          class="nav-item"
+          :class="{ 'nav-item--active': isActive(item.to) }"
+          :aria-current="isActive(item.to) ? 'page' : undefined"
+          data-haptic="navigate"
+        >
+          <UIcon :name="item.icon" />
+          <span>{{ $t(item.labelKey) }}</span>
+        </RouterLink>
+      </nav>
+    </aside>
     <div class="app-frame__content">
       <div v-if="isFullscreen" class="app-greeting" role="status">
         <strong>{{ greetingName }}</strong>

@@ -27,17 +27,18 @@ const squad: SquadProduct = {
 }
 function mountStep(featuredIds: string[] = []) {
   return shallowMount(CatalogSquadStep, {
-    props: { squads: [squad], selectedIds: [], includedIds: [], featuredIds },
+    props: { squads: [squad], selectedIds: [], includedIds: [], featuredIds, orderedIds: [squad.id] },
   })
 }
 
 describe('CatalogSquadStep', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('hands preloaded featured leaders to the selector', () => {
+  it('hands preloaded composition presentation to the selector', () => {
     const wrapper = mountStep([squad.id])
 
     expect(wrapper.getComponent(SquadSelector).props('featuredIds')).toEqual([squad.id])
+    expect(wrapper.getComponent(SquadSelector).props('orderedIds')).toEqual([squad.id])
   })
 
   it('opens the shared modal for the exact catalog node', async () => {

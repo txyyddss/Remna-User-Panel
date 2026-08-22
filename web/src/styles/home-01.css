@@ -62,6 +62,13 @@
   grid-column: 1 / -1;
 }
 
+.home-balance__button,
+.home-subscription__connections,
+.home-subscription__revoke,
+.home-ride__catalog {
+  min-height: 44px;
+}
+
 .home-subscription__lead {
   margin: 0 0 0.85rem;
   color: var(--text-muted);
@@ -185,4 +192,8 @@
 
 .home-usage--danger .home-usage__meter span {
   background: var(--danger);
+}
+
+@media (max-width: 360px) {
+  .home-subscription__actions { grid-template-columns: 1fr; }
 }

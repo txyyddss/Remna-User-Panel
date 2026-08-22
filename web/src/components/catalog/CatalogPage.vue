@@ -16,7 +16,7 @@ import CatalogFlowProgress from './CatalogFlowProgress.vue'
 import CatalogSquadStep from './CatalogSquadStep.vue'
 import ComboOption from './ComboOption.vue'
 import SquadActivationDialog from './SquadActivationDialog.vue'
-import { useCatalogFeaturedSquads } from './useCatalogFeaturedSquads'
+import { useCatalogSquadPresentation } from './useCatalogSquadPresentation'
 
 const activeStep = shallowRef(1)
 const sessionStore = useSessionStore()
@@ -52,7 +52,7 @@ const {
   discardCoupon,
   confirmPurchase,
 } = useCatalog()
-const featuredSquadIds = useCatalogFeaturedSquads(visibleSquads, includedSquadIds, selectedComboId)
+const { featuredIds: featuredSquadIds, orderedIds: orderedSquadIds } = useCatalogSquadPresentation(visibleSquads, includedSquadIds, selectedComboId)
 
 async function restoreStepQuote(): Promise<void> {
   if (![3, 4].includes(activeStep.value) || loading.value || quoting.value || quoteUsable.value || purchase.value || !selectedCombo.value) return
@@ -174,7 +174,7 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
               </div>
               <div v-else class="empty-inline"><div><h3>{{ $t('catalog.noCombos') }}</h3><p>{{ $t('catalog.noCombosHint') }}</p></div><UButton color="neutral" variant="outline" :label="$t('common.refresh')" data-haptic="refresh" @click="load" /></div>
             </div>
-            <CatalogSquadStep v-else-if="activeStep === 2" :squads="visibleSquads" :selected-ids="selectedSquadIds" :included-ids="includedSquadIds" :featured-ids="featuredSquadIds" @toggle="toggleSquad" />
+            <CatalogSquadStep v-else-if="activeStep === 2" :squads="visibleSquads" :selected-ids="selectedSquadIds" :included-ids="includedSquadIds" :featured-ids="featuredSquadIds" :ordered-ids="orderedSquadIds" @toggle="toggleSquad" />
             <CatalogCouponStep v-else-if="activeStep === 3" v-model:coupon-grant-id="selectedCouponGrantId" :coupons="eligibleCoupons" :eligible-ids="eligibleCoupons.map((grant) => grant.id)" :discarding="couponDiscarding" :discard-coupon="discardCoupon" :quoting="quoting" @redeemed="handleCouponRedeemed" />
             <CatalogCheckout v-else-if="activeStep === 4" :combo="selectedCombo" :squads="selectedSquads" :coupon="selectedCoupon" :quote="quote" :quoting="quoting" :error="error" :purchasing="purchasing || activationPrompting" :needs-balance="needsBalance" @back="goBack" @confirm="handlePurchase" />
           </section>

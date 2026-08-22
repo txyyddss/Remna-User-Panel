@@ -62,4 +62,39 @@ describe('BalancePaymentConfiguration', () => {
     expect(paymentSubmit.text()).toContain('Proceed to payment')
     expect(paymentSubmit.text()).not.toContain('Continue')
   })
+
+  it('keeps the BEPUSDT channel visible when order creation is rejected', async () => {
+    const wrapper = mount(BalancePaymentConfiguration, {
+      props: {
+        amount: '20.00',
+        methods,
+        selectedMethodId: 'bepusdt:profile-two:usdt.trc20',
+        stage: 'creating',
+        error: null,
+        amountValid: true,
+        canCreate: false,
+        canReissue: false,
+      },
+      global: {
+        stubs: {
+          TxbAmountField: true,
+          UAlert: { props: ['description'], template: '<div>{{ description }}</div>' },
+          UFormField: { template: '<div><slot /></div>' },
+          UInput: true,
+        },
+      },
+    })
+
+    expect(wrapper.get('[data-test="payment-submit"]').text()).toContain('Creating order')
+    await wrapper.setProps({
+      stage: 'configure',
+      error: 'BEPUSDT rejected the order',
+      canCreate: true,
+      canReissue: true,
+    })
+
+    expect(wrapper.get('[data-test="payment-submit"]').text()).toContain('Reissue payment')
+    expect(wrapper.text()).toContain('BEPUSDT rejected the order')
+    expect(wrapper.find('[data-test="choose-channel"]').exists()).toBe(false)
+  })
 })

@@ -134,8 +134,13 @@ async function redeemCoupon(): Promise<void> {
   }
 }
 
-watch(() => props.stage, (stage) => {
-  if (stage === 'configure') paymentStep.value = 'provider'
+// Preserve the selected channel across create progress, remounts, and rejected creates.
+watch(() => props.stage, (stage, previousStage) => {
+  if (stage === 'creating') {
+    paymentStep.value = 'channel'
+    return
+  }
+  if (stage === 'configure' && previousStage !== 'creating') paymentStep.value = 'provider'
 }, { immediate: true })
 </script>
 

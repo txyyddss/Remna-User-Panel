@@ -80,7 +80,7 @@ func TestCreateTransaction(t *testing.T) {
 			t.Errorf("signature = %q", values["signature"])
 		}
 		writer.Header().Set("Content-Type", "application/json")
-		_, _ = writer.Write([]byte(`{"status_code":"200","message":"success","data":{"fiat":"USD","trade_id":"trade-1","order_id":"order-1","amount":28.88,"actual_amount":"4.25","status":"1","token":"TAddress","expiration_time":"1200","payment_url":"https://pay.example/checkout/trade-1"}}`))
+		_, _ = writer.Write([]byte(`{"status_code":"200","message":"success","data":{"fiat":"USD","trade_id":"trade-1","order_id":"order-1","amount":28.88,"actual_amount":"4.25","status":"1","token":"TAddress","expiration_time":"1200"}}`))
 	}))
 	defer server.Close()
 	client, err := NewClient(server.URL, token, WithHTTPClient(server.Client()))
@@ -227,7 +227,6 @@ func TestCreateTransactionRejectsMismatchedSuccessData(t *testing.T) {
 		{name: "fiat amount", data: `{"fiat":"USD","trade_id":"trade-1","order_id":"order-1","amount":"28.89","actual_amount":"4.25","status":1,"token":"TAddress","expiration_time":1200,"payment_url":"https://pay.example/order"}`},
 		{name: "crypto amount", data: `{"fiat":"USD","trade_id":"trade-1","order_id":"order-1","amount":"28.88","actual_amount":"0","status":1,"token":"TAddress","expiration_time":1200,"payment_url":"https://pay.example/order"}`},
 		{name: "expiration", data: `{"fiat":"USD","trade_id":"trade-1","order_id":"order-1","amount":"28.88","actual_amount":"4.25","status":1,"token":"TAddress","expiration_time":0,"payment_url":"https://pay.example/order"}`},
-		{name: "payment URL", data: `{"fiat":"USD","trade_id":"trade-1","order_id":"order-1","amount":"28.88","actual_amount":"4.25","status":1,"token":"TAddress","expiration_time":1200,"payment_url":"javascript:alert(1)"}`},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

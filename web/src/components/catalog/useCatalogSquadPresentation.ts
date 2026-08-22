@@ -2,13 +2,13 @@ import { computed, onScopeDispose, shallowRef, type ComputedRef, type Ref } from
 
 import { api } from '@/api/client'
 import type { NormalizedDistribution, SquadProduct } from '@/api/types'
-import { featuredCatalogSquadIds } from './catalogFeaturedSquads'
+import { catalogSquadPresentation } from './catalogSquadPresentation'
 
-export function useCatalogFeaturedSquads(
+export function useCatalogSquadPresentation(
   squads: ComputedRef<readonly SquadProduct[]>,
   includedIds: ComputedRef<readonly string[]>,
   comboId: Ref<string | null>,
-): ComputedRef<string[]> {
+) {
   const composition = shallowRef<readonly NormalizedDistribution[]>([])
   let disposed = false
 
@@ -16,14 +16,19 @@ export function useCatalogFeaturedSquads(
     .then((snapshot) => {
       if (!disposed) composition.value = snapshot.database.squadByCombo
     })
-    .catch(() => { /* Featured analytics must not block catalog browsing. */ })
+    .catch(() => { /* Composition ranking must not block catalog browsing. */ })
 
   onScopeDispose(() => { disposed = true })
 
-  return computed(() => featuredCatalogSquadIds(
+  const presentation = computed(() => catalogSquadPresentation(
     squads.value,
     includedIds.value,
     composition.value,
     comboId.value,
   ))
+
+  return {
+    featuredIds: computed(() => presentation.value.featuredIds),
+    orderedIds: computed(() => presentation.value.orderedIds),
+  }
 }

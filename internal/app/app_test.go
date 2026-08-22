@@ -47,7 +47,7 @@ func TestMapBEPusdtCheckoutKeepsOnlySettlementFields(t *testing.T) {
 	createdAt := time.Date(2026, time.August, 10, 14, 0, 0, 0, time.UTC)
 	checkout := mapBEPusdtCheckout(&bepusdt.Transaction{
 		Fiat: "USD", TradeID: "trade-1", OrderID: "order-1", Amount: "1.00", ActualAmount: "0.95",
-		Status: 1, Token: "TReceiveAddress", ExpirationTime: 1200, PaymentURL: "https://pay.example/order-1",
+		Status: 1, Token: "TReceiveAddress", ExpirationTime: 1200,
 	}, "1.00", "usdt.trc20", createdAt)
 
 	if checkout.TradeID == nil || *checkout.TradeID != "trade-1" ||

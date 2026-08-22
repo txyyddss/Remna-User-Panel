@@ -13,7 +13,7 @@
 - `session-01.css` styles the non-blocking CSS car animation used by the authentication loading screen.
 - `dashboard-01.css` styles dashboard summaries and account details.
 - `dashboard-02.css` styles dashboard lists, actions, and secondary states.
-- `home-01.css` styles the compact balance, subscription, and traffic surfaces on Home.
+- `home-01.css` styles the compact balance, 44px Home actions, narrow-phone subscription layout, and traffic surfaces.
 - `home-02.css` styles traffic details, ride facts, and Around TX links on Home.
 - `home-03.css` styles the compact renewal term slider and separated quote total/date block.
 - `home-04.css` styles the accessible Your ride rollover flip card, its concise current-term detail, size-safe face swap, and reduced-motion fallback.
@@ -37,7 +37,7 @@
 - `admin-05.css` styles active IP blocks and mobile unblock controls in aggregate user profiles.
 - `motion-01.css` defines short transitions and state motion.
 - `responsive-01.css` owns shared motion keyframes used by compact surfaces.
-- `responsive-02.css` records the intentional single phone-first shell policy across viewports.
-- `responsive-03.css` applies compact administrative rows at every viewport and owns reduced-motion/transparency fallbacks.
+- `responsive-02.css` expands the phone-first shell into a sticky-rail desktop layout and restores wide route, dialog, catalog, settings, and administrative list arrangements.
+- `responsive-03.css` applies compact administrative rows below 640px and owns reduced-motion/transparency fallbacks.
 
 The system is dark-only, flat, gradient-free, and uses borders instead of decorative shadows.
