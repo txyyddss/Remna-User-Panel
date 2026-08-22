@@ -64,7 +64,10 @@
     padding: 2.2rem clamp(1.5rem, 3vw, 3rem) calc(3rem + var(--shell-safe-bottom));
   }
 
-  .page--home { max-width: 760px; }
+  .page-header h1,
+  .error-state h1 { font-size: 2.75rem; }
+
+  .page--home { max-width: 1180px; }
   .page--connections { max-width: 54rem; }
   .page--statistics { max-width: 1080px; }
   .page--admin { max-width: 1320px; }
@@ -126,6 +129,12 @@
 @media (min-width: 1180px) {
   .app-frame {
     grid-template-columns: 250px minmax(0, 1fr);
+  }
+
+  .home-layout {
+    grid-template-columns: minmax(17rem, 0.72fr) minmax(0, 1.28fr);
+    align-items: start;
+    gap: 1.2rem;
   }
 
   .side-rail {

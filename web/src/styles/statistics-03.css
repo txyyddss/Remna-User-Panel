@@ -1,10 +1,10 @@
 .statistics-node__geocheck { width: 44px; height: 44px; margin: -0.25rem -0.35rem -0.25rem 0; }
 
 .statistics-geocheck-modal {
-  --geocheck-safe-top: max(var(--tg-safe-area-inset-top, 0px), var(--tg-content-safe-area-inset-top, 0px), env(safe-area-inset-top, 0px));
-  --geocheck-safe-bottom: max(var(--tg-safe-area-inset-bottom, 0px), var(--tg-content-safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px));
-  --geocheck-safe-left: max(var(--tg-safe-area-inset-left, 0px), var(--tg-content-safe-area-inset-left, 0px), env(safe-area-inset-left, 0px));
-  --geocheck-safe-right: max(var(--tg-safe-area-inset-right, 0px), var(--tg-content-safe-area-inset-right, 0px), env(safe-area-inset-right, 0px));
+  --geocheck-safe-top: var(--app-safe-top);
+  --geocheck-safe-bottom: var(--app-safe-bottom);
+  --geocheck-safe-left: var(--app-safe-left);
+  --geocheck-safe-right: var(--app-safe-right);
   width: min(58rem, calc(100vw - 1.5rem - var(--geocheck-safe-left) - var(--geocheck-safe-right)));
   max-height: calc(var(--tg-viewport-stable-height, 100dvh) - var(--geocheck-safe-top) - var(--geocheck-safe-bottom) - 1rem);
 }

@@ -53,5 +53,5 @@ function goToBalance(): void {
 .catalog-payment-step { display: grid; gap: 0.85rem; }
 .catalog-payment-total { display: grid; gap: 0.25rem; padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface-raised); }
 .catalog-payment-total > span, .catalog-payment-total small { color: var(--text-faint); font-size: 0.72rem; }
-.catalog-payment-total strong { color: var(--accent); font-family: var(--font-mono); font-size: 1.65rem; letter-spacing: -0.04em; }
+.catalog-payment-total strong { color: var(--accent); font-family: var(--font-mono); font-size: 1.65rem; letter-spacing: 0; }
 </style>

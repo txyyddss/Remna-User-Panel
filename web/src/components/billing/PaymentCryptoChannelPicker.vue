@@ -75,7 +75,7 @@ function chooseCurrency(currency: 'USDT' | 'USDC'): void {
         <span class="provider-option__icon">
           <img :src="paymentNetworkLogo(item.network ?? '', item.cryptoCurrency!)" alt="" width="28" height="28" />
         </span>
-        <span><strong>{{ item.networkName || item.label }}</strong><small>{{ item.network }}</small></span>
+        <span><strong>{{ item.networkName || item.label }}</strong></span>
         <UIcon v-if="selectedMethodId === item.value" class="provider-option__check" name="i-ph-check-circle-fill" aria-hidden="true" />
       </UButton>
     </div>

@@ -68,48 +68,51 @@ function consumeReissueRequest(): void {
       </div>
     </template>
     <template v-else-if="dashboard">
-      <div class="home-overview">
-        <BalanceHero
-          :balance="dashboard.balance"
-          :open-top-up="topUpRequested"
-          :reissue-order-id="reissueOrderId"
-          @paid="load({ quiet: true })"
-          @top-up-request-consumed="consumeTopUpRequest"
-          @reissue-request-consumed="consumeReissueRequest"
-        />
-        <InlineNotice v-if="catalogBlocked" tone="warning">{{ $t('home.autoRenewalCatalogBlocked') }}</InlineNotice>
-        <InlineNotice v-if="autoRenewalFailureMessage" tone="warning" :title="$t('home.autoRenewalFailureTitle')">{{ autoRenewalFailureMessage }}</InlineNotice>
-      </div>
-      <div class="home-stack">
-        <SubscriptionPanel
-          :subscription-url="dashboard.subscriptionUrl"
-          :revoking="revoking"
-          :revoke-blocked="revokeBlocked"
-          @revoke="confirmRevoke"
-        />
-        <InlineNotice v-if="revokeReceipt?.status === 'succeeded'" tone="success" :title="$t('dashboard.linkReplaced')">{{ $t('dashboard.previousLinkInvalid') }}</InlineNotice>
-        <InlineNotice v-if="revokeReceipt?.status === 'succeeded' && error" tone="warning">{{ error }}</InlineNotice>
-        <OperationStatusNotice v-if="revokeReceipt?.status !== 'succeeded'" :receipt="revokeReceipt" :error="revokeError ?? error" :checking="revokeChecking" @refresh="refreshRevoke" />
-        <InlineNotice v-if="queuedCancellationNotice" tone="success">{{ $t('home.queuedCancelled') }}</InlineNotice>
-        <UsagePanel
-          v-if="dashboard.statistics"
-          :statistics="dashboard.statistics"
-          :ratio="usageRatio"
-          :stale="dashboard.statisticsStale"
-          :fetched-at="dashboard.fetchedAt"
-          :catalog-nodes="catalogNodes"
-        />
-        <section v-else class="section-block home-usage home-usage--empty empty-inline">
-          <div><h3>{{ $t('dashboard.noStatistics') }}</h3><p>{{ $t('dashboard.statisticsPending') }}</p></div>
-        </section>
-        <EntitlementSummary
-          :active="dashboard.activePurchase"
-          :queued="dashboard.queuedPurchase"
-          :squad-names="activeSquadNames"
-          @queued-cancelled="handleQueuedCancelled"
-          @auto-renewal-changed="handleAutoRenewalChanged"
-        />
-        <ComingSoonLinks />
+      <h1 class="sr-only">{{ $t('nav.home') }}</h1>
+      <div class="home-layout">
+        <div class="home-overview">
+          <BalanceHero
+            :balance="dashboard.balance"
+            :open-top-up="topUpRequested"
+            :reissue-order-id="reissueOrderId"
+            @paid="load({ quiet: true })"
+            @top-up-request-consumed="consumeTopUpRequest"
+            @reissue-request-consumed="consumeReissueRequest"
+          />
+          <InlineNotice v-if="catalogBlocked" tone="warning">{{ $t('home.autoRenewalCatalogBlocked') }}</InlineNotice>
+          <InlineNotice v-if="autoRenewalFailureMessage" tone="warning" :title="$t('home.autoRenewalFailureTitle')">{{ autoRenewalFailureMessage }}</InlineNotice>
+        </div>
+        <div class="home-stack">
+          <SubscriptionPanel
+            :subscription-url="dashboard.subscriptionUrl"
+            :revoking="revoking"
+            :revoke-blocked="revokeBlocked"
+            @revoke="confirmRevoke"
+          />
+          <InlineNotice v-if="revokeReceipt?.status === 'succeeded'" tone="success" :title="$t('dashboard.linkReplaced')">{{ $t('dashboard.previousLinkInvalid') }}</InlineNotice>
+          <InlineNotice v-if="revokeReceipt?.status === 'succeeded' && error" tone="warning">{{ error }}</InlineNotice>
+          <OperationStatusNotice v-if="revokeReceipt?.status !== 'succeeded'" :receipt="revokeReceipt" :error="revokeError ?? error" :checking="revokeChecking" @refresh="refreshRevoke" />
+          <InlineNotice v-if="queuedCancellationNotice" tone="success">{{ $t('home.queuedCancelled') }}</InlineNotice>
+          <UsagePanel
+            v-if="dashboard.statistics"
+            :statistics="dashboard.statistics"
+            :ratio="usageRatio"
+            :stale="dashboard.statisticsStale"
+            :fetched-at="dashboard.fetchedAt"
+            :catalog-nodes="catalogNodes"
+          />
+          <section v-else class="section-block home-usage home-usage--empty empty-inline">
+            <div><h3>{{ $t('dashboard.noStatistics') }}</h3><p>{{ $t('dashboard.statisticsPending') }}</p></div>
+          </section>
+          <EntitlementSummary
+            :active="dashboard.activePurchase"
+            :queued="dashboard.queuedPurchase"
+            :squad-names="activeSquadNames"
+            @queued-cancelled="handleQueuedCancelled"
+            @auto-renewal-changed="handleAutoRenewalChanged"
+          />
+          <ComingSoonLinks />
+        </div>
       </div>
     </template>
     <div v-else class="error-state">

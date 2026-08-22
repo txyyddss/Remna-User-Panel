@@ -88,7 +88,7 @@ export default defineConfig({
         icons: uiIconRegistry,
         button: {
           slots: {
-            base: 'justify-center text-center',
+            base: 'min-h-11 justify-center text-center',
           },
           variants: {
             block: {
@@ -96,6 +96,33 @@ export default defineConfig({
                 trailingIcon: 'ms-0',
               },
             },
+            square: { true: { base: 'min-w-11' } },
+          },
+        },
+        input: { slots: { base: 'min-h-11' } },
+        inputNumber: { slots: { base: 'min-h-11' } },
+        select: { slots: { base: 'min-h-11', item: 'min-h-11 items-center' } },
+        selectMenu: { slots: { base: 'min-h-11', item: 'min-h-11 items-center' } },
+        modal: {
+          slots: {
+            overlay: 'tg-modal-overlay', content: 'tg-modal',
+            header: 'tg-overlay-header', wrapper: 'tg-overlay-copy', footer: 'tg-overlay-actions',
+          },
+          variants: {
+            fullscreen: { true: { content: 'tg-modal--fullscreen' }, false: { content: 'tg-modal--windowed' } },
+            scrollable: { true: { overlay: 'tg-modal-overlay--scrollable', content: 'tg-modal--scrollable' } },
+          },
+        },
+        drawer: {
+          slots: {
+            content: 'tg-drawer', container: 'tg-drawer__container',
+            wrapper: 'tg-overlay-copy', footer: 'tg-overlay-actions tg-drawer__footer',
+          },
+        },
+        slideover: {
+          slots: {
+            content: 'tg-slideover', header: 'tg-overlay-header',
+            wrapper: 'tg-overlay-copy', footer: 'tg-overlay-actions',
           },
         },
       },

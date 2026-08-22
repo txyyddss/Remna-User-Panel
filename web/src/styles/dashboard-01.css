@@ -67,10 +67,10 @@
 .balance-hero h1 {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: clamp(2.3rem, 10vw, 4.5rem);
+  font-size: 2.5rem;
   font-weight: 600;
   line-height: 1;
-  letter-spacing: -0.065em;
+  letter-spacing: 0;
 }
 
 .balance-hero__actions {

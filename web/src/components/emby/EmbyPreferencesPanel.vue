@@ -77,4 +77,5 @@ function savePassword(): void {
 .emby-account-summary h2 { font-size: 1.15rem; }
 .emby-account-summary p { margin-top: 0.25rem; color: var(--text-muted); font-size: 0.72rem; }
 .emby-account-summary > .field-error { grid-column: 1 / -1; }
+@media (min-width: 1180px) { .emby-account-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } .emby-account-summary { grid-column: 1 / -1; } }
 </style>

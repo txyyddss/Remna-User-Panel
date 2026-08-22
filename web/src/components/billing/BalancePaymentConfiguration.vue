@@ -55,7 +55,7 @@ const providerItems = computed<PaymentProviderOption[]>(() => {
     items.push({
       label: method.providerName || t(`payment.providers.${method.provider}`),
       value,
-      description: available ? t(`payment.providers.${method.provider}`) : t('payment.rateUnavailable'),
+      description: available ? '' : t('payment.rateUnavailable'),
       icon: providerIcon(method.provider),
       available,
     })
@@ -65,7 +65,7 @@ const providerItems = computed<PaymentProviderOption[]>(() => {
     items.push({
       label: t('payment.providers.coupon'),
       value: 'coupon',
-      description: t('payment.couponHint'),
+      description: coupon.available ? '' : t('payment.rateUnavailable'),
       icon: providerIcon('coupon'),
       available: coupon.available,
     })

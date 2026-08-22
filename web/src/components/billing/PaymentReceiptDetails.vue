@@ -143,28 +143,28 @@ function localized(key: string, fallback: string): string {
 .payment-receipt__heading { min-width: 0; }
 .payment-receipt__eyebrow { margin: 0 0 0.4rem; color: var(--accent); font-family: var(--font-mono); font-size: 0.66rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
 .payment-receipt__title-row { align-items: baseline; flex-wrap: wrap; }
-.payment-receipt__title-row h1, .payment-receipt__section-heading h2 { margin: 0; color: var(--text); letter-spacing: -0.035em; }
-.payment-receipt__title-row h1 { font-size: clamp(1.35rem, 5vw, 1.8rem); }
+.payment-receipt__title-row h1, .payment-receipt__section-heading h2 { margin: 0; color: var(--text); letter-spacing: 0; }
+.payment-receipt__title-row h1 { font-size: 1.6rem; }
 .payment-receipt__section-heading h2 { font-size: 1rem; }
 .payment-receipt__avatar { flex: 0 0 auto; }
 .payment-receipt__alert :deep([data-slot="description"]) { line-height: 1.5; }
 .payment-receipt__amount { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.1rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--accent-soft); }
 .payment-receipt__amount > div { display: grid; gap: 0.35rem; min-width: 0; }
 .payment-receipt__label, .payment-receipt__secondary, .payment-receipt__field dt, .payment-receipt__settled span { color: var(--text-muted); font-size: 0.72rem; }
-.payment-receipt__amount strong { color: var(--accent-strong); font-family: var(--font-mono); font-size: clamp(1.65rem, 7vw, 2.35rem); letter-spacing: -0.04em; line-height: 1; }
-.payment-receipt__secondary { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.payment-receipt__amount strong { color: var(--accent-strong); font-family: var(--font-mono); font-size: 2rem; letter-spacing: 0; line-height: 1.1; overflow-wrap: anywhere; }
+.payment-receipt__secondary { line-height: 1.4; overflow-wrap: anywhere; }
 .payment-receipt__amount-icon, .payment-receipt__section-icon { color: var(--accent); font-size: 1.35rem; }
 .payment-receipt__section-icon { color: var(--text-faint); }
 .payment-receipt__fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem; margin: 0; }
 .payment-receipt__field { min-width: 0; display: grid; gap: 0.3rem; padding: 0.7rem; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface-raised); }
 .payment-receipt__field dt { display: flex; align-items: center; gap: 0.35rem; }
 .payment-receipt__field dt :deep(svg) { color: var(--text-faint); font-size: 0.85rem; }
-.payment-receipt__field dd { overflow: hidden; margin: 0; color: var(--text); font-size: 0.78rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.payment-receipt__field dd { margin: 0; color: var(--text); font-size: 0.78rem; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
 .payment-receipt__value--mono { font-family: var(--font-mono); font-size: 0.7rem !important; }
 .payment-receipt__settled { padding-top: 0.8rem; border-top: 1px solid var(--line); }
-.payment-receipt__settled strong { color: var(--text); font-family: var(--font-mono); font-size: 0.8rem; }
+.payment-receipt__settled strong { color: var(--text); font-family: var(--font-mono); font-size: 0.8rem; text-align: end; overflow-wrap: anywhere; }
 .payment-receipt__loading { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem; }
 .payment-receipt__skeleton { height: 3.5rem; border-radius: var(--radius-control); }
 .payment-receipt__actions, .payment-receipt__refreshing { padding-top: 0.15rem; }
-@media (max-width: 420px) { .payment-receipt__fields, .payment-receipt__loading { grid-template-columns: 1fr; } }
+@media (max-width: 420px) { .payment-receipt__header { align-items: start; } .payment-receipt__fields, .payment-receipt__loading { grid-template-columns: 1fr; } }
 </style>

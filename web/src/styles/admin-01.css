@@ -6,56 +6,6 @@
   margin-bottom: 1.35rem;
 }
 
-.admin-tabs {
-  display: flex;
-  gap: 0.4rem;
-  overflow-x: auto;
-  margin: 0 -1rem 0.9rem;
-  padding: 0 1rem 0.45rem;
-  scrollbar-width: none;
-}
-
-.admin-tabs__group {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.admin-tabs__label {
-  padding: 0 0.25rem;
-  color: var(--text-faint);
-  font-family: var(--font-mono);
-  font-size: 0.59rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.admin-tabs::-webkit-scrollbar {
-  display: none;
-}
-
-.admin-tab {
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  flex: 0 0 auto;
-  padding: 0.55rem 0.75rem;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-control);
-  color: var(--text-muted);
-  background: var(--surface);
-  font-size: 0.76rem;
-  font-weight: 700;
-}
-
-.admin-tab--active {
-  color: var(--accent-ink);
-  border-color: var(--accent);
-  background: var(--accent);
-}
-
 .admin-panel {
   overflow: hidden;
 }
@@ -78,7 +28,7 @@
 
 .admin-panel__heading h2 {
   font-size: 1.25rem;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
 }
 
 .admin-panel__heading p,

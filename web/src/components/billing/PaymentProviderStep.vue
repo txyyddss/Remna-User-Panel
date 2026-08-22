@@ -38,7 +38,7 @@ function choose(value: string): void {
       @click="choose(item.value)"
     >
       <span class="provider-option__icon"><UIcon :name="item.icon" aria-hidden="true" /></span>
-      <span><strong>{{ item.label }}</strong><small>{{ item.description }}</small></span>
+      <span><strong>{{ item.label }}</strong><small v-if="item.description">{{ item.description }}</small></span>
       <UIcon v-if="selectedValue === item.value" class="provider-option__check" name="i-ph-check-circle-fill" aria-hidden="true" />
     </UButton>
   </fieldset>

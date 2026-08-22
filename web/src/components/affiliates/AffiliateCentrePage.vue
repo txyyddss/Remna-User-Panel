@@ -14,7 +14,7 @@ useTelegramBackButton(computed(() => true), async () => { await router.push('/ho
 </script>
 
 <template>
-  <main class="page affiliate-page">
+  <div class="page affiliate-page">
     <header class="affiliate-heading">
       <p class="eyebrow">{{ $t('dashboard.aroundTx') }}</p>
       <h1>{{ $t('affiliates.title') }}</h1>
@@ -36,5 +36,5 @@ useTelegramBackButton(computed(() => true), async () => { await router.push('/ho
       <h2>{{ $t('affiliates.unavailable') }}</h2><p>{{ state.error.value }}</p>
       <UButton icon="i-ph-arrows-clockwise" :label="$t('common.tryAgain')" data-haptic="retry" @click="state.load" />
     </div>
-  </main>
+  </div>
 </template>

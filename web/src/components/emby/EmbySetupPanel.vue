@@ -46,11 +46,12 @@ function submit(): void {
       <USelect v-model="draft.maxParentalRating" :items="ratingItems" value-key="value" :disabled="blocked" />
     </UFormField>
     <EmbyLibraryPicker :libraries="libraries" :selected-ids="draft.disabledLibraryIds" :disabled="blocked || busy" @toggle="toggleLibrary" />
-    <UAlert color="success" variant="soft" icon="i-ph-shield-check" :description="$t('emby.safetyControls')" />
-    <UButton type="submit" :disabled="blocked || busy || draft.password.length < 8" :loading="busy" :label="busy ? $t('emby.startingSetup') : $t('emby.payAndCreate', { amount: formatMoney(price) })" />
+    <UAlert class="emby-form__notice" color="success" variant="soft" icon="i-ph-shield-check" :description="$t('emby.safetyControls')" />
+    <UButton class="emby-form__submit" type="submit" :disabled="blocked || busy || draft.password.length < 8" :loading="busy" :label="busy ? $t('emby.startingSetup') : $t('emby.payAndCreate', { amount: formatMoney(price) })" />
   </form>
 </template>
 
 <style scoped>
 .emby-form { display: grid; gap: 1rem; }
+@media (min-width: 900px) { .emby-form { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } .emby-form > .section-heading, .emby-form > .emby-library-picker, .emby-form__notice, .emby-form__submit { grid-column: 1 / -1; } .emby-form__submit { justify-self: start; } }
 </style>

@@ -90,7 +90,7 @@ function resetLabel(): string {
 .catalog-confirmation__icon { display: inline-flex; align-items: center; justify-content: center; width: 4.5rem; height: 4.5rem; border: 1px solid var(--line-strong); border-radius: 1.5rem; color: var(--accent); background: var(--accent-soft); font-size: 2.75rem; }
 .catalog-confirmation__copy { display: grid; gap: 0.45rem; }
 .catalog-confirmation__copy h1, .catalog-confirmation__copy p { margin: 0; }
-.catalog-confirmation__copy h1 { font-size: clamp(1.45rem, 5vw, 2rem); letter-spacing: -0.03em; }
+.catalog-confirmation__copy h1 { font-size: 1.75rem; letter-spacing: 0; }
 .catalog-confirmation__copy p:last-child { color: var(--text-muted); font-size: 0.82rem; line-height: 1.5; }
 .catalog-confirmation__eyebrow { color: var(--accent); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .catalog-confirmation__summary { display: grid; gap: 0.65rem; padding: 0.9rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface-raised); }

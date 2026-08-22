@@ -31,9 +31,9 @@
 
 .auth-screen__copy h1 {
   margin: 0;
-  font-size: clamp(2rem, 9vw, 3.4rem);
+  font-size: 2rem;
   line-height: 1;
-  letter-spacing: -0.055em;
+  letter-spacing: 0;
 }
 
 .auth-screen__copy > p:last-child {
@@ -70,10 +70,10 @@
 .intro-sequence__center h1 {
   max-width: 740px;
   margin: 0;
-  font-size: clamp(2.25rem, 10vw, 5.5rem);
+  font-size: 2.25rem;
   font-weight: 650;
   line-height: 0.98;
-  letter-spacing: -0.065em;
+  letter-spacing: 0;
 }
 
 .intro-sequence__footer,
@@ -136,9 +136,9 @@
 
 .onboarding-panel__header h1 {
   margin: 0;
-  font-size: clamp(2.15rem, 9vw, 4.2rem);
+  font-size: 2.15rem;
   line-height: 0.97;
-  letter-spacing: -0.06em;
+  letter-spacing: 0;
 }
 
 .onboarding-panel__header > p:last-child {
@@ -152,4 +152,10 @@
 .invite-list {
   display: grid;
   gap: 0.65rem;
+}
+
+@media (min-width: 720px) {
+  .auth-screen__copy h1 { font-size: 2.75rem; }
+  .intro-sequence__center h1 { font-size: 4rem; }
+  .onboarding-panel__header h1 { font-size: 3.25rem; }
 }

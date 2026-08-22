@@ -70,7 +70,7 @@
 
 .database-record-editor-drawer [data-slot="footer"] {
   flex: 0 0 auto;
-  padding: 0.75rem 1rem max(0.75rem, var(--tg-content-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  padding: 0.75rem 1rem;
   border-top: 1px solid var(--line);
   background: var(--surface-raised);
 }

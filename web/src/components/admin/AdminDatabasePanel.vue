@@ -108,7 +108,7 @@ async function chooseTable(name: string): Promise<void> { closeEditor(); search.
       <div class="database-layout">
         <nav v-auto-animate class="database-tables" :aria-label="t('adminDatabase.tables')">
           <UInput v-model="tableSearch" icon="i-ph-magnifying-glass" :placeholder="t('adminDatabase.tableSearch')" :aria-label="t('adminDatabase.tableSearch')" />
-          <UButton v-for="table in visibleTables" :key="table.name" class="database-table-button" :class="{ 'database-table-button--active': selectedTableName === table.name }" color="neutral" variant="ghost" icon="i-ph-database" @click="chooseTable(table.name)"><span>{{ table.name }}</span><small>{{ t('adminDatabase.highRisk') }}</small></UButton>
+          <UButton v-for="table in visibleTables" :key="table.name" class="database-table-button" :class="{ 'database-table-button--active': selectedTableName === table.name }" color="neutral" variant="ghost" icon="i-ph-database" :aria-pressed="selectedTableName === table.name" @click="chooseTable(table.name)"><span>{{ table.name }}</span><small>{{ t('adminDatabase.highRisk') }}</small></UButton>
         </nav>
         <div class="database-rows" :aria-label="t('adminDatabase.rows')">
           <DatabaseQueryControls

@@ -8,9 +8,10 @@ import { setLocale } from '@/i18n'
 import BalancePaymentConfiguration from './BalancePaymentConfiguration.vue'
 
 const methods: FeaturePaymentMethod[] = [
-  { id: 'ezpay:profile-one:alipay', provider: 'ezpay', profileId: 'profile-one', providerName: 'Main EZPay', rail: 'alipay', name: 'Alipay', currency: 'CNY', cryptoCurrency: '', network: '', networkName: '', available: true, note: '', mode: 'order' },
-  { id: 'ezpay:profile-one:wxpay', provider: 'ezpay', profileId: 'profile-one', providerName: 'Main EZPay', rail: 'wxpay', name: 'WeChat Pay', currency: 'CNY', cryptoCurrency: '', network: '', networkName: '', available: true, note: '', mode: 'order' },
+  { id: 'ezpay:profile-one:alipay', provider: 'ezpay', profileId: 'profile-one', providerName: 'Renminbi payment', rail: 'alipay', name: 'Alipay', currency: 'CNY', cryptoCurrency: '', network: '', networkName: '', available: true, note: '', mode: 'order' },
+  { id: 'ezpay:profile-one:wxpay', provider: 'ezpay', profileId: 'profile-one', providerName: 'Renminbi payment', rail: 'wxpay', name: 'WeChat Pay', currency: 'CNY', cryptoCurrency: '', network: '', networkName: '', available: true, note: '', mode: 'order' },
   { id: 'bepusdt:profile-two:usdt.trc20', provider: 'bepusdt', profileId: 'profile-two', providerName: 'USDT Account', rail: 'usdt.trc20', name: 'USDT TRC20', currency: 'USD', cryptoCurrency: 'USDT', network: 'tron', networkName: 'TRC20', available: true, note: '', mode: 'order' },
+  { id: 'coupon', provider: 'coupon', profileId: '', rail: '', name: 'Coupon', currency: 'TXB', cryptoCurrency: '', network: '', networkName: '', available: true, note: '', mode: 'coupon_redemption' },
 ]
 
 describe('BalancePaymentConfiguration', () => {
@@ -44,9 +45,10 @@ describe('BalancePaymentConfiguration', () => {
     await nextTick()
 
     const providerTiles = wrapper.findAll('button.provider-option')
-    expect(providerTiles).toHaveLength(2)
-    expect(providerTiles[0].text()).toContain('Main EZPay')
+    expect(providerTiles).toHaveLength(3)
+    expect(providerTiles[0].text()).toContain('Renminbi payment')
     expect(providerTiles[0].text()).not.toContain('Alipay')
+    expect(wrapper.findAll('button.provider-option small')).toHaveLength(0)
     expect(providerTiles[0].attributes('aria-pressed')).toBe('true')
     expect(wrapper.find('button[aria-haspopup="listbox"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="choose-channel"]').text()).toContain('Choose channel')

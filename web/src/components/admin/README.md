@@ -21,6 +21,7 @@ Admin add actions use medium feedback, audited confirmation uses rigid feedback,
 - `AdminPaymentProfiles.vue` lists and edits masked provider accounts, keeps BEPUSDT channels discovery-owned, deletes profiles through a protected confirmation, and contributes remaining drafts to the parent settings save.
 - `AdminQuestionnairesPanel.vue` manages questionnaire lifecycles.
 - `AdminReasonDialog.vue` collects audited reasons and keeps action failures visible in the dialog.
+- `AdminSectionNavigation.vue` renders the grouped desktop section controls while `AdminShell.vue` retains route and selection ownership.
 - `AdminSectionState.vue` renders loading and error states.
 - `AdminSettingsPanel.vue` composes runtime settings, global payment bounds, specialized calendar/reward controls, and one coordinated Save action; payment interventions stay scoped to individual user histories.
 - `AdminShell.vue` provides admin section navigation and sends optional signup through Vue Router without native anchor navigation.

@@ -87,7 +87,7 @@ function load(): void {
 </template>
 
 <style scoped>
-.traffic-usage { width: min(26rem, calc(100vw - 2rem)); max-height: min(34rem, calc(100vh - 4rem)); overflow-y: auto; padding: 0.9rem; }
+.traffic-usage { width: min(26rem, calc(100dvw - 2rem - var(--tg-content-safe-area-inset-left, 0px) - var(--tg-content-safe-area-inset-right, 0px))); max-height: min(34rem, calc(var(--tg-viewport-stable-height, 100dvh) - 2rem - var(--tg-content-safe-area-inset-top, 0px) - var(--tg-content-safe-area-inset-bottom, 0px))); overflow-y: auto; padding: 0.9rem; }
 .traffic-usage__form, .traffic-usage__nodes { display: grid; gap: 0.7rem; }
 .traffic-usage__range { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.55rem; }
 .traffic-usage__field { min-width: 0; }

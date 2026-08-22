@@ -50,4 +50,5 @@ const { overview, result, loading, busy, error, load, checkIn, placeBet, draw, c
 
 <style scoped>
 .activity-layout { display: grid; gap: 0.9rem; }
+@media (min-width: 1180px) { .activity-layout { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } }
 </style>

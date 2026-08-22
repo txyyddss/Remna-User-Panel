@@ -12,7 +12,7 @@
   margin: 1rem 0 0;
   color: var(--text);
   font-size: 1.7rem;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .payment-success p {

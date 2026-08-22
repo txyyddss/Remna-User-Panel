@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { useI18n } from '@/i18n'
 import { useSessionStore } from '@/stores/session'
+import AdminSectionNavigation from './AdminSectionNavigation.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -12,26 +13,34 @@ const sessionStore = useSessionStore()
 
 const groups = [
   { labelKey: 'adminNav.commerce', sections: [
-    { value: 'catalog', labelKey: 'adminNav.catalog' },
-    { value: 'coupons', labelKey: 'adminNav.coupons' },
+    { value: 'catalog', labelKey: 'adminNav.catalog', icon: 'i-ph-package' },
+    { value: 'coupons', labelKey: 'adminNav.coupons', icon: 'i-ph-ticket' },
   ] },
   { labelKey: 'adminNav.community', sections: [
-    { value: 'activity', labelKey: 'adminNav.activity' },
-    { value: 'affiliates', labelKey: 'adminNav.affiliates' },
-    { value: 'questionnaires', labelKey: 'adminNav.questionnaires' },
-    { value: 'onboarding', labelKey: 'adminNav.onboarding' },
+    { value: 'activity', labelKey: 'adminNav.activity', icon: 'i-ph-game-controller' },
+    { value: 'affiliates', labelKey: 'adminNav.affiliates', icon: 'i-ph-users-three' },
+    { value: 'questionnaires', labelKey: 'adminNav.questionnaires', icon: 'i-ph-file-csv' },
+    { value: 'onboarding', labelKey: 'adminNav.onboarding', icon: 'i-ph-user-plus-bold' },
   ] },
   { labelKey: 'adminNav.accounts', sections: [
-    { value: 'users', labelKey: 'adminNav.users' },
+    { value: 'users', labelKey: 'adminNav.users', icon: 'i-ph-user-focus' },
   ] },
   { labelKey: 'adminNav.system', sections: [
-    { value: 'settings', labelKey: 'adminNav.settings' },
-    { value: 'backups', labelKey: 'adminNav.backups' },
-    { value: 'database', labelKey: 'adminNav.database' },
-    { value: 'audit', labelKey: 'adminNav.audit' },
+    { value: 'settings', labelKey: 'adminNav.settings', icon: 'i-ph-key' },
+    { value: 'backups', labelKey: 'adminNav.backups', icon: 'i-ph-archive' },
+    { value: 'database', labelKey: 'adminNav.database', icon: 'i-ph-database' },
+    { value: 'audit', labelKey: 'adminNav.audit', icon: 'i-ph-shield-check' },
   ] },
 ] as const
 
+const navigationGroups = computed(() => groups.map((group) => ({
+  label: t(group.labelKey),
+  sections: group.sections.map((section) => ({
+    value: section.value,
+    label: t(section.labelKey),
+    icon: section.icon,
+  })),
+})))
 const sectionItems = computed(() => groups.flatMap((group) => group.sections.map((section) => ({
   value: section.value,
   label: t('adminNav.sectionLabel', { group: t(group.labelKey), section: t(section.labelKey) }),
@@ -43,6 +52,10 @@ const selected = computed({
 
 function goToOnboarding(): void {
   void router.push('/onboarding')
+}
+
+function selectSection(section: string): void {
+  selected.value = section
 }
 </script>
 
@@ -62,6 +75,12 @@ function goToOnboarding(): void {
         />
       </div>
     </header>
+    <AdminSectionNavigation
+      :groups="navigationGroups"
+      :active-section="selected"
+      :label="t('adminNav.sections')"
+      @select="selectSection"
+    />
     <nav class="admin-section-picker" :aria-label="t('adminNav.sections')">
       <UFormField :label="t('adminNav.section')">
         <USelect v-model="selected" class="admin-section-picker__select" :items="sectionItems" value-key="value" />
@@ -74,4 +93,5 @@ function goToOnboarding(): void {
 <style scoped>
 .admin-section-picker { max-width: 420px; margin: 0 0 0.9rem; padding: 0.75rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface-raised); }
 .admin-section-picker__select { width: 100%; }
+@media (min-width: 900px) { .admin-section-picker { display: none; } }
 </style>

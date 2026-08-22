@@ -20,12 +20,11 @@ const items = computed(() => [
 
 <template>
   <section class="catalog-progress" :aria-label="$t('catalog.steps.progress')">
-    <UStepper :model-value="stepperIndex" color="success" size="xs" :items="items" disabled>
+    <UStepper :model-value="stepperIndex" color="success" size="sm" :items="items" disabled>
       <template #indicator="{ item }">
         <UIcon
           :name="indicatorIcon(item.value, step, item.icon)"
           :class="{ 'catalog-progress__icon--completed': item.value < step }"
-          :style="{ color: 'black' }"
           data-slot="icon"
         />
       </template>
@@ -34,8 +33,9 @@ const items = computed(() => [
 </template>
 
 <style scoped>
-.catalog-progress { overflow-x: auto; margin: 0.3rem 0 1.15rem; padding: 0.2rem 0; }
-.catalog-progress :deep([data-slot='title']) { font-size: 0.58rem; white-space: nowrap; }
+.catalog-progress { overflow-x: auto; margin: 0.3rem 0 1.15rem; padding: 0.2rem 0 0.45rem; scrollbar-width: thin; }
+.catalog-progress :deep([data-slot='root']) { min-width: 28rem; }
+.catalog-progress :deep([data-slot='title']) { color: var(--text-muted); font-size: 0.72rem; line-height: 1.25; white-space: nowrap; }
 .catalog-progress :deep([data-slot='icon']) { position: relative; z-index: 10; }
-.catalog-progress :deep(.catalog-progress__icon--completed) { color: black; }
+.catalog-progress :deep(.catalog-progress__icon--completed) { color: var(--accent-ink); }
 </style>
