@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, shallowRef } from 'vue'
 
-import type { NodeCompensationEvent, NodeCompensationStatus } from '@/api/contracts/compensation'
+import type { NodeCompensationEvent } from '@/api/contracts/compensation'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import { useNodeCompensation } from '@/composables/useNodeCompensation'
 import { useI18n } from '@/i18n'
@@ -9,13 +9,23 @@ import AdminSectionState from './AdminSectionState.vue'
 import CompensationConfigCard from './compensation/CompensationConfigCard.vue'
 import CompensationEventCard from './compensation/CompensationEventCard.vue'
 import CompensationReviewModal from './compensation/CompensationReviewModal.vue'
+import {
+  compensationStatusChoices,
+  fromCompensationStatus,
+  toCompensationStatus,
+  type CompensationStatusChoice,
+} from './compensation/statusFilter'
 
 const { t } = useI18n()
 const state = useNodeCompensation()
 const reviewOpen = shallowRef(false)
 const selected = shallowRef<NodeCompensationEvent | null>(null)
-const statusItems = computed(() => ['', 'observing', 'pending_review', 'queued', 'dismissed', 'ineligible'].map((value) => ({
-  value, label: t(value ? `adminCompensation.status.${value}` : 'adminCompensation.allStatuses'),
+const statusChoice = computed<CompensationStatusChoice>({
+  get: () => fromCompensationStatus(state.status.value),
+  set: value => void state.changeStatus(toCompensationStatus(value)),
+})
+const statusItems = computed(() => compensationStatusChoices.map(value => ({
+  value, label: t(value === 'all' ? 'adminCompensation.allStatuses' : `adminCompensation.status.${value}`),
 })))
 
 function openReview(event: NodeCompensationEvent): void {
@@ -38,7 +48,7 @@ async function review(action: 'approve' | 'dismiss', minutes: number, reason: st
       <CompensationConfigCard v-if="state.config.value" :config="state.config.value" :busy="state.busy.value" @save="state.saveConfig" />
       <div class="compensation-panel__toolbar">
         <UFormField :label="t('adminCompensation.filter')">
-          <USelect :model-value="state.status.value" class="w-full" :items="statusItems" value-key="value" @update:model-value="state.changeStatus(($event ?? '') as NodeCompensationStatus | '')" />
+          <USelect v-model="statusChoice" class="w-full" :items="statusItems" value-key="value" />
         </UFormField>
       </div>
       <InlineNotice v-if="state.error.value" tone="warning">{{ state.error.value }}</InlineNotice>

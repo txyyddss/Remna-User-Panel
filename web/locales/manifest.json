@@ -2,6 +2,7 @@
   "locales": ["en", "zh-CN"],
   "domains": [
     "core",
+    "recovery",
     "affiliates",
     "activity",
     "commerce",

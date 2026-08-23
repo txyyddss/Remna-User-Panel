@@ -20,4 +20,10 @@ describe('i18n', () => {
     setLocale('zh-CN')
     expect(t('common.refresh')).not.toBe('common.refresh')
   })
+
+  it('includes localized recovery-boundary copy', () => {
+    expect(t('recovery.title')).toBe('TX Carpool could not open')
+    setLocale('zh-CN')
+    expect(t('recovery.title')).toBe('TX Carpool 无法打开')
+  })
 })
