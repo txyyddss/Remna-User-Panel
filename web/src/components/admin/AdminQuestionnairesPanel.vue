@@ -97,7 +97,7 @@ onMounted(() => void load())
           <UButton v-if="questionnaire.status === 'active'" size="sm" color="neutral" variant="outline" icon="i-ph-stop-circle" :disabled="busy" :label="t('common.close')" @click="closing = questionnaire" />
           <UButton v-if="['active', 'closed', 'settled'].includes(questionnaire.status)" size="sm" color="neutral" variant="outline" icon="i-ph-file-csv" :label="t('adminQuestionnaires.importCsv')" @click="importing = questionnaire" />
           <UButton color="neutral" variant="ghost" icon="i-ph-pencil-simple" :aria-label="t('adminQuestionnaires.editNamed', { name: questionnaire.title })" @click="edit(questionnaire)" />
-          <UButton color="error" variant="ghost" icon="i-ph-trash" :aria-label="t('adminQuestionnaires.deleteNamed', { name: questionnaire.title })" @click="deleting = questionnaire" />
+          <UButton color="error" variant="ghost" icon="i-ph-trash" :aria-label="t('adminQuestionnaires.deleteNamed', { name: questionnaire.title })" data-haptic="destructive" @click="deleting = questionnaire" />
         </div>
       </article>
       <div v-if="!items.length" class="empty-inline"><div><h3>{{ t('adminQuestionnaires.none') }}</h3><p>{{ t('adminQuestionnaires.noneHint') }}</p></div></div>

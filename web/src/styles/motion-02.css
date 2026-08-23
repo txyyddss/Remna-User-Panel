@@ -1,0 +1,61 @@
+@media (prefers-reduced-motion: no-preference) {
+  .page > * {
+    animation: content-rise 360ms var(--ease-out) both;
+  }
+
+  .page > :nth-child(2) { animation-delay: 35ms; }
+  .page > :nth-child(3) { animation-delay: 70ms; }
+  .page > :nth-child(4) { animation-delay: 105ms; }
+  .page > :nth-child(n + 5) { animation-delay: 140ms; }
+
+  [data-haptic] {
+    transition-property: color, background-color, border-color, opacity, transform;
+    transition-duration: 180ms;
+    transition-timing-function: var(--ease-out);
+  }
+
+  [data-haptic]:not(:disabled):not([aria-disabled="true"]):active {
+    transform: translateY(1px) scale(0.985);
+  }
+
+  .notice,
+  .operation-status {
+    animation: feedback-arrive 280ms var(--ease-out) both;
+  }
+
+  .status-badge {
+    animation: status-settle 240ms var(--ease-out) both;
+  }
+
+  .bottom-nav__item--active svg,
+  .nav-item--active svg {
+    animation: nav-icon-settle 300ms var(--ease-out) both;
+  }
+}
+
+@keyframes content-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes feedback-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.99);
+  }
+}
+
+@keyframes status-settle {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes nav-icon-settle {
+  0% { transform: translateY(2px) scale(0.92); }
+  65% { transform: translateY(-1px) scale(1.06); }
+  100% { transform: translateY(0) scale(1); }
+}

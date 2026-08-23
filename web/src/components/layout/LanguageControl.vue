@@ -43,6 +43,7 @@ function selectLocale(value: Locale): void {
       icon="i-ph-translate"
       :label="props.showLabel ? $t('app.language') : undefined"
       :aria-label="$t('app.language')"
+      data-haptic="open"
     />
     <template #content>
       <div class="language-control__panel" :aria-label="$t('app.language')" role="group">

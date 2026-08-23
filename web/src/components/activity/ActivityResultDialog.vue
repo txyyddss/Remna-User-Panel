@@ -42,6 +42,7 @@ const description = computed(() => {
     :open="Boolean(result)"
     :title="result ? $t(`activity.result.${result.outcome}.title`) : ''"
     :description="description"
+    :close="{ 'data-haptic': 'dismiss' }"
     @update:open="!$event && $emit('close')"
   >
     <template v-if="result" #body>
@@ -64,7 +65,7 @@ const description = computed(() => {
       </div>
     </template>
     <template #footer="{ close }">
-      <UButton block :label="$t('common.close')" @click="close" />
+      <UButton block :label="$t('common.close')" data-haptic="dismiss" @click="close" />
     </template>
   </UModal>
 </template>

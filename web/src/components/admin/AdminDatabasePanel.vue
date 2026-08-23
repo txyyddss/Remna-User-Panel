@@ -9,6 +9,7 @@ import AdminSectionState from './AdminSectionState.vue'
 import DatabaseMobileRowCard from './database/DatabaseMobileRowCard.vue'
 import DatabaseQueryControls from './database/DatabaseQueryControls.vue'
 import DatabaseRecordEditor from './database/DatabaseRecordEditor.vue'
+import DatabaseTablePicker from './database/DatabaseTablePicker.vue'
 import type { DatabaseColumnOption, DatabaseOperatorOption, TextDatabaseFilter } from './database/types'
 
 const {
@@ -21,7 +22,6 @@ type EditorPayload = { action: EditorState['action']; row?: DatabaseRow; values:
 type DisplayRow = Record<string, unknown> & { __row: DatabaseRow }
 
 const editing = shallowRef<EditorState | null>(null)
-const tableSearch = shallowRef('')
 const search = shallowRef('')
 const filters = shallowRef<TextDatabaseFilter[]>([])
 const { t } = useI18n()
@@ -35,10 +35,6 @@ const operators = computed<DatabaseOperatorOption[]>(() => [
 const columnItems = computed<DatabaseColumnOption[]>(() => (selectedTable.value?.columns ?? [])
   .filter((item) => !item.sensitive && item.declaredType.toUpperCase() !== 'BLOB')
   .map((column) => ({ value: column.name, label: column.name })))
-const visibleTables = computed(() => {
-  const needle = tableSearch.value.trim().toLowerCase()
-  return needle ? tables.value.filter((table) => table.name.toLowerCase().includes(needle)) : tables.value
-})
 const tableData = computed<DisplayRow[]>(() => rows.value.map((row) => ({
   __row: row,
   ...Object.fromEntries((selectedTable.value?.columns ?? []).map((column) => [
@@ -61,13 +57,6 @@ function scheduleQuery(): void {
   debounceTimer = globalThis.setTimeout(() => { if (selectedTableName.value) void queryRows(selectedTableName.value, queryInput()) }, 280)
 }
 
-function addFilter(): void {
-  const column = columnItems.value[0]
-  if (!column || filters.value.length >= 5) return
-  filters.value = [...filters.value, { column: column.value, operator: 'eq', value: '' }]
-}
-
-function removeFilter(index: number): void { filters.value = filters.value.filter((_, itemIndex) => itemIndex !== index) }
 function updateSearch(value: string): void { search.value = value }
 function updateFilters(value: TextDatabaseFilter[]): void { filters.value = value }
 
@@ -106,10 +95,7 @@ async function chooseTable(name: string): Promise<void> { closeEditor(); search.
     <InlineNotice v-if="lastRescueBackupId" tone="success" :title="t('adminDatabase.appliedTitle')">{{ t('adminDatabase.appliedCopy', { id: lastRescueBackupId }) }}</InlineNotice>
     <AdminSectionState :loading="loading" :error="error" @retry="loadTables">
       <div class="database-layout">
-        <nav v-auto-animate class="database-tables" :aria-label="t('adminDatabase.tables')">
-          <UInput v-model="tableSearch" icon="i-ph-magnifying-glass" :placeholder="t('adminDatabase.tableSearch')" :aria-label="t('adminDatabase.tableSearch')" />
-          <UButton v-for="table in visibleTables" :key="table.name" class="database-table-button" :class="{ 'database-table-button--active': selectedTableName === table.name }" color="neutral" variant="ghost" icon="i-ph-database" :aria-pressed="selectedTableName === table.name" @click="chooseTable(table.name)"><span>{{ table.name }}</span><small>{{ t('adminDatabase.highRisk') }}</small></UButton>
-        </nav>
+        <DatabaseTablePicker :tables="tables" :selected="selectedTableName" :busy="busy" @select="chooseTable" />
         <div class="database-rows" :aria-label="t('adminDatabase.rows')">
           <DatabaseQueryControls
             :search="search"
@@ -118,19 +104,17 @@ async function chooseTable(name: string): Promise<void> { closeEditor(); search.
             :operators="operators"
             @update:search="updateSearch"
             @update:filters="updateFilters"
-            @add-filter="addFilter"
-            @remove-filter="removeFilter"
           />
           <div v-if="selectedTable && rows.length" class="database-results">
             <div class="database-table-view">
               <div class="database-table-scroll">
                 <UTable :data="tableData" :columns="tableColumns">
-                  <template #actions-cell="{ row }"><div class="row-actions"><UButton color="neutral" variant="ghost" icon="i-ph-pencil-simple" :aria-label="t('adminDatabase.editRow')" @click="openEditor('update', row.original.__row)" /><UButton color="error" variant="ghost" icon="i-ph-trash" :aria-label="t('adminDatabase.deleteRow')" @click="openEditor('delete', row.original.__row)" /></div></template>
+                  <template #actions-cell="{ row }"><div class="row-actions"><UButton color="neutral" variant="ghost" icon="i-ph-pencil-simple" :aria-label="t('adminDatabase.editRow')" @click="openEditor('update', row.original.__row)" /><UButton color="error" variant="ghost" icon="i-ph-trash" :aria-label="t('adminDatabase.deleteRow')" data-haptic="destructive" @click="openEditor('delete', row.original.__row)" /></div></template>
                 </UTable>
               </div>
             </div>
             <div class="database-mobile-list">
-              <DatabaseMobileRowCard v-for="row in rows" :key="row.recordHash" :row="row" @edit="openEditor('update', $event)" @delete="openEditor('delete', $event)" />
+              <DatabaseMobileRowCard v-for="row in rows" :key="row.recordHash" :row="row" :columns="selectedTable.columns" @edit="openEditor('update', $event)" @delete="openEditor('delete', $event)" />
             </div>
           </div>
           <div v-else class="empty-inline"><div><h3>{{ t('adminDatabase.noRows') }}</h3><p>{{ t('adminDatabase.empty') }}</p></div></div>
@@ -156,19 +140,6 @@ async function chooseTable(name: string): Promise<void> { closeEditor(); search.
   padding: 1rem;
 }
 
-.database-tables {
-  display: flex;
-  min-width: 0;
-  gap: 0.4rem;
-  overflow-x: auto;
-  padding-bottom: 0.35rem;
-  scrollbar-width: none;
-}
-
-.database-tables::-webkit-scrollbar { display: none; }
-.database-table-button { min-height: 44px; flex: 0 0 auto; border: 1px solid var(--line); border-radius: var(--radius-control); color: var(--text-muted); }
-.database-table-button small { color: var(--warning); font-size: 0.58rem; }
-.database-table-button--active { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
 .database-rows { overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-control); }
 .database-results { display: block; }
 .database-table-view { display: none; min-width: 0; }
@@ -179,7 +150,6 @@ async function chooseTable(name: string): Promise<void> { closeEditor(); search.
 
 @media (min-width: 900px) {
   .database-layout { grid-template-columns: 210px minmax(0, 1fr); }
-  .database-tables { flex-direction: column; overflow: visible; }
   .database-table-view { display: block; }
   .database-mobile-list { display: none; }
 }

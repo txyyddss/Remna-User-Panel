@@ -4,6 +4,7 @@ import { computed, reactive, watch } from 'vue'
 import type { EmbyAccount, EmbyLibrary, EmbyRating } from '@/api/features'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import { useI18n } from '@/i18n'
+import { selectionHaptic } from '@/utils/telegram'
 import EmbyLibraryPicker from './EmbyLibraryPicker.vue'
 
 const props = defineProps<{
@@ -55,17 +56,17 @@ function savePassword(): void {
     <form class="section-block emby-form" @submit.prevent="emit('save', { maxParentalRating: draft.maxParentalRating, disabledLibraryIds: [...draft.disabledLibraryIds] })">
       <div class="section-heading section-heading--stacked"><h2>{{ $t('emby.preferences') }}</h2><p>{{ $t('emby.preferencesHint') }}</p></div>
       <UFormField name="rating" :label="$t('emby.rating')">
-        <USelect v-model="draft.maxParentalRating" :items="ratingItems" value-key="value" :disabled="blocked || account.status !== 'active'" />
+        <USelect v-model="draft.maxParentalRating" :items="ratingItems" value-key="value" :disabled="blocked || account.status !== 'active'" @update:model-value="selectionHaptic" />
       </UFormField>
       <EmbyLibraryPicker :libraries="libraries" :selected-ids="draft.disabledLibraryIds" :disabled="blocked || Boolean(busy) || account.status !== 'active'" @toggle="toggleLibrary" />
-      <UButton type="submit" icon="i-ph-floppy-disk" :disabled="blocked || Boolean(busy) || account.status !== 'active'" :loading="busy === 'preferences'" :label="busy === 'preferences' ? $t('common.saving') : $t('emby.savePreferences')" />
+      <UButton type="submit" icon="i-ph-floppy-disk" :disabled="blocked || Boolean(busy) || account.status !== 'active'" :loading="busy === 'preferences'" :label="busy === 'preferences' ? $t('common.saving') : $t('emby.savePreferences')" data-haptic="confirm" />
     </form>
     <form class="section-block emby-form" autocomplete="off" @submit.prevent="savePassword">
       <div class="section-heading section-heading--stacked"><h2>{{ $t('emby.changePassword') }}</h2><p>{{ $t('emby.changePasswordHint') }}</p></div>
       <UFormField name="password" :label="$t('emby.newPassword')" required>
         <UInput v-model="draft.password" icon="i-ph-key" type="password" :minlength="8" :disabled="blocked" required autocomplete="new-password" />
       </UFormField>
-      <UButton type="submit" color="neutral" variant="outline" :disabled="blocked || Boolean(busy) || account.status !== 'active' || draft.password.length < 8" :loading="busy === 'password'" :label="busy === 'password' ? $t('emby.changingPassword') : $t('emby.changePassword')" />
+      <UButton type="submit" color="neutral" variant="outline" :disabled="blocked || Boolean(busy) || account.status !== 'active' || draft.password.length < 8" :loading="busy === 'password'" :label="busy === 'password' ? $t('emby.changingPassword') : $t('emby.changePassword')" data-haptic="confirm" />
     </form>
   </div>
 </template>

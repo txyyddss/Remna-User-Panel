@@ -59,7 +59,7 @@ function consumeReissueRequest(): void {
 </script>
 
 <template>
-  <div class="page page--home">
+  <div v-auto-animate class="page page--home">
     <template v-if="loading">
       <SkeletonBlock height="13rem" />
       <div class="content-grid">

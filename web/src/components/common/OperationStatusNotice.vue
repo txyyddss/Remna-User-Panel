@@ -34,6 +34,7 @@ const tone = computed(() => {
       icon="i-ph-arrow-clockwise"
       :loading="checking"
       :label="$t('operations.checkStatus')"
+      data-haptic="retry"
       @click="emit('refresh')"
     />
   </div>

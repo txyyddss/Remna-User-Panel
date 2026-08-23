@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import InlineNotice from '@/components/common/InlineNotice.vue'
+import { selectionHaptic } from '@/utils/telegram'
 
 defineProps<{
   enabled: boolean | null
@@ -8,7 +9,12 @@ defineProps<{
   error: string | null
 }>()
 
-defineEmits<{ update: [enabled: boolean] }>()
+const emit = defineEmits<{ update: [enabled: boolean] }>()
+
+function update(enabled: boolean): void {
+  selectionHaptic()
+  emit('update', enabled)
+}
 </script>
 
 <template>
@@ -22,7 +28,7 @@ defineEmits<{ update: [enabled: boolean] }>()
       :loading="loading || saving"
       :disabled="loading || saving || enabled === null"
       :aria-label="$t('purchaseOperations.automation.label')"
-      @update:model-value="$emit('update', $event)"
+      @update:model-value="update"
     />
     <InlineNotice v-if="error" class="reset-automation__error" tone="warning">{{ error }}</InlineNotice>
   </section>

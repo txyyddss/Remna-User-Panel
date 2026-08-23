@@ -34,6 +34,6 @@ function updatePage(page: number): void {
       </article>
     </div>
     <p v-else class="affiliate-empty">{{ $t('affiliates.noReferrals') }}</p>
-    <UPagination v-if="page.totalPages > 1" class="affiliate-pagination" :page="page.page" :items-per-page="page.pageSize" :total="page.total" @update:page="updatePage" />
+    <UPagination v-if="page.totalPages > 1" class="affiliate-pagination" :page="page.page" :items-per-page="page.pageSize" :total="page.total" data-haptic-skip @update:page="updatePage" />
   </section>
 </template>

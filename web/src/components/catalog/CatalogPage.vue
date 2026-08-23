@@ -149,7 +149,7 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
 </script>
 
 <template>
-  <div class="page page--catalog">
+  <div v-auto-animate class="page page--catalog">
     <template v-if="purchase">
       <CatalogConfirmation :purchase="purchase" @home="goHome" />
     </template>

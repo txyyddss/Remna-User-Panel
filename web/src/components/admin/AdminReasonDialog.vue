@@ -23,7 +23,7 @@ useTelegramProtection(computed(() => open.value && (props.danger || props.busy |
 </script>
 
 <template>
-  <UModal v-model:open="open" :title="title" :description="description" :dismissible="!busy" :ui="{ footer: 'justify-end' }">
+  <UModal v-model:open="open" :title="title" :description="description" :dismissible="!busy" :close="{ 'data-haptic': 'dismiss' }" :ui="{ footer: 'justify-end' }">
     <template #body>
       <UFormField name="reason" :label="t('adminReason.reason')" required>
         <UTextarea v-model.trim="reason" :rows="3" :minlength="4" :maxlength="300" :placeholder="t('adminReason.placeholder')" />

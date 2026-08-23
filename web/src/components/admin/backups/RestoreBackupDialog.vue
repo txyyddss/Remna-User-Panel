@@ -19,7 +19,7 @@ watch(() => props.open, (open) => {
 </script>
 
 <template>
-  <UModal :open="open" :title="t('restoreBackup.title')" :description="t('restoreBackup.copy')" :dismissible="!busy" :ui="{ footer: 'justify-end' }" @update:open="emit('update:open', $event)">
+  <UModal :open="open" :title="t('restoreBackup.title')" :description="t('restoreBackup.copy')" :dismissible="!busy" :close="{ 'data-haptic': 'dismiss' }" :ui="{ footer: 'justify-end' }" @update:open="emit('update:open', $event)">
     <template #body>
       <UIcon name="i-ph-warning-fill" class="dialog-icon dialog-icon--danger" aria-hidden="true" />
       <UFormField name="reason" :label="t('adminReason.reason')" required>
@@ -31,7 +31,7 @@ watch(() => props.open, (open) => {
     </template>
     <template #footer>
       <UButton color="neutral" variant="outline" :label="t('common.cancel')" :disabled="busy" @click="emit('update:open', false)" />
-      <UButton color="error" :disabled="busy || !canRestore" :loading="busy" :label="busy ? t('restoreBackup.staging') : t('restoreBackup.confirm')" @click="emit('restore', { reason: reason.trim(), confirmation })" />
+      <UButton color="error" :disabled="busy || !canRestore" :loading="busy" :label="busy ? t('restoreBackup.staging') : t('restoreBackup.confirm')" data-haptic="destructive" @click="emit('restore', { reason: reason.trim(), confirmation })" />
     </template>
   </UModal>
 </template>

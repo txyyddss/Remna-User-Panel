@@ -98,7 +98,7 @@ function bulkQueued(receipt: OperationReceipt): void {
       <UButton v-if="nextCursor" class="database-load-more" color="neutral" variant="outline" icon="i-ph-arrow-down" :loading="loading" :disabled="loading" :label="t('adminUsers.loadMore')" @click="loadMore" />
     </AdminSectionState>
 
-    <UDrawer :open="Boolean(selected)" :title="selected ? t('adminUsers.adjustNamed', { name: displayName(selected) }) : t('adminUsers.adjust')" :description="t('adminUsers.adjustHint')" @update:open="!$event && (selected = null)">
+    <UDrawer :open="Boolean(selected)" :title="selected ? t('adminUsers.adjustNamed', { name: displayName(selected) }) : t('adminUsers.adjust')" :description="t('adminUsers.adjustHint')" :close="{ 'data-haptic': 'dismiss' }" @update:open="!$event && (selected = null)">
       <template #body>
         <form v-if="selected" class="form-stack" @submit.prevent>
           <TxbAmountField id="balance-adjustment" v-model="form.amountTxb" :label="t('adminUsers.amount')" min-minor="1" required />
@@ -107,7 +107,7 @@ function bulkQueued(receipt: OperationReceipt): void {
           </UFormField>
           <div class="button-row">
             <UButton color="neutral" variant="outline" icon="i-ph-plus" :disabled="busy" :label="t('adminUsers.add')" @click="adjust(1)" />
-            <UButton color="error" variant="ghost" icon="i-ph-minus" :disabled="busy" :label="t('adminUsers.deduct')" @click="adjust(-1)" />
+            <UButton color="error" variant="ghost" icon="i-ph-minus" :disabled="busy" :label="t('adminUsers.deduct')" data-haptic="destructive" @click="adjust(-1)" />
           </div>
         </form>
       </template>

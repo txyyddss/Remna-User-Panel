@@ -29,6 +29,7 @@ function goTo(to: string): void {
         color="neutral"
         variant="ghost"
         class="home-around__link"
+        data-haptic="navigate"
         @click="goTo(item.to)"
       >
         <span class="feature-icon feature-icon--small"><UIcon :name="item.icon" /></span>

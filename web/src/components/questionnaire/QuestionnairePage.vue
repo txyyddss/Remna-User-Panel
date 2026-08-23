@@ -8,7 +8,7 @@ const { questionnaire, participation, loading, joining, error, load, openQuestio
 </script>
 
 <template>
-  <div class="page page--questionnaire">
+  <div v-auto-animate class="page page--questionnaire">
     <header class="page-header">
       <h1>{{ $t('questionnaire.title') }}</h1>
     </header>

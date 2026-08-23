@@ -19,6 +19,7 @@ const authRequestFailed = computed(() => isTelegramWebAppDetected() && props.mes
     <UButton
       :label="$t('auth.tryAgain')"
       icon="i-ph-arrow-clockwise"
+      data-haptic="retry"
       @click="$emit('retry')"
     />
     <footer class="auth-screen__locale"><LanguageControl /></footer>

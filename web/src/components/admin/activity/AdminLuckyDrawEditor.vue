@@ -119,7 +119,7 @@ function save(): void {
           <UFormField v-if="prize.kind === 'txb_delta'" :name="`prize-change-${index}`" :label="t('adminLuckyDraw.signedChange')" required><UInput v-model.trim="prize.txbDelta" class="w-full" inputmode="decimal" :placeholder="t('adminLuckyDraw.signedPlaceholder')" /></UFormField>
           <UFormField v-else-if="prize.kind === 'coupon_grant'" :name="`prize-coupon-${index}`" :label="t('adminLuckyDraw.coupon')" required><USelect v-model="prize.couponId" class="w-full" :items="couponItems" :placeholder="t('adminLuckyDraw.selectCoupon')" /></UFormField>
           <UFormField v-else-if="prize.kind === 'subscription_extension'" :name="`prize-days-${index}`" :label="t('adminLuckyDraw.extensionDays')" required><UInput v-model.number="prize.extensionDays" class="w-full" type="number" :min="1" :max="3650" :step="1" /></UFormField>
-          <UButton class="prize-row__remove" color="error" variant="ghost" square icon="i-ph-trash" :disabled="draft.prizes.length === 1" :aria-label="t('adminLuckyDraw.removePrize', { name: prize.name || t('adminLuckyDraw.prizeNumber', { index: index + 1 }) })" @click="draft.prizes.splice(index, 1)" />
+          <UButton class="prize-row__remove" color="error" variant="ghost" square icon="i-ph-trash" :disabled="draft.prizes.length === 1" :aria-label="t('adminLuckyDraw.removePrize', { name: prize.name || t('adminLuckyDraw.prizeNumber', { index: index + 1 }) })" data-haptic="destructive" @click="draft.prizes.splice(index, 1)" />
         </article>
       </div>
     </section>

@@ -36,7 +36,7 @@ function cancel(close: () => void): void {
       </UFormField>
     </template>
     <template #footer="{ close }">
-      <UButton color="neutral" variant="outline" :label="$t('common.cancel')" @click="cancel(close)" />
+      <UButton color="neutral" variant="outline" :label="$t('common.cancel')" data-haptic="dismiss" @click="cancel(close)" />
       <UButton :label="$t('catalog.activationContinue')" :disabled="!code.trim()" data-haptic="confirm" @click="submit" />
     </template>
   </UModal>

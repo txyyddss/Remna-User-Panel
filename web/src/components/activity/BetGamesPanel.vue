@@ -4,6 +4,7 @@ import { computed, shallowRef, watch } from 'vue'
 import type { BetGame } from '@/api/features'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
 import { moneyFromTxbInput, txbInputFromMinor } from '@/utils/format'
+import { selectionHaptic } from '@/utils/telegram'
 import { gameIcon } from './gameIcons'
 
 const props = defineProps<{
@@ -38,6 +39,12 @@ function submit(): void {
   if (!selected.value || !canBet.value) return
   emit('bet', { gameId: selected.value.id, stakeTxbMinor: stakeMinor.value })
 }
+
+function selectGame(id: string): void {
+  if (selectedId.value === id) return
+  selectedId.value = id
+  selectionHaptic()
+}
 </script>
 
 <template>
@@ -56,7 +63,7 @@ function submit(): void {
         variant="ghost"
         :disabled="!game.enabled || busy"
         :aria-pressed="game.id === selectedId"
-        @click="selectedId = game.id"
+        @click="selectGame(game.id)"
       >
         <span class="bet-option__icon"><UIcon :name="gameIcon(game.icon)" /></span>
         <span>
@@ -80,7 +87,7 @@ function submit(): void {
         <UIcon name="i-ph-trend-up" />
         <span><strong>{{ $t('activity.totalReturn', { multiplier: (selected.returnMultiplierBps / 10000).toFixed(2) }) }}</strong><small>{{ $t('activity.lossReturn') }}</small></span>
       </div>
-      <UButton :disabled="!canBet || busy" :loading="busy" :label="busy ? $t('activity.resolving') : $t('activity.confirmBet')" @click="submit" />
+      <UButton :disabled="!canBet || busy" :loading="busy" :label="busy ? $t('activity.resolving') : $t('activity.confirmBet')" data-haptic="confirm" @click="submit" />
     </div>
     <div v-else class="empty-inline"><div><h3>{{ $t('activity.noBetGames') }}</h3><p>{{ $t('activity.publishGames') }}</p></div></div>
   </section>

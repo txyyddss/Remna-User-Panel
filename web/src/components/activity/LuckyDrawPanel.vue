@@ -20,6 +20,7 @@ defineEmits<{ draw: [id: string] }>()
         :disabled="!draw.enabled || busy"
         :loading="busy"
         :label="busy ? $t('activity.drawing') : $t('activity.drawFor', { amount: txbInputFromMinor(draw.feeTxbMinor) })"
+        data-haptic="confirm"
         @click="$emit('draw', draw.id)"
       />
     </article>

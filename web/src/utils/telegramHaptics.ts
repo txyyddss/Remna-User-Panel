@@ -49,10 +49,32 @@ function hapticIntentFor(element: Element): HapticIntent | undefined {
 
 function handleHapticClick(event: MouseEvent): void {
   if (!(event.target instanceof Element)) return
-  const target = event.target.closest('[data-haptic]')
-  if (!target || target.hasAttribute('disabled') || target.getAttribute('aria-disabled') === 'true') return
-  const intent = hapticIntentFor(target)
-  if (intent) haptic(intent)
+  const markedTarget = event.target.closest('[data-haptic]')
+  if (markedTarget) {
+    if (isDisabled(markedTarget)) return
+    const intent = hapticIntentFor(markedTarget)
+    if (intent) haptic(intent)
+    return
+  }
+
+  const actionTarget = event.target.closest('button, a[href], [role="button"]')
+  if (!actionTarget || actionTarget.closest('[data-haptic-skip]') || isDisabled(actionTarget) || isSelectionControl(actionTarget)) return
+  haptic(actionTarget.matches('a[href]') ? 'navigate' : 'action')
+}
+
+function isDisabled(element: Element): boolean {
+  return element.hasAttribute('disabled') || element.getAttribute('aria-disabled') === 'true'
+}
+
+function isSelectionControl(element: Element): boolean {
+  const role = element.getAttribute('role')
+  return element.hasAttribute('aria-pressed')
+    || element.hasAttribute('aria-expanded')
+    || role === 'checkbox'
+    || role === 'option'
+    || role === 'radio'
+    || role === 'switch'
+    || role === 'tab'
 }
 
 export function installHapticClickFeedback(): () => void {

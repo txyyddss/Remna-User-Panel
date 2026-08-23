@@ -44,7 +44,7 @@ function submit(): void {
 </script>
 
 <template>
-  <UModal :open="open" :title="t('adminUserProfile.replaceTitle')" :description="t('adminUserProfile.replaceHint')" :dismissible="!busy" :ui="{ footer: 'justify-end' }" @update:open="emit('update:open', $event)">
+  <UModal :open="open" :title="t('adminUserProfile.replaceTitle')" :description="t('adminUserProfile.replaceHint')" :dismissible="!busy" :close="{ 'data-haptic': 'dismiss' }" :ui="{ footer: 'justify-end' }" @update:open="emit('update:open', $event)">
     <template #body>
       <UAlert color="info" variant="soft" icon="i-ph-coins" :title="t('adminUserProfile.noCharge')" :description="t('adminUserProfile.noChargeHint')" />
       <UForm id="combo-replacement" :state="draft" class="form-stack" @submit="submit">

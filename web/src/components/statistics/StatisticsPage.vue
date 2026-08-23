@@ -34,7 +34,7 @@ watch(activeTab, () => selectionHaptic())
 </script>
 
 <template>
-  <div class="page page--statistics">
+  <div v-auto-animate class="page page--statistics">
     <header class="statistics-heading">
       <div>
         <p class="eyebrow">{{ $t('dashboard.aroundTx') }}</p>

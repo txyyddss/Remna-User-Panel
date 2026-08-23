@@ -2,7 +2,6 @@
 import { computed } from 'vue'
 
 import type { SquadProduct } from '@/api/types'
-import StatusBadge from '@/components/common/StatusBadge.vue'
 import SquadProfileSummary from '@/components/squad-profile/SquadProfileSummary.vue'
 import { formatMoney } from '@/utils/format'
 import { selectionHaptic } from '@/utils/telegram'
@@ -77,7 +76,8 @@ const squadRows = computed(() => props.squads
       <article v-for="row in squadRows" :key="row.squad.id" class="squad-option" :class="[profileClass(row.squad), { 'squad-option--featured': isFeatured(row.squad.id), 'squad-option--selected': isSelected(row.squad.id), 'squad-option--included': isIncluded(row.squad.id), 'squad-option--full': isFullPaidAddon(row.squad) }]" @click="toggleSquad(row.squad)">
         <div class="squad-option__copy">
           <SquadProfileSummary :name="row.squad.name" :profile="row.squad.profile" :description="row.squad.description" presentation="member" compact>
-            <template v-if="isFeatured(row.squad.id) || isFullPaidAddon(row.squad)" #nameTags>
+            <template v-if="isIncluded(row.squad.id) || isFeatured(row.squad.id) || isFullPaidAddon(row.squad)" #nameTags>
+              <span v-if="isIncluded(row.squad.id)" class="squad-option__included-tag">{{ $t('catalog.included') }}</span>
               <span v-if="isFeatured(row.squad.id)" class="squad-option__featured-tag">{{ $t('catalog.featured') }}</span>
               <span v-if="isFullPaidAddon(row.squad)" class="squad-option__full-tag">{{ $t('catalog.full') }}</span>
             </template>
@@ -89,8 +89,7 @@ const squadRows = computed(() => props.squads
             </template>
           </SquadProfileSummary>
           <SquadNodeBlocks :nodes="row.squad.accessibleNodes" @open-geocheck="emit('openGeocheck', $event)" />
-          <StatusBadge v-if="isIncluded(row.squad.id)" tone="neutral" :label="$t('catalog.included')" />
-          <span v-else>{{ formatMoney(row.squad.price) }}</span>
+          <span v-if="!isIncluded(row.squad.id)">{{ formatMoney(row.squad.price) }}</span>
         </div>
         <UCheckbox
           :model-value="isSelected(row.squad.id)"
@@ -113,7 +112,9 @@ const squadRows = computed(() => props.squads
 <style scoped>
 .squad-option--included { color: var(--text-faint); border-color: var(--squad-profile-tone-line, var(--line)); background: var(--squad-profile-tone-soft, var(--canvas-soft)); cursor: default; }
 .squad-option.squad-option--full { border-color: var(--line); color: var(--text-faint); background: var(--surface); cursor: not-allowed; opacity: 0.58; }
-.squad-option__featured-tag { display: inline-flex; flex: 0 0 auto; align-items: center; padding: 0.16rem 0.3rem; border-radius: 4px; color: var(--canvas); background: var(--warning); font-size: 0.54rem; font-weight: 800; line-height: 1; white-space: nowrap; }
-.squad-option__full-tag { display: inline-flex; flex: 0 0 auto; align-items: center; padding: 0.16rem 0.3rem; border-radius: 4px; color: var(--canvas); background: var(--danger); font-size: 0.54rem; font-weight: 800; line-height: 1; white-space: nowrap; }
+.squad-option__included-tag, .squad-option__featured-tag, .squad-option__full-tag { display: inline-flex; flex: 0 0 auto; align-items: center; padding: 0.16rem 0.3rem; border-radius: 4px; color: var(--canvas); font-size: 0.54rem; font-weight: 800; line-height: 1; white-space: nowrap; }
+.squad-option__included-tag { background: var(--success); }
+.squad-option__featured-tag { background: var(--warning); }
+.squad-option__full-tag { background: var(--danger); }
 .squad-option__occupancy { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 0.22rem; color: var(--text-muted); font-family: var(--font-mono); font-size: 0.68rem; }
 </style>

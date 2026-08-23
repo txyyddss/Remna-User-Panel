@@ -5,7 +5,7 @@ import type { CatalogNode, TopNode } from '@/api/types'
 import CountryFlag from '@/components/common/CountryFlag.vue'
 import { getLocale, t } from '@/i18n'
 import { formatBytes } from '@/utils/format'
-
+import { selectionHaptic } from '@/utils/telegram'
 const props = defineProps<{
   nodes: readonly TopNode[]
   totalBytes: string
@@ -140,6 +140,7 @@ function segmentAt(clientX: number): Segment | null {
 function previewAt(event: globalThis.PointerEvent): void { hoveredKey.value = segmentAt(event.clientX)?.key ?? null }
 function selectAt(event: globalThis.MouseEvent): void { const segment = segmentAt(event.clientX); if (segment) toggleSelection(segment.key) }
 function toggleSelection(key: string): void {
+  selectionHaptic()
   if (selectedKey.value === key) { selectedKey.value = null; hoveredKey.value = null; return }
   selectedKey.value = key
 }
@@ -173,7 +174,6 @@ function clearSelection(): void { selectedKey.value = null; hoveredKey.value = n
     </article>
   </div>
 </template>
-
 <style scoped>
 .traffic-usage-bar { --traffic-node-1: var(--accent); --traffic-node-2: var(--accent-strong); --traffic-node-3: var(--success); --traffic-node-4: var(--warning); --traffic-node-5: var(--text-muted); --traffic-node-other: var(--line-strong); margin-top: 0.75rem; }
 .traffic-usage-bar__track { position: relative; display: flex; min-height: 44px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-raised); isolation: isolate; }

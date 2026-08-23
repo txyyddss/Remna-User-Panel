@@ -90,6 +90,7 @@ watch(open, (next, previous) => {
     :title="$t('payment.addTxb')"
     :description="description"
     :dismissible="!['creating', 'pending', 'cancelling'].includes(stage)"
+    :close="{ 'data-haptic': 'dismiss' }"
   >
     <template #actions>
       <UButton

@@ -144,7 +144,7 @@ onScopeDispose(stopRestorePolling)
           <span class="feature-icon"><UIcon name="i-ph-database" /></span>
           <div><strong>{{ backupName(backup) }}</strong><small>{{ formatBytes(backup.sizeBytes) }} / {{ formatDateTime(backup.createdAt) }}</small></div>
           <span class="backup-card__verified"><UIcon name="i-ph-check-circle-fill" /> {{ backup.status === 'complete' ? t('adminBackups.verified') : t(`adminBackups.status.${backup.status}`) }}</span>
-          <div v-if="backup.status === 'complete'" class="backup-card__actions"><UButton size="sm" color="neutral" variant="outline" icon="i-ph-download-simple" :label="t('adminBackups.download')" @click="download(backup)" /><UButton size="sm" color="error" variant="ghost" icon="i-ph-upload-simple" :label="t('adminBackups.restore')" @click="restoreTarget = backup" /><UButton size="sm" color="error" variant="ghost" icon="i-ph-trash" :label="t('adminBackups.delete')" @click="backupDeleteTarget = backup" /></div>
+          <div v-if="backup.status === 'complete'" class="backup-card__actions"><UButton size="sm" color="neutral" variant="outline" icon="i-ph-download-simple" :label="t('adminBackups.download')" @click="download(backup)" /><UButton size="sm" color="error" variant="ghost" icon="i-ph-upload-simple" :label="t('adminBackups.restore')" data-haptic="destructive" @click="restoreTarget = backup" /><UButton size="sm" color="error" variant="ghost" icon="i-ph-trash" :label="t('adminBackups.delete')" data-haptic="destructive" @click="backupDeleteTarget = backup" /></div>
         </article>
         <div v-if="!backups.items.value.length" class="empty-inline"><div><h3>{{ t('adminBackups.none') }}</h3><p>{{ t('adminBackups.noneHint') }}</p></div></div>
       </div>
@@ -170,7 +170,7 @@ onScopeDispose(stopRestorePolling)
             :label="t('adminBackups.retry')"
             @click="retryJob(job.id)"
           />
-          <UButton color="error" variant="ghost" icon="i-ph-trash" :disabled="job.status === 'processing' || jobs.busy.value || jobRetry.blocksMutations.value" :aria-label="t('adminBackups.deleteJobLabel', { kind: job.kind })" @click="jobDeleteTarget = job" />
+          <UButton color="error" variant="ghost" icon="i-ph-trash" :disabled="job.status === 'processing' || jobs.busy.value || jobRetry.blocksMutations.value" :aria-label="t('adminBackups.deleteJobLabel', { kind: job.kind })" data-haptic="destructive" @click="jobDeleteTarget = job" />
         </article>
         <div v-if="!jobs.items.value.length" class="empty-inline"><div><h3>{{ t('adminBackups.noJobs') }}</h3><p>{{ t('adminBackups.noJobsHint') }}</p></div></div>
       </div>

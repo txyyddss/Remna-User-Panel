@@ -126,7 +126,7 @@ function localized(key: string, fallback: string): string {
           </section>
 
           <div v-if="canReissue" class="payment-receipt__actions">
-            <UButton block color="neutral" variant="outline" trailing-icon="i-ph-arrow-clockwise" :label="$t('payment.reissue')" @click="emit('reissue')" />
+            <UButton block color="neutral" variant="outline" trailing-icon="i-ph-arrow-clockwise" :label="$t('payment.reissue')" data-haptic="action" @click="emit('reissue')" />
           </div>
         </div>
       </UCard>

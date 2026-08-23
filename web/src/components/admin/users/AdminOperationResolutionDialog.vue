@@ -33,7 +33,7 @@ function submit(): void {
 </script>
 
 <template>
-  <UModal :open="open" :title="t('adminUserProfile.resolveTitle')" :description="t('adminUserProfile.resolveHint')" :dismissible="!busy" :ui="{ footer: 'justify-end' }" @update:open="emit('update:open', $event)">
+  <UModal :open="open" :title="t('adminUserProfile.resolveTitle')" :description="t('adminUserProfile.resolveHint')" :dismissible="!busy" :close="{ 'data-haptic': 'dismiss' }" :ui="{ footer: 'justify-end' }" @update:open="emit('update:open', $event)">
     <template #body>
       <UAlert color="warning" variant="soft" icon="i-ph-warning-circle" :title="t('adminUserProfile.resolveWarning')" :description="t('adminUserProfile.resolveWarningHint')" />
       <UForm id="operation-resolution" :state="{ resolution, reason }" class="form-stack" @submit="submit">

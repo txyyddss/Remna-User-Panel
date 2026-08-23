@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import type { EmbyLibrary } from '@/api/features'
+import { selectionHaptic } from '@/utils/telegram'
 
 const props = defineProps<{ libraries: readonly EmbyLibrary[]; selectedIds: readonly string[]; disabled?: boolean }>()
 const emit = defineEmits<{ toggle: [id: string] }>()
+
+function toggle(id: string): void {
+  selectionHaptic()
+  emit('toggle', id)
+}
 </script>
 
 <template>
@@ -15,7 +21,7 @@ const emit = defineEmits<{ toggle: [id: string] }>()
         :model-value="props.selectedIds.includes(library.id)"
         :disabled="disabled"
         :aria-label="library.name"
-        @update:model-value="emit('toggle', library.id)"
+        @update:model-value="toggle(library.id)"
       />
     </label>
     <small class="field-hint">{{ $t('emby.disabledLibrariesHint') }}</small>

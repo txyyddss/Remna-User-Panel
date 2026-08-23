@@ -24,7 +24,7 @@ function reload(): void {
       <h1>{{ t('recovery.title') }}</h1>
       <p>{{ t('recovery.description') }}</p>
     </div>
-    <UButton icon="i-ph-arrow-clockwise" :label="t('recovery.reload')" @click="reload" />
+    <UButton icon="i-ph-arrow-clockwise" :label="t('recovery.reload')" data-haptic="retry" @click="reload" />
     <footer class="auth-screen__locale"><LanguageControl /></footer>
   </main>
   <slot v-else />

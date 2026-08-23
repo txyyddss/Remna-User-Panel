@@ -59,6 +59,17 @@
   flex: 1;
 }
 
+.tg-overlay-header.tg-overlay-header--centered {
+  justify-content: center;
+  padding-inline: 1rem;
+  text-align: center;
+}
+
+.tg-overlay-copy--centered {
+  width: 100%;
+  text-align: center;
+}
+
 .tg-overlay-copy [data-slot="title"],
 .tg-overlay-copy [data-slot="description"] {
   overflow-wrap: anywhere;
@@ -78,6 +89,12 @@
   overflow: visible;
   white-space: normal;
   text-overflow: clip;
+}
+
+@media (min-width: 640px) {
+  .tg-overlay-header.tg-overlay-header--centered {
+    padding-inline: 1.5rem;
+  }
 }
 
 .tg-drawer {

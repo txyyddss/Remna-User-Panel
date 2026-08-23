@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { selectionHaptic } from '@/utils/telegram'
+
 withDefaults(defineProps<{
   id: string
   label: string
@@ -24,6 +26,7 @@ const model = defineModel<boolean>({ required: true })
       class="switch-control"
       :disabled="disabled"
       :aria-describedby="help ? `${id}-help` : undefined"
+      @update:model-value="selectionHaptic"
     />
   </div>
 </template>

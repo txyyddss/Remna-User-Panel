@@ -26,7 +26,7 @@ defineEmits<{ confirm: [] }>()
 const { t } = useI18n()
 const modalUi = computed(() => ({
   footer: 'justify-end',
-  ...(props.centered ? { header: 'justify-center', wrapper: 'text-center' } : {}),
+  ...(props.centered ? { header: 'tg-overlay-header--centered', wrapper: 'tg-overlay-copy--centered' } : {}),
 }))
 useTelegramProtection(computed(() => open.value && (props.danger || props.busy)))
 </script>

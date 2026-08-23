@@ -45,6 +45,19 @@ const node = {
 }
 
 describe('SquadSelector', () => {
+  it('shows included squads as green name-adjacent tags', () => {
+    const wrapper = mount(SquadSelector, {
+      props: { squads: [occupiedAddon], selectedIds: [occupiedAddon.id], includedIds: [occupiedAddon.id], featuredIds: [], orderedIds: [occupiedAddon.id] },
+    })
+
+    const includedTag = wrapper.get('.squad-option__included-tag')
+    const nameCopy = wrapper.get('.squad-profile-summary__name-copy')
+    expect(includedTag.text()).toBe('Included')
+    expect(nameCopy.get('strong').element.nextElementSibling).toBe(includedTag.element)
+    expect(wrapper.get('.squad-option').classes()).toContain('squad-option--included')
+    expect(wrapper.find('.status-badge').exists()).toBe(false)
+  })
+
   it('marks a full paid add-on unavailable without affecting included squads', () => {
     const wrapper = mount(SquadSelector, {
       props: { squads: [fullAddon], selectedIds: [], includedIds: [], featuredIds: [], orderedIds: [fullAddon.id] },

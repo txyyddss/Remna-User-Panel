@@ -71,7 +71,7 @@ async function saveSquad(payload: SquadProductWrite): Promise<void> {
           <div class="row-actions">
             <UButton color="neutral" variant="ghost" square icon="i-ph-chart-bar" :aria-label="t('adminCatalog.statisticsFor', { name: combo.name })" @click="statisticsTarget = { kind: 'combo', id: combo.id, title: t('adminCatalog.statisticsTitle', { name: combo.name }) }" />
             <UButton color="neutral" variant="ghost" square icon="i-ph-pencil-simple" :aria-label="t('adminCatalog.editNamed', { name: combo.name })" @click="editing = combo" />
-            <UButton color="error" variant="ghost" square icon="i-ph-trash" :aria-label="t('adminCatalog.hideNamed', { name: combo.name })" @click="deleting = combo" />
+            <UButton color="error" variant="ghost" square icon="i-ph-trash" :aria-label="t('adminCatalog.hideNamed', { name: combo.name })" data-haptic="destructive" @click="deleting = combo" />
           </div>
         </article>
         <div v-if="!combos.items.value.length" class="empty-inline"><div><h3>{{ t('adminCatalog.noCombos') }}</h3><p>{{ t('adminCatalog.noCombosHint') }}</p></div></div>

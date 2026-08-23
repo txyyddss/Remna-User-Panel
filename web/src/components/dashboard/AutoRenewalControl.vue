@@ -59,7 +59,7 @@ async function updateRenewal(next: boolean): Promise<void> {
 <template>
   <div class="auto-renewal-control">
     <UButton block class="auto-renewal-control__action" :color="actionColor" variant="soft" :label="actionLabel" data-haptic="open" @click="open = true" />
-    <UModal v-model:open="open" :title="$t('home.autoRenewalTitle')" :description="$t('home.autoRenewalHint')">
+    <UModal v-model:open="open" :title="$t('home.autoRenewalTitle')" :description="$t('home.autoRenewalHint')" :close="{ 'data-haptic': 'dismiss' }">
       <template #body>
         <div class="auto-renewal-control__dialog">
           <USkeleton v-if="loading" class="h-36" />

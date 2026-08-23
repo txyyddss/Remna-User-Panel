@@ -27,7 +27,7 @@ function startOver(): void {
 </script>
 
 <template>
-  <UDrawer :open="true" :title="t('questionnaireImport.settle', { name: questionnaire.title })" :description="t('questionnaireImport.copy')" @update:open="!$event && emit('close')">
+  <UDrawer :open="true" :title="t('questionnaireImport.settle', { name: questionnaire.title })" :description="t('questionnaireImport.copy')" :close="{ 'data-haptic': 'dismiss' }" @update:open="!$event && emit('close')">
     <template #body>
       <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
       <UButton v-if="operationReceipt && ['queued', 'processing'].includes(operationReceipt.status) && error" color="neutral" variant="outline" icon="i-ph-arrow-clockwise" :loading="operationChecking" :label="t('operations.checkStatus')" @click="refreshOperation" />

@@ -56,7 +56,7 @@ function add(): void {
         <div class="welcome-card__actions">
           <UButton color="neutral" variant="ghost" square icon="i-ph-arrow-up" :disabled="index === 0" :aria-label="t('adminOnboarding.moveUp')" @click="move(index, -1)" />
           <UButton color="neutral" variant="ghost" square icon="i-ph-arrow-down" :disabled="index === pairs.length - 1" :aria-label="t('adminOnboarding.moveDown')" @click="move(index, 1)" />
-          <UButton color="error" variant="ghost" square icon="i-ph-trash" :disabled="pairs.length <= 1" :aria-label="t('adminOnboarding.removeCard')" @click="remove(index)" />
+          <UButton color="error" variant="ghost" square icon="i-ph-trash" :disabled="pairs.length <= 1" :aria-label="t('adminOnboarding.removeCard')" data-haptic="destructive" @click="remove(index)" />
         </div>
       </header>
       <UFormField :label="t('adminOnboarding.identifier')">

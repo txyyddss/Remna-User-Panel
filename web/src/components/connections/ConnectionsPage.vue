@@ -59,7 +59,7 @@ watch(() => blocks.receipt.value, (receipt) => {
 </script>
 
 <template>
-  <div class="page page--connections">
+  <div v-auto-animate class="page page--connections">
     <header class="connections-heading">
       <div><span class="eyebrow">{{ $t('connections.eyebrow') }}</span><h1>{{ $t('connections.title') }}</h1><p>{{ $t('connections.subtitle') }}</p></div>
       <UButton color="neutral" variant="outline" square icon="i-ph-arrow-clockwise" :loading="scan.loading.value || scan.polling.value || blocks.loading.value" :disabled="blocks.mutationActive.value" :aria-label="$t('connections.scanAgain')" data-haptic="refresh" @click="refreshAll" />

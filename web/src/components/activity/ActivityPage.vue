@@ -13,7 +13,7 @@ const { overview, result, loading, busy, error, load, checkIn, placeBet, draw, c
 </script>
 
 <template>
-  <div class="page page--activity">
+  <div v-auto-animate class="page page--activity">
     <header class="page-header">
       <h1>{{ $t('activity.title') }}</h1>
     </header>
@@ -43,7 +43,7 @@ const { overview, result, loading, busy, error, load, checkIn, placeBet, draw, c
     </template>
     <div v-else class="error-state">
       <h1>{{ $t('errors.activityUnavailable') }}</h1><p>{{ error }}</p>
-      <UButton :label="$t('common.tryAgain')" @click="load()" />
+      <UButton :label="$t('common.tryAgain')" data-haptic="retry" @click="load()" />
     </div>
   </div>
 </template>

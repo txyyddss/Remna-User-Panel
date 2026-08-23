@@ -29,6 +29,7 @@ defineEmits<{ checkIn: [] }>()
       :disabled="checkedIn || busy"
       :loading="busy"
       :label="checkedIn ? $t('activity.checkedIn') : busy ? $t('activity.checkingIn') : $t('activity.checkIn')"
+      data-haptic="confirm"
       @click="$emit('checkIn')"
     />
   </section>

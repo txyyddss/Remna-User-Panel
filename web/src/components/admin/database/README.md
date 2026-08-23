@@ -1,9 +1,15 @@
 # Database admin
 
 - `AdminDatabasePanel.vue` coordinates table selection, debounced queries, row views, and mutation requests.
-- `DatabaseQueryControls.vue` owns typed search and filter input events.
-- `DatabaseMobileRowCard.vue` presents a key-only row summary with touch-sized edit and delete actions below the desktop breakpoint.
-- `DatabaseMobileRowCard.test.ts` verifies key-only rendering and the typed edit/delete events.
-- `DatabaseRecordEditor.vue` preserves review-before-apply database mutations in a safe-area-aware mobile drawer.
-- `DatabaseRecordEditor.test.ts` verifies sticky-footer form submission, review diffs, confirmation gating, and apply events.
-- `types.ts` contains shared query-control contracts for the database feature.
+- `DatabaseTablePicker.vue` provides the searchable phone select and preserves the searchable desktop table list.
+- `DatabaseTablePicker.test.ts` covers searchable table selection on both responsive presentations.
+- `DatabaseQueryControls.vue` owns typed search plus desktop-live and phone-staged filter behavior.
+- `DatabaseQueryControls.test.ts` covers staged Apply, Cancel, Clear, the five-filter limit, and body scrolling.
+- `DatabaseFilterFields.vue` renders reusable typed column, operator, value, and removal controls.
+- `DatabaseMobileRowCard.vue` renders structured keys, safe schema-ordered previews, expansion, and labeled row actions.
+- `DatabaseMobileRowCard.test.ts` covers three-field previews, sensitive exclusion, expansion, and typed actions.
+- `DatabaseRecordEditor.vue` coordinates distinct Draft and Review stages in a fixed-chrome, safe-area-aware drawer.
+- `DatabaseRecordEditor.test.ts` covers draft submission, stage switching, confirmation gating, and delete review.
+- `DatabaseRecordFields.vue` renders editable, nullable, BLOB, and protected record metadata.
+- `DatabaseMutationReviewPanel.vue` renders exact before/after values, backup guidance, and typed confirmation.
+- `types.ts` contains shared readonly and query-control contracts for the database feature.

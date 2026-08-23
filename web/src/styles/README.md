@@ -28,15 +28,16 @@
 - `catalog-02.css` styles catalog selection and checkout details.
 - `billing-01.css` styles funding controls.
 - `billing-02.css` styles provider-payment details.
-- `billing-03.css` styles crypto currency/network selection, address copy, QR loading, and the fixed payment countdown.
+- `billing-03.css` styles crypto currency/network selection plus the compact payment-instruction rhythm, address copy, QR loading, and fixed countdown.
 - `feedback-01.css` styles feedback, empty, and loading states.
 - `admin-01.css` styles administrative navigation and section layouts.
 - `admin-02.css` styles administrative forms, lists, and data surfaces.
 - `admin-03.css` styles administrative drawers and review workflows.
 - `admin-04.css` styles aggregate user profiles, bulk previews, operation resolution, and streamed backup upload.
 - `admin-05.css` styles active IP blocks and mobile unblock controls in aggregate user profiles.
-- `overlays-01.css` resolves Telegram safe-area bounds while retaining Nuxt UI's native centered position for teleported modals and responsive drawer/slideover layouts.
+- `overlays-01.css` resolves Telegram safe-area bounds while retaining Nuxt UI's native centered position for teleported modals, provides symmetric opt-in centered modal headers, and owns responsive drawer/slideover layouts.
 - `motion-01.css` defines short transitions and state motion.
+- `motion-02.css` adds reduced-motion-safe staggered page entry, tactile press response, status arrival, and active-navigation feedback.
 - `responsive-01.css` owns shared motion keyframes used by compact surfaces.
 - `responsive-02.css` expands the phone-first shell into a sticky-rail desktop layout, keeps Home in its centered balance-first column, and restores wide route, dialog, catalog, settings, and administrative list arrangements.
 - `responsive-03.css` applies compact administrative rows below 640px and owns reduced-motion/transparency fallbacks.

@@ -5,6 +5,7 @@ import type { EmbyLibrary, EmbyRating } from '@/api/features'
 import type { Money } from '@/api/types'
 import { useI18n } from '@/i18n'
 import { formatMoney } from '@/utils/format'
+import { selectionHaptic } from '@/utils/telegram'
 import EmbyLibraryPicker from './EmbyLibraryPicker.vue'
 
 const props = defineProps<{
@@ -43,11 +44,11 @@ function submit(): void {
       <UInput v-model="draft.password" icon="i-ph-lock-key" type="password" :minlength="8" :disabled="blocked" required autocomplete="new-password" />
     </UFormField>
     <UFormField name="rating" :label="$t('emby.rating')">
-      <USelect v-model="draft.maxParentalRating" :items="ratingItems" value-key="value" :disabled="blocked" />
+      <USelect v-model="draft.maxParentalRating" :items="ratingItems" value-key="value" :disabled="blocked" @update:model-value="selectionHaptic" />
     </UFormField>
     <EmbyLibraryPicker :libraries="libraries" :selected-ids="draft.disabledLibraryIds" :disabled="blocked || busy" @toggle="toggleLibrary" />
     <UAlert class="emby-form__notice" color="success" variant="soft" icon="i-ph-shield-check" :description="$t('emby.safetyControls')" />
-    <UButton class="emby-form__submit" type="submit" :disabled="blocked || busy || draft.password.length < 8" :loading="busy" :label="busy ? $t('emby.startingSetup') : $t('emby.payAndCreate', { amount: formatMoney(price) })" />
+    <UButton class="emby-form__submit" type="submit" :disabled="blocked || busy || draft.password.length < 8" :loading="busy" :label="busy ? $t('emby.startingSetup') : $t('emby.payAndCreate', { amount: formatMoney(price) })" data-haptic="confirm" />
   </form>
 </template>
 
