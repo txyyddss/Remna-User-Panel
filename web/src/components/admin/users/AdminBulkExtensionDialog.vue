@@ -6,6 +6,8 @@ import { ApiError } from '@/api/http'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import { localizedError, useI18n } from '@/i18n'
 import { createUuid } from '@/utils/browserCompatibility'
+import AdminDurationField from './AdminDurationField.vue'
+import { durationMinutes, validDurationDraft } from './duration'
 
 const open = defineModel<boolean>('open', { required: true })
 const emit = defineEmits<{ queued: [receipt: OperationReceipt] }>()
@@ -16,22 +18,26 @@ const optionsLoading = shallowRef(false)
 const previewing = shallowRef(false)
 const creating = shallowRef(false)
 const error = shallowRef<string | null>(null)
-const draft = reactive({ comboIds: [] as string[], addonSquadUuids: [] as string[], days: 1, reason: '' })
+const draft = reactive({
+  comboIds: [] as string[], addonSquadUuids: [] as string[],
+  duration: { amount: 1, unit: 'days' as const }, reason: '',
+})
 let createKey: string | undefined
 
 const comboItems = computed(() => options.value.combos.map((combo) => ({ value: combo.id, label: combo.name })))
 const squadItems = computed(() => options.value.squads.map((squad) => ({ value: squad.remnaSquadUuid, label: squad.name })))
 const hasFilter = computed(() => draft.comboIds.length > 0 || draft.addonSquadUuids.length > 0)
-const canPreview = computed(() => hasFilter.value && draft.days >= 1 && draft.days <= 3650)
+const normalizedMinutes = computed(() => durationMinutes(draft.duration))
+const canPreview = computed(() => hasFilter.value && validDurationDraft(draft.duration))
 const canCreate = computed(() => preview.value !== null && preview.value.matchedUsers > 0 && draft.reason.trim().length >= 3)
 
-watch(() => [draft.comboIds.join(','), draft.addonSquadUuids.join(','), draft.days], () => {
+watch(() => [draft.comboIds.join(','), draft.addonSquadUuids.join(','), normalizedMinutes.value], () => {
   preview.value = null
 })
 
 watch(open, (value) => {
   if (!value) return
-  Object.assign(draft, { comboIds: [], addonSquadUuids: [], days: 1, reason: '' })
+  Object.assign(draft, { comboIds: [], addonSquadUuids: [], duration: { amount: 1, unit: 'days' }, reason: '' })
   preview.value = null
   error.value = null
   void loadOptions()
@@ -55,7 +61,7 @@ async function requestPreview(): Promise<void> {
   error.value = null
   try {
     preview.value = await adminOperationsApi.previewBulkExtension({
-      comboIds: [...draft.comboIds], addonSquadUuids: [...draft.addonSquadUuids], days: draft.days,
+      comboIds: [...draft.comboIds], addonSquadUuids: [...draft.addonSquadUuids], durationMinutes: normalizedMinutes.value,
     })
   } catch (caught) {
     error.value = localizedError(caught, 'adminBulkExtension.previewFailed')
@@ -72,7 +78,7 @@ async function create(): Promise<void> {
   try {
     const receipt = await adminOperationsApi.createBulkExtension({
       comboIds: [...draft.comboIds], addonSquadUuids: [...draft.addonSquadUuids],
-      days: draft.days, reason: draft.reason.trim(),
+      durationMinutes: normalizedMinutes.value, reason: draft.reason.trim(),
     }, createKey)
     createKey = undefined
     emit('queued', receipt)
@@ -93,7 +99,7 @@ async function create(): Promise<void> {
       <UForm :state="draft" class="form-stack" @submit="create">
         <UFormField name="comboIds" :label="t('adminBulkExtension.combos')"><USelectMenu v-model="draft.comboIds" class="w-full" :items="comboItems" value-key="value" label-key="label" multiple :loading="optionsLoading" /></UFormField>
         <UFormField name="addonSquadUuids" :label="t('adminBulkExtension.addons')"><USelectMenu v-model="draft.addonSquadUuids" class="w-full" :items="squadItems" value-key="value" label-key="label" multiple :loading="optionsLoading" /></UFormField>
-        <UFormField name="days" :label="t('adminBulkExtension.days')" required><UInputNumber v-model="draft.days" :min="1" :max="3650" :step="1" /></UFormField>
+        <AdminDurationField v-model="draft.duration" />
         <UButton color="neutral" variant="outline" icon="i-ph-magnifying-glass" :label="previewing ? t('adminBulkExtension.previewing') : t('adminBulkExtension.preview')" :loading="previewing" :disabled="!canPreview || previewing || creating" @click="requestPreview" />
         <div v-if="preview" class="admin-preview-band">
           <div><strong>{{ preview.matchedUsers }}</strong><span>{{ t('adminBulkExtension.members') }}</span></div>

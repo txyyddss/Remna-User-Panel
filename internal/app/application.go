@@ -8,6 +8,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/affiliates"
 	"github.com/txyyddss/Remna-User-Panel/internal/billing"
 	"github.com/txyyddss/Remna-User-Panel/internal/catalog"
+	"github.com/txyyddss/Remna-User-Panel/internal/compensation"
 	"github.com/txyyddss/Remna-User-Panel/internal/maintenance"
 	"github.com/txyyddss/Remna-User-Panel/internal/notifications"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/backup"
@@ -31,6 +32,7 @@ type Application struct {
 	catalog         *catalog.Service
 	billing         *billing.Service
 	statistics      *productstats.Service
+	compensation    *compensation.Service
 	affiliates      *affiliates.Service
 	notifications   *notifications.Scanner
 	upstreams       *providerQueues

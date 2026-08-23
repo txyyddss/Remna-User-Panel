@@ -22,16 +22,22 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 44px;
   align-items: center;
-  gap: 0.45rem 0.65rem;
+  gap: 0.15rem 0.5rem;
+  padding: 0.55rem 0.65rem;
 }
 
 .payment-address--copy > span {
-  grid-column: 1 / -1;
+  grid-column: 1;
   margin: 0;
 }
 
 .payment-address--copy code {
   min-width: 0;
+}
+
+.payment-address__copy-button {
+  grid-column: 2;
+  grid-row: 1 / 3;
 }
 
 .crypto-countdown {

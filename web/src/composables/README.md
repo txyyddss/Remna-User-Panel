@@ -49,6 +49,8 @@
 - `useQuestionnaireImport.test.ts` covers import analysis and settlement.
 - `useQuestionnaires.ts` manages member questionnaire participation.
 - `useNodeGeocheck.ts` loads an image-only cached node Geocheck for a minimal UUID/name target shared by Statistics and Catalog, only after explicit selection, and clears its state on close.
+- `useNodeCompensation.ts` coordinates revisioned policy, filtered cursor history, and stable-key reviewed outage commands.
+- `useNodeCompensation.test.ts` covers idempotency-key reuse after an ambiguous review failure.
 - `useNodeGeocheck.test.ts` covers selected-target loading, localized unavailability, and close reset behavior.
 - `useStatistics.ts` independently loads the 30-minute aggregate snapshot and
   ten-second node cache while preserving last-good data across partial failures.

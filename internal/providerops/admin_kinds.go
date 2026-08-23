@@ -11,4 +11,6 @@ const (
 	KindAdminComboReplacement = "admin_combo_replacement"
 	// KindAdminBulkExtension synchronizes deduplicated active-user extensions.
 	KindAdminBulkExtension = "admin_bulk_extension"
+	// KindNodeCompensation synchronizes one reviewed outage compensation.
+	KindNodeCompensation = "node_compensation"
 )

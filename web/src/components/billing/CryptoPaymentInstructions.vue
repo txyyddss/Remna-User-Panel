@@ -41,6 +41,7 @@ function copyAddress(): void {
       <code>{{ order.receivingAddress }}</code>
       <UTooltip :text="clipboard.copied.value ? t('common.copied') : t('cryptoPayment.copyAddress')">
         <UButton
+          class="payment-address__copy-button"
           color="neutral"
           variant="ghost"
           :icon="clipboard.copied.value ? 'i-ph-check-bold' : 'i-ph-copy'"

@@ -12,6 +12,7 @@ Admin controls inherit guarded action feedback, modal dismissal stays soft, audi
 - `AdminBillingAmountLimits.vue` loads the global inclusive Add TXB range and atomically saves exact minor-unit bounds.
 - `AdminCatalogEditor.vue` edits combo terms.
 - `AdminCatalogPanel.vue` manages combos and squads.
+- `AdminCompensationPanel.vue` composes the revisioned outage policy and recipient-safe event review flow.
 - `AdminCouponsPanel.vue` manages coupon definitions.
 - `AdminDatabasePanel.vue` browses protected database tables.
 - `AdminEmbyPanel.vue` monitors Emby provisioning.
@@ -31,6 +32,7 @@ Admin controls inherit guarded action feedback, modal dismissal stays soft, audi
 - `AdminStatisticsPanel.vue` presents resource statistics with narrow-screen overflow protection.
 - `AdminUsersPanel.vue` searches users and adjusts balances.
 - `users/` contains the aggregate profile, entitlement workflow, operation-resolution, and bulk-extension modules.
+- `compensation/` contains focused configuration, event-card, review-modal, and display-format modules.
 
 The editor also provides dropdowns for coupon-eligible combos and squads, a stock
 limit field for squad products, a table-name search for database recovery work,

@@ -7,6 +7,7 @@ Migration files are embedded and applied in lexical order by `database.go`.
   and provider-success release gates.
 - `032_automatic_traffic_reset.sql` adds the account-wide opt-in preference
   used by the five-minute traffic scanner.
+- `033_node_compensation.sql` adds nullable revisioned policy, persistent node state, immutable outage snapshots, frozen recipients, and reviewed operation linkage.
 Never edit a migration that may already have been deployed; add the next numbered
 file instead.
 

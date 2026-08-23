@@ -1,6 +1,8 @@
 # Admin user workflows
 
 - `AdminBulkExtensionDialog.vue` previews inclusive-OR active targets and queues the audited durable extension job.
+- `AdminDurationField.vue` and `duration.ts` provide the minute-normalized amount/unit control shared by administrative extension workflows.
+- `duration.test.ts` covers deterministic minute, hour, and day conversion boundaries.
 - `AdminComboReplacementDialog.vue` changes the active combo and optional squads without moving TXB.
 - `AdminEntitlementEditor.vue` validates the advanced optimistic-lock overwrite form.
 - `AdminOperationResolutionDialog.vue` records an audited resolution without retrying an ambiguous provider mutation.

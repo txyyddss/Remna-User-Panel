@@ -31,6 +31,11 @@ func (a *Application) runStatisticsScheduler(ctx context.Context) {
 }
 
 func (a *Application) refreshProductStatistics(ctx context.Context, now time.Time) {
+	compensationCtx, cancelCompensation := context.WithTimeout(ctx, statisticsRefreshTimeout)
+	if err := a.compensation.Observe(compensationCtx, now); err != nil && !errors.Is(err, context.Canceled) {
+		a.logger.Error("node compensation observation skipped", "error", err)
+	}
+	cancelCompensation()
 	refreshCtx, cancelRefresh := context.WithTimeout(ctx, statisticsRefreshTimeout)
 	if err := a.statistics.Refresh(refreshCtx, now); err != nil && !errors.Is(err, context.Canceled) {
 		a.logger.Error("statistics partition refresh was partial", "error", err)

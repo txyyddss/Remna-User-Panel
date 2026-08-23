@@ -51,10 +51,10 @@ func (s *Store) CreateAdminBulkExtension(ctx context.Context, input AdminBulkExt
 		if err != nil {
 			return model.OperationReceipt{}, err
 		}
-		if err := shiftAdminSubscriptionTx(ctx, tx, target, input.Days, now); err != nil {
+		if err := shiftAdminSubscriptionTx(ctx, tx, target, input.DurationMinutes, now); err != nil {
 			return model.OperationReceipt{}, err
 		}
-		newExpiry, err := addSubscriptionDays(before.ValidUntil, input.Days)
+		newExpiry, err := addSubscriptionMinutes(before.ValidUntil, input.DurationMinutes)
 		if err != nil {
 			return model.OperationReceipt{}, err
 		}
@@ -74,7 +74,7 @@ func (s *Store) CreateAdminBulkExtension(ctx context.Context, input AdminBulkExt
 	}
 	detail, err := json.Marshal(map[string]any{"reason": input.Reason, "operationId": operation.Receipt.ID,
 		"comboIds": input.Filter.ComboIDs, "addonSquadUuids": input.Filter.AddonSquadUUIDs,
-		"days": input.Days, "matchedUsers": preview.MatchedUsers, "queuedSuccessors": preview.QueuedSuccessors})
+		"durationMinutes": input.DurationMinutes, "matchedUsers": preview.MatchedUsers, "queuedSuccessors": preview.QueuedSuccessors})
 	if err != nil {
 		return model.OperationReceipt{}, err
 	}

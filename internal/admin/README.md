@@ -20,10 +20,10 @@ Audited administrative operations for catalog data, settings, balances, refunds,
 - `mutation_lifecycle.go` marks administrator operation items and receipts through one bounded lifecycle.
 - `refund_worker.go` reconciles Telegram Stars outcomes before applying one local payment refund.
 - `user_profiles.go` builds the user aggregate from identity, balance, active and queued entitlements, Emby, payments, refunds, and open operations.
-- `user_command_types.go` defines the complete entitlement, combo replacement, and bulk-extension command inputs.
+- `user_command_types.go` defines the complete entitlement, combo replacement, and minute-normalized bulk-extension command inputs.
 - `user_command_validation.go` normalizes IDs and squads and fingerprints idempotent administrator commands.
 - `user_entitlement_commands.go` validates full edits, exactly-once refunds, and no-charge combo replacements.
-- `user_bulk_commands.go` validates inclusive-OR bulk previews and durable extension jobs.
+- `user_bulk_commands.go` validates minute-precise inclusive-OR bulk previews and durable extension jobs.
 - `user_operation_resolution.go` validates idempotent audited resolutions for ambiguous provider outcomes without dispatching another provider call.
 - `user_operation_worker.go` applies exact local entitlement state through the
   shared provider-operation dispatcher and releases user messages only after a

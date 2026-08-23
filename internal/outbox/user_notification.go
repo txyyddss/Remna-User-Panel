@@ -62,7 +62,8 @@ func validateUserNotification(payload UserNotification) error {
 	switch payload.Kind {
 	case UserEventExpiration, UserEventExpiryReminder, UserEventQueuedActivation, UserEventAutoRenewal,
 		UserEventTrafficThreshold, UserEventAutomaticReset, UserEventAutomaticResetInsufficient,
-		UserEventAutomaticResetFailed, UserEventGroupReward, UserEventAdminExtension, UserEventAdminUpdate:
+		UserEventAutomaticResetFailed, UserEventGroupReward, UserEventAdminExtension, UserEventAdminUpdate,
+		UserEventNodeCompensation:
 		return nil
 	default:
 		return errors.New("user notification kind is unsupported")

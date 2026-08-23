@@ -17,6 +17,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/affiliates"
 	"github.com/txyyddss/Remna-User-Panel/internal/billing"
 	"github.com/txyyddss/Remna-User-Panel/internal/catalog"
+	"github.com/txyyddss/Remna-User-Panel/internal/compensation"
 	"github.com/txyyddss/Remna-User-Panel/internal/coupons"
 	"github.com/txyyddss/Remna-User-Panel/internal/emby"
 	"github.com/txyyddss/Remna-User-Panel/internal/entitlements"
@@ -139,6 +140,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		return cleanup(err)
 	}
 	statisticsService := productstats.NewService(store, remna)
+	compensationService := compensation.NewService(store, remna)
 	if err := registerStatisticsOperationHandler(operationDispatcher, store, remna); err != nil {
 		return cleanup(err)
 	}
@@ -160,7 +162,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		Billing: billingService, Activity: activityService,
 		Coupons: couponService, Questionnaires: questionnaireService, Emby: embyService,
 		EmbyOperations: embyOperations, EmbyPrice: embyPrice,
-		Admin: adminService, AdminUsers: adminUserWorkflows, Settings: settings, DatabaseAdmin: databaseAdminHTTP,
+		Admin: adminService, AdminUsers: adminUserWorkflows, Compensation: compensationService, Settings: settings, DatabaseAdmin: databaseAdminHTTP,
 		PaymentProfiles: paymentProfiles,
 		Store:           store, Affiliates: affiliateService, Telegram: queuedTelegramClient, Webhooks: paymentBridge, PublicURL: cfg.PublicBaseURL, Static: static,
 		Logger: logger, SessionTTL: cfg.SessionTTL, SecureCookies: cfg.PublicBaseURL.Scheme == "https",
@@ -176,7 +178,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	return &Application{
 		config: cfg, logger: logger, httpServer: httpServer, store: store, outbox: outboxWorker,
 		backups: backupService, maintenance: maintenanceService, telegram: queuedTelegramClient, settings: settings,
-		catalog: catalogService, billing: billingService, statistics: statisticsService, affiliates: affiliateService,
+		catalog: catalogService, billing: billingService, statistics: statisticsService, compensation: compensationService, affiliates: affiliateService,
 		notifications: userNotificationScanner, upstreams: upstreams, paymentProfiles: paymentProfiles,
 	}, nil
 }

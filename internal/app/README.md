@@ -42,13 +42,14 @@ stopped.
 - `remna_statistics_adapter.go` implements queue-backed Remnawave digest, node,
   traffic, Geocheck, and host operations for product statistics; documented fractional
   live counts and byte rates are rounded into the integer public contract.
+- `remna_compensation_adapter.go` maps complete queue-backed node and squad snapshots without persisting authoritative assignments.
 - `remna_statistics_adapter_test.go` covers bounded rounding of Remnawave live numeric fields.
 - `emby_adapter.go` implements queued Emby client creation, account operations, policy updates, and metadata lookups.
 - `scheduler.go` runs automatic due-renewal revalidation before entitlement transitions, plus recurring outbox, rollover, backup, and maintenance work until application cancellation.
 - `notification_scheduler.go` runs the bounded startup and five-minute reminder
   and traffic scan independently from the outbox drain.
 - `statistics_scheduler.go` schedules the 30-minute statistics refresh, startup
-  and six-hour node Geocheck cache work, and queued host-multiplier reconciliation.
+  and six-hour node Geocheck cache work, node-compensation observations, and queued host-multiplier reconciliation.
 - `statistics_setup.go` composes the statistics service and its provider adapter.
 - The scheduler delegates the daily backup-gated cleanup order to
   `internal/maintenance`; the durable local-date lease prevents overlapping

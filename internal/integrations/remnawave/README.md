@@ -10,7 +10,7 @@ This package implements the Remnawave v3.3.0 operations used by TX Carpool. Endp
 - `connections.go` implements queued user scans, canonicalizes IPv4/IPv6 observations (including bracketed socket forms), selected-IP drops, and exact `blockIps`/`unblockIps` node-plugin executor payloads; `connection_types.go` keeps transient provider contracts focused.
 - `geocheck.go` starts documented node Geocheck jobs and maps completed SVG results without retaining the upstream raw report.
 - `statistics.go` implements digest and raw node-usage reads; the documented node collection supplies the live node-card metrics in `squads.go`, including fractional number fields that are projected at the application boundary, and `hosts.go` owns the minimal host remark patch contract.
-- `squads.go` implements internal-squad, node, accessible-node, and inbound assignment operations.
+- `squads.go` implements internal-squad, node, accessible-node, and inbound assignment operations; squad and node inbound UUIDs also support transient compensation mapping.
 - `types.go` defines the provider request, response, status, traffic, subscription, node, and squad contracts.
 - `user_identity.go` binds user responses to the exact requested identifier before callers can use bearer data or issue mutations.
 - `user_validation.go` strictly validates every reference-required user and nested traffic field during JSON decoding.

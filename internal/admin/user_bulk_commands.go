@@ -9,14 +9,16 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 )
 
+const MaxExtensionMinutes = 3650 * 24 * 60
+
 // PreviewBulkExtension counts current active targets and all queued successors.
 func (s *UserWorkflows) PreviewBulkExtension(ctx context.Context, request BulkExtension) (database.AdminBulkExtensionPreview, error) {
 	filter, err := s.normalizeBulkFilter(ctx, request)
 	if err != nil {
 		return database.AdminBulkExtensionPreview{}, err
 	}
-	if request.Days < 1 || request.Days > 3650 {
-		return database.AdminBulkExtensionPreview{}, errors.New("extension days must be between 1 and 3650")
+	if request.DurationMinutes < 1 || request.DurationMinutes > MaxExtensionMinutes {
+		return database.AdminBulkExtensionPreview{}, errors.New("extension minutes are outside the supported range")
 	}
 	return s.repository.PreviewAdminBulkExtension(ctx, filter, s.now().UTC())
 }
@@ -24,7 +26,7 @@ func (s *UserWorkflows) PreviewBulkExtension(ctx context.Context, request BulkEx
 // CreateBulkExtension shifts each deduplicated active user exactly once.
 func (s *UserWorkflows) CreateBulkExtension(ctx context.Context, actorID, key string, request BulkExtension) (model.OperationReceipt, error) {
 	request.Reason = strings.TrimSpace(request.Reason)
-	if !validCommand(actorID, key, request.Reason) || request.Days < 1 || request.Days > 3650 {
+	if !validCommand(actorID, key, request.Reason) || request.DurationMinutes < 1 || request.DurationMinutes > MaxExtensionMinutes {
 		return model.OperationReceipt{}, errors.New("invalid bulk extension")
 	}
 	filter, err := s.normalizeBulkFilter(ctx, request)
@@ -32,16 +34,16 @@ func (s *UserWorkflows) CreateBulkExtension(ctx context.Context, actorID, key st
 		return model.OperationReceipt{}, err
 	}
 	fingerprint, err := commandFingerprint(struct {
-		Filter database.AdminBulkExtensionFilter
-		Days   int
-		Reason string
-	}{filter, request.Days, request.Reason})
+		Filter          database.AdminBulkExtensionFilter
+		DurationMinutes int
+		Reason          string
+	}{filter, request.DurationMinutes, request.Reason})
 	if err != nil {
 		return model.OperationReceipt{}, err
 	}
 	return s.repository.CreateAdminBulkExtension(ctx, database.AdminBulkExtensionInput{
 		ActorUserID: actorID, IdempotencyKey: strings.TrimSpace(key), RequestFingerprint: fingerprint,
-		Reason: request.Reason, Filter: filter, Days: request.Days,
+		Reason: request.Reason, Filter: filter, DurationMinutes: request.DurationMinutes,
 	}, s.now().UTC())
 }
 

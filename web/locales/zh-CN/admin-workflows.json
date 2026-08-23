@@ -106,7 +106,10 @@
     "queue": "排队延长",
     "optionsFailed": "无法加载批量延长选项。",
     "previewFailed": "无法创建批量延长预览。",
-    "createFailed": "无法将批量延长加入队列。"
+    "createFailed": "无法将批量延长加入队列。",
+    "amount": "延长时长",
+    "unit": "单位",
+    "units": { "minutes": "分钟", "hours": "小时", "days": "天" }
   },
   "backupUpload": {
     "title": "上传备份",

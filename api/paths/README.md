@@ -91,8 +91,12 @@ Member connection scans, purchase reset/refund resources, operation receipts, st
 - `api-v1-admin-users-id-entitlements-entitlementid.yaml`: `/api/v1/admin/users/{userId}/entitlements/{entitlementId}`, optimistic entitlement overwrite
 - `api-v1-admin-users-id-entitlements-entitlementid-refund.yaml`: `/api/v1/admin/users/{userId}/entitlements/{entitlementId}/refund`, audited entitlement refund operation
 - `api-v1-admin-users-id-combo-replacement.yaml`: `/api/v1/admin/users/{userId}/combo-replacement`, no-charge combo and add-on replacement
-- `api-v1-admin-bulk-extensions-preview.yaml`: `/api/v1/admin/bulk-extensions/preview`, deduplicated inclusive-OR target preview
-- `api-v1-admin-bulk-extensions.yaml`: `/api/v1/admin/bulk-extensions`, durable bulk extension job
+- `api-v1-admin-bulk-extensions-preview.yaml`: `/api/v1/admin/bulk-extensions/preview`, minute-precise deduplicated inclusive-OR target preview
+- `api-v1-admin-bulk-extensions.yaml`: `/api/v1/admin/bulk-extensions`, durable minute-precise bulk extension job
+- `api-v1-admin-node-compensation-config.yaml`: `/api/v1/admin/node-compensation/config`, revisioned outage settings
+- `api-v1-admin-node-compensation-events.yaml`: `/api/v1/admin/node-compensation/events`, recipient-safe outage history
+- `api-v1-admin-node-compensation-events-id-approve.yaml`: `/api/v1/admin/node-compensation/events/{id}/approve`, reviewed durable extension
+- `api-v1-admin-node-compensation-events-id-dismiss.yaml`: `/api/v1/admin/node-compensation/events/{id}/dismiss`, idempotent dismissal
 - `api-v1-admin-operations-id-resolve.yaml`: `/api/v1/admin/operations/{operationId}/resolve`, audited ambiguous-operation resolution
 - `api-v1-admin-billing-amount-limits.yaml`: `/api/v1/admin/billing/amount-limits`, atomic global Add TXB bounds update
 - `api-v1-admin-entitlements.yaml`: `/api/v1/admin/entitlements`

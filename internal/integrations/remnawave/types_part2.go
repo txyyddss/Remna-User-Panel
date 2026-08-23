@@ -3,12 +3,13 @@ package remnawave
 import "time"
 
 type InternalSquad struct {
-	UUID         string    `json:"uuid"`
-	ViewPosition int64     `json:"viewPosition"`
-	Name         string    `json:"name"`
-	Info         SquadInfo `json:"info"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	UUID         string        `json:"uuid"`
+	ViewPosition int64         `json:"viewPosition"`
+	Name         string        `json:"name"`
+	Inbounds     []NodeInbound `json:"inbounds"`
+	Info         SquadInfo     `json:"info"`
+	CreatedAt    time.Time     `json:"createdAt"`
+	UpdatedAt    time.Time     `json:"updatedAt"`
 }
 
 // NodeInbound is one currently active inbound exposed by a Remnawave node.

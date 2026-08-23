@@ -60,7 +60,7 @@ func TestAdminBulkExtensionUsesInclusiveORDeduplicationAndQueueShift(t *testing.
 
 	operation, err := store.CreateAdminBulkExtension(ctx, AdminBulkExtensionInput{ActorUserID: actor.ID,
 		IdempotencyKey: "bulk-extension", RequestFingerprint: "bulk-extension-fingerprint", Reason: "service credit",
-		Filter: filter, Days: 5}, now.Add(time.Minute))
+		Filter: filter, DurationMinutes: 5*24*60 + 17}, now.Add(time.Minute))
 	if err != nil {
 		t.Fatalf("CreateAdminBulkExtension(): %v", err)
 	}
@@ -71,15 +71,18 @@ func TestAdminBulkExtensionUsesInclusiveORDeduplicationAndQueueShift(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !shifted.ValidUntil.Equal(second.ValidUntil.AddDate(0, 0, 5)) {
-		t.Fatalf("active expiry = %s, want %s", shifted.ValidUntil, second.ValidUntil.AddDate(0, 0, 5))
+	wantShiftedUntil := second.ValidUntil.Add(5*24*time.Hour + 17*time.Minute)
+	if !shifted.ValidUntil.Equal(wantShiftedUntil) {
+		t.Fatalf("active expiry = %s, want %s", shifted.ValidUntil, wantShiftedUntil)
 	}
 	queued, err := store.PurchaseByID(ctx, third.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !queued.ValidFrom.Equal(third.ValidFrom.AddDate(0, 0, 5)) || !queued.ValidUntil.Equal(third.ValidUntil.AddDate(0, 0, 5)) {
-		t.Fatalf("queued successor = %+v, want +5 days", queued)
+	wantQueuedFrom := third.ValidFrom.Add(5*24*time.Hour + 17*time.Minute)
+	wantQueuedUntil := third.ValidUntil.Add(5*24*time.Hour + 17*time.Minute)
+	if !queued.ValidFrom.Equal(wantQueuedFrom) || !queued.ValidUntil.Equal(wantQueuedUntil) {
+		t.Fatalf("queued successor = %+v, want minute-precise shift", queued)
 	}
 	var continuityValue string
 	if err := store.DB().QueryRowContext(ctx, `SELECT available_at FROM outbox_jobs WHERE kind=? AND payload=? AND status='pending'`,

@@ -5,7 +5,9 @@
   field preserves the administrator label while legacy queued payloads retain
   the provider fallback.
 - `payload_test.go` covers new and legacy payment-announcement JSON payloads.
-- `kinds.go` owns shared job-kind constants used by persistence and handlers, including durable payment announcements and automatic-reset outcomes.
+- `kinds.go` owns shared job-kind constants used by persistence and handlers,
+  including durable payment announcements, automatic-reset outcomes, and
+  provider-gated node compensation.
 - `user_notification.go` validates immutable, locale-aware private-chat event
   snapshots used by the durable user-notification worker.
 - `user_notification_test.go` covers canonical payload encode/decode behavior.

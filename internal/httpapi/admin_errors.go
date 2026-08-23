@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/txyyddss/Remna-User-Panel/internal/compensation"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/backup"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 	"github.com/txyyddss/Remna-User-Panel/internal/squadprofile"
@@ -13,6 +14,10 @@ import (
 func (s *Server) adminFailure(w http.ResponseWriter, r *http.Request, err error) {
 	status, code, message := http.StatusUnprocessableEntity, "ADMIN_OPERATION_FAILED", err.Error()
 	switch {
+	case errors.Is(err, compensation.ErrInvalid):
+		status, code, message = http.StatusUnprocessableEntity, "INVALID_COMPENSATION", "One or more compensation fields are invalid."
+	case errors.Is(err, compensation.ErrConflict):
+		status, code, message = http.StatusConflict, "COMPENSATION_CONFLICT", "The compensation record changed. Refresh and retry."
 	case errors.Is(err, squadprofile.ErrInvalid):
 		status, code, message = http.StatusUnprocessableEntity, "INVALID_SQUAD_PROFILE", "Squad profile fields are invalid."
 	case errors.Is(err, database.ErrNotFound):

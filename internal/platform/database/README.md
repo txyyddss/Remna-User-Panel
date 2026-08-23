@@ -128,7 +128,10 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `provider_operation_notification_completion.go` releases pending user messages
   only for a real successful provider-worker item.
 - `admin_entitlement_edit.go`, `admin_entitlement_refund.go`, and `admin_combo_replacement.go` atomically persist audited administrator mutations with their provider operations.
-- `admin_bulk_query.go`, `admin_bulk_shift.go`, and `admin_bulk_extension.go` preview inclusive-OR active targets, deduplicate users, shift queued successors, and create one durable bulk job.
+- `admin_bulk_query.go`, `admin_bulk_shift.go`, and `admin_bulk_extension.go` preview inclusive-OR active targets, deduplicate users, shift active and queued terms to the minute, and create one durable bulk job.
+- `compensation_config.go`, `compensation_observation.go`, `compensation_events.go`, `compensation_review.go`, `compensation_notification.go`, and `compensation_dismiss.go` persist revisioned outage policy, node observations, frozen snapshots, cursor-safe projections, atomic reviewed extensions, and provider-gated compensation detail cards.
+- `compensation_observation_test.go` covers persisted/missing nodes, snapshotted policy, disabled precedence, and repeated outages.
+- `compensation_review_test.go` covers inactive skips, exact minute shifts, notifications, operation linkage, stale reviews, replay, and dismissal.
 - `admin_user_operations.go` and `admin_user_refunds.go` supply the aggregate profile's open-operation and refund projections.
 - `admin_operation_resolution.go` atomically resolves review-required operations, stores replay fingerprints, and appends the audit event.
 - `admin_workflow_types.go` defines shared aggregate and administrator workflow persistence records.
@@ -196,7 +199,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `notification_events_test.go` covers provider-gate deduplication, reminder
   eligibility, and traffic reset-period rearming.
 - `admin_entitlement_workflows_test.go` covers optimistic edits, immutable pricing, exactly-once credits, and zero-TXB replacements.
-- `admin_bulk_workflows_test.go` covers inclusive-OR matching, active-user deduplication, and equal queued-term shifts.
+- `admin_bulk_workflows_test.go` covers inclusive-OR matching, active-user deduplication, and equal minute-precise queued-term shifts.
 - `admin_operation_projection_test.go` covers owned and bulk-target open-operation aggregation.
 - `product_statistics_test.go` verifies administrators are excluded from member population, spend, state, and active-catalog metrics.
 - `admin_workflow_test_helpers_test.go` contains shared administrator workflow fixtures and purchase builders.

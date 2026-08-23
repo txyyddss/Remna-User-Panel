@@ -25,11 +25,3 @@ You may want to use the following projects for frontend:
 - TanStack Table
 
 ---
-## Task1: Bulk extention could be minutes, hours, or days
-
-"Extend active members" should no longer only extend days, it should be more accurate to minutes.
-
-## Task2: Add automatic compensation system
-
-During per-30 minute Remnawave data refresh task, record each offline node. When it came online and the total time is greater than the threshold, give bulk extend user in related internal squads multiple times (configurable) of the down time.
-Add a admin page for the compesation system. Admin should review each event, and could set the values. Display the node, affected squads, user count, bulk extention time, event time, or other useful infos.

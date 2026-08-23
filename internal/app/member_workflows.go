@@ -52,7 +52,7 @@ func newMemberWorkflows(store *database.Store, remna remnaAdapter, vault *secret
 func registerAdminOperationHandlers(dispatcher *providerops.Dispatcher, store *database.Store, remna remnaAdapter) error {
 	worker := admin.NewUserOperationWorker(store, remna)
 	for _, kind := range []string{providerops.KindAdminEntitlementEdit, providerops.KindAdminEntitlementRefund,
-		providerops.KindAdminComboReplacement, providerops.KindAdminBulkExtension} {
+		providerops.KindAdminComboReplacement, providerops.KindAdminBulkExtension, providerops.KindNodeCompensation} {
 		if err := dispatcher.Register(kind, worker); err != nil {
 			return err
 		}

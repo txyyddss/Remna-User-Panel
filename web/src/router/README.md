@@ -1,6 +1,7 @@
 # Router
 
 - `index.ts` declares routes and installs the session guard.
+- The bounded admin section route includes the System compensation workflow.
 - `history.ts` selects WebView-safe in-memory history or browser history.
 - `recovery.ts` performs one-shot recovery for stale lazy route chunks.
 - `guards.ts` resolves onboarding, administrator, and member access.

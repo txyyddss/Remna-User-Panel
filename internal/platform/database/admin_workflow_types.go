@@ -36,7 +36,7 @@ type AdminBulkExtensionFilter struct {
 type AdminBulkExtensionInput struct {
 	ActorUserID, IdempotencyKey, RequestFingerprint, Reason string
 	Filter                                                  AdminBulkExtensionFilter
-	Days                                                    int
+	DurationMinutes                                         int
 }
 
 // AdminBulkExtensionPreview summarizes the current deduplicated target set.

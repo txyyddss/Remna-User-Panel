@@ -26,6 +26,6 @@ type ComboReplacement struct {
 type BulkExtension struct {
 	ComboIDs        []string
 	AddonSquadUUIDs []string
-	Days            int
+	DurationMinutes int
 	Reason          string
 }

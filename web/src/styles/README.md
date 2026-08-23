@@ -39,7 +39,7 @@
 - `motion-01.css` defines short transitions and state motion.
 - `motion-02.css` adds reduced-motion-safe staggered page entry, tactile press response, status arrival, and active-navigation feedback.
 - `responsive-01.css` owns shared motion keyframes used by compact surfaces.
-- `responsive-02.css` expands the phone-first shell into a sticky-rail desktop layout, keeps Home in its centered balance-first column, and restores wide route, dialog, catalog, settings, and administrative list arrangements.
+- `responsive-02.css` expands the phone-first shell into a sticky-rail desktop layout, keeps Home in its centered balance-first column, gives core combo cards equal desktop tracks, and restores wide route, dialog, catalog, settings, and administrative list arrangements.
 - `responsive-03.css` applies compact administrative rows below 640px and owns reduced-motion/transparency fallbacks.
 
 The system is dark-only, flat, gradient-free, and uses borders instead of decorative shadows.

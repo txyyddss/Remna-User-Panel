@@ -34,7 +34,10 @@ ComboReplacementRequest:
 BulkExtensionRequest:
   type: object
   additionalProperties: false
-  required: [comboIds, addonSquadUuids, days]
+  required: [comboIds, addonSquadUuids]
+  oneOf:
+    - required: [durationMinutes]
+    - required: [days]
   properties:
     comboIds:
       type: array
@@ -44,7 +47,8 @@ BulkExtensionRequest:
       type: array
       uniqueItems: true
       items: { type: string, format: uuid }
-    days: { type: integer, minimum: 1, maximum: 3650 }
+    durationMinutes: { type: integer, minimum: 1, maximum: 5256000 }
+    days: { type: integer, minimum: 1, maximum: 3650, deprecated: true }
 
 BulkExtensionPreview:
   type: object
@@ -58,7 +62,10 @@ BulkExtensionPreview:
 BulkExtensionCreateRequest:
   type: object
   additionalProperties: false
-  required: [comboIds, addonSquadUuids, days, reason]
+  required: [comboIds, addonSquadUuids, reason]
+  oneOf:
+    - required: [durationMinutes]
+    - required: [days]
   properties:
     comboIds:
       type: array
@@ -68,7 +75,8 @@ BulkExtensionCreateRequest:
       type: array
       uniqueItems: true
       items: { type: string, format: uuid }
-    days: { type: integer, minimum: 1, maximum: 3650 }
+    durationMinutes: { type: integer, minimum: 1, maximum: 5256000 }
+    days: { type: integer, minimum: 1, maximum: 3650, deprecated: true }
     reason: { type: string, minLength: 3, maxLength: 500 }
 
 OperationResolutionRequest:

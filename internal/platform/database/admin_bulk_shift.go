@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func shiftAdminSubscriptionTx(ctx context.Context, tx *sql.Tx, target adminBulkTarget, days int, now time.Time) error {
+func shiftAdminSubscriptionTx(ctx context.Context, tx *sql.Tx, target adminBulkTarget, durationMinutes int, now time.Time) error {
 	var validUntilRaw string
 	if err := tx.QueryRowContext(ctx, `SELECT valid_until FROM purchases WHERE id=? AND user_id=? AND status='active'
 		AND valid_from<=? AND valid_until>?`, target.PurchaseID, target.UserID, stamp(now), stamp(now)).Scan(&validUntilRaw); err != nil {
@@ -16,7 +16,7 @@ func shiftAdminSubscriptionTx(ctx context.Context, tx *sql.Tx, target adminBulkT
 	if err != nil {
 		return err
 	}
-	shiftedUntil, err := addSubscriptionDays(validUntil, days)
+	shiftedUntil, err := addSubscriptionMinutes(validUntil, durationMinutes)
 	if err != nil {
 		return err
 	}
@@ -60,11 +60,11 @@ func shiftAdminSubscriptionTx(ctx context.Context, tx *sql.Tx, target adminBulkT
 		if err != nil {
 			return err
 		}
-		shiftedFrom, err := addSubscriptionDays(from, days)
+		shiftedFrom, err := addSubscriptionMinutes(from, durationMinutes)
 		if err != nil {
 			return err
 		}
-		shiftedEnd, err := addSubscriptionDays(until, days)
+		shiftedEnd, err := addSubscriptionMinutes(until, durationMinutes)
 		if err != nil {
 			return err
 		}
@@ -84,4 +84,15 @@ func shiftAdminSubscriptionTx(ctx context.Context, tx *sql.Tx, target adminBulkT
 		}
 	}
 	return nil
+}
+
+func addSubscriptionMinutes(value time.Time, minutes int) (time.Time, error) {
+	if minutes < 1 || minutes > 3650*24*60 {
+		return time.Time{}, ErrConflict
+	}
+	shifted := value.Add(time.Duration(minutes) * time.Minute)
+	if !shifted.After(value) {
+		return time.Time{}, ErrConflict
+	}
+	return shifted, nil
 }
