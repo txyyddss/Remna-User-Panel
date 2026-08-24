@@ -13,6 +13,7 @@ const props = defineProps<{ active: Purchase }>()
 const emit = defineEmits<{ changed: [] }>()
 const router = useRouter()
 const step = shallowRef(1)
+const stepperIndex = computed(() => step.value - 1)
 const activationOpen = shallowRef(false)
 const activationTarget = shallowRef<SquadProduct | null>(null)
 const activationPrompting = shallowRef(false)
@@ -85,7 +86,7 @@ function goHome(): void {
   <UModal v-model:open="open" :title="$t('home.squadAddition.title')" :description="$t('home.squadAddition.description')" scrollable>
     <template #body>
       <div class="squad-addition-dialog">
-        <UStepper v-model="step" :items="[{ title: $t('home.squadAddition.steps.choose') }, { title: $t('home.squadAddition.steps.checkout') }]" :linear="true" :disabled="loading || purchasing" size="sm" />
+        <UStepper :model-value="stepperIndex" :items="[{ title: $t('home.squadAddition.steps.choose') }, { title: $t('home.squadAddition.steps.checkout') }]" :linear="true" disabled size="sm" />
         <USkeleton v-if="loading" class="h-48" />
         <CatalogSquadStep v-else-if="step === 1" :squads="visibleSquads" :selected-ids="selectedSquadIds" :included-ids="emptyIncludedIds" :featured-ids="featuredIds" :ordered-ids="orderedIds" @toggle="toggleSquad" />
         <SquadAdditionCheckout v-else :squads="selectedSquads" :quote="quote" :purchase="purchase" :quoting="quoting" :purchasing="purchasing || activationPrompting" :needs-balance="needsBalance" :error="error" @back="step = 1" @confirm="confirm" @home="goHome" />
