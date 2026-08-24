@@ -32,13 +32,13 @@ describe('AbusePolicyCard', () => {
     await streak.trigger('wheel', { deltaY: 100 })
     expect(streak.element.value).toBe('30')
 
-    await streak.setValue('0')
+    await wrapper.setProps({ policy: { ...policy, streakSeconds: 0 } })
     await wrapper.get('form').trigger('submit')
     await flushPromises()
     expect(wrapper.emitted('save')).toBeUndefined()
     expect(wrapper.text()).toContain('Enter a whole-number streak from 1 to 1,800 seconds.')
 
-    await streak.setValue('75')
+    await wrapper.setProps({ policy: { ...policy, streakSeconds: 75 } })
     await wrapper.get('form').trigger('submit')
     await flushPromises()
     expect(wrapper.emitted('save')?.[0]?.[0]).toEqual({ ...policy, streakSeconds: 75 })
