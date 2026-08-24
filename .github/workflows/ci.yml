@@ -10,6 +10,7 @@ concurrency:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   changes:
@@ -20,26 +21,33 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
     steps:
       - name: Check out source
-        if: github.event_name == 'pull_request'
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Detect frontend and backend changes
-        if: github.event_name == 'pull_request'
         id: filter
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
+          base: ${{ github.ref }}
+          predicate-quantifier: some-with-excludes
           filters: |
             frontend:
               - 'web/**'
+              - 'api/**'
             backend:
-              - '**'
-              - '!web/**'
+              - 'cmd/**'
+              - 'internal/**'
+              - '*.go'
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - 'go.work'
+              - 'go.work.sum'
 
   frontend:
     name: Frontend contract and quality
     needs: changes
-    if: github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true'
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -81,7 +89,7 @@ jobs:
   go-quality-security:
     name: Go quality and security
     needs: changes
-    if: github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true'
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -110,7 +118,7 @@ jobs:
   go-race-coverage:
     name: Go race and coverage
     needs: changes
-    if: github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true'
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 50
     steps:
