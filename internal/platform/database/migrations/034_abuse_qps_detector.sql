@@ -29,7 +29,7 @@ INSERT INTO abuse_punishment_rules(action,created_at,updated_at) VALUES
  ('warning',strftime('%Y-%m-%dT%H:%M:%fZ','now'),strftime('%Y-%m-%dT%H:%M:%fZ','now')),
  ('ip_ban',strftime('%Y-%m-%dT%H:%M:%fZ','now'),strftime('%Y-%m-%dT%H:%M:%fZ','now')),
  ('subscription_revoke',strftime('%Y-%m-%dT%H:%M:%fZ','now'),strftime('%Y-%m-%dT%H:%M:%fZ','now')),
- ('temporary_ban',strftime('%Y-%m-%dT%H:%M:%fZ','now'),strftime('%Y-%m-%dT%H:%M:%fZ','now'),0);
+ ('temporary_ban',strftime('%Y-%m-%dT%H:%M:%fZ','now'),strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 
 CREATE TABLE abuse_log_fingerprints (node_uuid TEXT NOT NULL, fingerprint TEXT NOT NULL, observed_at TEXT NOT NULL, PRIMARY KEY(node_uuid,fingerprint));
 CREATE TABLE abuse_qps_samples (
