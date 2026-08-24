@@ -1,4 +1,6 @@
+/* eslint-disable vue/one-component-per-file */
 import { mount } from '@vue/test-utils'
+import { defineComponent } from 'vue'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import type { AbusePolicy } from '@/api/abuse'
@@ -15,14 +17,35 @@ const policy: AbusePolicy = {
   revision: 3,
 }
 
+const FormStub = defineComponent({
+  name: 'AbusePolicyFormStub',
+  props: {
+    state: { type: Object, required: true },
+    validate: { type: Function, required: true },
+  },
+  emits: ['submit'],
+  template: '<div><slot /></div>',
+})
+const InputNumberStub = defineComponent({
+  name: 'AbusePolicyInputNumberStub',
+  props: {
+    modelValue: { type: Number, required: true },
+    min: { type: Number, required: true },
+    max: { type: Number, required: true },
+    disableWheelChange: { type: Boolean, required: true },
+  },
+  emits: ['update:modelValue'],
+  template: '<span />',
+})
+
 function mountCard() {
   return mount(AbusePolicyCard, {
     props: { policy, busy: false },
     global: {
       stubs: {
-        UForm: { name: 'UForm', props: ['state', 'validate'], emits: ['submit'], template: '<div><slot /></div>' },
+        UForm: FormStub,
         UFormField: { props: ['name', 'label', 'description'], template: '<label>{{ label }}<small>{{ description }}</small><slot /></label>' },
-        UInputNumber: { name: 'UInputNumber', props: ['modelValue', 'min', 'max', 'disableWheelChange'], emits: ['update:modelValue'], template: '<span />' },
+        UInputNumber: InputNumberStub,
         USwitch: { props: ['modelValue'], emits: ['update:modelValue'], template: '<span />' },
         UButton: { template: '<span><slot /></span>' },
       },
@@ -35,13 +58,13 @@ describe('AbusePolicyCard', () => {
 
   it('loads, validates, and submits the streak without dropping policy fields', async () => {
     const wrapper = mountCard()
-    const streak = wrapper.findAllComponents({ name: 'UInputNumber' }).find(component => component.props('max') === 1800)
+    const streak = wrapper.findAllComponents(InputNumberStub).find(component => component.props('max') === 1800)
     expect(streak).toBeDefined()
     if (!streak) throw new Error('streak input missing')
     expect(streak.props()).toMatchObject({ modelValue: 30, min: 1, max: 1800, disableWheelChange: true })
     expect(wrapper.text()).toContain('uninterrupted seconds')
 
-    const form = wrapper.findComponent({ name: 'UForm' })
+    const form = wrapper.findComponent(FormStub)
     const validate = form.props('validate') as (value: Partial<AbusePolicy>) => Array<{ name?: string }>
     expect(validate({ ...policy, streakSeconds: 0 })).toContainEqual(expect.objectContaining({ name: 'streakSeconds' }))
     expect(validate({ ...policy, streakSeconds: 1800 })).toEqual([])
