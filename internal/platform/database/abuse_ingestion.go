@@ -39,9 +39,8 @@ func (s *Store) TouchNodeReport(ctx context.Context, nodeID string, now time.Tim
 	_, err := s.db.ExecContext(ctx, `UPDATE abuse_node_credentials SET last_report_at=?,updated_at=? WHERE node_uuid=?`, stamp(now), stamp(now), nodeID)
 	return err
 }
-func (s *Store) KnownUsers(ctx context.Context, remoteIDs []string) (map[string]string, map[string]bool, error) {
+func (s *Store) KnownUsers(ctx context.Context, remoteIDs []string) (map[string]string, error) {
 	users := map[string]string{}
-	whitelist := map[string]bool{}
 	unique := uniqueRemoteIDs(remoteIDs)
 	for start := 0; start < len(unique); start += 500 {
 		end := min(start+500, len(unique))
@@ -51,13 +50,10 @@ func (s *Store) KnownUsers(ctx context.Context, remoteIDs []string) (map[string]
 			args[index] = remoteID
 		}
 		if err := s.loadKnownUserBatch(ctx, `SELECT id,remna_user_id FROM users WHERE remna_user_id IN (`+placeholders+`)`, args, users); err != nil {
-			return nil, nil, err
-		}
-		if err := s.loadWhitelistBatch(ctx, `SELECT remna_user_id FROM abuse_whitelist WHERE remna_user_id IN (`+placeholders+`)`, args, whitelist); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
-	return users, whitelist, nil
+	return users, nil
 }
 
 func (s *Store) loadKnownUserBatch(ctx context.Context, query string, args []any, users map[string]string) error {
@@ -72,22 +68,6 @@ func (s *Store) loadKnownUserBatch(ctx context.Context, query string, args []any
 			return err
 		}
 		users[remoteID] = id
-	}
-	return rows.Err()
-}
-
-func (s *Store) loadWhitelistBatch(ctx context.Context, query string, args []any, whitelist map[string]bool) error {
-	rows, err := s.db.QueryContext(ctx, query, args...)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var remoteID string
-		if err = rows.Scan(&remoteID); err != nil {
-			return err
-		}
-		whitelist[remoteID] = true
 	}
 	return rows.Err()
 }

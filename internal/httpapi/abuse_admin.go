@@ -8,13 +8,6 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/abuse"
 )
 
-type abusePolicyRequest struct {
-	GlobalEnabled          bool `json:"globalEnabled"`
-	GlobalLimit            int  `json:"globalLimit"`
-	WarningValidityDays    int  `json:"warningValidityDays"`
-	WarningCooldownMinutes int  `json:"warningCooldownMinutes"`
-	Revision               int  `json:"revision"`
-}
 type abuseRuleRequest struct {
 	Name       string `json:"name"`
 	Expression string `json:"expression"`
@@ -33,30 +26,6 @@ type abusePunishmentRequest struct {
 	Revision          int  `json:"revision"`
 }
 
-func (s *Server) adminAbusePolicy(w http.ResponseWriter, r *http.Request) {
-	value, err := s.deps.Abuse.Policy(r.Context())
-	if err != nil {
-		s.adminFailure(w, r, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, value)
-}
-func (s *Server) adminUpdateAbusePolicy(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.requireIdempotencyKey(w, r); !ok {
-		return
-	}
-	var input abusePolicyRequest
-	if err := decodeJSON(w, r, &input); err != nil {
-		s.writeError(w, r, http.StatusBadRequest, "INVALID_ABUSE_POLICY", "A complete abuse policy is required.")
-		return
-	}
-	value, err := s.deps.Abuse.UpdatePolicy(r.Context(), currentUser(r).ID, abuse.Policy{GlobalEnabled: input.GlobalEnabled, GlobalLimit: input.GlobalLimit, WarningValidityDays: input.WarningValidityDays, WarningCooldownMinutes: input.WarningCooldownMinutes, Revision: input.Revision}, time.Now().UTC())
-	if err != nil {
-		s.adminFailure(w, r, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, value)
-}
 func (s *Server) adminAbuseNodes(w http.ResponseWriter, r *http.Request) {
 	items, err := s.deps.Abuse.SyncNodes(r.Context(), s.deps.AbuseVault, time.Now().UTC())
 	if err != nil {

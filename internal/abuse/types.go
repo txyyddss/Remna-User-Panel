@@ -5,11 +5,12 @@ import "time"
 
 const (
 	GracePeriod               = 5 * time.Minute
-	StreakEvery               = 30
 	MaxReportBytes            = 16 << 20
 	MaxReportEvents           = 10000
-	MaxSamplesPerReport       = 20000
 	MaxGlobalQPS              = 100000
+	DefaultStreakSeconds      = 30
+	MinStreakSeconds          = 1
+	MaxStreakSeconds          = 1800
 	MaxWarningValidityDays    = 365
 	MaxWarningCooldownMinutes = 525600
 	MaxRuleTextLength         = 1024
@@ -46,6 +47,7 @@ type DomainRule struct {
 type Policy struct {
 	GlobalEnabled          bool `json:"globalEnabled"`
 	GlobalLimit            int  `json:"globalLimit"`
+	StreakSeconds          int  `json:"streakSeconds"`
 	WarningValidityDays    int  `json:"warningValidityDays"`
 	WarningCooldownMinutes int  `json:"warningCooldownMinutes"`
 	Revision               int  `json:"revision"`
@@ -72,6 +74,38 @@ type Sample struct {
 	BucketAt                                  time.Time
 	QPSLimit                                  int
 	Count                                     int
+}
+type LogEvent struct {
+	ID                                    int64
+	UserID, NodeUUID, Domain, Fingerprint string
+	EventSecond                           time.Time
+}
+type DetectorState struct {
+	UserID, ReasonName string
+	LastSecond         time.Time
+	StreakSeconds      int
+	IncidentEmitted    bool
+}
+type EventClaim struct {
+	Token  string
+	Events []LogEvent
+	Legacy []Sample
+}
+type Incident struct {
+	UserID         string
+	OccurredAt     time.Time
+	MeasuredQPS    int
+	QPSLimit       int
+	Reasons, Nodes []string
+}
+type QPSRollup struct {
+	WindowAt                        time.Time
+	ObservationCount, Sum, Min, Max int
+}
+type EvaluationResult struct {
+	States    []DetectorState
+	Incidents []Incident
+	Rollups   []QPSRollup
 }
 type ReportCounts struct {
 	Accepted  int `json:"accepted"`

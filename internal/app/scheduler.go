@@ -56,8 +56,8 @@ func (a *Application) runScheduler(ctx context.Context, startupComplete chan<- s
 			}
 		case now := <-transitionTicker.C:
 			if a.abuse != nil {
-				if err := a.abuse.Evaluate(ctx, now.UTC()); err != nil {
-					a.logger.Error("abuse detector evaluation failed", "error", err)
+				if err := a.abuse.RestoreDue(ctx, now.UTC()); err != nil {
+					a.logger.Error("abuse restoration scan failed", "error", err)
 				}
 			}
 			if err := a.store.RecoverOutbox(ctx, now.UTC().Add(-2*time.Minute), now.UTC()); err != nil {

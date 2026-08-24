@@ -50,6 +50,11 @@ func (a *Application) Run(ctx context.Context) error {
 		defer close(statisticsDone)
 		a.runStatisticsScheduler(runCtx)
 	}()
+	abuseDone := make(chan struct{})
+	go func() {
+		defer close(abuseDone)
+		a.runAbuseScheduler(runCtx)
+	}()
 	notificationsDone := make(chan struct{})
 	go func() {
 		defer close(notificationsDone)
@@ -66,10 +71,10 @@ func (a *Application) Run(ctx context.Context) error {
 			runErr = fmt.Errorf("serve HTTP: %w", err)
 		}
 	}
-	return errors.Join(runErr, a.shutdownRuntime(cancelRun, schedulerDone, statisticsDone, notificationsDone))
+	return errors.Join(runErr, a.shutdownRuntime(cancelRun, schedulerDone, statisticsDone, abuseDone, notificationsDone))
 }
 
-func (a *Application) shutdownRuntime(cancelRun context.CancelFunc, schedulerDone, statisticsDone, notificationsDone <-chan struct{}) error {
+func (a *Application) shutdownRuntime(cancelRun context.CancelFunc, schedulerDone, statisticsDone, abuseDone, notificationsDone <-chan struct{}) error {
 	cancelRun()
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), a.config.ShutdownTimeout)
 	serverErr := a.httpServer.Shutdown(shutdownCtx)
@@ -82,6 +87,7 @@ func (a *Application) shutdownRuntime(cancelRun context.CancelFunc, schedulerDon
 	// Run returns and the owner invokes Close on SQLite.
 	<-schedulerDone
 	<-statisticsDone
+	<-abuseDone
 	<-notificationsDone
 	flushCtx, cancelFlush := context.WithTimeout(context.Background(), 5*time.Second)
 	flushErr := a.store.FlushGroupMessageFacts(flushCtx)

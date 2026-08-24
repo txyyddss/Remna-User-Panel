@@ -37,18 +37,22 @@ func handleAbusePunishment(ctx context.Context, job model.OutboxJob, store *data
 	if err != nil {
 		return err
 	}
+	var punishmentErr error
 	switch string(item.Action) {
 	case "warning", "none":
-		return nil
 	case "subscription_revoke":
-		return remna.AbuseRevoke(ctx, item.RemoteUserID)
+		punishmentErr = remna.AbuseRevoke(ctx, item.RemoteUserID)
 	case "temporary_ban":
-		return remna.AbuseSetStatus(ctx, item.RemoteUserID, remnawave.UserStatusDisabled)
+		punishmentErr = remna.AbuseSetStatus(ctx, item.RemoteUserID, remnawave.UserStatusDisabled)
 	case "ip_ban":
-		return remna.AbuseIPBan(ctx, item.RemoteUserID, item.Nodes, item.AllNodes, item.DurationMinutes*60)
+		punishmentErr = remna.AbuseIPBan(ctx, item.RemoteUserID, item.Nodes, item.AllNodes, item.DurationMinutes*60)
 	default:
 		return fmt.Errorf("unsupported abuse action %q", item.Action)
 	}
+	if punishmentErr != nil {
+		return punishmentErr
+	}
+	return store.MarkPunishmentCompleted(ctx, id, time.Now().UTC())
 }
 func handleAbuseRestore(ctx context.Context, job model.OutboxJob, store *database.Store, remna remnaAdapter) error {
 	userID, err := jobpayload.TargetID(job, "userId")

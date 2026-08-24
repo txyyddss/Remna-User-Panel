@@ -1,12 +1,9 @@
 package abuse
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"regexp"
-	"sort"
-	"time"
 )
 
 type Service struct {
@@ -42,69 +39,6 @@ func tokenDigest(token string) string {
 	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
 
-func (s *Service) Evaluate(ctx context.Context, now time.Time) error {
-	policy, err := s.repo.Policy(ctx)
-	if err != nil {
-		return err
-	}
-	buckets, err := s.repo.ReadyBuckets(ctx, now.UTC().Add(-GracePeriod))
-	if err != nil {
-		return err
-	}
-	grouped := make(map[string][]Sample)
-	for _, sample := range buckets {
-		key := sample.UserID + "\x00" + sample.ReasonName + "\x00" + sample.BucketAt.UTC().Format(time.RFC3339)
-		grouped[key] = append(grouped[key], sample)
-	}
-	keys := make([]string, 0, len(grouped))
-	for key := range grouped {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	for _, key := range keys {
-		entries := grouped[key]
-		first := entries[0]
-		last, streak, stateErr := s.repo.DetectorState(ctx, first.UserID, first.ReasonName)
-		if stateErr != nil {
-			return stateErr
-		}
-		if !last.IsZero() && !first.BucketAt.After(last) {
-			continue
-		}
-		qps := 0
-		nodes := make([]string, 0, len(entries))
-		for _, entry := range entries {
-			qps += entry.Count
-			nodes = append(nodes, entry.NodeUUID)
-		}
-		if !last.IsZero() && first.BucketAt.Sub(last) != time.Second {
-			streak = 0
-		}
-		if reachesLimit(qps, first.QPSLimit) {
-			streak++
-		} else {
-			streak = 0
-		}
-		if err := s.repo.SaveDetectorState(ctx, first.UserID, first.ReasonName, first.BucketAt, streak); err != nil {
-			return err
-		}
-		if streak > 0 && streak%StreakEvery == 0 {
-			if _, err := s.repo.CreateIncident(ctx, first.UserID, first.BucketAt, qps, first.QPSLimit, []string{first.ReasonName}, unique(nodes), policy, now.UTC()); err != nil {
-				return err
-			}
-		}
-	}
-	due, err := s.repo.DueTemporaryBans(ctx, now.UTC())
-	if err != nil {
-		return err
-	}
-	for _, userID := range due {
-		if err := s.repo.QueueRestore(ctx, userID, now.UTC()); err != nil {
-			return err
-		}
-	}
-	return nil
-}
 func reachesLimit(qps, limit int) bool { return qps >= limit }
 func unique(values []string) []string {
 	seen := map[string]bool{}

@@ -65,3 +65,6 @@ file instead.
 - `035_abuse_warning_cooldown.sql` adds the revisioned administrator warning-record cooldown.
 - `036_purchase_addon_adjustments.sql` records idempotent, prorated active-term squad additions without duplicating user or provider data.
 - `037_abuse_pending_qps_index.sql` indexes detector-state continuation scans so completed sample windows are not repeatedly evaluated.
+- `038_durable_abuse_processing.sql` adds configurable streak duration, durable
+  normalized event claims, 30-minute QPS rollups, replay-safe incident facts,
+  and completion evidence for safely pruning detailed abuse records.

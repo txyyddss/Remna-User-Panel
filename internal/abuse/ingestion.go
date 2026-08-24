@@ -21,51 +21,27 @@ func (s *Service) Ingest(ctx context.Context, token, raw string, now time.Time) 
 	if err = s.repo.TouchNodeReport(ctx, credential.UUID, now.UTC()); err != nil {
 		return ReportCounts{}, err
 	}
-	users, whitelist, err := s.repo.KnownUsers(ctx, reportRemoteIDs(lines))
+	users, err := s.repo.KnownUsers(ctx, reportRemoteIDs(lines))
 	if err != nil {
 		return ReportCounts{}, err
 	}
-	policy, err := s.repo.Policy(ctx)
-	if err != nil {
-		return ReportCounts{}, err
-	}
-	rules, err := s.repo.DomainRules(ctx)
-	if err != nil {
-		return ReportCounts{}, err
-	}
-	matched, err := compileRules(rules)
-	if err != nil {
-		return ReportCounts{}, err
-	}
-	fingerprints := make([]string, 0, len(lines))
-	samples := make([]Sample, 0, min(MaxSamplesPerReport, len(lines)))
+	events := make([]LogEvent, 0, len(lines))
+	counts := ReportCounts{}
 	seen := make(map[string]bool, len(lines))
 	for _, line := range lines {
-		if len(samples) == MaxSamplesPerReport {
-			break
-		}
 		if seen[line.Fingerprint] {
+			counts.Duplicate++
 			continue
 		}
 		seen[line.Fingerprint] = true
 		userID, known := users[line.RemoteID]
-		if !known || whitelist[line.RemoteID] {
+		if !known {
+			counts.Discarded++
 			continue
 		}
-		fingerprints = append(fingerprints, line.Fingerprint)
-		if policy.GlobalEnabled && policy.GlobalLimit > 0 {
-			samples = append(samples, sampleFor(userID, credential.UUID, "global", line, policy.GlobalLimit))
-		}
-		for _, rule := range matched {
-			if len(samples) == MaxSamplesPerReport {
-				break
-			}
-			if rule.regex.MatchString(line.Domain) {
-				samples = append(samples, sampleFor(userID, credential.UUID, rule.Name, line, rule.QPSLimit))
-			}
-		}
+		events = append(events, LogEvent{UserID: userID, NodeUUID: credential.UUID, Domain: line.Domain, Fingerprint: line.Fingerprint, EventSecond: line.BucketAt})
 	}
-	return s.repo.StoreSamples(ctx, credential.UUID, fingerprints, samples, now.UTC())
+	return s.repo.StoreEvents(ctx, credential.UUID, events, counts, now.UTC())
 }
 
 func reportRemoteIDs(lines []parsedLine) []string {
@@ -78,8 +54,4 @@ func reportRemoteIDs(lines []parsedLine) []string {
 		}
 	}
 	return remoteIDs
-}
-
-func sampleFor(userID, nodeID, reason string, line parsedLine, limit int) Sample {
-	return Sample{UserID: userID, NodeUUID: nodeID, ReasonName: reason, Fingerprint: line.Fingerprint, BucketAt: line.BucketAt, QPSLimit: limit, Count: 1}
 }

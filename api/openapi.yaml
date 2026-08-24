@@ -173,6 +173,7 @@ components:
     Money: { $ref: './components/schemas/schemas-02.yaml#/Money' }
     PaymentMethod: { $ref: './components/schemas/schemas-21.yaml#/PaymentMethod' }
     BalanceResponse: { $ref: './components/schemas/schemas-21.yaml#/BalanceResponse' }
+    AbusePolicy: { $ref: './components/schemas/schemas-22.yaml#/AbusePolicy' }
     ResetStrategy: { $ref: './components/schemas/schemas-02.yaml#/ResetStrategy' }
     SquadProfile: { $ref: './components/schemas/schemas-02.yaml#/SquadProfile' }
     BroadbandSquadProfile: { $ref: './components/schemas/schemas-02.yaml#/BroadbandSquadProfile' }

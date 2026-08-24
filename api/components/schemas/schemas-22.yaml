@@ -86,3 +86,15 @@ NodeCompensationDismissal:
   properties:
     revision: { type: integer, minimum: 0 }
     reason: { type: string, minLength: 3, maxLength: 500 }
+
+AbusePolicy:
+  type: object
+  additionalProperties: false
+  required: [globalEnabled, globalLimit, streakSeconds, warningValidityDays, warningCooldownMinutes, revision]
+  properties:
+    globalEnabled: { type: boolean }
+    globalLimit: { type: integer, minimum: 0, maximum: 100000 }
+    streakSeconds: { type: integer, minimum: 1, maximum: 1800 }
+    warningValidityDays: { type: integer, minimum: 1, maximum: 365 }
+    warningCooldownMinutes: { type: integer, minimum: 0, maximum: 525600 }
+    revision: { type: integer, minimum: 0 }

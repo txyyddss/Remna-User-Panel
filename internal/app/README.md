@@ -46,10 +46,11 @@ stopped.
 - `remna_abuse_adapter.go` supplies queue-backed node identity to detector key provisioning.
 - `remna_abuse_actions.go` keeps every detector-triggered Remnawave call in the provider queue.
 - `abuse_outbox.go` consumes durable detector punishment, restoration, and Telegram delivery jobs.
+- `abuse_scheduler.go` performs startup catch-up and UTC-aligned `:00`/`:30` durable abuse processing.
 - `abuse_outbox_test.go` covers MarkdownV2 escaping for detector notifications.
 - `remna_statistics_adapter_test.go` covers bounded rounding of Remnawave live numeric fields.
 - `emby_adapter.go` implements queued Emby client creation, account operations, policy updates, and metadata lookups.
-- `scheduler.go` runs automatic due-renewal revalidation before entitlement transitions, plus recurring outbox, rollover, backup, and maintenance work until application cancellation.
+- `scheduler.go` runs prompt temporary-ban restoration, automatic due-renewal revalidation before entitlement transitions, plus recurring outbox, rollover, backup, and maintenance work until application cancellation.
 - `notification_scheduler.go` runs the bounded startup and five-minute reminder
   and traffic scan independently from the outbox drain.
 - `statistics_scheduler.go` schedules the 30-minute statistics refresh, startup

@@ -14,7 +14,7 @@ func (s *Service) MemberRecords(ctx context.Context, userID, cursor string, limi
 func (s *Service) Policy(ctx context.Context) (Policy, error) { return s.repo.Policy(ctx) }
 
 func (s *Service) UpdatePolicy(ctx context.Context, actor string, policy Policy, now time.Time) (Policy, error) {
-	if policy.GlobalLimit < 0 || policy.GlobalLimit > MaxGlobalQPS || policy.WarningValidityDays < 1 || policy.WarningValidityDays > MaxWarningValidityDays || policy.WarningCooldownMinutes < 0 || policy.WarningCooldownMinutes > MaxWarningCooldownMinutes || policy.Revision < 0 {
+	if policy.GlobalLimit < 0 || policy.GlobalLimit > MaxGlobalQPS || policy.StreakSeconds < MinStreakSeconds || policy.StreakSeconds > MaxStreakSeconds || policy.WarningValidityDays < 1 || policy.WarningValidityDays > MaxWarningValidityDays || policy.WarningCooldownMinutes < 0 || policy.WarningCooldownMinutes > MaxWarningCooldownMinutes || policy.Revision < 0 {
 		return Policy{}, ErrInvalid
 	}
 	return s.repo.UpdatePolicy(ctx, actor, policy, now.UTC())

@@ -13,9 +13,9 @@ import (
 
 func ensureAbuseRecordTx(ctx context.Context, tx *sql.Tx, userID string, bucket time.Time, qps, limit int, policy abuse.Policy, now time.Time) (string, bool, error) {
 	var id string
-	err := tx.QueryRowContext(ctx, `SELECT id FROM abuse_records WHERE user_id=? AND incident_bucket_at=?`, userID, stamp(bucket)).Scan(&id)
+	err := tx.QueryRowContext(ctx, `SELECT incident_id FROM abuse_incident_facts WHERE user_id=? AND incident_bucket_at=?`, userID, stamp(bucket)).Scan(&id)
 	if err == nil {
-		return id, false, nil
+		return "", false, nil
 	}
 	if err != sql.ErrNoRows {
 		return "", false, err
@@ -25,22 +25,31 @@ func ensureAbuseRecordTx(ctx context.Context, tx *sql.Tx, userID string, bucket 
 		return "", false, err
 	}
 	var count int
-	if err = tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM abuse_records WHERE user_id=? AND deleted_at IS NULL AND created_at>=?`, userID, stamp(now.AddDate(0, 0, -policy.WarningValidityDays))).Scan(&count); err != nil {
+	if err = tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM abuse_incident_facts WHERE user_id=? AND created_at>=?`, userID, stamp(now.AddDate(0, 0, -policy.WarningValidityDays))).Scan(&count); err != nil {
 		return "", false, err
 	}
 	action, duration := selectPunishment(rules, count+1)
-	if action == abuse.ActionWarning {
-		blocked, cooldownErr := warningCooldownBlockedTx(ctx, tx, userID, policy, now)
-		if cooldownErr != nil {
-			return "", false, cooldownErr
-		}
-		if blocked {
-			return "", false, nil
-		}
-	}
 	id, err = ids.New()
 	if err != nil {
 		return "", false, err
+	}
+	blocked := false
+	if action == abuse.ActionWarning {
+		var cooldownErr error
+		blocked, cooldownErr = warningCooldownBlockedTx(ctx, tx, userID, policy, now)
+		if cooldownErr != nil {
+			return "", false, cooldownErr
+		}
+	}
+	factAction := action
+	if blocked {
+		factAction = abuse.Action("none")
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO abuse_incident_facts(incident_id,user_id,incident_bucket_at,selected_action,created_at) VALUES(?,?,?,?,?)`, id, userID, stamp(bucket), factAction, stamp(now)); err != nil {
+		return "", false, err
+	}
+	if blocked {
+		return "", false, nil
 	}
 	var expires any
 	if action == abuse.ActionTemporaryBan {
@@ -155,7 +164,14 @@ func (s *Store) QueueRestore(ctx context.Context, userID string, now time.Time) 
 	return tx.Commit()
 }
 func (s *Store) DeleteRecord(ctx context.Context, _ string, recordID string, now time.Time) error {
-	result, err := s.db.ExecContext(ctx, `UPDATE abuse_records SET deleted_at=? WHERE id=? AND deleted_at IS NULL`, stamp(now), recordID)
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	result, err := tx.ExecContext(ctx, `UPDATE abuse_records SET deleted_at=? WHERE id=? AND deleted_at IS NULL`, stamp(now), recordID)
 	if err != nil {
 		return err
 	}
@@ -163,5 +179,8 @@ func (s *Store) DeleteRecord(ctx context.Context, _ string, recordID string, now
 	if changed == 0 {
 		return ErrNotFound
 	}
-	return nil
+	if _, err = tx.ExecContext(ctx, `DELETE FROM abuse_incident_facts WHERE incident_id=?`, recordID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }

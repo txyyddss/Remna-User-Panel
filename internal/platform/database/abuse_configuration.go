@@ -12,15 +12,15 @@ import (
 func (s *Store) Policy(ctx context.Context) (abuse.Policy, error) {
 	var item abuse.Policy
 	var enabled int
-	err := s.db.QueryRowContext(ctx, `SELECT global_enabled,global_limit,warning_validity_days,warning_cooldown_minutes,revision FROM abuse_policy WHERE id=1`).Scan(&enabled, &item.GlobalLimit, &item.WarningValidityDays, &item.WarningCooldownMinutes, &item.Revision)
+	err := s.db.QueryRowContext(ctx, `SELECT global_enabled,global_limit,streak_seconds,warning_validity_days,warning_cooldown_minutes,revision FROM abuse_policy WHERE id=1`).Scan(&enabled, &item.GlobalLimit, &item.StreakSeconds, &item.WarningValidityDays, &item.WarningCooldownMinutes, &item.Revision)
 	item.GlobalEnabled = enabled == 1
 	return item, err
 }
 func (s *Store) UpdatePolicy(ctx context.Context, _ string, input abuse.Policy, now time.Time) (abuse.Policy, error) {
-	if input.GlobalLimit < 0 || input.GlobalLimit > abuse.MaxGlobalQPS || input.WarningValidityDays < 1 || input.WarningValidityDays > abuse.MaxWarningValidityDays || input.WarningCooldownMinutes < 0 || input.WarningCooldownMinutes > abuse.MaxWarningCooldownMinutes || input.Revision < 0 {
+	if input.GlobalLimit < 0 || input.GlobalLimit > abuse.MaxGlobalQPS || input.StreakSeconds < abuse.MinStreakSeconds || input.StreakSeconds > abuse.MaxStreakSeconds || input.WarningValidityDays < 1 || input.WarningValidityDays > abuse.MaxWarningValidityDays || input.WarningCooldownMinutes < 0 || input.WarningCooldownMinutes > abuse.MaxWarningCooldownMinutes || input.Revision < 0 {
 		return abuse.Policy{}, abuse.ErrInvalid
 	}
-	result, err := s.db.ExecContext(ctx, `UPDATE abuse_policy SET global_enabled=?,global_limit=?,warning_validity_days=?,warning_cooldown_minutes=?,revision=revision+1,updated_at=? WHERE id=1 AND revision=?`, boolInt(input.GlobalEnabled), input.GlobalLimit, input.WarningValidityDays, input.WarningCooldownMinutes, stamp(now), input.Revision)
+	result, err := s.db.ExecContext(ctx, `UPDATE abuse_policy SET global_enabled=?,global_limit=?,streak_seconds=?,warning_validity_days=?,warning_cooldown_minutes=?,revision=revision+1,updated_at=? WHERE id=1 AND revision=?`, boolInt(input.GlobalEnabled), input.GlobalLimit, input.StreakSeconds, input.WarningValidityDays, input.WarningCooldownMinutes, stamp(now), input.Revision)
 	if err != nil {
 		return abuse.Policy{}, err
 	}

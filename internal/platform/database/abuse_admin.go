@@ -56,7 +56,7 @@ func (s *Store) CopyNodeCredential(ctx context.Context, nodeID string) (string, 
 }
 func (s *Store) Statistics(ctx context.Context, now time.Time) (map[string]float64, error) {
 	var avg, min, max sql.NullFloat64
-	err := s.db.QueryRowContext(ctx, `SELECT AVG(qps),MIN(qps),MAX(qps) FROM (SELECT SUM(qps) AS qps FROM abuse_qps_samples WHERE bucket_at>=? GROUP BY user_id,bucket_at)`, stamp(now.Add(-24*time.Hour))).Scan(&avg, &min, &max)
+	err := s.db.QueryRowContext(ctx, `SELECT CAST(SUM(qps_sum) AS REAL)/NULLIF(SUM(observation_count),0),MIN(qps_min),MAX(qps_max) FROM abuse_qps_rollups WHERE window_at>=?`, stamp(now.Add(-24*time.Hour))).Scan(&avg, &min, &max)
 	if err != nil {
 		return nil, fmt.Errorf("abuse statistics: %w", err)
 	}

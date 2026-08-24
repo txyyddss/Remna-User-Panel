@@ -11,14 +11,16 @@ var ErrInvalid = errors.New("invalid abuse detector input")
 type Repository interface {
 	NodeByDigest(context.Context, string) (NodeCredential, error)
 	TouchNodeReport(context.Context, string, time.Time) error
-	KnownUsers(context.Context, []string) (map[string]string, map[string]bool, error)
+	KnownUsers(context.Context, []string) (map[string]string, error)
+	StoreEvents(context.Context, string, []LogEvent, ReportCounts, time.Time) (ReportCounts, error)
+	WhitelistedUsers(context.Context) (map[string]bool, error)
+	RecoverEventClaims(context.Context) error
+	ClaimEvents(context.Context, time.Time, time.Time, int) (EventClaim, error)
+	ReleaseEventClaim(context.Context, string) error
+	DetectorStateV2(context.Context, string, string) (DetectorState, error)
+	CommitEvaluation(context.Context, EventClaim, EvaluationResult, Policy, time.Time) error
 	Policy(context.Context) (Policy, error)
 	DomainRules(context.Context) ([]DomainRule, error)
-	StoreSamples(context.Context, string, []string, []Sample, time.Time) (ReportCounts, error)
-	ReadyBuckets(context.Context, time.Time) ([]Sample, error)
-	DetectorState(context.Context, string, string) (time.Time, int, error)
-	SaveDetectorState(context.Context, string, string, time.Time, int) error
-	CreateIncident(context.Context, string, time.Time, int, int, []string, []string, Policy, time.Time) (bool, error)
 	DueTemporaryBans(context.Context, time.Time) ([]string, error)
 	QueueRestore(context.Context, string, time.Time) error
 	MemberRecords(context.Context, string, string, int) (RecordPage, error)
@@ -34,6 +36,7 @@ type Repository interface {
 	SavePunishmentRule(context.Context, string, PunishmentRule, time.Time) (PunishmentRule, error)
 	Statistics(context.Context, time.Time) (map[string]float64, error)
 	DeleteRecord(context.Context, string, string, time.Time) error
+	MarkPunishmentCompleted(context.Context, string, time.Time) error
 }
 
 type NodeProvider interface {

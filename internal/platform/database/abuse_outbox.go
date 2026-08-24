@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/abuse"
@@ -81,6 +80,10 @@ func (s *Store) MarkAbuseDelivery(ctx context.Context, recordID string, telegram
 	_, err := s.db.ExecContext(ctx, `UPDATE abuse_notification_deliveries SET delivered_at=? WHERE record_id=? AND recipient_telegram_id=? AND kind='incident' AND delivered_at IS NULL`, stamp(now), recordID, telegramID)
 	return err
 }
+func (s *Store) MarkPunishmentCompleted(ctx context.Context, recordID string, now time.Time) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE abuse_records SET punishment_completed_at=COALESCE(punishment_completed_at,?) WHERE id=?`, stamp(now), recordID)
+	return err
+}
 func (s *Store) AbuseRestoreRemoteID(ctx context.Context, userID string) (string, error) {
 	var remote string
 	err := s.db.QueryRowContext(ctx, `SELECT user.remna_user_id FROM abuse_temp_bans ban JOIN users user ON user.id=ban.user_id WHERE ban.user_id=? AND ban.restore_queued_at IS NOT NULL AND ban.restored_at IS NULL`, userID).Scan(&remote)
@@ -95,16 +98,23 @@ func (s *Store) CompleteAbuseRestore(ctx context.Context, userID string, now tim
 }
 func (s *Store) PruneAbuseRecordsTx(ctx context.Context, tx *sql.Tx, now time.Time, counts map[string]int64) error {
 	var err error
-	if counts["abuse_qps_samples"], err = deleteCount(ctx, tx, `DELETE FROM abuse_qps_samples WHERE bucket_at<?`, stamp(now.Add(-24*time.Hour))); err != nil {
+	if counts["abuse_legacy_samples"], err = deleteCount(ctx, tx, `DELETE FROM abuse_qps_samples WHERE EXISTS (SELECT 1 FROM abuse_detector_state state WHERE state.user_id=abuse_qps_samples.user_id AND state.reason_name=abuse_qps_samples.reason_name AND state.last_bucket_at>=abuse_qps_samples.bucket_at)`); err != nil {
 		return err
 	}
-	if counts["abuse_fingerprints"], err = deleteCount(ctx, tx, `DELETE FROM abuse_log_fingerprints WHERE observed_at<?`, stamp(now.Add(-30*24*time.Hour))); err != nil {
+	if counts["abuse_fingerprints"], err = deleteCount(ctx, tx, `DELETE FROM abuse_log_fingerprints WHERE observed_at<?`, stamp(now.Add(-24*time.Hour))); err != nil {
 		return err
 	}
-	if counts["abuse_records"], err = deleteCount(ctx, tx, `DELETE FROM abuse_records WHERE created_at<?`, stamp(now.Add(-30*24*time.Hour))); err != nil {
+	if counts["abuse_qps_rollups"], err = deleteCount(ctx, tx, `DELETE FROM abuse_qps_rollups WHERE window_at<?`, stamp(now.Add(-24*time.Hour))); err != nil {
+		return err
+	}
+	if counts["abuse_detector_state"], err = deleteCount(ctx, tx, `DELETE FROM abuse_detector_state WHERE last_bucket_at<?`, stamp(now.Add(-24*time.Hour))); err != nil {
+		return err
+	}
+	if counts["abuse_records"], err = deleteCount(ctx, tx, `DELETE FROM abuse_records WHERE punishment_completed_at IS NOT NULL AND NOT EXISTS (SELECT 1 FROM abuse_notification_deliveries delivery WHERE delivery.record_id=abuse_records.id AND delivery.delivered_at IS NULL) AND NOT EXISTS (SELECT 1 FROM abuse_temp_bans ban WHERE ban.record_id=abuse_records.id AND ban.restored_at IS NULL)`); err != nil {
+		return err
+	}
+	if counts["abuse_incident_facts"], err = deleteCount(ctx, tx, `DELETE FROM abuse_incident_facts WHERE created_at<?`, stamp(now.Add(-365*24*time.Hour))); err != nil {
 		return err
 	}
 	return nil
 }
-
-var _ = fmt.Sprintf

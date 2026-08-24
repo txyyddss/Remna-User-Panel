@@ -13,8 +13,9 @@ watch(() => props.policy, value => Object.assign(form, value))
 
 function validate(value: Partial<AbusePolicy>): FormError[] {
   const errors: FormError[] = []
-  const { globalLimit = -1, warningValidityDays = 0, warningCooldownMinutes = -1 } = value
+  const { globalLimit = -1, streakSeconds = 0, warningValidityDays = 0, warningCooldownMinutes = -1 } = value
   if (!Number.isInteger(globalLimit) || globalLimit < 0 || globalLimit > 100000) errors.push({ name: 'globalLimit', message: t('adminAbuse.invalidGlobalLimit') })
+  if (!Number.isInteger(streakSeconds) || streakSeconds < 1 || streakSeconds > 1800) errors.push({ name: 'streakSeconds', message: t('adminAbuse.invalidStreakSeconds') })
   if (!Number.isInteger(warningValidityDays) || warningValidityDays < 1 || warningValidityDays > 365) errors.push({ name: 'warningValidityDays', message: t('adminAbuse.invalidValidity') })
   if (!Number.isInteger(warningCooldownMinutes) || warningCooldownMinutes < 0 || warningCooldownMinutes > 525600) errors.push({ name: 'warningCooldownMinutes', message: t('adminAbuse.invalidCooldown') })
   return errors
@@ -33,6 +34,9 @@ function validate(value: Partial<AbusePolicy>): FormError[] {
       </UFormField>
       <UFormField name="globalLimit" :label="t('adminAbuse.globalLimit')">
         <UInputNumber v-model="form.globalLimit" :min="0" :max="100000" :step="1" :disable-wheel-change="true" />
+      </UFormField>
+      <UFormField name="streakSeconds" :label="t('adminAbuse.streakSeconds')" :description="t('adminAbuse.streakSecondsCopy')">
+        <UInputNumber v-model="form.streakSeconds" data-test="streak-seconds" :min="1" :max="1800" :step="1" :disable-wheel-change="true" />
       </UFormField>
       <UFormField name="warningValidityDays" :label="t('adminAbuse.validity')">
         <UInputNumber v-model="form.warningValidityDays" :min="1" :max="365" :step="1" :disable-wheel-change="true" />

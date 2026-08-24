@@ -14,6 +14,6 @@ func warningCooldownBlockedTx(ctx context.Context, tx *sql.Tx, userID string, po
 	}
 	cutoff := stamp(now.Add(-time.Duration(policy.WarningCooldownMinutes) * time.Minute))
 	var count int
-	err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM abuse_records WHERE user_id=? AND selected_action='warning' AND deleted_at IS NULL AND created_at>=?`, userID, cutoff).Scan(&count)
+	err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM abuse_incident_facts WHERE user_id=? AND selected_action='warning' AND created_at>=?`, userID, cutoff).Scan(&count)
 	return count > 0, err
 }

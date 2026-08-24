@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { abuseApi, type AbusePunishment, type AbuseRule } from './abuse'
+import { abuseApi, type AbusePolicy, type AbusePunishment, type AbuseRule } from './abuse'
 
 const fetchMock = vi.fn()
 
@@ -53,5 +53,17 @@ describe('abuse administration API mutations', () => {
     expect(url).toBe('/api/v1/admin/abuse/punishments/ip_ban')
     expect(options.method).toBe('PUT')
     expect(JSON.parse(String(options.body))).toEqual({ enabled: punishment.enabled, incidentThreshold: punishment.incidentThreshold, durationMinutes: punishment.durationMinutes, allNodes: punishment.allNodes, revision: punishment.revision })
+  })
+
+  it('sends the required streak with every policy field', async () => {
+    const policy: AbusePolicy = { globalEnabled: true, globalLimit: 50, streakSeconds: 75, warningValidityDays: 7, warningCooldownMinutes: 30, revision: 4 }
+    fetchMock.mockResolvedValue(jsonResponse({ ...policy, revision: 5 }))
+
+    await abuseApi.savePolicy(policy)
+
+    const [url, options] = requestAt()
+    expect(url).toBe('/api/v1/admin/abuse/policy')
+    expect(options.method).toBe('PUT')
+    expect(JSON.parse(String(options.body))).toEqual(policy)
   })
 })
