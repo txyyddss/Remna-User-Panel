@@ -7,6 +7,16 @@ cron_path=/etc/cron.d/tx-carpool-qps-detector
 
 require_root() { [ "${EUID}" -eq 0 ] || { printf '%s\n' 'Run as root.' >&2; exit 1; }; }
 remove() { rm -f "$cron_path" "$reporter_path" "$config_path"; rm -rf /var/lib/tx-carpool-qps-detector; printf '%s\n' 'QPS detector reporter removed.'; }
+print_logs() {
+  command -v docker >/dev/null || { printf '%s\n' 'Docker is required.' >&2; exit 1; }
+  docker exec remnanode sh -c '
+    [ -r "$1" ] || {
+      printf "%s\n" "Remnawave Xray log is not available yet: $1" >&2
+      exit 1
+    }
+    cat "$1"
+  ' sh /var/log/supervisor/xray.out.log
+}
 require_debian() { [ -r /etc/debian_version ] && grep -q '^13' /etc/debian_version || { printf '%s\n' 'Debian 13 is required.' >&2; exit 1; }; command -v docker >/dev/null; command -v curl >/dev/null; command -v flock >/dev/null; command -v split >/dev/null; command -v stat >/dev/null; command -v tail >/dev/null; command -v truncate >/dev/null; command -v wc >/dev/null; systemctl is-active --quiet cron || { printf '%s\n' 'The cron service must be active.' >&2; exit 1; }; }
 install_reporter() {
   install -d -m 700 /var/lib/tx-carpool-qps-detector
@@ -96,6 +106,7 @@ REPORTER
 main() {
   require_root
   if [ "${1:-install}" = "uninstall" ]; then remove; return; fi
+  if [ "${1:-install}" = "test" ]; then print_logs; return; fi
   require_debian
   read -r -p 'API domain (https://panel.example): ' api_url
   read -r -s -p 'Node token: ' node_token; printf '\n'
