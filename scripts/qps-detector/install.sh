@@ -7,12 +7,19 @@ cron_path=/etc/cron.d/tx-carpool-qps-detector
 
 require_root() { [ "${EUID}" -eq 0 ] || { printf '%s\n' 'Run as root.' >&2; exit 1; }; }
 remove() { rm -f "$cron_path" "$reporter_path" "$config_path"; rm -rf /var/lib/tx-carpool-qps-detector; printf '%s\n' 'QPS detector reporter removed.'; }
+stream_xlogs() {
+  if command -v remnanode >/dev/null; then
+    remnanode xlogs
+    return
+  fi
+  command -v docker >/dev/null || { printf '%s\n' 'Remnanode or Docker is required.' >&2; exit 1; }
+  docker exec remnanode xlogs
+}
 print_logs() {
   local -a statuses
-  command -v docker >/dev/null || { printf '%s\n' 'Docker is required.' >&2; exit 1; }
   command -v head >/dev/null || { printf '%s\n' 'head is required.' >&2; exit 1; }
   set +e
-  docker exec remnanode xlogs | head -n 1000
+  stream_xlogs | head -n 1000
   statuses=("${PIPESTATUS[@]}")
   set -e
   [ "${statuses[1]}" -eq 0 ] || return "${statuses[1]}"
