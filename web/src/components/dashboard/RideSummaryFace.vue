@@ -24,17 +24,15 @@ const resetLabel = computed(() => t(`home.reset.${props.active.resetStrategy}`))
         <div class="home-ride__name-row">
           <h3>{{ active.comboName }}</h3>
           <UTooltip v-if="!addSquadDisabled" :text="$t('home.squadAddition.open')">
-            <UButton
+            <button
+              type="button"
               class="home-ride__add-squad"
-              color="success"
-              variant="ghost"
-              size="sm"
-              square
-              icon="i-ph-plus"
               :aria-label="$t('home.squadAddition.open')"
               data-haptic="open"
               @click.stop="emit('addSquad')"
-            />
+            >
+              <UIcon name="i-ph-plus" />
+            </button>
           </UTooltip>
         </div>
         <p>{{ squadNames?.length ? squadNames.join(t('home.squadSeparator')) : $t('dashboard.squadsIncluded', { count: active.squadUuids.length }) }}</p>
@@ -74,19 +72,32 @@ const resetLabel = computed(() => t(`home.reset.${props.active.resetStrategy}`))
 .home-ride__add-squad {
   position: relative;
   z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: 0 0 2.75rem;
   inline-size: 2.75rem;
   min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgb(var(--color-success-500));
+  cursor: pointer;
+  border-radius: 9999px;
   pointer-events: auto;
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  color: rgb(var(--color-success-500)) !important;
 }
 .home-ride__add-squad:hover,
 .home-ride__add-squad:focus-visible {
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: rgb(var(--color-success-600));
+  outline: none;
+}
+.home-ride__add-squad :deep(svg) {
+  width: 1.1rem;
+  height: 1.1rem;
+  color: currentColor;
+  fill: currentColor;
 }
 </style>
