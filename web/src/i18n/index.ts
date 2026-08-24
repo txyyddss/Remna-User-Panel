@@ -22,9 +22,14 @@ function detectLocale(): Locale {
 }
 
 const locale = shallowRef<Locale>(detectLocale())
-if (typeof document !== 'undefined') {
-  document.documentElement.lang = locale.value
+
+function applyDocumentLocale(next: Locale): void {
+  if (typeof document === 'undefined') return
+  document.documentElement.lang = next
+  document.title = t('app.name')
 }
+
+applyDocumentLocale(locale.value)
 
 function lookup(key: string, source: unknown): unknown {
   return key.split('.').reduce<unknown>((value, segment) => {
@@ -41,7 +46,7 @@ export function setLocale(next: Locale): void {
   } catch {
     // Locale choice remains available for this session in restricted WebViews.
   }
-  if (typeof document !== 'undefined') document.documentElement.lang = next
+  applyDocumentLocale(next)
 }
 
 export function getLocale(): Locale {

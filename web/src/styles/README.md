@@ -2,7 +2,7 @@
 
 `main.css` is the ordered entry point for these cascade layers:
 
-- `foundation-01.css` defines tokens, document defaults, and typography.
+- `foundation-01.css` defines tokens, document defaults, typography, and the accessible dark-mode primary-control shade.
 - `foundation-02.css` defines shared controls, surfaces, and utility patterns.
 - `shell-01.css` styles the application shell and primary navigation.
 - `shell-02.css` styles page framing, notices, and session states.

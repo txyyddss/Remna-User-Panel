@@ -57,6 +57,8 @@
   --ui-text: var(--text);
   --ui-text-muted: var(--text-muted);
   --ui-text-dimmed: var(--text-faint);
+  /* Nuxt UI uses primary-400 for solid controls in dark mode; this preserves label contrast. */
+  --ui-color-primary-400: #42735a;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
