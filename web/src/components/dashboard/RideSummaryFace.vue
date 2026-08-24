@@ -26,8 +26,8 @@ const resetLabel = computed(() => t(`home.reset.${props.active.resetStrategy}`))
           <UTooltip v-if="!addSquadDisabled" :text="$t('home.squadAddition.open')">
             <UButton
               class="home-ride__add-squad"
-              color="neutral"
-              variant="outline"
+              color="success"
+              variant="ghost"
               size="sm"
               square
               icon="i-ph-plus"
@@ -71,5 +71,22 @@ const resetLabel = computed(() => t(`home.reset.${props.active.resetStrategy}`))
 .home-ride__name-block { min-width: 0; }
 .home-ride__name-row { display: flex; align-items: center; gap: 0.55rem; min-width: 0; }
 .home-ride__name-row h3 { min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.home-ride__add-squad { position: relative; z-index: 2; flex: 0 0 2.75rem; inline-size: 2.75rem; min-height: 2.75rem; pointer-events: auto; }
+.home-ride__add-squad {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 2.75rem;
+  inline-size: 2.75rem;
+  min-height: 2.75rem;
+  pointer-events: auto;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: rgb(var(--color-success-500)) !important;
+}
+.home-ride__add-squad:hover,
+.home-ride__add-squad:focus-visible {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
 </style>
