@@ -37,10 +37,18 @@ state_tmp="${state_path}.tmp"
 trap 'rm -rf "$batch_dir"; rm -f "$payload" "$state_tmp"' EXIT
 max_report_bytes=$((15 * 1024 * 1024))
 metadata() {
-  docker exec remnanode stat -c '%i %s' "$log_path"
+  docker exec remnanode sh -c '
+    if [ -e "$1" ]; then
+      stat -c "%i %s" "$1"
+    else
+      printf "%s\n" "missing 0"
+    fi
+  ' sh "$log_path"
 }
 capture() {
-  docker exec remnanode tail -c "+$((offset + 1))" "$log_path" > "$payload"
+  docker exec remnanode sh -c '
+    [ ! -r "$1" ] || tail -c "$2" "$1"
+  ' sh "$log_path" "+$((offset + 1))" > "$payload"
 }
 upload() {
   curl --fail --silent --show-error --connect-timeout 10 --max-time 120 --retry 2 --retry-all-errors --config - --data-binary "@$1" "$API_URL/api/v1/agents/qps-reports" > /dev/null <<CURL
@@ -48,11 +56,21 @@ header = "Authorization: Bearer $NODE_TOKEN"
 request = "POST"
 CURL
 }
-read -r current_inode current_size <<< "$(metadata)"
+current_metadata=$(metadata)
+read -r current_inode current_size <<< "$current_metadata"
+[[ -n "$current_inode" && "$current_size" =~ ^[0-9]+$ ]] || {
+  printf '%s\n' 'Could not read Remnawave Xray log metadata.' >&2
+  exit 1
+}
 if [ -z "$inode" ]; then offset=$current_size; inode=$current_inode; fi
 if [ "$inode" != "$current_inode" ] || [ "$offset" -gt "$current_size" ]; then offset=0; inode=$current_inode; fi
 capture
-read -r after_inode _ <<< "$(metadata)"
+after_metadata=$(metadata)
+read -r after_inode after_size <<< "$after_metadata"
+[[ -n "$after_inode" && "$after_size" =~ ^[0-9]+$ ]] || {
+  printf '%s\n' 'Could not re-read Remnawave Xray log metadata.' >&2
+  exit 1
+}
 if [ "$inode" != "$after_inode" ]; then offset=0; inode=$after_inode; capture; fi
 captured_bytes=$(stat -c '%s' "$payload")
 if [ "$captured_bytes" -gt 0 ] && [ "$(tail -c 1 "$payload" | wc -l)" -eq 0 ]; then
