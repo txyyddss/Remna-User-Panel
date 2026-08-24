@@ -23,7 +23,7 @@ const resetLabel = computed(() => t(`home.reset.${props.active.resetStrategy}`))
       <div class="home-ride__name-block">
         <div class="home-ride__name-row">
           <h3>{{ active.comboName }}</h3>
-          <UTooltip :text="addSquadDisabled ? $t('home.squadAddition.queuedBlocked') : $t('home.squadAddition.open')">
+          <UTooltip v-if="!addSquadDisabled" :text="$t('home.squadAddition.open')">
             <UButton
               class="home-ride__add-squad"
               color="neutral"
@@ -32,7 +32,6 @@ const resetLabel = computed(() => t(`home.reset.${props.active.resetStrategy}`))
               square
               icon="i-ph-plus"
               :aria-label="$t('home.squadAddition.open')"
-              :disabled="addSquadDisabled"
               data-haptic="open"
               @click.stop="emit('addSquad')"
             />
