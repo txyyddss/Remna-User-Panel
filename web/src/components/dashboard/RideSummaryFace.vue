@@ -27,10 +27,11 @@ const resetLabel = computed(() => t(`home.reset.${props.active.resetStrategy}`))
             <UButton
               class="home-ride__add-squad"
               color="success"
-              variant="ghost"
+              variant="solid"
               size="sm"
-              square
               icon="i-ph-plus"
+              :label="$t('home.squadAddition.open')"
+              :ui="{ label: 'whitespace-nowrap font-extrabold' }"
               :aria-label="$t('home.squadAddition.open')"
               data-haptic="open"
               @click.stop="emit('addSquad')"
@@ -74,24 +75,14 @@ const resetLabel = computed(() => t(`home.reset.${props.active.resetStrategy}`))
 .home-ride__add-squad {
   position: relative;
   z-index: 2;
-  flex: 0 0 2.75rem;
-  inline-size: 2.75rem;
+  flex: 0 0 auto;
+  min-width: 2.75rem;
   min-height: 2.75rem;
+  padding-inline: 0.75rem;
   pointer-events: auto;
-  background: transparent !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
-  color: rgb(var(--color-success-500)) !important;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  transition: background-color 180ms var(--ease-out), transform 120ms var(--ease-out);
 }
-.home-ride__add-squad:hover,
-.home-ride__add-squad:focus-visible {
-  background: transparent !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
-  color: rgb(var(--color-success-600)) !important;
-}
-.home-ride__add-squad :deep(svg),
-.home-ride__add-squad :deep(.icon) {
-  color: currentColor !important;
-}
+.home-ride__add-squad:active { transform: translateY(1px); }
 </style>

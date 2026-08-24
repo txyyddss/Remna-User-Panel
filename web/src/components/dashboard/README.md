@@ -1,6 +1,6 @@
 # Dashboard components
 
-- `EntitlementSummary.vue` relays the active ride's visible 44px Add squad action to the mobile-safe two-step `squad-addition` dialog and disables it with localized queued-term explanation when a separate term exists. `RideSummaryFace.vue` keeps it beside the combo name while `RolloverFlipCard.vue` retains the independent rollover action.
+- `EntitlementSummary.vue` relays the active ride's visible 44px Add squad action to the mobile-safe two-step `squad-addition` dialog and disables it with localized queued-term explanation when a separate term exists. `RideSummaryFace.vue` keeps its bold, filled green treatment beside the combo name while `RolloverFlipCard.vue` retains the independent rollover action.
 
 - `UserHome.vue` composes the ordered Home experience and its request states in one centered balance-first column on phone and desktop; it resolves active squad UUIDs against the current catalog without persisting duplicated squad data.
 - `BalanceHero.vue` opens the real funding sheet from Home and refetches a provider-returned reissue order before prepopulating it; `SubscriptionPanel.vue` displays and copies the active subscription URL with matched Connections and solid destructive Revoke actions whose confirmation copy stays centered in the modal.
