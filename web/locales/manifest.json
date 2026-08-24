@@ -21,6 +21,8 @@
     "squad-profile",
     "admin-operations",
     "admin-workflows",
-    "admin-compensation"
+    "admin-compensation",
+    "abuse",
+    "admin-abuse"
   ]
 }

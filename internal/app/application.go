@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/txyyddss/Remna-User-Panel/internal/abuse"
 	"github.com/txyyddss/Remna-User-Panel/internal/admin"
 	"github.com/txyyddss/Remna-User-Panel/internal/affiliates"
 	"github.com/txyyddss/Remna-User-Panel/internal/billing"
@@ -34,6 +35,7 @@ type Application struct {
 	statistics      *productstats.Service
 	compensation    *compensation.Service
 	affiliates      *affiliates.Service
+	abuse           *abuse.Service
 	notifications   *notifications.Scanner
 	upstreams       *providerQueues
 	paymentProfiles *PaymentProfileManager

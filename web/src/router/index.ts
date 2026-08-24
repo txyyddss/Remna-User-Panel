@@ -29,6 +29,7 @@ const router = createRouter({
     { path: '/affiliates', name: 'affiliates', component: () => import('@/views/AffiliatesView.vue') },
     { path: '/questionnaire', name: 'questionnaire', component: () => import('@/views/QuestionnaireView.vue') },
     { path: '/emby', name: 'emby', component: () => import('@/views/EmbyView.vue') },
+    { path: '/abuse-records', name: 'abuse-records', component: () => import('@/views/AbuseRecordsView.vue') },
     { path: '/admin', redirect: '/admin/settings' },
     { path: '/admin/emby', redirect: '/admin/users' },
     { path: '/admin/entitlements', redirect: '/admin/users' },
@@ -39,7 +40,7 @@ const router = createRouter({
       meta: { adminSection: 'users' },
     },
     {
-      path: '/admin/:section(settings|catalog|activity|affiliates|coupons|questionnaires|onboarding|users|compensation|backups|database|audit)',
+      path: '/admin/:section(settings|catalog|activity|affiliates|coupons|questionnaires|onboarding|users|compensation|abuse|backups|database|audit)',
       name: 'admin',
       component: () => import('@/views/AdminView.vue'),
     },

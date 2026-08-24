@@ -28,6 +28,7 @@ const groups = [
   { labelKey: 'adminNav.system', sections: [
     { value: 'settings', labelKey: 'adminNav.settings', icon: 'i-ph-key' },
     { value: 'compensation', labelKey: 'adminCompensation.nav', icon: 'i-ph-first-aid' },
+    { value: 'abuse', labelKey: 'adminAbuse.nav', icon: 'i-ph-shield-warning' },
     { value: 'backups', labelKey: 'adminNav.backups', icon: 'i-ph-archive' },
     { value: 'database', labelKey: 'adminNav.database', icon: 'i-ph-database' },
     { value: 'audit', labelKey: 'adminNav.audit', icon: 'i-ph-shield-check' },

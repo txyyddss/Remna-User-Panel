@@ -55,6 +55,11 @@ func (a *Application) runScheduler(ctx context.Context, startupComplete chan<- s
 				a.logger.Error("group message fact flush failed", "error", err)
 			}
 		case now := <-transitionTicker.C:
+			if a.abuse != nil {
+				if err := a.abuse.Evaluate(ctx, now.UTC()); err != nil {
+					a.logger.Error("abuse detector evaluation failed", "error", err)
+				}
+			}
 			if err := a.store.RecoverOutbox(ctx, now.UTC().Add(-2*time.Minute), now.UTC()); err != nil {
 				a.logger.Error("outbox lease recovery failed", "error", err)
 			}

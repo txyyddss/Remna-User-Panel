@@ -1,0 +1,41 @@
+memberRecords:
+  get:
+    tags: [Member]
+    operationId: getAbuseRecords
+    responses: { '200': { content: { application/json: { schema: { type: object } } } } }
+agentReport:
+  post:
+    tags: [Agent]
+    operationId: uploadQPSReport
+    security: []
+    requestBody: { required: true, content: { text/plain: { schema: { type: string, maxLength: 16777216 } } } }
+    responses: { '200': { content: { application/json: { schema: { type: object } } } }, '401': { $ref: '../components/responses.yaml#/Unauthorized' } }
+policy:
+  get: { tags: [Admin], operationId: getAbusePolicy, responses: { '200': { content: { application/json: { schema: { type: object } } } } } }
+  put: { tags: [Admin], operationId: updateAbusePolicy, parameters: [{ $ref: '../components/parameters.yaml#/IdempotencyKey' }], requestBody: { required: true, content: { application/json: { schema: { type: object } } } }, responses: { '200': { content: { application/json: { schema: { type: object } } } } } }
+nodes:
+  get: { tags: [Admin], operationId: getAbuseNodes, responses: { '200': { content: { application/json: { schema: { type: array, items: { type: object } } } } } } }
+nodeKey:
+  get: { tags: [Admin], operationId: copyAbuseNodeKey, responses: { '200': { content: { application/json: { schema: { type: object } } } } } }
+nodeRotate:
+  post: { tags: [Admin], operationId: rotateAbuseNodeKey, parameters: [{ $ref: '../components/parameters.yaml#/IdempotencyKey' }], responses: { '200': { content: { application/json: { schema: { type: object } } } } } }
+rules:
+  get: { tags: [Admin], operationId: getAbuseRules, responses: { '200': { content: { application/json: { schema: { type: array, items: { type: object } } } } } } }
+  post: { tags: [Admin], operationId: createAbuseRule, parameters: [{ $ref: '../components/parameters.yaml#/IdempotencyKey' }], requestBody: { required: true, content: { application/json: { schema: { type: object } } } }, responses: { '200': { content: { application/json: { schema: { type: object } } } } } }
+rule:
+  put: { tags: [Admin], operationId: updateAbuseRule, parameters: [{ $ref: '../components/parameters.yaml#/IdempotencyKey' }], requestBody: { required: true, content: { application/json: { schema: { type: object } } } }, responses: { '200': { content: { application/json: { schema: { type: object } } } } } }
+  delete: { tags: [Admin], operationId: deleteAbuseRule, parameters: [{ $ref: '../components/parameters.yaml#/IdempotencyKey' }], responses: { '204': { description: Deleted } } }
+whitelist:
+  get: { tags: [Admin], operationId: getAbuseWhitelist, responses: { '200': { content: { application/json: { schema: { type: array, items: { type: string } } } } } } }
+whitelistItem:
+  put: { tags: [Admin], operationId: updateAbuseWhitelist, parameters: [{ $ref: '../components/parameters.yaml#/IdempotencyKey' }], requestBody: { required: true, content: { application/json: { schema: { type: object } } } }, responses: { '204': { description: Updated } } }
+punishments:
+  get: { tags: [Admin], operationId: getAbusePunishments, responses: { '200': { content: { application/json: { schema: { type: array, items: { type: object } } } } } } }
+punishment:
+  put: { tags: [Admin], operationId: updateAbusePunishment, parameters: [{ $ref: '../components/parameters.yaml#/IdempotencyKey' }], requestBody: { required: true, content: { application/json: { schema: { type: object } } } }, responses: { '200': { content: { application/json: { schema: { type: object } } } } } }
+statistics:
+  get: { tags: [Admin], operationId: getAbuseStatistics, responses: { '200': { content: { application/json: { schema: { type: object } } } } } }
+records:
+  get: { tags: [Admin], operationId: getAdminAbuseRecords, responses: { '200': { content: { application/json: { schema: { type: object } } } } } }
+record:
+  delete: { tags: [Admin], operationId: deleteAbuseRecord, parameters: [{ $ref: '../components/parameters.yaml#/IdempotencyKey' }], responses: { '204': { description: Deleted } } }

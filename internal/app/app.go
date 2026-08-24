@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/txyyddss/Remna-User-Panel/internal/abuse"
 	"github.com/txyyddss/Remna-User-Panel/internal/accounts"
 	"github.com/txyyddss/Remna-User-Panel/internal/activity"
 	"github.com/txyyddss/Remna-User-Panel/internal/admin"
@@ -141,11 +142,15 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	}
 	statisticsService := productstats.NewService(store, remna)
 	compensationService := compensation.NewService(store, remna)
+	abuseService := abuse.NewService(store, remna)
 	if err := registerStatisticsOperationHandler(operationDispatcher, store, remna); err != nil {
 		return cleanup(err)
 	}
 	if err := registerCoreOutboxHandlers(outboxWorker, store, entitlementWorker, rolloverWorker, embyService,
 		paymentAnnouncementWorker, affiliateNotificationWorker, userNotificationWorker, scanWorker, blockExpiryWorker, operationDispatcher); err != nil {
+		return cleanup(err)
+	}
+	if err := registerAbuseOutboxHandlers(outboxWorker, store, remna, queuedTelegramClient); err != nil {
 		return cleanup(err)
 	}
 	static, err := fs.Sub(webui.Dist, "dist")
@@ -164,7 +169,8 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		EmbyOperations: embyOperations, EmbyPrice: embyPrice,
 		Admin: adminService, AdminUsers: adminUserWorkflows, Compensation: compensationService, Settings: settings, DatabaseAdmin: databaseAdminHTTP,
 		PaymentProfiles: paymentProfiles,
-		Store:           store, Affiliates: affiliateService, Telegram: queuedTelegramClient, Webhooks: paymentBridge, PublicURL: cfg.PublicBaseURL, Static: static,
+		Abuse:           abuseService, AbuseVault: vault,
+		Store: store, Affiliates: affiliateService, Telegram: queuedTelegramClient, Webhooks: paymentBridge, PublicURL: cfg.PublicBaseURL, Static: static,
 		Logger: logger, SessionTTL: cfg.SessionTTL, SecureCookies: cfg.PublicBaseURL.Scheme == "https",
 		AdminTelegramIDs: cfg.AdminTelegramIDs, RequestSigningKey: cfg.MasterKey,
 	})
@@ -178,7 +184,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	return &Application{
 		config: cfg, logger: logger, httpServer: httpServer, store: store, outbox: outboxWorker,
 		backups: backupService, maintenance: maintenanceService, telegram: queuedTelegramClient, settings: settings,
-		catalog: catalogService, billing: billingService, statistics: statisticsService, compensation: compensationService, affiliates: affiliateService,
+		catalog: catalogService, billing: billingService, statistics: statisticsService, compensation: compensationService, affiliates: affiliateService, abuse: abuseService,
 		notifications: userNotificationScanner, upstreams: upstreams, paymentProfiles: paymentProfiles,
 	}, nil
 }

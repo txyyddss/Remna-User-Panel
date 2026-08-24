@@ -130,6 +130,8 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `admin_entitlement_edit.go`, `admin_entitlement_refund.go`, and `admin_combo_replacement.go` atomically persist audited administrator mutations with their provider operations.
 - `admin_bulk_query.go`, `admin_bulk_shift.go`, and `admin_bulk_extension.go` preview inclusive-OR active targets, deduplicate users, shift active and queued terms to the minute, and create one durable bulk job.
 - `compensation_config.go`, `compensation_observation.go`, `compensation_events.go`, `compensation_review.go`, `compensation_notification.go`, and `compensation_dismiss.go` persist revisioned outage policy, node observations, frozen snapshots, cursor-safe projections, atomic reviewed extensions, and provider-gated compensation detail cards.
+- `abuse_ingestion.go`, `abuse_configuration.go`, and `abuse_records.go` persist privacy-safe QPS buckets, detector state, revisioned policy, and incident queueing.
+- `abuse_admin.go`, `abuse_record_queries.go`, and `abuse_outbox.go` provide encrypted node-key metadata, safe record projections, delivery state, restoration state, and backup-gated retention.
 - `compensation_observation_test.go` covers persisted/missing nodes, snapshotted policy, disabled precedence, and repeated outages.
 - `compensation_review_test.go` covers inactive skips, exact minute shifts, notifications, operation linkage, stale reviews, replay, and dismissal.
 - `admin_user_operations.go` and `admin_user_refunds.go` supply the aggregate profile's open-operation and refund projections.

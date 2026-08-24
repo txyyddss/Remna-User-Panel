@@ -1,0 +1,191 @@
+package database
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"time"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/abuse"
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
+)
+
+func (s *Store) CreateIncident(ctx context.Context, userID string, bucket time.Time, qps, limit int, reasons, nodes []string, policy abuse.Policy, now time.Time) (bool, error) {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	recordID, created, err := ensureAbuseRecordTx(ctx, tx, userID, bucket, qps, limit, policy, now)
+	if err != nil {
+		return false, err
+	}
+	for _, reason := range reasons {
+		if _, err = tx.ExecContext(ctx, `INSERT OR IGNORE INTO abuse_record_reasons(record_id,name) VALUES(?,?)`, recordID, reason); err != nil {
+			return false, err
+		}
+	}
+	for _, node := range nodes {
+		if _, err = tx.ExecContext(ctx, `INSERT OR IGNORE INTO abuse_record_nodes(record_id,node_uuid) VALUES(?,?)`, recordID, node); err != nil {
+			return false, err
+		}
+	}
+	if created {
+		payload, _ := json.Marshal(map[string]string{"recordId": recordID})
+		if err = insertOutboxTx(ctx, tx, "abuse_punishment", string(payload), now, now); err != nil {
+			return false, err
+		}
+		if err = queueAbuseNotificationsTx(ctx, tx, recordID, userID, now); err != nil {
+			return false, err
+		}
+	}
+	return created, tx.Commit()
+}
+func ensureAbuseRecordTx(ctx context.Context, tx *sql.Tx, userID string, bucket time.Time, qps, limit int, policy abuse.Policy, now time.Time) (string, bool, error) {
+	var id string
+	err := tx.QueryRowContext(ctx, `SELECT id FROM abuse_records WHERE user_id=? AND incident_bucket_at=?`, userID, stamp(bucket)).Scan(&id)
+	if err == nil {
+		return id, false, nil
+	}
+	if err != sql.ErrNoRows {
+		return "", false, err
+	}
+	rules, err := punishmentRulesTx(ctx, tx)
+	if err != nil {
+		return "", false, err
+	}
+	var count int
+	if err = tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM abuse_records WHERE user_id=? AND deleted_at IS NULL AND created_at>=?`, userID, stamp(now.AddDate(0, 0, -policy.WarningValidityDays))).Scan(&count); err != nil {
+		return "", false, err
+	}
+	action, duration := selectPunishment(rules, count+1)
+	id, err = ids.New()
+	if err != nil {
+		return "", false, err
+	}
+	var expires any
+	if action == abuse.ActionTemporaryBan {
+		expires = stamp(now.Add(time.Duration(duration) * time.Minute))
+	}
+	_, err = tx.ExecContext(ctx, `INSERT INTO abuse_records(id,user_id,incident_bucket_at,measured_qps,qps_limit,selected_action,expires_at,created_at) VALUES(?,?,?,?,?,?,?,?)`, id, userID, stamp(bucket), qps, limit, action, expires, stamp(now))
+	if err != nil {
+		return "", false, fmt.Errorf("insert abuse record: %w", err)
+	}
+	if action == abuse.ActionTemporaryBan {
+		_, err = tx.ExecContext(ctx, `INSERT INTO abuse_temp_bans(record_id,user_id,expires_at,created_at) VALUES(?,?,?,?)`, id, userID, expires, stamp(now))
+		if err != nil {
+			return "", false, err
+		}
+	}
+	return id, true, nil
+}
+func punishmentRulesTx(ctx context.Context, tx *sql.Tx) ([]abuse.PunishmentRule, error) {
+	rows, err := tx.QueryContext(ctx, `SELECT action,enabled,incident_threshold,duration_minutes,all_nodes,revision FROM abuse_punishment_rules`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []abuse.PunishmentRule{}
+	for rows.Next() {
+		var item abuse.PunishmentRule
+		var enabled, all int
+		if err = rows.Scan(&item.Action, &enabled, &item.IncidentThreshold, &item.DurationMinutes, &all, &item.Revision); err != nil {
+			return nil, err
+		}
+		item.Enabled = enabled == 1
+		item.AllNodes = all == 1
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}
+func selectPunishment(rules []abuse.PunishmentRule, count int) (abuse.Action, int) {
+	order := []abuse.Action{abuse.ActionWarning, abuse.ActionIPBan, abuse.ActionRevoke, abuse.ActionTemporaryBan}
+	chosen := abuse.Action("none")
+	duration := 0
+	for _, action := range order {
+		for _, rule := range rules {
+			if rule.Action == action && rule.Enabled && count >= rule.IncidentThreshold {
+				chosen = action
+				duration = rule.DurationMinutes
+			}
+		}
+	}
+	return chosen, duration
+}
+func queueAbuseNotificationsTx(ctx context.Context, tx *sql.Tx, recordID, userID string, now time.Time) error {
+	rows, err := tx.QueryContext(ctx, `SELECT telegram_id FROM users WHERE id=? OR role='admin'`, userID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var telegramID int64
+		if err = rows.Scan(&telegramID); err != nil {
+			return err
+		}
+		result, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO abuse_notification_deliveries(record_id,recipient_telegram_id,kind,created_at) VALUES(?,?,?,?)`, recordID, telegramID, "incident", stamp(now))
+		if err != nil {
+			return err
+		}
+		changed, _ := result.RowsAffected()
+		if changed == 1 {
+			payload, _ := json.Marshal(map[string]any{"recordId": recordID, "telegramId": telegramID})
+			if err = insertOutboxTx(ctx, tx, "abuse_notification", string(payload), now, now); err != nil {
+				return err
+			}
+		}
+	}
+	return rows.Err()
+}
+func (s *Store) DueTemporaryBans(ctx context.Context, now time.Time) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT user_id FROM abuse_temp_bans WHERE restored_at IS NULL AND restore_queued_at IS NULL AND expires_at<=?`, stamp(now))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []string{}
+	for rows.Next() {
+		var id string
+		if err = rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+func (s *Store) QueueRestore(ctx context.Context, userID string, now time.Time) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	result, err := tx.ExecContext(ctx, `UPDATE abuse_temp_bans SET restore_queued_at=? WHERE user_id=? AND restored_at IS NULL AND restore_queued_at IS NULL`, stamp(now), userID)
+	if err != nil {
+		return err
+	}
+	changed, _ := result.RowsAffected()
+	if changed == 0 {
+		return nil
+	}
+	payload, _ := json.Marshal(map[string]string{"userId": userID})
+	if err = insertOutboxTx(ctx, tx, "abuse_restore", string(payload), now, now); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+func (s *Store) DeleteRecord(ctx context.Context, _ string, recordID string, now time.Time) error {
+	result, err := s.db.ExecContext(ctx, `UPDATE abuse_records SET deleted_at=? WHERE id=? AND deleted_at IS NULL`, stamp(now), recordID)
+	if err != nil {
+		return err
+	}
+	changed, _ := result.RowsAffected()
+	if changed == 0 {
+		return ErrNotFound
+	}
+	return nil
+}

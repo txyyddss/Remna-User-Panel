@@ -1,6 +1,7 @@
 # Frontend API
 
 - `adminBilling.ts` owns the atomic administrator update for global Add TXB bounds.
+- `abuse.ts` owns typed privacy-safe member and administrator detector resources.
 - `adminOperations.ts` owns aggregate user profiles, profile-scoped payment refunds and courtesy credits, audited entitlement and combo mutations, bulk extensions, operation resolution, and streamed backup upload.
 - `client.ts` exposes typed member and administrator API operations, including idempotent payment, subscription-revoke, refund, and outbox-retry commands, connection scans, renewal batches, payment profiles, dashboard usage, and cached product statistics.
 - `client.test.ts` covers client request behavior.

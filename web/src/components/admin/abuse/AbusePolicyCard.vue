@@ -1,0 +1,15 @@
+<script setup lang="ts">
+import { reactive, shallowRef, watch } from 'vue'
+import type { AbusePolicy, AbusePunishment } from '@/api/abuse'
+import { useI18n } from '@/i18n'
+
+const props = defineProps<{ policy: AbusePolicy; punishments: AbusePunishment[]; busy: boolean }>()
+const emit = defineEmits<{ savePolicy: [value: AbusePolicy]; savePunishment: [value: AbusePunishment] }>()
+const { t } = useI18n(); const form = reactive<AbusePolicy>({ ...props.policy }); const ladder = shallowRef(props.punishments.map(item => ({ ...item })))
+watch(() => props.policy, value => Object.assign(form, value)); watch(() => props.punishments, value => { ladder.value = value.map(item => ({ ...item })) })
+const actionLabel = (action: string) => t(`abuse.action.${action}`)
+</script>
+
+<template><section class="card"><h3>{{ t('adminAbuse.policyTitle') }}</h3><UForm :state="form" @submit="emit('savePolicy', { ...form })"><UFormField :label="t('adminAbuse.globalEnabled')"><USwitch v-model="form.globalEnabled" /></UFormField><UFormField :label="t('adminAbuse.globalLimit')"><UInput v-model.number="form.globalLimit" type="number" /></UFormField><UFormField :label="t('adminAbuse.validity')"><UInput v-model.number="form.warningValidityDays" type="number" /></UFormField><UButton type="submit" :loading="busy" :label="t('core.save')" /></UForm></section><section class="card"><h3>{{ t('adminAbuse.punishmentsTitle') }}</h3><UForm v-for="item in ladder" :key="item.action" :state="item" class="ladder" @submit="emit('savePunishment', { ...item })"><strong>{{ actionLabel(item.action) }}</strong><USwitch v-model="item.enabled" /><UInput v-model.number="item.incidentThreshold" type="number" /><UInput v-model.number="item.durationMinutes" type="number" /><UButton type="submit" size="sm" :loading="busy" :label="t('core.save')" /></UForm></section></template>
+
+<style scoped>.card { display: grid; gap: .75rem; padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface-raised); }.card :deep(form) { display: grid; gap: .7rem; }.ladder { grid-template-columns: minmax(110px,1fr) auto 72px 72px auto; align-items: end; border-top: 1px solid var(--line); padding-top: .7rem; }@media (max-width: 620px){.ladder { grid-template-columns: 1fr 1fr; }.ladder strong { grid-column: span 2; }}</style>

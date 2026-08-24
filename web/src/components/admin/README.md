@@ -13,6 +13,8 @@ Admin controls inherit guarded action feedback, modal dismissal stays soft, audi
 - `AdminCatalogEditor.vue` edits combo terms.
 - `AdminCatalogPanel.vue` manages combos and squads.
 - `AdminCompensationPanel.vue` composes the revisioned outage policy and recipient-safe event review flow.
+- `AdminAbusePanel.vue` lazy-loads the premium-dark detector policy, node-key, rule, statistics, and record surfaces.
+- `abuse/` contains focused detector administration cards.
 - `AdminCouponsPanel.vue` manages coupon definitions.
 - `AdminDatabasePanel.vue` browses protected database tables.
 - `AdminEmbyPanel.vue` monitors Emby provisioning.

@@ -7,6 +7,10 @@
 ## Core transport
 
 - `server.go` constructs middleware, public routes, authenticated routes, and the SPA fallback.
+- `responses.go` owns compact JSON response serialization and request-correlated API errors.
+- `abuse_agent.go` accepts bounded authenticated node log reports.
+- `abuse_member.go` exposes privacy-safe member incident history.
+- `abuse_admin.go` serves revisioned detector administration and node-key controls.
 - The SPA fallback revalidates `index.html` while serving hashed assets with immutable caching to avoid stale WebView bundles.
 - `request_auth.go` requires the per-session HMAC contract on authenticated browser requests.
 - `request_auth_test.go` tests signed-route enforcement and session-cookie visibility rules.

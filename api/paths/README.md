@@ -2,6 +2,8 @@
 
 Each YAML file is one complete OpenAPI Path Item Object. `../openapi.yaml` registers these files under their canonical URL paths.
 
+- `api-v1-abuse.yaml` groups member history, node-agent upload, and administrator abuse-detector path items.
+
 Member connection scans, purchase reset/refund resources, operation receipts, statistics, and admin bulk/backup mutations use the same signed-session and idempotency conventions as the existing paths.
 
 - `api-v1-auth-telegram.yaml`: `/api/v1/auth/telegram`

@@ -1,0 +1,13 @@
+<script setup lang="ts">
+import { computed, reactive, shallowRef } from 'vue'
+import type { AbuseRule } from '@/api/abuse'
+import { useI18n } from '@/i18n'
+
+const props = defineProps<{ rules: AbuseRule[]; whitelist: string[]; busy: boolean }>(); const emit = defineEmits<{ saveRule: [value: AbuseRule]; whitelist: [id: string, enabled: boolean] }>(); const { t } = useI18n(); const draft = reactive<AbuseRule>({ id: '', name: '', expression: '', qpsLimit: 1, enabled: true, revision: 0 }); const remoteID = shallowRef(''); const choices = computed(() => props.rules.map(item => ({ value: item.id, label: item.name })))
+function choose(id: string): void { const rule = props.rules.find(item => item.id === id); if (rule) Object.assign(draft, rule) }
+function clear(): void { Object.assign(draft, { id: '', name: '', expression: '', qpsLimit: 1, enabled: true, revision: 0 }) }
+</script>
+
+<template><section class="card"><h3>{{ t('adminAbuse.rulesTitle') }}</h3><UForm :state="draft" @submit="emit('saveRule', { ...draft })"><UFormField :label="t('adminAbuse.ruleSelect')"><USelect :items="choices" value-key="value" @update:model-value="choose" /></UFormField><UFormField :label="t('adminAbuse.ruleName')"><UInput v-model="draft.name" /></UFormField><UFormField :label="t('adminAbuse.expression')"><UInput v-model="draft.expression" /></UFormField><UFormField :label="t('adminAbuse.ruleLimit')"><UInput v-model.number="draft.qpsLimit" type="number" /></UFormField><USwitch v-model="draft.enabled" :label="t('adminAbuse.ruleEnabled')" /><div class="actions"><UButton type="submit" :loading="busy" :label="t('core.save')" /><UButton color="neutral" variant="ghost" :label="t('core.reset')" @click="clear" /></div></UForm></section><section class="card"><h3>{{ t('adminAbuse.whitelistTitle') }}</h3><div class="actions"><UInput v-model="remoteID" /><UButton :label="t('adminAbuse.addWhitelist')" @click="remoteID && emit('whitelist', remoteID, true)" /></div><div v-for="id in whitelist" :key="id" class="whitelist"><span>{{ id }}</span><UButton color="error" variant="ghost" icon="i-ph-trash" :aria-label="t('adminAbuse.removeWhitelist')" @click="emit('whitelist', id, false)" /></div></section></template>
+
+<style scoped>.card { display: grid; gap: .75rem; padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface-raised); }.card :deep(form) { display: grid; gap: .7rem; }.actions,.whitelist { display: flex; gap: .65rem; align-items: center; justify-content: space-between; }.whitelist { min-height: 44px; border-top: 1px solid var(--line); }</style>

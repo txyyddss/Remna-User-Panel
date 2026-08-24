@@ -13,3 +13,4 @@
 - `QuestionnaireView.vue` delegates to active questionnaire participation.
 - `StatisticsView.vue` delegates to the cached product and live-node statistics dashboard.
 - `AffiliatesView.vue` mounts the member Affiliate Centre page.
+- `AbuseRecordsView.vue` mounts the member privacy-safe detector history.

@@ -3,10 +3,10 @@ package httpapi
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/txyyddss/Remna-User-Panel/internal/abuse"
 	"github.com/txyyddss/Remna-User-Panel/internal/accounts"
 	"github.com/txyyddss/Remna-User-Panel/internal/activity"
 	"github.com/txyyddss/Remna-User-Panel/internal/admin"
@@ -18,6 +18,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/coupons"
 	"github.com/txyyddss/Remna-User-Panel/internal/emby"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/secret"
 	"github.com/txyyddss/Remna-User-Panel/internal/purchaseops"
 	"github.com/txyyddss/Remna-User-Panel/internal/questionnaires"
 	"github.com/txyyddss/Remna-User-Panel/internal/requestauth"
@@ -63,6 +64,8 @@ type Dependencies struct {
 	Admin              *admin.Service
 	AdminUsers         *admin.UserWorkflows
 	Compensation       *compensation.Service
+	Abuse              *abuse.Service
+	AbuseVault         *secret.Vault
 	Settings           *admin.SettingsService
 	PaymentProfiles    paymentProfileLifecycle
 	DatabaseAdmin      *DatabaseAdministrationHTTP
@@ -90,7 +93,7 @@ type Server struct {
 
 // New constructs all public, authenticated, admin, and webhook routes.
 func New(deps Dependencies) (*Server, error) {
-	if deps.Accounts == nil || deps.Catalog == nil || deps.Connections == nil || deps.ConnectionDrops == nil || deps.PurchaseOperations == nil || deps.Statistics == nil || deps.Billing == nil || deps.Activity == nil || deps.Coupons == nil || deps.Questionnaires == nil || deps.Emby == nil || deps.EmbyOperations == nil || deps.EmbyPrice == nil || deps.Admin == nil || deps.AdminUsers == nil || deps.Compensation == nil || deps.Settings == nil || deps.PaymentProfiles == nil || deps.Store == nil || deps.Affiliates == nil || deps.Telegram == nil || deps.Webhooks == nil || deps.PublicURL == nil || deps.Logger == nil || len(deps.AdminTelegramIDs) == 0 {
+	if deps.Accounts == nil || deps.Catalog == nil || deps.Connections == nil || deps.ConnectionDrops == nil || deps.PurchaseOperations == nil || deps.Statistics == nil || deps.Billing == nil || deps.Activity == nil || deps.Coupons == nil || deps.Questionnaires == nil || deps.Emby == nil || deps.EmbyOperations == nil || deps.EmbyPrice == nil || deps.Admin == nil || deps.AdminUsers == nil || deps.Compensation == nil || deps.Abuse == nil || deps.AbuseVault == nil || deps.Settings == nil || deps.PaymentProfiles == nil || deps.Store == nil || deps.Affiliates == nil || deps.Telegram == nil || deps.Webhooks == nil || deps.PublicURL == nil || deps.Logger == nil || len(deps.AdminTelegramIDs) == 0 {
 		return nil, errors.New("HTTP API dependencies are incomplete")
 	}
 	adminTelegramIDs := make(map[int64]struct{}, len(deps.AdminTelegramIDs))
@@ -121,6 +124,7 @@ func New(deps Dependencies) (*Server, error) {
 	router.Post("/api/v1/webhooks/bepusdt", server.bepusdtWebhook)
 	router.Post("/api/v1/webhooks/bepusdt/probe", server.bepusdtProbeWebhook)
 	router.Post("/api/v1/webhooks/bepusdt/{capability}", server.bepusdtWebhook)
+	router.Post("/api/v1/agents/qps-reports", server.agentQPSReport)
 	router.Get("/api/v1/payments/return/{provider}/{orderID}/status", server.paymentReturnStatus)
 	router.Get("/api/v1/payments/return/{provider}", server.paymentReturn)
 	router.Get("/api/v1/payments/return/{provider}/{orderID}", server.paymentReturn)
@@ -129,6 +133,7 @@ func New(deps Dependencies) (*Server, error) {
 		authenticated.Use(server.requireSignedRequest)
 		authenticated.Use(server.requireSession)
 		authenticated.Get("/api/v1/me", server.me)
+		authenticated.Get("/api/v1/me/abuse-records", server.memberAbuseRecords)
 		authenticated.Post("/api/v1/onboarding/invites", server.createInvites)
 		authenticated.Post("/api/v1/onboarding/membership/check", server.checkMembership)
 		authenticated.Put("/api/v1/onboarding/username", server.reserveUsername)
@@ -180,20 +185,3 @@ func New(deps Dependencies) (*Server, error) {
 
 // Handler returns the fully configured router.
 func (s *Server) Handler() http.Handler { return s.router }
-
-type apiError struct {
-	Code      string            `json:"code"`
-	Message   string            `json:"message"`
-	Details   map[string]string `json:"details,omitempty"`
-	RequestID string            `json:"requestId,omitempty"`
-}
-
-func (s *Server) writeError(w http.ResponseWriter, r *http.Request, status int, code, message string) {
-	writeJSON(w, status, apiError{Code: code, Message: message, RequestID: middleware.GetReqID(r.Context())})
-}
-
-func writeJSON(w http.ResponseWriter, status int, value any) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(value)
-}

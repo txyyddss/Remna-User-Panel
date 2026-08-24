@@ -6,6 +6,7 @@ const items = [
   { to: '/questionnaire', labelKey: 'nav.questionnaire', noteKey: 'dashboard.questionnaireNote', icon: 'i-ph-list-checks' },
   { to: '/emby', labelKey: 'nav.emby', noteKey: 'dashboard.embyNote', icon: 'i-ph-monitor-play' },
   { to: '/statistics', labelKey: 'statistics.title', noteKey: 'statistics.dashboardNote', icon: 'i-ph-chart-donut' },
+  { to: '/abuse-records', labelKey: 'abuse.title', noteKey: 'abuse.copy', icon: 'i-ph-shield-warning' },
 ]
 
 const router = useRouter()

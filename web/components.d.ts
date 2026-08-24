@@ -11,8 +11,13 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AbuseNodesRecordsCard: typeof import('./src/components/admin/abuse/AbuseNodesRecordsCard.vue')['default']
+    AbusePolicyCard: typeof import('./src/components/admin/abuse/AbusePolicyCard.vue')['default']
+    AbuseRecordsPage: typeof import('./src/components/abuse/AbuseRecordsPage.vue')['default']
+    AbuseRulesCard: typeof import('./src/components/admin/abuse/AbuseRulesCard.vue')['default']
     ActivityPage: typeof import('./src/components/activity/ActivityPage.vue')['default']
     ActivityResultDialog: typeof import('./src/components/activity/ActivityResultDialog.vue')['default']
+    AdminAbusePanel: typeof import('./src/components/admin/AdminAbusePanel.vue')['default']
     AdminActivityPanel: typeof import('./src/components/admin/AdminActivityPanel.vue')['default']
     AdminActivitySettings: typeof import('./src/components/admin/activity/AdminActivitySettings.vue')['default']
     AdminAffiliatesPanel: typeof import('./src/components/admin/affiliates/AdminAffiliatesPanel.vue')['default']
