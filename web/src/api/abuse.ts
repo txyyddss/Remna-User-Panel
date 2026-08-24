@@ -1,4 +1,5 @@
 import { request } from './http'
+import { createUuid } from '@/utils/browserCompatibility'
 
 export interface AbuseRecord { id: string; occurredAt: string; reason: string; measuredQPS: number; qpsLimit: number; action: string; expiresAt?: string }
 export interface AbusePage { items: AbuseRecord[]; nextCursor: string }
@@ -7,7 +8,7 @@ export interface AbuseRule { id: string; name: string; expression: string; qpsLi
 export interface AbuseNode { uuid: string; name: string; lastReportAt?: string; rotatedAt: string }
 export interface AbusePunishment { action: string; enabled: boolean; incidentThreshold: number; durationMinutes: number; allNodes: boolean; revision: number }
 
-const key = () => crypto.randomUUID()
+const key = () => createUuid()
 export const abuseApi = {
   records: (cursor = '') => request<AbusePage>(cursor ? `/api/v1/me/abuse-records?cursor=${encodeURIComponent(cursor)}` : '/api/v1/me/abuse-records'),
   adminRecords: (cursor = '') => request<AbusePage>(cursor ? `/api/v1/admin/abuse/records?cursor=${encodeURIComponent(cursor)}` : '/api/v1/admin/abuse/records'),
