@@ -5,12 +5,16 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Purchase } from '@/api/types'
 
 const squadAdditionMock = vi.hoisted(() => ({ useSquadAddition: vi.fn() }))
+const routerMock = vi.hoisted(() => ({ push: vi.fn() }))
 
 vi.mock('@/composables/useSquadAddition', () => squadAdditionMock)
 vi.mock('@/components/catalog/useCatalogSquadPresentation', () => ({
   useCatalogSquadPresentation: () => ({ featuredIds: shallowRef([]), orderedIds: shallowRef([]) }),
 }))
-vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }))
+vi.mock('vue-router', async (importOriginal) => ({
+  ...await importOriginal<typeof import('vue-router')>(),
+  useRouter: () => ({ push: routerMock.push }),
+}))
 
 import SquadAdditionDialog from './SquadAdditionDialog.vue'
 
