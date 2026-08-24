@@ -2,7 +2,7 @@
   "squadProfile": {
     "type": "网络配置",
     "types": {
-      "broadband": "宽带",
+      "broadband": "家庭宽带",
       "chinaOptimized": "中国优化",
       "internationalNetwork": "国际网络"
     },
@@ -12,7 +12,7 @@
     "portPlaceholder": "Mbps",
     "mbps": "Mbps",
     "unlimited": "不限速",
-    "unlimitedPort": "不限端口",
+    "unlimitedPort": "不限速",
     "unlimitedPortHint": "上游没有公布带宽上限时使用。",
     "dynamic": "动态 IP",
     "dynamicHint": "关闭后表示静态 IP。",

@@ -3,7 +3,7 @@
     "addBalance": "充值"
   },
   "catalog": {
-    "rolloverThreshold": "剩余流量高于 {threshold}% 时可结转",
+    "rolloverThreshold": "最少剩余 {threshold}% 时可结转",
     "occupancy": "已占用 {percentage}%",
     "activationRequired": "需要激活码", "activationTitle": "解锁此区域",
     "activationDescription": "请输入所选区域的激活码。激活码仅用于本次购买。", "activationCodeLabel": "激活码",
@@ -13,7 +13,7 @@
     "viewCombos": "查看套餐",
     "title": "选择你的套餐",
     "purchaseConfirmed": "购买已确认",
-    "purchaseSuccessTitle": "你的套餐已安排",
+    "purchaseSuccessTitle": "已安排套餐激活",
     "purchaseSummary": "购买摘要",
     "purchaseCharged": "已扣除",
     "purchaseDiscount": "优惠",
@@ -44,7 +44,7 @@
     "optionalSquads": "可选区域",
     "optionalSquadsHint": "将区域加入同一流量预算和订阅周期。",
     "included": "已包含", "featured": "精选",
-    "noSquads": "今天没有可选区域",
+    "noSquads": "今天没有可选节点组",
     "noSquadsHint": "你的套餐仍包含标准区域。",
     "effectiveDate": "生效时间",
     "queuedEffectiveHint": "当前有效周期结束后，此选择将开始生效。",
@@ -117,7 +117,7 @@
     "chooseChannel": "选择支付渠道", "continueToChannel": "选择渠道",
     "backToProvider": "更换支付方",
     "providers": {
-      "ezpay": "EZPay",
+      "ezpay": "彩虹易支付",
       "bepusdt": "BEPUSDT",
       "stars": "Telegram Stars",
       "coupon": "优惠券"
@@ -180,10 +180,10 @@
     "added": "TXB 已到账",
     "ready": "余额已可用。",
     "returnCheckingTitle": "正在核对付款",
-    "returnCheckingDescription": "正在等待支付服务商确认。",
+    "returnCheckingDescription": "正在等待支付提供商确认。",
     "returnPendingDescription": "付款仍在处理中，此页面会自动更新。",
     "returnConfirmedTitle": "付款已确认",
-    "returnConfirmedDescription": "余额已更新，这张收据确认支付服务商已回调。",
+    "returnConfirmedDescription": "余额已更新。",
     "returnTerminalTitle": "付款未确认",
     "returnTerminalDescription": "该付款状态为：{status}。",
     "returnMissingTitle": "缺少付款标识",

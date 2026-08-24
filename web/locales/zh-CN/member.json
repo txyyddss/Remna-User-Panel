@@ -6,7 +6,7 @@
     "traffic": "流量",
     "renews": "到期",
     "queuedStarts": "{name} 将于 {date} 开始",
-    "noActiveCombo": "暂无活跃套餐",
+    "noActiveCombo": "暂无活跃订阅",
     "choosePlan": "选择流量套餐并激活订阅。",
     "subscriptionLink": "订阅链接",
     "subscriptionHint": "请将此 URL 视为密码，拥有它的人都可使用你的节点。。",
@@ -63,14 +63,14 @@
     "ineligible": "当前购买不符合此操作条件。",
     "quoteChanged": "资格或价格已变化，请检查刷新后的报价再确认。",
     "automation": {
-      "label": "自动流量重置",
-      "description": "当前或未来购买的用量超过 99% 后自动重置，并按正常重置价格扣款。",
+      "label": "自动重置流量",
+      "description": "用量超过 99% 后自动重置，按重置价格扣款。",
       "loadFailed": "暂时无法获取自动重置设置。",
       "saveFailed": "无法保存自动重置设置。"
     },
     "reset": {
       "title": "立即重置流量？",
-      "description": "开始服务商重置前，将按服务器计算的价格扣除 TXB。",
+      "description": "开始服务商重置前，将扣除 TXB。",
       "confirm": "支付并重置"
     },
     "refund": {
@@ -80,8 +80,8 @@
     },
     "reason": {
       "PURCHASE_NOT_ACTIVE": "只有当前生效的购买可以执行此操作。",
-      "RESET_STRATEGY_UNSUPPORTED": "此购买的流量重置周期暂不支持。",
-      "RESET_PRICE_INVALID": "无法获取不可变的重置价格。",
+      "RESET_STRATEGY_UNSUPPORTED": "此购买的流量重置周期暂不受支持。",
+      "RESET_PRICE_INVALID": "无法获取重置价格。",
       "REFUND_NOT_FIRST_TERM": "只有此购买链路的首个周期可以退款。",
       "REFUND_WINDOW_EXPIRED": "严格的 24 小时退款期限已结束。",
       "REFUND_TRAFFIC_USED": "此购买已经产生流量用量。",
