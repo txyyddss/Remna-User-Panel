@@ -1,6 +1,6 @@
 /* eslint-disable vue/one-component-per-file */
 import { mount } from '@vue/test-utils'
-import { defineComponent } from 'vue'
+import { computed, defineComponent } from 'vue'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import type { AbusePolicy } from '@/api/abuse'
@@ -24,7 +24,13 @@ const FormStub = defineComponent({
     validate: { type: Function, required: true },
   },
   emits: ['submit'],
-  template: '<div><slot /></div>',
+  setup(props) {
+    const validate = props.validate as (value: Partial<AbusePolicy>) => Array<{ name?: string }>
+    const zeroStreakInvalid = computed(() => validate({ ...(props.state as AbusePolicy), streakSeconds: 0 }).some(error => error.name === 'streakSeconds'))
+    const maxStreakValid = computed(() => validate({ ...(props.state as AbusePolicy), streakSeconds: 1800 }).length === 0)
+    return { zeroStreakInvalid, maxStreakValid }
+  },
+  template: '<div data-test="policy-form" :data-zero-streak-invalid="zeroStreakInvalid" :data-max-streak-valid="maxStreakValid" @click="$emit(\'submit\')"><slot /></div>',
 })
 const InputNumberStub = defineComponent({
   name: 'AbusePolicyInputNumberStub',
@@ -35,7 +41,7 @@ const InputNumberStub = defineComponent({
     disableWheelChange: { type: Boolean, required: true },
   },
   emits: ['update:modelValue'],
-  template: '<span />',
+  template: '<span :data-model-value="modelValue" :data-min="min" :data-max="max" :data-disable-wheel-change="disableWheelChange" @click.stop="$emit(\'update:modelValue\', 75)" />',
 })
 
 function mountCard() {
@@ -58,20 +64,16 @@ describe('AbusePolicyCard', () => {
 
   it('loads, validates, and submits the streak without dropping policy fields', async () => {
     const wrapper = mountCard()
-    const streak = wrapper.findAllComponents(InputNumberStub).find(component => component.props('max') === 1800)
-    expect(streak).toBeDefined()
-    if (!streak) throw new Error('streak input missing')
-    expect(streak.props()).toMatchObject({ modelValue: 30, min: 1, max: 1800, disableWheelChange: true })
+    const streak = wrapper.get('[data-test="streak-seconds"]')
+    expect(streak.attributes()).toMatchObject({ 'data-model-value': '30', 'data-min': '1', 'data-max': '1800', 'data-disable-wheel-change': 'true' })
     expect(wrapper.text()).toContain('uninterrupted seconds')
 
-    const form = wrapper.findComponent(FormStub)
-    const validate = form.props('validate') as (value: Partial<AbusePolicy>) => Array<{ name?: string }>
-    expect(validate({ ...policy, streakSeconds: 0 })).toContainEqual(expect.objectContaining({ name: 'streakSeconds' }))
-    expect(validate({ ...policy, streakSeconds: 1800 })).toEqual([])
+    const form = wrapper.get('[data-test="policy-form"]')
+    expect(form.attributes('data-zero-streak-invalid')).toBe('true')
+    expect(form.attributes('data-max-streak-valid')).toBe('true')
 
-    streak.vm.$emit('update:modelValue', 75)
-    form.vm.$emit('submit')
-    await wrapper.vm.$nextTick()
+    await streak.trigger('click')
+    await form.trigger('click')
     expect(wrapper.emitted('save')?.[0]?.[0]).toEqual({ ...policy, streakSeconds: 75 })
   })
 })
