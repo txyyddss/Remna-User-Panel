@@ -62,3 +62,5 @@ file instead.
 - `029_security_and_history_indexes.sql` bounds each user to one current session
   and indexes stable administrative inventories plus questionnaire history.
 - `034_abuse_qps_detector.sql` adds encrypted node credentials, privacy-safe QPS samples, detector state, incidents, delivery records, and temporary-ban restoration facts.
+- `035_abuse_warning_cooldown.sql` adds the revisioned administrator warning-record cooldown.
+- `036_purchase_addon_adjustments.sql` records idempotent, prorated active-term squad additions without duplicating user or provider data.

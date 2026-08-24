@@ -15,21 +15,22 @@ type Money struct {
 
 // SquadProduct enriches an upstream Remnawave internal squad with customer-facing catalog data.
 type SquadProduct struct {
-	ID                 string                `json:"id"`
-	RemnaSquadUUID     string                `json:"remnaSquadUuid"`
-	Name               string                `json:"name"`
-	Description        string                `json:"description"`
-	Profile            *squadprofile.Profile `json:"profile"`
-	PriceTXBMinor      int64                 `json:"-"`
-	Price              Money                 `json:"price"`
-	Visible            bool                  `json:"visible"`
-	UpstreamPresent    bool                  `json:"upstreamPresent"`
-	StockLimit         *int                  `json:"stockLimit"`
-	StockRemaining     *int                  `json:"stockRemaining"`
-	ActivationRequired bool                  `json:"activationRequired"`
-	AccessibleNodes    []CatalogNode         `json:"accessibleNodes"`
-	CreatedAt          time.Time             `json:"createdAt"`
-	UpdatedAt          time.Time             `json:"updatedAt"`
+	ID                     string                `json:"id"`
+	RemnaSquadUUID         string                `json:"remnaSquadUuid"`
+	Name                   string                `json:"name"`
+	Description            string                `json:"description"`
+	Profile                *squadprofile.Profile `json:"profile"`
+	PriceTXBMinor          int64                 `json:"-"`
+	Price                  Money                 `json:"price"`
+	Visible                bool                  `json:"visible"`
+	UpstreamPresent        bool                  `json:"upstreamPresent"`
+	StockLimit             *int                  `json:"stockLimit"`
+	StockRemaining         *int                  `json:"stockRemaining"`
+	StockHeldByCurrentUser bool                  `json:"stockHeldByCurrentUser"`
+	ActivationRequired     bool                  `json:"activationRequired"`
+	AccessibleNodes        []CatalogNode         `json:"accessibleNodes"`
+	CreatedAt              time.Time             `json:"createdAt"`
+	UpdatedAt              time.Time             `json:"updatedAt"`
 }
 
 // Combo is a time-limited traffic entitlement and its included squads.

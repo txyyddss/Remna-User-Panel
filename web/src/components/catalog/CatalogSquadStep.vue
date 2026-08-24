@@ -10,6 +10,7 @@ defineProps<{
   includedIds: readonly string[]
   featuredIds: readonly string[]
   orderedIds: readonly string[]
+  hiddenIds?: readonly string[]
 }>()
 
 const emit = defineEmits<{ toggle: [id: string] }>()
@@ -23,6 +24,7 @@ const geocheck = useNodeGeocheck()
     :included-ids="includedIds"
     :featured-ids="featuredIds"
     :ordered-ids="orderedIds"
+    :hidden-ids="hiddenIds"
     @toggle="emit('toggle', $event)"
     @open-geocheck="geocheck.show"
   />

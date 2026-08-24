@@ -29,6 +29,9 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 
 ## Production files
 
+- `billing_purchase_addon_fingerprint.go`, `billing_purchase_addon_quote.go`, and `billing_purchase_addons.go` validate, price, replay-protect, debit, record, and queue active-term squad additions in one transaction.
+- `billing_purchase_addons_test.go` covers rounding/caps, replay-safe debits, rollover and renewal totals, queued blocking, and full-squad owner selection.
+
 - `timestamp_cursor.go` signs filter-bound timestamp/ID cursor payloads shared by administrative inventories.
 - `admin_users_page.go`, `admin_entitlements_page.go`, `admin_finance_pages.go`, and `admin_jobs_page.go` provide stable filtered pages without fixed-cap truncation.
 - `database.go` — opens SQLite, applies embedded migrations, checkpoints WAL,
@@ -130,8 +133,9 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `admin_entitlement_edit.go`, `admin_entitlement_refund.go`, and `admin_combo_replacement.go` atomically persist audited administrator mutations with their provider operations.
 - `admin_bulk_query.go`, `admin_bulk_shift.go`, and `admin_bulk_extension.go` preview inclusive-OR active targets, deduplicate users, shift active and queued terms to the minute, and create one durable bulk job.
 - `compensation_config.go`, `compensation_observation.go`, `compensation_events.go`, `compensation_review.go`, `compensation_notification.go`, and `compensation_dismiss.go` persist revisioned outage policy, node observations, frozen snapshots, cursor-safe projections, atomic reviewed extensions, and provider-gated compensation detail cards.
-- `abuse_ingestion.go`, `abuse_configuration.go`, and `abuse_records.go` persist privacy-safe QPS buckets, detector state, revisioned policy, and incident queueing.
+- `abuse_ingestion.go`, `abuse_configuration.go`, `abuse_records.go`, `abuse_incident.go`, and `abuse_warning_cooldown.go` persist privacy-safe QPS buckets, detector state, revisioned policy, cooldown-gated warning records, and incident queueing.
 - `abuse_admin.go`, `abuse_record_queries.go`, and `abuse_outbox.go` provide encrypted node-key metadata, safe record projections, delivery state, restoration state, and backup-gated retention.
+- `migrations/035_abuse_warning_cooldown.sql` persists the policy-controlled warning record cooldown.
 - `compensation_observation_test.go` covers persisted/missing nodes, snapshotted policy, disabled precedence, and repeated outages.
 - `compensation_review_test.go` covers inactive skips, exact minute shifts, notifications, operation linkage, stale reviews, replay, and dismissal.
 - `admin_user_operations.go` and `admin_user_refunds.go` supply the aggregate profile's open-operation and refund projections.
@@ -228,3 +232,5 @@ idempotent replay, and late-provider-callback blocking.
 batch pricing without coupon-use writes. `renewal_batch.go` projects retained
 renewal batches and their purchase records. Automatic renewal uses its own
 attached-coupon policy and a unique source-successor link.
+
+`abuse_records_test.go` covers the policy-controlled per-user warning-record cooldown.

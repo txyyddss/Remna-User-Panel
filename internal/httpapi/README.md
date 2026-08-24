@@ -79,6 +79,8 @@
 
 ## Operational and provider protocols
 
+- `purchase_addons.go` serves owner-scoped active-term squad quote and idempotent commit routes with stable selection, stock, queued-term, balance, and activation errors.
+
 - `operations.go` serves liveness and readiness probes.
 - `operations_shared.go` contains bounded-context and request-ID helpers.
 - `telegram_webhook.go` validates and dispatches Telegram membership and Stars payment updates.

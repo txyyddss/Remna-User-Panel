@@ -93,6 +93,7 @@ SquadProduct:
     - price
     - visible
     - upstreamPresent
+    - stockHeldByCurrentUser
     - activationRequired
     - accessibleNodes
     - createdAt
@@ -129,6 +130,9 @@ SquadProduct:
     stockRemaining:
       type: [integer, 'null']
       minimum: 0
+    stockHeldByCurrentUser:
+      type: boolean
+      description: True only when the authenticated member already holds this squad's capacity through their active term.
     createdAt:
       $ref: '../../openapi.yaml#/components/schemas/Timestamp'
     updatedAt:

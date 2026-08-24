@@ -10,6 +10,7 @@
     "globalEnabled": "Enable global limiter",
     "globalLimit": "Global QPS limit",
     "validity": "Warning validity days",
+    "warningCooldown": "Warning record cooldown (minutes; 0 disables)",
     "punishmentsTitle": "Punishment ladder",
     "rulesTitle": "Domain rules",
     "ruleSelect": "Existing rule",

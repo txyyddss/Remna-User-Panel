@@ -148,6 +148,8 @@ func New(deps Dependencies) (*Server, error) {
 		authenticated.Post("/api/v1/purchases/quote", server.purchaseQuote)
 		authenticated.Post("/api/v1/purchases", server.purchase)
 		authenticated.Get("/api/v1/purchases", server.purchases)
+		authenticated.Post("/api/v1/purchases/{id}/addons/quote", server.purchaseAddonQuote)
+		authenticated.Post("/api/v1/purchases/{id}/addons", server.purchaseAddons)
 		authenticated.Post("/api/v1/purchases/{id}/cancel", server.cancelQueuedPurchase)
 		authenticated.Get("/api/v1/purchases/{id}/rollover", server.rolloverProjection)
 		authenticated.Get("/api/v1/purchases/{id}/auto-renewal", server.automaticRenewal)

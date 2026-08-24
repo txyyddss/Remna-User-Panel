@@ -107,7 +107,7 @@ export function useCatalog() {
       : [...selectedSquadIds.value, id]
     if (!eligibleCoupons.value.some((coupon) => coupon.id === selectedCouponGrantId.value)) selectedCouponGrantId.value = null
   }
-  function paidAddonIsFull(id: string): boolean { return !includedSquadIds.value.includes(id) && visibleSquads.value.some((squad) => squad.id === id && squad.stockRemaining === 0) }
+  function paidAddonIsFull(id: string): boolean { return !includedSquadIds.value.includes(id) && visibleSquads.value.some((squad) => squad.id === id && squad.stockRemaining === 0 && !squad.stockHeldByCurrentUser) }
   function blocksCatalog(caught: unknown): boolean {
     if (!(caught instanceof ApiError) || caught.code !== 'AUTO_RENEW_ENABLED') return false
     autoRenewalBlocked.value = true

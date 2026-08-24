@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/abuse"
 )
 
 func (s *Server) agentQPSReport(w http.ResponseWriter, r *http.Request) {
@@ -13,7 +15,7 @@ func (s *Server) agentQPSReport(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, http.StatusUnauthorized, "AGENT_UNAUTHORIZED", "A node API key is required.")
 		return
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, 16<<20)
+	r.Body = http.MaxBytesReader(w, r.Body, abuse.MaxReportBytes)
 	raw, err := io.ReadAll(r.Body)
 	if err != nil {
 		s.writeError(w, r, http.StatusRequestEntityTooLarge, "REPORT_TOO_LARGE", "The report exceeds the allowed size.")

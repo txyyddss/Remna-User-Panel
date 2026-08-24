@@ -123,6 +123,11 @@
     "questionnaireUnavailable": "问卷暂不可用。",
     "questionnaireOpen": "无法打开问卷。",
     "api": {
+      "SQUAD_ADDITION_FAILED": "无法完成分组添加，请刷新后重试。",
+      "PURCHASE_OR_SQUAD_NOT_FOUND": "当前套餐或所选分组不存在。",
+      "PURCHASE_NOT_ACTIVE": "只有当前生效的套餐可以添加分组。",
+      "SQUAD_ADDITION_QUEUED": "请先取消已排队的下一个周期，再为当前套餐添加分组。",
+      "SQUAD_ALREADY_ADDED": "所选分组已经包含在当前套餐中。",
       "SQUAD_ACTIVATION_REQUIRED": "请为每个需要激活码的所选区域输入激活码。",
       "SQUAD_ACTIVATION_INVALID": "其中一个激活码不正确。",
       "SQUAD_ACTIVATION_EXTRA": "请移除未选择区域的激活码。",

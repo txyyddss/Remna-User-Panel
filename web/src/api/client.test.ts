@@ -21,6 +21,7 @@ const squad: SquadProduct = {
   price: { currency: 'TXB', minor: '725', display: '7.25 TXB' },
   visible: true,
   upstreamPresent: true,
+  stockHeldByCurrentUser: false,
   activationRequired: false,
   accessibleNodes: [],
   createdAt: '2026-08-07T00:00:00Z',

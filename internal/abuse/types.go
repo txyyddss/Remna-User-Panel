@@ -27,10 +27,11 @@ type DomainRule struct {
 	Revision   int    `json:"revision"`
 }
 type Policy struct {
-	GlobalEnabled       bool `json:"globalEnabled"`
-	GlobalLimit         int  `json:"globalLimit"`
-	WarningValidityDays int  `json:"warningValidityDays"`
-	Revision            int  `json:"revision"`
+	GlobalEnabled          bool `json:"globalEnabled"`
+	GlobalLimit            int  `json:"globalLimit"`
+	WarningValidityDays    int  `json:"warningValidityDays"`
+	WarningCooldownMinutes int  `json:"warningCooldownMinutes"`
+	Revision               int  `json:"revision"`
 }
 type PunishmentRule struct {
 	Action            Action `json:"action"`

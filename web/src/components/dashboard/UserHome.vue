@@ -43,6 +43,10 @@ async function handleAutoRenewalChanged(): Promise<void> {
   await load({ quiet: true })
 }
 
+async function handleSquadsChanged(): Promise<void> {
+  await load({ quiet: true })
+}
+
 function consumeTopUpRequest(): void {
   if (!topUpRequested.value) return
   const query = { ...route.query }
@@ -110,6 +114,7 @@ function consumeReissueRequest(): void {
             :squad-names="activeSquadNames"
             @queued-cancelled="handleQueuedCancelled"
             @auto-renewal-changed="handleAutoRenewalChanged"
+            @squads-changed="handleSquadsChanged"
           />
           <ComingSoonLinks />
         </div>

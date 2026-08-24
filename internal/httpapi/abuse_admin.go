@@ -9,10 +9,11 @@ import (
 )
 
 type abusePolicyRequest struct {
-	GlobalEnabled       bool `json:"globalEnabled"`
-	GlobalLimit         int  `json:"globalLimit"`
-	WarningValidityDays int  `json:"warningValidityDays"`
-	Revision            int  `json:"revision"`
+	GlobalEnabled          bool `json:"globalEnabled"`
+	GlobalLimit            int  `json:"globalLimit"`
+	WarningValidityDays    int  `json:"warningValidityDays"`
+	WarningCooldownMinutes int  `json:"warningCooldownMinutes"`
+	Revision               int  `json:"revision"`
 }
 type abuseRuleRequest struct {
 	Name       string `json:"name"`
@@ -49,7 +50,7 @@ func (s *Server) adminUpdateAbusePolicy(w http.ResponseWriter, r *http.Request) 
 		s.writeError(w, r, http.StatusBadRequest, "INVALID_ABUSE_POLICY", "A complete abuse policy is required.")
 		return
 	}
-	value, err := s.deps.Abuse.UpdatePolicy(r.Context(), currentUser(r).ID, abuse.Policy{GlobalEnabled: input.GlobalEnabled, GlobalLimit: input.GlobalLimit, WarningValidityDays: input.WarningValidityDays, Revision: input.Revision}, time.Now().UTC())
+	value, err := s.deps.Abuse.UpdatePolicy(r.Context(), currentUser(r).ID, abuse.Policy{GlobalEnabled: input.GlobalEnabled, GlobalLimit: input.GlobalLimit, WarningValidityDays: input.WarningValidityDays, WarningCooldownMinutes: input.WarningCooldownMinutes, Revision: input.Revision}, time.Now().UTC())
 	if err != nil {
 		s.adminFailure(w, r, err)
 		return

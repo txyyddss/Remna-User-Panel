@@ -37,6 +37,7 @@ const squad = (id: string): SquadProduct => ({
   price: money('100'),
   visible: true,
   upstreamPresent: true,
+  stockHeldByCurrentUser: false,
   activationRequired: false,
   accessibleNodes: [],
   createdAt: '2026-08-08T00:00:00Z',

@@ -1,0 +1,24 @@
+post:
+  tags: [Catalog]
+  operationId: quotePurchaseAddons
+  summary: Calculate a non-mutating active-term squad addition quote
+  description: Revalidates the owned active purchase, selected live add-ons, capacity, and remaining-term proration without changing balance or entitlement state.
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/PurchaseAddonRequest'
+  responses:
+    '200':
+      description: Current prorated squad-addition price.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/PurchaseAddonQuote'
+    '400': { $ref: '../openapi.yaml#/components/responses/BadRequest' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }

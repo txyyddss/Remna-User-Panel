@@ -143,6 +143,8 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     SkeletonBlock: typeof import('./src/components/common/SkeletonBlock.vue')['default']
     SquadActivationDialog: typeof import('./src/components/catalog/SquadActivationDialog.vue')['default']
+    SquadAdditionCheckout: typeof import('./src/components/squad-addition/SquadAdditionCheckout.vue')['default']
+    SquadAdditionDialog: typeof import('./src/components/squad-addition/SquadAdditionDialog.vue')['default']
     SquadNodeBlocks: typeof import('./src/components/catalog/SquadNodeBlocks.vue')['default']
     SquadPortField: typeof import('./src/components/admin/squad-profile/SquadPortField.vue')['default']
     SquadProfileSummary: typeof import('./src/components/squad-profile/SquadProfileSummary.vue')['default']

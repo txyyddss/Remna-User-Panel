@@ -12,7 +12,7 @@ agentReport:
     responses: { '200': { content: { application/json: { schema: { type: object } } } }, '401': { $ref: '../components/responses.yaml#/Unauthorized' } }
 policy:
   get: { tags: [Admin], operationId: getAbusePolicy, responses: { '200': { content: { application/json: { schema: { type: object } } } } } }
-  put: { tags: [Admin], operationId: updateAbusePolicy, parameters: [{ $ref: '../components/parameters.yaml#/IdempotencyKey' }], requestBody: { required: true, content: { application/json: { schema: { type: object } } } }, responses: { '200': { content: { application/json: { schema: { type: object } } } } } }
+  put: { tags: [Admin], operationId: updateAbusePolicy, parameters: [{ $ref: '../components/parameters.yaml#/IdempotencyKey' }], requestBody: { required: true, content: { application/json: { schema: { type: object, required: [globalEnabled, globalLimit, warningValidityDays, warningCooldownMinutes, revision], properties: { globalEnabled: { type: boolean }, globalLimit: { type: integer, minimum: 0 }, warningValidityDays: { type: integer, minimum: 1 }, warningCooldownMinutes: { type: integer, minimum: 0, maximum: 525600 }, revision: { type: integer, minimum: 0 } } } } } }, responses: { '200': { content: { application/json: { schema: { type: object } } } } } }
 nodes:
   get: { tags: [Admin], operationId: getAbuseNodes, responses: { '200': { content: { application/json: { schema: { type: array, items: { type: object } } } } } } }
 nodeKey:

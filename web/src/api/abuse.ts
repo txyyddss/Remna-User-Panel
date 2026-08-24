@@ -2,7 +2,7 @@ import { request } from './http'
 
 export interface AbuseRecord { id: string; occurredAt: string; reason: string; measuredQPS: number; qpsLimit: number; action: string; expiresAt?: string }
 export interface AbusePage { items: AbuseRecord[]; nextCursor: string }
-export interface AbusePolicy { globalEnabled: boolean; globalLimit: number; warningValidityDays: number; revision: number }
+export interface AbusePolicy { globalEnabled: boolean; globalLimit: number; warningValidityDays: number; warningCooldownMinutes: number; revision: number }
 export interface AbuseRule { id: string; name: string; expression: string; qpsLimit: number; enabled: boolean; revision: number }
 export interface AbuseNode { uuid: string; name: string; lastReportAt?: string; rotatedAt: string }
 export interface AbusePunishment { action: string; enabled: boolean; incidentThreshold: number; durationMinutes: number; allNodes: boolean; revision: number }

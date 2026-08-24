@@ -19,6 +19,8 @@ Member connection scans, purchase reset/refund resources, operation receipts, st
 - `api-v1-catalog.yaml`: `/api/v1/catalog`
 - `api-v1-purchases-quote.yaml`: `/api/v1/purchases/quote`
 - `api-v1-purchases.yaml`: `/api/v1/purchases`
+- `api-v1-purchases-id-addons-quote.yaml`: `/api/v1/purchases/{id}/addons/quote`, owner-only active-term addition quote
+- `api-v1-purchases-id-addons.yaml`: `/api/v1/purchases/{id}/addons`, owner-only idempotent active-term addition commit
 - `api-v1-purchases-id-cancel.yaml`: `/api/v1/purchases/{id}/cancel`, owner-only queued cancellation with atomic TXB refund
 - `api-v1-purchases-id-rollover.yaml`: `/api/v1/purchases/{id}/rollover`, owner-only live aggregate rollover projection
 - `api-v1-purchases-id-auto-renewal.yaml`: `/api/v1/purchases/{id}/auto-renewal`, owner-only one-cycle automatic-renewal state and toggle

@@ -10,6 +10,7 @@
     "globalEnabled": "启用全局限制器",
     "globalLimit": "全局 QPS 阈值",
     "validity": "警告有效天数",
+    "warningCooldown": "警告记录冷却时间（分钟；0 为关闭）",
     "punishmentsTitle": "处罚阶梯",
     "rulesTitle": "域名规则",
     "ruleSelect": "已有规则",

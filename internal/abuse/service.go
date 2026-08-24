@@ -134,7 +134,7 @@ func (s *Service) Evaluate(ctx context.Context, now time.Time) error {
 		if !last.IsZero() && first.BucketAt.Sub(last) != time.Second {
 			streak = 0
 		}
-		if qps > first.QPSLimit {
+		if reachesLimit(qps, first.QPSLimit) {
 			streak++
 		} else {
 			streak = 0
@@ -159,6 +159,7 @@ func (s *Service) Evaluate(ctx context.Context, now time.Time) error {
 	}
 	return nil
 }
+func reachesLimit(qps, limit int) bool { return qps >= limit }
 func unique(values []string) []string {
 	seen := map[string]bool{}
 	out := make([]string, 0, len(values))

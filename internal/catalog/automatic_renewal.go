@@ -114,13 +114,6 @@ func (s *Service) ProcessDueAutoRenewals(ctx context.Context, now time.Time) err
 	return nil
 }
 
-// CatalogForUser returns the displayable catalog for an onboarded member.
-// Checkout operations enforce the automatic-renewal restriction separately so
-// dashboard metadata such as squad names and node multipliers remains visible.
-func (s *Service) CatalogForUser(ctx context.Context, _ model.User) (model.Catalog, error) {
-	return s.Catalog(ctx)
-}
-
 func (s *Service) ensureCatalogAvailable(ctx context.Context, userID string) error {
 	repository, ok := s.repository.(automaticRenewalRepository)
 	if !ok {

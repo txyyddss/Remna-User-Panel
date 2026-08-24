@@ -13,6 +13,7 @@ const props = defineProps<{
   includedIds: readonly string[]
   featuredIds: readonly string[]
   orderedIds: readonly string[]
+  hiddenIds?: readonly string[]
 }>()
 
 const emit = defineEmits<{
@@ -33,7 +34,7 @@ function isFeatured(id: string): boolean {
 }
 
 function isFullPaidAddon(squad: SquadProduct): boolean {
-  return !isIncluded(squad.id) && squad.stockRemaining === 0
+  return !isIncluded(squad.id) && squad.stockRemaining === 0 && !squad.stockHeldByCurrentUser
 }
 
 function profileClass(squad: SquadProduct): string {
@@ -58,6 +59,7 @@ function occupancyPercentage(squad: SquadProduct): number | null {
 
 const squadOrder = computed(() => new Map(props.orderedIds.map((id, index) => [id, index])))
 const squadRows = computed(() => props.squads
+  .filter((squad) => !props.hiddenIds?.includes(squad.id))
   .map((squad, index) => ({ squad, index, occupancyPercentage: occupancyPercentage(squad) }))
   .sort((left, right) => {
     const leftOrder = squadOrder.value.get(left.squad.id) ?? props.orderedIds.length + left.index
@@ -72,7 +74,7 @@ const squadRows = computed(() => props.squads
       <h2>{{ $t('catalog.optionalSquads') }}</h2>
       <p>{{ $t('catalog.optionalSquadsHint') }}</p>
     </div>
-    <div v-if="squads.length" v-auto-animate class="squad-grid">
+    <div v-if="squadRows.length" v-auto-animate class="squad-grid">
       <article v-for="row in squadRows" :key="row.squad.id" class="squad-option" :class="[profileClass(row.squad), { 'squad-option--featured': isFeatured(row.squad.id), 'squad-option--selected': isSelected(row.squad.id), 'squad-option--included': isIncluded(row.squad.id), 'squad-option--full': isFullPaidAddon(row.squad) }]" @click="toggleSquad(row.squad)">
         <div class="squad-option__copy">
           <SquadProfileSummary :name="row.squad.name" :profile="row.squad.profile" :description="row.squad.description" presentation="member" compact>

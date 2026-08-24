@@ -19,7 +19,7 @@ export function catalogSquadPresentation(
     return {
       id: squad.id,
       index,
-      bottom: included.has(squad.id) || squad.stockRemaining === 0,
+      bottom: included.has(squad.id) || (squad.stockRemaining === 0 && !squad.stockHeldByCurrentUser),
       share: Number.isFinite(value) && value > 0 ? value : 0,
     }
   })

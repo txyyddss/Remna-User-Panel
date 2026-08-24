@@ -9,6 +9,7 @@ import InlineNotice from '@/components/common/InlineNotice.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import RolloverFlipCard from './RolloverFlipCard.vue'
 import PurchaseActions from './PurchaseActions.vue'
+import SquadAdditionDialog from '@/components/squad-addition/SquadAdditionDialog.vue'
 import { formatDate } from '@/utils/format'
 import { localizedError } from '@/i18n'
 import { notifyHaptic } from '@/utils/telegram'
@@ -18,12 +19,13 @@ const props = defineProps<{
   queued?: Purchase | null
   squadNames?: readonly string[]
 }>()
-const emit = defineEmits<{ queuedCancelled: []; autoRenewalChanged: [] }>()
+const emit = defineEmits<{ queuedCancelled: []; autoRenewalChanged: []; squadsChanged: [] }>()
 
 const router = useRouter()
 const queuedCancelOpen = shallowRef(false)
 const queuedCancelBusy = shallowRef(false)
 const queuedCancelError = shallowRef<string | null>(null)
+const squadAdditionOpen = shallowRef(false)
 
 function openQueuedCancellation(): void {
   queuedCancelError.value = null
@@ -49,6 +51,11 @@ async function cancelQueued(): Promise<void> {
 function goToCatalog(): void {
   void router.push('/catalog')
 }
+
+function openSquadAddition(): void {
+  if (!props.active || props.queued) return
+  squadAdditionOpen.value = true
+}
 </script>
 
 <template>
@@ -59,7 +66,7 @@ function goToCatalog(): void {
     </div>
 
     <div v-if="active || queued" class="home-ride__content">
-      <RolloverFlipCard v-if="active" :active="active" :squad-names="squadNames" />
+      <RolloverFlipCard v-if="active" :active="active" :squad-names="squadNames" :add-squad-disabled="Boolean(queued)" @add-squad="openSquadAddition" />
       <div v-if="queued" class="home-ride__queued">
         <div class="home-ride__queued-content">
           <span>
@@ -106,6 +113,7 @@ function goToCatalog(): void {
     danger
     @confirm="cancelQueued"
   />
+  <SquadAdditionDialog v-if="active" v-model:open="squadAdditionOpen" :active="active" @changed="emit('squadsChanged')" />
 </template>
 
 <style scoped>

@@ -105,6 +105,23 @@
       "NO_ACCESSIBLE_NODES": "此套餐暂时没有可用节点。",
       "RENEWAL_UNAVAILABLE": "自动续费暂时不可用。"
     },
+    "squadAddition": {
+      "title": "添加分组",
+      "description": "按当前周期的剩余时间，为当前套餐添加可选分组。",
+      "open": "添加分组",
+      "queuedBlocked": "请先取消已排队的下一个周期，再为当前套餐添加分组。",
+      "steps": {
+        "choose": "选择分组",
+        "checkout": "结算"
+      },
+      "checkoutTitle": "确认添加",
+      "checkoutDescription": "服务器会按当前周期剩余时间计算价格。",
+      "validUntil": "可用至",
+      "proratedTotal": "按时间调整的合计",
+      "confirm": "确认添加分组",
+      "successTitle": "分组已添加",
+      "successDescription": "现已生效，并会包含在下一次续费中。"
+    },
     "reset": {
       "DAY": "每日",
       "WEEK": "每周",

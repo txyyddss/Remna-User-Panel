@@ -1,5 +1,7 @@
 # Shared models
 
+- `purchase_addons.go` defines the server-priced active-term squad-addition quote payload.
+
 - `model.go` documents the dependency-free shared model package.
 - `identity.go` defines Telegram identity and local user representations, including the private account-wide automatic-reset flag.
 - `commerce.go` defines catalog products with required live accessible-node groups, typed squad-profile projections, purchase, entitlement, legacy renewal, quote, rollover, and money payloads.

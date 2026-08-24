@@ -1,0 +1,26 @@
+post:
+  tags: [Catalog]
+  operationId: addPurchaseAddons
+  summary: Add optional squads to an active purchase
+  description: Debits the authoritative prorated price, records the selected paid squads, and queues an entitlement reconciliation. Repeating the same caller-owned idempotency key returns the updated purchase without another debit.
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+    - $ref: '../openapi.yaml#/components/parameters/IdempotencyKey'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/PurchaseAddonRequest'
+  responses:
+    '200':
+      description: Updated active purchase; Remnawave reconciliation was queued.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/Purchase'
+    '400': { $ref: '../openapi.yaml#/components/responses/BadRequest' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }
+    '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }

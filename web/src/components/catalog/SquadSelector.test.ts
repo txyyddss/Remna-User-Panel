@@ -16,6 +16,7 @@ const fullAddon: SquadProduct = {
   activationRequired: false,
   accessibleNodes: [],
   stockRemaining: 0,
+  stockHeldByCurrentUser: false,
   createdAt: '2026-08-14T00:00:00Z',
   updatedAt: '2026-08-14T00:00:00Z',
 }
@@ -70,6 +71,17 @@ describe('SquadSelector', () => {
     expect(fullTag.element.previousElementSibling).toBe(nameCopy.get('strong').element)
     expect(wrapper.find('.status-badge').exists()).toBe(false)
     expect(wrapper.text()).toContain('1.00 TXB')
+  })
+
+  it('keeps a full squad selectable for its current holder', async () => {
+    const wrapper = mount(SquadSelector, {
+      props: { squads: [{ ...fullAddon, stockHeldByCurrentUser: true }], selectedIds: [], includedIds: [], featuredIds: [], orderedIds: [fullAddon.id] },
+    })
+
+    expect(wrapper.find('.squad-option').classes()).not.toContain('squad-option--full')
+    expect(wrapper.find('.squad-option__full-tag').exists()).toBe(false)
+    await wrapper.get('.squad-option').trigger('click')
+    expect(wrapper.emitted('toggle')).toEqual([[fullAddon.id]])
   })
 
   it('shows bounded squad occupancy as a whole percentage without exact counts', () => {

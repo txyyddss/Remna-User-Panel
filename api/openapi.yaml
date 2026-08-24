@@ -15,6 +15,8 @@ paths:
   /api/v1/catalog: { $ref: './paths/api-v1-catalog.yaml' }
   /api/v1/purchases/quote: { $ref: './paths/api-v1-purchases-quote.yaml' }
   /api/v1/purchases: { $ref: './paths/api-v1-purchases.yaml' }
+  /api/v1/purchases/{id}/addons/quote: { $ref: './paths/api-v1-purchases-id-addons-quote.yaml' }
+  /api/v1/purchases/{id}/addons: { $ref: './paths/api-v1-purchases-id-addons.yaml' }
   /api/v1/purchases/{id}/cancel: { $ref: './paths/api-v1-purchases-id-cancel.yaml' }
   /api/v1/purchases/{id}/rollover: { $ref: './paths/api-v1-purchases-id-rollover.yaml' }
   /api/v1/purchases/{id}/auto-renewal: { $ref: './paths/api-v1-purchases-id-auto-renewal.yaml' }
@@ -185,6 +187,8 @@ components:
     RemnaNode: { $ref: './components/schemas/schemas-03.yaml#/RemnaNode' }
     PurchaseRequest: { $ref: './components/schemas/schemas-03.yaml#/PurchaseRequest' }
     PurchaseQuote: { $ref: './components/schemas/schemas-03.yaml#/PurchaseQuote' }
+    PurchaseAddonRequest: { $ref: './components/schemas/schemas-03.yaml#/PurchaseAddonRequest' }
+    PurchaseAddonQuote: { $ref: './components/schemas/schemas-03.yaml#/PurchaseAddonQuote' }
     EntitlementStatus: { $ref: './components/schemas/schemas-03.yaml#/EntitlementStatus' }
     Entitlement: { $ref: './components/schemas/schemas-03.yaml#/Entitlement' }
     Purchase: { $ref: './components/schemas/schemas-03.yaml#/Purchase' }

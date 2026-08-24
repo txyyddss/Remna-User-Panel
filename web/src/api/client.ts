@@ -25,6 +25,7 @@ import type {
 import type { components } from './generated'
 import type { FeaturePaymentMethod, FeaturePaymentOrder, FeaturePaymentReturnStatus, PaymentReturnProvider } from './features'
 import { request, type QueryValue } from './http'
+import { purchaseAddonsApi } from './purchaseAddons'
 import { createUuid } from '@/utils/browserCompatibility'
 
 export { ApiError } from './http'
@@ -77,6 +78,7 @@ async function retryAdminJob(jobId: string, idempotencyKey?: string): Promise<Op
 }
 
 export const api = {
+  ...purchaseAddonsApi,
   authTelegram: (initData: string) => request<Session>('/api/v1/auth/telegram', {
     method: 'POST',
     body: { initData } satisfies TelegramAuthRequest,

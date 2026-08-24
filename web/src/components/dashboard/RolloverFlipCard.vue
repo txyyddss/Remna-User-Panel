@@ -10,7 +10,9 @@ import { useRolloverDetail } from '@/composables/useRolloverDetail'
 const props = defineProps<{
   active: Purchase
   squadNames?: readonly string[]
+  addSquadDisabled?: boolean
 }>()
+const emit = defineEmits<{ addSquad: [] }>()
 
 const flipped = shallowRef(false)
 const cardHeight = shallowRef<string | null>(null)
@@ -114,20 +116,27 @@ onUnmounted(() => {
       <div ref="summaryFace" class="home-ride__flip-face home-ride__flip-face--front">
         <UButton
           id="your-ride-summary"
-          type="button"
           class="home-ride__summary-trigger"
+          type="button"
           block
           color="neutral"
           variant="ghost"
           aria-controls="your-ride-rollover"
           :aria-expanded="flipped"
+          :aria-label="$t('home.rolloverOpen')"
           :aria-hidden="flipped"
           :inert="flipped"
           data-haptic="open"
           @click="showDetail"
-        >
-          <RideSummaryFace :active="active" :squad-names="squadNames" />
-        </UButton>
+        />
+        <RideSummaryFace
+          class="home-ride__summary-content"
+          :active="active"
+          :squad-names="squadNames"
+          :add-squad-disabled="addSquadDisabled"
+          @add-squad="emit('addSquad')"
+          @open-rollover="showDetail"
+        />
       </div>
       <div id="your-ride-rollover" ref="rolloverFace" class="home-ride__flip-face home-ride__flip-face--back" :aria-hidden="!flipped" :inert="!flipped">
         <RolloverDetailFace :detail="detail" :loading="loading" :error="error" @back="showSummary" @retry="retry" />

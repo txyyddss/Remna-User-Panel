@@ -8,7 +8,9 @@ import { formatBytes, formatDate } from '@/utils/format'
 const props = defineProps<{
   active: Purchase
   squadNames?: readonly string[]
+  addSquadDisabled?: boolean
 }>()
+const emit = defineEmits<{ addSquad: []; openRollover: [] }>()
 
 const { t } = useI18n()
 const resetLabel = computed(() => t(`home.reset.${props.active.resetStrategy}`))
@@ -18,11 +20,33 @@ const resetLabel = computed(() => t(`home.reset.${props.active.resetStrategy}`))
   <div class="home-ride__summary-face">
     <div class="home-ride__primary">
       <span class="feature-icon"><UIcon name="i-ph-stack" /></span>
-      <div>
-        <h3>{{ active.comboName }}</h3>
+      <div class="home-ride__name-block">
+        <div class="home-ride__name-row">
+          <h3>{{ active.comboName }}</h3>
+          <UButton
+            class="home-ride__add-squad"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            icon="i-ph-plus"
+            :label="$t('home.squadAddition.open')"
+            :disabled="addSquadDisabled"
+            :title="addSquadDisabled ? $t('home.squadAddition.queuedBlocked') : undefined"
+            data-haptic="open"
+            @click="emit('addSquad')"
+          />
+        </div>
         <p>{{ squadNames?.length ? squadNames.join(t('home.squadSeparator')) : $t('dashboard.squadsIncluded', { count: active.squadUuids.length }) }}</p>
       </div>
-      <UIcon class="home-ride__flip-icon" name="i-ph-arrows-clockwise" aria-hidden="true" />
+      <UButton
+        class="home-ride__flip-icon"
+        color="neutral"
+        variant="ghost"
+        icon="i-ph-arrows-clockwise"
+        :aria-label="$t('home.rolloverOpen')"
+        data-haptic="open"
+        @click="emit('openRollover')"
+      />
     </div>
     <dl class="home-ride__metrics">
       <div>
@@ -41,3 +65,10 @@ const resetLabel = computed(() => t(`home.reset.${props.active.resetStrategy}`))
     <span class="home-ride__flip-hint">{{ $t('home.rolloverOpen') }}</span>
   </div>
 </template>
+
+<style scoped>
+.home-ride__name-block { min-width: 0; }
+.home-ride__name-row { display: flex; align-items: center; gap: 0.55rem; min-width: 0; }
+.home-ride__name-row h3 { min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-ride__add-squad { flex: 0 0 auto; min-height: 2.75rem; }
+</style>

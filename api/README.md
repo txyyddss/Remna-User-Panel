@@ -1,5 +1,7 @@
 # TX Carpool OpenAPI contract
 
+- Active-term squad additions use `POST /api/v1/purchases/{id}/addons/quote` and idempotent `POST /api/v1/purchases/{id}/addons`; the regular purchase route remains full-term priced.
+
 - `openapi.yaml` is the public OpenAPI 3.1 entry point. It registers all API paths, reusable components, and the authenticated browser request-signing requirement.
 - `paths/` contains one bounded Path Item Object per API URL and an index mapping filenames to routes.
 - `components/security-schemes.yaml` defines the session cookie plus timestamp, nonce, and HMAC signature schemes.

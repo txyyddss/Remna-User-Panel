@@ -105,6 +105,23 @@
       "NO_ACCESSIBLE_NODES": "No nodes are available for this combo right now.",
       "RENEWAL_UNAVAILABLE": "Automatic renewal is temporarily unavailable."
     },
+    "squadAddition": {
+      "title": "Add squads",
+      "description": "Add optional squads to the current ride for its remaining time.",
+      "open": "Add squad",
+      "queuedBlocked": "Cancel the queued next cycle before adding squads to the current ride.",
+      "steps": {
+        "choose": "Choose squads",
+        "checkout": "Checkout"
+      },
+      "checkoutTitle": "Review addition",
+      "checkoutDescription": "The server calculates a time-adjusted price for the remaining term.",
+      "validUntil": "Available until",
+      "proratedTotal": "Time-adjusted total",
+      "confirm": "Confirm squad addition",
+      "successTitle": "Squads added",
+      "successDescription": "They are active now and included in your next renewal."
+    },
     "reset": {
       "DAY": "Daily",
       "WEEK": "Weekly",

@@ -165,7 +165,7 @@ func quotePurchaseTx(ctx context.Context, tx *sql.Tx, input PurchaseInput, now t
 	for squadUUID := range includedUUIDs {
 		selectedSquads = append(selectedSquads, squadUUID)
 	}
-	if err := checkSquadStockTx(ctx, tx, selectedSquads); err != nil {
+	if err := checkSquadStockTx(ctx, tx, selectedSquads, input.UserID); err != nil {
 		return model.PurchaseQuote{}, model.Combo{}, nil, err
 	}
 	grossMinor := combo.PriceTXBMinor + addonPrice

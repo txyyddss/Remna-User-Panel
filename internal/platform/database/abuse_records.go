@@ -11,39 +11,6 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 )
 
-func (s *Store) CreateIncident(ctx context.Context, userID string, bucket time.Time, qps, limit int, reasons, nodes []string, policy abuse.Policy, now time.Time) (bool, error) {
-	s.writeMu.Lock()
-	defer s.writeMu.Unlock()
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return false, err
-	}
-	defer func() { _ = tx.Rollback() }()
-	recordID, created, err := ensureAbuseRecordTx(ctx, tx, userID, bucket, qps, limit, policy, now)
-	if err != nil {
-		return false, err
-	}
-	for _, reason := range reasons {
-		if _, err = tx.ExecContext(ctx, `INSERT OR IGNORE INTO abuse_record_reasons(record_id,name) VALUES(?,?)`, recordID, reason); err != nil {
-			return false, err
-		}
-	}
-	for _, node := range nodes {
-		if _, err = tx.ExecContext(ctx, `INSERT OR IGNORE INTO abuse_record_nodes(record_id,node_uuid) VALUES(?,?)`, recordID, node); err != nil {
-			return false, err
-		}
-	}
-	if created {
-		payload, _ := json.Marshal(map[string]string{"recordId": recordID})
-		if err = insertOutboxTx(ctx, tx, "abuse_punishment", string(payload), now, now); err != nil {
-			return false, err
-		}
-		if err = queueAbuseNotificationsTx(ctx, tx, recordID, userID, now); err != nil {
-			return false, err
-		}
-	}
-	return created, tx.Commit()
-}
 func ensureAbuseRecordTx(ctx context.Context, tx *sql.Tx, userID string, bucket time.Time, qps, limit int, policy abuse.Policy, now time.Time) (string, bool, error) {
 	var id string
 	err := tx.QueryRowContext(ctx, `SELECT id FROM abuse_records WHERE user_id=? AND incident_bucket_at=?`, userID, stamp(bucket)).Scan(&id)
@@ -62,6 +29,15 @@ func ensureAbuseRecordTx(ctx context.Context, tx *sql.Tx, userID string, bucket 
 		return "", false, err
 	}
 	action, duration := selectPunishment(rules, count+1)
+	if action == abuse.ActionWarning {
+		blocked, cooldownErr := warningCooldownBlockedTx(ctx, tx, userID, policy, now)
+		if cooldownErr != nil {
+			return "", false, cooldownErr
+		}
+		if blocked {
+			return "", false, nil
+		}
+	}
 	id, err = ids.New()
 	if err != nil {
 		return "", false, err

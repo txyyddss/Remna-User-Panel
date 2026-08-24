@@ -30,6 +30,7 @@ const comboWithIncludedSquad: Combo = {
     price: { currency: 'TXB', minor: '0', display: '0.00 TXB' },
     visible: true,
     upstreamPresent: true,
+    stockHeldByCurrentUser: false,
     activationRequired: false,
     accessibleNodes: [{
       uuid: '00000000-0000-4000-8000-000000000002',

@@ -50,6 +50,7 @@ export type CatalogNode = DeepReadonly<components['schemas']['CatalogNode']>
 export type Catalog = DeepReadonly<components['schemas']['Catalog']>
 export type EntitlementStatus = components['schemas']['EntitlementStatus']
 export type Purchase = DeepReadonly<components['schemas']['Purchase']>
+export type PurchaseAddonQuote = DeepReadonly<components['schemas']['PurchaseAddonQuote']>
 export type AutoRenewal = DeepReadonly<components['schemas']['AutoRenewal']>
 export type AutoRenewalFailure = DeepReadonly<components['schemas']['AutoRenewalFailure']>
 export type RolloverWindow = DeepReadonly<components['schemas']['RolloverWindow']>

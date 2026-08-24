@@ -1,5 +1,7 @@
 # Composables
 
+- `useSquadAddition.ts` owns active-term optional-squad filtering, time-adjusted quote freshness, activation-code handoff, balance recovery, and idempotent commit feedback.
+
 - `useActivity.ts` loads games, draws, and check-in actions.
 - `useAffiliateCentre.ts` loads member metrics and fixed five-row referral pages.
 - `useAdminDatabase.ts` coordinates protected database review and mutation flows.
