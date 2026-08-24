@@ -76,6 +76,28 @@ func TestAbuseProcessingRecoversClaimsAndWritesRollups(t *testing.T) {
 	}
 }
 
+func TestAbuseProcessingClaimDoesNotSplitUserSecondBucket(t *testing.T) {
+	ctx := context.Background()
+	store := newTestStore(t)
+	user := createTestUser(t, store, 78_105)
+	base := time.Date(2026, 8, 24, 14, 30, 0, 0, time.UTC)
+	storeSecond(t, store, user.ID, base, 2)
+	storeSecond(t, store, user.ID, base.Add(time.Second), 1)
+
+	claim, err := store.ClaimEvents(ctx, base.Add(time.Minute), base.Add(time.Minute), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(claim.Events) != 2 {
+		t.Fatalf("ClaimEvents() returned %d events, want complete two-event bucket", len(claim.Events))
+	}
+	for _, event := range claim.Events {
+		if !event.EventSecond.Equal(base) {
+			t.Fatalf("ClaimEvents() included event at %s beyond boundary %s", event.EventSecond, base)
+		}
+	}
+}
+
 func TestAbuseProcessingUsesLatestPolicyAndBelowLimitResets(t *testing.T) {
 	ctx := context.Background()
 	store := newTestStore(t)
