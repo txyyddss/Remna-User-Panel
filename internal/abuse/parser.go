@@ -22,16 +22,25 @@ type parsedLine struct {
 	BucketAt                      time.Time
 }
 
-func parseReport(raw string, fallback time.Time) []parsedLine {
-	lines := make([]parsedLine, 0)
+func parseReport(raw string, fallback time.Time, limit int) ([]parsedLine, error) {
+	if limit < 1 {
+		return nil, ErrInvalid
+	}
+	lines := make([]parsedLine, 0, limit)
 	scanner := bufio.NewScanner(strings.NewReader(raw))
 	scanner.Buffer(make([]byte, 1024), 64<<10)
 	for scanner.Scan() {
 		if line, ok := parseLine(scanner.Text(), fallback); ok {
 			lines = append(lines, line)
+			if len(lines) == limit {
+				break
+			}
 		}
 	}
-	return lines
+	if scanner.Err() != nil {
+		return nil, ErrInvalid
+	}
+	return lines, nil
 }
 
 func parseLine(line string, fallback time.Time) (parsedLine, bool) {

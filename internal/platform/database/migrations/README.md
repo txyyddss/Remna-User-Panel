@@ -64,3 +64,4 @@ file instead.
 - `034_abuse_qps_detector.sql` adds encrypted node credentials, privacy-safe QPS samples, detector state, incidents, delivery records, and temporary-ban restoration facts.
 - `035_abuse_warning_cooldown.sql` adds the revisioned administrator warning-record cooldown.
 - `036_purchase_addon_adjustments.sql` records idempotent, prorated active-term squad additions without duplicating user or provider data.
+- `037_abuse_pending_qps_index.sql` indexes detector-state continuation scans so completed sample windows are not repeatedly evaluated.

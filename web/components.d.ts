@@ -11,8 +11,10 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
-    AbuseNodesRecordsCard: typeof import('./src/components/admin/abuse/AbuseNodesRecordsCard.vue')['default']
+    AbuseNodesCard: typeof import('./src/components/admin/abuse/AbuseNodesCard.vue')['default']
     AbusePolicyCard: typeof import('./src/components/admin/abuse/AbusePolicyCard.vue')['default']
+    AbusePunishmentLadder: typeof import('./src/components/admin/abuse/AbusePunishmentLadder.vue')['default']
+    AbuseRecordsCard: typeof import('./src/components/admin/abuse/AbuseRecordsCard.vue')['default']
     AbuseRecordsPage: typeof import('./src/components/abuse/AbuseRecordsPage.vue')['default']
     AbuseRulesCard: typeof import('./src/components/admin/abuse/AbuseRulesCard.vue')['default']
     ActivityPage: typeof import('./src/components/activity/ActivityPage.vue')['default']

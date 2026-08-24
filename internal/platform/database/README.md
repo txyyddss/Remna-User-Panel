@@ -33,6 +33,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `billing_purchase_addons_test.go` covers rounding/caps, replay-safe debits, rollover and renewal totals, queued blocking, and full-squad owner selection.
 
 - `timestamp_cursor.go` signs filter-bound timestamp/ID cursor payloads shared by administrative inventories.
+- `abuse_configuration.go`, `abuse_ingestion.go`, and `abuse_record_queries.go` validate detector policy, restrict report lookups to reported identities, and expose stable incident pages.
 - `admin_users_page.go`, `admin_entitlements_page.go`, `admin_finance_pages.go`, and `admin_jobs_page.go` provide stable filtered pages without fixed-cap truncation.
 - `database.go` — opens SQLite, applies embedded migrations, checkpoints WAL,
   and exposes migration versions.

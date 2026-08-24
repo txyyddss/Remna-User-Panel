@@ -17,7 +17,7 @@ func (s *Store) Policy(ctx context.Context) (abuse.Policy, error) {
 	return item, err
 }
 func (s *Store) UpdatePolicy(ctx context.Context, _ string, input abuse.Policy, now time.Time) (abuse.Policy, error) {
-	if input.GlobalLimit < 0 || input.WarningValidityDays < 1 || input.WarningCooldownMinutes < 0 || input.WarningCooldownMinutes > 525600 || input.Revision < 0 {
+	if input.GlobalLimit < 0 || input.GlobalLimit > abuse.MaxGlobalQPS || input.WarningValidityDays < 1 || input.WarningValidityDays > abuse.MaxWarningValidityDays || input.WarningCooldownMinutes < 0 || input.WarningCooldownMinutes > abuse.MaxWarningCooldownMinutes || input.Revision < 0 {
 		return abuse.Policy{}, abuse.ErrInvalid
 	}
 	result, err := s.db.ExecContext(ctx, `UPDATE abuse_policy SET global_enabled=?,global_limit=?,warning_validity_days=?,warning_cooldown_minutes=?,revision=revision+1,updated_at=? WHERE id=1 AND revision=?`, boolInt(input.GlobalEnabled), input.GlobalLimit, input.WarningValidityDays, input.WarningCooldownMinutes, stamp(now), input.Revision)
@@ -49,7 +49,9 @@ func (s *Store) DomainRules(ctx context.Context) ([]abuse.DomainRule, error) {
 	return items, rows.Err()
 }
 func (s *Store) SaveDomainRule(ctx context.Context, _ string, input abuse.DomainRule, now time.Time) (abuse.DomainRule, error) {
-	if strings.TrimSpace(input.Name) == "" || strings.TrimSpace(input.Expression) == "" || input.QPSLimit < 1 {
+	input.Name = strings.TrimSpace(input.Name)
+	input.Expression = strings.TrimSpace(input.Expression)
+	if input.Name == "" || len(input.Name) > abuse.MaxRuleNameLength || input.Expression == "" || len(input.Expression) > abuse.MaxRuleTextLength || input.QPSLimit < 1 || input.QPSLimit > abuse.MaxGlobalQPS || input.Revision < 0 {
 		return abuse.DomainRule{}, abuse.ErrInvalid
 	}
 	if input.ID == "" {
@@ -111,7 +113,8 @@ func (s *Store) Whitelist(ctx context.Context) ([]string, error) {
 	return out, rows.Err()
 }
 func (s *Store) SetWhitelist(ctx context.Context, id string, enabled bool, now time.Time) error {
-	if strings.TrimSpace(id) == "" {
+	id = strings.TrimSpace(id)
+	if id == "" || len(id) > abuse.MaxRemoteIDLength || strings.ContainsRune(id, '\x00') {
 		return abuse.ErrInvalid
 	}
 	if enabled {
@@ -141,7 +144,7 @@ func (s *Store) PunishmentRules(ctx context.Context) ([]abuse.PunishmentRule, er
 	return out, rows.Err()
 }
 func (s *Store) SavePunishmentRule(ctx context.Context, _ string, input abuse.PunishmentRule, now time.Time) (abuse.PunishmentRule, error) {
-	if input.IncidentThreshold < 1 || input.DurationMinutes < 1 || input.Revision < 0 {
+	if !input.Action.Valid() || input.IncidentThreshold < 1 || input.IncidentThreshold > abuse.MaxGlobalQPS || input.DurationMinutes < 1 || input.DurationMinutes > abuse.MaxWarningCooldownMinutes || input.Revision < 0 {
 		return abuse.PunishmentRule{}, abuse.ErrInvalid
 	}
 	result, err := s.db.ExecContext(ctx, `UPDATE abuse_punishment_rules SET enabled=?,incident_threshold=?,duration_minutes=?,all_nodes=?,revision=revision+1,updated_at=? WHERE action=? AND revision=?`, boolInt(input.Enabled), input.IncidentThreshold, input.DurationMinutes, boolInt(input.AllNodes), stamp(now), input.Action, input.Revision)

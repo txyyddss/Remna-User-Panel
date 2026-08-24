@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"regexp"
 	"sort"
-	"strings"
 	"time"
 )
 
@@ -17,59 +16,6 @@ type Service struct {
 
 func NewService(repo Repository, nodes NodeProvider) *Service {
 	return &Service{repo: repo, nodes: nodes}
-}
-
-func (s *Service) Ingest(ctx context.Context, token, raw string, now time.Time) (ReportCounts, error) {
-	if len(raw) == 0 || len(raw) > MaxReportBytes || strings.TrimSpace(token) == "" {
-		return ReportCounts{}, ErrInvalid
-	}
-	digest := tokenDigest(token)
-	credential, err := s.repo.NodeByDigest(ctx, digest)
-	if err != nil {
-		return ReportCounts{}, err
-	}
-	if err = s.repo.TouchNodeReport(ctx, credential.UUID, now.UTC()); err != nil {
-		return ReportCounts{}, err
-	}
-	users, whitelist, err := s.repo.KnownUsers(ctx)
-	if err != nil {
-		return ReportCounts{}, err
-	}
-	policy, err := s.repo.Policy(ctx)
-	if err != nil {
-		return ReportCounts{}, err
-	}
-	rules, err := s.repo.DomainRules(ctx)
-	if err != nil {
-		return ReportCounts{}, err
-	}
-	matched, err := compileRules(rules)
-	if err != nil {
-		return ReportCounts{}, err
-	}
-	fingerprints := make([]string, 0)
-	samples := make([]Sample, 0)
-	seen := make(map[string]bool)
-	for _, line := range parseReport(raw, now) {
-		if seen[line.Fingerprint] {
-			continue
-		}
-		seen[line.Fingerprint] = true
-		userID, known := users[line.RemoteID]
-		if !known || whitelist[line.RemoteID] {
-			continue
-		}
-		fingerprints = append(fingerprints, line.Fingerprint)
-		if policy.GlobalEnabled && policy.GlobalLimit > 0 {
-			samples = append(samples, Sample{UserID: userID, NodeUUID: credential.UUID, ReasonName: "global", Fingerprint: line.Fingerprint, BucketAt: line.BucketAt, QPSLimit: policy.GlobalLimit, Count: 1})
-		}
-		for _, rule := range matched {
-			if rule.regex.MatchString(line.Domain) {
-				samples = append(samples, Sample{UserID: userID, NodeUUID: credential.UUID, ReasonName: rule.Name, Fingerprint: line.Fingerprint, BucketAt: line.BucketAt, QPSLimit: rule.QPSLimit, Count: 1})
-			}
-		}
-	}
-	return s.repo.StoreSamples(ctx, credential.UUID, fingerprints, samples, now.UTC())
 }
 
 type compiledRule struct {

@@ -4,9 +4,17 @@ package abuse
 import "time"
 
 const (
-	GracePeriod    = 5 * time.Minute
-	StreakEvery    = 30
-	MaxReportBytes = 16 << 20
+	GracePeriod               = 5 * time.Minute
+	StreakEvery               = 30
+	MaxReportBytes            = 16 << 20
+	MaxReportEvents           = 10000
+	MaxSamplesPerReport       = 20000
+	MaxGlobalQPS              = 100000
+	MaxWarningValidityDays    = 365
+	MaxWarningCooldownMinutes = 525600
+	MaxRuleTextLength         = 1024
+	MaxRuleNameLength         = 120
+	MaxRemoteIDLength         = 256
 )
 
 type Action string
@@ -17,6 +25,15 @@ const (
 	ActionRevoke       Action = "subscription_revoke"
 	ActionTemporaryBan Action = "temporary_ban"
 )
+
+func (action Action) Valid() bool {
+	switch action {
+	case ActionWarning, ActionIPBan, ActionRevoke, ActionTemporaryBan:
+		return true
+	default:
+		return false
+	}
+}
 
 type DomainRule struct {
 	ID         string `json:"id"`
@@ -65,7 +82,7 @@ type Record struct {
 	ID          string     `json:"id"`
 	Reason      string     `json:"reason"`
 	OccurredAt  time.Time  `json:"occurredAt"`
-	MeasuredQPS int        `json:"measuredQps"`
+	MeasuredQPS int        `json:"measuredQPS"`
 	QPSLimit    int        `json:"qpsLimit"`
 	Action      Action     `json:"action"`
 	ExpiresAt   *time.Time `json:"expiresAt,omitempty"`

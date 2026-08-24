@@ -11,7 +11,7 @@ var ErrInvalid = errors.New("invalid abuse detector input")
 type Repository interface {
 	NodeByDigest(context.Context, string) (NodeCredential, error)
 	TouchNodeReport(context.Context, string, time.Time) error
-	KnownUsers(context.Context) (map[string]string, map[string]bool, error)
+	KnownUsers(context.Context, []string) (map[string]string, map[string]bool, error)
 	Policy(context.Context) (Policy, error)
 	DomainRules(context.Context) ([]DomainRule, error)
 	StoreSamples(context.Context, string, []string, []Sample, time.Time) (ReportCounts, error)

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/secret"
@@ -27,6 +28,10 @@ func (s *Service) SyncNodes(ctx context.Context, vault *secret.Vault, now time.T
 		seen[item.UUID] = true
 	}
 	for _, node := range nodes {
+		node.UUID = strings.TrimSpace(node.UUID)
+		if node.UUID == "" {
+			return nil, ErrInvalid
+		}
 		if seen[node.UUID] {
 			continue
 		}
@@ -45,6 +50,10 @@ func (s *Service) SyncNodes(ctx context.Context, vault *secret.Vault, now time.T
 	return s.repo.NodeCredentials(ctx)
 }
 func (s *Service) CopyNodeKey(ctx context.Context, vault *secret.Vault, nodeID string) (string, error) {
+	nodeID = strings.TrimSpace(nodeID)
+	if vault == nil || nodeID == "" {
+		return "", ErrInvalid
+	}
 	sealed, err := s.repo.CopyNodeCredential(ctx, nodeID)
 	if err != nil {
 		return "", err
@@ -52,6 +61,13 @@ func (s *Service) CopyNodeKey(ctx context.Context, vault *secret.Vault, nodeID s
 	return vault.Decrypt("abuse.node."+nodeID, sealed)
 }
 func (s *Service) RotateNodeKey(ctx context.Context, vault *secret.Vault, nodeID string, now time.Time) (string, error) {
+	nodeID = strings.TrimSpace(nodeID)
+	if vault == nil || nodeID == "" {
+		return "", ErrInvalid
+	}
+	if _, err := s.repo.CopyNodeCredential(ctx, nodeID); err != nil {
+		return "", err
+	}
 	token, err := newToken()
 	if err != nil {
 		return "", err

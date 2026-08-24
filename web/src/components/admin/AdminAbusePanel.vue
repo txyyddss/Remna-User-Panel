@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { abuseApi } from '@/api/abuse'
-import AbuseNodesRecordsCard from '@/components/admin/abuse/AbuseNodesRecordsCard.vue'
+import AbuseNodesCard from '@/components/admin/abuse/AbuseNodesCard.vue'
 import AbusePolicyCard from '@/components/admin/abuse/AbusePolicyCard.vue'
+import AbusePunishmentLadder from '@/components/admin/abuse/AbusePunishmentLadder.vue'
+import AbuseRecordsCard from '@/components/admin/abuse/AbuseRecordsCard.vue'
 import AbuseRulesCard from '@/components/admin/abuse/AbuseRulesCard.vue'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import { useAdminAbuse } from '@/composables/useAdminAbuse'
@@ -17,7 +19,7 @@ function copy(id: string): void {
   void state.execute(async () => {
     const value = await abuseApi.copyNodeKey(id)
     await clipboard.copy(value.key)
-  }, { errorKey: 'adminAbuse.copyFailed', reload: false })
+  }, { errorKey: 'adminAbuse.copyFailed', reload: false, successHaptic: 'copy' })
 }
 
 function rotate(id: string): void {
@@ -36,20 +38,30 @@ function rotate(id: string): void {
         <h2>{{ t('adminAbuse.title') }}</h2>
         <p>{{ t('adminAbuse.copy') }}</p>
       </div>
+      <UButton
+        color="neutral"
+        variant="outline"
+        icon="i-ph-arrow-clockwise"
+        :label="t('common.refresh')"
+        :loading="state.loading.value"
+        @click="state.load"
+      />
     </header>
 
-    <InlineNotice v-if="state.error.value" tone="warning">
-      {{ state.error.value }}
-    </InlineNotice>
-
-    <AdminSectionState :loading="state.loading.value" :error="state.error.value" @retry="state.load">
+    <AdminSectionState :loading="state.loading.value" :error="state.loadError.value" @retry="state.load">
       <div v-if="state.policy.value" class="abuse-admin__grid">
+        <InlineNotice v-if="state.operationError.value" class="abuse-admin__notice" tone="warning">
+          {{ state.operationError.value }}
+        </InlineNotice>
         <AbusePolicyCard
           :policy="state.policy.value"
+          :busy="state.busy.value"
+          @save="value => state.execute(async () => { await abuseApi.savePolicy(value) })"
+        />
+        <AbusePunishmentLadder
           :punishments="state.punishments.value"
           :busy="state.busy.value"
-          @save-policy="value => state.execute(async () => { await abuseApi.savePolicy(value) })"
-          @save-punishment="value => state.execute(async () => { await abuseApi.savePunishment(value) })"
+          @save="value => state.execute(async () => { await abuseApi.savePunishment(value) })"
         />
         <AbuseRulesCard
           :rules="state.rules.value"
@@ -59,13 +71,12 @@ function rotate(id: string): void {
           @delete-rule="(id, revision) => state.execute(async () => { await abuseApi.deleteRule(id, revision) })"
           @whitelist="(id, enabled) => state.execute(async () => { await abuseApi.setWhitelist(id, enabled) })"
         />
-        <AbuseNodesRecordsCard
-          :nodes="state.nodes.value"
+        <AbuseNodesCard :nodes="state.nodes.value" :statistics="state.statistics.value" :busy="state.busy.value" @copy="copy" @rotate="rotate" />
+        <AbuseRecordsCard
           :records="state.records.value"
-          :statistics="state.statistics.value"
-          :busy="state.busy.value"
-          @copy="copy"
-          @rotate="rotate"
+          :has-more="Boolean(state.nextRecordsCursor.value)"
+          :loading-more="state.loadingMoreRecords.value"
+          @load-more="state.loadMoreRecords"
         />
       </div>
     </AdminSectionState>
@@ -79,9 +90,25 @@ function rotate(id: string): void {
   gap: 1rem;
 }
 
+.abuse-admin__notice { grid-column: 1 / -1; }
+
+.admin-panel__heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .abuse-admin__grid {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
   align-items: start;
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+@media (max-width: 620px) {
+  .admin-panel__heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }
 </style>

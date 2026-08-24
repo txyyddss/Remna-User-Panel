@@ -1,24 +1,57 @@
 <script setup lang="ts">
-import { computed, reactive, shallowRef } from 'vue'
+import { computed, reactive, shallowRef, watch } from 'vue'
 import type { AbuseRule } from '@/api/abuse'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
+import InlineNotice from '@/components/common/InlineNotice.vue'
 import { useI18n } from '@/i18n'
 
 const props = defineProps<{ rules: AbuseRule[]; whitelist: string[]; busy: boolean }>()
 const emit = defineEmits<{ saveRule: [value: AbuseRule]; deleteRule: [id: string, revision: number]; whitelist: [id: string, enabled: boolean] }>()
+type FormError = { name?: string; message: string }
 const { t } = useI18n()
-const draft = reactive<AbuseRule>({ id: '', name: '', expression: '', qpsLimit: 1, enabled: true, revision: 0 })
-const remoteID = shallowRef('')
+const blankRule = (): AbuseRule => ({ id: '', name: '', expression: '', qpsLimit: 1, enabled: true, revision: 0 })
+const draft = reactive<AbuseRule>(blankRule())
+const whitelistForm = reactive({ remoteID: '' })
+const selectedRuleID = shallowRef('')
 const deleting = shallowRef<Pick<AbuseRule, 'id' | 'name' | 'revision'> | null>(null)
 const choices = computed(() => props.rules.map(item => ({ value: item.id, label: item.name })))
 
-function choose(id: string): void {
+watch(() => props.rules, () => {
+  const selected = props.rules.find(item => item.id === selectedRuleID.value)
+  if (selected) Object.assign(draft, selected)
+})
+
+function selectRule(id: string): void {
+  selectedRuleID.value = id
   const rule = props.rules.find(item => item.id === id)
   if (rule) Object.assign(draft, rule)
 }
 
-function addRule(): void {
-  Object.assign(draft, { id: '', name: '', expression: '', qpsLimit: 1, enabled: true, revision: 0 })
+function newRule(): void {
+  selectedRuleID.value = ''
+  Object.assign(draft, blankRule())
+}
+
+function validateRule(value: Partial<AbuseRule>): FormError[] {
+  const errors: FormError[] = []
+  const { qpsLimit = 0 } = value
+  if (!value.name?.trim() || value.name.trim().length > 120) errors.push({ name: 'name', message: t('adminAbuse.invalidRuleName') })
+  if (!value.expression?.trim() || value.expression.trim().length > 1024) errors.push({ name: 'expression', message: t('adminAbuse.invalidExpression') })
+  if (!Number.isInteger(qpsLimit) || qpsLimit < 1 || qpsLimit > 100000) errors.push({ name: 'qpsLimit', message: t('adminAbuse.invalidRuleLimit') })
+  return errors
+}
+
+function validateWhitelist(value: { remoteID?: string }): FormError[] {
+  return value.remoteID?.trim() && value.remoteID.trim().length <= 256
+    ? []
+    : [{ name: 'remoteID', message: t('adminAbuse.invalidWhitelistUser') }]
+}
+
+function addWhitelist(): void {
+  const remoteID = whitelistForm.remoteID.trim()
+  if (!remoteID) return
+  emit('whitelist', remoteID, true)
+  whitelistForm.remoteID = ''
 }
 
 function requestDelete(): void {
@@ -33,48 +66,49 @@ function deleteRule(): void {
 </script>
 
 <template>
-  <div class="rules-stack">
-    <section class="card">
+  <section class="card rules-card">
+    <div>
+      <p class="eyebrow">{{ t('adminAbuse.rulesEyebrow') }}</p>
       <h3>{{ t('adminAbuse.rulesTitle') }}</h3>
-      <UForm :state="draft" @submit="emit('saveRule', { ...draft })">
-        <UFormField :label="t('adminAbuse.ruleSelect')">
-          <USelect :items="choices" value-key="value" @update:model-value="choose" />
-        </UFormField>
-        <UFormField :label="t('adminAbuse.ruleName')">
-          <UInput v-model="draft.name" />
-        </UFormField>
-        <UFormField :label="t('adminAbuse.expression')">
-          <UInput v-model="draft.expression" />
-        </UFormField>
-        <UFormField :label="t('adminAbuse.ruleLimit')">
-          <UInput v-model.number="draft.qpsLimit" type="number" />
-        </UFormField>
-        <USwitch v-model="draft.enabled" :label="t('adminAbuse.ruleEnabled')" />
-        <div class="actions">
-          <UButton type="submit" :loading="busy" :label="t('common.save')" />
-          <UButton type="button" color="neutral" variant="outline" :label="t('adminAbuse.addRule')" @click="addRule" />
-          <UButton v-if="draft.id" type="button" color="error" variant="ghost" :label="t('adminAbuse.deleteRule')" @click="requestDelete" />
-        </div>
-      </UForm>
-    </section>
-
-    <section class="card">
-      <h3>{{ t('adminAbuse.whitelistTitle') }}</h3>
+    </div>
+    <UForm :state="draft" :validate="validateRule" @submit="emit('saveRule', { ...draft })">
+      <UFormField name="selectedRuleID" :label="t('adminAbuse.ruleSelect')">
+        <USelect v-model="selectedRuleID" :items="choices" value-key="value" :placeholder="t('adminAbuse.ruleSelectPlaceholder')" @update:model-value="selectRule" />
+      </UFormField>
+      <UFormField name="name" :label="t('adminAbuse.ruleName')">
+        <UInput v-model="draft.name" :maxlength="120" autocomplete="off" />
+      </UFormField>
+      <UFormField name="expression" :label="t('adminAbuse.expression')">
+        <UInput v-model="draft.expression" :maxlength="1024" autocomplete="off" />
+      </UFormField>
+      <UFormField name="qpsLimit" :label="t('adminAbuse.ruleLimit')">
+        <UInputNumber v-model="draft.qpsLimit" :min="1" :max="100000" :step="1" :disable-wheel-change="true" />
+      </UFormField>
+      <UFormField name="enabled" :label="t('adminAbuse.ruleEnabled')">
+        <USwitch v-model="draft.enabled" />
+      </UFormField>
       <div class="actions">
-        <UInput v-model="remoteID" />
-        <UButton :label="t('adminAbuse.addWhitelist')" @click="remoteID && emit('whitelist', remoteID, true)" />
+        <UButton type="submit" :loading="busy" :label="t('common.save')" />
+        <UButton type="button" color="neutral" variant="outline" :label="t('adminAbuse.addRule')" @click="newRule" />
+        <UButton v-if="draft.id" type="button" color="error" variant="ghost" :label="t('adminAbuse.deleteRule')" @click="requestDelete" />
       </div>
-      <div v-for="id in whitelist" :key="id" class="whitelist">
-        <span>{{ id }}</span>
-        <UButton
-          color="error"
-          variant="ghost"
-          icon="i-ph-trash"
-          :aria-label="t('adminAbuse.removeWhitelist')"
-          @click="emit('whitelist', id, false)"
-        />
-      </div>
-    </section>
+    </UForm>
+
+    <div class="whitelist-heading">
+      <h4>{{ t('adminAbuse.whitelistTitle') }}</h4>
+      <p>{{ t('adminAbuse.whitelistCopy') }}</p>
+    </div>
+    <UForm :state="whitelistForm" :validate="validateWhitelist" class="whitelist-add" @submit="addWhitelist">
+      <UFormField name="remoteID" :label="t('adminAbuse.whitelistUser')">
+        <UInput v-model="whitelistForm.remoteID" :maxlength="256" autocomplete="off" />
+      </UFormField>
+      <UButton type="submit" :loading="busy" :label="t('adminAbuse.addWhitelist')" />
+    </UForm>
+    <InlineNotice v-if="!whitelist.length" tone="info">{{ t('adminAbuse.emptyWhitelist') }}</InlineNotice>
+    <div v-for="id in whitelist" :key="id" class="whitelist-item">
+      <span>{{ id }}</span>
+      <UButton color="error" variant="ghost" icon="i-ph-trash" :aria-label="t('adminAbuse.removeWhitelist')" @click="emit('whitelist', id, false)" />
+    </div>
     <ConfirmDialog
       :open="Boolean(deleting)"
       :title="t('adminAbuse.deleteRuleTitle', { name: deleting?.name ?? '' })"
@@ -85,42 +119,16 @@ function deleteRule(): void {
       @update:open="!$event && (deleting = null)"
       @confirm="deleteRule"
     />
-  </div>
+  </section>
 </template>
 
 <style scoped>
-.rules-stack,
 .card,
-.card :deep(form) {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.card {
-  padding: 1rem;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-panel);
-  background: var(--surface-raised);
-}
-
-.actions,
-.whitelist {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.65rem;
-}
-
-.actions {
-  flex-wrap: wrap;
-}
-
-.actions > :first-child {
-  min-width: 0;
-}
-
-.whitelist {
-  min-height: 44px;
-  border-top: 1px solid var(--line);
-}
+.card :deep(form) { display: grid; gap: 0.85rem; }
+.card { padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface-raised); }
+.actions, .whitelist-add { display: flex; align-items: end; gap: 0.65rem; flex-wrap: wrap; }
+.whitelist-add :deep(.form-field) { flex: 1 1 13rem; }
+.whitelist-heading { padding-top: 0.25rem; border-top: 1px solid var(--line); }
+.whitelist-heading p { color: var(--text-muted); }
+.whitelist-item { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 0.65rem; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
 </style>

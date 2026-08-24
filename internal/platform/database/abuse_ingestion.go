@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/abuse"
@@ -38,37 +39,70 @@ func (s *Store) TouchNodeReport(ctx context.Context, nodeID string, now time.Tim
 	_, err := s.db.ExecContext(ctx, `UPDATE abuse_node_credentials SET last_report_at=?,updated_at=? WHERE node_uuid=?`, stamp(now), stamp(now), nodeID)
 	return err
 }
-func (s *Store) KnownUsers(ctx context.Context) (map[string]string, map[string]bool, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id,remna_user_id FROM users WHERE remna_user_id IS NOT NULL AND TRIM(remna_user_id)<>''`)
+func (s *Store) KnownUsers(ctx context.Context, remoteIDs []string) (map[string]string, map[string]bool, error) {
+	users := map[string]string{}
+	whitelist := map[string]bool{}
+	unique := uniqueRemoteIDs(remoteIDs)
+	for start := 0; start < len(unique); start += 500 {
+		end := min(start+500, len(unique))
+		placeholders := strings.TrimSuffix(strings.Repeat("?,", end-start), ",")
+		args := make([]any, end-start)
+		for index, remoteID := range unique[start:end] {
+			args[index] = remoteID
+		}
+		if err := s.loadKnownUserBatch(ctx, `SELECT id,remna_user_id FROM users WHERE remna_user_id IN (`+placeholders+`)`, args, users); err != nil {
+			return nil, nil, err
+		}
+		if err := s.loadWhitelistBatch(ctx, `SELECT remna_user_id FROM abuse_whitelist WHERE remna_user_id IN (`+placeholders+`)`, args, whitelist); err != nil {
+			return nil, nil, err
+		}
+	}
+	return users, whitelist, nil
+}
+
+func (s *Store) loadKnownUserBatch(ctx context.Context, query string, args []any, users map[string]string) error {
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 	defer rows.Close()
-	users := map[string]string{}
 	for rows.Next() {
-		var id, remote string
-		if err = rows.Scan(&id, &remote); err != nil {
-			return nil, nil, err
+		var id, remoteID string
+		if err = rows.Scan(&id, &remoteID); err != nil {
+			return err
 		}
-		users[remote] = id
+		users[remoteID] = id
 	}
-	if err = rows.Err(); err != nil {
-		return nil, nil, err
-	}
-	whiteRows, err := s.db.QueryContext(ctx, `SELECT remna_user_id FROM abuse_whitelist`)
+	return rows.Err()
+}
+
+func (s *Store) loadWhitelistBatch(ctx context.Context, query string, args []any, whitelist map[string]bool) error {
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
-	defer whiteRows.Close()
-	whitelist := map[string]bool{}
-	for whiteRows.Next() {
-		var remote string
-		if err = whiteRows.Scan(&remote); err != nil {
-			return nil, nil, err
+	defer rows.Close()
+	for rows.Next() {
+		var remoteID string
+		if err = rows.Scan(&remoteID); err != nil {
+			return err
 		}
-		whitelist[remote] = true
+		whitelist[remoteID] = true
 	}
-	return users, whitelist, whiteRows.Err()
+	return rows.Err()
+}
+
+func uniqueRemoteIDs(remoteIDs []string) []string {
+	seen := make(map[string]bool, len(remoteIDs))
+	out := make([]string, 0, len(remoteIDs))
+	for _, remoteID := range remoteIDs {
+		remoteID = strings.TrimSpace(remoteID)
+		if remoteID != "" && !seen[remoteID] {
+			seen[remoteID] = true
+			out = append(out, remoteID)
+		}
+	}
+	return out
 }
 func (s *Store) StoreSamples(ctx context.Context, nodeID string, fingerprints []string, samples []abuse.Sample, now time.Time) (abuse.ReportCounts, error) {
 	s.writeMu.Lock()
@@ -108,7 +142,7 @@ func (s *Store) StoreSamples(ctx context.Context, nodeID string, fingerprints []
 	return counts, nil
 }
 func (s *Store) ReadyBuckets(ctx context.Context, cutoff time.Time) ([]abuse.Sample, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT user_id,node_uuid,bucket_at,reason_name,qps_limit,qps FROM abuse_qps_samples WHERE bucket_at<=? ORDER BY user_id,reason_name,bucket_at,node_uuid`, stamp(cutoff))
+	rows, err := s.db.QueryContext(ctx, `SELECT sample.user_id,sample.node_uuid,sample.bucket_at,sample.reason_name,sample.qps_limit,sample.qps FROM abuse_detector_state state JOIN abuse_qps_samples sample ON sample.user_id=state.user_id AND sample.reason_name=state.reason_name WHERE sample.bucket_at<=? AND sample.bucket_at>state.last_bucket_at UNION ALL SELECT sample.user_id,sample.node_uuid,sample.bucket_at,sample.reason_name,sample.qps_limit,sample.qps FROM abuse_qps_samples sample LEFT JOIN abuse_detector_state state ON state.user_id=sample.user_id AND state.reason_name=sample.reason_name WHERE state.user_id IS NULL AND sample.bucket_at<=? ORDER BY 1,4,3,2`, stamp(cutoff), stamp(cutoff))
 	if err != nil {
 		return nil, err
 	}

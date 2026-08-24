@@ -3,28 +3,39 @@ package database
 import (
 	"context"
 	"database/sql"
-	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/abuse"
 )
 
 func (s *Store) MemberRecords(ctx context.Context, userID, cursor string, limit int) (abuse.RecordPage, error) {
-	where, args := ` WHERE record.user_id=? AND record.deleted_at IS NULL`, []any{userID}
-	if cursor != "" {
-		where += ` AND record.created_at<?`
-		args = append(args, cursor)
+	where, args, err := abuseRecordWhere(` WHERE record.user_id=? AND record.deleted_at IS NULL`, []any{userID}, cursor, `member:`+userID)
+	if err != nil {
+		return abuse.RecordPage{}, err
 	}
-	return s.abuseRecordPage(ctx, where, args, limit)
+	return s.abuseRecordPage(ctx, where, args, limit, `member:`+userID)
 }
 func (s *Store) AdminAbuseRecords(ctx context.Context, cursor string, limit int) (abuse.RecordPage, error) {
-	where, args := ` WHERE record.deleted_at IS NULL`, []any{}
-	if cursor != "" {
-		where += ` AND record.created_at<?`
-		args = append(args, cursor)
+	where, args, err := abuseRecordWhere(` WHERE record.deleted_at IS NULL`, nil, cursor, `admin`)
+	if err != nil {
+		return abuse.RecordPage{}, err
 	}
-	return s.abuseRecordPage(ctx, where, args, limit)
+	return s.abuseRecordPage(ctx, where, args, limit, `admin`)
 }
-func (s *Store) abuseRecordPage(ctx context.Context, where string, args []any, limit int) (abuse.RecordPage, error) {
+func abuseRecordWhere(where string, args []any, cursor, filter string) (string, []any, error) {
+	if cursor == "" {
+		return where, args, nil
+	}
+	decoded, err := decodeTimestampCursor(cursor, filter)
+	if err == nil {
+		return where + ` AND (record.created_at<? OR (record.created_at=? AND record.id<?))`, append(args, decoded.Timestamp, decoded.Timestamp, decoded.ID), nil
+	}
+	legacy, legacyErr := parseStamp(cursor)
+	if legacyErr != nil {
+		return ``, nil, ErrInvalidCursor
+	}
+	return where + ` AND record.created_at<?`, append(args, stamp(legacy)), nil
+}
+func (s *Store) abuseRecordPage(ctx context.Context, where string, args []any, limit int, filter string) (abuse.RecordPage, error) {
 	if limit < 1 || limit > 100 {
 		return abuse.RecordPage{}, abuse.ErrInvalid
 	}
@@ -57,7 +68,10 @@ func (s *Store) abuseRecordPage(ctx context.Context, where string, args []any, l
 		page.Items = append(page.Items, item)
 	}
 	if len(page.Items) > limit {
-		page.NextCursor = page.Items[limit].OccurredAt.Format(time.RFC3339Nano)
+		page.NextCursor, err = encodeTimestampCursor(page.Items[limit].OccurredAt, page.Items[limit].ID, filter)
+		if err != nil {
+			return page, err
+		}
 		page.Items = page.Items[:limit]
 	}
 	return page, rows.Err()

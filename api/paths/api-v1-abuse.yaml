@@ -2,6 +2,7 @@ memberRecords:
   get:
     tags: [Member]
     operationId: getAbuseRecords
+    parameters: [{ name: cursor, in: query, schema: { type: string, maxLength: 512 } }]
     responses: { '200': { content: { application/json: { schema: { type: object } } } } }
 agentReport:
   post:
@@ -12,7 +13,7 @@ agentReport:
     responses: { '200': { content: { application/json: { schema: { type: object } } } }, '401': { $ref: '../components/responses.yaml#/Unauthorized' } }
 policy:
   get: { tags: [Admin], operationId: getAbusePolicy, responses: { '200': { content: { application/json: { schema: { type: object } } } } } }
-  put: { tags: [Admin], operationId: updateAbusePolicy, parameters: [{ $ref: '../components/parameters.yaml#/IdempotencyKey' }], requestBody: { required: true, content: { application/json: { schema: { type: object, required: [globalEnabled, globalLimit, warningValidityDays, warningCooldownMinutes, revision], properties: { globalEnabled: { type: boolean }, globalLimit: { type: integer, minimum: 0 }, warningValidityDays: { type: integer, minimum: 1 }, warningCooldownMinutes: { type: integer, minimum: 0, maximum: 525600 }, revision: { type: integer, minimum: 0 } } } } } }, responses: { '200': { content: { application/json: { schema: { type: object } } } } } }
+  put: { tags: [Admin], operationId: updateAbusePolicy, parameters: [{ $ref: '../components/parameters.yaml#/IdempotencyKey' }], requestBody: { required: true, content: { application/json: { schema: { type: object, required: [globalEnabled, globalLimit, warningValidityDays, warningCooldownMinutes, revision], properties: { globalEnabled: { type: boolean }, globalLimit: { type: integer, minimum: 0, maximum: 100000 }, warningValidityDays: { type: integer, minimum: 1, maximum: 365 }, warningCooldownMinutes: { type: integer, minimum: 0, maximum: 525600 }, revision: { type: integer, minimum: 0 } } } } } }, responses: { '200': { content: { application/json: { schema: { type: object } } } } } }
 nodes:
   get: { tags: [Admin], operationId: getAbuseNodes, responses: { '200': { content: { application/json: { schema: { type: array, items: { type: object } } } } } } }
 nodeKey:
@@ -36,6 +37,6 @@ punishment:
 statistics:
   get: { tags: [Admin], operationId: getAbuseStatistics, responses: { '200': { content: { application/json: { schema: { type: object } } } } } }
 records:
-  get: { tags: [Admin], operationId: getAdminAbuseRecords, responses: { '200': { content: { application/json: { schema: { type: object } } } } } }
+  get: { tags: [Admin], operationId: getAdminAbuseRecords, parameters: [{ name: cursor, in: query, schema: { type: string, maxLength: 512 } }], responses: { '200': { content: { application/json: { schema: { type: object } } } } } }
 record:
   delete: { tags: [Admin], operationId: deleteAbuseRecord, parameters: [{ $ref: '../components/parameters.yaml#/IdempotencyKey' }], responses: { '204': { description: Deleted } } }

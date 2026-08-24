@@ -2,7 +2,8 @@
 
 - `types.go` defines the safe persisted and transport-facing detector values.
 - `parser.go` accepts only direct Xray domain connection accepts and fingerprints lines without retaining them.
-- `service.go` authenticates node reports, aggregates samples, evaluates grace-delayed at-or-over-limit streaks, and queues incidents.
+- `ingestion.go` bounds report parsing, resolves only reported remote identities, and emits compact detector samples.
+- `service.go` compiles enabled rules, evaluates grace-delayed at-or-over-limit streaks, and queues incidents.
 - `admin.go` exposes validated member and administrator detector operations.
 - `node_keys.go` provisions, encrypts, copies, and rotates node agent keys.
 - `repository.go` declares the persistence boundary used by the detector.

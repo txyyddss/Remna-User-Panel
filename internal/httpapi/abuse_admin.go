@@ -112,7 +112,11 @@ func (s *Server) adminDeleteAbuseRule(w http.ResponseWriter, r *http.Request) {
 	if _, ok := s.requireIdempotencyKey(w, r); !ok {
 		return
 	}
-	revision, _ := strconv.Atoi(r.URL.Query().Get("revision"))
+	revision, err := strconv.Atoi(r.URL.Query().Get("revision"))
+	if err != nil || revision < 0 {
+		s.writeError(w, r, http.StatusBadRequest, "INVALID_ABUSE_RULE", "A current rule revision is required.")
+		return
+	}
 	if err := s.deps.Abuse.DeleteRule(r.Context(), currentUser(r).ID, chiURLParam(r, "id"), revision, time.Now().UTC()); err != nil {
 		s.adminFailure(w, r, err)
 		return

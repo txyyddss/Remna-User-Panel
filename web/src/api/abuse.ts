@@ -9,8 +9,8 @@ export interface AbusePunishment { action: string; enabled: boolean; incidentThr
 
 const key = () => crypto.randomUUID()
 export const abuseApi = {
-  records: () => request<AbusePage>('/api/v1/me/abuse-records'),
-  adminRecords: () => request<AbusePage>('/api/v1/admin/abuse/records'),
+  records: (cursor = '') => request<AbusePage>(cursor ? `/api/v1/me/abuse-records?cursor=${encodeURIComponent(cursor)}` : '/api/v1/me/abuse-records'),
+  adminRecords: (cursor = '') => request<AbusePage>(cursor ? `/api/v1/admin/abuse/records?cursor=${encodeURIComponent(cursor)}` : '/api/v1/admin/abuse/records'),
   policy: () => request<AbusePolicy>('/api/v1/admin/abuse/policy'),
   savePolicy: (body: AbusePolicy) => request<AbusePolicy>('/api/v1/admin/abuse/policy', { method: 'PUT', headers: { 'Idempotency-Key': key() }, body }),
   nodes: () => request<AbuseNode[]>('/api/v1/admin/abuse/nodes'),
