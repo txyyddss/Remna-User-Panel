@@ -8,8 +8,15 @@ cron_path=/etc/cron.d/tx-carpool-qps-detector
 require_root() { [ "${EUID}" -eq 0 ] || { printf '%s\n' 'Run as root.' >&2; exit 1; }; }
 remove() { rm -f "$cron_path" "$reporter_path" "$config_path"; rm -rf /var/lib/tx-carpool-qps-detector; printf '%s\n' 'QPS detector reporter removed.'; }
 print_logs() {
+  local -a statuses
   command -v docker >/dev/null || { printf '%s\n' 'Docker is required.' >&2; exit 1; }
-  docker logs remnanode 2>&1
+  command -v head >/dev/null || { printf '%s\n' 'head is required.' >&2; exit 1; }
+  set +e
+  docker exec remnanode xlogs | head -n 1000
+  statuses=("${PIPESTATUS[@]}")
+  set -e
+  [ "${statuses[1]}" -eq 0 ] || return "${statuses[1]}"
+  [ "${statuses[0]}" -eq 0 ] || [ "${statuses[0]}" -eq 141 ] || return "${statuses[0]}"
 }
 require_debian() { [ -r /etc/debian_version ] && grep -q '^13' /etc/debian_version || { printf '%s\n' 'Debian 13 is required.' >&2; exit 1; }; command -v docker >/dev/null; command -v curl >/dev/null; command -v flock >/dev/null; command -v split >/dev/null; command -v stat >/dev/null; command -v tail >/dev/null; command -v truncate >/dev/null; command -v wc >/dev/null; systemctl is-active --quiet cron || { printf '%s\n' 'The cron service must be active.' >&2; exit 1; }; }
 install_reporter() {
