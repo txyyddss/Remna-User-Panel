@@ -18,6 +18,7 @@ export const abuseApi = {
   rotateNodeKey: (id: string) => request<{ key: string }>(`/api/v1/admin/abuse/nodes/${encodeURIComponent(id)}/rotate`, { method: 'POST', headers: { 'Idempotency-Key': key() } }),
   rules: () => request<AbuseRule[]>('/api/v1/admin/abuse/rules'),
   saveRule: (body: AbuseRule) => request<AbuseRule>(body.id ? `/api/v1/admin/abuse/rules/${encodeURIComponent(body.id)}` : '/api/v1/admin/abuse/rules', { method: body.id ? 'PUT' : 'POST', headers: { 'Idempotency-Key': key() }, body }),
+  deleteRule: (id: string, revision: number) => request<void>(`/api/v1/admin/abuse/rules/${encodeURIComponent(id)}?revision=${encodeURIComponent(String(revision))}`, { method: 'DELETE', headers: { 'Idempotency-Key': key() } }),
   punishments: () => request<AbusePunishment[]>('/api/v1/admin/abuse/punishments'),
   savePunishment: (body: AbusePunishment) => request<AbusePunishment>(`/api/v1/admin/abuse/punishments/${encodeURIComponent(body.action)}`, { method: 'PUT', headers: { 'Idempotency-Key': key() }, body }),
   whitelist: () => request<string[]>('/api/v1/admin/abuse/whitelist'),
