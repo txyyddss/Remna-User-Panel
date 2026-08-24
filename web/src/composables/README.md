@@ -53,7 +53,7 @@
 - `useNodeGeocheck.ts` loads an image-only cached node Geocheck for a minimal UUID/name target shared by Statistics and Catalog, only after explicit selection, and clears its state on close.
 - `useNodeCompensation.ts` coordinates revisioned policy, filtered cursor history, and stable-key reviewed outage commands.
 - `useAbuseRecords.ts` loads privacy-safe member detector history.
-- `useAdminAbuse.ts` coordinates typed detector administration resources.
+- `useAdminAbuse.ts` coordinates typed detector administration resources and applies saved Domain rules in place so the create form stays mounted.
 - `useNodeCompensation.test.ts` covers idempotency-key reuse after an ambiguous review failure.
 - `useNodeGeocheck.test.ts` covers selected-target loading, localized unavailability, and close reset behavior.
 - `useStatistics.ts` independently loads the 30-minute aggregate snapshot and

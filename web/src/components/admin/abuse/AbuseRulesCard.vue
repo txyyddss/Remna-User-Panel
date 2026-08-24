@@ -13,23 +13,41 @@ const blankRule = (): AbuseRule => ({ id: '', name: '', expression: '', qpsLimit
 const draft = reactive<AbuseRule>(blankRule())
 const whitelistForm = reactive({ remoteID: '' })
 const selectedRuleID = shallowRef('')
+const pendingRuleName = shallowRef('')
 const deleting = shallowRef<Pick<AbuseRule, 'id' | 'name' | 'revision'> | null>(null)
 const choices = computed(() => props.rules.map(item => ({ value: item.id, label: item.name })))
 
-watch(() => props.rules, () => {
-  const selected = props.rules.find(item => item.id === selectedRuleID.value)
-  if (selected) Object.assign(draft, selected)
+watch(() => props.rules, (rules) => {
+  const selected = rules.find(item => item.id === selectedRuleID.value)
+  if (selected) {
+    Object.assign(draft, selected)
+    return
+  }
+  if (!pendingRuleName.value) return
+  const created = rules.find(item => item.name === pendingRuleName.value)
+  if (!created) return
+  selectedRuleID.value = created.id
+  pendingRuleName.value = ''
+  Object.assign(draft, created)
 })
 
 function selectRule(id: string): void {
+  pendingRuleName.value = ''
   selectedRuleID.value = id
   const rule = props.rules.find(item => item.id === id)
   if (rule) Object.assign(draft, rule)
 }
 
 function newRule(): void {
+  pendingRuleName.value = ''
   selectedRuleID.value = ''
   Object.assign(draft, blankRule())
+}
+
+function saveRule(): void {
+  const value = { ...draft, name: draft.name.trim(), expression: draft.expression.trim() }
+  pendingRuleName.value = value.id ? '' : value.name
+  emit('saveRule', value)
 }
 
 function validateRule(value: Partial<AbuseRule>): FormError[] {
@@ -71,7 +89,7 @@ function deleteRule(): void {
       <p class="eyebrow">{{ t('adminAbuse.rulesEyebrow') }}</p>
       <h3>{{ t('adminAbuse.rulesTitle') }}</h3>
     </div>
-    <UForm :state="draft" :validate="validateRule" @submit="emit('saveRule', { ...draft })">
+    <UForm :state="draft" :validate="validateRule" @submit="saveRule">
       <UFormField name="selectedRuleID" :label="t('adminAbuse.ruleSelect')">
         <USelect v-model="selectedRuleID" :items="choices" value-key="value" :placeholder="t('adminAbuse.ruleSelectPlaceholder')" @update:model-value="selectRule" />
       </UFormField>
@@ -88,8 +106,8 @@ function deleteRule(): void {
         <USwitch v-model="draft.enabled" />
       </UFormField>
       <div class="actions">
-        <UButton type="submit" :loading="busy" :label="t('common.save')" />
-        <UButton type="button" color="neutral" variant="outline" :label="t('adminAbuse.addRule')" @click="newRule" />
+        <UButton type="submit" :loading="busy" :label="draft.id ? t('common.save') : t('adminAbuse.addRule')" />
+        <UButton v-if="draft.id" type="button" color="neutral" variant="outline" :label="t('adminAbuse.newRule')" @click="newRule" />
         <UButton v-if="draft.id" type="button" color="error" variant="ghost" :label="t('adminAbuse.deleteRule')" @click="requestDelete" />
       </div>
     </UForm>

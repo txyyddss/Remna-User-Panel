@@ -36,6 +36,7 @@
     "invalidExpression": "\u8bf7\u8f93\u5165\u4e0d\u8d85\u8fc7 1,024 \u4e2a\u5b57\u7b26\u7684 RE2 \u8868\u8fbe\u5f0f\u3002",
     "invalidRuleLimit": "\u8bf7\u8f93\u5165 1 \u81f3 100,000 \u4e4b\u95f4\u7684 QPS \u9608\u503c\u3002",
     "addRule": "\u6dfb\u52a0\u89c4\u5219",
+    "newRule": "\u65b0\u5efa\u89c4\u5219",
     "deleteRule": "\u5220\u9664\u89c4\u5219",
     "deleteRuleTitle": "\u5220\u9664 {name}\uff1f",
     "deleteRuleDescription": "\u6b64\u57df\u540d\u89c4\u5219\u5c06\u7acb\u5373\u505c\u6b62\u751f\u6548\u3002",

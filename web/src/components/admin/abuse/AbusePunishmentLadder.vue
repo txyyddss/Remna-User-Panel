@@ -63,14 +63,18 @@ function validate(value: Partial<AbusePunishment>): FormError[] {
   background: var(--surface-raised);
 }
 
+.ladder-card {
+  grid-column: 1 / -1;
+}
+
 .ladder {
-  grid-template-columns: minmax(0, 1fr) auto repeat(2, minmax(5rem, 1fr)) auto;
+  grid-template-columns: minmax(9rem, 1.4fr) minmax(6.5rem, 0.6fr) repeat(2, minmax(8rem, 1fr)) auto;
   align-items: end;
   border-top: 1px solid var(--line);
   padding-top: 0.85rem;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 880px) {
   .ladder { grid-template-columns: 1fr 1fr; }
   .ladder > :first-child { grid-column: 1 / -1; }
   .ladder > :last-child { justify-self: start; }

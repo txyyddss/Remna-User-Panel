@@ -2,13 +2,12 @@
 set -euo pipefail
 
 config_path=/etc/tx-carpool-qps-detector.conf
-state_path=/var/lib/tx-carpool-qps-detector/last-report
 reporter_path=/usr/local/sbin/tx-carpool-qps-detector-report
 cron_path=/etc/cron.d/tx-carpool-qps-detector
 
 require_root() { [ "${EUID}" -eq 0 ] || { printf '%s\n' 'Run as root.' >&2; exit 1; }; }
 remove() { rm -f "$cron_path" "$reporter_path" "$config_path"; rm -rf /var/lib/tx-carpool-qps-detector; printf '%s\n' 'QPS detector reporter removed.'; }
-require_debian() { [ -r /etc/debian_version ] && grep -q '^13' /etc/debian_version || { printf '%s\n' 'Debian 13 is required.' >&2; exit 1; }; command -v docker >/dev/null; command -v curl >/dev/null; command -v flock >/dev/null; command -v timeout >/dev/null; command -v stat >/dev/null; command -v wc >/dev/null; systemctl is-active --quiet cron || { printf '%s\n' 'The cron service must be active.' >&2; exit 1; }; }
+require_debian() { [ -r /etc/debian_version ] && grep -q '^13' /etc/debian_version || { printf '%s\n' 'Debian 13 is required.' >&2; exit 1; }; command -v docker >/dev/null; command -v curl >/dev/null; command -v flock >/dev/null; command -v split >/dev/null; command -v stat >/dev/null; command -v tail >/dev/null; command -v truncate >/dev/null; command -v wc >/dev/null; systemctl is-active --quiet cron || { printf '%s\n' 'The cron service must be active.' >&2; exit 1; }; }
 install_reporter() {
   install -d -m 700 /var/lib/tx-carpool-qps-detector
   install -m 600 /dev/null "$config_path"
@@ -17,47 +16,64 @@ install_reporter() {
 #!/usr/bin/env bash
 set -euo pipefail
 config_path=/etc/tx-carpool-qps-detector.conf
-state_path=/var/lib/tx-carpool-qps-detector/last-report
+state_path=/var/lib/tx-carpool-qps-detector/report-state-v2
 lock_path=/var/lib/tx-carpool-qps-detector/lock
+log_path=/var/log/supervisor/xray.out.log
 umask 077
 exec 9>"$lock_path"
-flock -n 9 || exit 0
+flock -n 9 || { [ "${REPORTER_REQUIRE_RUN:-0}" = 1 ] && exit 75; exit 0; }
 source "$config_path"
 started_at=$(date +%s)
 last=0
-[ -r "$state_path" ] && last=$(cat "$state_path")
+offset=0
+inode=
+if [ -r "$state_path" ]; then read -r last offset inode < "$state_path" || true; fi
+[[ "$last" =~ ^[0-9]+$ ]] || last=0
+[[ "$offset" =~ ^[0-9]+$ ]] || offset=0
 [ "$started_at" -ge "$((last + INTERVAL_MINUTES * 60))" ] || exit 0
 payload=$(mktemp)
-trap 'rm -f "$payload"' EXIT
+batch_dir=$(mktemp -d)
+state_tmp="${state_path}.tmp"
+trap 'rm -rf "$batch_dir"; rm -f "$payload" "$state_tmp"' EXIT
 max_report_bytes=$((15 * 1024 * 1024))
-capture_seconds=$((INTERVAL_MINUTES * 60))
+metadata() {
+  docker exec remnanode stat -c '%i %s' "$log_path"
+}
+capture() {
+  docker exec remnanode tail -c "+$((offset + 1))" "$log_path" > "$payload"
+}
 upload() {
-  [ -s "$payload" ] || return 0
-  curl --fail --silent --show-error --config <(printf '%s\n' "header = Authorization: Bearer $NODE_TOKEN" "request = POST" "data-binary = @$payload" "url = $API_URL/api/v1/agents/qps-reports") > /dev/null
-  : > "$payload"
+  curl --fail --silent --show-error --connect-timeout 10 --max-time 120 --retry 2 --retry-all-errors --config - --data-binary "@$1" "$API_URL/api/v1/agents/qps-reports" > /dev/null <<CURL
+header = "Authorization: Bearer $NODE_TOKEN"
+request = "POST"
+CURL
 }
-collect() {
-  local line line_bytes payload_bytes
-  while IFS= read -r line || [ -n "$line" ]; do
-    line_bytes=$(printf '%s\n' "$line" | LC_ALL=C wc -c)
-    [ "$line_bytes" -le "$max_report_bytes" ] || continue
-    payload_bytes=$(stat -c '%s' "$payload")
-    if [ "$payload_bytes" -gt 0 ] && [ "$((payload_bytes + line_bytes))" -gt "$max_report_bytes" ]; then upload; fi
-    printf '%s\n' "$line" >> "$payload"
-  done
-}
-set +e
-timeout --signal=INT --kill-after=10s "${capture_seconds}s" docker exec remnanode xlogs | collect
-statuses=("${PIPESTATUS[@]}")
-set -e
-[ "${statuses[0]}" -eq 124 ] || { printf '%s\n' 'remnanode xlogs ended before the capture window.' >&2; exit 1; }
-[ "${statuses[1]}" -eq 0 ] || exit "${statuses[1]}"
-upload
-printf '%s\n' "$started_at" > "$state_path"
+read -r current_inode current_size <<< "$(metadata)"
+if [ -z "$inode" ]; then offset=$current_size; inode=$current_inode; fi
+if [ "$inode" != "$current_inode" ] || [ "$offset" -gt "$current_size" ]; then offset=0; inode=$current_inode; fi
+capture
+read -r after_inode _ <<< "$(metadata)"
+if [ "$inode" != "$after_inode" ]; then offset=0; inode=$after_inode; capture; fi
+captured_bytes=$(stat -c '%s' "$payload")
+if [ "$captured_bytes" -gt 0 ] && [ "$(tail -c 1 "$payload" | wc -l)" -eq 0 ]; then
+  partial_bytes=$(tail -n 1 "$payload" | wc -c)
+  captured_bytes=$((captured_bytes - partial_bytes))
+  truncate -s "$captured_bytes" "$payload"
+fi
+next_offset=$((offset + captured_bytes))
+[ -s "$payload" ] || printf '\n' > "$payload"
+split -C "$max_report_bytes" --numeric-suffixes=0 --suffix-length=4 "$payload" "$batch_dir/part-"
+for part in "$batch_dir"/part-*; do upload "$part"; done
+printf '%s %s %s\n' "$started_at" "$next_offset" "$inode" > "$state_tmp"
+mv "$state_tmp" "$state_path"
 REPORTER
   chmod 700 "$reporter_path"
   printf '* * * * * root %s\n' "$reporter_path" > "$cron_path"
   chmod 600 "$cron_path"
+  if ! REPORTER_REQUIRE_RUN=1 "$reporter_path"; then
+    printf '%s\n' 'Reporter installed, but the initial report was not accepted. Cron will retry.' >&2
+    return 1
+  fi
 }
 main() {
   require_root
@@ -68,7 +84,8 @@ main() {
   read -r -p 'Report interval in minutes [30]: ' interval
   interval=${interval:-30}
   [[ "$api_url" =~ ^https?://[^[:space:]]+$ ]] && [[ "$node_token" =~ ^[A-Za-z0-9_-]{20,}$ ]] && [[ "$interval" =~ ^[1-9][0-9]{0,3}$ ]] || { printf '%s\n' 'Invalid configuration.' >&2; exit 1; }
+  api_url=${api_url%/}
   install_reporter
-  printf '%s\n' 'QPS detector reporter installed with bounded continuous-log uploads.'
+  printf '%s\n' 'QPS detector reporter installed and the initial report was accepted.'
 }
 main "$@"

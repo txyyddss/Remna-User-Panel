@@ -67,7 +67,7 @@ function rotate(id: string): void {
           :rules="state.rules.value"
           :whitelist="state.whitelist.value"
           :busy="state.busy.value"
-          @save-rule="value => state.execute(async () => { await abuseApi.saveRule(value) })"
+          @save-rule="state.saveRule"
           @delete-rule="(id, revision) => state.execute(async () => { await abuseApi.deleteRule(id, revision) })"
           @whitelist="(id, enabled) => state.execute(async () => { await abuseApi.setWhitelist(id, enabled) })"
         />

@@ -73,6 +73,14 @@ export function useAdminAbuse() {
     }
   }
 
+  async function saveRule(value: AbuseRule): Promise<boolean> {
+    return execute(async () => {
+      const saved = await abuseApi.saveRule(value)
+      const next = rules.value.filter(item => item.id !== saved.id)
+      rules.value = [...next, saved].sort((left, right) => left.name.localeCompare(right.name))
+    }, { reload: false })
+  }
+
   async function execute(work: () => Promise<void>, options: ExecuteOptions = {}): Promise<boolean> {
     if (busy.value) return false
     const { errorKey = 'adminAbuse.saveFailed', reload = true, successHaptic } = options
@@ -96,5 +104,5 @@ export function useAdminAbuse() {
   onMounted(() => { void load() })
   onScopeDispose(() => { latestLoad.dispose(); latestRecords.dispose() })
 
-  return { policy, nodes, rules, punishments, records, statistics, whitelist, loading, loadingMoreRecords, busy, loadError, operationError, nextRecordsCursor, load, loadMoreRecords, execute }
+  return { policy, nodes, rules, punishments, records, statistics, whitelist, loading, loadingMoreRecords, busy, loadError, operationError, nextRecordsCursor, load, loadMoreRecords, saveRule, execute }
 }
