@@ -56,8 +56,14 @@ func (s *Service) Punishments(ctx context.Context) ([]PunishmentRule, error) {
 }
 
 func (s *Service) SavePunishment(ctx context.Context, actor string, rule PunishmentRule, now time.Time) (PunishmentRule, error) {
-	if !rule.Action.Valid() || rule.IncidentThreshold < 1 || rule.IncidentThreshold > MaxGlobalQPS || rule.DurationMinutes < 1 || rule.DurationMinutes > MaxWarningCooldownMinutes || rule.Revision < 0 {
+	if !rule.Action.Valid() || rule.IncidentThreshold < 1 || rule.IncidentThreshold > MaxGlobalQPS || rule.Revision < 0 {
 		return PunishmentRule{}, ErrInvalid
+	}
+	if rule.Action.RequiresDuration() && (rule.DurationMinutes < 1 || rule.DurationMinutes > MaxWarningCooldownMinutes) {
+		return PunishmentRule{}, ErrInvalid
+	}
+	if !rule.Action.RequiresDuration() {
+		rule.DurationMinutes = 0
 	}
 	return s.repo.SavePunishmentRule(ctx, actor, rule, now.UTC())
 }

@@ -10,11 +10,12 @@ const emit = defineEmits<{ loadMore: [] }>()
 const { t } = useI18n()
 const columns = computed(() => [
   { accessorKey: 'occurredAt', header: t('adminAbuse.occurredAt') },
+  { accessorKey: 'username', header: t('adminAbuse.username') },
   { accessorKey: 'reason', header: t('adminAbuse.reason') },
   { accessorKey: 'qps', header: t('adminAbuse.qps') },
   { accessorKey: 'action', header: t('adminAbuse.action') },
 ])
-const tableRows = computed(() => props.records.map(record => ({ ...record, occurredAt: formatDateTime(record.occurredAt), qps: `${record.measuredQPS} / ${record.qpsLimit}`, action: t(`abuse.action.${record.action}`) })))
+const tableRows = computed(() => props.records.map(record => ({ ...record, username: record.username || t('adminAbuse.unknownUsername'), occurredAt: formatDateTime(record.occurredAt), qps: `${record.measuredQPS} / ${record.qpsLimit}`, action: t(`abuse.action.${record.action}`) })))
 </script>
 
 <template>
@@ -26,7 +27,8 @@ const tableRows = computed(() => props.records.map(record => ({ ...record, occur
     <InlineNotice v-if="!records.length" tone="info">{{ t('adminAbuse.emptyRecords') }}</InlineNotice>
     <UTable v-else class="records-table" :data="tableRows" :columns="columns" />
     <article v-for="record in records" :key="record.id" class="record">
-      <div><strong>{{ record.reason }}</strong><small>{{ formatDateTime(record.occurredAt) }}</small></div>
+      <div><strong>{{ record.username || t('adminAbuse.unknownUsername') }}</strong><small>{{ formatDateTime(record.occurredAt) }}</small></div>
+      <small>{{ record.reason }}</small>
       <span>{{ record.measuredQPS }} / {{ record.qpsLimit }}</span>
       <small>{{ t(`abuse.action.${record.action}`) }}</small>
     </article>

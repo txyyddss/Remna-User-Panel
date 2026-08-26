@@ -114,6 +114,7 @@ type ReportCounts struct {
 }
 type Record struct {
 	ID          string     `json:"id"`
+	Username    string     `json:"username,omitempty"`
 	Reason      string     `json:"reason"`
 	OccurredAt  time.Time  `json:"occurredAt"`
 	MeasuredQPS int        `json:"measuredQPS"`
@@ -121,6 +122,11 @@ type Record struct {
 	Action      Action     `json:"action"`
 	ExpiresAt   *time.Time `json:"expiresAt,omitempty"`
 }
+
+func (action Action) RequiresDuration() bool {
+	return action == ActionIPBan || action == ActionTemporaryBan
+}
+
 type RecordPage struct {
 	Items      []Record `json:"items"`
 	NextCursor string   `json:"nextCursor"`

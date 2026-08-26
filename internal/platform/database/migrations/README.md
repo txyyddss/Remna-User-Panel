@@ -68,3 +68,6 @@ file instead.
 - `038_durable_abuse_processing.sql` adds configurable streak duration, durable
   normalized event claims, 30-minute QPS rollups, replay-safe incident facts,
   and completion evidence for safely pruning detailed abuse records.
+- `039_abuse_record_retention_and_ip_bans.sql` preserves detector records for
+  the configured retention period, removes irrelevant punishment durations,
+  and persists asynchronous IP-ban scans across retries.

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/abuse"
@@ -117,7 +118,7 @@ func queueAbuseNotificationsTx(ctx context.Context, tx *sql.Tx, recordID, userID
 		}
 		changed, _ := result.RowsAffected()
 		if changed == 1 {
-			payload, _ := json.Marshal(map[string]any{"recordId": recordID, "telegramId": telegramID})
+			payload, _ := json.Marshal(map[string]string{"recordId": recordID, "telegramId": strconv.FormatInt(telegramID, 10)})
 			if err = insertOutboxTx(ctx, tx, "abuse_notification", string(payload), now, now); err != nil {
 				return err
 			}

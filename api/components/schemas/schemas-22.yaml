@@ -98,3 +98,25 @@ AbusePolicy:
     warningValidityDays: { type: integer, minimum: 1, maximum: 365 }
     warningCooldownMinutes: { type: integer, minimum: 0, maximum: 525600 }
     revision: { type: integer, minimum: 0 }
+
+AbuseRecord:
+  type: object
+  additionalProperties: false
+  required: [id, occurredAt, reason, measuredQPS, qpsLimit, action]
+  properties:
+    id: { $ref: '../../openapi.yaml#/components/schemas/ID' }
+    username: { type: string, maxLength: 120 }
+    occurredAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+    reason: { type: string, maxLength: 1024 }
+    measuredQPS: { type: integer, minimum: 0 }
+    qpsLimit: { type: integer, minimum: 1, maximum: 100000 }
+    action: { type: string, enum: [warning, ip_ban, subscription_revoke, temporary_ban] }
+    expiresAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+
+AbuseRecordPage:
+  type: object
+  additionalProperties: false
+  required: [items, nextCursor]
+  properties:
+    items: { type: array, items: { $ref: '#/AbuseRecord' } }
+    nextCursor: { type: string, maxLength: 512 }

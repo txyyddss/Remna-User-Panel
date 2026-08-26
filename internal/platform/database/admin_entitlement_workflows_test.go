@@ -36,6 +36,24 @@ func TestEditAdminEntitlementUsesUpdatedAtAndPreservesPricingFacts(t *testing.T)
 		updated.CoreGrossTXBMinor != purchase.CoreGrossTXBMinor || !updated.CreatedAt.Equal(purchase.CreatedAt) {
 		t.Fatalf("immutable purchase facts changed: before=%+v after=%+v", purchase, updated)
 	}
+	successor, err := store.CommitAutoRenewal(ctx, updated.ID, updated.ValidUntil)
+	if err != nil {
+		t.Fatalf("CommitAutoRenewal(): %v", err)
+	}
+	if want := updated.ValidUntil.Add(updated.ValidUntil.Sub(updated.ValidFrom)); !successor.ValidUntil.Equal(want) ||
+		successor.TrafficLimitBytes != input.TrafficLimitBytes || successor.ResetStrategy != input.ResetStrategy {
+		t.Fatalf("renewal did not preserve edited entitlement: %+v", successor)
+	}
+	if err := store.EnqueueDueEntitlementTransitions(ctx, updated.ValidUntil); err != nil {
+		t.Fatalf("EnqueueDueEntitlementTransitions(): %v", err)
+	}
+	var rolloverLimit int64
+	if err := store.DB().QueryRowContext(ctx, `SELECT traffic_limit_bytes FROM purchase_rollovers WHERE purchase_id=?`, updated.ID).Scan(&rolloverLimit); err != nil {
+		t.Fatal(err)
+	}
+	if rolloverLimit != input.TrafficLimitBytes {
+		t.Fatalf("rollover traffic limit = %d, want %d", rolloverLimit, input.TrafficLimitBytes)
+	}
 	var notificationKind string
 	var pending int
 	if err := store.DB().QueryRowContext(ctx, `SELECT kind,queued_at IS NULL FROM user_notification_events WHERE user_id=?`,

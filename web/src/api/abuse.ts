@@ -1,7 +1,7 @@
 import { request } from './http'
 import { createUuid } from '@/utils/browserCompatibility'
 
-export interface AbuseRecord { id: string; occurredAt: string; reason: string; measuredQPS: number; qpsLimit: number; action: string; expiresAt?: string }
+export interface AbuseRecord { id: string; username?: string; occurredAt: string; reason: string; measuredQPS: number; qpsLimit: number; action: string; expiresAt?: string }
 export interface AbusePage { items: AbuseRecord[]; nextCursor: string }
 export interface AbusePolicy { globalEnabled: boolean; globalLimit: number; streakSeconds: number; warningValidityDays: number; warningCooldownMinutes: number; revision: number }
 export interface AbuseRule { id: string; name: string; expression: string; qpsLimit: number; enabled: boolean; revision: number }

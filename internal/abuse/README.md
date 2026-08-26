@@ -1,6 +1,7 @@
 # Abuse detector
 
-- `types.go` defines the safe persisted and transport-facing detector values.
+- `types.go` defines the safe persisted and transport-facing detector values,
+  including the action-specific duration rule used by administration.
 - `parser.go` accepts only direct Xray domain connection accepts and fingerprints lines without retaining them.
 - `ingestion.go` bounds report parsing, resolves only reported remote identities, and persists normalized events without applying policy.
 - `service.go` owns service construction plus compiled RE2 and token helpers.

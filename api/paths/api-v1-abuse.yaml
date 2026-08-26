@@ -3,7 +3,7 @@ memberRecords:
     tags: [Member]
     operationId: getAbuseRecords
     parameters: [{ name: cursor, in: query, schema: { type: string, maxLength: 512 } }]
-    responses: { '200': { content: { application/json: { schema: { type: object } } } } }
+    responses: { '200': { content: { application/json: { schema: { $ref: '../components/schemas/schemas-22.yaml#/AbuseRecordPage' } } } } }
 agentReport:
   post:
     tags: [Agent]
@@ -37,6 +37,6 @@ punishment:
 statistics:
   get: { tags: [Admin], operationId: getAbuseStatistics, responses: { '200': { content: { application/json: { schema: { type: object } } } } } }
 records:
-  get: { tags: [Admin], operationId: getAdminAbuseRecords, parameters: [{ name: cursor, in: query, schema: { type: string, maxLength: 512 } }], responses: { '200': { content: { application/json: { schema: { type: object } } } } } }
+  get: { tags: [Admin], operationId: getAdminAbuseRecords, parameters: [{ name: cursor, in: query, schema: { type: string, maxLength: 512 } }], responses: { '200': { content: { application/json: { schema: { $ref: '../components/schemas/schemas-22.yaml#/AbuseRecordPage' } } } } } }
 record:
   delete: { tags: [Admin], operationId: deleteAbuseRecord, parameters: [{ $ref: '../components/parameters.yaml#/IdempotencyKey' }], responses: { '204': { description: Deleted } } }

@@ -40,7 +40,7 @@ func (s *Store) abuseRecordPage(ctx context.Context, where string, args []any, l
 		return abuse.RecordPage{}, abuse.ErrInvalid
 	}
 	args = append(args, limit+1)
-	query := `SELECT record.id,record.created_at,record.measured_qps,record.qps_limit,record.selected_action,record.expires_at,COALESCE(GROUP_CONCAT(reason.name,', '),'global') FROM abuse_records record LEFT JOIN abuse_record_reasons reason ON reason.record_id=record.id` + where + ` GROUP BY record.id ORDER BY record.created_at DESC,record.id DESC LIMIT ?`
+	query := `SELECT record.id,COALESCE(user.username,''),record.created_at,record.measured_qps,record.qps_limit,record.selected_action,record.expires_at,COALESCE(GROUP_CONCAT(reason.name,', '),'global') FROM abuse_records record JOIN users user ON user.id=record.user_id LEFT JOIN abuse_record_reasons reason ON reason.record_id=record.id` + where + ` GROUP BY record.id ORDER BY record.created_at DESC,record.id DESC LIMIT ?`
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return abuse.RecordPage{}, err
@@ -51,7 +51,7 @@ func (s *Store) abuseRecordPage(ctx context.Context, where string, args []any, l
 		var item abuse.Record
 		var created string
 		var expires sql.NullString
-		if err = rows.Scan(&item.ID, &created, &item.MeasuredQPS, &item.QPSLimit, &item.Action, &expires, &item.Reason); err != nil {
+		if err = rows.Scan(&item.ID, &item.Username, &created, &item.MeasuredQPS, &item.QPSLimit, &item.Action, &expires, &item.Reason); err != nil {
 			return page, err
 		}
 		item.OccurredAt, err = parseStamp(created)

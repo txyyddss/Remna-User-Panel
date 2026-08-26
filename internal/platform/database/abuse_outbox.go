@@ -98,6 +98,11 @@ func (s *Store) CompleteAbuseRestore(ctx context.Context, userID string, now tim
 }
 func (s *Store) PruneAbuseRecordsTx(ctx context.Context, tx *sql.Tx, now time.Time, counts map[string]int64) error {
 	var err error
+	var retentionDays int
+	if err = tx.QueryRowContext(ctx, `SELECT warning_validity_days FROM abuse_policy WHERE id=1`).Scan(&retentionDays); err != nil {
+		return err
+	}
+	retentionCutoff := stamp(now.AddDate(0, 0, -retentionDays))
 	if counts["abuse_legacy_samples"], err = deleteCount(ctx, tx, `DELETE FROM abuse_qps_samples WHERE EXISTS (SELECT 1 FROM abuse_detector_state state WHERE state.user_id=abuse_qps_samples.user_id AND state.reason_name=abuse_qps_samples.reason_name AND state.last_bucket_at>=abuse_qps_samples.bucket_at)`); err != nil {
 		return err
 	}
@@ -110,10 +115,10 @@ func (s *Store) PruneAbuseRecordsTx(ctx context.Context, tx *sql.Tx, now time.Ti
 	if counts["abuse_detector_state"], err = deleteCount(ctx, tx, `DELETE FROM abuse_detector_state WHERE last_bucket_at<?`, stamp(now.Add(-24*time.Hour))); err != nil {
 		return err
 	}
-	if counts["abuse_records"], err = deleteCount(ctx, tx, `DELETE FROM abuse_records WHERE punishment_completed_at IS NOT NULL AND NOT EXISTS (SELECT 1 FROM abuse_notification_deliveries delivery WHERE delivery.record_id=abuse_records.id AND delivery.delivered_at IS NULL) AND NOT EXISTS (SELECT 1 FROM abuse_temp_bans ban WHERE ban.record_id=abuse_records.id AND ban.restored_at IS NULL)`); err != nil {
+	if counts["abuse_records"], err = deleteCount(ctx, tx, `DELETE FROM abuse_records WHERE created_at<? AND punishment_completed_at IS NOT NULL AND NOT EXISTS (SELECT 1 FROM abuse_notification_deliveries delivery WHERE delivery.record_id=abuse_records.id AND delivery.delivered_at IS NULL) AND NOT EXISTS (SELECT 1 FROM abuse_temp_bans ban WHERE ban.record_id=abuse_records.id AND ban.restored_at IS NULL)`, retentionCutoff); err != nil {
 		return err
 	}
-	if counts["abuse_incident_facts"], err = deleteCount(ctx, tx, `DELETE FROM abuse_incident_facts WHERE created_at<?`, stamp(now.Add(-365*24*time.Hour))); err != nil {
+	if counts["abuse_incident_facts"], err = deleteCount(ctx, tx, `DELETE FROM abuse_incident_facts WHERE created_at<?`, retentionCutoff); err != nil {
 		return err
 	}
 	return nil

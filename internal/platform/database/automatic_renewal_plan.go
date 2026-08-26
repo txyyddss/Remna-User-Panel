@@ -24,15 +24,18 @@ const (
 
 // AutoRenewalPlan is the local, current-price source for one next-cycle quote.
 type AutoRenewalPlan struct {
-	Purchase         model.Purchase
-	Combo            model.Combo
-	Addons           []model.SquadProduct
-	GrossMinor       int64
-	DiscountMinor    int64
-	NetMinor         int64
-	ScheduledAt      time.Time
-	NextCycleEndsAt  time.Time
-	IneligibleReason string
+	Purchase              model.Purchase
+	Combo                 model.Combo
+	Addons                []model.SquadProduct
+	GrossMinor            int64
+	DiscountMinor         int64
+	NetMinor              int64
+	ScheduledAt           time.Time
+	NextCycleEndsAt       time.Time
+	IneligibleReason      string
+	trafficLimitOverride  *int64
+	resetStrategyOverride *string
+	squadUUIDsOverride    *string
 }
 
 // AutoRenewalPlan returns current local pricing and availability for an owned term.
@@ -56,6 +59,24 @@ func automaticRenewalPlanTx(ctx context.Context, tx *sql.Tx, userID, purchaseID 
 		plan.NextCycleEndsAt = plan.ScheduledAt.Add(duration)
 	} else {
 		plan.NextCycleEndsAt = plan.ScheduledAt
+	}
+	var trafficLimit sql.NullInt64
+	var resetStrategy, squadUUIDs sql.NullString
+	if err = tx.QueryRowContext(ctx, `SELECT entitlement_traffic_limit_bytes,entitlement_reset_strategy,entitlement_squad_uuids FROM purchases WHERE id=?`, purchaseID).Scan(
+		&trafficLimit, &resetStrategy, &squadUUIDs); err != nil {
+		return AutoRenewalPlan{}, fmt.Errorf("load renewal entitlement overrides: %w", err)
+	}
+	if trafficLimit.Valid {
+		value := trafficLimit.Int64
+		plan.trafficLimitOverride = &value
+	}
+	if resetStrategy.Valid {
+		value := resetStrategy.String
+		plan.resetStrategyOverride = &value
+	}
+	if squadUUIDs.Valid {
+		value := squadUUIDs.String
+		plan.squadUUIDsOverride = &value
 	}
 	if purchase.Status != "active" && purchase.Status != "activating" {
 		if purchase.Status != "expired" {
@@ -87,7 +108,6 @@ func automaticRenewalPlanTx(ctx context.Context, tx *sql.Tx, userID, purchaseID 
 		return AutoRenewalPlan{}, err
 	}
 	plan.Combo = combo
-	plan.NextCycleEndsAt = plan.ScheduledAt.AddDate(0, 0, combo.ValidityDays)
 	plan.GrossMinor, plan.DiscountMinor, plan.NetMinor = combo.PriceTXBMinor, 0, combo.PriceTXBMinor
 	addons, err := automaticRenewalAddonsTx(ctx, tx, purchase.ID)
 	if errors.Is(err, ErrNotFound) {

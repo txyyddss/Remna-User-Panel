@@ -144,8 +144,14 @@ func (s *Store) PunishmentRules(ctx context.Context) ([]abuse.PunishmentRule, er
 	return out, rows.Err()
 }
 func (s *Store) SavePunishmentRule(ctx context.Context, _ string, input abuse.PunishmentRule, now time.Time) (abuse.PunishmentRule, error) {
-	if !input.Action.Valid() || input.IncidentThreshold < 1 || input.IncidentThreshold > abuse.MaxGlobalQPS || input.DurationMinutes < 1 || input.DurationMinutes > abuse.MaxWarningCooldownMinutes || input.Revision < 0 {
+	if !input.Action.Valid() || input.IncidentThreshold < 1 || input.IncidentThreshold > abuse.MaxGlobalQPS || input.Revision < 0 {
 		return abuse.PunishmentRule{}, abuse.ErrInvalid
+	}
+	if input.Action.RequiresDuration() && (input.DurationMinutes < 1 || input.DurationMinutes > abuse.MaxWarningCooldownMinutes) {
+		return abuse.PunishmentRule{}, abuse.ErrInvalid
+	}
+	if !input.Action.RequiresDuration() {
+		input.DurationMinutes = 0
 	}
 	result, err := s.db.ExecContext(ctx, `UPDATE abuse_punishment_rules SET enabled=?,incident_threshold=?,duration_minutes=?,all_nodes=?,revision=revision+1,updated_at=? WHERE action=? AND revision=?`, boolInt(input.Enabled), input.IncidentThreshold, input.DurationMinutes, boolInt(input.AllNodes), stamp(now), input.Action, input.Revision)
 	if err != nil {

@@ -56,10 +56,12 @@ func (s *Store) CommitAutoRenewal(ctx context.Context, purchaseID string, now ti
 		couponGrantID = *plan.Purchase.CouponGrantID
 	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO purchases(id,user_id,combo_id,charged_txb_minor,valid_from,valid_until,status,coupon_grant_id,
-		gross_price_txb_minor,core_gross_txb_minor,coupon_discount_txb_minor,auto_renew_enabled,recurring_discount_attached,auto_renew_source_purchase_id,request_fingerprint,created_at,updated_at)
-		VALUES(?,?,?,?,?,?,'queued',?,?,?,?,?,?,?,?,?,?)`, successorID, userID, plan.Combo.ID, plan.NetMinor,
+		gross_price_txb_minor,core_gross_txb_minor,coupon_discount_txb_minor,auto_renew_enabled,recurring_discount_attached,auto_renew_source_purchase_id,request_fingerprint,
+		entitlement_traffic_limit_bytes,entitlement_reset_strategy,entitlement_squad_uuids,created_at,updated_at)
+		VALUES(?,?,?,?,?,?,'queued',?,?,?,?,?,?,?,?,?,?,?,?,?)`, successorID, userID, plan.Combo.ID, plan.NetMinor,
 		stamp(plan.ScheduledAt), stamp(plan.NextCycleEndsAt), couponGrantID, plan.GrossMinor, plan.Combo.PriceTXBMinor, plan.DiscountMinor, 1,
-		boolInt(plan.Purchase.RecurringDiscountAttached), purchaseID, "automatic-renewal:"+purchaseID, stamp(now), stamp(now))
+		boolInt(plan.Purchase.RecurringDiscountAttached), purchaseID, "automatic-renewal:"+purchaseID, plan.trafficLimitOverride, plan.resetStrategyOverride,
+		plan.squadUUIDsOverride, stamp(now), stamp(now))
 	if err != nil {
 		if isUniqueConstraint(err) {
 			if rollbackErr := tx.Rollback(); rollbackErr != nil {

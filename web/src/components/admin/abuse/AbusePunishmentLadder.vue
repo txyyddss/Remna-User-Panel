@@ -13,9 +13,9 @@ watch(() => props.punishments, value => { ladder.value = value.map(item => ({ ..
 
 function validate(value: Partial<AbusePunishment>): FormError[] {
   const errors: FormError[] = []
-  const { incidentThreshold = 0, durationMinutes = 0 } = value
+  const { action = '', incidentThreshold = 0, durationMinutes = 0 } = value
   if (!Number.isInteger(incidentThreshold) || incidentThreshold < 1 || incidentThreshold > 100000) errors.push({ name: 'incidentThreshold', message: t('adminAbuse.invalidThreshold') })
-  if (!Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 525600) errors.push({ name: 'durationMinutes', message: t('adminAbuse.invalidDuration') })
+  if ((action === 'ip_ban' || action === 'temporary_ban') && (!Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 525600)) errors.push({ name: 'durationMinutes', message: t('adminAbuse.invalidDuration') })
   return errors
 }
 </script>
@@ -41,8 +41,11 @@ function validate(value: Partial<AbusePunishment>): FormError[] {
       <UFormField name="incidentThreshold" :label="t('adminAbuse.incidentThreshold')">
         <UInputNumber v-model="item.incidentThreshold" :min="1" :max="100000" :step="1" :disable-wheel-change="true" />
       </UFormField>
-      <UFormField name="durationMinutes" :label="t('adminAbuse.duration')">
+      <UFormField v-if="item.action === 'ip_ban' || item.action === 'temporary_ban'" name="durationMinutes" :label="t('adminAbuse.duration')">
         <UInputNumber v-model="item.durationMinutes" :min="1" :max="525600" :step="1" :disable-wheel-change="true" />
+      </UFormField>
+      <UFormField v-if="item.action === 'ip_ban'" name="allNodes" :label="t('adminAbuse.allNodes')">
+        <USwitch v-model="item.allNodes" />
       </UFormField>
       <UButton type="submit" size="sm" :loading="busy" :label="t('common.save')" />
     </UForm>

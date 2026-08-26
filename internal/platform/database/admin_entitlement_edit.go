@@ -73,6 +73,9 @@ func (s *Store) EditAdminEntitlement(ctx context.Context, input AdminEntitlement
 	if err := reconcilePurchaseContinuityTx(ctx, tx, input.PurchaseID, input.Status, input.ValidFrom, now); err != nil {
 		return model.Purchase{}, err
 	}
+	if err := refreshPendingRolloverTx(ctx, tx, input.PurchaseID, input.TrafficLimitBytes, input.ComboID, now); err != nil {
+		return model.Purchase{}, err
+	}
 	if err := insertEntitlementAudit(ctx, tx, input.ActorUserID, "entitlement.edit", input.PurchaseID,
 		input.Reason, operation.Receipt.ID, entitlementSnapshot(before), map[string]any{"comboId": input.ComboID,
 			"validFrom": input.ValidFrom, "validUntil": input.ValidUntil, "status": input.Status,
@@ -92,6 +95,11 @@ func (s *Store) EditAdminEntitlement(ctx context.Context, input AdminEntitlement
 		return model.Purchase{}, err
 	}
 	return s.PurchaseByID(ctx, input.PurchaseID)
+}
+
+func refreshPendingRolloverTx(ctx context.Context, tx *sql.Tx, purchaseID string, trafficLimit int64, comboID string, now time.Time) error {
+	_, err := tx.ExecContext(ctx, `UPDATE purchase_rollovers SET traffic_limit_bytes=?,minimum_remaining_bps=(SELECT rollover_min_remaining_bps FROM combos WHERE id=?),updated_at=? WHERE purchase_id=? AND status='pending'`, trafficLimit, comboID, stamp(now), purchaseID)
+	return err
 }
 
 func entitlementSnapshot(purchase model.Purchase) map[string]any {

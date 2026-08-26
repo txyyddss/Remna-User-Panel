@@ -45,7 +45,7 @@ func handleAbusePunishment(ctx context.Context, job model.OutboxJob, store *data
 	case "temporary_ban":
 		punishmentErr = remna.AbuseSetStatus(ctx, item.RemoteUserID, remnawave.UserStatusDisabled)
 	case "ip_ban":
-		punishmentErr = remna.AbuseIPBan(ctx, item.RemoteUserID, item.Nodes, item.AllNodes, item.DurationMinutes*60)
+		punishmentErr = handleAbuseIPBan(ctx, id, item, store, remna)
 	default:
 		return fmt.Errorf("unsupported abuse action %q", item.Action)
 	}
