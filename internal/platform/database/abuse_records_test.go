@@ -42,7 +42,8 @@ func TestPruneAbuseRecordRequiresPunishmentDeliveryAndRestore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if created, createErr := store.CreateIncident(ctx, user.ID, now, 10, 10, []string{"global"}, nil, policy, now); createErr != nil || !created {
+	createdAt := now.Add(-8 * 24 * time.Hour)
+	if created, createErr := store.CreateIncident(ctx, user.ID, createdAt, 10, 10, []string{"global"}, nil, policy, createdAt); createErr != nil || !created {
 		t.Fatalf("CreateIncident() = (%t,%v)", created, createErr)
 	}
 	var recordID string
@@ -65,8 +66,8 @@ func TestPruneAbuseRecordRequiresPunishmentDeliveryAndRestore(t *testing.T) {
 	pruneAbuseDetails(t, store, now.Add(time.Hour))
 	assertAbuseRecordCount(t, store, recordID, 0)
 	var facts int
-	if err = store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM abuse_incident_facts WHERE incident_id=?`, recordID).Scan(&facts); err != nil || facts != 1 {
-		t.Fatalf("retained facts = %d, error %v", facts, err)
+	if err = store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM abuse_incident_facts WHERE incident_id=?`, recordID).Scan(&facts); err != nil || facts != 0 {
+		t.Fatalf("remaining facts = %d, error %v", facts, err)
 	}
 }
 
