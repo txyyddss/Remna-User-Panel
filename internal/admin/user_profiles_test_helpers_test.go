@@ -4,6 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/txyyddss/Remna-User-Panel/internal/abuse"
+	"github.com/txyyddss/Remna-User-Panel/internal/affiliates"
+	"github.com/txyyddss/Remna-User-Panel/internal/coupons"
 	"github.com/txyyddss/Remna-User-Panel/internal/emby"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
@@ -46,6 +49,18 @@ func (r *userWorkflowRepositoryStub) ListRefundsForUser(context.Context, string,
 
 func (r *userWorkflowRepositoryStub) ListAdminOperationsForUser(context.Context, string, int) ([]model.OperationReceipt, error) {
 	return append([]model.OperationReceipt(nil), r.operations...), nil
+}
+
+func (*userWorkflowRepositoryStub) ListCouponGrants(context.Context, string, time.Time) ([]coupons.Grant, error) {
+	return []coupons.Grant{}, nil
+}
+
+func (*userWorkflowRepositoryStub) MemberRecords(context.Context, string, string, int) (abuse.RecordPage, error) {
+	return abuse.RecordPage{Items: []abuse.Record{}}, nil
+}
+
+func (*userWorkflowRepositoryStub) AffiliateReferrals(context.Context, string, int) (affiliates.ReferralPage, error) {
+	return affiliates.ReferralPage{Items: []affiliates.Referral{}}, nil
 }
 
 func (r *userWorkflowRepositoryStub) ComboByID(context.Context, string, bool) (model.Combo, error) {
