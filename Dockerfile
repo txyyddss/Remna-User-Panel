@@ -14,7 +14,7 @@ RUN mkdir -p /src/internal/webui/dist \
     && npm run generate:api \
     && npm run build
 
-FROM golang:1.27rc3-alpine AS go-build
+FROM golang:1.27-alpine AS go-build
 ARG TARGETOS=linux
 ARG TARGETARCH
 WORKDIR /src
