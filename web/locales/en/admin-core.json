@@ -28,8 +28,8 @@
   },
   "adminUsers": {
     "title": "Users",
-    "copy": "Search accounts and append audited balance entries.",
-    "search": "Search users",
+    "copy": "Find accounts, inspect operational history, and append audited balance entries.",
+    "search": "Search name, UUID, or Remnawave ID",
     "loadMore": "Load more users",
     "meta": "{identity} · joined {date}",
     "synchronized": "Synchronized",
@@ -42,7 +42,7 @@
     "deduct": "Deduct TXB",
     "adjusted": "Balance adjusted for {name}.",
     "none": "No matching users",
-    "noneHint": "Try a Telegram name, username, or numeric ID."
+    "noneHint": "Try a Telegram name, username, numeric ID, account UUID, or Remnawave user ID."
   },
   "adminEmby": {
     "title": "Emby accounts",

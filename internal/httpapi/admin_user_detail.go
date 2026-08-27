@@ -1,8 +1,11 @@
 package httpapi
 
 import (
+	"github.com/txyyddss/Remna-User-Panel/internal/abuse"
 	"github.com/txyyddss/Remna-User-Panel/internal/admin"
+	"github.com/txyyddss/Remna-User-Panel/internal/affiliates"
 	"github.com/txyyddss/Remna-User-Panel/internal/connections"
+	"github.com/txyyddss/Remna-User-Panel/internal/coupons"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 )
 
@@ -23,16 +26,20 @@ type adminSynchronizationResponse struct {
 }
 
 type adminUserDetailResponse struct {
-	User            userResponse                 `json:"user"`
-	Balance         model.Money                  `json:"balance"`
-	Synchronization adminSynchronizationResponse `json:"synchronization"`
-	ActiveCombo     *adminEntitlementResponse    `json:"activeCombo"`
-	Entitlements    []adminEntitlementResponse   `json:"entitlements"`
-	EmbyAccounts    []embyAccountResponse        `json:"embyAccounts"`
-	Payments        []adminPaymentResponse       `json:"payments"`
-	Refunds         []model.Refund               `json:"refunds"`
-	Operations      []model.OperationReceipt     `json:"operations"`
-	IPBlocks        []connections.IPBlock        `json:"ipBlocks"`
+	User                    userResponse                 `json:"user"`
+	Balance                 model.Money                  `json:"balance"`
+	Synchronization         adminSynchronizationResponse `json:"synchronization"`
+	ActiveCombo             *adminEntitlementResponse    `json:"activeCombo"`
+	Entitlements            []adminEntitlementResponse   `json:"entitlements"`
+	EmbyAccounts            []embyAccountResponse        `json:"embyAccounts"`
+	Payments                []adminPaymentResponse       `json:"payments"`
+	Refunds                 []model.Refund               `json:"refunds"`
+	Operations              []model.OperationReceipt     `json:"operations"`
+	IPBlocks                []connections.IPBlock        `json:"ipBlocks"`
+	CouponWallet            []coupons.Grant              `json:"couponWallet"`
+	AbuseHistory            []abuse.Record               `json:"abuseHistory"`
+	AffiliateHistory        affiliates.ReferralPage      `json:"affiliateHistory"`
+	AutoTrafficResetEnabled bool                         `json:"autoTrafficResetEnabled"`
 }
 
 func mapAdminUserDetail(detail admin.UserDetail) adminUserDetailResponse {
@@ -42,7 +49,9 @@ func mapAdminUserDetail(detail admin.UserDetail) adminUserDetailResponse {
 		Entitlements: make([]adminEntitlementResponse, 0, len(detail.Entitlements)),
 		EmbyAccounts: make([]embyAccountResponse, 0, len(detail.EmbyAccounts)),
 		Payments:     make([]adminPaymentResponse, 0, len(detail.Payments)), Refunds: detail.Refunds,
-		Operations: detail.Operations, IPBlocks: []connections.IPBlock{}}
+		Operations: detail.Operations, IPBlocks: []connections.IPBlock{}, CouponWallet: detail.CouponWallet,
+		AbuseHistory: detail.AbuseHistory, AffiliateHistory: detail.AffiliateHistory,
+		AutoTrafficResetEnabled: detail.User.AutoTrafficResetEnabled}
 	for _, item := range detail.Entitlements {
 		response.Entitlements = append(response.Entitlements, adminEntitlementResponse{Purchase: item, UserID: item.UserID})
 	}

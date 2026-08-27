@@ -12,6 +12,7 @@ import AdminComboReplacementDialog from './AdminComboReplacementDialog.vue'
 import AdminEntitlementEditor from './AdminEntitlementEditor.vue'
 import AdminOperationResolutionDialog from './AdminOperationResolutionDialog.vue'
 import AdminUserEntitlements from './AdminUserEntitlements.vue'
+import AdminUserAccountContext from './AdminUserAccountContext.vue'
 import AdminUserHistory from './AdminUserHistory.vue'
 import AdminUserIPBlocks from './AdminUserIPBlocks.vue'
 import AdminUserOverview from './AdminUserOverview.vue'
@@ -161,6 +162,7 @@ watch(() => unblockOperation.receipt.value, (receipt) => {
     </div>
     <template v-else-if="profile.detail.value">
       <AdminUserOverview :detail="profile.detail.value" />
+      <AdminUserAccountContext :detail="profile.detail.value" />
       <AdminUserEntitlements :items="profile.detail.value.entitlements" :busy="busy" :can-replace="Boolean(profile.detail.value.activeCombo)" @edit="openEditor" @refund="openRefund" @replace="openReplacement" />
       <AdminUserIPBlocks :items="profile.detail.value.ipBlocks" :busy="busy" @unblock="openIPUnblock" />
       <AdminUserHistory :detail="profile.detail.value" :busy="busy" @resolve="resolving = $event" @refund-payment="openPaymentRefund" @credit-payment="openPaymentCredit" />

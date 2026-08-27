@@ -6,6 +6,9 @@ import (
 	"sort"
 	"time"
 
+	"github.com/txyyddss/Remna-User-Panel/internal/abuse"
+	"github.com/txyyddss/Remna-User-Panel/internal/affiliates"
+	"github.com/txyyddss/Remna-User-Panel/internal/coupons"
 	"github.com/txyyddss/Remna-User-Panel/internal/emby"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
@@ -20,6 +23,9 @@ type UserWorkflowRepository interface {
 	ListPaymentOrders(context.Context, string, int) ([]model.PaymentOrder, error)
 	ListRefundsForUser(context.Context, string, int) ([]model.Refund, error)
 	ListAdminOperationsForUser(context.Context, string, int) ([]model.OperationReceipt, error)
+	ListCouponGrants(context.Context, string, time.Time) ([]coupons.Grant, error)
+	MemberRecords(context.Context, string, string, int) (abuse.RecordPage, error)
+	AffiliateReferrals(context.Context, string, int) (affiliates.ReferralPage, error)
 	ComboByID(context.Context, string, bool) (model.Combo, error)
 	EditAdminEntitlement(context.Context, database.AdminEntitlementEditInput, time.Time) (model.Purchase, error)
 	RefundAdminEntitlement(context.Context, database.AdminEntitlementRefundInput, time.Time) (model.OperationReceipt, error)
@@ -38,15 +44,18 @@ type UserSynchronization struct {
 
 // UserDetail is one non-duplicated aggregate administrator projection.
 type UserDetail struct {
-	User            model.User
-	Balance         model.Money
-	Synchronization UserSynchronization
-	ActiveCombo     *model.Purchase
-	Entitlements    []model.Purchase
-	EmbyAccounts    []emby.Account
-	Payments        []model.PaymentOrder
-	Refunds         []model.Refund
-	Operations      []model.OperationReceipt
+	User             model.User
+	Balance          model.Money
+	Synchronization  UserSynchronization
+	ActiveCombo      *model.Purchase
+	Entitlements     []model.Purchase
+	EmbyAccounts     []emby.Account
+	Payments         []model.PaymentOrder
+	Refunds          []model.Refund
+	Operations       []model.OperationReceipt
+	CouponWallet     []coupons.Grant
+	AbuseHistory     []abuse.Record
+	AffiliateHistory affiliates.ReferralPage
 }
 
 // UserWorkflows owns aggregate reads and durable administrator commands.
@@ -67,7 +76,7 @@ func (s *UserWorkflows) UserDetail(ctx context.Context, userID string) (UserDeta
 	if err != nil {
 		return UserDetail{}, err
 	}
-	detail := UserDetail{User: user, Synchronization: synchronizationFor(user), EmbyAccounts: []emby.Account{}}
+	detail := UserDetail{User: user, Synchronization: synchronizationFor(user), EmbyAccounts: []emby.Account{}, CouponWallet: []coupons.Grant{}, AbuseHistory: []abuse.Record{}, AffiliateHistory: affiliates.ReferralPage{Items: []affiliates.Referral{}}}
 	if detail.Balance, err = s.repository.Balance(ctx, userID); err != nil {
 		return UserDetail{}, err
 	}
@@ -99,6 +108,17 @@ func (s *UserWorkflows) UserDetail(ctx context.Context, userID string) (UserDeta
 		return UserDetail{}, err
 	}
 	if detail.Operations, err = s.repository.ListAdminOperationsForUser(ctx, userID, 200); err != nil {
+		return UserDetail{}, err
+	}
+	if detail.CouponWallet, err = s.repository.ListCouponGrants(ctx, userID, now); err != nil {
+		return UserDetail{}, err
+	}
+	if page, recordsErr := s.repository.MemberRecords(ctx, userID, "", 100); recordsErr != nil {
+		return UserDetail{}, recordsErr
+	} else {
+		detail.AbuseHistory = page.Items
+	}
+	if detail.AffiliateHistory, err = s.repository.AffiliateReferrals(ctx, userID, 1); err != nil {
 		return UserDetail{}, err
 	}
 	return detail, nil

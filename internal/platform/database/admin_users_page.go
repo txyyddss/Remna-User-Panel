@@ -32,8 +32,10 @@ func (s *Store) ListAdminUsersPage(ctx context.Context, cursor, search string, l
 			OR users.telegram_last_name LIKE ? ESCAPE '\' COLLATE NOCASE
 			OR users.telegram_username LIKE ? ESCAPE '\' COLLATE NOCASE
 			OR COALESCE(users.username,'') LIKE ? ESCAPE '\' COLLATE NOCASE
-			OR CAST(users.telegram_id AS TEXT) LIKE ? ESCAPE '\')`
-		args = append(args, pattern, pattern, pattern, pattern, pattern)
+			OR CAST(users.telegram_id AS TEXT) LIKE ? ESCAPE '\'
+			OR users.id LIKE ? ESCAPE '\' COLLATE NOCASE
+			OR COALESCE(users.remna_user_id,'') LIKE ? ESCAPE '\' COLLATE NOCASE)`
+		args = append(args, pattern, pattern, pattern, pattern, pattern, pattern, pattern)
 	}
 	if cursor != "" {
 		decoded, err := decodeTimestampCursor(cursor, pageFilterFingerprint(search))

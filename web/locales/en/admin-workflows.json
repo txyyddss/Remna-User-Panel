@@ -87,7 +87,18 @@
     "ipBlockExpiry": "Expires {date}",
     "ipBlockStatus": { "blocking": "Blocking", "active": "Active", "unblocking": "Unblocking", "pending_review": "Pending review" },
     "unblockIP": "Unblock IP",
-    "noIPBlocks": "This member has no active IP blocks."
+    "noIPBlocks": "This member has no active IP blocks.",
+    "accountContext": "Account context",
+    "accountContextHint": "Active coupons, abuse records, and referral outcomes retained for this member.",
+    "couponWallet": "Coupon wallet",
+    "activeCoupon": "Active",
+    "noCoupons": "No active coupons",
+    "abuseHistory": "Abuse history",
+    "noAbuseHistory": "No abuse records",
+    "abuseAction": { "warning": "Warning", "ip_ban": "IP ban", "subscription_revoke": "Revoked", "temporary_ban": "Temporary ban" },
+    "affiliateHistory": "Affiliate history",
+    "noAffiliateHistory": "No referral history",
+    "affiliateStatus": { "pending": "Pending", "successful": "Successful" }
   },
   "adminBulkExtension": {
     "open": "Bulk extension",

@@ -87,7 +87,18 @@
     "ipBlockExpiry": "到期时间：{date}",
     "ipBlockStatus": { "blocking": "正在封禁", "active": "生效中", "unblocking": "正在解除", "pending_review": "等待审核" },
     "unblockIP": "解除 IP 封禁",
-    "noIPBlocks": "此成员没有活跃 IP 封禁。"
+    "noIPBlocks": "此成员没有活跃 IP 封禁。",
+    "accountContext": "账户上下文",
+    "accountContextHint": "该用户的有效优惠券、滥用记录和推广结果。",
+    "couponWallet": "优惠券钱包",
+    "activeCoupon": "有效",
+    "noCoupons": "没有有效优惠券",
+    "abuseHistory": "滥用历史",
+    "noAbuseHistory": "没有滥用记录",
+    "abuseAction": { "warning": "警告", "ip_ban": "IP 封禁", "subscription_revoke": "已撤销", "temporary_ban": "临时封禁" },
+    "affiliateHistory": "推广历史",
+    "noAffiliateHistory": "没有推广历史",
+    "affiliateStatus": { "pending": "待结算", "successful": "已结算" }
   },
   "adminBulkExtension": {
     "open": "批量延长",
