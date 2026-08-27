@@ -30,8 +30,6 @@ const resetLabel = computed(() => t(`home.reset.${props.active.resetStrategy}`))
               variant="solid"
               size="sm"
               icon="i-ph-plus"
-              :label="$t('home.squadAddition.open')"
-              :ui="{ label: 'whitespace-nowrap font-extrabold' }"
               :aria-label="$t('home.squadAddition.open')"
               data-haptic="open"
               @click.stop="emit('addSquad')"
@@ -80,8 +78,6 @@ const resetLabel = computed(() => t(`home.reset.${props.active.resetStrategy}`))
   min-height: 2.75rem;
   padding-inline: 0.75rem;
   pointer-events: auto;
-  font-weight: 800;
-  letter-spacing: 0.01em;
   transition: background-color 180ms var(--ease-out), transform 120ms var(--ease-out);
 }
 .home-ride__add-squad:active { transform: translateY(1px); }
