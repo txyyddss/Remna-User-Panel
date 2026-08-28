@@ -103,7 +103,10 @@ func (s *Store) PruneAbuseRecordsTx(ctx context.Context, tx *sql.Tx, now time.Ti
 		return err
 	}
 	retentionCutoff := stamp(now.AddDate(0, 0, -retentionDays))
-	if counts["abuse_legacy_samples"], err = deleteCount(ctx, tx, `DELETE FROM abuse_qps_samples WHERE EXISTS (SELECT 1 FROM abuse_detector_state state WHERE state.user_id=abuse_qps_samples.user_id AND state.reason_name=abuse_qps_samples.reason_name AND state.last_bucket_at>=abuse_qps_samples.bucket_at)`); err != nil {
+	if counts["abuse_pending_events"], err = deleteCount(ctx, tx, `DELETE FROM abuse_pending_log_events WHERE event_second<? AND claim_token IS NULL`, retentionCutoff); err != nil {
+		return err
+	}
+	if counts["abuse_legacy_samples"], err = deleteCount(ctx, tx, `DELETE FROM abuse_qps_samples WHERE bucket_at<? OR EXISTS (SELECT 1 FROM abuse_detector_state state WHERE state.user_id=abuse_qps_samples.user_id AND state.reason_name=abuse_qps_samples.reason_name AND state.last_bucket_at>=abuse_qps_samples.bucket_at)`, retentionCutoff); err != nil {
 		return err
 	}
 	if counts["abuse_fingerprints"], err = deleteCount(ctx, tx, `DELETE FROM abuse_log_fingerprints WHERE observed_at<?`, stamp(now.Add(-24*time.Hour))); err != nil {
@@ -115,10 +118,10 @@ func (s *Store) PruneAbuseRecordsTx(ctx context.Context, tx *sql.Tx, now time.Ti
 	if counts["abuse_detector_state"], err = deleteCount(ctx, tx, `DELETE FROM abuse_detector_state WHERE last_bucket_at<?`, stamp(now.Add(-24*time.Hour))); err != nil {
 		return err
 	}
-	if counts["abuse_records"], err = deleteCount(ctx, tx, `DELETE FROM abuse_records WHERE created_at<? AND punishment_completed_at IS NOT NULL AND NOT EXISTS (SELECT 1 FROM abuse_notification_deliveries delivery WHERE delivery.record_id=abuse_records.id AND delivery.delivered_at IS NULL) AND NOT EXISTS (SELECT 1 FROM abuse_temp_bans ban WHERE ban.record_id=abuse_records.id AND ban.restored_at IS NULL)`, retentionCutoff); err != nil {
+	if counts["abuse_records"], err = deleteCount(ctx, tx, `DELETE FROM abuse_records WHERE incident_bucket_at<? AND punishment_completed_at IS NOT NULL AND NOT EXISTS (SELECT 1 FROM abuse_notification_deliveries delivery WHERE delivery.record_id=abuse_records.id AND delivery.delivered_at IS NULL) AND NOT EXISTS (SELECT 1 FROM abuse_temp_bans ban WHERE ban.record_id=abuse_records.id AND ban.restored_at IS NULL)`, retentionCutoff); err != nil {
 		return err
 	}
-	if counts["abuse_incident_facts"], err = deleteCount(ctx, tx, `DELETE FROM abuse_incident_facts WHERE created_at<?`, retentionCutoff); err != nil {
+	if counts["abuse_incident_facts"], err = deleteCount(ctx, tx, `DELETE FROM abuse_incident_facts WHERE incident_bucket_at<?`, retentionCutoff); err != nil {
 		return err
 	}
 	return nil

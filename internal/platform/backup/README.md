@@ -27,8 +27,10 @@ Streamed upload ownership is split across focused files:
 - `restore_startup_part2.go` contains restore marker startup transitions.
 - `service_part2.go` contains backup publication and retention helpers.
 
-- `service.go` — service construction, backup deletion/containment, verified
-  online backup creation, and retention cleanup.
+- `service.go` — service construction, backup deletion/containment, and verified
+  online backup creation.
+- `retention.go` — seven-day managed-file and backup-record retention, excluding
+  backups with an active restore.
 - `download.go` — safe opening of completed backup files for HTTP download.
 - `restore.go` — restore contracts, confirmation, staging, database-path lookup,
   and pending-marker checks.

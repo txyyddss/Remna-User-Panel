@@ -71,6 +71,59 @@ func TestPruneAbuseRecordRequiresPunishmentDeliveryAndRestore(t *testing.T) {
 	}
 }
 
+func TestPruneAbuseRecordUsesDetectorOccurrenceForRetention(t *testing.T) {
+	ctx := context.Background()
+	store := newTestStore(t)
+	user := createTestUser(t, store, 78_003)
+	now := time.Date(2026, 8, 28, 13, 0, 0, 0, time.UTC)
+	policy, err := store.Policy(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy.WarningValidityDays = 1
+	if _, err = store.UpdatePolicy(ctx, "admin", policy, now); err != nil {
+		t.Fatal(err)
+	}
+	policy, err = store.Policy(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	occurredAt := now.Add(-48 * time.Hour)
+	if created, createErr := store.CreateIncident(ctx, user.ID, occurredAt, 10, 10, []string{"global"}, nil, policy, now); createErr != nil || !created {
+		t.Fatalf("CreateIncident() = (%t,%v)", created, createErr)
+	}
+	var recordID string
+	if err = store.DB().QueryRowContext(ctx, `SELECT id FROM abuse_records WHERE user_id=?`, user.ID).Scan(&recordID); err != nil {
+		t.Fatal(err)
+	}
+	if err = store.MarkPunishmentCompleted(ctx, recordID, now); err != nil {
+		t.Fatal(err)
+	}
+	markAllAbuseDeliveries(t, store, recordID, now)
+	if _, err = store.DB().ExecContext(ctx, `INSERT INTO abuse_pending_log_events(user_id,node_uuid,event_second,domain,fingerprint,received_at) VALUES(?,?,?,?,?,?)`,
+		user.ID, "node-1", stamp(occurredAt), "example.com", "expired-event", stamp(now)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = store.DB().ExecContext(ctx, `INSERT INTO abuse_qps_samples(user_id,node_uuid,bucket_at,reason_name,qps_limit,qps) VALUES(?,?,?,?,?,?)`,
+		user.ID, "node-1", stamp(occurredAt), "global", 10, 10); err != nil {
+		t.Fatal(err)
+	}
+	pruneAbuseDetails(t, store, now)
+	assertAbuseRecordCount(t, store, recordID, 0)
+	var incidentFacts int
+	if err = store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM abuse_incident_facts WHERE incident_id=?`, recordID).Scan(&incidentFacts); err != nil || incidentFacts != 0 {
+		t.Fatalf("detector incident facts = %d, error = %v", incidentFacts, err)
+	}
+	var pendingEvents int
+	if err = store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM abuse_pending_log_events`).Scan(&pendingEvents); err != nil || pendingEvents != 0 {
+		t.Fatalf("pending detector events = %d, error = %v", pendingEvents, err)
+	}
+	var legacySamples int
+	if err = store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM abuse_qps_samples`).Scan(&legacySamples); err != nil || legacySamples != 0 {
+		t.Fatalf("legacy detector samples = %d, error = %v", legacySamples, err)
+	}
+}
+
 func markAllAbuseDeliveries(t *testing.T, store *Store, recordID string, now time.Time) {
 	t.Helper()
 	if _, err := store.DB().Exec(`UPDATE abuse_notification_deliveries SET delivered_at=? WHERE record_id=?`, stamp(now), recordID); err != nil {

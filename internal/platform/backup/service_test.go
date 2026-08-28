@@ -92,6 +92,62 @@ func TestRemoveExpiredCleansPublishedAndCrashTemporaryFiles(t *testing.T) {
 	}
 }
 
+func TestRemoveExpiredDeletesBackupRecordsAndMissingFiles(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	now := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
+	directory := filepath.Join(t.TempDir(), "backups")
+	if err := os.MkdirAll(directory, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	db, err := database.Open(ctx, filepath.Join(t.TempDir(), "records.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	oldPath := filepath.Join(directory, "tx-carpool-old.db")
+	currentPath := filepath.Join(directory, "tx-carpool-current.db")
+	activePath := filepath.Join(directory, "tx-carpool-active.db")
+	for _, path := range []string{oldPath, currentPath, activePath} {
+		if err = os.WriteFile(path, []byte("backup"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	old := now.Add(-8 * 24 * time.Hour).Format(time.RFC3339Nano)
+	current := now.Add(-6 * 24 * time.Hour).Format(time.RFC3339Nano)
+	for _, run := range []struct{ id, path, completed string }{
+		{"old", oldPath, old}, {"missing", filepath.Join(directory, "tx-carpool-missing.db"), old}, {"current", currentPath, current}, {"active", activePath, old},
+	} {
+		if _, err = db.ExecContext(ctx, `INSERT INTO backup_runs(id,path,status,created_at,completed_at) VALUES(?,?,'complete',?,?)`, run.id, run.path, run.completed, run.completed); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err = db.ExecContext(ctx, `INSERT INTO restore_jobs(id,backup_run_id,status,staged_path,rescue_path,source_sha256,created_at,updated_at) VALUES('restore-active','active','ready','stage','rescue','hash',?,?)`, old, old); err != nil {
+		t.Fatal(err)
+	}
+	service := NewService(db, nil, directory, 7*24*time.Hour)
+	service.now = func() time.Time { return now }
+	if err = service.RemoveExpired(); err != nil {
+		t.Fatalf("RemoveExpired(): %v", err)
+	}
+	for _, id := range []string{"old", "missing"} {
+		var count int
+		if err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM backup_runs WHERE id=?`, id).Scan(&count); err != nil || count != 0 {
+			t.Fatalf("expired backup %q count = %d, error = %v", id, count, err)
+		}
+	}
+	if _, err = os.Stat(oldPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expired backup file still exists: %v", err)
+	}
+	if _, err = os.Stat(currentPath); err != nil {
+		t.Fatalf("current backup was removed: %v", err)
+	}
+	if _, err = os.Stat(activePath); err != nil {
+		t.Fatalf("backup with active restore was removed: %v", err)
+	}
+}
+
 func TestOpenDownloadRejectsAStoredPathOutsideBackupDirectory(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

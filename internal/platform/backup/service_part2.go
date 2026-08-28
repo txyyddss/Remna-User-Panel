@@ -46,7 +46,7 @@ func (s *Service) Run(ctx context.Context) (model.BackupRun, error) {
 	run.Path, run.SizeBytes, run.Status = finalPath, size, "complete"
 	completed := s.now().UTC()
 	run.CompletedAt = &completed
-	if err := s.RemoveExpired(); err != nil {
+	if err := s.removeExpired(ctx); err != nil {
 		return run, fmt.Errorf("backup complete but retention failed: %w", err)
 	}
 	return run, nil
@@ -88,9 +88,21 @@ func (s *Service) createAndVerify(ctx context.Context, temporaryPath, finalPath 
 	return nil
 }
 
-// RemoveExpired deletes only regular TX Carpool backup files older than retention.
-
+// RemoveExpired deletes expired managed backup files and their history.
 func (s *Service) RemoveExpired() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.removeExpired(context.Background())
+}
+
+func (s *Service) removeExpired(ctx context.Context) error {
+	if err := s.removeExpiredRuns(ctx, s.now().UTC().Add(-s.retention)); err != nil {
+		return err
+	}
+	return s.removeExpiredFiles(ctx)
+}
+
+func (s *Service) removeExpiredFiles(ctx context.Context) error {
 	entries, err := os.ReadDir(s.directory)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
@@ -102,7 +114,8 @@ func (s *Service) RemoveExpired() error {
 	for _, entry := range entries {
 		name := entry.Name()
 		published := strings.HasPrefix(name, "tx-carpool-") && strings.HasSuffix(name, ".db")
-		crashTemporary := strings.HasPrefix(name, ".tx-carpool-") && strings.HasSuffix(name, ".db.tmp")
+		crashTemporary := strings.HasPrefix(name, ".tx-carpool-") &&
+			(strings.HasSuffix(name, ".db.tmp") || strings.Contains(name, ".db.deleting-"))
 		if entry.IsDir() || (!published && !crashTemporary) {
 			continue
 		}
@@ -114,6 +127,13 @@ func (s *Service) RemoveExpired() error {
 			continue
 		}
 		if info.ModTime().UTC().Before(cutoff) {
+			protected, protectErr := s.hasActiveRestore(ctx, filepath.Join(s.directory, name))
+			if protectErr != nil {
+				return protectErr
+			}
+			if protected {
+				continue
+			}
 			if err := os.Remove(filepath.Join(s.directory, entry.Name())); err != nil {
 				return err
 			}
