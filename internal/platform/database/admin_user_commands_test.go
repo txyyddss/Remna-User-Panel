@@ -92,12 +92,12 @@ func TestTemporaryBanRestorationWaitsForSuccessfulBanAndPreservesOverlap(t *test
 	now := time.Now().UTC()
 	actor, user := createTestUser(t, store, 48_221), createTestUser(t, store, 48_222)
 	ban, err := store.CreateAdminTemporaryBan(ctx, AdminTemporaryBanInput{ActorUserID: actor.ID, UserID: user.ID,
-		IdempotencyKey: "ban-key", RequestFingerprint: "ban-fingerprint", Reason: "investigation", DurationMinutes: 1}, now)
+		IdempotencyKey: "ban-key", RequestFingerprint: "ban-command-fingerprint", Reason: "investigation", DurationMinutes: 1}, now)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err = store.CreateAdminTemporaryBan(ctx, AdminTemporaryBanInput{ActorUserID: actor.ID, UserID: user.ID,
-		IdempotencyKey: "other-ban", RequestFingerprint: "other-ban-fingerprint", Reason: "overlap", DurationMinutes: 1}, now); !errors.Is(err, ErrConflict) {
+		IdempotencyKey: "other-ban", RequestFingerprint: "other-ban-command-fingerprint", Reason: "overlap", DurationMinutes: 1}, now); !errors.Is(err, ErrConflict) {
 		t.Fatalf("overlapping ban = %v, want conflict", err)
 	}
 	if err = store.QueueExpiredAdminTemporaryBan(ctx, user.ID, now.Add(2*time.Minute)); !errors.Is(err, ErrConflict) {
