@@ -54,7 +54,8 @@
     "match": "筛选匹配方式",
     "matchAnd": "匹配全部",
     "matchOr": "匹配任一",
-    "applyFilters": "应用筛选"
+    "applyFilters": "应用筛选",
+    "filtersFailed": "套餐和节点组筛选暂时不可用，仍可继续搜索用户。"
   },
   "adminEmby": {
     "title": "Emby 账户",

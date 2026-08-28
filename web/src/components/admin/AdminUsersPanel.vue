@@ -8,7 +8,7 @@ import InlineNotice from '@/components/common/InlineNotice.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
 import { useAdminSection } from '@/composables/useAdminSection'
-import { useI18n } from '@/i18n'
+import { localizedError, useI18n } from '@/i18n'
 import { formatDate, formatMoney, moneyFromTxbInput } from '@/utils/format'
 import AdminSectionState from './AdminSectionState.vue'
 import AdminBulkExtensionDialog from './users/AdminBulkExtensionDialog.vue'
@@ -24,6 +24,7 @@ const success = shallowRef<string | null>(null)
 const bulkOpen = shallowRef(false)
 const filterOptions = shallowRef<AdminCatalogOptions>({ combos: [], squads: [] })
 const filters = shallowRef<AdminUserSearchFiltersValue>({ state: '', comboIds: [], squadUuids: [], match: 'and' })
+const filterError = shallowRef<string | null>(null)
 
 let searchTimer: ReturnType<typeof globalThis.setTimeout> | undefined
 
@@ -34,7 +35,16 @@ function userQuery(): Record<string, string | number | readonly string[] | undef
   }
 }
 
-onMounted(async () => { filterOptions.value = await adminOperationsApi.getCatalogOptions() })
+async function loadFilterOptions(): Promise<void> {
+  filterError.value = null
+  try {
+    filterOptions.value = await adminOperationsApi.getCatalogOptions()
+  } catch (caught) {
+    filterError.value = localizedError(caught, 'adminUsers.filtersFailed')
+  }
+}
+
+onMounted(() => { void loadFilterOptions() })
 
 watch(query, () => {
   if (searchTimer !== undefined) globalThis.clearTimeout(searchTimer)
@@ -92,6 +102,7 @@ function bulkQueued(receipt: OperationReceipt): void {
       </div>
     </div>
     <InlineNotice v-if="success" tone="success">{{ success }}</InlineNotice>
+    <InlineNotice v-if="filterError" tone="warning">{{ filterError }}</InlineNotice>
     <AdminSectionState :loading="loading" :error="error" @retry="reloadUsers">
       <div v-auto-animate class="admin-list">
         <article v-for="summary in items" :key="summary.user.id" class="admin-list-row admin-list-row--user">

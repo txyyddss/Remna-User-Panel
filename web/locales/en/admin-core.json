@@ -54,7 +54,8 @@
     "match": "Match filters",
     "matchAnd": "Match all",
     "matchOr": "Match any",
-    "applyFilters": "Apply filters"
+    "applyFilters": "Apply filters",
+    "filtersFailed": "Combo and squad filters are temporarily unavailable. User search is still available."
   },
   "adminEmby": {
     "title": "Emby accounts",
