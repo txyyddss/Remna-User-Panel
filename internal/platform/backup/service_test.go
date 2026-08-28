@@ -20,7 +20,7 @@ func TestRunCreatesVerifiedSQLiteBackup(t *testing.T) {
 
 	ctx := context.Background()
 	databasePath := filepath.Join(t.TempDir(), "source.db")
-	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(databasePath))
+	db, err := database.Open(ctx, databasePath)
 	if err != nil {
 		t.Fatalf("sql.Open(): %v", err)
 	}

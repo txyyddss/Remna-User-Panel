@@ -75,7 +75,7 @@ func (s *Store) CreateAdminTemporaryUnban(ctx context.Context, actorID, userID, 
 		return op.Receipt, tx.Commit()
 	}
 	var existing, banStatus string
-	err = tx.QueryRowContext(ctx, `SELECT b.unban_operation_id,o.status FROM admin_temporary_bans b
+	err = tx.QueryRowContext(ctx, `SELECT COALESCE(b.unban_operation_id,''),o.status FROM admin_temporary_bans b
 		JOIN provider_operations o ON o.id=b.ban_operation_id WHERE b.user_id=? AND b.restored_at IS NULL`, userID).Scan(&existing, &banStatus)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -107,7 +107,7 @@ func (s *Store) QueueExpiredAdminTemporaryBan(ctx context.Context, userID string
 	}
 	defer func() { _ = tx.Rollback() }()
 	var actorID, unbanID, banStatus string
-	err = tx.QueryRowContext(ctx, `SELECT b.actor_user_id,b.unban_operation_id,o.status FROM admin_temporary_bans b
+	err = tx.QueryRowContext(ctx, `SELECT b.actor_user_id,COALESCE(b.unban_operation_id,''),o.status FROM admin_temporary_bans b
 		JOIN provider_operations o ON o.id=b.ban_operation_id WHERE b.user_id=? AND b.restored_at IS NULL AND b.expires_at<=?`, userID, stamp(now)).Scan(&actorID, &unbanID, &banStatus)
 	if err != nil {
 		if err == sql.ErrNoRows {
