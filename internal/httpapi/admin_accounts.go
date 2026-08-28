@@ -26,8 +26,14 @@ func (s *Server) adminUsers(w http.ResponseWriter, r *http.Request) {
 		}
 		limit = parsed
 	}
-	users, nextCursor, err := s.deps.Store.ListAdminUsersPage(r.Context(), r.URL.Query().Get("cursor"), search, limit)
+	filter := database.AdminUserSearchFilter{Search: search, State: r.URL.Query().Get("state"),
+		ComboIDs: r.URL.Query()["comboId"], SquadUUIDs: r.URL.Query()["squadUuid"], Match: r.URL.Query().Get("match")}
+	users, nextCursor, err := s.deps.Store.ListAdminUsersPage(r.Context(), r.URL.Query().Get("cursor"), filter, limit)
 	if err != nil {
+		if errors.Is(err, database.ErrInvalidAdminUserSearch) {
+			s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_USER_FILTER", "The user search filter is invalid.")
+			return
+		}
 		if errors.Is(err, database.ErrInvalidCursor) {
 			s.writeError(w, r, http.StatusBadRequest, "INVALID_CURSOR", "The pagination cursor is invalid.")
 			return

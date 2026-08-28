@@ -150,6 +150,9 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		paymentAnnouncementWorker, affiliateNotificationWorker, userNotificationWorker, scanWorker, blockExpiryWorker, operationDispatcher); err != nil {
 		return cleanup(err)
 	}
+	if err := registerAdminUserOutboxHandlers(outboxWorker, store); err != nil {
+		return cleanup(err)
+	}
 	if err := registerAbuseOutboxHandlers(outboxWorker, store, remna, queuedTelegramClient); err != nil {
 		return cleanup(err)
 	}

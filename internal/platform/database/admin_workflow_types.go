@@ -17,6 +17,33 @@ type AdminEntitlementEditInput struct {
 type AdminEntitlementRefundInput struct {
 	ActorUserID, UserID, PurchaseID            string
 	IdempotencyKey, RequestFingerprint, Reason string
+	AmountTXBMinor                             int64
+}
+
+// AdminCouponGrantInput adds one purchase-discount grant through an audited admin command.
+type AdminCouponGrantInput struct {
+	ActorUserID, UserID, CouponID, IdempotencyKey, Reason string
+}
+
+// AdminTemporaryBan is the current durable manual access restriction.
+type AdminTemporaryBan struct {
+	UserID           string     `json:"userId"`
+	ActorUserID      string     `json:"actorUserId"`
+	Reason           string     `json:"reason"`
+	ExpiresAt        time.Time  `json:"expiresAt"`
+	UnbanOperationID string     `json:"unbanOperationId"`
+	RestoredAt       *time.Time `json:"restoredAt"`
+}
+
+// AdminTemporaryBanInput starts one user-scoped restriction through the provider queue.
+type AdminTemporaryBanInput struct {
+	ActorUserID, UserID, IdempotencyKey, RequestFingerprint, Reason string
+	DurationMinutes                                                 int
+}
+
+// AdminRemnaRelinkInput replaces one local Remnawave identity after queued validation.
+type AdminRemnaRelinkInput struct {
+	ActorUserID, UserID, RemnaUserID, IdempotencyKey, RequestFingerprint, Reason string
 }
 
 // AdminComboReplacementInput changes configuration without moving TXB.

@@ -53,21 +53,24 @@ func (s *Store) RefundAdminEntitlement(ctx context.Context, input AdminEntitleme
 		}
 		return model.OperationReceipt{}, ErrConflict
 	}
-	balance, err := adjustBalanceTx(ctx, tx, input.UserID, purchase.PriceTXBMinor, now)
+	if input.AmountTXBMinor <= 0 || input.AmountTXBMinor > purchase.PriceTXBMinor {
+		return model.OperationReceipt{}, ErrConflict
+	}
+	balance, err := adjustBalanceTx(ctx, tx, input.UserID, input.AmountTXBMinor, now)
 	if err != nil {
 		return model.OperationReceipt{}, fmt.Errorf("credit entitlement refund: %w", err)
 	}
-	if _, err := insertLedgerTx(ctx, tx, input.UserID, purchase.PriceTXBMinor, balance,
+	if _, err := insertLedgerTx(ctx, tx, input.UserID, input.AmountTXBMinor, balance,
 		"admin_entitlement_refund", purchase.ID, input.Reason, now); err != nil {
 		return model.OperationReceipt{}, err
 	}
 	if err := insertEntitlementAudit(ctx, tx, input.ActorUserID, "entitlement.refund", purchase.ID, input.Reason,
-		operation.Receipt.ID, entitlementSnapshot(purchase), map[string]any{"status": "cancelled", "creditedTxbMinor": purchase.PriceTXBMinor}, now); err != nil {
+		operation.Receipt.ID, entitlementSnapshot(purchase), map[string]any{"status": "cancelled", "creditedTxbMinor": input.AmountTXBMinor}, now); err != nil {
 		return model.OperationReceipt{}, err
 	}
 	facts := adminNotificationBase("entitlement_refund", input.Reason, now)
 	facts[notifications.FactCombo] = purchase.ComboName
-	facts[notifications.FactCredited] = strconv.FormatInt(purchase.PriceTXBMinor, 10)
+	facts[notifications.FactCredited] = strconv.FormatInt(input.AmountTXBMinor, 10)
 	facts[notifications.FactBalance] = strconv.FormatInt(balance, 10)
 	facts[notifications.FactPreviousStatus], facts[notifications.FactNewStatus] = purchase.Status, "cancelled"
 	if _, err := s.insertUserNotificationTx(ctx, tx, "admin:"+operation.Receipt.ID+":"+input.UserID, input.UserID,

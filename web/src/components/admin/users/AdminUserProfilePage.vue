@@ -1,21 +1,23 @@
 <script setup lang="ts">
 import { computed, shallowRef, toRef, watch } from 'vue'
 
-import { adminOperationsApi, type AdminEntitlement, type AdminUserDetail, type ComboReplacementRequest, type CourtesyCredit, type EntitlementEditRequest, type OperationReceipt, type OperationResolution } from '@/api/adminOperations'
+import { adminOperationsApi, type AdminEntitlement, type AdminEntitlementRefundRequest, type AdminUserDetail, type CourtesyCredit, type EntitlementEditRequest, type OperationReceipt, type OperationResolution } from '@/api/adminOperations'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import ConnectionUnblockDialog from '@/components/connections/ConnectionUnblockDialog.vue'
 import { useOperationReceipt } from '@/composables/useOperationReceipt'
 import { useI18n } from '@/i18n'
 import { formatMoney } from '@/utils/format'
 import AdminReasonDialog from '../AdminReasonDialog.vue'
-import AdminComboReplacementDialog from './AdminComboReplacementDialog.vue'
 import AdminEntitlementEditor from './AdminEntitlementEditor.vue'
+import AdminEntitlementRefundDialog from './AdminEntitlementRefundDialog.vue'
 import AdminOperationResolutionDialog from './AdminOperationResolutionDialog.vue'
 import AdminUserEntitlements from './AdminUserEntitlements.vue'
 import AdminUserAccountContext from './AdminUserAccountContext.vue'
+import AdminUserCouponActions from './AdminUserCouponActions.vue'
 import AdminUserHistory from './AdminUserHistory.vue'
 import AdminUserIPBlocks from './AdminUserIPBlocks.vue'
 import AdminUserOverview from './AdminUserOverview.vue'
+import AdminUserProviderActions from './AdminUserProviderActions.vue'
 import { useAdminUserProfile } from './useAdminUserProfile'
 
 const props = defineProps<{ userId: string }>()
@@ -24,12 +26,11 @@ const { t } = useI18n()
 const profile = useAdminUserProfile(toRef(props, 'userId'))
 const editing = shallowRef<AdminEntitlement | null>(null)
 const refunding = shallowRef<AdminEntitlement | null>(null)
-const refundReason = shallowRef('')
 const refundingPayment = shallowRef<AdminUserDetail['payments'][number] | null>(null)
 const creditingPayment = shallowRef<AdminUserDetail['payments'][number] | null>(null)
 const paymentReason = shallowRef('')
 const courtesyMessage = shallowRef<string | null>(null)
-const replacementOpen = shallowRef(false)
+const queuedOperation = shallowRef<OperationReceipt | null>(null)
 const resolving = shallowRef<OperationReceipt | null>(null)
 const unblockingIP = shallowRef<AdminUserDetail['ipBlocks'][number] | null>(null)
 const unblockOperation = useOperationReceipt()
@@ -44,7 +45,6 @@ async function openEditor(item: AdminEntitlement): Promise<void> {
 
 function openRefund(item: AdminEntitlement): void {
   profile.clearActionError()
-  refundReason.value = ''
   refunding.value = item
 }
 
@@ -60,12 +60,6 @@ function openPaymentCredit(payment: AdminUserDetail['payments'][number]): void {
   creditingPayment.value = payment
 }
 
-async function openReplacement(): Promise<void> {
-  profile.clearActionError()
-  replacementOpen.value = true
-  await profile.loadOptions()
-}
-
 async function saveEntitlement(body: EntitlementEditRequest): Promise<void> {
   const item = editing.value
   if (!item) return
@@ -74,12 +68,20 @@ async function saveEntitlement(body: EntitlementEditRequest): Promise<void> {
   if (ok) editing.value = null
 }
 
-async function refundEntitlement(): Promise<void> {
+async function refundEntitlement(body: AdminEntitlementRefundRequest): Promise<void> {
   const item = refunding.value
   if (!item) return
-  const ok = await profile.perform(`refund:${item.id}`, (key) =>
-    adminOperationsApi.refundEntitlement(props.userId, item.id, refundReason.value, key))
+  let receipt: OperationReceipt | null = null
+  const ok = await profile.perform(`refund:${item.id}`, async (key) => {
+    receipt = await adminOperationsApi.refundEntitlement(props.userId, item.id, body, key)
+    return receipt
+  })
+  if (ok) queuedOperation.value = receipt
   if (ok) refunding.value = null
+}
+
+function queueOperation(receipt: OperationReceipt): void {
+  queuedOperation.value = receipt
 }
 
 async function refundPayment(): Promise<void> {
@@ -104,12 +106,6 @@ async function creditPayment(): Promise<void> {
     ? t('adminUserProfile.courtesyCreditAlreadyRecorded')
     : t('adminUserProfile.courtesyCreditSuccess', { amount: formatMoney(completedCredit.txb) })
   creditingPayment.value = null
-}
-
-async function replaceCombo(body: ComboReplacementRequest): Promise<void> {
-  const ok = await profile.perform(`replace:${props.userId}`, (key) =>
-    adminOperationsApi.replaceCombo(props.userId, body, key))
-  if (ok) replacementOpen.value = false
 }
 
 async function resolveOperation(payload: { resolution: OperationResolution; reason: string }): Promise<void> {
@@ -157,23 +153,25 @@ watch(() => unblockOperation.receipt.value, (receipt) => {
     <InlineNotice v-if="profile.conflict.value" tone="warning" :title="t('adminUserProfile.conflictTitle')">{{ t('adminUserProfile.conflict') }}</InlineNotice>
     <InlineNotice v-else-if="profile.error.value" tone="warning">{{ profile.error.value }}</InlineNotice>
     <InlineNotice v-if="courtesyMessage" tone="success">{{ courtesyMessage }}</InlineNotice>
+    <InlineNotice v-if="queuedOperation" tone="success">{{ t('adminUserProfile.operationQueued', { id: queuedOperation.id }) }}</InlineNotice>
     <div v-if="profile.loading.value" class="admin-loading" :aria-label="t('adminUserProfile.loading')">
       <USkeleton class="h-24" /><USkeleton class="h-48" /><USkeleton class="h-36" />
     </div>
     <template v-else-if="profile.detail.value">
       <AdminUserOverview :detail="profile.detail.value" />
-      <AdminUserAccountContext :detail="profile.detail.value" />
-      <AdminUserEntitlements :items="profile.detail.value.entitlements" :busy="busy" :can-replace="Boolean(profile.detail.value.activeCombo)" @edit="openEditor" @refund="openRefund" @replace="openReplacement" />
+      <AdminUserProviderActions :user-id="userId" :detail="profile.detail.value" @changed="refresh" @queued="queueOperation" />
+      <AdminUserCouponActions :user-id="userId" :grants="profile.detail.value.couponWallet" @changed="refresh" />
+      <AdminUserAccountContext :user-id="userId" :detail="profile.detail.value" @changed="refresh" />
+      <AdminUserEntitlements :items="profile.detail.value.entitlements" :busy="busy" @edit="openEditor" @refund="openRefund" />
       <AdminUserIPBlocks :items="profile.detail.value.ipBlocks" :busy="busy" @unblock="openIPUnblock" />
       <AdminUserHistory :detail="profile.detail.value" :busy="busy" @resolve="resolving = $event" @refund-payment="openPaymentRefund" @credit-payment="openPaymentCredit" />
     </template>
     <div v-else class="empty-inline"><div><h3>{{ t('adminUserProfile.unavailable') }}</h3><p>{{ t('adminUserProfile.unavailableHint') }}</p></div></div>
 
     <AdminEntitlementEditor :open="editing !== null" :item="editing" :combos="profile.options.value.combos" :squads="profile.options.value.squads" :busy="busy" :options-loading="profile.optionsLoading.value" :error="dialogError" @update:open="!$event && (editing = null)" @save="saveEntitlement" />
-    <AdminReasonDialog :open="refunding !== null" v-model:reason="refundReason" :title="t('adminUserProfile.refundTitle')" :description="t('adminUserProfile.refundHint')" :confirm-label="t('adminUserProfile.issueRefund')" :busy="busy" :error="profile.error.value" danger @update:open="!$event && (refunding = null)" @confirm="refundEntitlement" />
+    <AdminEntitlementRefundDialog :open="refunding !== null" :item="refunding" :busy="busy" :error="profile.error.value" @update:open="!$event && (refunding = null)" @refund="refundEntitlement" />
     <AdminReasonDialog :open="refundingPayment !== null" v-model:reason="paymentReason" :title="t('adminUserProfile.refundPaymentTitle')" :description="t('adminUserProfile.refundPaymentHint')" :confirm-label="t('adminUserProfile.issueRefundPayment')" :busy="busy" :error="profile.error.value" danger @update:open="!$event && (refundingPayment = null)" @confirm="refundPayment" />
     <AdminReasonDialog :open="creditingPayment !== null" v-model:reason="paymentReason" :title="t('adminUserProfile.courtesyCreditTitle')" :description="t('adminUserProfile.courtesyCreditHint')" :confirm-label="t('adminUserProfile.issueCourtesyCredit')" :busy="busy" :error="profile.error.value" @update:open="!$event && (creditingPayment = null)" @confirm="creditPayment" />
-    <AdminComboReplacementDialog :open="replacementOpen" :current="profile.detail.value?.activeCombo ?? null" :combos="profile.options.value.combos" :squads="profile.options.value.squads" :busy="busy" :options-loading="profile.optionsLoading.value" :error="dialogError" @update:open="replacementOpen = $event" @replace="replaceCombo" />
     <AdminOperationResolutionDialog :open="resolving !== null" :operation="resolving" :busy="busy" :error="profile.error.value" @update:open="!$event && (resolving = null)" @resolve="resolveOperation" />
     <ConnectionUnblockDialog :open="unblockingIP !== null" :block="unblockingIP" :receipt="unblockOperation.receipt.value" :busy="profile.busyAction.value?.startsWith('unblock-ip:')" :checking="unblockOperation.checking.value" :error="profile.error.value ?? unblockOperation.error.value" @update:open="!$event && (unblockingIP = null)" @confirm="unblockIP" @refresh="unblockOperation.refresh" />
   </section>

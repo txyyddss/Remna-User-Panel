@@ -164,7 +164,7 @@ func (s *Store) QueueRestore(ctx context.Context, userID string, now time.Time) 
 	}
 	return tx.Commit()
 }
-func (s *Store) DeleteRecord(ctx context.Context, _ string, recordID string, now time.Time) error {
+func (s *Store) DeleteRecord(ctx context.Context, actorID, recordID string, now time.Time) error {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -182,6 +182,15 @@ func (s *Store) DeleteRecord(ctx context.Context, _ string, recordID string, now
 	}
 	if _, err = tx.ExecContext(ctx, `DELETE FROM abuse_incident_facts WHERE incident_id=?`, recordID); err != nil {
 		return err
+	}
+	if actorID != "" {
+		auditID, idErr := ids.New()
+		if idErr != nil {
+			return idErr
+		}
+		if err = insertAuditTx(ctx, tx, auditID, &actorID, "abuse.record.delete", "abuse_record", recordID, "admin profile history delete", now.UTC()); err != nil {
+			return err
+		}
 	}
 	return tx.Commit()
 }

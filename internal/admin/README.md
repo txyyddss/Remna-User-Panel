@@ -28,6 +28,9 @@ Audited administrative operations for catalog data, settings, balances, refunds,
 - `user_operation_worker.go` applies exact local entitlement state through the
   shared provider-operation dispatcher and releases user messages only after a
   real successful provider item.
+- `user_account_commands.go` grants and idempotently retires only purchase-discount wallet coupons.
+- `user_provider_commands.go` validates temporary-ban, restoration, and Remnawave relink requests.
+- `user_provider_worker.go` applies queued account restrictions and relinks without mutating the former remote account.
 - `service_test.go` covers settings forwarding and catalog operations.
 - `finance_test.go` covers balance, refund, cancellation, backup, and retry operations.
 - `service_test_helpers_test.go` contains shared admin service test doubles.
@@ -38,6 +41,7 @@ Audited administrative operations for catalog data, settings, balances, refunds,
 - `user_profiles_test.go` covers aggregate selection, ordering, and synchronization projection.
 - `user_profiles_test_helpers_test.go` contains focused aggregate-profile repository doubles.
 - `user_operation_worker_test.go` covers ambiguous provider outcomes and partial bulk completion.
+- `user_provider_worker_test.go` covers target-only Remnawave relinks without a former-account mutation.
 - `user_operation_worker_test_helpers_test.go` contains reusable provider-operation worker fixtures.
 - `README.md` documents the package layout.
 

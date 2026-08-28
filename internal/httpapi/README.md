@@ -69,6 +69,9 @@
 - `admin_inventory_page.go` validates shared cursor, limit, search, and status filters for administrative inventories.
 - `admin_user_detail.go` maps the non-duplicated aggregate profile and its active IP blocks to the public response.
 - `admin_user_commands.go` serves optimistic entitlement edits, entitlement refunds, and no-charge combo replacements.
+- `admin_user_account_commands.go` serves idempotent profile-scoped coupon grants and retained-history discards.
+- `admin_user_provider_commands.go` queues temporary ban, unban, and validated Remnawave identity relink commands.
+- `admin_user_connections.go` scopes durable connection scans and transient IP projections to the selected profile.
 - `admin_bulk_extensions.go` normalizes minute durations or deprecated day inputs for inclusive-OR previews and idempotent bulk-extension jobs.
 - `admin_bulk_extensions_test.go` covers minute input, legacy-day normalization, and ambiguous duration rejection.
 - `admin_compensation.go` serves revisioned policy, recipient-safe cursor history, and idempotent approve/dismiss reviews.

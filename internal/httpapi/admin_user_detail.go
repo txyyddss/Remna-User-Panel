@@ -7,6 +7,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/connections"
 	"github.com/txyyddss/Remna-User-Panel/internal/coupons"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 )
 
 type adminEntitlementResponse struct {
@@ -39,6 +40,7 @@ type adminUserDetailResponse struct {
 	CouponWallet            []coupons.Grant              `json:"couponWallet"`
 	AbuseHistory            []abuse.Record               `json:"abuseHistory"`
 	AffiliateHistory        affiliates.ReferralPage      `json:"affiliateHistory"`
+	TemporaryBan            *database.AdminTemporaryBan  `json:"temporaryBan"`
 	AutoTrafficResetEnabled bool                         `json:"autoTrafficResetEnabled"`
 }
 
@@ -50,7 +52,7 @@ func mapAdminUserDetail(detail admin.UserDetail) adminUserDetailResponse {
 		EmbyAccounts: make([]embyAccountResponse, 0, len(detail.EmbyAccounts)),
 		Payments:     make([]adminPaymentResponse, 0, len(detail.Payments)), Refunds: detail.Refunds,
 		Operations: detail.Operations, IPBlocks: []connections.IPBlock{}, CouponWallet: detail.CouponWallet,
-		AbuseHistory: detail.AbuseHistory, AffiliateHistory: detail.AffiliateHistory,
+		AbuseHistory: detail.AbuseHistory, AffiliateHistory: detail.AffiliateHistory, TemporaryBan: detail.TemporaryBan,
 		AutoTrafficResetEnabled: detail.User.AutoTrafficResetEnabled}
 	for _, item := range detail.Entitlements {
 		response.Entitlements = append(response.Entitlements, adminEntitlementResponse{Purchase: item, UserID: item.UserID})

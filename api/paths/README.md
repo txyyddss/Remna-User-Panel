@@ -94,6 +94,10 @@ Member connection scans, purchase reset/refund resources, operation receipts, st
 - `api-v1-admin-users-id-balance-adjustments.yaml`: `/api/v1/admin/users/{id}/balance-adjustments`
 - `api-v1-admin-users-id-entitlements-entitlementid.yaml`: `/api/v1/admin/users/{userId}/entitlements/{entitlementId}`, optimistic entitlement overwrite
 - `api-v1-admin-users-id-entitlements-entitlementid-refund.yaml`: `/api/v1/admin/users/{userId}/entitlements/{entitlementId}/refund`, audited entitlement refund operation
+- `api-v1-admin-users-id-coupon-grants.yaml` and `api-v1-admin-users-id-coupon-grants-grantid.yaml`: profile-scoped idempotent purchase-coupon grants and retained-history discards
+- `api-v1-admin-users-id-temporary-ban.yaml` and `api-v1-admin-users-id-temporary-ban-unban.yaml`: durable temporary-ban and restoration commands
+- `api-v1-admin-users-id-remnawave-id.yaml`: queued verified Remnawave identity relink
+- `api-v1-admin-users-id-connections.yaml` and `api-v1-admin-users-id-connections-scanid.yaml`: profile-scoped durable scan and transient connection projection
 - `api-v1-admin-users-id-combo-replacement.yaml`: `/api/v1/admin/users/{userId}/combo-replacement`, no-charge combo and add-on replacement
 - `api-v1-admin-bulk-extensions-preview.yaml`: `/api/v1/admin/bulk-extensions/preview`, minute-precise deduplicated inclusive-OR target preview
 - `api-v1-admin-bulk-extensions.yaml`: `/api/v1/admin/bulk-extensions`, durable minute-precise bulk extension job

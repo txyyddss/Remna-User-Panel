@@ -10,7 +10,7 @@ post:
     required: true
     content:
       application/json:
-        schema: { $ref: '../openapi.yaml#/components/schemas/ReasonRequest' }
+        schema: { $ref: '../openapi.yaml#/components/schemas/AdminEntitlementRefundRequest' }
   responses:
     '202':
       content:

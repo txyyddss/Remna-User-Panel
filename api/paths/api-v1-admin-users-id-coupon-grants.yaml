@@ -1,0 +1,17 @@
+post:
+  tags: [Admin]
+  operationId: grantAdminUserCoupon
+  summary: Grant one active purchase-discount coupon to a user wallet
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/UserID'
+    - $ref: '../openapi.yaml#/components/parameters/IdempotencyKey'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema: { $ref: '../openapi.yaml#/components/schemas/AdminCouponGrantRequest' }
+  responses:
+    '201': { content: { application/json: { schema: { $ref: '../openapi.yaml#/components/schemas/CouponGrant' } } } }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }

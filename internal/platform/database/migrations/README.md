@@ -71,3 +71,5 @@ file instead.
 - `039_abuse_record_retention_and_ip_bans.sql` preserves detector records for
   the configured retention period, removes irrelevant punishment durations,
   and persists asynchronous IP-ban scans across retries.
+- `040_admin_user_provider_commands.sql` adds durable administrator temporary-ban state and scheduled restoration linkage.
+- `041_admin_coupon_discard_commands.sql` records administrator coupon-discard idempotency without deleting historical grants.

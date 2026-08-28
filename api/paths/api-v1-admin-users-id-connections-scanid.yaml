@@ -1,0 +1,12 @@
+get:
+  tags: [Admin]
+  operationId: pollAdminUserConnections
+  summary: Poll a connection scan scoped to its user profile
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/UserID'
+    - $ref: '../openapi.yaml#/components/parameters/ConnectionScanID'
+  responses:
+    '200': { content: { application/json: { schema: { $ref: '../openapi.yaml#/components/schemas/ConnectionScan' } } } }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }

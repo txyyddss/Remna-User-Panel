@@ -5,6 +5,7 @@ export type AdminUserDetail = components['schemas']['AdminUserDetail']
 export type AdminEntitlement = components['schemas']['AdminEntitlement']
 export type OperationReceipt = components['schemas']['OperationReceipt']
 export type EntitlementEditRequest = components['schemas']['EntitlementEditRequest']
+export type AdminEntitlementRefundRequest = components['schemas']['AdminEntitlementRefundRequest']
 export type ComboReplacementRequest = components['schemas']['ComboReplacementRequest']
 export type BulkExtensionRequest = components['schemas']['BulkExtensionRequest']
 export type BulkExtensionPreview = components['schemas']['BulkExtensionPreview']
@@ -38,10 +39,39 @@ export const adminOperationsApi = {
     request<AdminEntitlement>(`/api/v1/admin/users/${encodeURIComponent(userId)}/entitlements/${encodeURIComponent(entitlementId)}`, {
       method: 'PUT', headers: keyHeader(key), body,
     }),
-  refundEntitlement: (userId: string, entitlementId: string, reason: string, key: string) =>
-    request<OperationReceipt>(`/api/v1/admin/users/${encodeURIComponent(userId)}/entitlements/${encodeURIComponent(entitlementId)}/refund`, {
-      method: 'POST', headers: keyHeader(key), body: { reason },
-    }),
+	refundEntitlement: (userId: string, entitlementId: string, body: AdminEntitlementRefundRequest, key: string) =>
+		request<OperationReceipt>(`/api/v1/admin/users/${encodeURIComponent(userId)}/entitlements/${encodeURIComponent(entitlementId)}/refund`, {
+			method: 'POST', headers: keyHeader(key), body,
+		}),
+	grantUserCoupon: (userId: string, couponId: string, reason: string, key: string) =>
+		request<components['schemas']['CouponGrant']>(`/api/v1/admin/users/${encodeURIComponent(userId)}/coupon-grants`, {
+			method: 'POST', headers: keyHeader(key), body: { couponId, reason },
+		}),
+	discardUserCoupon: (userId: string, grantId: string, key: string) =>
+		request<void>(`/api/v1/admin/users/${encodeURIComponent(userId)}/coupon-grants/${encodeURIComponent(grantId)}`, {
+			method: 'DELETE', headers: keyHeader(key),
+		}),
+	deleteAbuseRecord: (recordId: string, key: string) => request<void>(`/api/v1/admin/abuse/records/${encodeURIComponent(recordId)}`, {
+		method: 'DELETE', headers: keyHeader(key),
+	}),
+	temporaryBan: (userId: string, durationMinutes: number, reason: string, key: string) =>
+		request<OperationReceipt>(`/api/v1/admin/users/${encodeURIComponent(userId)}/temporary-ban`, {
+			method: 'POST', headers: keyHeader(key), body: { durationMinutes, reason },
+		}),
+	temporaryUnban: (userId: string, reason: string, key: string) =>
+		request<OperationReceipt>(`/api/v1/admin/users/${encodeURIComponent(userId)}/temporary-ban/unban`, {
+			method: 'POST', headers: keyHeader(key), body: { reason },
+		}),
+	relinkRemnaUser: (userId: string, remnaUserId: string, reason: string, key: string) =>
+		request<OperationReceipt>(`/api/v1/admin/users/${encodeURIComponent(userId)}/remnawave-id`, {
+			method: 'PUT', headers: keyHeader(key), body: { remnaUserId, reason },
+		}),
+	requestUserConnections: (userId: string, key: string) =>
+		request<components['schemas']['ConnectionScan']>(`/api/v1/admin/users/${encodeURIComponent(userId)}/connections`, {
+			method: 'POST', headers: keyHeader(key),
+		}),
+	pollUserConnections: (userId: string, scanId: string) =>
+		request<components['schemas']['ConnectionScan']>(`/api/v1/admin/users/${encodeURIComponent(userId)}/connections/${encodeURIComponent(scanId)}`),
   refundPayment: (paymentId: string, reason: string, key: string) =>
     request<OperationReceipt>(`/api/v1/admin/payments/${encodeURIComponent(paymentId)}/refund`, {
       method: 'POST', headers: keyHeader(key), body: { reason },

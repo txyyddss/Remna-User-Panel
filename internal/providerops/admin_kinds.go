@@ -13,4 +13,10 @@ const (
 	KindAdminBulkExtension = "admin_bulk_extension"
 	// KindNodeCompensation synchronizes one reviewed outage compensation.
 	KindNodeCompensation = "node_compensation"
+	// KindAdminTemporaryBan changes a profile's remote connection state.
+	KindAdminTemporaryBan = "admin_temporary_ban"
+	// KindAdminTemporaryUnban restores a profile after a manual temporary ban.
+	KindAdminTemporaryUnban = "admin_temporary_unban"
+	// KindAdminRemnaRelink verifies and changes only the local remote identity link.
+	KindAdminRemnaRelink = "admin_remna_relink"
 )

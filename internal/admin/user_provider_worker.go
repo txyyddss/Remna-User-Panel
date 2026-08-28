@@ -1,0 +1,126 @@
+package admin
+
+import (
+	"context"
+	"encoding/json"
+	"time"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
+	"github.com/txyyddss/Remna-User-Panel/internal/providerops"
+)
+
+type adminUserProviderRepository interface {
+	BeginProviderOperationAttempt(context.Context, string, time.Time) (providerops.Operation, error)
+	CompleteProviderOperation(context.Context, string, providerops.Completion, time.Time) (providerops.Operation, error)
+	UserByID(context.Context, string) (model.User, error)
+	DesiredEntitlement(context.Context, string, time.Time) (*model.Purchase, error)
+	LinkAdminRemnaUser(context.Context, string, string, string, string, time.Time) error
+	HasActiveAbuseTemporaryBan(context.Context, string, time.Time) (bool, error)
+	CompleteAdminTemporaryUnban(context.Context, string, time.Time) error
+}
+
+type adminUserProviderRemote interface {
+	SetAdminUserDisabled(context.Context, string, bool) error
+	VerifyAdminRemoteUser(context.Context, string) error
+	ApplyEntitlement(context.Context, string, int64, string, []string, time.Time) error
+	RemoveEntitlement(context.Context, string) error
+}
+
+// UserProviderWorker executes isolated provider-backed account actions from the durable queue.
+type UserProviderWorker struct {
+	repository adminUserProviderRepository
+	remote     adminUserProviderRemote
+	now        func() time.Time
+}
+
+func NewUserProviderWorker(repository adminUserProviderRepository, remote adminUserProviderRemote) *UserProviderWorker {
+	return &UserProviderWorker{repository: repository, remote: remote, now: time.Now}
+}
+
+func (w *UserProviderWorker) HandleProviderOperation(ctx context.Context, operation providerops.Operation, job model.OutboxJob) error {
+	if operation.Receipt.Status == string(providerops.StatusQueued) {
+		var err error
+		operation, err = w.repository.BeginProviderOperationAttempt(ctx, operation.Receipt.ID, w.now().UTC())
+		if err != nil {
+			return err
+		}
+	}
+	if operation.Receipt.Status != string(providerops.StatusProcessing) {
+		return nil
+	}
+	completion := w.run(ctx, operation, job)
+	_, err := w.repository.CompleteProviderOperation(ctx, operation.Receipt.ID, completion, w.now().UTC())
+	return err
+}
+
+func (w *UserProviderWorker) run(ctx context.Context, operation providerops.Operation, job model.OutboxJob) providerops.Completion {
+	var err error
+	switch operation.Receipt.Kind {
+	case providerops.KindAdminTemporaryBan:
+		user, completion := w.userWithRemoteID(ctx, operation.OwnerUserID)
+		if completion != nil {
+			return *completion
+		}
+		err = w.remote.SetAdminUserDisabled(ctx, *user.RemnaUserID, true)
+	case providerops.KindAdminTemporaryUnban:
+		user, completion := w.userWithRemoteID(ctx, operation.OwnerUserID)
+		if completion != nil {
+			return *completion
+		}
+		var abuseActive bool
+		abuseActive, err = w.repository.HasActiveAbuseTemporaryBan(ctx, user.ID, w.now().UTC())
+		if err == nil && !abuseActive {
+			err = w.remote.SetAdminUserDisabled(ctx, *user.RemnaUserID, false)
+		}
+		if err == nil {
+			err = w.repository.CompleteAdminTemporaryUnban(ctx, user.ID, w.now().UTC())
+		}
+	case providerops.KindAdminRemnaRelink:
+		err = w.relink(ctx, operation, job)
+	default:
+		return providerops.Completion{Status: providerops.StatusFailed, ErrorCode: "UNSUPPORTED_ADMIN_OPERATION"}
+	}
+	if err != nil {
+		return providerops.Completion{Status: providerops.StatusPendingReview, ErrorCode: "UPSTREAM_OUTCOME_AMBIGUOUS"}
+	}
+	return providerops.Completion{Status: providerops.StatusSucceeded}
+}
+
+func (w *UserProviderWorker) userWithRemoteID(ctx context.Context, userID string) (model.User, *providerops.Completion) {
+	user, err := w.repository.UserByID(ctx, userID)
+	if err != nil || user.RemnaUserID == nil {
+		return model.User{}, &providerops.Completion{Status: providerops.StatusFailed, ErrorCode: "REMOTE_IDENTITY_REQUIRED"}
+	}
+	return user, nil
+}
+
+func (w *UserProviderWorker) relink(ctx context.Context, operation providerops.Operation, job model.OutboxJob) error {
+	payload, err := jobpayload.TargetID(job, "sealedTarget")
+	if err != nil {
+		return err
+	}
+	var target struct {
+		RemoteID string `json:"remoteId"`
+		Reason   string `json:"reason"`
+	}
+	if err = json.Unmarshal([]byte(payload), &target); err != nil {
+		return err
+	}
+	if err = w.remote.VerifyAdminRemoteUser(ctx, target.RemoteID); err != nil {
+		return err
+	}
+	if err = w.repository.LinkAdminRemnaUser(ctx, operation.ActorUserID, operation.OwnerUserID, target.RemoteID, target.Reason, w.now().UTC()); err != nil {
+		return err
+	}
+	desired, err := w.repository.DesiredEntitlement(ctx, operation.OwnerUserID, w.now().UTC())
+	if err != nil {
+		return err
+	}
+	if desired == nil {
+		return w.remote.RemoveEntitlement(ctx, target.RemoteID)
+	}
+	return w.remote.ApplyEntitlement(ctx, target.RemoteID, desired.TrafficLimitBytes, desired.ResetStrategy, desired.SquadUUIDs, desired.ValidUntil)
+}
+
+var _ providerops.Handler = (*UserProviderWorker)(nil)

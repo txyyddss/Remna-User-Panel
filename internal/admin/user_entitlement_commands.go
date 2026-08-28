@@ -41,19 +41,22 @@ func (s *UserWorkflows) EditEntitlement(ctx context.Context, actorID, userID, pu
 	}, s.now().UTC())
 }
 
-// RefundEntitlement credits the original net debit and queues exact provider sync.
-func (s *UserWorkflows) RefundEntitlement(ctx context.Context, actorID, userID, purchaseID, key, reason string) (model.OperationReceipt, error) {
+// RefundEntitlement credits a validated portion of the original net debit and queues exact provider sync.
+func (s *UserWorkflows) RefundEntitlement(ctx context.Context, actorID, userID, purchaseID, key, reason string, amountTXBMinor int64) (model.OperationReceipt, error) {
 	reason = strings.TrimSpace(reason)
-	if !validCommand(actorID, key, reason) || userID == "" || purchaseID == "" {
+	if !validCommand(actorID, key, reason) || userID == "" || purchaseID == "" || amountTXBMinor <= 0 {
 		return model.OperationReceipt{}, errors.New("invalid entitlement refund")
 	}
-	fingerprint, err := commandFingerprint(map[string]string{"userId": userID, "purchaseId": purchaseID, "reason": reason})
+	fingerprint, err := commandFingerprint(struct {
+		UserID, PurchaseID, Reason string
+		AmountTXBMinor             int64
+	}{userID, purchaseID, reason, amountTXBMinor})
 	if err != nil {
 		return model.OperationReceipt{}, err
 	}
 	return s.repository.RefundAdminEntitlement(ctx, database.AdminEntitlementRefundInput{
 		ActorUserID: actorID, UserID: userID, PurchaseID: purchaseID, IdempotencyKey: strings.TrimSpace(key),
-		RequestFingerprint: fingerprint, Reason: reason,
+		RequestFingerprint: fingerprint, Reason: reason, AmountTXBMinor: amountTXBMinor,
 	}, s.now().UTC())
 }
 

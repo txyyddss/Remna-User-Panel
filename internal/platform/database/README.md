@@ -132,6 +132,8 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `provider_operation_notification_completion.go` releases pending user messages
   only for a real successful provider-worker item.
 - `admin_entitlement_edit.go`, `admin_entitlement_refund.go`, and `admin_combo_replacement.go` atomically persist audited administrator mutations with their provider operations.
+- `admin_coupon_grants.go` records idempotent, audited purchase-coupon wallet grants and historical discards.
+- `admin_user_provider_commands.go`, `admin_user_ban_state.go`, and `admin_user_audit.go` persist manual temporary restrictions, due restoration, relink claims, and audits.
 - `admin_bulk_query.go`, `admin_bulk_shift.go`, and `admin_bulk_extension.go` preview inclusive-OR active targets, deduplicate users, shift active and queued terms to the minute, and create one durable bulk job.
 - `compensation_config.go`, `compensation_observation.go`, `compensation_events.go`, `compensation_review.go`, `compensation_notification.go`, and `compensation_dismiss.go` persist revisioned outage policy, node observations, frozen snapshots, cursor-safe projections, atomic reviewed extensions, and provider-gated compensation detail cards.
 - `automatic_renewal_plan.go` and `automatic_renewal_commit.go` preserve explicit administrator entitlement overrides and edited term lengths when creating a successor.
@@ -141,6 +143,8 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `migrations/035_abuse_warning_cooldown.sql` persists the policy-controlled warning record cooldown.
 - `migrations/038_durable_abuse_processing.sql` adds the bounded streak policy, normalized pending events, 30-minute rollups, emitted-state compatibility, compact incident facts, and punishment completion evidence.
 - `migrations/039_abuse_record_retention_and_ip_bans.sql` adds configurable record retention support and resumable IP-ban scan state.
+- `migrations/040_admin_user_provider_commands.sql` adds durable manual temporary-ban state.
+- `migrations/041_admin_coupon_discard_commands.sql` binds administrative coupon discards to idempotency keys.
 - `compensation_observation_test.go` covers persisted/missing nodes, snapshotted policy, disabled precedence, and repeated outages.
 - `compensation_review_test.go` covers inactive skips, exact minute shifts, notifications, operation linkage, stale reviews, replay, and dismissal.
 - `admin_user_operations.go` and `admin_user_refunds.go` supply the aggregate profile's open-operation and refund projections.
@@ -210,6 +214,8 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `notification_events_test.go` covers provider-gate deduplication, reminder
   eligibility, and traffic reset-period rearming.
 - `admin_entitlement_workflows_test.go` covers optimistic edits, immutable pricing, exactly-once credits, and zero-TXB replacements.
+- `admin_user_commands_test.go` covers purchase-coupon replays, bounded exact refunds, overlapping temporary bans, and restoration scheduling.
+- `admin_user_search_test.go` covers AND/OR profile facets, normalized cursor fingerprints, and success-only affiliate history.
 - `admin_bulk_workflows_test.go` covers inclusive-OR matching, active-user deduplication, and equal minute-precise queued-term shifts.
 - `admin_operation_projection_test.go` covers owned and bulk-target open-operation aggregation.
 - `product_statistics_test.go` verifies administrators are excluded from member population, spend, state, and active-catalog metrics.

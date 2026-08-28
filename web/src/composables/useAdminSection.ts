@@ -1,6 +1,7 @@
 import { onMounted, onScopeDispose, readonly, shallowRef } from 'vue'
 
 import { api } from '@/api/client'
+import type { QueryValue } from '@/api/http'
 import type { AdminResource, Paginated } from '@/api/types'
 import { notifyHaptic } from '@/utils/telegram'
 import { localizedError } from '@/i18n'
@@ -18,7 +19,7 @@ export function useAdminSection<T>(resource: AdminResource, options: { immediate
   const error = shallowRef<string | null>(null)
   const nextCursor = shallowRef<string | null>(null)
   const latestLoad = createLatestRequest()
-  type Query = Record<string, string | number | boolean | undefined>
+	type Query = Record<string, QueryValue>
   let lastQuery: Query = {}
 
   async function load(query?: Query, options: { append?: boolean } = {}): Promise<void> {

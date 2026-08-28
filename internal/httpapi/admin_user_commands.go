@@ -59,14 +59,20 @@ func (s *Server) adminRefundEntitlement(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	var request struct {
-		Reason string `json:"reason"`
+		Reason         string `json:"reason"`
+		AmountTXBMinor string `json:"amountTxbMinor"`
 	}
 	if err := decodeJSON(w, r, &request); err != nil {
 		s.writeError(w, r, http.StatusBadRequest, "INVALID_ENTITLEMENT_REFUND", "A refund reason is required.")
 		return
 	}
+	amount, err := strconv.ParseInt(request.AmountTXBMinor, 10, 64)
+	if err != nil || amount <= 0 {
+		s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_ENTITLEMENT_REFUND_AMOUNT", "Refund amount must be a positive TXB minor amount.")
+		return
+	}
 	receipt, err := s.deps.AdminUsers.RefundEntitlement(r.Context(), currentUser(r).ID,
-		chiURLParam(r, "userId"), chiURLParam(r, "entitlementId"), key, request.Reason)
+		chiURLParam(r, "userId"), chiURLParam(r, "entitlementId"), key, request.Reason, amount)
 	if err != nil {
 		s.adminFailure(w, r, err)
 		return

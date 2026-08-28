@@ -28,6 +28,8 @@ type remnaClient interface {
 	UnblockIP(context.Context, string, string) error
 	RevokeSubscription(context.Context, int64, bool) (*remnawave.User, error)
 	UpdateUser(context.Context, remnawave.UpdateUserRequest) (*remnawave.User, error)
+	DisableUser(context.Context, int64) error
+	EnableUser(context.Context, int64) error
 	ResetTraffic(context.Context, int64) (*remnawave.User, error)
 	ListInternalSquads(context.Context) ([]remnawave.InternalSquad, error)
 	ListNodes(context.Context) ([]remnawave.Node, error)

@@ -19,6 +19,7 @@ stopped.
 - `application.go` defines the process-owned application resource container.
 - `member_workflows.go` composes member connection/reset/refund services and registers legacy drop plus block/unblock operation workers on one dispatcher.
 - `outbox_composition.go` registers core jobs, user/payment/affiliate Telegram notifications, the scheduled IP-unblock backstop, and the shared provider-operation dispatcher.
+- `admin_user_outbox.go` schedules due manual temporary-ban restoration through the shared provider-operation lane.
 - `payment_operations.go` registers durable payment create and cancellation handlers on that dispatcher.
 - `payment_profile_manager.go` probes BEPUSDT profiles at startup and after saves, publishes process-local discovered rails, and reports disabled profiles to every Telegram administrator.
 - `mutation_operation_composition.go` registers subscription, Emby, questionnaire, retry, and refund command handlers.
@@ -29,6 +30,7 @@ stopped.
 - `provider_queues.go` configures, starts, and shuts down the independent Remnawave and Emby admission queues.
 - `adapters.go` implements Telegram identity/membership and payment-provider bridges used by domain services.
 - `remna_adapter.go` owns queued Remnawave client creation, shared call helpers, user-ID validation, and domain mapping.
+- `remna_admin_user_adapter.go` verifies replacement identities and queues documented account disable and enable actions.
 - `remna_accounts_adapter.go` implements queued Remnawave account lookup and creation operations.
 - `remna_catalog_adapter.go` implements queued dashboard reads and subscription revocation for catalog workflows.
 - `remna_usage_adapter.go` implements queued date-bounded per-node usage reads for the member dashboard.

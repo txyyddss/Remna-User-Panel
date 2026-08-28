@@ -59,7 +59,7 @@ func (*userWorkflowRepositoryStub) MemberRecords(context.Context, string, string
 	return abuse.RecordPage{Items: []abuse.Record{}}, nil
 }
 
-func (*userWorkflowRepositoryStub) AffiliateReferrals(context.Context, string, int) (affiliates.ReferralPage, error) {
+func (*userWorkflowRepositoryStub) SuccessfulAffiliateReferrals(context.Context, string, int) (affiliates.ReferralPage, error) {
 	return affiliates.ReferralPage{Items: []affiliates.Referral{}}, nil
 }
 
@@ -94,5 +94,29 @@ func (r *userWorkflowRepositoryStub) PreviewAdminBulkExtension(context.Context, 
 
 func (r *userWorkflowRepositoryStub) CreateAdminBulkExtension(context.Context, database.AdminBulkExtensionInput,
 	time.Time) (model.OperationReceipt, error) {
+	return model.OperationReceipt{}, nil
+}
+
+func (*userWorkflowRepositoryStub) GrantAdminCoupon(context.Context, database.AdminCouponGrantInput, time.Time) (coupons.Grant, error) {
+	return coupons.Grant{}, nil
+}
+
+func (*userWorkflowRepositoryStub) DiscardAdminCoupon(context.Context, string, string, string, string, time.Time) error {
+	return nil
+}
+
+func (*userWorkflowRepositoryStub) ActiveAdminTemporaryBan(context.Context, string) (*database.AdminTemporaryBan, error) {
+	return nil, nil
+}
+
+func (*userWorkflowRepositoryStub) CreateAdminTemporaryBan(context.Context, database.AdminTemporaryBanInput, time.Time) (model.OperationReceipt, error) {
+	return model.OperationReceipt{}, nil
+}
+
+func (*userWorkflowRepositoryStub) CreateAdminTemporaryUnban(context.Context, string, string, string, string, string, time.Time) (model.OperationReceipt, error) {
+	return model.OperationReceipt{}, nil
+}
+
+func (*userWorkflowRepositoryStub) CreateAdminRemnaRelink(context.Context, database.AdminRemnaRelinkInput, time.Time) (model.OperationReceipt, error) {
 	return model.OperationReceipt{}, nil
 }

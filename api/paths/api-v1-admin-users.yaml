@@ -6,6 +6,22 @@ get:
     - $ref: '../openapi.yaml#/components/parameters/Cursor'
     - $ref: '../openapi.yaml#/components/parameters/AdminPageLimit'
     - $ref: '../openapi.yaml#/components/parameters/Search'
+    - name: state
+      in: query
+      schema: { type: string, enum: [active, non_active] }
+    - name: comboId
+      in: query
+      style: form
+      explode: true
+      schema: { type: array, uniqueItems: true, items: { $ref: '../openapi.yaml#/components/schemas/ID' } }
+    - name: squadUuid
+      in: query
+      style: form
+      explode: true
+      schema: { type: array, uniqueItems: true, items: { type: string, format: uuid } }
+    - name: match
+      in: query
+      schema: { type: string, enum: [and, or], default: and }
   responses:
     '200':
       description: User page. Subscription bearer URLs are omitted from list results.

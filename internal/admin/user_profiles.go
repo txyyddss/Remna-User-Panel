@@ -25,7 +25,7 @@ type UserWorkflowRepository interface {
 	ListAdminOperationsForUser(context.Context, string, int) ([]model.OperationReceipt, error)
 	ListCouponGrants(context.Context, string, time.Time) ([]coupons.Grant, error)
 	MemberRecords(context.Context, string, string, int) (abuse.RecordPage, error)
-	AffiliateReferrals(context.Context, string, int) (affiliates.ReferralPage, error)
+	SuccessfulAffiliateReferrals(context.Context, string, int) (affiliates.ReferralPage, error)
 	ComboByID(context.Context, string, bool) (model.Combo, error)
 	EditAdminEntitlement(context.Context, database.AdminEntitlementEditInput, time.Time) (model.Purchase, error)
 	RefundAdminEntitlement(context.Context, database.AdminEntitlementRefundInput, time.Time) (model.OperationReceipt, error)
@@ -33,6 +33,12 @@ type UserWorkflowRepository interface {
 	ResolveAdminOperation(context.Context, database.AdminOperationResolutionInput, time.Time) (model.OperationReceipt, error)
 	PreviewAdminBulkExtension(context.Context, database.AdminBulkExtensionFilter, time.Time) (database.AdminBulkExtensionPreview, error)
 	CreateAdminBulkExtension(context.Context, database.AdminBulkExtensionInput, time.Time) (model.OperationReceipt, error)
+	GrantAdminCoupon(context.Context, database.AdminCouponGrantInput, time.Time) (coupons.Grant, error)
+	DiscardAdminCoupon(context.Context, string, string, string, string, time.Time) error
+	ActiveAdminTemporaryBan(context.Context, string) (*database.AdminTemporaryBan, error)
+	CreateAdminTemporaryBan(context.Context, database.AdminTemporaryBanInput, time.Time) (model.OperationReceipt, error)
+	CreateAdminTemporaryUnban(context.Context, string, string, string, string, string, time.Time) (model.OperationReceipt, error)
+	CreateAdminRemnaRelink(context.Context, database.AdminRemnaRelinkInput, time.Time) (model.OperationReceipt, error)
 }
 
 // UserSynchronization summarizes the local-to-provider identity state.
@@ -56,6 +62,7 @@ type UserDetail struct {
 	CouponWallet     []coupons.Grant
 	AbuseHistory     []abuse.Record
 	AffiliateHistory affiliates.ReferralPage
+	TemporaryBan     *database.AdminTemporaryBan
 }
 
 // UserWorkflows owns aggregate reads and durable administrator commands.
@@ -118,7 +125,10 @@ func (s *UserWorkflows) UserDetail(ctx context.Context, userID string) (UserDeta
 	} else {
 		detail.AbuseHistory = page.Items
 	}
-	if detail.AffiliateHistory, err = s.repository.AffiliateReferrals(ctx, userID, 1); err != nil {
+	if detail.AffiliateHistory, err = s.repository.SuccessfulAffiliateReferrals(ctx, userID, 50); err != nil {
+		return UserDetail{}, err
+	}
+	if detail.TemporaryBan, err = s.repository.ActiveAdminTemporaryBan(ctx, userID); err != nil {
 		return UserDetail{}, err
 	}
 	return detail, nil

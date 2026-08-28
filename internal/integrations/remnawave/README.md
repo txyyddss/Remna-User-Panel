@@ -6,6 +6,7 @@ This package implements the Remnawave v3.3.0 operations used by TX Carpool. Endp
 
 - `client.go` owns client construction, authenticated HTTP transport, bounded response decoding, and sanitized API errors; `response_limits.go` keeps the larger Geocheck SVG allowance isolated from the default response cap.
 - `users.go` implements user creation and identity lookup; `users_part2.go` implements documented stream pagination, update, credential revocation, and traffic reset operations.
+- `user_actions.go` implements documented disable and enable account actions used only by durable administrator restrictions.
 - `subscriptions.go` implements protected subscription retrieval and the documented `GET /api/bandwidth-stats/users/{userId}` date-bounded usage statistics.
 - `connections.go` implements queued user scans, canonicalizes IPv4/IPv6 observations (including bracketed socket forms), selected-IP drops, and exact `blockIps`/`unblockIps` node-plugin executor payloads; `connection_types.go` keeps transient provider contracts focused.
 - `geocheck.go` starts documented node Geocheck jobs and maps completed SVG results without retaining the upstream raw report.

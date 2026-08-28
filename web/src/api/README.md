@@ -5,7 +5,7 @@
 - `adminBilling.ts` owns the atomic administrator update for global Add TXB bounds.
 - `abuse.ts` owns typed privacy-safe member and administrator detector resources, including configurable streaks, the revisioned warning-record cooldown, and WebView-safe idempotency keys for mutations.
 - `abuse.test.ts` verifies detector mutations keep route-owned IDs out of strict JSON bodies and submit the complete streak policy.
-- `adminOperations.ts` owns aggregate user profiles, profile-scoped payment refunds and courtesy credits, audited entitlement and combo mutations, bulk extensions, operation resolution, and streamed backup upload.
+- `adminOperations.ts` owns aggregate user profiles, facet filtering, coupon wallet actions, exact entitlement refunds, queued provider-account actions, transient connection scans, bulk extensions, operation resolution, and streamed backup upload.
 - `client.ts` exposes typed member and administrator API operations, including idempotent payment, subscription-revoke, refund, and outbox-retry commands, connection scans, renewal batches, payment profiles, dashboard usage, and cached product statistics.
 - `client.test.ts` covers client request behavior.
 - `compensation.ts` owns revisioned configuration, cursor history, and idempotent approve/dismiss requests.

@@ -32,8 +32,8 @@ Admin controls inherit guarded action feedback, modal dismissal stays soft, audi
 - `AdminSquadEditor.vue` edits sparse squad overrides; node access remains a live Remnawave projection.
 - `admin/squad-profile/` contains the typed Broadband, China Optimized, and International Network profile editor modules.
 - `AdminStatisticsPanel.vue` presents resource statistics with narrow-screen overflow protection.
-- `AdminUsersPanel.vue` searches users and adjusts balances.
-- `users/` contains the aggregate profile, entitlement workflow, operation-resolution, and bulk-extension modules.
+- `AdminUsersPanel.vue` searches users with responsive state/combo/squad facets and adjusts balances.
+- `users/` contains the aggregate profile, wallet, provider-account, entitlement workflow, operation-resolution, and bulk-extension modules.
 - `compensation/` contains focused configuration, event-card, review-modal, and display-format modules.
 
 The editor also provides dropdowns for coupon-eligible combos and squads, a stock

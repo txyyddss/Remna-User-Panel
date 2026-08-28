@@ -132,7 +132,7 @@ func TestRefundAdminEntitlementCreditsOriginalDebitExactlyOnce(t *testing.T) {
 	user, purchase := createAdminWorkflowPurchase(t, store, 41004, combo, now)
 	before := adminWorkflowBalance(t, store, user.ID)
 	input := AdminEntitlementRefundInput{ActorUserID: actor.ID, UserID: user.ID, PurchaseID: purchase.ID,
-		IdempotencyKey: "refund-entitlement", RequestFingerprint: "refund-fingerprint-01", Reason: "approved refund"}
+		IdempotencyKey: "refund-entitlement", RequestFingerprint: "refund-fingerprint-01", Reason: "approved refund", AmountTXBMinor: purchase.PriceTXBMinor}
 
 	first, err := store.RefundAdminEntitlement(ctx, input, now.Add(time.Minute))
 	if err != nil {

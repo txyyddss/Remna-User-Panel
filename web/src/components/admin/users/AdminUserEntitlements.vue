@@ -5,8 +5,8 @@ import { useI18n } from '@/i18n'
 import { formatBytes, formatDateTime, formatMoney } from '@/utils/format'
 import { entitlementTone } from './adminUserFormat'
 
-defineProps<{ items: AdminEntitlement[]; busy: boolean; canReplace: boolean }>()
-const emit = defineEmits<{ edit: [item: AdminEntitlement]; refund: [item: AdminEntitlement]; replace: [] }>()
+defineProps<{ items: AdminEntitlement[]; busy: boolean }>()
+const emit = defineEmits<{ edit: [item: AdminEntitlement]; refund: [item: AdminEntitlement] }>()
 const { t } = useI18n()
 
 function refundable(item: AdminEntitlement): boolean {
@@ -18,7 +18,6 @@ function refundable(item: AdminEntitlement): boolean {
   <section class="admin-profile-section">
     <div class="admin-profile-section__heading">
       <div><h3>{{ t('adminUserProfile.entitlements') }}</h3><p>{{ t('adminUserProfile.entitlementsHint') }}</p></div>
-      <UButton v-if="canReplace" color="neutral" variant="outline" icon="i-ph-swap" :label="t('adminUserProfile.replaceCombo')" :disabled="busy" @click="emit('replace')" />
     </div>
     <div v-if="items.length" class="admin-profile-list">
       <article v-for="item in items" :key="item.id" class="admin-profile-row">

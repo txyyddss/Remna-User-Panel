@@ -109,3 +109,46 @@ func (s *Store) AffiliateReferrals(ctx context.Context, userID string, page int)
 	}
 	return result, rows.Err()
 }
+
+// SuccessfulAffiliateReferrals returns only settled referrals for an administrator profile.
+func (s *Store) SuccessfulAffiliateReferrals(ctx context.Context, userID string, limit int) (affiliates.ReferralPage, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	result := affiliates.ReferralPage{Page: 1, PageSize: limit, Items: []affiliates.Referral{}}
+	var telegramID int64
+	if err := s.db.QueryRowContext(ctx, `SELECT telegram_id FROM users WHERE id=?`, userID).Scan(&telegramID); err != nil {
+		return result, err
+	}
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users i JOIN affiliate_settlements a ON a.invited_user_id=i.id WHERE i.inviter_id=?`, telegramID).Scan(&result.Total); err != nil {
+		return result, err
+	}
+	result.TotalPages = (result.Total + limit - 1) / limit
+	rows, err := s.db.QueryContext(ctx, `SELECT COALESCE(i.telegram_first_name,''),COALESCE(i.telegram_last_name,''),i.created_at,a.settled_at,a.commission_txb_minor
+		FROM users i JOIN affiliate_settlements a ON a.invited_user_id=i.id WHERE i.inviter_id=? ORDER BY a.settled_at DESC,i.id DESC LIMIT ?`, telegramID, limit)
+	if err != nil {
+		return result, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var item affiliates.Referral
+		var registered, paidAt string
+		var amount int64
+		if err := rows.Scan(&item.FirstName, &item.LastName, &registered, &paidAt, &amount); err != nil {
+			return result, err
+		}
+		var err error
+		if item.RegisteredAt, err = parseStamp(registered); err != nil {
+			return result, err
+		}
+		paid, err := parseStamp(paidAt)
+		if err != nil {
+			return result, err
+		}
+		item.Status, item.PaybackAt = "successful", &paid
+		money := affiliates.Money{Minor: strconv.FormatInt(amount, 10), Currency: "TXB", Display: model.TXBMoney(amount).Display}
+		item.CommissionAmount = &money
+		result.Items = append(result.Items, item)
+	}
+	return result, rows.Err()
+}

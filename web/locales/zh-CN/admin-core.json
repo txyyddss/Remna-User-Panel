@@ -42,7 +42,19 @@
     "deduct": "扣除 TXB",
     "adjusted": "已调整 {name} 的余额。",
     "none": "没有匹配用户",
-    "noneHint": "可尝试 Telegram 姓名、用户名或数字 ID。"
+    "noneHint": "可尝试 Telegram 姓名、用户名或数字 ID。",
+    "filters": "筛选",
+    "filtersHint": "按当前权益状态、套餐和节点组缩小用户范围。",
+    "entitlementState": "权益状态",
+    "allStates": "全部状态",
+    "activeEntitlement": "有活跃权益",
+    "nonActiveEntitlement": "无活跃权益",
+    "combos": "套餐",
+    "squads": "节点组",
+    "match": "筛选匹配方式",
+    "matchAnd": "匹配全部",
+    "matchOr": "匹配任一",
+    "applyFilters": "应用筛选"
   },
   "adminEmby": {
     "title": "Emby 账户",

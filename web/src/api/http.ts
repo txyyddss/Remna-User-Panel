@@ -1,7 +1,7 @@
 import type { ApiErrorBody } from './types'
 import { applyRequestSignature, requestBodyBytes } from './request-signing'
 
-export type QueryValue = string | number | boolean | undefined
+export type QueryValue = string | number | boolean | readonly string[] | undefined
 
 export interface RequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown
@@ -26,9 +26,13 @@ export class ApiError extends Error {
 
 export function createUrl(path: string, query?: Record<string, QueryValue>): string {
   if (!query) return path
-  const params = new URLSearchParams()
-  for (const [key, value] of Object.entries(query)) {
-    if (value !== undefined) params.set(key, String(value))
+	const params = new URLSearchParams()
+	for (const [key, value] of Object.entries(query)) {
+		if (Array.isArray(value)) {
+			for (const item of value) params.append(key, item)
+		} else if (value !== undefined) {
+			params.set(key, String(value))
+		}
   }
   const encoded = params.toString()
   return encoded ? `${path}?${encoded}` : path
