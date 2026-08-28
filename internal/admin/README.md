@@ -40,6 +40,7 @@ Audited administrative operations for catalog data, settings, balances, refunds,
 - `catalog_test.go` covers optional setting validators.
 - `user_profiles_test.go` covers aggregate selection, ordering, and synchronization projection.
 - `user_profiles_test_helpers_test.go` contains focused aggregate-profile repository doubles.
+- `user_account_commands_test.go` covers validated coupon, partial-refund, temporary-ban, and Remnawave-relink command forwarding.
 - `user_operation_worker_test.go` covers ambiguous provider outcomes and partial bulk completion.
 - `user_provider_worker_test.go` covers target-only Remnawave relinks without a former-account mutation.
 - `user_operation_worker_test_helpers_test.go` contains reusable provider-operation worker fixtures.
