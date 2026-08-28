@@ -11,13 +11,15 @@ export interface AdminUserSearchFiltersValue {
   match: 'and' | 'or'
 }
 
+type SelectedState = 'all' | Exclude<AdminUserSearchFiltersValue['state'], ''>
+
 const props = defineProps<{ combos: readonly Combo[]; squads: readonly SquadProduct[] }>()
 const emit = defineEmits<{ apply: [value: AdminUserSearchFiltersValue] }>()
 const { t } = useI18n()
 const drawerOpen = shallowRef(false)
-const value = reactive<AdminUserSearchFiltersValue>({ state: '', comboIds: [], squadUuids: [], match: 'and' })
+const value = reactive<{ state: SelectedState; comboIds: string[]; squadUuids: string[]; match: 'and' | 'or' }>({ state: 'all', comboIds: [], squadUuids: [], match: 'and' })
 const stateItems = computed(() => [
-  { label: t('adminUsers.allStates'), value: '' },
+  { label: t('adminUsers.allStates'), value: 'all' },
   { label: t('adminUsers.activeEntitlement'), value: 'active' },
   { label: t('adminUsers.nonActiveEntitlement'), value: 'non_active' },
 ])
@@ -29,12 +31,12 @@ const comboItems = computed(() => props.combos.map((item) => ({ label: item.name
 const squadItems = computed(() => props.squads.map((item) => ({ label: item.name, value: item.remnaSquadUuid })))
 
 function apply(): void {
-  emit('apply', { state: value.state, comboIds: [...value.comboIds], squadUuids: [...value.squadUuids], match: value.match })
+  emit('apply', { state: value.state === 'all' ? '' : value.state, comboIds: [...value.comboIds], squadUuids: [...value.squadUuids], match: value.match })
   drawerOpen.value = false
 }
 
 function clear(): void {
-  value.state = ''
+  value.state = 'all'
   value.comboIds = []
   value.squadUuids = []
   value.match = 'and'
