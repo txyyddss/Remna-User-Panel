@@ -123,7 +123,6 @@
     "review": "Review exact changes",
     "before": "Before",
     "after": "After",
-    "to": "to",
     "backupRequired": "Rescue backup required before apply.",
     "typeConfirmation": "Type {confirmation}",
     "changeDraft": "Change draft",

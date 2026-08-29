@@ -1,7 +1,6 @@
 {
   "adminNav": {
     "users": "Users",
-    "emby": "Emby accounts",
     "eyebrow": "Control room",
     "title": "TX administration.",
     "copy": "Configuration and account changes are validated and audited.",
@@ -15,12 +14,10 @@
     "system": "System",
     "catalog": "Catalog",
     "coupons": "Coupons",
-    "payments": "Payments",
     "activity": "Activity",
     "affiliates": "Affiliates",
     "questionnaires": "Questionnaires",
     "onboarding": "Onboarding",
-    "entitlements": "Entitlements",
     "settings": "Settings",
     "backups": "Backups and jobs",
     "database": "Database",
@@ -92,8 +89,6 @@
     "activationRequiredHint": "Keep this squad visible, but request a code before a new purchase.",
     "activationCode": "Activation code",
     "activationCodeHint": "Leave blank to keep the existing code when editing.",
-    "loadError": "Node assignments could not be loaded.",
-    "saveError": "Node assignments could not be verified and saved.",
     "edit": "Edit {name}",
     "identityHint": "The live Remnawave squad remains the source of identity and node data.",
     "close": "Close squad editor",
@@ -105,13 +100,6 @@
     "stockUnlimited": "Unlimited",
     "visible": "Visible in catalog",
     "visibleHint": "Hidden squads remain available to existing purchases.",
-    "nodes": "Accessible nodes",
-    "nodeHint": "Selections are converted to active inbound UUIDs and verified against Remnawave.",
-    "verifying": "Verifying",
-    "saveNodes": "Save nodes",
-    "nodeTraffic": "{country} · {multiplier}× traffic",
-    "isoUnavailable": "ISO unavailable",
-    "noNodes": "No upstream nodes are available.",
     "saveSquad": "Save squad"
   },
   "adminStatistics": {

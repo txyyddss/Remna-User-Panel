@@ -8,8 +8,6 @@
     "stakeRange": "{minimum} to {maximum} TXB",
     "title": "Play with clear odds.",
     "balance": "Balance {amount}",
-    "unavailable": "Activity is unavailable.",
-    "resultRecorded": "Result recorded",
     "groupRewardTitle": "Group message reward",
     "groupRewardDisabled": "Group message rewards are not active right now.",
     "groupRewardProgress": "{count} of {threshold} messages",
@@ -76,7 +74,6 @@
     "dailyRewardMaximum": "Maximum daily reward",
     "groupMessageThreshold": "Messages per reward",
     "groupMessageThresholdHint": "Set to 0 to disable group-message rewards.",
-    "groupMessageReward": "Group-message reward",
-    "saveSettings": "Save activity settings"
+    "groupMessageReward": "Group-message reward"
   }
 }

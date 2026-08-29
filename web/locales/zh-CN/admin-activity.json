@@ -1,12 +1,10 @@
 {
   "adminActivityManagement": {
-    "couponLabel": "{code}：{name}",
     "title": "活动",
     "copy": "配置签到时间、透明游戏概率和加权抽奖。奖励金额统一在设置中管理。",
     "chooseActivity": "请选择一个活动。",
     "deleteFailed": "无法删除活动。",
     "loadFailed": "无法加载活动配置。",
-    "settingsFailed": "无法保存签到设置。",
     "gameSaveFailed": "无法保存游戏。",
     "drawSaveFailed": "无法保存幸运抽奖。",
     "games": "竞猜游戏",
@@ -23,7 +21,6 @@
     "available": "向成员开放",
     "availableHint": "停用的游戏仍保留在结果历史中。",
     "saveGame": "保存游戏",
-    "loadingGames": "正在加载游戏",
     "gameSummary": "胜率 {chance}% · {multiplier}× 回报 · {minimum} 至 {maximum} TXB",
     "statisticsFor": "查看 {name} 的统计",
     "statisticsTitle": "{name} 统计",
@@ -77,6 +74,7 @@
     "signedChange": "带符号 TXB 变动",
     "signedPlaceholder": "5.00 或 -1.00",
     "coupon": "优惠券",
+    "couponLabel": "{code}：{name}",
     "selectCoupon": "选择优惠券",
     "extensionDays": "延长天数",
     "removePrize": "移除 {name}",

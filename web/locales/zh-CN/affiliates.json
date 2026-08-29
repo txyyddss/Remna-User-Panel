@@ -29,7 +29,6 @@
     "referrals": "邀请明细",
     "memberFallback": "TX 用户",
     "joinedOn": "注册于 {date}",
-    "pending": "待完成",
     "noReferrals": "新的注册用户会显示在这里。",
     "status": { "pending": "待完成", "successful": "已成功" }
   },

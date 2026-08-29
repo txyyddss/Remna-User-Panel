@@ -29,7 +29,6 @@
     "referrals": "Referrals",
     "memberFallback": "TX member",
     "joinedOn": "Registered {date}",
-    "pending": "Pending",
     "noReferrals": "New registrations will appear here.",
     "status": { "pending": "Pending", "successful": "Successful" }
   },

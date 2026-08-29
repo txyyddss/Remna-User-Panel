@@ -2,7 +2,6 @@
   "coupons": {
     "wallet": "Coupon wallet",
     "walletHint": "Redeem a code or use an available grant.",
-    "selectorSummary": "{code} · {effect}",
     "effectFixed": "Adds {amount} TXB",
     "effectPercent": "Adds {value}% of the balance",
     "effectPurchasePercent": "Discounts {value}% from the combo price",

@@ -5,9 +5,6 @@
     "updatedAt": "Updated {date}",
     "refresh": "Refresh statistics",
     "stalePartitions": "Some metrics are showing the last successful snapshot.",
-    "freshnessLabel": "Statistics data freshness",
-    "remoteData": "Remnawave data",
-    "databaseData": "Database data",
     "partitionCurrent": "Current",
     "partitionStale": "Last known",
     "loadFailed": "Statistics could not be loaded.",
@@ -18,10 +15,8 @@
     "chartSeries": "{series}: {segment}",
     "noPayments": "No terminal payments recorded",
     "overview": "Overview",
-    "conversion": "New-user conversion",
     "converted": "Purchased a combo",
     "notConverted": "No combo purchase",
-    "conversionChartLabel": "{value} of users purchased a combo",
     "weeklyIncrease": "Users added this week",
     "weeklyIncreaseChartLabel": "Users added this week: {value}",
     "monthlyUsage": "Monthly average usage",
@@ -43,9 +38,6 @@
     "downloadRate": "Download rate",
     "uploadRate": "Upload rate",
     "perSecond": "{value}/s",
-    "xrayVersion": "Xray version",
-    "multiplier": "Traffic multiplier",
-    "multiplierValue": "{value}x",
     "geocheck": {
       "open": "View Geocheck result",
       "title": "{node} Geocheck",
@@ -67,10 +59,8 @@
     "subscriptionChartLabel": "Subscription state distribution",
     "comboChoices": "Active combo choices",
     "active": "Active",
-    "comboChartLabel": "Active combo distribution",
     "paymentStates": "Payment states",
     "paymentChartLabel": "Payment status distribution",
-    "paymentLegend": "{provider}: {status}",
     "squadComposition": "Squad composition",
     "bySquad": "By squad",
     "byCombo": "By combo",
@@ -87,8 +77,7 @@
     "databaseUpdatedAt": "Database data update time",
     "provider": {
       "ezpay": "EZPay",
-      "bepusdt": "BEPusdt",
-      "stars": "Telegram Stars"
+      "bepusdt": "BEPusdt"
     },
     "paymentStatus": {
       "paid": "Paid",

@@ -15,7 +15,6 @@
     "loadFailed": "Questionnaires could not be loaded.",
     "saveFailed": "The questionnaire could not be saved.",
     "activateFailed": "Activation failed.",
-    "closeConfirm": "Close {name}? New participation will stop.",
     "closeFailed": "The questionnaire could not be closed.",
     "deleteFailed": "The questionnaire could not be deleted.",
     "edit": "Edit questionnaire",
@@ -25,7 +24,6 @@
     "description": "Description, Markdown",
     "reward": "Reward",
     "saveDraft": "Save draft",
-    "loading": "Loading questionnaires",
     "summary": "{status} · {count} participants · {reward} TXB",
     "activate": "Activate",
     "importCsv": "Import CSV",
@@ -84,7 +82,6 @@
   "questionnaireImport": {
     "settle": "Settle {name}",
     "copy": "Upload, map, review, then queue rewards.",
-    "close": "Close import",
     "running": "Settlement running",
     "failed": "Settlement failed",
     "queued": "Settlement queued",

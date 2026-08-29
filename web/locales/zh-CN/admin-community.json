@@ -15,7 +15,6 @@
     "loadFailed": "无法加载问卷。",
     "saveFailed": "无法保存问卷。",
     "activateFailed": "启用失败。",
-    "closeConfirm": "关闭 {name}？新的参与将停止。",
     "closeFailed": "无法关闭问卷。",
     "deleteFailed": "无法删除问卷。",
     "edit": "编辑问卷",
@@ -25,7 +24,6 @@
     "description": "描述（Markdown）",
     "reward": "奖励",
     "saveDraft": "保存草稿",
-    "loading": "正在加载问卷",
     "summary": "{status} · {count} 位参与者 · {reward} TXB",
     "activate": "启用",
     "importCsv": "导入 CSV",
@@ -84,7 +82,6 @@
   "questionnaireImport": {
     "settle": "结算 {name}",
     "copy": "上传、映射、审阅，然后将奖励加入队列。",
-    "close": "关闭导入",
     "running": "结算进行中",
     "failed": "结算失败",
     "queued": "结算已排队",

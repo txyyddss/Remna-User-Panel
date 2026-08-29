@@ -123,7 +123,6 @@
     "review": "审阅精确变更",
     "before": "修改前",
     "after": "修改后",
-    "to": "变为",
     "backupRequired": "应用前必须创建救援备份。",
     "typeConfirmation": "输入 {confirmation}",
     "changeDraft": "修改草稿",

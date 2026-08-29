@@ -1,7 +1,6 @@
 {
   "adminNav": {
     "users": "用户",
-    "emby": "Emby 账户",
     "eyebrow": "控制中心",
     "title": "TX 管理。",
     "copy": "配置和账户变更均会经过验证与审计。",
@@ -15,12 +14,10 @@
     "system": "系统",
     "catalog": "套餐目录",
     "coupons": "优惠券",
-    "payments": "支付",
     "activity": "活动",
     "affiliates": "推广中心",
     "questionnaires": "问卷",
     "onboarding": "引导内容",
-    "entitlements": "权益",
     "settings": "设置",
     "backups": "备份与任务",
     "database": "数据库",
@@ -92,8 +89,6 @@
     "activationRequiredHint": "保持此区域可见，但新购买前需要输入激活码。",
     "activationCode": "激活码",
     "activationCodeHint": "编辑时留空可保留现有激活码。",
-    "loadError": "无法加载节点分配。",
-    "saveError": "无法验证并保存节点分配。",
     "edit": "编辑 {name}",
     "identityHint": "实时 Remnawave 节点组仍是身份与节点数据的权威来源。",
     "close": "关闭节点组编辑器",
@@ -105,13 +100,6 @@
     "stockUnlimited": "不限库存",
     "visible": "在目录中显示",
     "visibleHint": "隐藏的节点组仍适用于现有购买。",
-    "nodes": "可访问节点",
-    "nodeHint": "选择会转换为活跃入站 UUID，并通过 Remnawave 验证。",
-    "verifying": "验证中",
-    "saveNodes": "保存节点",
-    "nodeTraffic": "{country} · {multiplier}× 流量",
-    "isoUnavailable": "无 ISO 代码",
-    "noNodes": "暂无上游节点。",
     "saveSquad": "保存节点组"
   },
   "adminStatistics": {

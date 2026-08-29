@@ -5,9 +5,6 @@
     "updatedAt": "更新于 {date}",
     "refresh": "刷新统计",
     "stalePartitions": "部分指标显示的是最近一次成功快照。",
-    "freshnessLabel": "统计数据新鲜度",
-    "remoteData": "Remnawave 数据",
-    "databaseData": "数据库数据",
     "partitionCurrent": "当前数据",
     "partitionStale": "最近已知数据",
     "loadFailed": "统计数据加载失败。",
@@ -18,10 +15,8 @@
     "chartSeries": "{series}：{segment}",
     "noPayments": "暂无终态支付记录",
     "overview": "概览",
-    "conversion": "新用户转化",
     "converted": "已购买套餐",
     "notConverted": "未购买套餐",
-    "conversionChartLabel": "{value} 的用户购买了套餐",
     "weeklyIncrease": "本周新增用户",
     "weeklyIncreaseChartLabel": "本周新增用户：{value}",
     "monthlyUsage": "月均用量",
@@ -43,9 +38,6 @@
     "downloadRate": "下载速率",
     "uploadRate": "上传速率",
     "perSecond": "{value}/秒",
-    "xrayVersion": "Xray 版本",
-    "multiplier": "流量倍率",
-    "multiplierValue": "{value} 倍",
     "geocheck": {
       "open": "查看 Geocheck 结果",
       "title": "{node} Geocheck",
@@ -67,10 +59,8 @@
     "subscriptionChartLabel": "订阅状态分布",
     "comboChoices": "活跃套餐选择",
     "active": "活跃",
-    "comboChartLabel": "活跃套餐分布",
     "paymentStates": "支付状态",
     "paymentChartLabel": "支付状态分布",
-    "paymentLegend": "{provider}：{status}",
     "squadComposition": "区组构成",
     "bySquad": "按区组",
     "byCombo": "按套餐",
@@ -87,8 +77,7 @@
     "databaseUpdatedAt": "数据库数据更新时间",
     "provider": {
       "ezpay": "EZPay",
-      "bepusdt": "BEPusdt",
-      "stars": "Telegram Stars"
+      "bepusdt": "BEPusdt"
     },
     "paymentStatus": {
       "paid": "已支付",

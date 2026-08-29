@@ -1,12 +1,10 @@
 {
   "adminActivityManagement": {
-    "couponLabel": "{code}: {name}",
     "title": "Activity",
     "copy": "Set check-in timing, transparent game odds, and weighted draws. Reward amounts are managed in Settings.",
     "chooseActivity": "Choose an activity.",
     "deleteFailed": "The activity could not be deleted.",
     "loadFailed": "Activity configuration could not be loaded.",
-    "settingsFailed": "Check-in settings could not be saved.",
     "gameSaveFailed": "The game could not be saved.",
     "drawSaveFailed": "The lucky draw could not be saved.",
     "games": "Betting games",
@@ -23,7 +21,6 @@
     "available": "Available to members",
     "availableHint": "Disabled games remain in result history.",
     "saveGame": "Save game",
-    "loadingGames": "Loading games",
     "gameSummary": "{chance}% win · {multiplier}× return · {minimum} to {maximum} TXB",
     "statisticsFor": "Statistics for {name}",
     "statisticsTitle": "{name} statistics",
@@ -77,6 +74,7 @@
     "signedChange": "Signed TXB change",
     "signedPlaceholder": "5.00 or -1.00",
     "coupon": "Coupon",
+    "couponLabel": "{code}: {name}",
     "selectCoupon": "Select coupon",
     "extensionDays": "Extension days",
     "removePrize": "Remove {name}",
