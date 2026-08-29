@@ -7,6 +7,7 @@ import { useI18n } from '@/i18n'
 import { useSessionStore } from '@/stores/session'
 import { focusWithoutScrolling } from '@/utils/dom'
 import { telegramFullscreenState } from '@/utils/telegram'
+import LanguageControl from './LanguageControl.vue'
 
 interface NavItem {
   labelKey: string
@@ -69,6 +70,12 @@ function isActive(to: string): boolean {
   <div class="app-frame" :class="{ 'app-frame--fullscreen': isFullscreen }">
     <a class="skip-link" href="#main-content">{{ $t('nav.skip') }}</a>
     <aside class="side-rail" :aria-label="$t('nav.primary')">
+      <header class="side-rail__header">
+        <RouterLink class="side-rail__brand" to="/home">
+          <span class="side-rail__brand-mark" aria-hidden="true"><UIcon name="i-ph-users-three" /></span>
+          <span>{{ $t('app.name') }}</span>
+        </RouterLink>
+      </header>
       <nav class="side-rail__nav">
         <RouterLink
           v-for="item in mobileItems"
@@ -83,6 +90,16 @@ function isActive(to: string): boolean {
           <span>{{ $t(item.labelKey) }}</span>
         </RouterLink>
       </nav>
+      <footer class="side-rail__footer">
+        <div class="side-rail__member">
+          <UIcon name="i-ph-user-circle" />
+          <div>
+            <strong>{{ sessionStore.user?.username || sessionStore.user?.firstName || $t('nav.memberFallback') }}</strong>
+            <span>{{ $t('nav.member') }}</span>
+          </div>
+        </div>
+        <LanguageControl show-label />
+      </footer>
     </aside>
     <div class="app-frame__content">
       <div v-if="isFullscreen" class="app-greeting" role="status">

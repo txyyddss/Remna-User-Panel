@@ -44,6 +44,7 @@
 - `responsive-01.css` owns shared motion keyframes used by compact surfaces.
 - `responsive-02.css` expands the phone-first shell into a sticky-rail desktop layout, gives core combo cards equal desktop tracks, and restores wide route, dialog, catalog, settings, and administrative list arrangements.
 - `responsive-03.css` applies compact administrative rows below 640px and owns reduced-motion/transparency fallbacks.
+- `desktop-01.css` adds rail context and balanced wide-page widths for desktop while keeping the compact phone shell untouched.
 
 The system is dark-only, flat, gradient-free, and uses borders instead of decorative shadows.
 

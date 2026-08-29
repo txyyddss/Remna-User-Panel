@@ -60,18 +60,12 @@
   }
 
   .page {
-    max-width: 1180px;
+    max-width: 1240px;
     padding: 2.2rem clamp(1.5rem, 3vw, 3rem) calc(3rem + var(--shell-safe-bottom));
   }
 
   .page-header h1,
   .error-state h1 { font-size: 2.75rem; }
-
-  .page--home { max-width: 760px; }
-  .page--connections { max-width: 54rem; }
-  .page--statistics { max-width: 1080px; }
-  .page--admin { max-width: 1320px; }
-  .affiliate-page { max-width: 860px; }
 
   .combo-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -145,4 +139,5 @@
     width: 250px;
     padding: calc(var(--shell-safe-top) + 1.2rem) 1.2rem max(1.2rem, var(--shell-safe-bottom));
   }
+
 }
