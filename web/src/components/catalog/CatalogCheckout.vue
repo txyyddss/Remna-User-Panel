@@ -44,65 +44,113 @@ function goToBalance(): void { void router.push({ path: '/home', query: { topUp:
       data-haptic="navigate"
       @click="emit('back')"
     />
-    <div class="section-heading section-heading--stacked">
-      <h2>{{ $t('catalog.steps.review') }}</h2>
-      <p>{{ $t('catalog.checkoutDescription') }}</p>
-    </div>
-    <div v-if="combo" class="catalog-checkout__summary">
-      <div class="catalog-checkout__line">
-        <span>{{ $t('catalog.coreCombos') }}</span>
-        <strong>{{ combo.name }}</strong>
+    <div class="catalog-checkout__intro">
+      <div class="section-heading section-heading--stacked">
+        <h2>{{ $t('catalog.steps.review') }}</h2>
+        <p>{{ $t('catalog.checkoutDescription') }}</p>
       </div>
-      <div v-if="squads.length" class="catalog-checkout__line">
-        <span>{{ $t('catalog.optionalSquads') }}</span>
-        <strong>{{ squads.map((squad) => squad.name).join($t('home.squadSeparator')) }}</strong>
-      </div>
-      <div class="catalog-checkout__line">
-        <span>{{ $t('catalog.coupon') }}</span>
-        <strong>{{ coupon?.coupon.name ?? $t('catalog.noCoupon') }}</strong>
-        <small v-if="coupon">{{ couponEffect() }}</small>
-      </div>
-      <div v-if="quote" class="catalog-checkout__line">
-        <span>{{ $t('catalog.validity') }}</span>
-        <strong>{{ formatDate(quote.effectiveAt) }} {{ $t('common.rangeSeparator') }} {{ formatDate(quote.expiresAt) }}</strong>
-      </div>
-      <div v-if="quote" class="catalog-checkout__line">
-        <span>{{ $t('catalog.accessibleNodes') }}</span>
-        <strong>{{ quote.accessibleNodes.length }}</strong>
-      </div>
-      <div class="catalog-checkout__line">
-        <span>{{ $t('catalog.traffic') }}</span>
-        <strong>{{ formatBytes(combo.trafficLimitBytes) }}</strong>
-      </div>
-      <div class="catalog-checkout__line">
-        <span>{{ $t('catalog.term') }}</span>
-        <strong>{{ $t('catalog.termSummary', { days: combo.validityDays, reset: $t(`home.reset.${combo.resetStrategy}`) }) }}</strong>
-      </div>
-      <div class="catalog-checkout__line">
-        <span>{{ $t('catalog.rollover') }}</span>
-        <strong>{{ $t('catalog.rolloverSummary', { threshold: (combo.rolloverMinRemainingBps / 100).toFixed(2) }) }}</strong>
-      </div>
-      <div class="catalog-checkout__total">
+      <div class="catalog-checkout__amount" aria-live="polite">
         <span>{{ $t('catalog.serverTotal') }}</span>
         <strong>{{ quote ? formatMoney(quote.netPrice) : quoting ? $t('catalog.quoting') : $t('common.notAvailable') }}</strong>
-        <small v-if="quote">{{ quote.queued ? $t('catalog.queuedEffectiveHint') : $t('catalog.immediateEffectiveHint') }}</small>
       </div>
+    </div>
+    <div v-if="combo" class="catalog-checkout__content">
+      <div class="catalog-checkout__summary">
+        <div class="catalog-checkout__summary-heading">
+          <span>{{ $t('catalog.purchaseSummary') }}</span>
+          <UIcon name="i-ph-receipt" aria-hidden="true" />
+        </div>
+        <div class="catalog-checkout__line">
+          <span>{{ $t('catalog.coreCombos') }}</span>
+          <strong>{{ combo.name }}</strong>
+        </div>
+        <div v-if="squads.length" class="catalog-checkout__line">
+          <span>{{ $t('catalog.optionalSquads') }}</span>
+          <strong>{{ squads.map((squad) => squad.name).join($t('home.squadSeparator')) }}</strong>
+        </div>
+        <div class="catalog-checkout__line">
+          <span>{{ $t('catalog.coupon') }}</span>
+          <strong>{{ coupon?.coupon.name ?? $t('catalog.noCoupon') }}</strong>
+          <small v-if="coupon">{{ couponEffect() }}</small>
+        </div>
+        <div class="catalog-checkout__details">
+          <div v-if="quote" class="catalog-checkout__line">
+            <span>{{ $t('catalog.basePrice') }}</span>
+            <strong>{{ formatMoney(quote.grossPrice) }}</strong>
+          </div>
+          <div v-if="quote" class="catalog-checkout__line">
+            <span>{{ $t('catalog.couponSavings') }}</span>
+            <strong>{{ formatMoney(quote.discount) }}</strong>
+          </div>
+          <div v-if="quote" class="catalog-checkout__line">
+            <span>{{ $t('catalog.validity') }}</span>
+            <strong>{{ formatDate(quote.effectiveAt) }} {{ $t('common.rangeSeparator') }} {{ formatDate(quote.expiresAt) }}</strong>
+          </div>
+          <div v-if="quote" class="catalog-checkout__line">
+            <span>{{ $t('catalog.accessibleNodes') }}</span>
+            <strong>{{ quote.accessibleNodes.length }}</strong>
+          </div>
+          <div class="catalog-checkout__line">
+            <span>{{ $t('catalog.traffic') }}</span>
+            <strong>{{ formatBytes(combo.trafficLimitBytes) }}</strong>
+          </div>
+          <div class="catalog-checkout__line">
+            <span>{{ $t('catalog.term') }}</span>
+            <strong>{{ $t('catalog.termSummary', { days: combo.validityDays, reset: $t(`home.reset.${combo.resetStrategy}`) }) }}</strong>
+          </div>
+          <div class="catalog-checkout__line">
+            <span>{{ $t('catalog.rollover') }}</span>
+            <strong>{{ $t('catalog.rolloverSummary', { threshold: (combo.rolloverMinRemainingBps / 100).toFixed(2) }) }}</strong>
+          </div>
+        </div>
+      </div>
+      <aside class="catalog-checkout__aside" :aria-label="$t('catalog.serverTotal')">
+        <div class="catalog-checkout__total">
+          <span>{{ quote?.queued ? $t('catalog.queuedEffectiveHint') : $t('catalog.immediateEffectiveHint') }}</span>
+          <strong>{{ quote ? formatMoney(quote.netPrice) : quoting ? $t('catalog.quoting') : $t('common.notAvailable') }}</strong>
+          <small v-if="quote">{{ $t('catalog.validity') }}: {{ formatDate(quote.expiresAt) }}</small>
+        </div>
+      </aside>
     </div>
     <UAlert v-if="error" color="warning" variant="soft" icon="i-ph-warning-circle" :description="error" />
     <USkeleton v-if="quoting" class="h-16" />
-    <UButton v-if="needsBalance" block trailing-icon="i-ph-plus" :label="$t('catalog.addBalance')" data-haptic="navigate" @click="goToBalance" />
-    <UButton v-else block class="catalog-checkout__confirm" :disabled="purchasing || !quote || quote.accessibleNodes.length === 0" :loading="purchasing" :label="purchasing ? $t('catalog.confirming') : $t('catalog.confirmPurchase')" data-haptic="confirm" @click="emit('confirm')" />
+    <div class="catalog-checkout__actions">
+      <UButton v-if="needsBalance" block trailing-icon="i-ph-plus" :label="$t('catalog.addBalance')" data-haptic="navigate" @click="goToBalance" />
+      <UButton v-else block class="catalog-checkout__confirm" :disabled="purchasing || !quote || quote.accessibleNodes.length === 0" :loading="purchasing" :label="purchasing ? $t('catalog.confirming') : $t('catalog.confirmPurchase')" data-haptic="confirm" @click="emit('confirm')" />
+    </div>
   </section>
 </template>
 
 <style scoped>
-.catalog-checkout, .catalog-checkout__summary { display: grid; gap: 0.7rem; }
+.catalog-checkout { display: grid; gap: 0.85rem; }
 .catalog-checkout__back { justify-self: start; padding-inline: 0; }
-.catalog-checkout__summary { padding: 0.85rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface-raised); }
+.catalog-checkout__intro { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 1rem; }
+.catalog-checkout__intro .section-heading { margin-bottom: 0; }
+.catalog-checkout__amount { display: grid; justify-items: end; gap: 0.2rem; padding-bottom: 0.15rem; white-space: nowrap; }
+.catalog-checkout__amount span, .catalog-checkout__total span, .catalog-checkout__total small { color: var(--text-faint); font-size: 0.68rem; }
+.catalog-checkout__amount strong { color: var(--accent); font-family: var(--font-mono); font-size: 1.4rem; }
+.catalog-checkout__content { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(12rem, 0.55fr); align-items: start; gap: 0.8rem; }
+.catalog-checkout__summary, .catalog-checkout__aside { min-width: 0; padding: 0.9rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface-raised); }
+.catalog-checkout__summary { display: grid; gap: 0.7rem; }
+.catalog-checkout__summary-heading { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; color: var(--text-muted); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.catalog-checkout__summary-heading > :last-child { color: var(--accent); font-size: 1rem; }
+.catalog-checkout__details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem; padding-top: 0.15rem; }
 .catalog-checkout__line { display: grid; gap: 0.22rem; padding-bottom: 0.65rem; border-bottom: 1px solid var(--line); }
+.catalog-checkout__details .catalog-checkout__line { padding-bottom: 0.45rem; }
 .catalog-checkout__line > span, .catalog-checkout__total > span, .catalog-checkout__total small { color: var(--text-faint); font-size: 0.68rem; }
 .catalog-checkout__line strong { overflow-wrap: anywhere; font-size: 0.8rem; }
-.catalog-checkout__total { display: grid; gap: 0.25rem; }
-.catalog-checkout__total strong { color: var(--accent); font-family: var(--font-mono); font-size: 1.3rem; }
+.catalog-checkout__aside { display: grid; gap: 0.8rem; position: sticky; top: 1rem; }
+.catalog-checkout__total { display: grid; gap: 0.3rem; }
+.catalog-checkout__total > span { line-height: 1.35; white-space: normal; }
+.catalog-checkout__total strong { color: var(--accent); font-family: var(--font-mono); font-size: 1.65rem; letter-spacing: 0; }
+.catalog-checkout__actions { display: grid; }
 .catalog-checkout__confirm { justify-content: center; }
+
+@media (max-width: 639px) {
+  .catalog-checkout__intro { grid-template-columns: 1fr; align-items: start; gap: 0.45rem; }
+  .catalog-checkout__amount { justify-items: start; padding: 0.8rem 0.9rem; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface-raised); }
+  .catalog-checkout__content { grid-template-columns: 1fr; }
+  .catalog-checkout__aside { position: static; }
+  .catalog-checkout__details { grid-template-columns: 1fr; gap: 0.65rem; }
+}
 </style>

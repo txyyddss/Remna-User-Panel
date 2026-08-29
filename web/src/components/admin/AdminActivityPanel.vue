@@ -174,4 +174,8 @@ onMounted(() => void load())
 .activity-admin-section__heading p { margin-top: 0.25rem; color: var(--text-muted); font-size: 0.78rem; }
 .admin-list-row__icon { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 10px; color: var(--accent); background: var(--accent-soft); }
 .admin-error { margin: 1rem; }
+@media (max-width: 719px) {
+  .activity-admin-section__heading { display: grid; gap: 0.65rem; }
+  .activity-admin-section__heading > .button { width: 100%; }
+}
 </style>

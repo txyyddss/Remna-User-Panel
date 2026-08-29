@@ -75,7 +75,20 @@
 
   .combo-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-rows: 1fr;
+    align-items: start;
+  }
+
+  .combo-option:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  .squad-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .squad-nodes__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .catalog-action {

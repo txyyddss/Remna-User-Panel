@@ -72,17 +72,17 @@ function consumeReissueRequest(): void {
       </div>
     </template>
     <template v-else-if="dashboard">
-      <h1 class="sr-only">{{ $t('nav.home') }}</h1>
+      <h1 class="sr-only home-page__title">{{ $t('nav.home') }}</h1>
       <div class="home-layout">
+        <BalanceHero
+          :balance="dashboard.balance"
+          :open-top-up="topUpRequested"
+          :reissue-order-id="reissueOrderId"
+          @paid="load({ quiet: true })"
+          @top-up-request-consumed="consumeTopUpRequest"
+          @reissue-request-consumed="consumeReissueRequest"
+        />
         <div class="home-overview">
-          <BalanceHero
-            :balance="dashboard.balance"
-            :open-top-up="topUpRequested"
-            :reissue-order-id="reissueOrderId"
-            @paid="load({ quiet: true })"
-            @top-up-request-consumed="consumeTopUpRequest"
-            @reissue-request-consumed="consumeReissueRequest"
-          />
           <InlineNotice v-if="catalogBlocked" tone="warning">{{ $t('home.autoRenewalCatalogBlocked') }}</InlineNotice>
           <InlineNotice v-if="autoRenewalFailureMessage" tone="warning" :title="$t('home.autoRenewalFailureTitle')">{{ autoRenewalFailureMessage }}</InlineNotice>
           <SubscriptionPanel
@@ -98,6 +98,7 @@ function consumeReissueRequest(): void {
         </div>
         <div class="home-stack">
           <UsagePanel
+            class="home-stack__usage"
             v-if="dashboard.statistics"
             :statistics="dashboard.statistics"
             :ratio="usageRatio"
@@ -105,7 +106,7 @@ function consumeReissueRequest(): void {
             :fetched-at="dashboard.fetchedAt"
             :catalog-nodes="catalogNodes"
           />
-          <section v-else class="section-block home-usage home-usage--empty empty-inline">
+          <section v-else class="section-block home-usage home-usage--empty home-stack__usage empty-inline">
             <div><h3>{{ $t('dashboard.noStatistics') }}</h3><p>{{ $t('dashboard.statisticsPending') }}</p></div>
           </section>
           <EntitlementSummary

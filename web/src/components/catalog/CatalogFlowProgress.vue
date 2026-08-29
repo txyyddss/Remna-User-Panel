@@ -20,7 +20,7 @@ const items = computed(() => [
 
 <template>
   <section class="catalog-progress" :aria-label="$t('catalog.steps.progress')">
-    <UStepper :model-value="stepperIndex" color="success" size="xs" :items="items" disabled>
+    <UStepper :model-value="stepperIndex" color="success" size="xs" :items="items" disabled aria-hidden="true">
       <template #indicator="{ item }">
         <UIcon
           :name="indicatorIcon(item.value, step, item.icon)"
@@ -29,6 +29,9 @@ const items = computed(() => [
         />
       </template>
     </UStepper>
+    <span class="sr-only" role="status" aria-live="polite">
+      {{ $t('catalog.steps.current', { step, total: items.length }) }}
+    </span>
   </section>
 </template>
 

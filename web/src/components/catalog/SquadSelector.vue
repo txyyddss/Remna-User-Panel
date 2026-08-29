@@ -47,6 +47,12 @@ function toggleSquad(squad: SquadProduct): void {
   emit('toggle', squad.id)
 }
 
+function onCardKeydown(event: globalThis.KeyboardEvent, squad: SquadProduct): void {
+  if (event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return
+  event.preventDefault()
+  toggleSquad(squad)
+}
+
 function occupancyPercentage(squad: SquadProduct): number | null {
   if (squad.stockLimit === null || squad.stockLimit === undefined) return null
   if (squad.stockLimit <= 0) return 100
@@ -75,7 +81,7 @@ const squadRows = computed(() => props.squads
       <p>{{ $t('catalog.optionalSquadsHint') }}</p>
     </div>
     <div v-if="squadRows.length" v-auto-animate class="squad-grid">
-      <article v-for="row in squadRows" :key="row.squad.id" class="squad-option" :class="[profileClass(row.squad), { 'squad-option--featured': isFeatured(row.squad.id), 'squad-option--selected': isSelected(row.squad.id), 'squad-option--included': isIncluded(row.squad.id), 'squad-option--full': isFullPaidAddon(row.squad) }]" @click="toggleSquad(row.squad)">
+      <article v-for="row in squadRows" :key="row.squad.id" class="squad-option" :class="[profileClass(row.squad), { 'squad-option--featured': isFeatured(row.squad.id), 'squad-option--selected': isSelected(row.squad.id), 'squad-option--included': isIncluded(row.squad.id), 'squad-option--full': isFullPaidAddon(row.squad) }]" :tabindex="isIncluded(row.squad.id) || isFullPaidAddon(row.squad) ? undefined : 0" @click="toggleSquad(row.squad)" @keydown="onCardKeydown($event, row.squad)">
         <div class="squad-option__copy">
           <SquadProfileSummary :name="row.squad.name" :profile="row.squad.profile" :description="row.squad.description" presentation="member" compact>
             <template v-if="isIncluded(row.squad.id) || isFeatured(row.squad.id) || isFullPaidAddon(row.squad)" #nameTags>

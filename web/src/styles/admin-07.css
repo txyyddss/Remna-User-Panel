@@ -1,0 +1,144 @@
+/* Shared admin layout pass: keep headings, dense rows, and destructive controls
+   legible when the same panel moves between desktop and Telegram-sized screens. */
+.admin-panel__heading > :first-child,
+.admin-subsection-heading > :first-child,
+.activity-admin-section__heading > :first-child {
+  min-width: 0;
+}
+
+@media (min-width: 720px) {
+  .admin-panel__heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .admin-panel__heading > :last-child {
+    justify-self: end;
+  }
+
+  .admin-panel__heading > .row-actions {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .admin-panel__heading > .admin-search {
+    width: min(24rem, 100%);
+  }
+
+  .admin-panel__heading > .form-field {
+    min-width: min(18rem, 100%);
+  }
+
+  .admin-subsection-heading,
+  .activity-admin-section__heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .admin-subsection-heading > button,
+  .activity-admin-section__heading > button {
+    justify-self: end;
+  }
+
+}
+
+@media (max-width: 719px) {
+  .admin-panel__heading > :last-child,
+  .admin-subsection-heading > button,
+  .activity-admin-section__heading > button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-panel__heading > .row-actions {
+    justify-content: stretch;
+    flex-wrap: wrap;
+  }
+
+  .admin-panel__heading > .row-actions > * {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .admin-search,
+  .admin-search input {
+    width: 100%;
+  }
+
+  .admin-subsection-heading,
+  .activity-admin-section__heading {
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .admin-list-row {
+    align-items: start;
+  }
+
+  .admin-list-row small {
+    overflow: visible;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .admin-list-row > strong {
+    justify-self: start;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .admin-list-row > .row-actions,
+  .admin-list-row > button {
+    grid-column: 1 / -1;
+  }
+
+  .admin-list-row > .row-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    padding-top: 0.35rem;
+  }
+
+  .admin-list-row > .row-actions > button,
+  .admin-list-row > button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .catalog-editor,
+  .admin-drawer {
+    margin: 0.75rem;
+    padding: 0.85rem;
+  }
+
+  .catalog-editor .button-row,
+  .admin-drawer .button-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .catalog-editor .button-row > button,
+  .admin-drawer .button-row > button {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .prize-list__heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .prize-list__heading > button {
+    width: 100%;
+  }
+
+  .payment-profile__header {
+    flex-wrap: wrap;
+  }
+
+  .payment-profile__actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

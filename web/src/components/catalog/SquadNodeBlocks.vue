@@ -51,9 +51,9 @@ function providerLabel(node: CatalogNode): string {
 .squad-nodes__grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.4rem; }
 .squad-node { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.45rem; padding: 0.45rem; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--surface) 82%, transparent); }
 .squad-node__copy { min-width: 0; display: grid; gap: 0.08rem; }
-.squad-node strong, .squad-node small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.squad-node strong { font-size: 0.7rem; }
-.squad-node small { color: var(--text-faint); font-size: 0.61rem; }
+.squad-node strong, .squad-node small { overflow-wrap: anywhere; }
+.squad-node strong { font-size: 0.7rem; line-height: 1.25; }
+.squad-node small { color: var(--text-faint); font-size: 0.61rem; line-height: 1.25; }
 .squad-node__actions { display: flex; align-items: center; gap: 0.2rem; }
 .squad-node__multiplier { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.62rem; white-space: nowrap; }
 .squad-node__geocheck { flex: 0 0 auto; }

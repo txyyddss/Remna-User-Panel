@@ -95,7 +95,17 @@ function selectCoupon(grantId: string | null): void {
 .catalog-coupon-choice { min-height: 60px; flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 0.7rem; padding: 0.65rem; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface-raised); text-align: left; }
 .catalog-coupon-choice--selected { border-color: var(--accent); background: var(--accent-soft); }
 .catalog-coupon-choice--ineligible { opacity: 0.58; }
-.catalog-coupon-choice strong, .catalog-coupon-choice small { display: block; }
+.catalog-coupon-choice > span { min-width: 0; }
+.catalog-coupon-choice strong, .catalog-coupon-choice small { display: block; overflow-wrap: anywhere; }
 .catalog-coupon-choice strong { font-size: 0.78rem; }
 .catalog-coupon-choice small { margin-top: 0.18rem; color: var(--text-faint); font-family: var(--font-mono); font-size: 0.64rem; }
+
+@media (min-width: 900px) {
+  .catalog-coupon-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .catalog-coupon-list > :first-child { grid-column: 1 / -1; }
+}
+
+@media (max-width: 420px) {
+  .catalog-coupon-form { grid-template-columns: 1fr; align-items: stretch; }
+}
 </style>

@@ -94,6 +94,7 @@ const memberProfileText = computed(() => {
 .squad-profile-summary--member.squad-profile-summary--china_optimized { --squad-profile-tone: var(--warning); --squad-profile-tone-soft: color-mix(in srgb, var(--warning) 11%, var(--surface)); --squad-profile-tone-line: color-mix(in srgb, var(--warning) 32%, var(--line)); }
 .squad-profile-summary--member.squad-profile-summary--international_network { --squad-profile-tone: #9ebddd; --squad-profile-tone-soft: color-mix(in srgb, #9ebddd 11%, var(--surface)); --squad-profile-tone-line: color-mix(in srgb, #9ebddd 32%, var(--line)); }
 .squad-profile-summary--member .squad-profile-summary__heading { align-items: flex-start; color: var(--text); }
+.squad-profile-summary--member .squad-profile-summary__heading-copy strong { overflow: visible; overflow-wrap: anywhere; text-overflow: clip; white-space: normal; }
 .squad-profile-summary--member .squad-profile-summary__identity-icon { width: 2.5rem; height: 2.5rem; display: inline-grid; flex: 0 0 auto; place-items: center; color: var(--squad-profile-tone); font-size: 1.75rem; }
 .squad-profile-summary--member .squad-profile-summary__heading-copy span { color: var(--squad-profile-tone); font-size: 0.66rem; font-weight: 700; }
 .squad-profile-summary--member .squad-profile-summary__facts { gap: 0.35rem; }

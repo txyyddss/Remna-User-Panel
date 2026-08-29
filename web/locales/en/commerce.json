@@ -44,7 +44,7 @@
     "noSquadsHint": "Your combo still includes its standard regions.",
     "queuedEffectiveHint": "This selection begins when your current active term ends.",
     "immediateEffectiveHint": "This selection begins immediately after confirmation.",
-    "serverTotal": "Server total",
+    "serverTotal": "Server total", "basePrice": "Base price", "couponSavings": "Coupon savings",
     "quoting": "Calculating quote",
     "confirming": "Confirming with server",
     "confirmPurchase": "Confirm purchase",
@@ -54,7 +54,7 @@
     "noCoupon": "No coupon",
     "addBalance": "Add balance",
     "steps": {
-      "progress": "Purchase progress",
+      "progress": "Purchase progress", "current": "Step {step} of {total}",
       "core": "Core combo",
       "squads": "Optional squads",
       "coupon": "Coupon",

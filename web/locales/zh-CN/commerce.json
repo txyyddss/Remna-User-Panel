@@ -45,7 +45,7 @@
     "noSquadsHint": "你的套餐仍包含标准区域。",
     "queuedEffectiveHint": "当前有效周期结束后，此选择将开始生效。",
     "immediateEffectiveHint": "确认后，此选择将立即生效。",
-    "serverTotal": "服务器计算总额",
+    "serverTotal": "服务器计算总额", "basePrice": "折前价格", "couponSavings": "优惠券减免",
     "quoting": "正在计算报价",
     "confirming": "正在向服务器确认",
     "confirmPurchase": "确认购买",
@@ -55,7 +55,7 @@
     "noCoupon": "不使用优惠券",
     "addBalance": "充值",
     "steps": {
-      "progress": "购买进度",
+      "progress": "购买进度", "current": "第 {step} 步，共 {total} 步",
       "core": "核心套餐",
       "squads": "可选分组",
       "coupon": "优惠券",
