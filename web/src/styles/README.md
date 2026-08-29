@@ -17,7 +17,7 @@
 - `home-02.css` styles traffic details, ride facts, and Around TX links on Home.
 - `home-03.css` styles the compact renewal term slider and separated quote total/date block.
 - `home-04.css` styles the accessible Your ride rollover flip card, its concise current-term detail, size-safe face swap, and reduced-motion fallback.
-- `home-05.css` expands Home into a balanced desktop access/usage layout while preserving the single-column phone flow and full-width overflow safety.
+- `home-05.css` expands Home into an auto-fitting desktop access/usage flow that avoids equal-height row gaps while preserving the single-column phone flow and full-width overflow safety.
 - `connections-01.css` styles the connections page heading, node/IP rows, empty states, and selected connection confirmation detail.
 - `connections-02.css` styles the stable connection scan visualization, progress presentation, tablet split layout, and reduced-motion fallback.
 - `connections-03.css` styles active block rows, exact-expiry metadata, and compact unblock confirmation targets.
@@ -25,7 +25,7 @@
 - `statistics-02.css` styles the responsive generic SVG donut, labeled pies, traffic tooltips, legends, and normalized stacked bars.
 - `statistics-03.css` constrains the node Geocheck modal to Telegram safe areas and styles its low-latency touch zoom canvas and fixed icon controls.
 - `affiliates-01.css` styles flat member metrics, tier progress, referral rows, and tablet expansion.
-- `catalog-01.css` styles catalog browsing and plan presentation.
+- `catalog-01.css` styles catalog browsing and plan presentation, including variable-height responsive columns for optional squads.
 - `catalog-02.css` styles catalog selection and checkout details.
 - `billing-01.css` styles funding controls.
 - `billing-02.css` styles provider-payment details.
@@ -42,7 +42,7 @@
 - `motion-01.css` defines short transitions and state motion.
 - `motion-02.css` adds reduced-motion-safe staggered page entry, tactile press response, status arrival, and active-navigation feedback.
 - `responsive-01.css` owns shared motion keyframes used by compact surfaces.
-- `responsive-02.css` expands the phone-first shell into a sticky-rail desktop layout, keeps Home in its centered balance-first column, gives core combo cards equal desktop tracks, and restores wide route, dialog, catalog, settings, and administrative list arrangements.
+- `responsive-02.css` expands the phone-first shell into a sticky-rail desktop layout, gives core combo cards equal desktop tracks, and restores wide route, dialog, catalog, settings, and administrative list arrangements.
 - `responsive-03.css` applies compact administrative rows below 640px and owns reduced-motion/transparency fallbacks.
 
 The system is dark-only, flat, gradient-free, and uses borders instead of decorative shadows.

@@ -14,7 +14,7 @@
   }
 
   .home-layout {
-    grid-template-columns: minmax(20rem, 0.86fr) minmax(0, 1.14fr);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
     align-items: start;
     column-gap: 1.35rem;
     row-gap: 1.1rem;
@@ -39,29 +39,14 @@
     grid-column: 1 / -1;
   }
 
-  .home-overview {
-    grid-column: 1;
-    grid-row: 2;
-    align-content: start;
+  .home-overview,
+  .home-stack {
+    grid-row: auto;
   }
 
   .home-stack {
-    display: contents;
-  }
-
-  .home-stack__usage {
-    grid-column: 2;
-    grid-row: 2;
-  }
-
-  .home-stack > .home-ride {
-    grid-column: 1 / -1;
-    grid-row: 3;
-  }
-
-  .home-stack > .home-around {
-    grid-column: 1 / -1;
-    grid-row: 4;
+    display: grid;
+    align-content: start;
   }
 
   .home-ride__metrics {
