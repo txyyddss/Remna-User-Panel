@@ -1,7 +1,16 @@
 .home-layout,
-.home-overview,
-.home-stack {
+.home-layout__columns,
+.home-layout__column,
+.home-alerts {
   min-width: 0;
+}
+
+.home-layout__columns,
+.home-layout__column,
+.home-alerts {
+  display: grid;
+  align-content: start;
+  gap: 0.9rem;
 }
 
 .home-page__title {
@@ -14,10 +23,9 @@
   }
 
   .home-layout {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
+    grid-template-columns: minmax(0, 1fr);
     align-items: start;
-    column-gap: 1.35rem;
-    row-gap: 1.1rem;
+    gap: 1.1rem;
   }
 
   .home-page__title {
@@ -39,14 +47,15 @@
     grid-column: 1 / -1;
   }
 
-  .home-overview,
-  .home-stack {
-    grid-row: auto;
+  .home-layout__columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
+    align-items: start;
+    gap: 1.35rem;
   }
 
-  .home-stack {
-    display: grid;
-    align-content: start;
+  .home-layout__column {
+    gap: 1.1rem;
   }
 
   .home-ride__metrics {
@@ -71,7 +80,27 @@
 }
 
 @media (max-width: 899px) {
-  .home-overview {
-    position: static;
+  .home-layout__column {
+    display: contents;
+  }
+
+  .home-layout__column--account > .home-alerts {
+    order: 1;
+  }
+
+  .home-layout__column--account > .home-subscription {
+    order: 2;
+  }
+
+  .home-layout__column--activity > .home-layout__usage {
+    order: 3;
+  }
+
+  .home-layout__column--activity > .home-ride {
+    order: 4;
+  }
+
+  .home-layout__column--account > .home-around {
+    order: 5;
   }
 }

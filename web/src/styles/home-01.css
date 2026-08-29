@@ -2,13 +2,7 @@
   max-width: 760px;
 }
 
-.home-layout,
-.home-overview {
-  display: grid;
-  gap: 0.9rem;
-}
-
-.home-stack {
+.home-layout {
   display: grid;
   gap: 0.9rem;
 }
