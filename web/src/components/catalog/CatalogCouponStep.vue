@@ -90,7 +90,7 @@ function selectCoupon(grantId: string | null): void {
 
 <style scoped>
 .catalog-coupon-step, .catalog-coupon-list { display: grid; gap: 0.75rem; }
-.catalog-coupon-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 0.55rem; }
+.catalog-coupon-form { display: grid; grid-template-columns: minmax(0, 22rem) auto; align-items: end; justify-content: start; gap: 0.55rem; }
 .catalog-coupon-choice-row { display: flex; align-items: center; gap: 0.25rem; }
 .catalog-coupon-choice { min-height: 60px; flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 0.7rem; padding: 0.65rem; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface-raised); text-align: left; }
 .catalog-coupon-choice--selected { border-color: var(--accent); background: var(--accent-soft); }
@@ -105,7 +105,7 @@ function selectCoupon(grantId: string | null): void {
   .catalog-coupon-list > :first-child { grid-column: 1 / -1; }
 }
 
-@media (max-width: 420px) {
+@media (max-width: 600px) {
   .catalog-coupon-form { grid-template-columns: 1fr; align-items: stretch; }
 }
 </style>

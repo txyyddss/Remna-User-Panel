@@ -90,7 +90,7 @@ onMounted(() => void load())
     <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
     <USkeleton v-if="loading" class="m-4 h-28" />
     <div v-else v-auto-animate class="admin-list">
-      <article v-for="questionnaire in items" :key="questionnaire.id" class="admin-list-row questionnaire-row">
+      <article v-for="questionnaire in items" :key="questionnaire.id" class="admin-list-row admin-list-row--questionnaire questionnaire-row">
         <div><strong>{{ questionnaire.title }}</strong><small>{{ t('adminQuestionnaires.summary', { status: statusLabel(questionnaire.status), count: questionnaire.participantCount, reward: txbInputFromMinor(questionnaire.rewardTxbMinor) }) }}</small></div>
         <div class="row-actions">
           <UButton v-if="questionnaire.status === 'draft'" size="sm" color="neutral" variant="outline" icon="i-ph-arrow-square-out" :disabled="busy" :label="t('adminQuestionnaires.activate')" @click="activate(questionnaire.id)" />

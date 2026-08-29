@@ -1,0 +1,145 @@
+/* Shared admin row geometry: each section declares its actual content tracks. */
+.admin-panel {
+  border-color: var(--line-strong);
+}
+
+.admin-panel__heading {
+  position: relative;
+  isolation: isolate;
+  padding: clamp(1rem, 2vw, 1.35rem);
+  background: var(--surface-raised);
+}
+
+.admin-panel__heading::before {
+  content: "";
+  width: 3px;
+  position: absolute;
+  inset: 1rem auto 1rem 0;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+  opacity: 0.72;
+}
+
+.admin-panel__heading h2 {
+  text-wrap: balance;
+  letter-spacing: -0.025em;
+}
+
+.admin-panel__heading p {
+  max-width: 62ch;
+  line-height: 1.45;
+}
+
+.admin-panel__heading > .row-actions {
+  min-width: 0;
+  align-items: stretch;
+}
+
+.admin-list-row {
+  column-gap: 1rem;
+}
+
+.admin-list-row--activity-game,
+.admin-list-row--questionnaire {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.admin-list-row--activity-game > .row-actions,
+.admin-list-row--questionnaire > .row-actions {
+  grid-column: 2;
+}
+
+.admin-list-row--activity-draw,
+.admin-list-row--coupon {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.admin-list-row--activity-draw > .row-actions,
+.admin-list-row--coupon > .row-actions {
+  grid-column: 3;
+}
+
+.admin-list-row--emby {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+}
+
+.admin-list-row--emby > .status-badge { grid-column: 3; }
+.admin-list-row--emby > .button { grid-column: 4; }
+
+.admin-list-row--job {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.admin-list-row--job > .status-badge { grid-column: 2; }
+.admin-list-row--job > .row-actions { grid-column: 3; }
+.admin-list-row--job .row-actions {
+  justify-content: flex-end;
+}
+
+@media (min-width: 900px) {
+  .admin-list-row {
+    min-height: 72px;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .admin-list-row--catalog {
+    grid-template-columns: minmax(0, 1fr) max-content max-content auto;
+  }
+
+  .admin-list-row--user,
+  .admin-list-row--entitlement {
+    grid-template-columns: auto minmax(0, 1fr) max-content max-content auto;
+  }
+
+  .admin-list-row--activity-game,
+  .admin-list-row--questionnaire {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .admin-list-row--activity-draw,
+  .admin-list-row--coupon {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .admin-list-row--emby {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+  }
+
+  .admin-list-row--job {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .admin-list-row .row-actions {
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 719px) {
+  .admin-panel__heading::before { inset-block: 0.9rem; }
+
+  .admin-list-row--activity-draw,
+  .admin-list-row--coupon,
+  .admin-list-row--emby {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .admin-list-row--emby > .status-badge { grid-column: 2; }
+  .admin-list-row--job { grid-template-columns: minmax(0, 1fr) auto; }
+
+  .admin-list-row--activity-draw > .row-actions,
+  .admin-list-row--coupon > .row-actions,
+  .admin-list-row--emby > .row-actions,
+  .admin-list-row--job > .row-actions {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-panel__heading {
+    padding: 0.95rem;
+  }
+
+  .admin-panel__heading::before {
+    inset-block: 0.8rem;
+  }
+}

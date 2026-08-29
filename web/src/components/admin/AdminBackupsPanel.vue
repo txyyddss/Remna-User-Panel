@@ -156,21 +156,13 @@ onScopeDispose(stopRestorePolling)
     <OperationStatusNotice :receipt="jobRetry.receipt.value" :error="jobRetry.error.value" :checking="jobRetry.checking.value" @refresh="jobRetry.refresh" />
     <AdminSectionState :loading="jobs.loading.value" :error="jobs.error.value" @retry="jobs.load()">
       <div v-auto-animate class="admin-list admin-list--compact">
-        <article v-for="job in jobs.items.value" :key="job.id" class="admin-list-row">
+        <article v-for="job in jobs.items.value" :key="job.id" class="admin-list-row admin-list-row--job">
           <div><strong>{{ job.kind }}</strong><small>{{ t('adminBackups.attempts', { count: job.attempts }) }}<template v-if="job.status === 'pending'"> / {{ t('adminBackups.availableAt', { date: formatDateTime(job.availableAt) }) }}</template><template v-else> / {{ formatDateTime(job.updatedAt) }}</template><template v-if="job.lastError"> / {{ t('adminBackups.jobError') }}</template></small></div>
           <StatusBadge :tone="job.status === 'done' ? 'success' : job.status === 'failed' ? 'danger' : 'warning'" :label="t(isScheduled(job) ? 'adminBackups.status.scheduled' : `adminBackups.status.${job.status}`)" />
-          <UButton
-            v-if="job.status === 'failed'"
-            size="sm"
-            color="neutral"
-            variant="outline"
-            icon="i-ph-arrow-clockwise"
-            :disabled="jobs.busy.value || jobRetry.blocksMutations.value"
-            :loading="jobRetry.busy.value && jobRetry.activeCommandId.value === job.id"
-            :label="t('adminBackups.retry')"
-            @click="retryJob(job.id)"
-          />
-          <UButton color="error" variant="ghost" icon="i-ph-trash" :disabled="job.status === 'processing' || jobs.busy.value || jobRetry.blocksMutations.value" :aria-label="t('adminBackups.deleteJobLabel', { kind: job.kind })" data-haptic="destructive" @click="jobDeleteTarget = job" />
+          <div class="row-actions">
+            <UButton v-if="job.status === 'failed'" size="sm" color="neutral" variant="outline" icon="i-ph-arrow-clockwise" :disabled="jobs.busy.value || jobRetry.blocksMutations.value" :loading="jobRetry.busy.value && jobRetry.activeCommandId.value === job.id" :label="t('adminBackups.retry')" @click="retryJob(job.id)" />
+            <UButton color="error" variant="ghost" icon="i-ph-trash" :disabled="job.status === 'processing' || jobs.busy.value || jobRetry.blocksMutations.value" :aria-label="t('adminBackups.deleteJobLabel', { kind: job.kind })" data-haptic="destructive" @click="jobDeleteTarget = job" />
+          </div>
         </article>
         <div v-if="!jobs.items.value.length" class="empty-inline"><div><h3>{{ t('adminBackups.noJobs') }}</h3><p>{{ t('adminBackups.noJobsHint') }}</p></div></div>
       </div>

@@ -44,15 +44,9 @@ function goToBalance(): void { void router.push({ path: '/home', query: { topUp:
       data-haptic="navigate"
       @click="emit('back')"
     />
-    <div class="catalog-checkout__intro">
-      <div class="section-heading section-heading--stacked">
-        <h2>{{ $t('catalog.steps.review') }}</h2>
-        <p>{{ $t('catalog.checkoutDescription') }}</p>
-      </div>
-      <div class="catalog-checkout__amount" aria-live="polite">
-        <span>{{ $t('catalog.serverTotal') }}</span>
-        <strong>{{ quote ? formatMoney(quote.netPrice) : quoting ? $t('catalog.quoting') : $t('common.notAvailable') }}</strong>
-      </div>
+    <div class="section-heading section-heading--stacked">
+      <h2>{{ $t('catalog.steps.review') }}</h2>
+      <p>{{ $t('catalog.checkoutDescription') }}</p>
     </div>
     <div v-if="combo" class="catalog-checkout__content">
       <div class="catalog-checkout__summary">
@@ -108,7 +102,6 @@ function goToBalance(): void { void router.push({ path: '/home', query: { topUp:
         <div class="catalog-checkout__total">
           <span>{{ quote?.queued ? $t('catalog.queuedEffectiveHint') : $t('catalog.immediateEffectiveHint') }}</span>
           <strong>{{ quote ? formatMoney(quote.netPrice) : quoting ? $t('catalog.quoting') : $t('common.notAvailable') }}</strong>
-          <small v-if="quote">{{ $t('catalog.validity') }}: {{ formatDate(quote.expiresAt) }}</small>
         </div>
       </aside>
     </div>
@@ -124,11 +117,6 @@ function goToBalance(): void { void router.push({ path: '/home', query: { topUp:
 <style scoped>
 .catalog-checkout { display: grid; gap: 0.85rem; }
 .catalog-checkout__back { justify-self: start; padding-inline: 0; }
-.catalog-checkout__intro { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 1rem; }
-.catalog-checkout__intro .section-heading { margin-bottom: 0; }
-.catalog-checkout__amount { display: grid; justify-items: end; gap: 0.2rem; padding-bottom: 0.15rem; white-space: nowrap; }
-.catalog-checkout__amount span, .catalog-checkout__total span, .catalog-checkout__total small { color: var(--text-faint); font-size: 0.68rem; }
-.catalog-checkout__amount strong { color: var(--accent); font-family: var(--font-mono); font-size: 1.4rem; }
 .catalog-checkout__content { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(12rem, 0.55fr); align-items: start; gap: 0.8rem; }
 .catalog-checkout__summary, .catalog-checkout__aside { min-width: 0; padding: 0.9rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface-raised); }
 .catalog-checkout__summary { display: grid; gap: 0.7rem; }
@@ -137,7 +125,7 @@ function goToBalance(): void { void router.push({ path: '/home', query: { topUp:
 .catalog-checkout__details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem; padding-top: 0.15rem; }
 .catalog-checkout__line { display: grid; gap: 0.22rem; padding-bottom: 0.65rem; border-bottom: 1px solid var(--line); }
 .catalog-checkout__details .catalog-checkout__line { padding-bottom: 0.45rem; }
-.catalog-checkout__line > span, .catalog-checkout__total > span, .catalog-checkout__total small { color: var(--text-faint); font-size: 0.68rem; }
+.catalog-checkout__line > span, .catalog-checkout__total > span { color: var(--text-faint); font-size: 0.68rem; }
 .catalog-checkout__line strong { overflow-wrap: anywhere; font-size: 0.8rem; }
 .catalog-checkout__aside { display: grid; gap: 0.8rem; position: sticky; top: 1rem; }
 .catalog-checkout__total { display: grid; gap: 0.3rem; }
@@ -147,8 +135,6 @@ function goToBalance(): void { void router.push({ path: '/home', query: { topUp:
 .catalog-checkout__confirm { justify-content: center; }
 
 @media (max-width: 639px) {
-  .catalog-checkout__intro { grid-template-columns: 1fr; align-items: start; gap: 0.45rem; }
-  .catalog-checkout__amount { justify-items: start; padding: 0.8rem 0.9rem; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface-raised); }
   .catalog-checkout__content { grid-template-columns: 1fr; }
   .catalog-checkout__aside { position: static; }
   .catalog-checkout__details { grid-template-columns: 1fr; gap: 0.65rem; }

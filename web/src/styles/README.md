@@ -46,3 +46,7 @@
 - `responsive-03.css` applies compact administrative rows below 640px and owns reduced-motion/transparency fallbacks.
 
 The system is dark-only, flat, gradient-free, and uses borders instead of decorative shadows.
+
+## Admin layout
+
+- `admin-08.css` owns the shared admin row geometry and final responsive heading/card refinements. It is imported after the earlier admin and responsive layers so section-specific row variants can correct their actual content tracks.

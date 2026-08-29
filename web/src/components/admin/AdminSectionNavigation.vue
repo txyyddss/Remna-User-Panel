@@ -69,16 +69,11 @@ const emit = defineEmits<{ select: [section: string] }>()
 
 @media (min-width: 1200px) {
   .admin-section-navigation {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: minmax(11rem, 0.85fr) minmax(17rem, 1.35fr) minmax(10rem, 0.75fr) minmax(22rem, 1.8fr);
   }
 
-  /* Give the long operational labels a full row inside their group so the
-     compact four-column map stays readable at normal desktop widths. */
-  .admin-section-navigation__group:nth-child(2) .admin-section-navigation__link:nth-child(3),
-  .admin-section-navigation__group:nth-child(2) .admin-section-navigation__link:nth-child(4),
-  .admin-section-navigation__group:nth-child(4) .admin-section-navigation__link:nth-child(2),
-  .admin-section-navigation__group:nth-child(4) .admin-section-navigation__link:nth-child(4) {
-    grid-column: 1 / -1;
+  .admin-section-navigation__group:nth-child(4) .admin-section-navigation__items {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

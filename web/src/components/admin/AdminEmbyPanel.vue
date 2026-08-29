@@ -41,7 +41,7 @@ onMounted(() => void load())
     <OperationStatusNotice :receipt="retryCommand.receipt.value" :error="retryCommand.error.value" :checking="retryCommand.checking.value" @refresh="retryCommand.refresh" />
     <USkeleton v-if="loading" class="m-4 h-24" />
     <div v-else v-auto-animate class="admin-list">
-      <article v-for="account in items" :key="account.id" class="admin-list-row">
+      <article v-for="account in items" :key="account.id" class="admin-list-row admin-list-row--emby">
         <span class="feature-icon feature-icon--small"><UIcon name="i-ph-monitor-play" /></span>
         <div>
           <strong>{{ account.username }}</strong>
