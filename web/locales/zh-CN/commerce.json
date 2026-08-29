@@ -40,7 +40,7 @@
     "perTerm": "每个周期",
     "optionalSquads": "可选区域",
     "optionalSquadsHint": "将区域加入同一流量预算和订阅周期。",
-    "included": "已包含", "featured": "精选",
+    "featured": "精选",
     "noSquads": "今天没有可选节点组",
     "noSquadsHint": "你的套餐仍包含标准区域。",
     "queuedEffectiveHint": "当前有效周期结束后，此选择将开始生效。",
