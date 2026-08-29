@@ -42,7 +42,8 @@ const description = computed(() => {
     :open="Boolean(result)"
     :title="result ? $t(`activity.result.${result.outcome}.title`) : ''"
     :description="description"
-    :close="{ 'data-haptic': 'dismiss' }"
+    :close="false"
+    :ui="{ header: 'tg-overlay-header--centered', wrapper: 'tg-overlay-copy--centered' }"
     @update:open="!$event && $emit('close')"
   >
     <template v-if="result" #body>

@@ -83,7 +83,7 @@ function goHome(): void {
 </script>
 
 <template>
-  <UModal v-model:open="open" :title="$t('home.squadAddition.title')" :description="$t('home.squadAddition.description')" scrollable>
+  <UModal v-model:open="open" :title="$t('home.squadAddition.title')" :description="$t('home.squadAddition.description')" :close="false" :ui="{ header: 'tg-overlay-header--centered', wrapper: 'tg-overlay-copy--centered' }" scrollable>
     <template #body>
       <div class="squad-addition-dialog">
         <UStepper :model-value="stepperIndex" :items="[{ title: $t('home.squadAddition.steps.choose') }, { title: $t('home.squadAddition.steps.checkout') }]" :linear="true" disabled size="sm" />

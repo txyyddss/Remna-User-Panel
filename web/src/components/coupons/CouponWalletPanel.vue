@@ -63,8 +63,8 @@ async function confirmDiscard(): Promise<void> {
       :title="$t('coupons.discardTitle', { name: selectedGrant?.coupon.name ?? '' })"
       :description="$t('coupons.discardDescription')"
       :dismissible="!discarding"
-      :close="{ 'data-haptic': 'dismiss' }"
-      :ui="{ footer: 'justify-end' }"
+      :close="false"
+      :ui="{ header: 'tg-overlay-header--centered', wrapper: 'tg-overlay-copy--centered', footer: 'justify-end' }"
       @update:open="setDiscardOpen"
     >
       <template #body>

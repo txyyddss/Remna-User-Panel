@@ -25,7 +25,7 @@ useTelegramProtection(computed(() => open.value && (props.busy || reason.value.t
 </script>
 
 <template>
-  <UModal v-model:open="open" :title="t('adminCompensation.reviewTitle')" :description="t('adminCompensation.reviewCopy')" :dismissible="!busy" :close="{ 'data-haptic': 'dismiss' }" :ui="{ footer: 'justify-end flex-wrap' }">
+  <UModal v-model:open="open" :title="t('adminCompensation.reviewTitle')" :description="t('adminCompensation.reviewCopy')" :dismissible="!busy" :close="false" :ui="{ header: 'tg-overlay-header--centered', wrapper: 'tg-overlay-copy--centered', footer: 'justify-end flex-wrap' }">
     <template v-if="event" #body>
       <dl class="review-facts">
         <div><dt>{{ t('adminCompensation.node') }}</dt><dd>{{ event.nodeName }}</dd></div>

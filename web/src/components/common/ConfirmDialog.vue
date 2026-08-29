@@ -17,8 +17,8 @@ const props = withDefaults(defineProps<{
 }>(), {
   busy: false,
   danger: false,
-  showClose: true,
-  centered: false,
+  showClose: false,
+  centered: true,
 })
 
 defineEmits<{ confirm: [] }>()

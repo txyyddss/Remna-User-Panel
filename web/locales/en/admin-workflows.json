@@ -1,6 +1,7 @@
 {
   "adminUserProfile": {
     "open": "Open profile",
+    "actionsAndContext": "Member actions and account context",
     "backToUsers": "Back to users",
     "overview": "Member profile",
     "balance": "Balance",
@@ -84,6 +85,10 @@
     "noIPBlocks": "This member has no active IP blocks.",
     "accountContext": "Account context",
     "accountContextHint": "Active coupons, abuse records, and referral outcomes retained for this member.",
+    "trafficResetAutomation": "Traffic reset automation",
+    "accountUpdated": "Account updated",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
     "couponWallet": "Coupon wallet",
     "activeCoupon": "Active",
     "noCoupons": "No active coupons",
@@ -92,7 +97,7 @@
     "abuseAction": { "warning": "Warning", "ip_ban": "IP ban", "subscription_revoke": "Revoked", "temporary_ban": "Temporary ban" },
     "affiliateHistory": "Affiliate history",
     "noAffiliateHistory": "No referral history",
-    "affiliateStatus": { "successful": "Successful" },
+    "affiliateStatus": { "successful": "Successful", "pending": "Pending" },
     "refundAmount": "Refund amount",
     "connectionControls": "Connection controls",
     "connectionControlsHint": "Queue remote access changes and inspect transient active connections.",

@@ -85,8 +85,6 @@ function consumeReissueRequest(): void {
           />
           <InlineNotice v-if="catalogBlocked" tone="warning">{{ $t('home.autoRenewalCatalogBlocked') }}</InlineNotice>
           <InlineNotice v-if="autoRenewalFailureMessage" tone="warning" :title="$t('home.autoRenewalFailureTitle')">{{ autoRenewalFailureMessage }}</InlineNotice>
-        </div>
-        <div class="home-stack">
           <SubscriptionPanel
             :subscription-url="dashboard.subscriptionUrl"
             :revoking="revoking"
@@ -97,6 +95,8 @@ function consumeReissueRequest(): void {
           <InlineNotice v-if="revokeReceipt?.status === 'succeeded' && error" tone="warning">{{ error }}</InlineNotice>
           <OperationStatusNotice v-if="revokeReceipt?.status !== 'succeeded'" :receipt="revokeReceipt" :error="revokeError ?? error" :checking="revokeChecking" @refresh="refreshRevoke" />
           <InlineNotice v-if="queuedCancellationNotice" tone="success">{{ $t('home.queuedCancelled') }}</InlineNotice>
+        </div>
+        <div class="home-stack">
           <UsagePanel
             v-if="dashboard.statistics"
             :statistics="dashboard.statistics"

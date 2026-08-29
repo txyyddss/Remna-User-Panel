@@ -34,7 +34,7 @@ useTelegramBackButton(ownsBack, close)
 </script>
 
 <template>
-  <UModal v-model:open="open" :title="$t('connections.blockTitle')" :description="target ? $t('connections.blockDescription', { ip: target.connection.ip }) : ''" :dismissible="!busy" :close="{ 'data-haptic': 'dismiss' }" :ui="{ footer: 'justify-end' }">
+  <UModal v-model:open="open" :title="$t('connections.blockTitle')" :description="target ? $t('connections.blockDescription', { ip: target.connection.ip }) : ''" :dismissible="!busy" :close="false" :ui="{ header: 'tg-overlay-header--centered', wrapper: 'tg-overlay-copy--centered', footer: 'justify-end' }">
     <template #body>
       <div v-if="target" class="connection-drop">
         <div class="connection-drop__target">

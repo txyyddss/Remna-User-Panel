@@ -1,0 +1,119 @@
+.admin-shell--compact { margin: 0; }
+
+.admin-profile.admin-panel {
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.admin-profile-toolbar { padding: 0 0 0.75rem; border-bottom: 0; }
+.admin-profile-toolbar > :first-child { padding-inline: 0; }
+.admin-profile-toolbar > :first-child:hover { background: transparent; }
+
+.admin-profile__columns {
+  display: grid;
+  grid-template-columns: minmax(17rem, 0.82fr) minmax(0, 1.6fr);
+  grid-template-areas: "rail main";
+  align-items: start;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.admin-profile__rail,
+.admin-profile__main { min-width: 0; display: grid; gap: 1rem; align-content: start; }
+.admin-profile__rail { grid-area: rail; }
+.admin-profile__main { grid-area: main; }
+
+.admin-profile__rail > .admin-profile-section,
+.admin-profile__main > .admin-profile-section,
+.admin-profile > .admin-profile-section {
+  padding: 1.15rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  box-shadow: 0 14px 34px rgb(4 13 8 / 0.16);
+}
+
+.admin-profile > .admin-profile-section.admin-profile-overview {
+  border-color: #34483b;
+  box-shadow: 0 18px 44px rgb(4 13 8 / 0.22);
+}
+
+.admin-profile__rail > .admin-profile-section:last-child,
+.admin-profile__main > .admin-profile-section:last-child,
+.admin-profile > .admin-profile-section:last-child { border-bottom: 1px solid var(--line); }
+
+.admin-profile-overview .admin-profile-identity { gap: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--line); }
+.admin-profile-overview .admin-profile-identity h2 { font-size: clamp(1.3rem, 2vw, 1.65rem); letter-spacing: -0.03em; }
+.admin-profile-overview .admin-profile-facts { margin: 1rem 0 0; }
+
+.admin-profile-signals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem; margin-top: 0.75rem; }
+.admin-profile-signal { min-width: 0; display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.7rem; border: 1px solid var(--line); border-radius: var(--radius-control); color: var(--accent); background: var(--surface-raised); }
+.admin-profile-signal > span { min-width: 0; }
+.admin-profile-signal small, .admin-profile-signal strong { display: block; }
+.admin-profile-signal small { color: var(--text-faint); font-size: 0.62rem; }
+.admin-profile-signal strong { margin-top: 0.2rem; color: var(--text); font-size: 0.76rem; overflow-wrap: anywhere; }
+
+.admin-profile-active { margin-top: 0.75rem; border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: var(--radius-control); }
+.admin-profile-section__heading { gap: 1rem; }
+.admin-profile-section__heading h3 { font-size: 1rem; letter-spacing: -0.01em; }
+.admin-profile-section__heading p { max-width: 52ch; line-height: 1.45; }
+
+.admin-profile .row-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.admin-profile .row-actions > .button { min-width: 0; }
+.admin-profile-row > .row-actions { min-width: 0; justify-content: flex-end; }
+.admin-profile-row { align-items: start; padding: 0.9rem 0; }
+.admin-profile-row strong { line-height: 1.35; overflow-wrap: anywhere; }
+.admin-profile-row small { height: auto; overflow: visible; line-height: 1.4; white-space: normal; overflow-wrap: anywhere; }
+.admin-profile-row__meta { min-width: max-content; }
+.admin-profile-row__actions { display: flex; justify-content: flex-end; gap: 0.4rem; }
+.admin-profile-row__actions > .button { min-width: 44px; }
+.admin-profile-history__group h4 { margin-bottom: 0.35rem; }
+.admin-profile-history__group h4 svg { flex: 0 0 auto; }
+
+.admin-profile .form-stack { gap: 1rem; }
+
+.tg-modal .form-stack [data-slot="root"],
+.tg-drawer .form-stack [data-slot="root"],
+.tg-slideover .form-stack [data-slot="root"] { width: 100%; }
+
+.tg-modal .form-stack input,
+.tg-modal .form-stack textarea,
+.tg-drawer .form-stack input,
+.tg-drawer .form-stack textarea,
+.tg-slideover .form-stack input,
+.tg-slideover .form-stack textarea { width: 100%; }
+
+@media (min-width: 900px) {
+  .admin-profile__rail { position: sticky; top: calc(var(--shell-safe-top) + 1rem); }
+}
+
+@media (max-width: 720px) {
+  .admin-profile__columns { grid-template-columns: 1fr; grid-template-areas: "rail" "main"; margin-top: 0.75rem; }
+  .admin-profile__rail { position: static; }
+  .admin-profile__rail > .admin-profile-section,
+  .admin-profile__main > .admin-profile-section,
+  .admin-profile > .admin-profile-section { padding: 1rem; }
+  .admin-profile-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-profile-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .admin-profile-row__meta { grid-column: 2; text-align: right; }
+  .admin-profile-row__actions { grid-column: 1 / -1; justify-content: stretch; }
+  .admin-profile-row__actions > .button { flex: 1 1 10rem; }
+  .admin-profile-row > .row-actions { grid-column: 1 / -1; justify-content: flex-start; }
+}
+
+@media (max-width: 480px) {
+  .admin-profile-toolbar { align-items: stretch; }
+  .admin-profile-toolbar > * { min-width: 0; }
+  .admin-profile-toolbar > :last-child { flex: 0 0 auto; }
+  .admin-profile-signals { grid-template-columns: 1fr; }
+  .admin-profile-section__heading { align-items: stretch; }
+  .admin-profile-section__heading > .button,
+  .admin-profile-section__heading > .row-actions { width: 100%; }
+  .admin-profile-section__heading > .button { justify-content: center; }
+  .admin-profile-row { gap: 0.55rem; }
+  .admin-profile-row__meta { text-align: left; }
+  .admin-profile-row > .status-badge { grid-column: 2; justify-self: end; }
+  .admin-profile-row__actions > .button { flex-basis: 100%; }
+}

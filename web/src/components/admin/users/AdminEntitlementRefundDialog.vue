@@ -27,7 +27,7 @@ useTelegramProtection(computed(() => open.value && (props.busy || reason.value.t
 </script>
 
 <template>
-  <UModal v-model:open="open" :title="t('adminUserProfile.refundTitle')" :description="t('adminUserProfile.refundHint')" :dismissible="!busy" :close="{ 'data-haptic': 'dismiss' }" :ui="{ footer: 'justify-end' }">
+  <UModal v-model:open="open" :title="t('adminUserProfile.refundTitle')" :description="t('adminUserProfile.refundHint')" :dismissible="!busy" :close="false" :ui="{ header: 'tg-overlay-header--centered', wrapper: 'tg-overlay-copy--centered', footer: 'justify-end' }">
     <template #body>
       <div class="form-stack">
         <TxbAmountField id="admin-entitlement-refund" v-model="amount" :label="t('adminUserProfile.refundAmount')" min-minor="1" :max-minor="maximum" required />

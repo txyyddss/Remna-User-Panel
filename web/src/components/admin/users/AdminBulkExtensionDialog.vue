@@ -93,7 +93,7 @@ async function create(): Promise<void> {
 </script>
 
 <template>
-  <UModal v-model:open="open" :title="t('adminBulkExtension.title')" :description="t('adminBulkExtension.copy')" :dismissible="!creating" :close="{ 'data-haptic': 'dismiss' }" :ui="{ footer: 'justify-end' }">
+  <UModal v-model:open="open" :title="t('adminBulkExtension.title')" :description="t('adminBulkExtension.copy')" :dismissible="!creating" :close="false" :ui="{ header: 'tg-overlay-header--centered', wrapper: 'tg-overlay-copy--centered', footer: 'justify-end' }">
     <template #body>
       <UAlert color="info" variant="soft" icon="i-ph-funnel" :description="t('adminBulkExtension.orHint')" />
       <UForm :state="draft" class="form-stack" @submit="create">

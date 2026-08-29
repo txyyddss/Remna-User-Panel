@@ -10,6 +10,7 @@ const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 const sessionStore = useSessionStore()
+const props = withDefaults(defineProps<{ compact?: boolean }>(), { compact: false })
 
 const groups = [
   { labelKey: 'adminNav.commerce', sections: [
@@ -62,8 +63,8 @@ function selectSection(section: string): void {
 </script>
 
 <template>
-  <div class="admin-shell">
-    <header class="page-header admin-shell__header">
+  <div class="admin-shell" :class="{ 'admin-shell--compact': props.compact }">
+    <header v-if="!props.compact" class="page-header admin-shell__header">
       <p class="eyebrow">{{ t('adminNav.eyebrow') }}</p>
       <h1>{{ t('adminNav.title') }}</h1>
       <p>{{ t('adminNav.copy') }}</p>
@@ -78,12 +79,13 @@ function selectSection(section: string): void {
       </div>
     </header>
     <AdminSectionNavigation
+      v-if="!props.compact"
       :groups="navigationGroups"
       :active-section="selected"
       :label="t('adminNav.sections')"
       @select="selectSection"
     />
-    <nav class="admin-section-picker" :aria-label="t('adminNav.sections')">
+    <nav v-if="!props.compact" class="admin-section-picker" :aria-label="t('adminNav.sections')">
       <UFormField :label="t('adminNav.section')">
         <USelect v-model="selected" class="admin-section-picker__select" :items="sectionItems" value-key="value" />
       </UFormField>

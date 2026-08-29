@@ -34,6 +34,10 @@ const synchronizationTone = computed(() => props.detail.synchronization.status =
       <div><dt>{{ t('adminUserProfile.joined') }}</dt><dd>{{ formatDateTime(detail.user.createdAt) }}</dd></div>
       <div><dt>{{ t('adminUserProfile.remoteId') }}</dt><dd>{{ detail.synchronization.remoteUserId || t('adminUserProfile.notAvailable') }}</dd></div>
     </dl>
+    <div class="admin-profile-signals">
+      <div class="admin-profile-signal"><UIcon name="i-ph-arrows-clockwise" /><span><small>{{ t('adminUserProfile.trafficResetAutomation') }}</small><strong>{{ detail.autoTrafficResetEnabled ? t('adminUserProfile.enabled') : t('adminUserProfile.disabled') }}</strong></span></div>
+      <div class="admin-profile-signal"><UIcon name="i-ph-clock-countdown" /><span><small>{{ t('adminUserProfile.accountUpdated') }}</small><strong>{{ formatDateTime(detail.user.updatedAt) }}</strong></span></div>
+    </div>
     <div class="admin-profile-active">
       <span class="feature-icon feature-icon--small"><UIcon name="i-ph-stack" /></span>
       <div v-if="detail.activeCombo">

@@ -20,7 +20,7 @@ useTelegramBackButton(ownsBack, backToUsers)
 
 <template>
   <div class="page page--admin">
-    <AdminShell>
+    <AdminShell compact>
       <AdminUserProfilePage :user-id="userId" @back="backToUsers" />
     </AdminShell>
   </div>

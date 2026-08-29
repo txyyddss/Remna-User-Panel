@@ -25,7 +25,7 @@ function cancel(close: () => void): void {
 </script>
 
 <template>
-  <UModal v-model:open="open" :title="$t('catalog.activationTitle')" :description="$t('catalog.activationDescription')" :dismissible="false">
+  <UModal v-model:open="open" :title="$t('catalog.activationTitle')" :description="$t('catalog.activationDescription')" :dismissible="false" :close="false" :ui="{ header: 'tg-overlay-header--centered', wrapper: 'tg-overlay-copy--centered' }">
     <template #body>
       <div class="activation-dialog__heading">
         <UIcon name="i-ph-lock-key" aria-hidden="true" />

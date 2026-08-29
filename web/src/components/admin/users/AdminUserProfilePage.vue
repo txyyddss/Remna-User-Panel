@@ -159,12 +159,18 @@ watch(() => unblockOperation.receipt.value, (receipt) => {
     </div>
     <template v-else-if="profile.detail.value">
       <AdminUserOverview :detail="profile.detail.value" />
-      <AdminUserProviderActions :user-id="userId" :detail="profile.detail.value" @changed="refresh" @queued="queueOperation" />
-      <AdminUserCouponActions :user-id="userId" :grants="profile.detail.value.couponWallet" @changed="refresh" />
-      <AdminUserAccountContext :user-id="userId" :detail="profile.detail.value" @changed="refresh" />
-      <AdminUserEntitlements :items="profile.detail.value.entitlements" :busy="busy" @edit="openEditor" @refund="openRefund" />
-      <AdminUserIPBlocks :items="profile.detail.value.ipBlocks" :busy="busy" @unblock="openIPUnblock" />
-      <AdminUserHistory :detail="profile.detail.value" :busy="busy" @resolve="resolving = $event" @refund-payment="openPaymentRefund" @credit-payment="openPaymentCredit" />
+      <div class="admin-profile__columns">
+        <aside class="admin-profile__rail" :aria-label="t('adminUserProfile.actionsAndContext')">
+          <AdminUserProviderActions :user-id="userId" :detail="profile.detail.value" @changed="refresh" @queued="queueOperation" />
+          <AdminUserCouponActions :user-id="userId" :grants="profile.detail.value.couponWallet" @changed="refresh" />
+          <AdminUserAccountContext :user-id="userId" :detail="profile.detail.value" @changed="refresh" />
+          <AdminUserIPBlocks :items="profile.detail.value.ipBlocks" :busy="busy" @unblock="openIPUnblock" />
+        </aside>
+        <div class="admin-profile__main">
+          <AdminUserEntitlements :items="profile.detail.value.entitlements" :busy="busy" @edit="openEditor" @refund="openRefund" />
+          <AdminUserHistory :detail="profile.detail.value" :busy="busy" @resolve="resolving = $event" @refund-payment="openPaymentRefund" @credit-payment="openPaymentCredit" />
+        </div>
+      </div>
     </template>
     <div v-else class="empty-inline"><div><h3>{{ t('adminUserProfile.unavailable') }}</h3><p>{{ t('adminUserProfile.unavailableHint') }}</p></div></div>
 

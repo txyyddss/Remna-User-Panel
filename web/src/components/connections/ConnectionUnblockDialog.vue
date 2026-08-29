@@ -25,7 +25,7 @@ useTelegramBackButton(ownsBack, close)
 </script>
 
 <template>
-  <UModal v-model:open="open" :title="$t('connections.unblockTitle')" :description="block ? $t('connections.unblockDescription', { ip: block.ip }) : ''" :dismissible="!busy" :close="{ 'data-haptic': 'dismiss' }" :ui="{ footer: 'justify-end' }">
+  <UModal v-model:open="open" :title="$t('connections.unblockTitle')" :description="block ? $t('connections.unblockDescription', { ip: block.ip }) : ''" :dismissible="!busy" :close="false" :ui="{ header: 'tg-overlay-header--centered', wrapper: 'tg-overlay-copy--centered', footer: 'justify-end' }">
     <template #body>
       <div v-if="block" class="connection-drop">
         <div class="connection-unblock__target"><UIcon name="i-ph-shield-check" /><div><code>{{ block.ip }}</code><span>{{ $t('connections.expiresAt', { date: formatDateTime(block.expiresAt) }) }}</span></div></div>
