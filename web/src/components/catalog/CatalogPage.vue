@@ -135,7 +135,7 @@ function goHome(): void {
 
 async function advance(): Promise<void> {
   if (!selectedCombo.value || activeStep.value >= 4) return
-  const leavingComboStep = activeStep.value === 1
+  const leavingComboStep = activeStep.value === 2
   if (activeStep.value === 2 && (!(await refreshQuote()) || !quote.value?.accessibleNodes.length)) return
   if (activeStep.value === 3 && (!quoteUsable.value || quoting.value)) return
   activeStep.value += 1
@@ -169,14 +169,14 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
         <InlineNotice v-if="error && activeStep < 4" tone="warning">{{ error }}</InlineNotice>
         <Transition name="route" mode="out-in">
           <section :key="activeStep" class="catalog-flow-step">
-            <div v-if="activeStep === 1" class="combo-section">
+            <div v-if="activeStep === 2" class="combo-section">
               <div class="section-heading"><h2>{{ $t('catalog.coreCombos') }}</h2></div>
               <div v-if="visibleCombos.length" v-auto-animate class="combo-grid">
                 <ComboOption v-for="combo in visibleCombos" :key="combo.id" :combo="combo" :selected="selectedComboId === combo.id" @select="selectCombo" />
               </div>
               <div v-else class="empty-inline"><div><h3>{{ $t('catalog.noCombos') }}</h3><p>{{ $t('catalog.noCombosHint') }}</p></div><UButton color="neutral" variant="outline" :label="$t('common.refresh')" data-haptic="refresh" @click="load" /></div>
             </div>
-            <CatalogSquadStep v-else-if="activeStep === 2" :squads="visibleSquads" :selected-ids="selectedSquadIds" :included-ids="includedSquadIds" :featured-ids="featuredSquadIds" :ordered-ids="orderedSquadIds" @toggle="toggleSquad" />
+            <CatalogSquadStep v-else-if="activeStep === 1" :squads="visibleSquads" :selected-ids="selectedSquadIds" :included-ids="includedSquadIds" :featured-ids="featuredSquadIds" :ordered-ids="orderedSquadIds" @toggle="toggleSquad" />
             <CatalogCouponStep v-else-if="activeStep === 3" v-model:coupon-grant-id="selectedCouponGrantId" :coupons="eligibleCoupons" :eligible-ids="eligibleCoupons.map((grant) => grant.id)" :discarding="couponDiscarding" :discard-coupon="discardCoupon" :quoting="quoting" @redeemed="handleCouponRedeemed" />
             <CatalogCheckout v-else-if="activeStep === 4" :combo="selectedCombo" :squads="selectedSquads" :coupon="selectedCoupon" :quote="quote" :quoting="quoting" :error="error" :purchasing="purchasing || activationPrompting" :needs-balance="needsBalance" @back="goBack" @confirm="handlePurchase" />
           </section>

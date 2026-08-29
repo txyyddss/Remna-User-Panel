@@ -80,6 +80,7 @@ async function mountPage(purchase: object | null, step = 4, confirmPurchase = vi
       plugins: [router],
       stubs: {
         CatalogConfirmation: { template: '<div data-test="catalog-confirmation" />' },
+        ComboOption: { template: '<div data-test="combo-step" />' },
         CatalogCheckout: { template: '<div role="button" tabindex="0" data-test="confirm-purchase" @click="$emit(\'confirm\')" />' },
         CatalogCouponStep: { template: '<div data-test="catalog-coupon-step" />' },
         CatalogFlowControls: { props: ['nextDisabled'], emits: ['next'], template: '<div role="button" tabindex="0" data-test="catalog-flow-controls" :data-disabled="String(nextDisabled)" @click="$emit(\'next\')" />' },
@@ -103,12 +104,12 @@ describe('CatalogPage quote restoration', () => {
   it('scrolls to the top after continuing from core combos', async () => {
     const scrollTo = vi.fn()
     vi.stubGlobal('scrollTo', scrollTo)
-    const { wrapper } = await mountPage(null, 1)
+    const { wrapper } = await mountPage(null, 2, vi.fn(), [{}])
 
     await wrapper.get('[data-test="catalog-flow-controls"]').trigger('click')
 
     expect(scrollTo).toHaveBeenCalledWith({ top: 0 })
-    expect(wrapper.find('[data-test="squad-step"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="catalog-coupon-step"]').exists()).toBe(true)
     wrapper.unmount()
   })
 
@@ -169,13 +170,13 @@ describe('CatalogPage quote restoration', () => {
     wrapper.unmount()
   })
 
-  it('refreshes the quote and blocks leaving squads without accessible nodes', async () => {
+  it('refreshes the quote and blocks leaving core combos without accessible nodes', async () => {
     const { refreshQuote, wrapper } = await mountPage(null, 2)
 
     await wrapper.get('[data-test="catalog-flow-controls"]').trigger('click')
 
     expect(refreshQuote).toHaveBeenCalledOnce()
-    expect(wrapper.find('[data-test="squad-step"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="combo-step"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="catalog-coupon-step"]').exists()).toBe(false)
     wrapper.unmount()
   })

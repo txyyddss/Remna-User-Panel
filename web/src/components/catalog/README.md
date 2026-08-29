@@ -1,6 +1,6 @@
 # Catalog components
 
-- `CatalogPage.vue` owns the four-step combo, squads, coupon, and review journey, its versioned user-scoped step restoration, authoritative quote refresh, and squad-composition preload before the optional-squad step. `CatalogSquadStep.vue` presents the prepared ordering and owns the shared node Geocheck flow.
+- `CatalogPage.vue` owns the four-step squads, combo, coupon, and review journey, its versioned user-scoped step restoration, authoritative quote refresh after core-combo selection, and squad-composition preload. `CatalogSquadStep.vue` presents the prepared ordering and owns the shared node Geocheck flow.
 - `useCatalogSquadPresentation.ts` starts non-blocking composition-statistics loading with the catalog page and returns the selected combo's featured and ordered squad IDs.
 - `CatalogSquadStep.test.ts` covers prepared ranking handoff and the catalog node Geocheck target.
 - `CatalogFlowProgress.vue` and `CatalogFlowControls.vue` present the current step and navigation controls; completed catalog steps use a check indicator while current and future steps retain their own icons. The compact progress rail fits narrow phones without forced horizontal expansion, and controls stay in normal document flow.
