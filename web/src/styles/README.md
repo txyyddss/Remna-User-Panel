@@ -37,6 +37,7 @@
 - `admin-04.css` styles aggregate user profiles, bulk previews, operation resolution, and streamed backup upload.
 - `admin-05.css` styles active IP blocks and mobile unblock controls in aggregate user profiles.
 - `admin-06.css` styles the compact user-editor shell, responsive action/context rail, profile signals, and overlay form sizing.
+- `admin-07.css` styles shared administrative headings, dense rows, and responsive action/control layouts.
 - `overlays-01.css` resolves Telegram safe-area bounds while retaining Nuxt UI's native centered position for teleported modals, provides symmetric opt-in centered modal headers, and owns responsive drawer/slideover layouts.
 - `motion-01.css` defines short transitions and state motion.
 - `motion-02.css` adds reduced-motion-safe staggered page entry, tactile press response, status arrival, and active-navigation feedback.
