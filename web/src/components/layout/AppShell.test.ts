@@ -72,7 +72,7 @@ describe('AppShell accessibility', () => {
     const bottomNavigationItems = wrapper.findAll('.bottom-nav__item')
     expect(bottomNavigationItems).toHaveLength(3)
     expect(wrapper.find('.bottom-nav__locale').exists()).toBe(false)
-    expect(wrapper.find('.side-rail__footer').exists()).toBe(false)
+    expect(wrapper.find('.side-rail__footer').exists()).toBe(true)
     await bottomNavigationItems[1].trigger('click')
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/catalog'))
     expect(window.location.href).toBe(launchURL)
