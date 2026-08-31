@@ -47,7 +47,7 @@ describe('protected route decisions', () => {
   })
 
   it('lets an un-onboarded admin start optional signup from the dashboard', () => {
-    expect(resolveProtectedRoute(route('/onboarding'), user({ role: 'admin', onboardingState: 'membership' }))).toBeNull()
+    expect(resolveProtectedRoute(route('/onboarding'), user({ role: 'admin', onboardingState: 'username' }))).toBeNull()
   })
 
   it('keeps an un-onboarded admin out of product routes', () => {
@@ -55,7 +55,7 @@ describe('protected route decisions', () => {
   })
 
   it('lets an admin use every admin section before onboarding completes', () => {
-    expect(resolveProtectedRoute(route('/admin/settings'), user({ role: 'admin', onboardingState: 'membership' }))).toBeNull()
+    expect(resolveProtectedRoute(route('/admin/settings'), user({ role: 'admin', onboardingState: 'username' }))).toBeNull()
   })
 
   it('lets a completed admin use user-side routes', () => {

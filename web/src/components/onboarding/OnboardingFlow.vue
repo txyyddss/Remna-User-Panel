@@ -7,7 +7,6 @@ import { useOnboarding } from '@/composables/useOnboarding'
 import { useI18n } from '@/i18n'
 import AgreementPanel from './AgreementPanel.vue'
 import IntroSequence from './IntroSequence.vue'
-import MembershipPanel from './MembershipPanel.vue'
 import { useOnboardingMainButton } from './useOnboardingMainButton'
 import UsernamePanel from './UsernamePanel.vue'
 
@@ -16,16 +15,12 @@ const {
   progress,
   loading,
   error,
-  invites,
   content,
   form,
   usernameValid,
   usernameHint,
   allAgreementsAccepted,
   finishIntro,
-  loadInvites,
-  openInvite,
-  checkMembership,
   submitUsername,
   acceptAgreement,
   toggleAgreement,
@@ -33,12 +28,6 @@ const {
 
 const { t } = useI18n()
 const mainAction = computed(() => {
-  if (step.value === 'membership') return {
-    text: loading.value ? t('onboarding.checkingMembership') : t('onboarding.alreadyJoined'),
-    disabled: loading.value,
-    loading: loading.value,
-    run: checkMembership,
-  }
   if (step.value === 'username') return {
     text: loading.value ? t('onboarding.checkingAvailability') : t('onboarding.reserveUsername'),
     disabled: !usernameValid.value || loading.value,
@@ -68,18 +57,8 @@ const { available: mainButtonAvailable } = useOnboardingMainButton(mainAction)
 
     <div class="onboarding-shell__stage">
       <Transition name="onboarding-step" mode="out-in">
-        <MembershipPanel
-          v-if="step === 'membership'"
-          key="membership"
-          :invites="invites"
-          :loading="loading"
-          :show-action="!mainButtonAvailable"
-          @open-invite="openInvite"
-          @check="checkMembership"
-          @refresh="loadInvites"
-        />
         <UsernamePanel
-          v-else-if="step === 'username'"
+          v-if="step === 'username'"
           key="username"
           v-model="form.username"
           :valid="usernameValid"

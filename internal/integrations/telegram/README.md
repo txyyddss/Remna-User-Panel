@@ -6,7 +6,7 @@ This package contains the Telegram Bot API and Mini App authentication surface u
 - `transport.go` performs bounded Bot API calls, decodes envelopes, sanitizes failures, and validates URLs and secrets.
 - `webhooks.go` configures webhooks and the Mini App menu button and verifies webhook secrets in constant time.
 - `bot.go` registers localized command menus and sends bounded plain-text or MarkdownV2 replies after decoding Telegram's message result.
-- `memberships.go` manages join-request invites, approvals, revocation, and canonical chat membership lookup.
+- `memberships.go` manages join-request invites, approvals, explicit declines, revocation, and canonical chat membership lookup.
 - `ChatMember.Present` normalizes Telegram membership states so the HTTP
   adapter can welcome only configured-group absent-to-present transitions.
 - `stars.go` creates Stars invoice links, answers pre-checkout queries, lists transactions, and requests refunds.

@@ -15,7 +15,7 @@ describe('ComingSoonLinks navigation', () => {
     const wrapper = mount(ComingSoonLinks, { global: { plugins: [router] } })
     const launchURL = window.location.href
     const actions = wrapper.findAll('.home-around__link')
-    const destinations = ['/affiliates', '/questionnaire', '/emby', '/statistics', '/abuse-records']
+    const destinations = ['/affiliates', '/questionnaire', '/community', '/emby', '/statistics', '/abuse-records']
 
     expect(actions).toHaveLength(destinations.length)
     for (const [index, destination] of destinations.entries()) {

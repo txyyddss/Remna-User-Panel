@@ -105,7 +105,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	databaseEditor := databaseadmin.NewService(db, backupService, vault, logger)
 	databaseAdminHTTP := httpapi.NewDatabaseAdministrationHTTP(databaseEditor, backupService, migrationVersions)
 	databaseAdminHTTP.SetBackupUploadMaxBytes(cfg.BackupUploadMaxBytes)
-	accountsService := accounts.NewService(store, initDataAdapter{verifier: verifier}, telegramBridge, remna, settings, cfg.AdminTelegramIDs, cfg.SessionTTL)
+	accountsService := accounts.NewService(store, store, initDataAdapter{verifier: verifier}, telegramBridge, remna, settings, cfg.AdminTelegramIDs, cfg.SessionTTL)
 	catalogService := catalog.NewService(store, remna, 2*time.Minute)
 	billingService := billing.NewService(store, settings, paymentBridge, cfg.PublicBaseURL)
 	activityService := activity.NewService(store, activity.CryptoRandom{}, nil)

@@ -1,6 +1,7 @@
 # Frontend API
 
 - `purchaseAddons.ts` owns protected active-ride squad-addition quote and idempotent commit requests.
+- `community.ts` owns canonical community membership checks and one-space Telegram invite requests.
 
 - `adminBilling.ts` owns the atomic administrator update for global Add TXB bounds.
 - `abuse.ts` owns typed privacy-safe member and administrator detector resources, including configurable streaks, the revisioned warning-record cooldown, and WebView-safe idempotency keys for mutations.

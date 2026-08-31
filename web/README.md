@@ -31,7 +31,8 @@ Each source folder has its own `README.md` file map. Start with [the source map]
 
 ## Member features
 
-- Resumable Telegram membership, immutable username, and agreement onboarding; decisive onboarding actions mirror to Telegram's native MainButton when available.
+- Resumable intro, immutable username, and agreement onboarding; decisive onboarding actions mirror to Telegram's native MainButton when available.
+- Community group and channel access stays outside onboarding, shows canonical Telegram membership, and requires a currently active combo only when joining.
 - Dashboard balance, entitlement, Remnawave traffic, node summaries, and subscription-link rotation.
 - A six-step catalog journey for core combos, optional squads, accessible nodes, coupon redemption, review, and idempotent purchase confirmation.
 - Provider/rail selection, exact payment instructions, QR/address rendering, cancellation, and authoritative settlement polling.

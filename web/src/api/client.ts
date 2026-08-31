@@ -5,9 +5,7 @@ import type {
   Catalog,
   Dashboard,
   DashboardNodeUsage,
-  InviteLink,
   LedgerEntry,
-  MembershipState,
   OperationReceipt,
   Paginated,
   PaymentOperation,
@@ -26,6 +24,7 @@ import type { components } from './generated'
 import type { FeaturePaymentMethod, FeaturePaymentOrder, FeaturePaymentReturnStatus, PaymentReturnProvider } from './features'
 import { request, type QueryValue } from './http'
 import { purchaseAddonsApi } from './purchaseAddons'
+import { communityApi } from './community'
 import { createUuid } from '@/utils/browserCompatibility'
 
 export { ApiError } from './http'
@@ -79,28 +78,12 @@ async function retryAdminJob(jobId: string, idempotencyKey?: string): Promise<Op
 
 export const api = {
   ...purchaseAddonsApi,
+  ...communityApi,
   authTelegram: (initData: string) => request<Session>('/api/v1/auth/telegram', {
     method: 'POST',
     body: { initData } satisfies TelegramAuthRequest,
   }),
   getMe: () => request<Session>('/api/v1/me'),
-  createInvites: async () => {
-    const response = await request<{ group: Pick<InviteLink, 'url' | 'expiresAt'>; channel: Pick<InviteLink, 'url' | 'expiresAt'> }>('/api/v1/onboarding/invites', { method: 'POST' })
-    return { invites: [
-      { ...response.group, kind: 'group' as const, joined: false },
-      { ...response.channel, kind: 'channel' as const, joined: false },
-    ] }
-  },
-  checkMembership: async () => {
-    const response = await request<{ user: Session['user']; groupJoined: boolean; channelJoined: boolean; complete: boolean }>('/api/v1/onboarding/membership/check', { method: 'POST' })
-    const session: Session = { authenticated: true, user: response.user }
-    return {
-      session,
-      groupJoined: response.groupJoined,
-      channelJoined: response.channelJoined,
-      complete: response.complete,
-    } satisfies MembershipState
-  },
   setUsername: (username: string) => request<Session>('/api/v1/onboarding/username', {
     method: 'PUT',
     body: { username },

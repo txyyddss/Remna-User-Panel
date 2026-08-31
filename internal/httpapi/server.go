@@ -134,8 +134,6 @@ func New(deps Dependencies) (*Server, error) {
 		authenticated.Use(server.requireSession)
 		authenticated.Get("/api/v1/me", server.me)
 		authenticated.Get("/api/v1/me/abuse-records", server.memberAbuseRecords)
-		authenticated.Post("/api/v1/onboarding/invites", server.createInvites)
-		authenticated.Post("/api/v1/onboarding/membership/check", server.checkMembership)
 		authenticated.Put("/api/v1/onboarding/username", server.reserveUsername)
 		authenticated.Post("/api/v1/onboarding/agreement", server.acceptAgreement)
 		authenticated.Get("/api/v1/onboarding/content", server.onboardingContent)

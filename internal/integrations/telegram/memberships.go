@@ -36,6 +36,11 @@ func (c *Client) ApproveJoinRequest(ctx context.Context, chatID string, userID i
 	return c.booleanCall(ctx, "approveChatJoinRequest", memberRequest{ChatID: chatID, UserID: userID})
 }
 
+// DeclineJoinRequest explicitly declines one pending Telegram join request.
+func (c *Client) DeclineJoinRequest(ctx context.Context, chatID string, userID int64) error {
+	return c.booleanCall(ctx, "declineChatJoinRequest", memberRequest{ChatID: chatID, UserID: userID})
+}
+
 // RevokeInviteLink revokes a bot-created chat invite link.
 func (c *Client) RevokeInviteLink(ctx context.Context, chatID, inviteLink string) (*ChatInviteLink, error) {
 	if strings.TrimSpace(chatID) == "" || strings.TrimSpace(inviteLink) == "" {

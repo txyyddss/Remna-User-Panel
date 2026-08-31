@@ -63,7 +63,7 @@ stopped.
   `internal/maintenance`; the durable local-date lease prevents overlapping
   runs across process instances.
 - `telegram_scheduler.go` configures Telegram delivery and reconciles Telegram Stars transactions.
-- `telegram_queue_adapter.go` queues bot identity, membership, setup, and message operations.
+- `telegram_queue_adapter.go` queues bot identity, membership, invite approval, decline, revocation, setup, and message operations.
 - `telegram_queue_payments.go` queues Telegram Stars invoice, query, history, and refund operations.
 - `telegram_command_registration.go` installs localized private-chat and configured-group command menus.
 - `app_test.go` verifies normalized Telegram Stars transaction directions.

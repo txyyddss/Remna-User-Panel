@@ -9,8 +9,8 @@ Member connection scans, purchase reset/refund resources, operation receipts, st
 - `api-v1-auth-telegram.yaml`: `/api/v1/auth/telegram`
 - `api-v1-me.yaml`: `/api/v1/me`
 - `api-v1-me-traffic-reset-automation.yaml`: `/api/v1/me/traffic-reset-automation`, account-wide automatic reset preference
-- `api-v1-onboarding-invites.yaml`: `/api/v1/onboarding/invites`
-- `api-v1-onboarding-membership-check.yaml`: `/api/v1/onboarding/membership/check`
+- `api-v1-community-membership-check.yaml`: `/api/v1/community/membership/check`
+- `api-v1-community-invites-kind.yaml`: `/api/v1/community/invites/{kind}`, one identity-bound group or channel invite
 - `api-v1-onboarding-username.yaml`: `/api/v1/onboarding/username`
 - `api-v1-onboarding-agreement.yaml`: `/api/v1/onboarding/agreement`
 - `api-v1-onboarding-content.yaml`: `/api/v1/onboarding/content`

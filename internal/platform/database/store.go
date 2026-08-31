@@ -180,20 +180,20 @@ func (s *Store) DeleteExpiredSessions(ctx context.Context, now time.Time) error 
 	return nil
 }
 
-// UpdateMembership persists canonical Telegram membership results.
+// UpdateMembership persists canonical Telegram membership results without
+// changing onboarding. Community access is independent from account setup.
 
 func (s *Store) UpdateMembership(ctx context.Context, userID string, groupJoined, channelJoined bool) (model.User, error) {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 
-	_, err := s.db.ExecContext(ctx, `UPDATE users SET group_joined=?,channel_joined=?,onboarding_state=CASE
-		WHEN onboarding_state IN ('intro','membership') AND ?=1 AND ?=1 THEN CASE WHEN username IS NULL THEN 'username' ELSE 'agreement' END
-		ELSE onboarding_state END,updated_at=? WHERE id=?`, boolInt(groupJoined), boolInt(channelJoined), boolInt(groupJoined), boolInt(channelJoined), stamp(time.Now().UTC()), userID)
+	_, err := s.db.ExecContext(ctx, `UPDATE users SET group_joined=?,channel_joined=?,updated_at=? WHERE id=?`,
+		boolInt(groupJoined), boolInt(channelJoined), stamp(time.Now().UTC()), userID)
 	if err != nil {
 		return model.User{}, fmt.Errorf("update membership: %w", err)
 	}
 	return s.UserByID(ctx, userID)
 }
 
-// BeginRemnawaveRecovery restarts only external membership/agreement checks and
+// BeginRemnawaveRecovery restarts only agreement reconciliation and
 // preserves local identity, balance, purchases, and feature history.

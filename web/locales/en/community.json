@@ -45,5 +45,26 @@
     "preparing": "Preparing code",
     "openAgain": "Open questionnaire",
     "getCode": "Get code"
+  },
+  "community": {
+    "title": "Community",
+    "subtitle": "Join the private group and receive channel updates.",
+    "accessNote": "A currently active combo is required to join. Memberships already confirmed by Telegram remain shown after a combo ends.",
+    "loadingTitle": "Checking community access",
+    "loadingDescription": "Refreshing your Telegram membership and combo eligibility.",
+    "errorTitle": "Community unavailable",
+    "errorDescription": "We could not refresh community access right now.",
+    "groupTitle": "Private group",
+    "groupDescription": "Talk with other TX members.",
+    "channelTitle": "Updates channel",
+    "channelDescription": "Receive official TX updates.",
+    "joined": "Joined",
+    "joinedDescription": "Telegram confirms that you are already a member.",
+    "unavailable": "Unavailable",
+    "unavailableDescription": "A current active combo is needed before you can join.",
+    "ready": "Ready to join",
+    "readyDescription": "Your current active combo can request access.",
+    "join": "Join",
+    "joining": "Opening"
   }
 }

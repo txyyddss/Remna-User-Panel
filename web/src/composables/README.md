@@ -29,11 +29,9 @@
 - `useImageZoom.test.ts` covers zoom bounds, reset, and two-finger gesture state.
 - `useIntroSequence.ts` drives the onboarding intro sequence.
 - `useIntroSequence.test.ts` covers intro timing and completion.
-- `onboardingState.ts` resolves the next onboarding step from the server-owned
-  membership response; `onboardingState.test.ts` covers returning-user state.
-- `useOnboarding.ts` coordinates onboarding steps and persistence, including
-  refreshing the server-owned state before moving a returning user through a
-  revised agreement.
+- `useOnboarding.ts` coordinates the intro, username, and agreement steps, including idempotent agreement recovery for returning users.
+- `useCommunityMembership.ts` refreshes canonical Telegram membership and strict active-combo access, opens requested-space invites, and unregisters its Telegram activation refresh handler on teardown.
+- `useCommunityMembership.test.ts` covers invite opening, error feedback, Telegram activation refresh, and event cleanup; `useOnboarding.test.ts` covers direct intro-to-username-to-agreement progression.
 - `usePaymentOrder.ts` coordinates durable checkout/cancellation receipts with payment-sheet presentation states.
 - `usePaymentCountdown.ts` owns a disposal-safe one-second payment-window countdown used only for presentation and replacement prompts.
 - `usePaymentConfiguration.ts` owns exact TXB bounds, amount conversion, and selected payment method state.

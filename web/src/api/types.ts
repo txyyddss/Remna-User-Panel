@@ -20,22 +20,8 @@ export type User = DeepReadonly<components['schemas']['User']>
 export type AuthState = DeepReadonly<components['schemas']['AuthState']>
 export type Session = AuthState
 export type JoinInvite = DeepReadonly<components['schemas']['JoinInvite']>
-export type OnboardingInvites = DeepReadonly<components['schemas']['OnboardingInvites']>
-
-export interface InviteLink extends JoinInvite {
-  kind: 'group' | 'channel'
-  label: string
-  joined: boolean
-}
-
-// The client folds the server membership response into the current session so
-// onboarding components can consume one stable view model.
-export interface MembershipState {
-  session: AuthState
-  groupJoined: boolean
-  channelJoined: boolean
-  complete: boolean
-}
+export type CommunityMembership = DeepReadonly<components['schemas']['CommunityMembership']>
+export type CommunitySpace = 'group' | 'channel'
 
 export type ResetCadence = components['schemas']['ResetStrategy']
 export type SquadProfile = DeepReadonly<components['schemas']['SquadProfile']>

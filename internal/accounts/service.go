@@ -18,15 +18,15 @@ var usernamePattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{3,36}$`)
 // ErrInvalidAuthentication denotes untrusted or expired Telegram launch data.
 var ErrInvalidAuthentication = errors.New("invalid Telegram authentication")
 
-// ErrAuthenticationRateLimited denotes a verified Telegram identity exchanging
-// launch data too frequently.
+// ErrAuthenticationRateLimited bounds verified Telegram identity exchanges.
 var ErrAuthenticationRateLimited = errors.New("Telegram authentication rate limited")
-
-// ErrMembershipRequired means both configured chats are not yet joined.
-var ErrMembershipRequired = errors.New("membership is required")
 
 // ErrUsernameUnavailable means either the local database or Remnawave owns the name.
 var ErrUsernameUnavailable = errors.New("username is unavailable")
+
+// Community invite eligibility errors.
+var ErrActiveComboRequired = errors.New("active combo is required")
+var ErrCommunityAlreadyJoined = errors.New("community space is already joined")
 
 // ErrAgreementStateConflict means the local onboarding state changed while the request was in flight.
 var ErrAgreementStateConflict = errors.New("onboarding state changed")
@@ -37,8 +37,7 @@ var ErrAgreementRevisionConflict = errors.New("onboarding agreement revision cha
 // ErrRemnawaveIdentityConflict means the requested local identity is already linked elsewhere upstream.
 var ErrRemnawaveIdentityConflict = errors.New("Remnawave identity conflicts with the local account")
 
-// ErrUpstreamUnavailable distinguishes a temporary Remnawave failure from bad
-// Telegram authentication data.
+// ErrUpstreamUnavailable is a temporary Remnawave authentication dependency failure.
 var ErrUpstreamUnavailable = errors.New("Remnawave is temporarily unavailable")
 
 // InitDataValidator authenticates raw Mini App initData and returns only trusted identity fields.
@@ -51,7 +50,13 @@ type TelegramClient interface {
 	CreateJoinRequestInvite(ctx context.Context, chatID, name string, expiresAt time.Time) (string, error)
 	GetMembership(ctx context.Context, chatID string, telegramID int64) (bool, error)
 	ApproveJoinRequest(ctx context.Context, chatID string, telegramID int64) error
+	DeclineJoinRequest(ctx context.Context, chatID string, telegramID int64) error
 	RevokeInviteLink(ctx context.Context, chatID, inviteLink string) error
+}
+
+// CommunityEligibility reports only currently active combo windows.
+type CommunityEligibility interface {
+	HasActiveCombo(context.Context, string, time.Time) (bool, error)
 }
 
 // RemoteUser is the minimum Remnawave identity used during onboarding.
@@ -100,7 +105,6 @@ type Repository interface {
 	UserBySession(context.Context, []byte, time.Time) (model.User, error)
 	UserByID(context.Context, string) (model.User, error)
 	UserByTelegramID(context.Context, int64) (model.User, error)
-	AdvanceToMembership(context.Context, string) error
 	UpdateMembership(context.Context, string, bool, bool) (model.User, error)
 	ReserveUsername(context.Context, string, string) error
 	CurrentAgreementContract(context.Context) (int, []string, error)
@@ -110,6 +114,7 @@ type Repository interface {
 // Service coordinates authentication and onboarding state.
 type Service struct {
 	repository  Repository
+	eligibility CommunityEligibility
 	validator   InitDataValidator
 	telegram    TelegramClient
 	remnawave   RemnawaveClient
@@ -121,12 +126,12 @@ type Service struct {
 }
 
 // NewService constructs an accounts service.
-func NewService(repository Repository, validator InitDataValidator, telegram TelegramClient, remnawave RemnawaveClient, settings Settings, adminIDs []int64, sessionTTL time.Duration) *Service {
+func NewService(repository Repository, eligibility CommunityEligibility, validator InitDataValidator, telegram TelegramClient, remnawave RemnawaveClient, settings Settings, adminIDs []int64, sessionTTL time.Duration) *Service {
 	configuredAdmins := make(map[int64]struct{}, len(adminIDs))
 	for _, adminID := range adminIDs {
 		configuredAdmins[adminID] = struct{}{}
 	}
-	return &Service{repository: repository, validator: validator, telegram: telegram, remnawave: remnawave, settings: settings,
+	return &Service{repository: repository, eligibility: eligibility, validator: validator, telegram: telegram, remnawave: remnawave, settings: settings,
 		adminIDs: configuredAdmins, authLimiter: newAuthIdentityLimiter(), sessionTTL: sessionTTL, now: time.Now}
 }
 

@@ -53,7 +53,7 @@ func TestAuthenticateMarksConfiguredAdminIDs(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			repository := &accountsRepository{user: model.User{ID: "user-1", TelegramID: test.profile.ID}}
-			service := NewService(repository, &accountsValidator{profile: test.profile}, &accountsTelegram{}, &accountsRemnawave{}, &accountsSettings{}, []int64{42, 43}, 7*24*time.Hour)
+			service := NewService(repository, repository, &accountsValidator{profile: test.profile}, &accountsTelegram{}, &accountsRemnawave{}, &accountsSettings{}, []int64{42, 43}, 7*24*time.Hour)
 			if _, _, _, err := service.Authenticate(context.Background(), "signed-init-data"); err != nil {
 				t.Fatalf("Authenticate(): %v", err)
 			}
@@ -121,7 +121,7 @@ func TestAuthenticateRechecksLinkedRemnawaveUser(t *testing.T) {
 			t.Parallel()
 			user := model.User{ID: "user-1", TelegramID: profile.ID, OnboardingState: "complete", RemnaUserID: &remoteID}
 			repository := &accountsRepository{user: user, recoveryUser: model.User{
-				ID: user.ID, TelegramID: user.TelegramID, OnboardingState: "membership", RecoveryReason: "remnawave_user_missing",
+				ID: user.ID, TelegramID: user.TelegramID, OnboardingState: "agreement", RecoveryReason: "remnawave_user_missing",
 			}}
 			remote := &accountsRemnawave{linkedResponse: test.linked}
 			_, token, _, err := newAccountsServiceForTest(repository, &accountsValidator{profile: profile}, &accountsTelegram{}, remote, &accountsSettings{}, 99).Authenticate(context.Background(), "signed")

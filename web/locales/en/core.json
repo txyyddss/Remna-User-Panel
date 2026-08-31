@@ -116,6 +116,11 @@
     "questionnaireUnavailable": "Questionnaire is unavailable.",
     "questionnaireOpen": "Questionnaire could not be opened.",
     "api": {
+      "ACTIVE_COMBO_REQUIRED": "A current active combo is required to join this community.",
+      "COMMUNITY_ALREADY_JOINED": "Telegram already confirms that you are a member.",
+      "ONBOARDING_REQUIRED": "Finish setting up your account before opening community access.",
+      "MEMBERSHIP_CHECK_FAILED": "Telegram membership could not be checked.",
+      "INVITES_UNAVAILABLE": "A community join link is temporarily unavailable.",
       "SQUAD_ACTIVATION_REQUIRED": "Enter an activation code for every selected gated squad.",
       "SQUAD_ACTIVATION_INVALID": "One of the activation codes is incorrect.",
       "SQUAD_ACTIVATION_EXTRA": "Remove activation codes for squads that are not selected.",

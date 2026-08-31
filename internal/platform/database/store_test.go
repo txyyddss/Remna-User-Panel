@@ -40,12 +40,6 @@ func TestReserveUsernameIsImmutableAndRetryable(t *testing.T) {
 	ctx := context.Background()
 	store := newTestStore(t)
 	user := createTestUser(t, store, 20001)
-	if err := store.AdvanceToMembership(ctx, user.ID); err != nil {
-		t.Fatalf("AdvanceToMembership(): %v", err)
-	}
-	if _, err := store.UpdateMembership(ctx, user.ID, true, true); err != nil {
-		t.Fatalf("UpdateMembership(): %v", err)
-	}
 	if err := store.ReserveUsername(ctx, user.ID, "river"); err != nil {
 		t.Fatalf("ReserveUsername(first): %v", err)
 	}
@@ -98,8 +92,9 @@ func TestBeginRemnawaveRecoveryIsIdempotentAcrossConcurrentAuthentication(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	if recovered.Username == nil || *recovered.Username != "river" || recovered.OnboardingState != "membership" ||
-		recovered.RecoveryReason != "remnawave_user_missing" || recovered.RemnaUserID != nil || recovered.PolicyAcceptedAt != nil {
+	if recovered.Username == nil || *recovered.Username != "river" || recovered.OnboardingState != "agreement" ||
+		recovered.RecoveryReason != "remnawave_user_missing" || recovered.RemnaUserID != nil || recovered.PolicyAcceptedAt != nil ||
+		!recovered.GroupJoined || !recovered.ChannelJoined {
 		t.Fatalf("recovered user = %+v", recovered)
 	}
 	if balance, err := store.Balance(ctx, user.ID); err != nil || balance.Minor != "500" {

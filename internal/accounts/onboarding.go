@@ -16,9 +16,6 @@ func (s *Service) ReserveUsername(ctx context.Context, user model.User, username
 	if !usernamePattern.MatchString(username) {
 		return model.User{}, fmt.Errorf("username must match %s", usernamePattern.String())
 	}
-	if !user.GroupJoined || !user.ChannelJoined {
-		return model.User{}, ErrMembershipRequired
-	}
 	if _, exists, err := s.remnawave.FindUserByUsername(ctx, username); err != nil {
 		return model.User{}, fmt.Errorf("preflight Remnawave username: %w", err)
 	} else if exists {

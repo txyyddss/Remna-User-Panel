@@ -44,7 +44,7 @@ TelegramAuthRequest:
 
 OnboardingStep:
   type: string
-  enum: [intro, membership, username, agreement, complete]
+  enum: [intro, username, agreement, complete]
 
 User:
   type: object
@@ -126,26 +126,16 @@ JoinInvite:
     expiresAt:
       $ref: '../../openapi.yaml#/components/schemas/Timestamp'
 
-OnboardingInvites:
+CommunityMembership:
   type: object
   additionalProperties: false
-  required: [group, channel]
+  required: [activeCombo, groupJoined, channelJoined, user]
   properties:
-    group:
-      $ref: '../../openapi.yaml#/components/schemas/JoinInvite'
-    channel:
-      $ref: '../../openapi.yaml#/components/schemas/JoinInvite'
-
-MembershipState:
-  type: object
-  additionalProperties: false
-  required: [groupJoined, channelJoined, complete, user]
-  properties:
+    activeCombo:
+      type: boolean
     groupJoined:
       type: boolean
     channelJoined:
-      type: boolean
-    complete:
       type: boolean
     user:
       $ref: '../../openapi.yaml#/components/schemas/User'

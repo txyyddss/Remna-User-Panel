@@ -34,6 +34,9 @@ func (a *queuedTelegram) GetChatMember(ctx context.Context, chatID string, userI
 func (a *queuedTelegram) ApproveJoinRequest(ctx context.Context, chatID string, userID int64) error {
 	return upstreamqueue.Execute(ctx, a.queue, func(callCtx context.Context) error { return a.client.ApproveJoinRequest(callCtx, chatID, userID) })
 }
+func (a *queuedTelegram) DeclineJoinRequest(ctx context.Context, chatID string, userID int64) error {
+	return upstreamqueue.Execute(ctx, a.queue, func(callCtx context.Context) error { return a.client.DeclineJoinRequest(callCtx, chatID, userID) })
+}
 func (a *queuedTelegram) RevokeInviteLink(ctx context.Context, chatID, link string) (*telegram.ChatInviteLink, error) {
 	return upstreamqueue.Do(ctx, a.queue, func(callCtx context.Context) (*telegram.ChatInviteLink, error) {
 		return a.client.RevokeInviteLink(callCtx, chatID, link)

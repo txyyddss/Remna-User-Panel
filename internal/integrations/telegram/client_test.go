@@ -15,7 +15,7 @@ import (
 func TestClientHelpers(t *testing.T) {
 	t.Parallel()
 	const token = "123:super-secret"
-	requests := make(chan capturedRequest, 6)
+	requests := make(chan capturedRequest, 7)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		defer func() { _ = request.Body.Close() }()
 		var body map[string]any
@@ -61,6 +61,13 @@ func TestClientHelpers(t *testing.T) {
 		t.Fatalf("GetChatMember() = %#v, %v", member, err)
 	}
 	<-requests
+	if err := client.DeclineJoinRequest(ctx, "@group", 42); err != nil {
+		t.Fatalf("DeclineJoinRequest() error = %v", err)
+	}
+	request = <-requests
+	if request.path != "/bot"+token+"/declineChatJoinRequest" || request.body["user_id"] != float64(42) {
+		t.Fatalf("decline request = %#v", request)
+	}
 
 	link, err := client.CreateStarsInvoiceLink(ctx, StarsInvoiceRequest{
 		Title: "TXB", Description: "TX Carpool balance", Payload: "order-1", Label: "TXB", Amount: 25,

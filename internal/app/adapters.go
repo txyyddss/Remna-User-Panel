@@ -48,6 +48,10 @@ func (a telegramAdapter) ApproveJoinRequest(ctx context.Context, chatID string, 
 	return a.client.ApproveJoinRequest(ctx, chatID, telegramID)
 }
 
+func (a telegramAdapter) DeclineJoinRequest(ctx context.Context, chatID string, telegramID int64) error {
+	return a.client.DeclineJoinRequest(ctx, chatID, telegramID)
+}
+
 func (a telegramAdapter) RevokeInviteLink(ctx context.Context, chatID, inviteLink string) error {
 	_, err := a.client.RevokeInviteLink(ctx, chatID, inviteLink)
 	return err

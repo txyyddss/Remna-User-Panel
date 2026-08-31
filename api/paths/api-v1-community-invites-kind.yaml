@@ -1,0 +1,25 @@
+post:
+  tags: [Community]
+  operationId: createCommunityInvite
+  summary: Create one identity-bound community join-request link
+  parameters:
+    - name: kind
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [group, channel]
+  description: Creates a 30-minute HMAC-bound invite only for the requested space. A current active combo is checked before creation and again before webhook approval.
+  responses:
+    '200':
+      description: Active one-space join-request link.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/JoinInvite'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '409':
+      $ref: '../openapi.yaml#/components/responses/Conflict'
+    '503':
+      $ref: '../openapi.yaml#/components/responses/ServiceUnavailable'

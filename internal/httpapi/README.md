@@ -43,7 +43,8 @@
 
 ## Community features
 
-- `community.go` registers member and administrator Activity, coupon, and questionnaire routes.
+- `community.go` registers member Community, Activity, coupon, and questionnaire routes.
+- `community_membership.go` maps canonical Telegram membership checks and strict one-space invite eligibility to stable Community transport errors.
 - `community_shared.go` defines shared community settings and nullable JSON request fields.
 - `community_helpers.go` contains idempotency, bounded multipart, decimal, collection, and error helpers.
 - `activity_types.go` maps Activity domain games, draws, rewards, and history to responses.
@@ -98,6 +99,7 @@
 
 - `server_test.go` covers strict decoding, onboarding access, and SPA delivery.
 - `community_test.go` covers nullable inputs, multipart bounds, decimal parsing, reward mapping, and idempotency.
+- `community_membership_test.go` covers stable onboarding, membership-check, active-combo, already-joined, and invite-provider transport errors.
 - `admin_catalog_test.go` covers strict decoding of typed squad profile writes.
 - `operations_commands_test.go` covers Telegram deduction command parsing.
 - `payment_callbacks_test.go` verifies that navigation returns accept only the documented payment providers.

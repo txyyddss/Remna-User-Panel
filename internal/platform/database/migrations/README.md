@@ -73,3 +73,4 @@ file instead.
   and persists asynchronous IP-ban scans across retries.
 - `040_admin_user_provider_commands.sql` adds durable administrator temporary-ban state and scheduled restoration linkage.
 - `041_admin_coupon_discard_commands.sql` records administrator coupon-discard idempotency without deleting historical grants.
+- `042_community_membership.sql` maps legacy membership onboarding users to username when unnamed or agreement when named.

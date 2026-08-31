@@ -10,33 +10,6 @@ import (
 	"time"
 )
 
-func (s *Server) createInvites(w http.ResponseWriter, r *http.Request) {
-	user := currentUser(r)
-	links, expiresAt, err := s.deps.Accounts.CreateInvites(r.Context(), user)
-	if err != nil {
-		s.writeError(w, r, http.StatusServiceUnavailable, "INVITES_UNAVAILABLE", "Join links are temporarily unavailable.")
-		return
-	}
-	type invite struct {
-		URL       string    `json:"url"`
-		ExpiresAt time.Time `json:"expiresAt"`
-	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"group":   invite{URL: links["group"], ExpiresAt: expiresAt},
-		"channel": invite{URL: links["channel"], ExpiresAt: expiresAt},
-	})
-}
-
-func (s *Server) checkMembership(w http.ResponseWriter, r *http.Request) {
-	user, err := s.deps.Accounts.CheckMembership(r.Context(), currentUser(r))
-	if err != nil {
-		s.writeError(w, r, http.StatusBadGateway, "MEMBERSHIP_CHECK_FAILED", "Telegram membership could not be checked.")
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"groupJoined": user.GroupJoined, "channelJoined": user.ChannelJoined,
-		"complete": user.GroupJoined && user.ChannelJoined, "user": mapUser(user)})
-}
-
 func (s *Server) reserveUsername(w http.ResponseWriter, r *http.Request) {
 	var request struct {
 		Username string `json:"username"`
@@ -50,8 +23,6 @@ func (s *Server) reserveUsername(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, accounts.ErrUsernameUnavailable):
 			s.writeError(w, r, http.StatusConflict, "USERNAME_UNAVAILABLE", "That username is unavailable.")
-		case errors.Is(err, accounts.ErrMembershipRequired):
-			s.writeError(w, r, http.StatusConflict, "MEMBERSHIP_REQUIRED", "Join both Telegram spaces first.")
 		default:
 			s.writeError(w, r, http.StatusUnprocessableEntity, "INVALID_USERNAME", err.Error())
 		}

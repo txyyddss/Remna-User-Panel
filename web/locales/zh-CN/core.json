@@ -115,6 +115,11 @@
     "questionnaireUnavailable": "问卷暂不可用。",
     "questionnaireOpen": "无法打开问卷。",
     "api": {
+      "ACTIVE_COMBO_REQUIRED": "\u52a0\u5165\u793e\u533a\u9700\u8981\u5f53\u524d\u6b63\u5728\u751f\u6548\u7684\u5957\u9910\u3002",
+      "COMMUNITY_ALREADY_JOINED": "Telegram \u5df2\u786e\u8ba4\u4f60\u662f\u6210\u5458\u3002",
+      "ONBOARDING_REQUIRED": "\u8bf7\u5148\u5b8c\u6210\u8d26\u6237\u8bbe\u7f6e\uff0c\u518d\u6253\u5f00\u793e\u533a\u8bbf\u95ee\u3002",
+      "MEMBERSHIP_CHECK_FAILED": "\u65e0\u6cd5\u68c0\u67e5 Telegram \u6210\u5458\u8eab\u4efd\u3002",
+      "INVITES_UNAVAILABLE": "\u793e\u533a\u52a0\u5165\u94fe\u63a5\u6682\u4e0d\u53ef\u7528\u3002",
       "SQUAD_ADDITION_FAILED": "无法添加分组，请刷新后重试。",
       "PURCHASE_OR_SQUAD_NOT_FOUND": "当前套餐或所选分组不存在。",
       "PURCHASE_NOT_ACTIVE": "只有当前生效的套餐可以添加分组。",

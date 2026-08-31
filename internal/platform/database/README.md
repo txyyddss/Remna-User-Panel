@@ -40,6 +40,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `store.go` — core store type, user/session persistence, membership, username,
   and Remnawave recovery state.
 - `store_access.go` exposes the database handle and optional structured logger.
+- `community_membership.go` queries only currently active combo windows for entitlement-gated community access.
 - `settings.go` — encrypted-or-plain application setting records.
 - `onboarding.go` — versioned onboarding content, agreement contracts, and
   onboarding completion.
@@ -145,6 +146,8 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `migrations/039_abuse_record_retention_and_ip_bans.sql` adds configurable record retention support and resumable IP-ban scan state.
 - `migrations/040_admin_user_provider_commands.sql` adds durable manual temporary-ban state.
 - `migrations/041_admin_coupon_discard_commands.sql` binds administrative coupon discards to idempotency keys.
+- `migrations/042_community_membership.sql` moves legacy membership onboarding users to username or agreement without changing their Telegram facts.
+- `community_membership_test.go` covers legacy mapping, membership-fact persistence, and strict active-window boundaries.
 - `compensation_observation_test.go` covers persisted/missing nodes, snapshotted policy, disabled precedence, and repeated outages.
 - `compensation_review_test.go` covers inactive skips, exact minute shifts, notifications, operation linkage, stale reviews, replay, and dismissal.
 - `admin_user_operations.go` and `admin_user_refunds.go` supply the aggregate profile's open-operation and refund projections.
@@ -165,7 +168,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `retention_compaction.go` coordinates all backup-gated cleanup writes in one transaction.
 - `retention_operations.go` fails stale open provider operations after 24 hours, resolves linked local state, and removes processed receipts plus their queue records.
 - `retention_operation_compensation.go` refunds stale traffic-reset and Emby-setup debits before their operations are removed.
-- `retention_housekeeping.go` prunes completed notification events, expired or superseded sessions, abandoned pre-membership users, and old maintenance runs.
+- `retention_housekeeping.go` prunes completed notification events, expired or superseded sessions, abandoned pre-username users, and old maintenance runs.
 - `continuity.go` — three-minute queued-entitlement preparation jobs and
   provider-expiry continuity projections.
 - `statistics.go` — catalog and activity administrator statistics.

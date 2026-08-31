@@ -13,7 +13,6 @@ type accountsRepository struct {
 	upsertErr            error
 	replaceSessionErr    error
 	sessionLookupErr     error
-	advanceErr           error
 	userByIDErr          error
 	reserveErr           error
 	completeErr          error
@@ -23,7 +22,6 @@ type accountsRepository struct {
 	sessionUserID        string
 	sessionExpires       time.Time
 	lookupSessionHash    []byte
-	advanced             bool
 	groupJoined          bool
 	channelJoined        bool
 	reservedUsername     string
@@ -33,6 +31,8 @@ type accountsRepository struct {
 	recoveryReason       string
 	agreementRevision    int
 	requiredAgreementIDs []string
+	activeCombo          bool
+	activeComboErr       error
 }
 
 func (r *accountsRepository) UpsertTelegramUser(_ context.Context, _ model.TelegramProfile, admin bool) (model.User, bool, error) {
@@ -53,13 +53,13 @@ func (r *accountsRepository) UserByID(context.Context, string) (model.User, erro
 func (r *accountsRepository) UserByTelegramID(context.Context, int64) (model.User, error) {
 	return r.user, r.userByTelegramErr
 }
-func (r *accountsRepository) AdvanceToMembership(context.Context, string) error {
-	r.advanced = true
-	return r.advanceErr
-}
 func (r *accountsRepository) UpdateMembership(_ context.Context, _ string, group, channel bool) (model.User, error) {
 	r.groupJoined, r.channelJoined = group, channel
+	r.user.GroupJoined, r.user.ChannelJoined = group, channel
 	return r.user, nil
+}
+func (r *accountsRepository) HasActiveCombo(context.Context, string, time.Time) (bool, error) {
+	return r.activeCombo, r.activeComboErr
 }
 func (r *accountsRepository) ReserveUsername(_ context.Context, _ string, username string) error {
 	r.reservedUsername = username
@@ -90,13 +90,17 @@ type accountsTelegram struct {
 	membershipErr error
 	approveErr    error
 	revokeErr     error
+	declineErr    error
 	inviteNames   []string
+	inviteChatIDs []string
 	revokedLinks  []string
 	approveCalls  int
+	declineCalls  int
 }
 
 func (t *accountsTelegram) CreateJoinRequestInvite(_ context.Context, chatID, name string, _ time.Time) (string, error) {
 	t.inviteNames = append(t.inviteNames, name)
+	t.inviteChatIDs = append(t.inviteChatIDs, chatID)
 	return "https://invite.test/" + chatID, t.createErr
 }
 func (t *accountsTelegram) GetMembership(_ context.Context, chatID string, _ int64) (bool, error) {
@@ -105,6 +109,10 @@ func (t *accountsTelegram) GetMembership(_ context.Context, chatID string, _ int
 func (t *accountsTelegram) ApproveJoinRequest(context.Context, string, int64) error {
 	t.approveCalls++
 	return t.approveErr
+}
+func (t *accountsTelegram) DeclineJoinRequest(context.Context, string, int64) error {
+	t.declineCalls++
+	return t.declineErr
 }
 func (t *accountsTelegram) RevokeInviteLink(_ context.Context, _ string, link string) error {
 	t.revokedLinks = append(t.revokedLinks, link)
@@ -168,7 +176,8 @@ func validAccountsSettings() *accountsSettings {
 }
 
 func newAccountsServiceForTest(repository Repository, validator InitDataValidator, telegram TelegramClient, remnawave RemnawaveClient, settings Settings, adminID int64) *Service {
-	service := NewService(repository, validator, telegram, remnawave, settings, []int64{adminID}, 7*24*time.Hour)
+	eligibility, _ := repository.(CommunityEligibility)
+	service := NewService(repository, eligibility, validator, telegram, remnawave, settings, []int64{adminID}, 7*24*time.Hour)
 	service.now = func() time.Time { return time.Date(2026, 8, 7, 12, 0, 0, 0, time.UTC) }
 	return service
 }

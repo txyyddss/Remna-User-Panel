@@ -12,7 +12,7 @@ import (
 func TestReserveUsername(t *testing.T) {
 	t.Parallel()
 
-	joinedUser := model.User{ID: "user-1", GroupJoined: true, ChannelJoined: true}
+	onboardingUser := model.User{ID: "user-1", OnboardingState: "intro"}
 	testError := errors.New("failure")
 	tests := []struct {
 		name       string
@@ -22,15 +22,14 @@ func TestReserveUsername(t *testing.T) {
 		remote     *accountsRemnawave
 		want       error
 	}{
-		{name: "success trims", username: "  alice ", user: joinedUser, repository: &accountsRepository{user: model.User{ID: "user-1"}}, remote: &accountsRemnawave{}},
-		{name: "too short", username: "ab", user: joinedUser, repository: &accountsRepository{}, remote: &accountsRemnawave{}},
-		{name: "uppercase", username: "Alice", user: joinedUser, repository: &accountsRepository{}, remote: &accountsRemnawave{}},
-		{name: "membership", username: "alice", user: model.User{ID: "user-1"}, repository: &accountsRepository{}, remote: &accountsRemnawave{}, want: ErrMembershipRequired},
-		{name: "preflight error", username: "alice", user: joinedUser, repository: &accountsRepository{}, remote: &accountsRemnawave{findResponses: []accountsFindResponse{{err: testError}}}},
-		{name: "upstream owns", username: "alice", user: joinedUser, repository: &accountsRepository{}, remote: &accountsRemnawave{findResponses: []accountsFindResponse{{exists: true}}}, want: ErrUsernameUnavailable},
-		{name: "local race", username: "alice", user: joinedUser, repository: &accountsRepository{reserveErr: database.ErrConflict}, remote: &accountsRemnawave{}, want: ErrUsernameUnavailable},
-		{name: "reserve failure", username: "alice", user: joinedUser, repository: &accountsRepository{reserveErr: testError}, remote: &accountsRemnawave{}, want: testError},
-		{name: "reload failure", username: "alice", user: joinedUser, repository: &accountsRepository{userByIDErr: testError}, remote: &accountsRemnawave{}, want: testError},
+		{name: "success from intro", username: "  alice ", user: onboardingUser, repository: &accountsRepository{user: model.User{ID: "user-1"}}, remote: &accountsRemnawave{}},
+		{name: "too short", username: "ab", user: onboardingUser, repository: &accountsRepository{}, remote: &accountsRemnawave{}},
+		{name: "uppercase", username: "Alice", user: onboardingUser, repository: &accountsRepository{}, remote: &accountsRemnawave{}},
+		{name: "preflight error", username: "alice", user: onboardingUser, repository: &accountsRepository{}, remote: &accountsRemnawave{findResponses: []accountsFindResponse{{err: testError}}}},
+		{name: "upstream owns", username: "alice", user: onboardingUser, repository: &accountsRepository{}, remote: &accountsRemnawave{findResponses: []accountsFindResponse{{exists: true}}}, want: ErrUsernameUnavailable},
+		{name: "local race", username: "alice", user: onboardingUser, repository: &accountsRepository{reserveErr: database.ErrConflict}, remote: &accountsRemnawave{}, want: ErrUsernameUnavailable},
+		{name: "reserve failure", username: "alice", user: onboardingUser, repository: &accountsRepository{reserveErr: testError}, remote: &accountsRemnawave{}, want: testError},
+		{name: "reload failure", username: "alice", user: onboardingUser, repository: &accountsRepository{userByIDErr: testError}, remote: &accountsRemnawave{}, want: testError},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -39,9 +38,9 @@ func TestReserveUsername(t *testing.T) {
 			if test.want != nil && !errors.Is(err, test.want) {
 				t.Fatalf("ReserveUsername() error = %v, want %v", err, test.want)
 			}
-			if test.want == nil && (test.name == "success trims" || test.name == "uppercase") {
+			if test.want == nil && (test.name == "success from intro" || test.name == "uppercase") {
 				wantUsername := test.username
-				if test.name == "success trims" {
+				if test.name == "success from intro" {
 					wantUsername = "alice"
 				}
 				if err != nil || test.repository.reservedUsername != wantUsername {

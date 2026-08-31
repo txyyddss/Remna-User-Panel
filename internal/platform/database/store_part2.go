@@ -17,7 +17,7 @@ func (s *Store) BeginRemnawaveRecovery(ctx context.Context, userID, reason strin
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 
-	result, err := s.db.ExecContext(ctx, `UPDATE users SET onboarding_state='membership',group_joined=0,channel_joined=0,
+	result, err := s.db.ExecContext(ctx, `UPDATE users SET onboarding_state='agreement',
 		policy_accepted_at=NULL,remna_user_id=NULL,remna_subscription_url=NULL,recovery_reason=?,updated_at=?
 		WHERE id=? AND onboarding_state='complete'`, reason, stamp(now), userID)
 	if err != nil {
@@ -32,25 +32,12 @@ func (s *Store) BeginRemnawaveRecovery(ctx context.Context, userID, reason strin
 		if loadErr != nil {
 			return model.User{}, loadErr
 		}
-		if user.OnboardingState == "membership" && user.RecoveryReason == reason && user.RemnaUserID == nil &&
-			!user.GroupJoined && !user.ChannelJoined && user.PolicyAcceptedAt == nil {
+		if user.OnboardingState == "agreement" && user.RecoveryReason == reason && user.RemnaUserID == nil && user.PolicyAcceptedAt == nil {
 			return user, nil
 		}
 		return model.User{}, ErrConflict
 	}
 	return s.UserByID(ctx, userID)
-}
-
-// AdvanceToMembership moves a new user past the intro animation.
-
-func (s *Store) AdvanceToMembership(ctx context.Context, userID string) error {
-	s.writeMu.Lock()
-	defer s.writeMu.Unlock()
-
-	if _, err := s.db.ExecContext(ctx, `UPDATE users SET onboarding_state='membership',updated_at=? WHERE id=? AND onboarding_state='intro'`, stamp(time.Now().UTC()), userID); err != nil {
-		return fmt.Errorf("advance onboarding: %w", err)
-	}
-	return nil
 }
 
 // ReserveUsername atomically assigns a locally unique username.
@@ -60,7 +47,7 @@ func (s *Store) ReserveUsername(ctx context.Context, userID, username string) er
 	defer s.writeMu.Unlock()
 
 	result, err := s.db.ExecContext(ctx, `UPDATE users SET username=?,onboarding_state='agreement',updated_at=?
-		WHERE id=? AND (onboarding_state='username' OR (onboarding_state='agreement' AND username=?))`,
+		WHERE id=? AND (onboarding_state IN ('intro','username') OR (onboarding_state='agreement' AND username=?))`,
 		username, stamp(time.Now().UTC()), userID, username)
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "unique") {

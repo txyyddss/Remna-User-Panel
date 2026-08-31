@@ -5,10 +5,11 @@
 - `AdminUserView.vue` is the thin aggregate-profile route entrance and owns native Back to the user list.
 - `CatalogView.vue` delegates to plan browsing and checkout.
 - `ConnectionsView.vue` delegates to the member connection scan and selected-IP unlink workflow.
+- `CommunityView.vue` is the thin Community route view for entitlement-gated Telegram group and channel access.
 - `EmbyView.vue` delegates to Emby setup and preference management.
 - `EntryView.vue` selects the initial authenticated destination.
 - `HomeView.vue` delegates to the member dashboard, including balance funding.
-- `OnboardingView.vue` hosts the resumable membership and agreement flow.
+- `OnboardingView.vue` hosts the resumable intro, username, and agreement flow.
 - `PaymentResultView.vue` verifies a provider-returned payment order in Telegram or polls the capability-limited status in a regular browser, returns confirmed Telegram payments to Home, and offers failed/expired Telegram orders a localized reissue handoff.
 - `QuestionnaireView.vue` delegates to active questionnaire participation.
 - `StatisticsView.vue` delegates to the cached product and live-node statistics dashboard.

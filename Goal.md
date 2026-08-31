@@ -27,3 +27,9 @@ You may want to use the following projects for frontend:
 Push and commit to main branch when finish. Monitor actions run and fix issues when failed.
 
 ---
+
+## Task: Refine group & channel joining logic
+
+No longer require joining in the onboarding procedue.
+Instead, add a page in "Around TX" displaying named "community". DO NOT Let user join group if they have no active combo.
+Display "joined" when the user already joined the channel & group, display "unavailable" if user doesn't have an active combo, display joining button with reuse of current link generating logic when user is ready to join the group.

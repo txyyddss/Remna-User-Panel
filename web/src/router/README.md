@@ -5,6 +5,7 @@
 - `history.ts` selects WebView-safe in-memory history or browser history.
 - `recovery.ts` performs one-shot recovery for stale lazy route chunks.
 - `guards.ts` resolves onboarding, administrator, and member access.
+- `index.test.ts` confirms the protected Community route is registered without changing primary navigation state.
 - `guards.test.ts` covers protected-route decisions.
 - `history.test.ts` covers Telegram and browser history selection.
 - `recovery.test.ts` covers one-shot lazy-route recovery.
@@ -27,5 +28,8 @@ failure never changes or reloads the Telegram launch URL.
 
 `/statistics` is a protected member route reached from Around TX and uses the
 shared shell back behavior instead of changing the Telegram launch URL.
+
+`/community` is a protected thin member route reached from Around TX. It keeps
+group and channel joining outside onboarding and uses the shared shell back behavior.
 
 `/connections` is a protected thin route. The application shell owns route-level native Back, while the selected-IP confirmation temporarily takes overlay ownership and restores the route owner when it closes.
