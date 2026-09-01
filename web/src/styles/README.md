@@ -13,7 +13,7 @@
 - `session-01.css` styles the non-blocking CSS car animation used by the authentication loading screen.
 - `dashboard-01.css` styles dashboard summaries and account details.
 - `dashboard-02.css` styles dashboard lists, actions, and secondary states.
-- `home-01.css` styles the compact balance, 44px Home actions, narrow-phone subscription layout, and traffic surfaces.
+- `home-01.css` styles the compact balance, 44px Home actions, narrow-phone subscription layout, Nuxt UI usage-progress detail, and traffic surfaces.
 - `home-02.css` styles traffic details, ride facts, and Around TX links on Home.
 - `home-03.css` styles the compact renewal term slider and separated quote total/date block.
 - `home-04.css` styles the accessible Your ride rollover flip card, its concise current-term detail, size-safe face swap, and reduced-motion fallback.
@@ -42,7 +42,7 @@
 - `motion-01.css` defines short transitions and state motion.
 - `motion-02.css` adds reduced-motion-safe staggered page entry, tactile press response, status arrival, and active-navigation feedback.
 - `responsive-01.css` owns shared motion keyframes used by compact surfaces.
-- `responsive-02.css` expands the phone-first shell into a sticky-rail desktop layout, gives core combo cards equal desktop tracks, and restores wide route, dialog, catalog, settings, and administrative list arrangements.
+- `responsive-02.css` expands the phone-first shell into a resizable Nuxt UI sticky sidebar desktop layout, and restores wide route, dialog, catalog, settings, and administrative list arrangements.
 - `responsive-03.css` applies compact administrative rows below 640px and owns reduced-motion/transparency fallbacks.
 - `desktop-01.css` adds rail context and balanced wide-page widths for desktop while keeping the compact phone shell untouched.
 

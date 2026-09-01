@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { shallowRef } from 'vue'
+import { en, zh_cn } from '@nuxt/ui/locale'
 
 import { useI18n } from '@/i18n'
-import type { Locale } from '@/i18n/generated'
 import { selectionHaptic } from '@/utils/telegram'
 
 interface Props {
@@ -13,52 +12,29 @@ const props = withDefaults(defineProps<Props>(), {
   showLabel: false,
 })
 
-const open = shallowRef(false)
-const { locale, locales, setLocale, t } = useI18n()
+const uiLocales = [en, zh_cn]
+const { locale, setLocale } = useI18n()
 
-function localeLabel(value: Locale): string {
-  return value === 'en' ? t('app.english') : t('app.simplifiedChinese')
-}
-
-function selectLocale(value: Locale): void {
-  if (value === locale.value) {
-    open.value = false
-    return
-  }
+function selectLocale(value: string): void {
+  if (value === locale.value) return
+  if (value !== 'en' && value !== 'zh-CN') return
   setLocale(value)
   selectionHaptic()
-  open.value = false
 }
 </script>
 
 <template>
-  <UPopover
-    v-model:open="open"
-    :content="{ side: 'top', align: 'end', sideOffset: 12, collisionPadding: 16 }"
-  >
-    <UButton
-      class="language-control"
+  <div class="language-control">
+    <span v-if="props.showLabel" class="language-control__label">{{ $t('app.language') }}</span>
+    <ULocaleSelect
+      :model-value="locale"
+      :locales="uiLocales"
       color="neutral"
       variant="ghost"
-      icon="i-ph-translate"
-      :label="props.showLabel ? $t('app.language') : undefined"
+      size="sm"
+      :search-input="false"
       :aria-label="$t('app.language')"
-      data-haptic="open"
+      @update:model-value="selectLocale"
     />
-    <template #content>
-      <div class="language-control__panel" :aria-label="$t('app.language')" role="group">
-        <UButton
-          v-for="value in locales"
-          :key="value"
-          class="language-control__option"
-          color="neutral"
-          :variant="locale === value ? 'soft' : 'ghost'"
-          :aria-pressed="locale === value"
-          @click="selectLocale(value)"
-        >
-          {{ localeLabel(value) }}
-        </UButton>
-      </div>
-    </template>
-  </UPopover>
+  </div>
 </template>

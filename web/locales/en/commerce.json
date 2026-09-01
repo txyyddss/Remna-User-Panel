@@ -3,6 +3,8 @@
     "addBalance": "Add balance"
   },
   "catalog": {
+    "selectCombo": "Select combo",
+    "planDetails": "Plan details",
     "activationRequired": "Activation code required", "activationTitle": "Unlock this squad",
     "activationDescription": "Enter the activation code for this selected squad. It is used only for this purchase.", "activationCodeLabel": "Activation code",
     "activationCodeHint": "Codes are checked securely by the server and are not saved in the app.",

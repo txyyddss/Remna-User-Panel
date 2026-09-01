@@ -48,6 +48,7 @@ function chooseMethod(id: string): void {
       :hint="t('payment.amountRange', { min: txbInputFromMinor(minimumMinor), max: txbInputFromMinor(maximumMinor) })"
       :min-minor="minimumMinor"
       :max-minor="maximumMinor"
+      slider
       required
       @update:model-value="emit('update:amount', String($event))"
     />

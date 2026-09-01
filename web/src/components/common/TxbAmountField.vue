@@ -11,6 +11,7 @@ const props = withDefaults(defineProps<{
   minMinor?: string
   maxMinor?: string
   integerOnly?: boolean
+  slider?: boolean
   required?: boolean
   disabled?: boolean
 }>(), {
@@ -18,6 +19,7 @@ const props = withDefaults(defineProps<{
   minMinor: '0',
   maxMinor: undefined,
   integerOnly: false,
+  slider: false,
   required: false,
   disabled: false,
 })
@@ -41,6 +43,13 @@ const numericModel = computed<number | null>({
 })
 const minimum = computed(() => minorToNumber(props.minMinor))
 const maximum = computed(() => props.maxMinor === undefined ? undefined : minorToNumber(props.maxMinor))
+const showSlider = computed(() => props.slider && minimum.value !== undefined && maximum.value !== undefined && minimum.value < maximum.value)
+const sliderValue = computed(() => numericModel.value ?? minimum.value ?? 0)
+const sliderStep = computed(() => {
+  const range = (maximum.value ?? 0) - (minimum.value ?? 0)
+  if (props.integerOnly) return Math.max(1, Math.ceil(range / 200))
+  return Math.max(0.01, Math.ceil((range / 200) * 100) / 100)
+})
 const valid = computed(() => {
   if (minor.value === '') return false
   if (props.integerOnly && !/^\d+$/.test(model.value.trim())) return false
@@ -63,6 +72,11 @@ function minorToNumber(value: string): number | undefined {
   const amount = Number(BigInt(value)) / 100
   return Number.isFinite(amount) ? amount : undefined
 }
+
+function updateSlider(value: number | number[]): void {
+  const next = Array.isArray(value) ? value[0] : value
+  if (typeof next === 'number' && Number.isFinite(next)) numericModel.value = next
+}
 </script>
 
 <template>
@@ -74,7 +88,7 @@ function minorToNumber(value: string): number | undefined {
     :required="required"
     class="txb-field"
   >
-    <div class="amount-input amount-input--compact">
+    <div class="amount-input amount-input--compact" :class="{ 'amount-input--slider': showSlider }">
       <UIcon name="i-ph-coins-fill" aria-hidden="true" />
       <UInputNumber
         :id="id"
@@ -92,6 +106,17 @@ function minorToNumber(value: string): number | undefined {
         fixed
       />
       <span>{{ t('common.currencyTxb') }}</span>
+      <USlider
+        v-if="showSlider"
+        class="txb-field__slider"
+        :model-value="sliderValue"
+        :min="minimum"
+        :max="maximum"
+        :step="sliderStep"
+        :disabled="disabled"
+        :aria-label="label"
+        @update:model-value="updateSlider"
+      />
     </div>
   </UFormField>
 </template>
@@ -99,6 +124,8 @@ function minorToNumber(value: string): number | undefined {
 <style scoped>
 .txb-field { display: flex; flex-direction: column; gap: 0.4rem; }
 .amount-input--compact { width: 100%; min-height: 52px; margin: 0; }
+.amount-input--slider { padding-block: 0.6rem; }
 .amount-number { width: 100%; min-width: 0; }
 .amount-input--compact :deep(input) { min-height: 44px; font-size: 1rem; }
+.txb-field__slider { grid-column: 1 / -1; width: 100%; }
 </style>

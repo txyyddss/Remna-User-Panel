@@ -6,6 +6,12 @@
     "simplifiedChinese": "简体中文"
   },
   "nav": {
+    "connections": "Connections",
+    "revoke": "Revoke",
+    "addSquads": "Add squads",
+    "aroundTx": "Around TX",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar",
     "primary": "Primary navigation",
     "home": "Home",
     "explore": "Explore",

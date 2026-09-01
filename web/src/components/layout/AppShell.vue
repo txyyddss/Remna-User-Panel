@@ -8,27 +8,16 @@ import { useSessionStore } from '@/stores/session'
 import { focusWithoutScrolling } from '@/utils/dom'
 import { telegramFullscreenState } from '@/utils/telegram'
 import LanguageControl from './LanguageControl.vue'
-
-interface NavItem {
-  labelKey: string
-  to: string
-  icon: string
-}
+import { desktopNavigationItems, mobileNavigationItems } from './navigation'
 
 const route = useRoute()
 const router = useRouter()
 const sessionStore = useSessionStore()
 const { t } = useI18n()
 
-const primaryItems: NavItem[] = [
-  { labelKey: 'nav.home', to: '/home', icon: 'i-ph-house' },
-  { labelKey: 'nav.explore', to: '/catalog', icon: 'i-ph-compass' },
-  { labelKey: 'nav.activity', to: '/activity', icon: 'i-ph-game-controller' },
-]
-const adminItem: NavItem = { labelKey: 'nav.admin', to: '/admin/settings', icon: 'i-ph-shield-check' }
-
 const activePath = computed(() => route.path)
-const mobileItems = computed(() => sessionStore.isAdmin ? [...primaryItems, adminItem] : primaryItems)
+const mobileItems = computed(() => mobileNavigationItems(sessionStore.isAdmin))
+const desktopItems = computed(() => desktopNavigationItems(t, sessionStore.isAdmin))
 const showBackButton = computed(() => !['/', '/home'].includes(route.path))
 const mainContent = useTemplateRef<globalThis.HTMLElement>('mainContent')
 const isFullscreen = telegramFullscreenState()
@@ -61,7 +50,7 @@ watch(() => route.fullPath, (_next, previous) => {
 })
 
 function isActive(to: string): boolean {
-  if (to === adminItem.to) return activePath.value.startsWith('/admin')
+  if (to === '/admin/settings') return activePath.value.startsWith('/admin')
   return activePath.value === to || (to === '/home' && activePath.value === '/')
 }
 </script>
@@ -69,47 +58,51 @@ function isActive(to: string): boolean {
 <template>
   <div class="app-frame" :class="{ 'app-frame--fullscreen': isFullscreen }">
     <a class="skip-link" href="#main-content">{{ $t('nav.skip') }}</a>
-    <aside class="side-rail" :aria-label="$t('nav.primary')">
-      <header class="side-rail__header">
-        <RouterLink class="side-rail__brand" to="/home">
-          <span class="side-rail__brand-mark" aria-hidden="true"><UIcon name="i-ph-users-three" /></span>
-          <span>{{ $t('app.name') }}</span>
-        </RouterLink>
-      </header>
-      <nav class="side-rail__nav">
-        <RouterLink
-          v-for="item in mobileItems"
-          :key="item.to"
-          :to="item.to"
-          class="nav-item"
-          :class="{ 'nav-item--active': isActive(item.to) }"
-          :aria-current="isActive(item.to) ? 'page' : undefined"
-          data-haptic="navigate"
-        >
-          <UIcon :name="item.icon" />
-          <span>{{ $t(item.labelKey) }}</span>
-        </RouterLink>
-      </nav>
-      <footer class="side-rail__footer">
-        <div class="side-rail__member">
-          <UIcon name="i-ph-user-circle" />
-          <div>
-            <strong>{{ sessionStore.user?.username || sessionStore.user?.firstName || $t('nav.memberFallback') }}</strong>
-            <span>{{ $t('nav.member') }}</span>
-          </div>
+    <UDashboardGroup class="app-dashboard" storage="local" storage-key="tx-carpool-shell" unit="rem">
+      <UDashboardSidebar class="side-rail app-dashboard__sidebar" :default-size="15" :min-size="13" :max-size="20" :collapsed-size="4.5" resizable collapsible :toggle="false">
+        <template #header="{ collapsed, collapse }">
+          <header class="side-rail__header">
+            <RouterLink class="side-rail__brand" to="/home">
+              <span class="side-rail__brand-mark" aria-hidden="true"><UIcon name="i-ph-users-three" /></span>
+              <span class="side-rail__brand-name">{{ $t('app.name') }}</span>
+            </RouterLink>
+            <UButton
+              color="neutral"
+              variant="ghost"
+              :icon="collapsed ? 'i-ph-sidebar-simple' : 'i-ph-sidebar-simple-duotone'"
+              :aria-label="$t(collapsed ? 'nav.expandSidebar' : 'nav.collapseSidebar')"
+              @click="collapse(!collapsed)"
+            />
+          </header>
+        </template>
+        <template #default="{ collapsed }">
+          <nav class="side-rail__nav" :aria-label="$t('nav.primary')">
+            <UNavigationMenu :items="desktopItems" orientation="vertical" :collapsed="collapsed" color="primary" variant="pill" :tooltip="true" :popover="true" />
+          </nav>
+        </template>
+        <template #footer>
+          <footer class="side-rail__footer">
+            <div class="side-rail__member">
+              <UIcon name="i-ph-user-circle" />
+              <div>
+                <strong>{{ sessionStore.user?.username || sessionStore.user?.firstName || $t('nav.memberFallback') }}</strong>
+                <span>{{ $t('nav.member') }}</span>
+              </div>
+            </div>
+            <LanguageControl show-label />
+          </footer>
+        </template>
+      </UDashboardSidebar>
+      <div class="app-frame__content">
+        <div v-if="isFullscreen" class="app-greeting" role="status">
+          <strong>{{ greetingName }}</strong>
+          <span v-if="greetingUsername">@{{ greetingUsername }}</span>
         </div>
-        <LanguageControl show-label />
-      </footer>
-    </aside>
-    <div class="app-frame__content">
-      <div v-if="isFullscreen" class="app-greeting" role="status">
-        <strong>{{ greetingName }}</strong>
-        <span v-if="greetingUsername">@{{ greetingUsername }}</span>
+        <main id="main-content" ref="mainContent" class="app-main" tabindex="-1">
+          <slot />
+        </main>
       </div>
-      <main id="main-content" ref="mainContent" class="app-main" tabindex="-1">
-        <slot />
-      </main>
-    </div>
+    </UDashboardGroup>
 
     <nav class="bottom-nav" :class="{ 'bottom-nav--admin': sessionStore.isAdmin }" :aria-label="$t('nav.primary')">
       <UButton

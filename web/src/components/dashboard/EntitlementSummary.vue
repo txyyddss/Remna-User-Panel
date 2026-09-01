@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { shallowRef } from 'vue'
+import { shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import type { Purchase } from '@/api/types'
@@ -18,8 +18,9 @@ const props = defineProps<{
   active?: Purchase | null
   queued?: Purchase | null
   squadNames?: readonly string[]
+  openSquadAddition?: boolean
 }>()
-const emit = defineEmits<{ queuedCancelled: []; autoRenewalChanged: []; squadsChanged: [] }>()
+const emit = defineEmits<{ queuedCancelled: []; autoRenewalChanged: []; squadsChanged: []; squadAdditionRequestConsumed: [] }>()
 
 const router = useRouter()
 const queuedCancelOpen = shallowRef(false)
@@ -52,10 +53,16 @@ function goToCatalog(): void {
   void router.push('/catalog')
 }
 
-function openSquadAddition(): void {
+function openSquadAdditionDialog(): void {
   if (!props.active || props.queued) return
   squadAdditionOpen.value = true
 }
+
+watch(() => props.openSquadAddition, (requested) => {
+  if (!requested) return
+  openSquadAdditionDialog()
+  emit('squadAdditionRequestConsumed')
+}, { immediate: true })
 </script>
 
 <template>
@@ -66,7 +73,7 @@ function openSquadAddition(): void {
     </div>
 
     <div v-if="active || queued" class="home-ride__content">
-      <RolloverFlipCard v-if="active" :active="active" :squad-names="squadNames" :add-squad-disabled="Boolean(queued)" @add-squad="openSquadAddition" />
+      <RolloverFlipCard v-if="active" :active="active" :squad-names="squadNames" :add-squad-disabled="Boolean(queued)" @add-squad="openSquadAdditionDialog" />
       <div v-if="queued" class="home-ride__queued">
         <div class="home-ride__queued-content">
           <span>

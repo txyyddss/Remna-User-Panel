@@ -6,6 +6,12 @@
     "simplifiedChinese": "简体中文"
   },
   "nav": {
+    "connections": "\u8fde\u63a5",
+    "revoke": "\u64a4\u9500",
+    "addSquads": "\u6dfb\u52a0\u5206\u7ec4",
+    "aroundTx": "TX \u5468\u8fb9",
+    "collapseSidebar": "\u6536\u8d77\u4fa7\u8fb9\u680f",
+    "expandSidebar": "\u5c55\u5f00\u4fa7\u8fb9\u680f",
     "primary": "主导航",
     "home": "首页",
     "explore": "探索",

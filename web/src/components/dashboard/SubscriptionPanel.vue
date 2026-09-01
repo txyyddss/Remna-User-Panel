@@ -9,9 +9,10 @@ const props = defineProps<{
   subscriptionUrl?: string | null
   revoking: boolean
   revokeBlocked: boolean
+  openRevoke?: boolean
 }>()
 
-const emit = defineEmits<{ revoke: [] }>()
+const emit = defineEmits<{ revoke: []; revokeRequestConsumed: [] }>()
 const confirmOpen = shallowRef(false)
 const { copied, copy } = useClipboard()
 const router = useRouter()
@@ -19,6 +20,11 @@ const router = useRouter()
 watch(() => props.revoking, (next, previous) => {
   if (previous && !next) confirmOpen.value = false
 })
+watch(() => props.openRevoke, (requested) => {
+  if (!requested) return
+  if (props.subscriptionUrl && !props.revokeBlocked) confirmOpen.value = true
+  emit('revokeRequestConsumed')
+}, { immediate: true })
 
 function copyLink(): void {
   if (props.subscriptionUrl) void copy(props.subscriptionUrl)
@@ -91,3 +97,7 @@ function openConnections(): void {
     />
   </section>
 </template>
+
+<style scoped>
+@media (min-width: 900px) { .home-subscription__actions { display: none; } }
+</style>

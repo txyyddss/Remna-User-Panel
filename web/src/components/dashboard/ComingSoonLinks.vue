@@ -41,3 +41,7 @@ function goTo(to: string): void {
     </div>
   </section>
 </template>
+
+<style scoped>
+@media (min-width: 900px) { .home-around { display: none; } }
+</style>

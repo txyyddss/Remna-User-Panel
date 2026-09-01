@@ -162,31 +162,14 @@
   color: var(--danger);
 }
 
-.home-usage__meter {
-  width: 100%;
-  height: 6px;
-  overflow: hidden;
-  margin-top: 1rem;
-  border-radius: 999px;
-  background: var(--line);
-}
-
-.home-usage__meter span {
-  width: var(--usage);
-  height: 100%;
-  display: block;
-  border-radius: inherit;
-  background: var(--accent);
-  transition: width 220ms var(--ease-out), background-color 220ms var(--ease-out);
-}
-
-.home-usage--warning .home-usage__meter span {
-  background: var(--warning);
-}
-
-.home-usage--danger .home-usage__meter span {
-  background: var(--danger);
-}
+.home-usage__progress-group { margin-top: 1rem; }
+.home-usage__meter { width: 100%; }
+.home-usage__meter [data-slot='base'] { height: 6px; border-radius: 999px; background: var(--line); }
+.home-usage__meter [data-slot='indicator'] { transition: transform 220ms var(--ease-out), background-color 220ms var(--ease-out); }
+.home-usage__progress-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem; margin: 0.65rem 0 0; }
+.home-usage__progress-details div:last-child { text-align: right; }
+.home-usage__progress-details dt { color: var(--text-faint); font-size: 0.68rem; }
+.home-usage__progress-details dd { margin: 0.16rem 0 0; color: var(--text); font-family: var(--font-mono); font-size: 0.76rem; font-weight: 700; overflow-wrap: anywhere; }
 
 @media (max-width: 360px) {
   .home-subscription__actions { grid-template-columns: 1fr; }

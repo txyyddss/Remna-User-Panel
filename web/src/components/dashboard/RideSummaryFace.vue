@@ -81,4 +81,5 @@ const resetLabel = computed(() => t(`home.reset.${props.active.resetStrategy}`))
   transition: background-color 180ms var(--ease-out), transform 120ms var(--ease-out);
 }
 .home-ride__add-squad:active { transform: translateY(1px); }
+@media (min-width: 900px) { .home-ride__add-squad { display: none; } }
 </style>

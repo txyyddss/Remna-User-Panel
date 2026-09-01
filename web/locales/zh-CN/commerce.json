@@ -3,6 +3,8 @@
     "addBalance": "充值"
   },
   "catalog": {
+    "selectCombo": "\u9009\u62e9\u5957\u9910",
+    "planDetails": "\u5957\u9910\u8be6\u60c5",
     "rolloverThreshold": "最少剩余 {threshold}% 时可结转",
     "activationRequired": "需要激活码", "activationTitle": "解锁此区域",
     "activationDescription": "请输入所选区域的激活码。激活码仅用于本次购买。", "activationCodeLabel": "激活码",

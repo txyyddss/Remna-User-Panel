@@ -116,20 +116,8 @@
   background: rgb(166 217 187 / 0.07);
 }
 
-.language-control__panel {
-  min-width: 9rem;
-  display: grid;
-  gap: 0.35rem;
-  padding: 0.4rem;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-control);
-  background: var(--surface-raised);
-}
-
-.language-control__option {
-  min-height: 44px;
-  justify-content: flex-start;
-}
+.language-control { display: inline-flex; align-items: center; gap: 0.5rem; }
+.language-control__label { color: var(--text-muted); font-size: 0.75rem; font-weight: 700; }
 
 .page {
   width: 100%;

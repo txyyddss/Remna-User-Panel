@@ -4,7 +4,6 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { useI18n } from '@/i18n'
 import { useSessionStore } from '@/stores/session'
-import AdminSectionNavigation from './AdminSectionNavigation.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -36,14 +35,6 @@ const groups = [
   ] },
 ] as const
 
-const navigationGroups = computed(() => groups.map((group) => ({
-  label: t(group.labelKey),
-  sections: group.sections.map((section) => ({
-    value: section.value,
-    label: t(section.labelKey),
-    icon: section.icon,
-  })),
-})))
 const sectionItems = computed(() => groups.flatMap((group) => group.sections.map((section) => ({
   value: section.value,
   label: t('adminNav.sectionLabel', { group: t(group.labelKey), section: t(section.labelKey) }),
@@ -57,9 +48,6 @@ function goToOnboarding(): void {
   void router.push('/onboarding')
 }
 
-function selectSection(section: string): void {
-  selected.value = section
-}
 </script>
 
 <template>
@@ -78,13 +66,6 @@ function selectSection(section: string): void {
         />
       </div>
     </header>
-    <AdminSectionNavigation
-      v-if="!props.compact"
-      :groups="navigationGroups"
-      :active-section="selected"
-      :label="t('adminNav.sections')"
-      @select="selectSection"
-    />
     <nav v-if="!props.compact" class="admin-section-picker" :aria-label="t('adminNav.sections')">
       <UFormField :label="t('adminNav.section')">
         <USelect v-model="selected" class="admin-section-picker__select" :items="sectionItems" value-key="value" />

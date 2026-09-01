@@ -53,7 +53,7 @@ stopped.
 - `abuse_outbox_test.go` covers MarkdownV2 escaping for detector notifications.
 - `remna_statistics_adapter_test.go` covers bounded rounding of Remnawave live numeric fields.
 - `emby_adapter.go` implements queued Emby client creation, account operations, policy updates, and metadata lookups.
-- `scheduler.go` runs prompt temporary-ban restoration, automatic due-renewal revalidation before entitlement transitions, plus recurring outbox, rollover, backup, and maintenance work until application cancellation.
+- `scheduler.go` runs prompt temporary-ban restoration, automatic due-renewal revalidation before entitlement transitions, plus recurring outbox, rollover, backup, and maintenance work until application cancellation; verified-backup retention warnings are logged separately from completed cleanup.
 - `notification_scheduler.go` runs the bounded startup and five-minute reminder
   and traffic scan independently from the outbox drain.
 - `statistics_scheduler.go` schedules the 30-minute statistics refresh, startup

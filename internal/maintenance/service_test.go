@@ -15,7 +15,7 @@ func TestRunBacksUpBeforeCompactingOncePerLocalDate(t *testing.T) {
 	backup := &maintenanceBackup{run: model.BackupRun{ID: "backup-1", Status: "complete"}}
 	service := NewService(repository, backup, location)
 	at := time.Date(2026, 8, 18, 17, 0, 0, 0, time.UTC)
-	if err := service.Run(context.Background(), at); err != nil {
+	if _, err := service.Run(context.Background(), at); err != nil {
 		t.Fatalf("Run(): %v", err)
 	}
 	if len(repository.calls) != 1 || repository.calls[0] != "compact" || backup.calls != 1 {
@@ -33,7 +33,7 @@ func TestRunSkipsCompactionWhenBackupFails(t *testing.T) {
 	repository := &maintenanceRepository{runID: "run-1", acquired: true}
 	backup := &maintenanceBackup{err: errors.New("disk full")}
 	service := NewService(repository, backup, time.UTC)
-	if err := service.Run(context.Background(), time.Date(2026, 8, 18, 2, 0, 0, 0, time.UTC)); err == nil {
+	if _, err := service.Run(context.Background(), time.Date(2026, 8, 18, 2, 0, 0, 0, time.UTC)); err == nil {
 		t.Fatal("Run() unexpectedly succeeded")
 	}
 	if len(repository.calls) != 0 || repository.completedErr == nil {
@@ -44,11 +44,23 @@ func TestRunSkipsCompactionWhenBackupFails(t *testing.T) {
 func TestRunReturnsWithoutWorkWhenDateLeaseIsHeld(t *testing.T) {
 	repository := &maintenanceRepository{acquired: false}
 	service := NewService(repository, &maintenanceBackup{}, time.UTC)
-	if err := service.Run(context.Background(), time.Now()); err != nil {
+	if _, err := service.Run(context.Background(), time.Now()); err != nil {
 		t.Fatalf("Run(): %v", err)
 	}
 	if repository.claims != 1 {
 		t.Fatalf("claims=%d", repository.claims)
+	}
+}
+
+func TestRunCompactsAfterVerifiedBackupRetentionWarning(t *testing.T) {
+	repository := &maintenanceRepository{runID: "run-1", acquired: true}
+	backup := &maintenanceBackup{run: model.BackupRun{ID: "backup-1", Status: "complete"}, err: errors.New("remove expired backup")}
+	result, err := NewService(repository, backup, time.UTC).Run(context.Background(), time.Date(2026, 8, 18, 2, 0, 0, 0, time.UTC))
+	if err != nil || result.BackupRetentionWarning == nil {
+		t.Fatalf("Run() = (%+v, %v)", result, err)
+	}
+	if len(repository.calls) != 1 || repository.completedErr != nil {
+		t.Fatalf("calls=%v completedErr=%v", repository.calls, repository.completedErr)
 	}
 }
 

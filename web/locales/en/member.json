@@ -1,5 +1,7 @@
 {
   "dashboard": {
+    "usedTraffic": "Used",
+    "remainingTraffic": "Remaining",
     "yourRide": "Your ride",
     "squadsIncluded": "{count} squad(s) included",
     "traffic": "Traffic",

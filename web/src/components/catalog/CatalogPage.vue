@@ -14,7 +14,7 @@ import CatalogCouponStep from './CatalogCouponStep.vue'
 import CatalogFlowControls from './CatalogFlowControls.vue'
 import CatalogFlowProgress from './CatalogFlowProgress.vue'
 import CatalogSquadStep from './CatalogSquadStep.vue'
-import ComboOption from './ComboOption.vue'
+import CatalogComboPricingTable from './CatalogComboPricingTable.vue'
 import SquadActivationDialog from './SquadActivationDialog.vue'
 import { useCatalogSquadPresentation } from './useCatalogSquadPresentation'
 
@@ -171,9 +171,7 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
           <section :key="activeStep" class="catalog-flow-step">
             <div v-if="activeStep === 2" class="combo-section">
               <div class="section-heading"><h2>{{ $t('catalog.coreCombos') }}</h2></div>
-              <div v-if="visibleCombos.length" v-auto-animate class="combo-grid">
-                <ComboOption v-for="combo in visibleCombos" :key="combo.id" :combo="combo" :selected="selectedComboId === combo.id" @select="selectCombo" />
-              </div>
+              <CatalogComboPricingTable v-if="visibleCombos.length" :combos="visibleCombos" :selected-id="selectedComboId" @select="selectCombo" />
               <div v-else class="empty-inline"><div><h3>{{ $t('catalog.noCombos') }}</h3><p>{{ $t('catalog.noCombosHint') }}</p></div><UButton color="neutral" variant="outline" :label="$t('common.refresh')" data-haptic="refresh" @click="load" /></div>
             </div>
             <CatalogSquadStep v-else-if="activeStep === 1" :squads="visibleSquads" :selected-ids="selectedSquadIds" :included-ids="includedSquadIds" :featured-ids="featuredSquadIds" :ordered-ids="orderedSquadIds" @toggle="toggleSquad" />

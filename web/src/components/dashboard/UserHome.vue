@@ -21,6 +21,8 @@ const router = useRouter()
 const { t } = useI18n()
 const reissueOrderId = computed(() => typeof route.query.reissue === 'string' && route.query.reissue ? route.query.reissue : undefined)
 const topUpRequested = computed(() => route.query.topUp === '1' && !reissueOrderId.value)
+const revokeRequested = computed(() => route.query.revoke === '1')
+const squadAdditionRequested = computed(() => route.query.addSquads === '1')
 const catalogBlocked = computed(() => route.query.autoRenewBlocked === '1')
 const autoRenewalFailureMessage = computed(() => {
   const reason = dashboard.value?.autoRenewalFailure?.reason
@@ -60,6 +62,12 @@ function consumeReissueRequest(): void {
   delete query.reissue
   void router.replace({ name: 'home', query })
 }
+
+function consumeHomeRequest(name: 'revoke' | 'addSquads'): void {
+  const query = { ...route.query }
+  delete query[name]
+  void router.replace({ name: 'home', query })
+}
 </script>
 
 <template>
@@ -96,7 +104,9 @@ function consumeReissueRequest(): void {
               :subscription-url="dashboard.subscriptionUrl"
               :revoking="revoking"
               :revoke-blocked="revokeBlocked"
+              :open-revoke="revokeRequested"
               @revoke="confirmRevoke"
+              @revoke-request-consumed="consumeHomeRequest('revoke')"
             />
             <ComingSoonLinks />
           </div>
@@ -117,9 +127,11 @@ function consumeReissueRequest(): void {
               :active="dashboard.activePurchase"
               :queued="dashboard.queuedPurchase"
               :squad-names="activeSquadNames"
+              :open-squad-addition="squadAdditionRequested"
               @queued-cancelled="handleQueuedCancelled"
               @auto-renewal-changed="handleAutoRenewalChanged"
               @squads-changed="handleSquadsChanged"
+              @squad-addition-request-consumed="consumeHomeRequest('addSquads')"
             />
           </div>
         </div>

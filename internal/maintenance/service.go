@@ -21,9 +21,16 @@ type Repository interface {
 	CompleteMaintenanceRun(context.Context, string, string, map[string]int64, error, time.Time) error
 }
 
-// BackupRunner must return only after creating and integrity-verifying a backup.
+// BackupRunner returns a failed or incomplete backup on verification failure. A
+// complete backup may carry a post-publication retention warning.
 type BackupRunner interface {
 	Run(context.Context) (model.BackupRun, error)
+}
+
+// RunResult separates a verified backup's non-blocking retention warning from
+// the backup-gated cleanup transaction result.
+type RunResult struct {
+	BackupRetentionWarning error
 }
 
 // Service is safe to call from a scheduler that may receive overlapping ticks.
@@ -47,9 +54,10 @@ func NewService(repository Repository, backups BackupRunner, location *time.Loca
 
 // Run claims the configured local date, verifies a backup, then compacts and
 // purges records. A failed backup never reaches the purge transaction.
-func (s *Service) Run(ctx context.Context, at time.Time) error {
+func (s *Service) Run(ctx context.Context, at time.Time) (RunResult, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	result := RunResult{}
 	now := at
 	if now.IsZero() {
 		now = s.now()
@@ -59,17 +67,18 @@ func (s *Service) Run(ctx context.Context, at time.Time) error {
 	date := local.Format(time.DateOnly)
 	runID, acquired, err := s.repository.ClaimMaintenanceRun(ctx, date, s.owner, now.Add(maintenanceLease), now)
 	if err != nil || !acquired {
-		return err
+		return result, err
 	}
 	backup, backupErr := s.backups.Run(ctx)
-	if backupErr == nil && backup.Status != "complete" {
-		backupErr = errors.New("backup did not complete verification")
+	if backup.Status != "complete" {
+		if backupErr == nil {
+			backupErr = errors.New("backup did not complete verification")
+		}
+		return result, errors.Join(backupErr, s.complete(ctx, runID, backup.ID, nil, backupErr, now))
 	}
-	if backupErr != nil {
-		return errors.Join(backupErr, s.complete(ctx, runID, backup.ID, nil, backupErr, now))
-	}
+	result.BackupRetentionWarning = backupErr
 	counts, compactErr := s.repository.CompactAndPrune(ctx, now.Add(-7*24*time.Hour), now.Add(-24*time.Hour), now)
-	return errors.Join(compactErr, s.complete(ctx, runID, backup.ID, counts, compactErr, now))
+	return result, errors.Join(compactErr, s.complete(ctx, runID, backup.ID, counts, compactErr, now))
 }
 
 func (s *Service) complete(ctx context.Context, runID, backupID string, counts map[string]int64, runErr error, now time.Time) error {

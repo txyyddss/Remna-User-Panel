@@ -17,7 +17,15 @@ const props = defineProps<{
 
 const percentage = computed(() => Math.min(100, Math.max(0, Math.round(props.ratio * 100))))
 const tone = computed(() => percentage.value >= 90 ? 'danger' : percentage.value >= 75 ? 'warning' : 'safe')
-const meterStyle = computed(() => ({ '--usage': `${percentage.value}%` }))
+const progressColor = computed(() => tone.value === 'danger' ? 'error' : tone.value === 'warning' ? 'warning' : 'success')
+const remainingTraffic = computed(() => {
+  try {
+    const remaining = BigInt(props.statistics.trafficLimitBytes) - BigInt(props.statistics.usedTrafficBytes)
+    return formatBytes((remaining > 0n ? remaining : 0n).toString())
+  } catch {
+    return formatBytes('0')
+  }
+})
 const onlineWindowMilliseconds = 60_000
 const currentTime = shallowRef(Date.now())
 let onlineStatusTimer: ReturnType<typeof globalThis.setTimeout> | undefined
@@ -68,16 +76,12 @@ onUnmounted(() => {
       </div>
       <strong class="home-usage__percentage">{{ percentage }}%</strong>
     </div>
-    <div
-      class="home-usage__meter"
-      :style="meterStyle"
-      role="progressbar"
-      :aria-label="$t('dashboard.usage')"
-      :aria-valuemax="100"
-      :aria-valuemin="0"
-      :aria-valuenow="percentage"
-    >
-      <span />
+    <div class="home-usage__progress-group" role="group" :aria-label="$t('dashboard.usage')">
+      <UProgress class="home-usage__meter" :model-value="percentage" :max="100" :color="progressColor" />
+      <dl class="home-usage__progress-details">
+        <div><dt>{{ $t('dashboard.usedTraffic') }}</dt><dd>{{ formatBytes(statistics.usedTrafficBytes) }}</dd></div>
+        <div><dt>{{ $t('dashboard.remainingTraffic') }}</dt><dd>{{ remainingTraffic }}</dd></div>
+      </dl>
     </div>
     <TrafficUsageBar
       :nodes="statistics.topNodes"

@@ -1,5 +1,7 @@
 {
   "dashboard": {
+    "usedTraffic": "\u5df2\u4f7f\u7528",
+    "remainingTraffic": "\u5269\u4f59",
     "yourRide": "你的套餐",
     "squadsIncluded": "包含 {count} 个区域",
     "traffic": "流量",

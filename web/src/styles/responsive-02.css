@@ -1,11 +1,7 @@
 @media (min-width: 900px) {
-  .app-frame {
-    display: grid;
-    grid-template-columns: 208px minmax(0, 1fr);
-  }
+  .app-dashboard { display: grid; grid-template-columns: auto minmax(0, 1fr); min-height: var(--tg-viewport-stable-height, 100dvh); }
 
   .side-rail {
-    width: 208px;
     height: var(--tg-viewport-stable-height, 100dvh);
     display: flex;
     flex-direction: column;
@@ -17,34 +13,17 @@
     background: #0d100e;
   }
 
-  .side-rail__nav {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  .nav-item {
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
-    padding: 0 0.75rem;
-    border-radius: var(--radius-control);
-    color: var(--text-faint);
-    font-size: 0.78rem;
-    font-weight: 700;
-    transition: color 180ms var(--ease-out), background-color 180ms var(--ease-out);
-  }
-
-  .nav-item:hover {
-    color: var(--text-muted);
-    background: var(--surface);
-  }
-
-  .nav-item--active {
-    color: var(--accent);
-    background: var(--accent-soft);
-  }
+  .side-rail__header { display: flex; align-items: center; justify-content: space-between; gap: 0.45rem; }
+  .side-rail__header > .button { flex: 0 0 auto; }
+  .side-rail__nav { min-height: 0; overflow-y: auto; }
+  .side-rail [data-slot='link'] { min-height: 44px; }
+  .side-rail [data-slot='separator'] { margin-block: 0.5rem; }
+  .side-rail[data-collapsed='true'] { padding-inline: 0.5rem; }
+  .side-rail[data-collapsed='true'] .side-rail__brand-name,
+  .side-rail[data-collapsed='true'] .side-rail__member > div,
+  .side-rail[data-collapsed='true'] .language-control__label { display: none; }
+  .side-rail[data-collapsed='true'] .side-rail__header,
+  .side-rail[data-collapsed='true'] .side-rail__footer { justify-items: center; }
 
   .bottom-nav {
     display: none;
@@ -131,12 +110,7 @@
 }
 
 @media (min-width: 1180px) {
-  .app-frame {
-    grid-template-columns: 250px minmax(0, 1fr);
-  }
-
   .side-rail {
-    width: 250px;
     padding: calc(var(--shell-safe-top) + 1.2rem) 1.2rem max(1.2rem, var(--shell-safe-bottom));
   }
 
