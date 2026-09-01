@@ -1,5 +1,5 @@
 @media (min-width: 900px) {
-  .app-dashboard { display: grid; grid-template-columns: auto minmax(0, 1fr); min-height: var(--tg-viewport-stable-height, 100dvh); }
+  .app-dashboard { min-height: var(--tg-viewport-stable-height, 100dvh); }
 
   .side-rail {
     height: var(--tg-viewport-stable-height, 100dvh);
@@ -35,6 +35,8 @@
   }
 
   .app-main {
+    width: 100%;
+    min-height: 100%;
     padding-top: var(--shell-safe-top);
   }
 
