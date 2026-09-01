@@ -80,7 +80,7 @@ async function mountPage(purchase: object | null, step = 4, confirmPurchase = vi
       plugins: [router],
       stubs: {
         CatalogConfirmation: { template: '<div data-test="catalog-confirmation" />' },
-        ComboOption: { template: '<div data-test="combo-step" />' },
+        CatalogComboPricingTable: { template: '<div data-test="combo-step" />' },
         CatalogCheckout: { template: '<div role="button" tabindex="0" data-test="confirm-purchase" @click="$emit(\'confirm\')" />' },
         CatalogCouponStep: { template: '<div data-test="catalog-coupon-step" />' },
         CatalogFlowControls: { props: ['nextDisabled'], emits: ['next'], template: '<div role="button" tabindex="0" data-test="catalog-flow-controls" :data-disabled="String(nextDisabled)" @click="$emit(\'next\')" />' },
