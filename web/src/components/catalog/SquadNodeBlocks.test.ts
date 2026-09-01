@@ -13,7 +13,7 @@ describe('SquadNodeBlocks', () => {
     const wrapper = mount(SquadNodeBlocks, {
       props: { nodes },
       global: { stubs: {
-        Button: { emits: ['click'], template: '<div role="button" tabindex="0" v-bind="$attrs" @click="$emit(\'click\', $event)" />' },
+        Button: { emits: ['click'], template: '<div role="button" tabindex="0" v-bind="$attrs" @click="$emit(\'click\', $event)"><slot /></div>' },
       } },
     })
 
