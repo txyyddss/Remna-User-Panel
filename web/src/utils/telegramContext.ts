@@ -41,7 +41,9 @@ export async function waitForTelegramContext(timeoutMs = 3000): Promise<boolean>
       || isTelegramUserAgent(navigator.userAgent)
       || hasTelegramLaunchParameters(),
   )
-  if (!window.Telegram?.WebApp && !hasSignal()) return false
+  // The public SDK installs a placeholder WebApp object in every browser.
+  // Only wait when the host supplies a native or launch-context signal.
+  if (!hasSignal()) return false
 
   while (Date.now() - startedAt < timeoutMs) {
     await new Promise<void>((resolve) => window.setTimeout(resolve, 50))

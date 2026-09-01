@@ -26,6 +26,9 @@ describe('UsagePanel', () => {
     expect(wrapper.text()).toContain('Remnawave is temporarily unavailable.')
     expect(wrapper.text()).toContain('OFFLINE')
     expect(wrapper.text()).toContain('25%')
+    expect(wrapper.text()).toContain('25 GB')
+    expect(wrapper.text()).toContain('75 GB')
+    expect(wrapper.text()).not.toContain('of 100 GB')
     wrapper.unmount()
   })
 

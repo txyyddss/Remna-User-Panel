@@ -58,4 +58,25 @@ describe('catalogSquadPresentation', () => {
         orderedIds: ['featured-a', 'featured-b', 'other', 'included', 'full'],
       })
   })
+
+  it('uses global composition and calculates featured leaders per squad type before combo selection', () => {
+    const typed = [
+      { ...squads[2]!, profile: { type: 'broadband' as const, isp: 'A', portMbps: 100, dynamic: false, location: 'A' } },
+      { ...squads[3]!, profile: { type: 'broadband' as const, isp: 'B', portMbps: 100, dynamic: false, location: 'B' } },
+      { ...squads[4]!, profile: { type: 'international_network' as const, portMbps: null, countryCode: 'SG', upstreamCarriers: ['C'] } },
+    ]
+    const global = [
+      distributions[0]!,
+      { ...distributions[0]!, id: 'combo-2', segments: [
+        { id: typed[0]!.remnaSquadUuid, label: 'A', value: 10 },
+        { id: typed[1]!.remnaSquadUuid, label: 'B', value: 30 },
+        { id: typed[2]!.remnaSquadUuid, label: 'C', value: 5 },
+      ] },
+    ]
+
+    expect(catalogSquadPresentation(typed, [], global, null)).toEqual({
+      featuredIds: [typed[1]!.id, typed[2]!.id],
+      orderedIds: [typed[1]!.id, typed[0]!.id, typed[2]!.id],
+    })
+  })
 })

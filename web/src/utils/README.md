@@ -14,7 +14,7 @@
 - `telegramFullscreen.ts` owns fullscreen request state, event synchronization, and safe-area reserve behavior.
 - `telegramHaptics.ts` maps semantic click intents to Telegram's full impact vocabulary: soft dismiss/navigation/open, light copy/retry/refresh/zoom, medium actions, rigid confirmations, and heavy destructive confirmations. Unmarked buttons and links receive a guarded action/navigation fallback, selection controls remain imperative and reserved for actual value changes, and success, warning, and error remain notification outcomes.
 - `telegramLinks.ts` opens Telegram-native links with a browser fallback.
-- `telegramContext.ts` classifies the native `TelegramWebviewProxy` bridge, launch markers, SDK-captured `WebView.initParams`, platforms, and user agents before route construction.
+- `telegramContext.ts` classifies the native `TelegramWebviewProxy` bridge, launch markers, SDK-captured `WebView.initParams`, platforms, and user agents before route construction, and skips the delayed-context wait for the public SDK placeholder in regular browsers.
 - `telegram.test.ts` covers Telegram capability behavior, semantic impact mapping, non-delegated selection, and listener disposal.
 - `validation.ts` contains shared input validation helpers.
 - `validation.test.ts` covers validation boundaries.

@@ -48,8 +48,9 @@ describe('ComboOption', () => {
   it('renders server-formatted price and entitlement values', () => {
     const wrapper = mount(ComboOption, { props: { combo, selected: false } })
     expect(wrapper.text()).toContain('18.80 TXB')
-    expect(wrapper.text()).toContain('100 GB')
-    expect(wrapper.text()).toContain('30 days')
+    expect(wrapper.text()).toContain('100 GB/month')
+    expect(wrapper.text()).toContain('per 30 days')
+    expect(wrapper.text()).toContain('Above 0.00% remaining')
   })
 
   it('does not display included squad detail', () => {

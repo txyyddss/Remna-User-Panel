@@ -52,7 +52,8 @@ const {
   discardCoupon,
   confirmPurchase,
 } = useCatalog()
-const { featuredIds: featuredSquadIds, orderedIds: orderedSquadIds } = useCatalogSquadPresentation(visibleSquads, includedSquadIds, selectedComboId)
+const presentationComboId = computed(() => activeStep.value === 1 ? null : selectedComboId.value)
+const { featuredIds: featuredSquadIds, orderedIds: orderedSquadIds } = useCatalogSquadPresentation(visibleSquads, includedSquadIds, presentationComboId)
 
 async function restoreStepQuote(): Promise<void> {
   if (![3, 4].includes(activeStep.value) || loading.value || quoting.value || quoteUsable.value || purchase.value || !selectedCombo.value) return
@@ -68,6 +69,7 @@ onMounted(() => {
 })
 watch(activeStep, (value) => {
   try { const key = stepKey(); if (key) globalThis.sessionStorage?.setItem(key, String(value)) } catch { /* Ignore unavailable storage. */ }
+  scrollCatalogToTop()
 })
 watch([activeStep, loading, selectedCombo, selectedSquadIds, selectedCouponGrantId], () => { void restoreStepQuote() }, { deep: true })
 watch(autoRenewalBlocked, (blocked) => {
@@ -98,6 +100,9 @@ function clearPersistedStep(): void {
     if (key) globalThis.sessionStorage?.removeItem(key)
   } catch { /* Storage is optional in restricted WebViews. */ }
 }
+
+const catalogScrollOptions = { top: 0, left: 0, behavior: 'auto' as const }
+function scrollCatalogToTop(): void { globalThis.scrollTo?.(catalogScrollOptions); globalThis.document?.querySelector<globalThis.HTMLElement>('.app-frame__content')?.scrollTo(catalogScrollOptions) }
 
 async function handlePurchase(): Promise<void> {
   if (activationPrompting.value || purchasing.value) return
@@ -135,11 +140,9 @@ function goHome(): void {
 
 async function advance(): Promise<void> {
   if (!selectedCombo.value || activeStep.value >= 4) return
-  const leavingComboStep = activeStep.value === 2
   if (activeStep.value === 2 && (!(await refreshQuote()) || !quote.value?.accessibleNodes.length)) return
   if (activeStep.value === 3 && (!quoteUsable.value || quoting.value)) return
   activeStep.value += 1
-  if (leavingComboStep) globalThis.scrollTo?.({ top: 0 })
 }
 
 async function handleCouponRedeemed(grantId: string | null): Promise<void> {
@@ -149,7 +152,7 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
 </script>
 
 <template>
-  <div v-auto-animate class="page page--catalog">
+  <div class="page page--catalog">
     <template v-if="purchase">
       <CatalogConfirmation :purchase="purchase" @home="goHome" />
     </template>
@@ -167,18 +170,16 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
       </template>
       <template v-else-if="catalog && balance">
         <InlineNotice v-if="error && activeStep < 4" tone="warning">{{ error }}</InlineNotice>
-        <Transition name="route" mode="out-in">
-          <section :key="activeStep" class="catalog-flow-step">
-            <div v-if="activeStep === 2" class="combo-section">
-              <div class="section-heading"><h2>{{ $t('catalog.coreCombos') }}</h2></div>
-              <CatalogComboPricingTable v-if="visibleCombos.length" :combos="visibleCombos" :selected-id="selectedComboId" @select="selectCombo" />
-              <div v-else class="empty-inline"><div><h3>{{ $t('catalog.noCombos') }}</h3><p>{{ $t('catalog.noCombosHint') }}</p></div><UButton color="neutral" variant="outline" :label="$t('common.refresh')" data-haptic="refresh" @click="load" /></div>
-            </div>
-            <CatalogSquadStep v-else-if="activeStep === 1" :squads="visibleSquads" :selected-ids="selectedSquadIds" :included-ids="includedSquadIds" :featured-ids="featuredSquadIds" :ordered-ids="orderedSquadIds" @toggle="toggleSquad" />
-            <CatalogCouponStep v-else-if="activeStep === 3" v-model:coupon-grant-id="selectedCouponGrantId" :coupons="eligibleCoupons" :eligible-ids="eligibleCoupons.map((grant) => grant.id)" :discarding="couponDiscarding" :discard-coupon="discardCoupon" :quoting="quoting" @redeemed="handleCouponRedeemed" />
-            <CatalogCheckout v-else-if="activeStep === 4" :combo="selectedCombo" :squads="selectedSquads" :coupon="selectedCoupon" :quote="quote" :quoting="quoting" :error="error" :purchasing="purchasing || activationPrompting" :needs-balance="needsBalance" @back="goBack" @confirm="handlePurchase" />
-          </section>
-        </Transition>
+        <section :key="activeStep" class="catalog-flow-step">
+          <div v-if="activeStep === 2" class="combo-section">
+            <div class="section-heading"><h2>{{ $t('catalog.coreCombos') }}</h2></div>
+            <CatalogComboPricingTable v-if="visibleCombos.length" :combos="visibleCombos" :selected-id="selectedComboId" @select="selectCombo" />
+            <div v-else class="empty-inline"><div><h3>{{ $t('catalog.noCombos') }}</h3><p>{{ $t('catalog.noCombosHint') }}</p></div><UButton color="neutral" variant="outline" :label="$t('common.refresh')" data-haptic="refresh" @click="load" /></div>
+          </div>
+          <CatalogSquadStep v-else-if="activeStep === 1" :squads="visibleSquads" :selected-ids="selectedSquadIds" :included-ids="includedSquadIds" :featured-ids="featuredSquadIds" :ordered-ids="orderedSquadIds" @toggle="toggleSquad" />
+          <CatalogCouponStep v-else-if="activeStep === 3" v-model:coupon-grant-id="selectedCouponGrantId" :coupons="eligibleCoupons" :eligible-ids="eligibleCoupons.map((grant) => grant.id)" :discarding="couponDiscarding" :discard-coupon="discardCoupon" :quoting="quoting" @redeemed="handleCouponRedeemed" />
+          <CatalogCheckout v-else-if="activeStep === 4" :combo="selectedCombo" :squads="selectedSquads" :coupon="selectedCoupon" :quote="quote" :quoting="quoting" :error="error" :purchasing="purchasing || activationPrompting" :needs-balance="needsBalance" @back="goBack" @confirm="handlePurchase" />
+        </section>
         <CatalogFlowControls v-if="activeStep < 4" :show-back="activeStep > 1" :next-disabled="nextDisabled" :loading="quoting" :next-label="$t('catalog.continue')" @back="goBack" @next="advance" />
       </template>
       <div v-else class="error-state">

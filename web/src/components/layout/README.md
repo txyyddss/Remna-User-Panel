@@ -1,6 +1,6 @@
 # Layout components
 
-- `AppShell.vue` owns the fullscreen safe-area shell, content focus, Telegram back navigation, and the resizable Nuxt UI `UDashboardSidebar` desktop shell. Phones keep their centered fixed bottom navigation, while desktop exposes the complete member and administrator route hierarchy without a fold control or product wordmark.
+- `AppShell.vue` owns the fullscreen safe-area shell, route-change scroll reset, content focus, Telegram back navigation, and the resizable Nuxt UI `UDashboardSidebar` desktop shell. Phones keep their centered fixed bottom navigation, while desktop exposes the complete member and administrator route hierarchy without a fold control or product wordmark; its Home parent is a real route link while its quick actions remain expanded children.
 - Route focus restoration and Telegram BackButton callbacks are guarded against WebView teardown and rejected promises. The native BackButton uses a shared owner stack so an open payment sheet closes before route history changes.
 - `LanguageControl.vue` provides the compact `ULocaleSelect` language control. Home exposes it on mobile, while the desktop rail, auth, and onboarding keep localized entry points in their own context.
 - `navigation.ts` owns the localized mobile and hierarchical desktop sidebar item definitions, including the administrator-only section list.

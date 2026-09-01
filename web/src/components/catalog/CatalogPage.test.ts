@@ -99,16 +99,25 @@ describe('CatalogPage quote restoration', () => {
     catalogMock.useCatalog.mockReset()
     window.Telegram = undefined
   })
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => {
+    document.querySelector('.app-frame__content')?.remove()
+    vi.unstubAllGlobals()
+  })
 
   it('scrolls to the top after continuing from core combos', async () => {
     const scrollTo = vi.fn()
+    const contentScrollTo = vi.fn()
+    const appContent = document.createElement('div')
+    appContent.className = 'app-frame__content'
+    Object.defineProperty(appContent, 'scrollTo', { configurable: true, value: contentScrollTo })
+    document.body.append(appContent)
     vi.stubGlobal('scrollTo', scrollTo)
     const { wrapper } = await mountPage(null, 2, vi.fn(), [{}])
 
     await wrapper.get('[data-test="catalog-flow-controls"]').trigger('click')
 
-    expect(scrollTo).toHaveBeenCalledWith({ top: 0 })
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: 'auto' })
+    expect(contentScrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: 'auto' })
     expect(wrapper.find('[data-test="catalog-coupon-step"]').exists()).toBe(true)
     wrapper.unmount()
   })

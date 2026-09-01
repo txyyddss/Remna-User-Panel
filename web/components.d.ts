@@ -155,6 +155,7 @@ declare module 'vue' {
     SquadAdditionDialog: typeof import('./src/components/squad-addition/SquadAdditionDialog.vue')['default']
     SquadNodeBlocks: typeof import('./src/components/catalog/SquadNodeBlocks.vue')['default']
     SquadPortField: typeof import('./src/components/admin/squad-profile/SquadPortField.vue')['default']
+    SquadPricingTable: typeof import('./src/components/catalog/SquadPricingTable.vue')['default']
     SquadProfileSummary: typeof import('./src/components/squad-profile/SquadProfileSummary.vue')['default']
     SquadSelector: typeof import('./src/components/catalog/SquadSelector.vue')['default']
     StatisticsChartDetail: typeof import('./src/components/statistics/StatisticsChartDetail.vue')['default']

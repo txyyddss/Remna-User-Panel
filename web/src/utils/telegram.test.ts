@@ -71,6 +71,7 @@ describe('Telegram bootstrap', () => {
     vi.useFakeTimers()
     const app = { version: '9.0', platform: 'unknown', initData: '', initDataUnsafe: {}, colorScheme: 'dark' as const, ready: vi.fn(), expand: vi.fn(), close: vi.fn(), openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn() }
     window.Telegram = { WebApp: app }
+    window.TelegramWebviewProxy = { postEvent: vi.fn() }
 
     const pending = waitForTelegramContext(500)
     await vi.advanceTimersByTimeAsync(100)
@@ -78,6 +79,16 @@ describe('Telegram bootstrap', () => {
     await vi.advanceTimersByTimeAsync(50)
 
     await expect(pending).resolves.toBe(true)
+  })
+
+  it('does not wait on the public SDK placeholder in a regular browser', async () => {
+    vi.useFakeTimers()
+    window.Telegram = { WebApp: { version: '9.0', platform: 'unknown', initData: '', initDataUnsafe: {}, colorScheme: 'dark', ready: vi.fn(), expand: vi.fn(), close: vi.fn(), openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn() } }
+
+    const pending = waitForTelegramContext(500)
+
+    await expect(pending).resolves.toBe(false)
+    expect(vi.getTimerCount()).toBe(0)
   })
 
   it('recognizes Telegram launch markers without initData', () => {

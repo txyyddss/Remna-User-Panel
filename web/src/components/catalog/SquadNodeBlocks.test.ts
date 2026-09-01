@@ -3,41 +3,33 @@ import { describe, expect, it } from 'vitest'
 
 import SquadNodeBlocks from './SquadNodeBlocks.vue'
 
+const nodes = [
+  { uuid: '00000000-0000-4000-8000-000000000001', name: 'Tokyo relay', countryCode: 'JP', consumptionMultiplier: 1.5, providerName: 'Transit provider' },
+  { uuid: '00000000-0000-4000-8000-000000000002', name: 'Osaka relay', countryCode: 'JP', consumptionMultiplier: 0.75, providerName: null },
+]
+
 describe('SquadNodeBlocks', () => {
-  it('renders one Geocheck action per node and emits the exact selected node', async () => {
-    const nodes = [
-      {
-        uuid: '00000000-0000-4000-8000-000000000001',
-        name: 'Tokyo relay',
-        countryCode: 'JP',
-        consumptionMultiplier: 1.5,
-        providerName: 'Transit provider',
-      },
-      {
-        uuid: '00000000-0000-4000-8000-000000000002',
-        name: 'Osaka relay',
-        countryCode: 'JP',
-        consumptionMultiplier: 0.75,
-        providerName: null,
-      },
-    ]
+  it('shows one anonymous clickable node and switches with desktop controls', async () => {
     const wrapper = mount(SquadNodeBlocks, {
       props: { nodes },
       global: { stubs: {
-        Tooltip: { template: '<span><slot /></span>' },
-        Button: { emits: ['click'], template: '<div v-bind="$attrs" @click="$emit(\'click\', $event)"><slot /></div>' },
+        Button: { emits: ['click'], template: '<div role="button" tabindex="0" v-bind="$attrs" @click="$emit(\'click\', $event)" />' },
       } },
     })
 
-    expect(wrapper.text()).toContain('Transit provider')
+    expect(wrapper.findAll('.squad-node-carousel__node')).toHaveLength(1)
     expect(wrapper.text()).toContain('1.5x')
-    expect(wrapper.text()).not.toContain('Accessible nodes')
-    expect(wrapper.text()).toContain('Unavailable')
-    const actions = wrapper.findAll('[aria-label="View Geocheck result"]')
-    expect(actions).toHaveLength(nodes.length)
-    expect(actions.every(action => action.attributes('data-haptic') === 'open')).toBe(true)
+    expect(wrapper.text()).not.toContain('Tokyo relay')
+    expect(wrapper.text()).not.toContain('Transit provider')
+    expect(wrapper.get('.squad-node-carousel__node').attributes('aria-label')).toBe('View Geocheck result for node 1 of 2')
 
-    await actions[1]!.trigger('click')
-    expect(wrapper.emitted('openGeocheck')).toEqual([[nodes[1]]])
+    await wrapper.get('.squad-node-carousel__node').trigger('click')
+    expect(wrapper.emitted('openGeocheck')).toEqual([[nodes[0]]])
+
+    await wrapper.get('[aria-label="Next node"]').trigger('click')
+    expect(wrapper.text()).toContain('0.75x')
+    expect(wrapper.text()).not.toContain('Osaka relay')
+    await wrapper.get('.squad-node-carousel__node').trigger('click')
+    expect(wrapper.emitted('openGeocheck')?.[1]).toEqual([nodes[1]])
   })
 })

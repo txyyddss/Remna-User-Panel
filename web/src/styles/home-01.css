@@ -126,30 +126,14 @@
 .home-usage__summary {
   display: flex;
   align-items: end;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 1rem;
 }
 
-.home-usage__summary span,
-.home-usage__summary small {
-  display: block;
-  color: var(--text-faint);
-  font-size: 0.7rem;
-}
-
-.home-usage__summary strong {
-  display: block;
-  margin-top: 0.3rem;
-  font-family: var(--font-mono);
-  font-size: 1.15rem;
-}
-
-.home-usage__summary small {
-  margin-top: 0.18rem;
-}
-
 .home-usage__percentage {
+  display: block;
   color: var(--accent);
+  font-family: var(--font-mono);
   font-size: 1.8rem !important;
   line-height: 1;
 }

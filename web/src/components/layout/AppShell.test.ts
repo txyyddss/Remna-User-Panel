@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Session } from '@/api/types'
 import { useSessionStore } from '@/stores/session'
 import AppShell from './AppShell.vue'
+import { desktopNavigationItems } from './navigation'
 
 function session(role: Session['user']['role'] = 'user'): Session {
   return {
@@ -56,8 +57,11 @@ describe('AppShell accessibility', () => {
     const wrapper = mount(AppShell, { attachTo: document.body, global: { plugins: [pinia, router] }, slots: { default: '<h1>Content</h1>' } })
 
     expect(wrapper.get('main').attributes('tabindex')).toBe('-1')
+    const scrollContainer = wrapper.get('.app-frame__content').element
+    scrollContainer.scrollTop = 240
     await router.push('/catalog')
     await nextTick()
+    expect(scrollContainer.scrollTop).toBe(0)
     expect(document.activeElement).toBe(wrapper.get('main').element)
     expect(show).toHaveBeenCalled()
     expect(onClick).toHaveBeenCalledOnce()
@@ -107,5 +111,14 @@ describe('AppShell accessibility', () => {
     expect(wrapper.find('.bottom-nav').classes()).toContain('bottom-nav--admin')
 
     wrapper.unmount()
+  })
+
+  it('keeps the desktop Home parent as a route link with expanded quick actions', () => {
+    const home = desktopNavigationItems(key => key, false)[0]
+
+    expect(home?.to).toBe('/home')
+    expect(home?.type).not.toBe('trigger')
+    expect(home?.defaultOpen).toBe(true)
+    expect(home?.children).toHaveLength(3)
   })
 })

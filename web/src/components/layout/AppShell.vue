@@ -19,6 +19,7 @@ const activePath = computed(() => route.path)
 const mobileItems = computed(() => mobileNavigationItems(sessionStore.isAdmin))
 const desktopItems = computed(() => desktopNavigationItems(t, sessionStore.isAdmin))
 const showBackButton = computed(() => !['/', '/home'].includes(route.path))
+const appContent = useTemplateRef<globalThis.HTMLDivElement>('appContent')
 const mainContent = useTemplateRef<globalThis.HTMLElement>('mainContent')
 const isFullscreen = telegramFullscreenState()
 const greetingName = computed(() => t('nav.fullscreenGreeting', {
@@ -40,10 +41,14 @@ function goTo(to: string): void {
 
 useTelegramBackButton(showBackButton, goBack)
 
-watch(() => route.fullPath, (_next, previous) => {
+watch(() => route.path, (_next, previous) => {
   if (!previous) return
   void nextTick()
     .then(() => {
+      if (appContent.value) {
+        appContent.value.scrollTop = 0
+        appContent.value.scrollLeft = 0
+      }
       if (mainContent.value) focusWithoutScrolling(mainContent.value)
     })
     .catch(() => undefined)
@@ -78,7 +83,7 @@ function isActive(to: string): boolean {
           </footer>
         </template>
       </UDashboardSidebar>
-      <div class="app-frame__content">
+      <div ref="appContent" class="app-frame__content">
         <div v-if="isFullscreen" class="app-greeting" role="status">
           <strong>{{ greetingName }}</strong>
           <span v-if="greetingUsername">@{{ greetingUsername }}</span>

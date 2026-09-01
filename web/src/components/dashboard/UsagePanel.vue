@@ -69,10 +69,6 @@ onUnmounted(() => {
     </InlineNotice>
 
     <div class="home-usage__summary">
-      <div>
-        <strong>{{ formatBytes(statistics.usedTrafficBytes) }}</strong>
-        <small>{{ $t('dashboard.ofLimit', { amount: formatBytes(statistics.trafficLimitBytes) }) }}</small>
-      </div>
       <strong class="home-usage__percentage">{{ percentage }}%</strong>
     </div>
     <div class="home-usage__progress-group" role="group" :aria-label="$t('dashboard.usage')">

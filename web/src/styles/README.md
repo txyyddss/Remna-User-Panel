@@ -17,7 +17,7 @@
 - `home-02.css` styles traffic details, ride facts, and Around TX links on Home.
 - `home-03.css` styles the compact renewal term slider and separated quote total/date block.
 - `home-04.css` styles the accessible Your ride rollover flip card, its concise current-term detail, size-safe face swap, and reduced-motion fallback.
-- `home-05.css` expands Home into a balanced desktop column flow that avoids equal-height row gaps while preserving the single-column phone flow and full-width overflow safety.
+- `home-05.css` keeps Home's card stream and alerts in the same single-column, overflow-safe order on phones and desktop.
 - `connections-01.css` styles the connections page heading, node/IP rows, empty states, and selected connection confirmation detail.
 - `connections-02.css` styles the stable connection scan visualization, progress presentation, tablet split layout, and reduced-motion fallback.
 - `connections-03.css` styles active block rows, exact-expiry metadata, and compact unblock confirmation targets.

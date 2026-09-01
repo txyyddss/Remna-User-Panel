@@ -20,17 +20,15 @@ const tiers = computed(() => props.combos.map((combo) => ({
   title: combo.name,
   description: combo.description,
   price: formatMoney(combo.price),
-  billingCycle: t('catalog.perTerm'),
+  billingCycle: t('catalog.perDays', { count: combo.validityDays }),
   highlight: combo.id === props.selectedId,
 })))
 
 const sections = computed(() => [{
   title: t('catalog.planDetails'),
   features: [
-    { id: 'traffic', title: t('catalog.traffic'), tiers: values((combo) => formatBytes(combo.trafficLimitBytes)) },
-    { id: 'validity', title: t('catalog.validity'), tiers: values((combo) => t('catalog.days', { count: combo.validityDays })) },
-    { id: 'squads', title: t('catalog.squads'), tiers: values((combo) => t('catalog.squads', { count: combo.includedSquads.length })) },
-    { id: 'reset', title: t('catalog.term'), tiers: values((combo) => t(`home.reset.${combo.resetStrategy}`)) },
+    { id: 'traffic', title: t('catalog.trafficTerm'), tiers: values((combo) => `${formatBytes(combo.trafficLimitBytes)}/${resetUnit(combo)}`) },
+    { id: 'squads', title: t('catalog.includedSquads'), tiers: values((combo) => t('catalog.includedSquadCount', { count: combo.includedSquads.length })) },
     { id: 'rollover', title: t('catalog.rollover'), tiers: values((combo) => t('catalog.rolloverThreshold', { threshold: (combo.rolloverMinRemainingBps / 100).toFixed(2) })) },
   ],
 }])
@@ -41,6 +39,11 @@ function values(value: (combo: Combo) => string): Record<string, string> {
 
 function comboFor(id: string): Combo | undefined {
   return props.combos.find((combo) => combo.id === id)
+}
+
+function resetUnit(combo: Combo): string {
+  const key = combo.resetStrategy === 'DAY' ? 'day' : combo.resetStrategy === 'WEEK' ? 'week' : 'month'
+  return t(`catalog.resetUnit.${key}`)
 }
 
 function selectCombo(id: string): void {

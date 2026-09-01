@@ -45,7 +45,7 @@ export function mobileNavigationItems(isAdmin: boolean): MobileNavigationItem[] 
 export function desktopNavigationItems(t: Translate, isAdmin: boolean): NavigationMenuItem[] {
   const items: NavigationMenuItem[] = [
     {
-      label: t('nav.home'), to: '/home', icon: 'i-ph-house', type: 'trigger', defaultOpen: true,
+      label: t('nav.home'), to: '/home', icon: 'i-ph-house', defaultOpen: true,
       children: [
         { label: t('nav.connections'), to: '/connections', icon: 'i-ph-devices' },
         { label: t('nav.revoke'), to: { path: '/home', query: { revoke: '1' } }, icon: 'i-ph-trash' },
