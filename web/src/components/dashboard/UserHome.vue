@@ -91,49 +91,45 @@ function consumeHomeRequest(name: 'revoke' | 'addSquads'): void {
           @reissue-request-consumed="consumeReissueRequest"
         />
         <div class="home-layout__columns">
-          <div class="home-layout__column home-layout__column--account">
-            <div class="home-alerts">
-              <InlineNotice v-if="catalogBlocked" tone="warning">{{ $t('home.autoRenewalCatalogBlocked') }}</InlineNotice>
-              <InlineNotice v-if="autoRenewalFailureMessage" tone="warning" :title="$t('home.autoRenewalFailureTitle')">{{ autoRenewalFailureMessage }}</InlineNotice>
-              <InlineNotice v-if="revokeReceipt?.status === 'succeeded'" tone="success" :title="$t('dashboard.linkReplaced')">{{ $t('dashboard.previousLinkInvalid') }}</InlineNotice>
-              <InlineNotice v-if="revokeReceipt?.status === 'succeeded' && error" tone="warning">{{ error }}</InlineNotice>
-              <OperationStatusNotice v-if="revokeReceipt?.status !== 'succeeded'" :receipt="revokeReceipt" :error="revokeError ?? error" :checking="revokeChecking" @refresh="refreshRevoke" />
-              <InlineNotice v-if="queuedCancellationNotice" tone="success">{{ $t('home.queuedCancelled') }}</InlineNotice>
-            </div>
-            <SubscriptionPanel
-              :subscription-url="dashboard.subscriptionUrl"
-              :revoking="revoking"
-              :revoke-blocked="revokeBlocked"
-              :open-revoke="revokeRequested"
-              @revoke="confirmRevoke"
-              @revoke-request-consumed="consumeHomeRequest('revoke')"
-            />
-            <ComingSoonLinks />
+          <div class="home-alerts">
+            <InlineNotice v-if="catalogBlocked" tone="warning">{{ $t('home.autoRenewalCatalogBlocked') }}</InlineNotice>
+            <InlineNotice v-if="autoRenewalFailureMessage" tone="warning" :title="$t('home.autoRenewalFailureTitle')">{{ autoRenewalFailureMessage }}</InlineNotice>
+            <InlineNotice v-if="revokeReceipt?.status === 'succeeded'" tone="success" :title="$t('dashboard.linkReplaced')">{{ $t('dashboard.previousLinkInvalid') }}</InlineNotice>
+            <InlineNotice v-if="revokeReceipt?.status === 'succeeded' && error" tone="warning">{{ error }}</InlineNotice>
+            <OperationStatusNotice v-if="revokeReceipt?.status !== 'succeeded'" :receipt="revokeReceipt" :error="revokeError ?? error" :checking="revokeChecking" @refresh="refreshRevoke" />
+            <InlineNotice v-if="queuedCancellationNotice" tone="success">{{ $t('home.queuedCancelled') }}</InlineNotice>
           </div>
-          <div class="home-layout__column home-layout__column--activity">
-            <UsagePanel
-              v-if="dashboard.statistics"
-              class="home-layout__usage"
-              :statistics="dashboard.statistics"
-              :ratio="usageRatio"
-              :stale="dashboard.statisticsStale"
-              :fetched-at="dashboard.fetchedAt"
-              :catalog-nodes="catalogNodes"
-            />
-            <section v-else class="section-block home-usage home-usage--empty home-layout__usage empty-inline">
-              <div><h3>{{ $t('dashboard.noStatistics') }}</h3><p>{{ $t('dashboard.statisticsPending') }}</p></div>
-            </section>
-            <EntitlementSummary
-              :active="dashboard.activePurchase"
-              :queued="dashboard.queuedPurchase"
-              :squad-names="activeSquadNames"
-              :open-squad-addition="squadAdditionRequested"
-              @queued-cancelled="handleQueuedCancelled"
-              @auto-renewal-changed="handleAutoRenewalChanged"
-              @squads-changed="handleSquadsChanged"
-              @squad-addition-request-consumed="consumeHomeRequest('addSquads')"
-            />
-          </div>
+          <SubscriptionPanel
+            :subscription-url="dashboard.subscriptionUrl"
+            :revoking="revoking"
+            :revoke-blocked="revokeBlocked"
+            :open-revoke="revokeRequested"
+            @revoke="confirmRevoke"
+            @revoke-request-consumed="consumeHomeRequest('revoke')"
+          />
+          <UsagePanel
+            v-if="dashboard.statistics"
+            class="home-layout__usage"
+            :statistics="dashboard.statistics"
+            :ratio="usageRatio"
+            :stale="dashboard.statisticsStale"
+            :fetched-at="dashboard.fetchedAt"
+            :catalog-nodes="catalogNodes"
+          />
+          <section v-else class="section-block home-usage home-usage--empty home-layout__usage empty-inline">
+            <div><h3>{{ $t('dashboard.noStatistics') }}</h3><p>{{ $t('dashboard.statisticsPending') }}</p></div>
+          </section>
+          <EntitlementSummary
+            :active="dashboard.activePurchase"
+            :queued="dashboard.queuedPurchase"
+            :squad-names="activeSquadNames"
+            :open-squad-addition="squadAdditionRequested"
+            @queued-cancelled="handleQueuedCancelled"
+            @auto-renewal-changed="handleAutoRenewalChanged"
+            @squads-changed="handleSquadsChanged"
+            @squad-addition-request-consumed="consumeHomeRequest('addSquads')"
+          />
+          <ComingSoonLinks />
         </div>
       </div>
     </template>

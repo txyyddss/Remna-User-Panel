@@ -41,7 +41,7 @@ async function review(action: 'approve' | 'dismiss', minutes: number, reason: st
 
 <template>
   <section class="admin-panel compensation-panel">
-    <div class="admin-panel__heading">
+    <div class="admin-panel__heading compensation-panel__heading">
       <div><p class="eyebrow">{{ t('adminCompensation.eyebrow') }}</p><h2>{{ t('adminCompensation.title') }}</h2><p>{{ t('adminCompensation.copy') }}</p></div>
     </div>
     <AdminSectionState :loading="state.loading.value" :error="state.error.value" @retry="state.load">
@@ -64,6 +64,8 @@ async function review(action: 'approve' | 'dismiss', minutes: number, reason: st
 
 <style scoped>
 .compensation-panel { display: grid; gap: 1rem; padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+.compensation-panel__heading { align-items: start; justify-items: start; text-align: left; }
+.compensation-panel__heading > :only-child { justify-self: start; }
 .compensation-panel__toolbar { display: grid; margin-top: 1rem; }
 .compensation-panel__events { display: grid; gap: 0.75rem; margin: 0.75rem 0; }
 @media (min-width: 700px) { .compensation-panel__toolbar { grid-template-columns: minmax(220px, 0.45fr); } }

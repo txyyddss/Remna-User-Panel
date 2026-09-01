@@ -1,12 +1,10 @@
 .home-layout,
 .home-layout__columns,
-.home-layout__column,
 .home-alerts {
   min-width: 0;
 }
 
 .home-layout__columns,
-.home-layout__column,
 .home-alerts {
   display: grid;
   align-content: start;
@@ -48,15 +46,13 @@
   }
 
   .home-layout__columns {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
-    align-items: start;
-    gap: 1.35rem;
+    display: block;
+    column-count: 2;
+    column-gap: 1.35rem;
   }
 
-  .home-layout__column {
-    gap: 1.1rem;
-  }
+  .home-layout__columns > * { break-inside: avoid; margin-bottom: 1.35rem; }
+  .home-layout__columns > .home-alerts:empty { display: none; }
 
   .home-ride__metrics {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -79,28 +75,6 @@
   }
 }
 
-@media (max-width: 899px) {
-  .home-layout__column {
-    display: contents;
-  }
-
-  .home-layout__column--account > .home-alerts {
-    order: 1;
-  }
-
-  .home-layout__column--account > .home-subscription {
-    order: 2;
-  }
-
-  .home-layout__column--activity > .home-layout__usage {
-    order: 3;
-  }
-
-  .home-layout__column--activity > .home-ride {
-    order: 4;
-  }
-
-  .home-layout__column--account > .home-around {
-    order: 5;
-  }
+@media (min-width: 1180px) {
+  .home-layout__columns { column-count: 3; }
 }

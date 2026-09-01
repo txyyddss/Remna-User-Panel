@@ -12,7 +12,7 @@ Admin controls inherit guarded action feedback, modal dismissal stays soft, audi
 - `AdminBillingAmountLimits.vue` loads the global inclusive Add TXB range and atomically saves exact minor-unit bounds.
 - `AdminCatalogEditor.vue` edits combo terms.
 - `AdminCatalogPanel.vue` manages combos and squads.
-- `AdminCompensationPanel.vue` composes the revisioned outage policy and recipient-safe event review flow.
+- `AdminCompensationPanel.vue` composes the revisioned outage policy and recipient-safe event review flow, with an explicitly left-aligned localized page title and subtitle.
 - `AdminAbusePanel.vue` lazy-loads the premium-dark detector policy, node-key, rule, statistics, and record surfaces.
 - `abuse/` contains focused detector administration cards.
 - `AdminCouponsPanel.vue` manages coupon definitions.

@@ -70,7 +70,6 @@ onUnmounted(() => {
 
     <div class="home-usage__summary">
       <div>
-        <span>{{ $t('dashboard.thisTerm') }}</span>
         <strong>{{ formatBytes(statistics.usedTrafficBytes) }}</strong>
         <small>{{ $t('dashboard.ofLimit', { amount: formatBytes(statistics.trafficLimitBytes) }) }}</small>
       </div>

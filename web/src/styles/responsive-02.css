@@ -13,17 +13,9 @@
     background: #0d100e;
   }
 
-  .side-rail__header { display: flex; align-items: center; justify-content: space-between; gap: 0.45rem; }
-  .side-rail__header > .button { flex: 0 0 auto; }
   .side-rail__nav { min-height: 0; overflow-y: auto; }
   .side-rail [data-slot='link'] { min-height: 44px; }
   .side-rail [data-slot='separator'] { margin-block: 0.5rem; }
-  .side-rail[data-collapsed='true'] { padding-inline: 0.5rem; }
-  .side-rail[data-collapsed='true'] .side-rail__brand-name,
-  .side-rail[data-collapsed='true'] .side-rail__member > div,
-  .side-rail[data-collapsed='true'] .language-control__label { display: none; }
-  .side-rail[data-collapsed='true'] .side-rail__header,
-  .side-rail[data-collapsed='true'] .side-rail__footer { justify-items: center; }
 
   .bottom-nav {
     display: none;

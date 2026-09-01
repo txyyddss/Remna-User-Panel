@@ -22,9 +22,15 @@ watch(() => props.revoking, (next, previous) => {
 })
 watch(() => props.openRevoke, (requested) => {
   if (!requested) return
-  if (props.subscriptionUrl && !props.revokeBlocked) confirmOpen.value = true
+  if (props.subscriptionUrl && !props.revokeBlocked) {
+    confirmOpen.value = true
+    return
+  }
   emit('revokeRequestConsumed')
 }, { immediate: true })
+watch(confirmOpen, (open, wasOpen) => {
+  if (!open && wasOpen && props.openRevoke) emit('revokeRequestConsumed')
+})
 
 function copyLink(): void {
   if (props.subscriptionUrl) void copy(props.subscriptionUrl)

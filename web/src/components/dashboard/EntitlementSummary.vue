@@ -60,9 +60,15 @@ function openSquadAdditionDialog(): void {
 
 watch(() => props.openSquadAddition, (requested) => {
   if (!requested) return
+  if (!props.active || props.queued) {
+    emit('squadAdditionRequestConsumed')
+    return
+  }
   openSquadAdditionDialog()
-  emit('squadAdditionRequestConsumed')
 }, { immediate: true })
+watch(squadAdditionOpen, (open, wasOpen) => {
+  if (!open && wasOpen && props.openSquadAddition) emit('squadAdditionRequestConsumed')
+})
 </script>
 
 <template>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, useTemplateRef, watch } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
 import { useI18n } from '@/i18n'
@@ -59,25 +59,10 @@ function isActive(to: string): boolean {
   <div class="app-frame" :class="{ 'app-frame--fullscreen': isFullscreen }">
     <a class="skip-link" href="#main-content">{{ $t('nav.skip') }}</a>
     <UDashboardGroup class="app-dashboard" storage="local" storage-key="tx-carpool-shell" unit="rem">
-      <UDashboardSidebar class="side-rail app-dashboard__sidebar" :default-size="15" :min-size="13" :max-size="20" :collapsed-size="4.5" resizable collapsible :toggle="false">
-        <template #header="{ collapsed, collapse }">
-          <header class="side-rail__header">
-            <RouterLink class="side-rail__brand" to="/home">
-              <span class="side-rail__brand-mark" aria-hidden="true"><UIcon name="i-ph-users-three" /></span>
-              <span class="side-rail__brand-name">{{ $t('app.name') }}</span>
-            </RouterLink>
-            <UButton
-              color="neutral"
-              variant="ghost"
-              :icon="collapsed ? 'i-ph-sidebar-simple' : 'i-ph-sidebar-simple-duotone'"
-              :aria-label="$t(collapsed ? 'nav.expandSidebar' : 'nav.collapseSidebar')"
-              @click="collapse(!collapsed)"
-            />
-          </header>
-        </template>
-        <template #default="{ collapsed }">
+      <UDashboardSidebar class="side-rail app-dashboard__sidebar" :default-size="15" :min-size="13" :max-size="20" resizable>
+        <template #default>
           <nav class="side-rail__nav" :aria-label="$t('nav.primary')">
-            <UNavigationMenu :items="desktopItems" orientation="vertical" :collapsed="collapsed" color="primary" variant="pill" :tooltip="true" :popover="true" />
+            <UNavigationMenu :items="desktopItems" orientation="vertical" color="primary" variant="pill" />
           </nav>
         </template>
         <template #footer>

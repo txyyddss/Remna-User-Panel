@@ -55,9 +55,6 @@ function selectCombo(id: string): void {
     <template #tier-description="{ tier }">
       <MarkdownContent v-if="comboFor(tier.id)" class="combo-pricing-table__description" :source="comboFor(tier.id)?.description ?? ''" compact />
     </template>
-    <template #tier-badge="{ tier }">
-      <UBadge v-if="tier.id === selectedId" color="success" variant="subtle" :label="$t('catalog.selectedBadge')" />
-    </template>
     <template #tier-button="{ tier }">
       <UButton
         block
@@ -76,5 +73,6 @@ function selectCombo(id: string): void {
 <style scoped>
 .combo-pricing-table :deep([data-slot='tierWrapper']) { min-width: 12rem; }
 .combo-pricing-table :deep([data-slot='tierDescription']) { color: var(--text-muted); }
+.combo-pricing-table :deep([data-slot='tierBillingCycle']) { overflow: visible; text-overflow: clip; white-space: nowrap; }
 .combo-pricing-table__description { margin: 0; }
 </style>

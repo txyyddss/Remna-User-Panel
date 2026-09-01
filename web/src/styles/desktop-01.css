@@ -1,30 +1,4 @@
 @media (min-width: 900px) {
-  .side-rail__header { margin-bottom: 1.5rem; }
-
-  .side-rail__brand {
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.65rem;
-    color: var(--text);
-    font-size: 0.9rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-  }
-
-  .side-rail__brand-mark {
-    width: 28px;
-    height: 28px;
-    display: grid;
-    place-items: center;
-    border: 1px solid #416b50;
-    border-radius: 8px;
-    color: var(--accent);
-    background: var(--accent-soft);
-  }
-
-  .side-rail__brand-mark > svg { width: 1rem; height: 1rem; }
-
   .side-rail__footer {
     display: grid;
     gap: 0.7rem;
@@ -76,7 +50,4 @@
   .squad-selector { padding: clamp(1.1rem, 1.6vw, 1.45rem); }
 }
 
-@media (min-width: 1180px) {
-  .side-rail__header { margin-bottom: 1.85rem; }
-  .side-rail__footer { gap: 0.85rem; }
-}
+@media (min-width: 1180px) { .side-rail__footer { gap: 0.85rem; } }

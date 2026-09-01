@@ -17,7 +17,7 @@
 - `home-02.css` styles traffic details, ride facts, and Around TX links on Home.
 - `home-03.css` styles the compact renewal term slider and separated quote total/date block.
 - `home-04.css` styles the accessible Your ride rollover flip card, its concise current-term detail, size-safe face swap, and reduced-motion fallback.
-- `home-05.css` expands Home into an auto-fitting desktop access/usage flow that avoids equal-height row gaps while preserving the single-column phone flow and full-width overflow safety.
+- `home-05.css` expands Home into a balanced desktop column flow that avoids equal-height row gaps while preserving the single-column phone flow and full-width overflow safety.
 - `connections-01.css` styles the connections page heading, node/IP rows, empty states, and selected connection confirmation detail.
 - `connections-02.css` styles the stable connection scan visualization, progress presentation, tablet split layout, and reduced-motion fallback.
 - `connections-03.css` styles active block rows, exact-expiry metadata, and compact unblock confirmation targets.
@@ -42,9 +42,9 @@
 - `motion-01.css` defines short transitions and state motion.
 - `motion-02.css` adds reduced-motion-safe staggered page entry, tactile press response, status arrival, and active-navigation feedback.
 - `responsive-01.css` owns shared motion keyframes used by compact surfaces.
-- `responsive-02.css` expands the phone-first shell into a resizable Nuxt UI sticky sidebar desktop layout, and restores wide route, dialog, catalog, settings, and administrative list arrangements.
+- `responsive-02.css` expands the phone-first shell into a fixed-width resizable Nuxt UI sticky sidebar desktop layout, and restores wide route, dialog, catalog, settings, and administrative list arrangements.
 - `responsive-03.css` applies compact administrative rows below 640px and owns reduced-motion/transparency fallbacks.
-- `desktop-01.css` adds rail context and balanced wide-page widths for desktop while keeping the compact phone shell untouched.
+- `desktop-01.css` adds rail member context and balanced wide-page widths for desktop while keeping the compact phone shell untouched.
 
 The system is dark-only, flat, gradient-free, and uses borders instead of decorative shadows.
 
