@@ -37,7 +37,7 @@
     "unavailable": "Plans are unavailable.",
     "selectedBadge": "Selected",
     "days": "{count} days",
-    "squads": "{count} squads",
+    "squads": "Included squads",
     "perTerm": "per term",
     "optionalSquads": "Optional squads",
     "optionalSquadsHint": "Add regions to the same traffic budget and subscription term.",

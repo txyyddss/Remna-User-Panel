@@ -38,7 +38,7 @@
     "unavailable": "套餐暂时不可用",
     "selectedBadge": "已选",
     "days": "{count} 天",
-    "squads": "{count} 个区域",
+    "squads": "已包含节点组数量",
     "perTerm": "每个周期",
     "optionalSquads": "可选区域",
     "optionalSquadsHint": "将区域加入同一流量预算和订阅周期。",
