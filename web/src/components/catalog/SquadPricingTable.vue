@@ -3,7 +3,6 @@ import { computed } from 'vue'
 import type { PricingTableSection, PricingTableTier } from '@nuxt/ui'
 
 import type { SquadProduct } from '@/api/types'
-import MarkdownContent from '@/components/common/MarkdownContent.vue'
 import { useI18n } from '@/i18n'
 import { formatMoney } from '@/utils/format'
 import { selectionHaptic } from '@/utils/telegram'
@@ -58,7 +57,6 @@ const sections = computed<PricingTableSection[]>(() => [{
   features: [
     feature('remaining', t('catalog.remaining'), remaining),
     feature('port', t('squadProfile.port'), port),
-    feature('description', t('catalog.description'), squad => squad.description),
     ...profileFeatures.value,
     feature('node-count', t('catalog.nodeCount'), squad => String(squad.accessibleNodes.length)),
     feature('nodes', t('catalog.nodes'), squad => squad.accessibleNodes.length > 0),
@@ -108,7 +106,7 @@ function toggle(squad: SquadProduct): void {
     <UPricingTable :tiers="tiers" :sections="sections" :caption="$t('catalog.squadTypeCaption', { type: $t(`squadProfile.types.${typeKey}`) })">
       <template #tier-title="{ tier }">
         <span class="squad-pricing-table__title">
-          <UIcon v-if="isFeatured(tier.id)" name="i-lucide-crown" :aria-label="$t('catalog.featured')" />
+          <UIcon v-if="isFeatured(tier.id)" name="i-ph-crown" :aria-label="$t('catalog.featured')" />
           <span>{{ tier.title }}</span>
         </span>
       </template>
@@ -121,9 +119,6 @@ function toggle(squad: SquadProduct): void {
       </template>
       <template #feature-port-value="{ tier }">
         <span>{{ portFor(tier.id) }}</span>
-      </template>
-      <template #feature-description-value="{ tier }">
-        <MarkdownContent v-if="squadFor(tier.id)?.description" :source="squadFor(tier.id)?.description ?? ''" compact />
       </template>
       <template #feature-nodes-value="{ tier }">
         <SquadNodeBlocks v-if="squadFor(tier.id)" :nodes="squadFor(tier.id)?.accessibleNodes ?? []" @open-geocheck="emit('openGeocheck', $event)" />

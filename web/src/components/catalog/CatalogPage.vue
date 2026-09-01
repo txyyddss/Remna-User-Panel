@@ -52,8 +52,7 @@ const {
   discardCoupon,
   confirmPurchase,
 } = useCatalog()
-const presentationComboId = computed(() => activeStep.value === 1 ? null : selectedComboId.value)
-const { featuredIds: featuredSquadIds, orderedIds: orderedSquadIds } = useCatalogSquadPresentation(visibleSquads, includedSquadIds, presentationComboId)
+const { featuredIds: featuredSquadIds, orderedIds: orderedSquadIds } = useCatalogSquadPresentation(visibleSquads, includedSquadIds, selectedComboId)
 
 async function restoreStepQuote(): Promise<void> {
   if (![3, 4].includes(activeStep.value) || loading.value || quoting.value || quoteUsable.value || purchase.value || !selectedCombo.value) return
