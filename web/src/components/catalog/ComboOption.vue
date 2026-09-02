@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { Combo } from '@/api/types'
 import MarkdownContent from '@/components/common/MarkdownContent.vue'
-import StatusBadge from '@/components/common/StatusBadge.vue'
 import { useI18n } from '@/i18n'
 import { formatBytes, formatMoney } from '@/utils/format'
 import { selectionHaptic } from '@/utils/telegram'
@@ -32,12 +31,12 @@ function selectCombo(): void {
     :class="{ 'combo-option--selected': selected }"
     color="neutral"
     variant="ghost"
+    type="button"
     :aria-pressed="selected"
     @click="selectCombo"
   >
     <span class="combo-option__top">
       <span>
-        <StatusBadge v-if="selected" tone="success" :label="$t('catalog.selectedBadge')" />
         <strong>{{ combo.name }}</strong>
       </span>
       <span v-if="selected" class="selection-mark"><UIcon name="i-ph-check-bold" /></span>

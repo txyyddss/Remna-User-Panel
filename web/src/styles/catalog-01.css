@@ -33,7 +33,7 @@
 }
 
 .combo-option {
-  min-height: 220px;
+  min-height: 0; width: 100%;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -66,13 +66,9 @@
   gap: 0.6rem;
 }
 
-.combo-option__top > span:first-child {
-  flex-direction: column;
-}
+.combo-option__top > span:first-child { min-width: 0; flex-direction: column; }
 
-.combo-option__top strong {
-  font-size: 1.15rem;
-}
+.combo-option__top strong { font-size: 1.15rem; overflow-wrap: anywhere; }
 
 .selection-mark {
   width: 30px;
@@ -86,7 +82,7 @@
 }
 
 .combo-option__description {
-  color: var(--text-muted);
+  min-width: 0; color: var(--text-muted);
   font-size: 0.82rem;
   line-height: 1.5;
 }
