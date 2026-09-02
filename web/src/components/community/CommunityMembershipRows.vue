@@ -66,5 +66,7 @@ function state(space: CommunitySpace): 'joined' | 'unavailable' | 'ready' {
 .community-row__copy small { display: block; margin-top: 0.45rem; color: var(--text-faint); font-size: 0.69rem; line-height: 1.35; }
 .community-row__action { justify-self: end; }
 .community-row__join { min-width: 4.8rem; min-height: 44px; }
-@media (min-width: 640px) { .community-row { padding: 1.15rem 1.25rem; } }
+@media (min-width: 640px) {
+  .community-row { padding: 1.15rem 1.25rem; }
+}
 </style>

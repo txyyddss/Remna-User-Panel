@@ -48,8 +48,21 @@
   },
   "community": {
     "title": "Community",
-    "subtitle": "Join the private group and receive channel updates.",
-    "accessNote": "A currently active combo is required to join. Memberships already confirmed by Telegram remain shown after a combo ends.",
+    "subtitle": "Chat with members. Get official updates.",
+    "accessNote": "An active combo unlocks new joins. Confirmed members stay listed after it ends.",
+    "accessReady": "Access ready",
+    "accessLocked": "Active combo required",
+    "joinedCount": "{count}/2 joined",
+    "guideEyebrow": "Quick start",
+    "guideTitle": "Join in 3 steps",
+    "guideDescription": "Choose a space, confirm in Telegram, then return here.",
+    "steps": {
+      "choose": "Choose a space",
+      "confirm": "Confirm in Telegram",
+      "return": "Return here"
+    },
+    "spacesEyebrow": "Community spaces",
+    "spacesTitle": "Choose where to start",
     "loadingTitle": "Checking community access",
     "loadingDescription": "Refreshing your Telegram membership and combo eligibility.",
     "errorTitle": "Community unavailable",
@@ -59,11 +72,11 @@
     "channelTitle": "Updates channel",
     "channelDescription": "Receive official TX updates.",
     "joined": "Joined",
-    "joinedDescription": "Telegram confirms that you are already a member.",
+    "joinedDescription": "Telegram confirms your membership.",
     "unavailable": "Unavailable",
-    "unavailableDescription": "A current active combo is needed before you can join.",
+    "unavailableDescription": "An active combo is required.",
     "ready": "Ready to join",
-    "readyDescription": "Your current active combo can request access.",
+    "readyDescription": "Access is ready.",
     "join": "Join",
     "joining": "Opening"
   }
