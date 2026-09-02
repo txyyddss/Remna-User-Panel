@@ -28,6 +28,7 @@ const remainingText = computed(() => {
   const count = Math.max(0, Math.min(props.squad.stockLimit, props.squad.stockRemaining ?? props.squad.stockLimit))
   return `${Math.round(count * 100 / props.squad.stockLimit)}%`
 })
+const remainingBadgeText = computed(() => props.squad.stockLimit === null || props.squad.stockLimit === undefined ? '∞' : remainingText.value)
 
 function toggle(): void {
   if (props.included || isFull.value) return
@@ -56,21 +57,13 @@ function toggle(): void {
         <UIcon v-if="featured" name="i-ph-crown" :aria-label="$t('catalog.featured')" />
         <UBadge v-if="squad.activationRequired" color="warning" variant="subtle" :label="$t('catalog.activationRequired')" />
         <UBadge v-if="isFull" color="error" variant="subtle" :label="$t('catalog.full')" />
+        <span v-if="!included && !isFull" class="squad-card__remaining" :aria-label="$t('catalog.remaining')">
+          <UIcon name="i-ph-gauge" aria-hidden="true" />
+          <strong>{{ remainingBadgeText }}</strong>
+        </span>
       </template>
       <template #headingMeta>
         <UIcon v-if="selected" name="i-ph-check-bold" aria-hidden="true" />
-      </template>
-      <template #facts>
-        <span class="squad-card__fact">
-          <UIcon name="i-ph-stack" aria-hidden="true" />
-          <span>{{ $t('catalog.nodeCount') }}</span>
-          <strong>{{ squad.accessibleNodes.length }}</strong>
-        </span>
-        <span class="squad-card__fact">
-          <UIcon name="i-ph-gauge" aria-hidden="true" />
-          <span>{{ $t('catalog.remaining') }}</span>
-          <strong>{{ remainingText }}</strong>
-        </span>
       </template>
     </SquadProfileSummary>
 
@@ -112,18 +105,8 @@ function toggle(): void {
   background: color-mix(in srgb, var(--accent) 9%, var(--surface-strong));
 }
 .squad-pricing-card--included { opacity: 0.78; }
-.squad-card__fact {
-  flex: 1 1 calc(50% - 0.35rem);
-  max-width: 100%;
-  overflow-wrap: anywhere;
-}
-.squad-card__fact > span { min-width: 0; }
-.squad-card__fact > strong {
-  margin-left: auto;
-  color: var(--text);
-  font-family: var(--font-mono);
-  white-space: nowrap;
-}
+.squad-card__remaining { display: inline-flex; align-items: center; gap: 0.2rem; padding: 0.18rem 0.35rem; border: 1px solid var(--line); border-radius: 999px; color: var(--text-muted); font-size: 0.65rem; line-height: 1.2; }
+.squad-card__remaining strong { color: var(--text); font-family: var(--font-mono); font-weight: 700; }
 .squad-card__nodes {
   display: grid;
   gap: 0.35rem;
@@ -139,7 +122,4 @@ function toggle(): void {
 }
 .squad-card__purchase { display: grid; gap: 0.6rem; }
 .squad-card__purchase > strong { font-family: var(--font-mono); font-size: 1.1rem; }
-@media (max-width: 380px) {
-  .squad-card__fact { flex-basis: 100%; }
-}
 </style>
