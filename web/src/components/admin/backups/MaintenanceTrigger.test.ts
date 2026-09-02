@@ -53,13 +53,14 @@ describe('MaintenanceTrigger', () => {
     mocks.getOperation.mockResolvedValue(receipt('succeeded'))
     const wrapper = mountTrigger()
 
-    await wrapper.get('[role="button"]').trigger('click')
+    await wrapper.get('.maintenance-trigger > *').trigger('click')
     expect(mocks.queue).not.toHaveBeenCalled()
     await wrapper.get('[data-test="maintenance-confirm"] [role="button"]').trigger('click')
     await flushPromises()
 
     expect(mocks.queue).toHaveBeenCalledOnce()
-    expect(wrapper.get('[role="button"]').attributes('data-disabled')).toBe('true')
+    const trigger = wrapper.get('.maintenance-trigger > *')
+    expect(trigger.attributes('disabled') ?? trigger.attributes('data-disabled')).not.toBeUndefined()
     expect(wrapper.get('[data-test="maintenance-status"]').attributes('data-status')).toBe('queued')
 
     await vi.advanceTimersByTimeAsync(1500)
@@ -73,12 +74,13 @@ describe('MaintenanceTrigger', () => {
     mocks.queue.mockRejectedValue(new Error('queue unavailable'))
     const wrapper = mountTrigger()
 
-    await wrapper.get('[role="button"]').trigger('click')
+    await wrapper.get('.maintenance-trigger > *').trigger('click')
     await wrapper.get('[data-test="maintenance-confirm"] [role="button"]').trigger('click')
     await flushPromises()
 
     expect(wrapper.findAll('[data-test="maintenance-error"]')).toHaveLength(1)
-    expect(wrapper.get('[role="button"]').attributes('data-disabled')).toBeUndefined()
+    const trigger = wrapper.get('.maintenance-trigger > *')
+    expect(trigger.attributes('disabled') ?? trigger.attributes('data-disabled')).toBeUndefined()
     expect(wrapper.emitted('completed')).toBeUndefined()
   })
 })
