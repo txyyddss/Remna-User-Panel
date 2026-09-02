@@ -79,8 +79,6 @@
     "accessibleNodes": "Accessible nodes",
     "nodeMultiplier": "{multiplier}x",
     "openNodeGeocheck": "View Geocheck result for node {current} of {total}",
-    "expandNodes": "Show all nodes",
-    "collapseNodes": "Show fewer nodes",
     "couponStepHint": "Choose one eligible coupon or add a code.",
     "addCoupon": "Add coupon",
     "noCouponHint": "Use the server price without a coupon.",

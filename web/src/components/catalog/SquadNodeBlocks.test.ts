@@ -33,7 +33,7 @@ describe('SquadNodeBlocks', () => {
     expect(wrapper.emitted('openGeocheck')?.[1]).toEqual([nodes[1]])
   })
 
-  it('keeps long node lists open but allows them to be folded', async () => {
+  it('keeps every node visible in long node lists', () => {
     const wrapper = mount(SquadNodeBlocks, {
       props: { nodes: manyNodes },
       global: { stubs: {
@@ -42,9 +42,6 @@ describe('SquadNodeBlocks', () => {
     })
 
     expect(wrapper.findAll('.squad-node-list__node')).toHaveLength(5)
-    await wrapper.get('.squad-node-list__toggle').trigger('click')
-    expect(wrapper.findAll('.squad-node-list__node')).toHaveLength(4)
-    await wrapper.get('.squad-node-list__toggle').trigger('click')
-    expect(wrapper.findAll('.squad-node-list__node')).toHaveLength(5)
+    expect(wrapper.find('.squad-node-list__toggle').exists()).toBe(false)
   })
 })

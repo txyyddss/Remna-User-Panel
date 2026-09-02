@@ -78,16 +78,13 @@ function toggle(): void {
             <strong>{{ remainingBadgeText }}</strong>
           </span>
         </template>
-        <template #headingMeta>
-          <UIcon v-if="selected" name="i-ph-check-bold" aria-hidden="true" />
-        </template>
       </SquadProfileSummary>
       <div v-if="!included" class="squad-card__price">
         <strong>{{ formatMoney(squad.price) }}</strong>
       </div>
     </div>
 
-    <div v-if="squad.accessibleNodes.length" class="squad-card__nodes" @click.stop>
+    <div v-if="squad.accessibleNodes.length" class="squad-card__nodes">
       <div class="squad-card__nodes-heading">
         <span class="squad-card__nodes-label">{{ $t('catalog.nodes') }}</span>
         <SquadProfileFacts class="squad-card__tags" :profile="squad.profile" presentation="member" />
@@ -110,8 +107,11 @@ function toggle(): void {
 }
 .squad-pricing-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .squad-pricing-card--nonselectable { cursor: default; }
+.squad-pricing-card--broadband { --squad-profile-tone: var(--accent); }
+.squad-pricing-card--china_optimized { --squad-profile-tone: var(--warning); }
+.squad-pricing-card--international_network { --squad-profile-tone: #9ebddd; }
 .squad-pricing-card--selected {
-  border-color: var(--accent);
+  border-color: var(--squad-profile-tone, var(--accent));
   background: color-mix(in srgb, var(--accent) 9%, var(--surface-strong));
 }
 .squad-pricing-card--included { opacity: 0.78; }
