@@ -28,3 +28,15 @@ Test all frontend changes with Chrome Devtools MCP and constructed data when fin
 Push and commit to main branch when finish. Monitor actions run and fix issues when failed.
 
 ---
+
+## Task: Improve core combo and optional squads selection interface layout
+
+Use google devtools mcp with constructed data to take screenshot of the page on BOTH desktop and phones to analyze layout issues.
+Also compact the block and remove duplicate information if possible.
+Consider the following situations:
+
+- Have long descriptions
+- Large amount of squads/combos
+- Large amount of nodes per squad
+- Unlimited stock
+- Long squad/combo name

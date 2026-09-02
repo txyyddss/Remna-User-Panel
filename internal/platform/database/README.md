@@ -209,6 +209,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `release1_commerce_migration_test.go` covers rolling-month conversion, immutable pricing backfill, and new release-one persistence tables.
 - `retention_test.go` — retained operational-record cleanup behavior.
 - `maintenance_runs_test.go` covers local-day locking and backup-gated maintenance state.
+- `retention_provider_operations_test.go` covers retaining provider operations referenced by durable administrative and compensation records.
 - `continuity_test.go` covers three-minute provider-expiry preparation without an access gap.
 - `connection_scans_test.go` covers metadata-only scan lifecycle and expiry.
 - `member_operations_test.go` covers paid reset compensation and zero-usage first-term refunds.

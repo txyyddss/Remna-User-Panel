@@ -50,8 +50,14 @@ func pruneProviderOperationsTx(ctx context.Context, tx *sql.Tx, cutoff, now time
 			WHERE status IN ('succeeded','failed','compensated'))`); err != nil {
 		return fmt.Errorf("prune provider operation jobs: %w", err)
 	}
+	// Keep terminal operations that durable domain records still use as their
+	// audit or state-transition link. Deleting them would violate foreign keys.
 	if counts["provider_operations"], err = deleteCount(ctx, tx, `DELETE FROM provider_operations
-		WHERE status IN ('succeeded','failed','compensated')`); err != nil {
+		WHERE status IN ('succeeded','failed','compensated')
+		AND NOT EXISTS (SELECT 1 FROM admin_temporary_bans ban
+			WHERE ban.ban_operation_id=provider_operations.id OR ban.unban_operation_id=provider_operations.id)
+		AND NOT EXISTS (SELECT 1 FROM node_compensation_events event
+			WHERE event.provider_operation_id=provider_operations.id)`); err != nil {
 		return fmt.Errorf("prune processed provider operations: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx, `DROP TABLE maintenance_operation_candidates`); err != nil {
