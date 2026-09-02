@@ -42,7 +42,7 @@ export function mobileNavigationItems(isAdmin: boolean): MobileNavigationItem[] 
     : [...mobileNavigation]
 }
 
-export function desktopNavigationItems(t: Translate, isAdmin: boolean): NavigationMenuItem[] {
+export function desktopNavigationItems(t: Translate, isAdmin: boolean, hasValidCombo = false): NavigationMenuItem[] {
   const items: NavigationMenuItem[] = [
     {
       label: t('nav.home'), to: '/home', icon: 'i-ph-house', defaultOpen: true,
@@ -52,7 +52,11 @@ export function desktopNavigationItems(t: Translate, isAdmin: boolean): Navigati
         { label: t('nav.addSquads'), to: { path: '/home', query: { addSquads: '1' } }, icon: 'i-ph-plus' },
       ],
     },
-    {
+    { label: t('nav.explore'), to: '/catalog', icon: 'i-ph-compass' },
+    { label: t('nav.activity'), to: '/activity', icon: 'i-ph-game-controller' },
+  ]
+  if (hasValidCombo) {
+    items.splice(1, 0, {
       label: t('nav.aroundTx'), icon: 'i-ph-sparkle', type: 'trigger', defaultOpen: true, popover: true,
       children: [
         { label: t('affiliates.title'), to: '/affiliates', icon: 'i-ph-users-three' },
@@ -62,10 +66,8 @@ export function desktopNavigationItems(t: Translate, isAdmin: boolean): Navigati
         { label: t('statistics.title'), to: '/statistics', icon: 'i-ph-chart-donut' },
         { label: t('abuse.title'), to: '/abuse-records', icon: 'i-ph-shield-warning' },
       ],
-    },
-    { label: t('nav.explore'), to: '/catalog', icon: 'i-ph-compass' },
-    { label: t('nav.activity'), to: '/activity', icon: 'i-ph-game-controller' },
-  ]
+    })
+  }
   if (isAdmin) {
     items.push({
       label: t('nav.admin'), icon: 'i-ph-shield-check', type: 'trigger', defaultOpen: true, popover: true,

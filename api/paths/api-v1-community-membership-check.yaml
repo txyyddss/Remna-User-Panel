@@ -1,3 +1,22 @@
+get:
+  tags: [Community]
+  operationId: getCommunityAccess
+  summary: Check current community access
+  description: Returns whether the authenticated member has a current active combo. This read-only check does not refresh Telegram membership facts.
+  responses:
+    '200':
+      description: Current community access eligibility.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/CommunityAccess'
+    '401':
+      $ref: '../openapi.yaml#/components/responses/Unauthorized'
+    '409':
+      $ref: '../openapi.yaml#/components/responses/Conflict'
+    '502':
+      $ref: '../openapi.yaml#/components/responses/UpstreamFailure'
+
 post:
   tags: [Community]
   operationId: checkCommunityMembership

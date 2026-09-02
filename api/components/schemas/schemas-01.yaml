@@ -140,6 +140,14 @@ CommunityMembership:
     user:
       $ref: '../../openapi.yaml#/components/schemas/User'
 
+CommunityAccess:
+  type: object
+  additionalProperties: false
+  required: [activeCombo]
+  properties:
+    activeCombo:
+      type: boolean
+
 UsernameRequest:
   type: object
   additionalProperties: false

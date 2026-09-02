@@ -19,4 +19,6 @@ const (
 	KindAdminTemporaryUnban = "admin_temporary_unban"
 	// KindAdminRemnaRelink verifies and changes only the local remote identity link.
 	KindAdminRemnaRelink = "admin_remna_relink"
+	// KindAdminMaintenance runs the backup-gated retention maintenance flow.
+	KindAdminMaintenance = "admin_maintenance"
 )

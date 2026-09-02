@@ -25,6 +25,11 @@ type CommunityMembership struct {
 	User          model.User
 }
 
+// CheckCommunityAccess evaluates only the current active-combo window.
+func (s *Service) CheckCommunityAccess(ctx context.Context, user model.User) (bool, error) {
+	return s.hasActiveCombo(ctx, user.ID)
+}
+
 // CheckCommunityMembership asks Telegram for canonical membership facts and
 // evaluates the active-combo window separately from membership history.
 func (s *Service) CheckCommunityMembership(ctx context.Context, user model.User) (CommunityMembership, error) {

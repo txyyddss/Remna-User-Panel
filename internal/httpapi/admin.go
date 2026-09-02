@@ -74,6 +74,7 @@ func (s *Server) mountAdmin(router chi.Router) {
 	router.Get("/refunds", s.adminRefunds)
 	router.Get("/backups", s.adminBackups)
 	router.Post("/backups", s.adminCreateBackup)
+	router.Post("/maintenance", s.adminRunMaintenance)
 	router.Delete("/backups/{id}", s.adminDeleteBackup)
 	router.Get("/jobs", s.adminJobs)
 	router.Post("/jobs/{id}/retry", s.adminRetryJob)

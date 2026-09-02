@@ -23,6 +23,8 @@ stopped.
 - `payment_operations.go` registers durable payment create and cancellation handlers on that dispatcher.
 - `payment_profile_manager.go` probes BEPUSDT profiles at startup and after saves, publishes process-local discovered rails, and reports disabled profiles to every Telegram administrator.
 - `mutation_operation_composition.go` registers subscription, Emby, questionnaire, retry, and refund command handlers.
+- `maintenance_operation.go` registers the durable admin maintenance command with bounded execution, receipt completion, retries, and lease-aware recovery.
+- `maintenance_runner.go` shares the full backup-gated database and migration-snapshot cleanup flow between the scheduler and manual command worker.
 - `payment_refund_adapter.go` reconciles ambiguous Telegram Stars refunds from authoritative transaction history.
 - `application_lifecycle.go` starts and stops provider queues, the scheduler, HTTP serving, and database resources in dependency order.
 - Startup upload reconciliation receives an independent ten-minute context so a large verified candidate is not truncated by the ordinary bootstrap deadline.
@@ -51,6 +53,7 @@ stopped.
 - `abuse_outbox.go` consumes durable detector punishment, restoration, and Telegram delivery jobs.
 - `abuse_scheduler.go` performs startup catch-up and UTC-aligned `:00`/`:30` durable abuse processing.
 - `abuse_outbox_test.go` covers MarkdownV2 escaping for detector notifications.
+- `maintenance_operation_test.go` covers successful, failed, and active-lease maintenance receipts.
 - `remna_statistics_adapter_test.go` covers bounded rounding of Remnawave live numeric fields.
 - `emby_adapter.go` implements queued Emby client creation, account operations, policy updates, and metadata lookups.
 - `scheduler.go` runs prompt temporary-ban restoration, automatic due-renewal revalidation before entitlement transitions, plus recurring outbox, rollover, backup, and maintenance work until application cancellation; verified-backup retention warnings are logged separately from completed cleanup.

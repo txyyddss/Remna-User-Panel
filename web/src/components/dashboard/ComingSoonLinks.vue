@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 
+defineProps<{ hasValidCombo: boolean }>()
+
 const items = [
   { to: '/affiliates', labelKey: 'affiliates.title', noteKey: 'affiliates.dashboardNote', icon: 'i-ph-users-three' },
   { to: '/questionnaire', labelKey: 'nav.questionnaire', noteKey: 'dashboard.questionnaireNote', icon: 'i-ph-list-checks' },
@@ -18,7 +20,7 @@ function goTo(to: string): void {
 </script>
 
 <template>
-  <section class="section-block home-around">
+  <section v-if="hasValidCombo" class="section-block home-around">
     <div class="section-heading">
       <h2>{{ $t('dashboard.aroundTx') }}</h2>
       <span class="section-heading__meta">{{ $t('dashboard.memberTools') }}</span>

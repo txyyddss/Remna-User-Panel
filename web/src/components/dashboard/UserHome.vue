@@ -6,6 +6,7 @@ import InlineNotice from '@/components/common/InlineNotice.vue'
 import OperationStatusNotice from '@/components/common/OperationStatusNotice.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import LanguageControl from '@/components/layout/LanguageControl.vue'
+import { useCommunityAccess } from '@/composables/useCommunityAccess'
 import { useDashboard } from '@/composables/useDashboard'
 import { useI18n } from '@/i18n'
 import BalanceHero from './BalanceHero.vue'
@@ -15,6 +16,7 @@ import SubscriptionPanel from './SubscriptionPanel.vue'
 import UsagePanel from './UsagePanel.vue'
 
 const { dashboard, loading, revoking, revokeBlocked, revokeReceipt, revokeChecking, revokeError, error, usageRatio, catalogNodes, activeSquadNames, load, revokeSubscription, refreshRevoke } = useDashboard()
+const { activeCombo: hasValidCombo, refresh: refreshCommunityAccess } = useCommunityAccess()
 const queuedCancellationNotice = shallowRef(false)
 const route = useRoute()
 const router = useRouter()
@@ -31,6 +33,11 @@ const autoRenewalFailureMessage = computed(() => {
   const localized = t(key)
   return localized === key ? t('home.autoRenewalFailureGeneric') : localized
 })
+
+async function handlePaid(): Promise<void> {
+  await load({ quiet: true })
+  await refreshCommunityAccess()
+}
 
 async function confirmRevoke(): Promise<void> {
   await revokeSubscription()
@@ -86,7 +93,7 @@ function consumeHomeRequest(name: 'revoke' | 'addSquads'): void {
           :balance="dashboard.balance"
           :open-top-up="topUpRequested"
           :reissue-order-id="reissueOrderId"
-          @paid="load({ quiet: true })"
+          @paid="handlePaid"
           @top-up-request-consumed="consumeTopUpRequest"
           @reissue-request-consumed="consumeReissueRequest"
         />
@@ -129,7 +136,7 @@ function consumeHomeRequest(name: 'revoke' | 'addSquads'): void {
             @squads-changed="handleSquadsChanged"
             @squad-addition-request-consumed="consumeHomeRequest('addSquads')"
           />
-          <ComingSoonLinks />
+          <ComingSoonLinks :has-valid-combo="hasValidCombo" />
         </div>
       </div>
     </template>

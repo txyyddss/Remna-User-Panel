@@ -15,6 +15,23 @@ type communityMembershipResponse struct {
 	User          userResponse `json:"user"`
 }
 
+type communityAccessResponse struct {
+	ActiveCombo bool `json:"activeCombo"`
+}
+
+func (s *Server) communityAccess(w http.ResponseWriter, r *http.Request) {
+	user := currentUser(r)
+	if !s.requireOnboarded(w, r, user) {
+		return
+	}
+	active, err := s.deps.Accounts.CheckCommunityAccess(r.Context(), user)
+	if err != nil {
+		s.writeError(w, r, http.StatusBadGateway, "COMMUNITY_ACCESS_UNAVAILABLE", "Community access could not be checked.")
+		return
+	}
+	writeJSON(w, http.StatusOK, communityAccessResponse{ActiveCombo: active})
+}
+
 func (s *Server) communityMembershipCheck(w http.ResponseWriter, r *http.Request) {
 	user := currentUser(r)
 	if !s.requireOnboarded(w, r, user) {

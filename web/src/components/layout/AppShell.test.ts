@@ -9,6 +9,9 @@ import { useSessionStore } from '@/stores/session'
 import AppShell from './AppShell.vue'
 import { desktopNavigationItems } from './navigation'
 
+const api = vi.hoisted(() => ({ getCommunityAccess: vi.fn().mockResolvedValue({ activeCombo: true }) }))
+vi.mock('@/api/client', () => ({ api }))
+
 function session(role: Session['user']['role'] = 'user'): Session {
   return {
     authenticated: true,
@@ -120,5 +123,13 @@ describe('AppShell accessibility', () => {
     expect(home?.type).not.toBe('trigger')
     expect(home?.defaultOpen).toBe(true)
     expect(home?.children).toHaveLength(3)
+  })
+
+  it('only includes the Around TX desktop entry for a valid combo', () => {
+    const withoutCombo = desktopNavigationItems(key => key, false)
+    const withCombo = desktopNavigationItems(key => key, false, true)
+
+    expect(withoutCombo.find(item => item.label === 'nav.aroundTx')).toBeUndefined()
+    expect(withCombo.find(item => item.label === 'nav.aroundTx')).toBeDefined()
   })
 })

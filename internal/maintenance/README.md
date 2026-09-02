@@ -16,6 +16,6 @@ The daily transaction also bounds provider-operation receipts, notification
 deduplication, sessions, abandoned onboarding identities, and maintenance-run
 history. Stale locally debited operations are compensated before removal.
 
-- `service.go` coordinates the locked backup, verification, warning separation, compaction, and purge sequence once per configured local date.
+- `service.go` coordinates the locked backup, verification, warning separation, compaction, and purge sequence; scheduled calls keep the once-per-date guard while manual calls explicitly force a new run.
 - `service_test.go` covers backup-gated cleanup, verified-backup retention warnings, and same-date locking.
 - `README.md` documents the package ownership boundary.

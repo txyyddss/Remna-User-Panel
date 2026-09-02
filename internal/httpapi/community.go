@@ -5,6 +5,7 @@ import (
 )
 
 func (s *Server) mountCommunity(router chi.Router) {
+	router.Get("/api/v1/community/membership/check", s.communityAccess)
 	router.Post("/api/v1/community/membership/check", s.communityMembershipCheck)
 	router.Post("/api/v1/community/invites/{kind}", s.createCommunityInvite)
 	router.Get("/api/v1/activity", s.activityOverview)

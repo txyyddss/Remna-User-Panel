@@ -31,6 +31,19 @@ func (s *Server) adminCreateBackup(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, mapBackupRun(run))
 }
 
+func (s *Server) adminRunMaintenance(w http.ResponseWriter, r *http.Request) {
+	key, ok := s.requireIdempotencyKey(w, r)
+	if !ok {
+		return
+	}
+	receipt, err := s.deps.Admin.QueueMaintenance(r.Context(), currentUser(r).ID, key)
+	if err != nil {
+		s.adminFailure(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusAccepted, receipt)
+}
+
 func (s *Server) adminDeleteBackup(w http.ResponseWriter, r *http.Request) {
 	if err := s.deps.Admin.DeleteBackup(r.Context(), currentUser(r).ID, chiURLParam(r, "id")); err != nil {
 		s.adminFailure(w, r, err)

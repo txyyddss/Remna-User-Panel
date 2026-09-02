@@ -20,6 +20,7 @@ export type User = DeepReadonly<components['schemas']['User']>
 export type AuthState = DeepReadonly<components['schemas']['AuthState']>
 export type Session = AuthState
 export type JoinInvite = DeepReadonly<components['schemas']['JoinInvite']>
+export type CommunityAccess = DeepReadonly<components['schemas']['CommunityAccess']>
 export type CommunityMembership = DeepReadonly<components['schemas']['CommunityMembership']>
 export type CommunitySpace = 'group' | 'channel'
 

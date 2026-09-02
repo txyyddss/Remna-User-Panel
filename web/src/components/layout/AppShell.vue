@@ -2,6 +2,7 @@
 import { computed, nextTick, useTemplateRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { useCommunityAccess } from '@/composables/useCommunityAccess'
 import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
 import { useI18n } from '@/i18n'
 import { useSessionStore } from '@/stores/session'
@@ -14,10 +15,11 @@ const route = useRoute()
 const router = useRouter()
 const sessionStore = useSessionStore()
 const { t } = useI18n()
+const { activeCombo: hasValidCombo, refresh: refreshCommunityAccess } = useCommunityAccess()
 
 const activePath = computed(() => route.path)
 const mobileItems = computed(() => mobileNavigationItems(sessionStore.isAdmin))
-const desktopItems = computed(() => desktopNavigationItems(t, sessionStore.isAdmin))
+const desktopItems = computed(() => desktopNavigationItems(t, sessionStore.isAdmin, hasValidCombo.value))
 const showBackButton = computed(() => !['/', '/home'].includes(route.path))
 const appContent = useTemplateRef<globalThis.HTMLDivElement>('appContent')
 const mainContent = useTemplateRef<globalThis.HTMLElement>('mainContent')
@@ -43,6 +45,7 @@ useTelegramBackButton(showBackButton, goBack)
 
 watch(() => route.path, (_next, previous) => {
   if (!previous) return
+  void refreshCommunityAccess()
   void nextTick()
     .then(() => {
       if (appContent.value) {

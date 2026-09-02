@@ -52,6 +52,26 @@ func TestRunReturnsWithoutWorkWhenDateLeaseIsHeld(t *testing.T) {
 	}
 }
 
+func TestRunManualForcesSameDayRerun(t *testing.T) {
+	repository := &maintenanceRepository{runID: "run-2", acquired: true}
+	backup := &maintenanceBackup{run: model.BackupRun{ID: "backup-2", Status: "complete"}}
+	service := NewService(repository, backup, time.UTC)
+	if _, err := service.RunManual(context.Background(), time.Date(2026, 8, 18, 2, 0, 0, 0, time.UTC)); err != nil {
+		t.Fatalf("RunManual(): %v", err)
+	}
+	if !repository.force {
+		t.Fatal("RunManual() did not request a forced claim")
+	}
+}
+
+func TestRunManualReportsHeldLease(t *testing.T) {
+	repository := &maintenanceRepository{runID: "run-1", acquired: false}
+	service := NewService(repository, &maintenanceBackup{}, time.UTC)
+	if _, err := service.RunManual(context.Background(), time.Date(2026, 8, 18, 2, 0, 0, 0, time.UTC)); !errors.Is(err, ErrBusy) {
+		t.Fatalf("RunManual() error = %v, want ErrBusy", err)
+	}
+}
+
 func TestRunCompactsAfterVerifiedBackupRetentionWarning(t *testing.T) {
 	repository := &maintenanceRepository{runID: "run-1", acquired: true}
 	backup := &maintenanceBackup{run: model.BackupRun{ID: "backup-1", Status: "complete"}, err: errors.New("remove expired backup")}
@@ -75,11 +95,13 @@ type maintenanceRepository struct {
 	calls         []string
 	compactErr    error
 	completionErr error
+	force         bool
 }
 
-func (r *maintenanceRepository) ClaimMaintenanceRun(_ context.Context, date, _ string, _, _ time.Time) (string, bool, error) {
+func (r *maintenanceRepository) ClaimMaintenanceRun(_ context.Context, date, _ string, _, _ time.Time, force bool) (string, bool, error) {
 	r.claims++
 	r.date = date
+	r.force = force
 	return r.runID, r.acquired, nil
 }
 func (r *maintenanceRepository) CompactAndPrune(context.Context, time.Time, time.Time, time.Time) (map[string]int64, error) {

@@ -130,6 +130,7 @@ declare module 'vue' {
     LanguageSwitcher: typeof import('./src/components/common/LanguageSwitcher.vue')['default']
     LoadingScreen: typeof import('./src/components/session/LoadingScreen.vue')['default']
     LuckyDrawPanel: typeof import('./src/components/activity/LuckyDrawPanel.vue')['default']
+    MaintenanceTrigger: typeof import('./src/components/admin/backups/MaintenanceTrigger.vue')['default']
     MarkdownContent: typeof import('./src/components/common/MarkdownContent.vue')['default']
     MarkdownEditorField: typeof import('./src/components/common/MarkdownEditorField.vue')['default']
     OnboardingAgreementEditor: typeof import('./src/components/admin/onboarding/OnboardingAgreementEditor.vue')['default']

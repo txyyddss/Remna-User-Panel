@@ -158,6 +158,18 @@ describe('admin API mutations', () => {
     expect(options.body).toBeUndefined()
   })
 
+  it('queues manual maintenance with the caller-owned idempotency key', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ id: 'operation-1', kind: 'admin_maintenance', status: 'queued' }, 202))
+
+    await api.runAdminMaintenance('maintenance-attempt-1')
+
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('/api/v1/admin/maintenance')
+    expect(options.method).toBe('POST')
+    expect(new Headers(options.headers).get('Idempotency-Key')).toBe('maintenance-attempt-1')
+    expect(options.body).toBeUndefined()
+  })
+
   it('creates and cancels payments with canonical method IDs', async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse({ id: 'payment-1', status: 'pending' }))

@@ -12,7 +12,7 @@ describe('ComingSoonLinks navigation', () => {
     })
     await router.push('/home')
     await router.isReady()
-    const wrapper = mount(ComingSoonLinks, { global: { plugins: [router] } })
+    const wrapper = mount(ComingSoonLinks, { props: { hasValidCombo: true }, global: { plugins: [router] } })
     const launchURL = window.location.href
     const actions = wrapper.findAll('.home-around__link')
     const destinations = ['/affiliates', '/questionnaire', '/community', '/emby', '/statistics', '/abuse-records']
@@ -26,5 +26,16 @@ describe('ComingSoonLinks navigation', () => {
       expect(window.location.href).toBe(launchURL)
       await router.push('/home')
     }
+  })
+
+  it('does not render the Around TX entrance without a valid combo', () => {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/:pathMatch(.*)*', component: { template: '<div />' } }],
+    })
+    const wrapper = mount(ComingSoonLinks, { props: { hasValidCombo: false }, global: { plugins: [router] } })
+
+    expect(wrapper.find('.home-around').exists()).toBe(false)
+    wrapper.unmount()
   })
 })

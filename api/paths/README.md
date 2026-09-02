@@ -9,7 +9,7 @@ Member connection scans, purchase reset/refund resources, operation receipts, st
 - `api-v1-auth-telegram.yaml`: `/api/v1/auth/telegram`
 - `api-v1-me.yaml`: `/api/v1/me`
 - `api-v1-me-traffic-reset-automation.yaml`: `/api/v1/me/traffic-reset-automation`, account-wide automatic reset preference
-- `api-v1-community-membership-check.yaml`: `/api/v1/community/membership/check`
+- `api-v1-community-membership-check.yaml`: `/api/v1/community/membership/check`, with `GET` for read-only active-combo visibility and `POST` for canonical Telegram membership refresh
 - `api-v1-community-invites-kind.yaml`: `/api/v1/community/invites/{kind}`, one identity-bound group or channel invite
 - `api-v1-onboarding-username.yaml`: `/api/v1/onboarding/username`
 - `api-v1-onboarding-agreement.yaml`: `/api/v1/onboarding/agreement`
@@ -119,6 +119,7 @@ Member connection scans, purchase reset/refund resources, operation receipts, st
 - `api-v1-admin-database-mutations-review.yaml`: `/api/v1/admin/database/mutations/review`
 - `api-v1-admin-database-mutations.yaml`: `/api/v1/admin/database/mutations`
 - `api-v1-admin-backups.yaml`: `/api/v1/admin/backups`
+- `api-v1-admin-maintenance.yaml`: `/api/v1/admin/maintenance`, idempotent durable manual maintenance trigger
 - `api-v1-admin-backups-upload.yaml`: `/api/v1/admin/backups/upload`, bounded streamed SQLite validation and staging
 - `api-v1-admin-backups-id-download.yaml`: `/api/v1/admin/backups/{id}/download`
 - `api-v1-admin-backups-id.yaml`: `/api/v1/admin/backups/{id}`

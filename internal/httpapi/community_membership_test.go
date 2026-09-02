@@ -153,3 +153,41 @@ func TestCommunityMembershipTransportErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestCommunityAccessRequiresOnboardingAndUsesCurrentCombo(t *testing.T) {
+	t.Parallel()
+	completed := model.User{ID: "user-1", TelegramID: 42, OnboardingState: "complete"}
+	for _, test := range []struct {
+		name       string
+		user       model.User
+		active     bool
+		wantStatus int
+		wantActive bool
+	}{
+		{name: "onboarding required", user: model.User{OnboardingState: "agreement"}, wantStatus: http.StatusConflict},
+		{name: "active combo", user: completed, active: true, wantStatus: http.StatusOK, wantActive: true},
+		{name: "no active combo", user: completed, wantStatus: http.StatusOK},
+	} {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			repository := &communityHTTPRepository{user: test.user, active: test.active}
+			server := communityMembershipServer(repository, &communityHTTPTelegram{})
+			response := httptest.NewRecorder()
+			server.communityAccess(response, communityRequest(http.MethodGet, "/api/v1/community/membership/check", test.user))
+			if response.Code != test.wantStatus {
+				t.Fatalf("status = %d, want %d", response.Code, test.wantStatus)
+			}
+			if response.Code != http.StatusOK {
+				return
+			}
+			var body communityAccessResponse
+			if err := decodeJSON(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", response.Body), &body); err != nil {
+				t.Fatalf("decode response: %v", err)
+			}
+			if body.ActiveCombo != test.wantActive {
+				t.Fatalf("active combo = %t, want %t", body.ActiveCombo, test.wantActive)
+			}
+		})
+	}
+}

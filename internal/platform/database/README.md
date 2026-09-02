@@ -156,7 +156,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `connection_scans.go` and `connection_scan_lifecycle.go` persist metadata-only provider scan progress.
 - `connection_ip_blocks.go` atomically creates an encrypted active block, its provider operation, and immediate/scheduled jobs; `connection_ip_blocks_mutations.go` owns owner reads and unblock transitions; `connection_ip_block_completion.go` and `connection_ip_block_expiry.go` atomically close linked receipts with sensitive-row transitions.
 - `connection_ip_blocks_test.go` and `connection_ip_block_expiry_test.go` cover replay, target uniqueness, owner isolation, ciphertext-only durability, job atomicity, manual cancellation, and expiry races.
-- `maintenance_runs.go` acquires the configured local-day maintenance lease and records backup-gated cleanup completion.
+- `maintenance_runs.go` acquires the configured local-day maintenance lease, supports forced same-day history rows, and records backup-gated cleanup completion.
 - `administration_records.go` — audit events, administrator user lists, and backup
   run records.
 - `rollover.go` — durable rollover processing and finalization.
@@ -208,7 +208,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `rollover_test.go` — rollover transitions and calculations.
 - `release1_commerce_migration_test.go` covers rolling-month conversion, immutable pricing backfill, and new release-one persistence tables.
 - `retention_test.go` — retained operational-record cleanup behavior.
-- `maintenance_runs_test.go` covers local-day locking and backup-gated maintenance state.
+- `maintenance_runs_test.go` covers local-day locking, forced same-day history, and backup-gated maintenance state.
 - `retention_provider_operations_test.go` covers retaining provider operations referenced by durable administrative and compensation records.
 - `continuity_test.go` covers three-minute provider-expiry preparation without an access gap.
 - `connection_scans_test.go` covers metadata-only scan lifecycle and expiry.

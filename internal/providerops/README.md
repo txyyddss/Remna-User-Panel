@@ -9,6 +9,6 @@ handles remain short-lived service data and are never stored in these records.
 - `connections.go` defines metadata-only connection scan inputs and progress.
 - `validation.go` canonicalizes commands and bounded JSON result objects.
 - `dispatcher.go` routes the one shared outbox lane to kind-specific handlers.
-- `admin_kinds.go` defines administrator command kind names shared at composition, including reviewed node compensation, temporary restrictions, and identity relinks.
+- `admin_kinds.go` defines administrator command kind names shared at composition, including reviewed node compensation, temporary restrictions, identity relinks, and manual maintenance.
 - `command_kinds.go` defines subscription, Emby, questionnaire, retry, and payment-refund command names.
 - `dispatcher_test.go` covers kind routing without provider calls.

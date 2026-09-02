@@ -13,6 +13,7 @@ import { localizedError, useI18n } from '@/i18n'
 import { createUuid } from '@/utils/browserCompatibility'
 import { formatBytes, formatDateTime } from '@/utils/format'
 import AdminSectionState from './AdminSectionState.vue'
+import MaintenanceTrigger from './backups/MaintenanceTrigger.vue'
 import RestoreBackupDialog from './backups/RestoreBackupDialog.vue'
 import BackupUploadPanel from './backups/BackupUploadPanel.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
@@ -54,6 +55,10 @@ async function pollRestore(): Promise<void> {
 }
 function createBackup(): void {
   void backups.perform(() => import('@/api/client').then(({ api }) => api.createAdminBackup()))
+}
+
+function refreshSections(): void {
+  void Promise.allSettled([backups.load(), jobs.load()])
 }
 
 function retryJob(id: string): void {
@@ -135,6 +140,7 @@ onScopeDispose(stopRestorePolling)
       <div><h2>{{ t('adminBackups.title') }}</h2><p>{{ t('adminBackups.copy') }}</p></div>
       <UButton icon="i-ph-archive" :disabled="backups.busy.value" :loading="backups.busy.value" :label="t('adminBackups.create')" @click="createBackup" />
     </div>
+    <MaintenanceTrigger @completed="refreshSections" />
     <BackupUploadPanel @uploaded="backups.load()" />
     <InlineNotice v-if="restoreOperation" :tone="restoreOperation.status === 'failed' ? 'warning' : 'success'" :title="restoreOperation.status === 'complete' ? t('adminBackups.restoreComplete') : restoreOperation.status === 'failed' ? t('adminBackups.restoreFailedTitle') : t('adminBackups.restoreStaged')">{{ t('adminBackups.operationStatus', { id: restoreOperation.id, status: t(`adminBackups.status.${restoreOperation.status}`) }) }} {{ restoreFollowUp(restoreOperation) }}</InlineNotice>
     <InlineNotice v-if="actionError" tone="warning">{{ actionError }}</InlineNotice>

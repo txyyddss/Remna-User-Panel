@@ -14,9 +14,12 @@ import (
 
 const maintenanceLease = 15 * time.Minute
 
+// ErrBusy indicates that another maintenance run still owns the active lease.
+var ErrBusy = errors.New("maintenance is already running")
+
 // Repository owns the daily lease and one atomic compact-and-prune transaction.
 type Repository interface {
-	ClaimMaintenanceRun(context.Context, string, string, time.Time, time.Time) (string, bool, error)
+	ClaimMaintenanceRun(context.Context, string, string, time.Time, time.Time, bool) (string, bool, error)
 	CompactAndPrune(context.Context, time.Time, time.Time, time.Time) (map[string]int64, error)
 	CompleteMaintenanceRun(context.Context, string, string, map[string]int64, error, time.Time) error
 }
@@ -53,8 +56,19 @@ func NewService(repository Repository, backups BackupRunner, location *time.Loca
 }
 
 // Run claims the configured local date, verifies a backup, then compacts and
-// purges records. A failed backup never reaches the purge transaction.
+// purges records. A failed backup never reaches the purge transaction. A
+// successful run for the local date is not repeated by the scheduler.
 func (s *Service) Run(ctx context.Context, at time.Time) (RunResult, error) {
+	return s.run(ctx, at, false)
+}
+
+// RunManual performs the complete maintenance flow even when the local date
+// already has a successful run. An active lease remains exclusive.
+func (s *Service) RunManual(ctx context.Context, at time.Time) (RunResult, error) {
+	return s.run(ctx, at, true)
+}
+
+func (s *Service) run(ctx context.Context, at time.Time, force bool) (RunResult, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	result := RunResult{}
@@ -65,9 +79,15 @@ func (s *Service) Run(ctx context.Context, at time.Time) (RunResult, error) {
 	now = now.UTC()
 	local := now.In(s.location)
 	date := local.Format(time.DateOnly)
-	runID, acquired, err := s.repository.ClaimMaintenanceRun(ctx, date, s.owner, now.Add(maintenanceLease), now)
-	if err != nil || !acquired {
+	runID, acquired, err := s.repository.ClaimMaintenanceRun(ctx, date, s.owner, now.Add(maintenanceLease), now, force)
+	if err != nil {
 		return result, err
+	}
+	if !acquired {
+		if force {
+			return result, ErrBusy
+		}
+		return result, nil
 	}
 	backup, backupErr := s.backups.Run(ctx)
 	if backup.Status != "complete" {

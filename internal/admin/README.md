@@ -15,7 +15,7 @@ Audited administrative operations for catalog data, settings, balances, refunds,
 - `payment_profile_channels.go` discovers BEPUSDT currency/network rails through the queued readiness probe and disables profiles whose probe fails.
 - `payment_profile_readiness.go` maps enabled provider profiles to stable readiness diagnostics.
 - `setting_validators.go` contains the individual setting-value validators.
-- `mutation_operations.go` creates idempotent administrator outbox-retry and payment-refund receipts.
+- `mutation_operations.go` creates idempotent administrator outbox-retry, payment-refund, and manual-maintenance receipts.
 - `mutation_worker.go` dispatches administrator mutation commands from the shared provider-operation lane.
 - `mutation_lifecycle.go` marks administrator operation items and receipts through one bounded lifecycle.
 - `refund_worker.go` reconciles Telegram Stars outcomes before applying one local payment refund.
@@ -32,6 +32,7 @@ Audited administrative operations for catalog data, settings, balances, refunds,
 - `user_provider_commands.go` validates temporary-ban, restoration, and Remnawave relink requests.
 - `user_provider_worker.go` applies queued account restrictions and relinks without mutating the former remote account.
 - `service_test.go` covers settings forwarding and catalog operations.
+- `mutation_operations_test.go` covers idempotent manual-maintenance queueing and its audit event.
 - `finance_test.go` covers balance, refund, cancellation, backup, and retry operations.
 - `service_test_helpers_test.go` contains shared admin service test doubles.
 - `settings_test.go` covers secret handling, safe listing, readiness, and validators.

@@ -170,6 +170,9 @@ export const api = {
   }),
   retryAdminJob,
   deleteAdminJob: (jobId: string) => request<void>(`/api/v1/admin/jobs/${encodeURIComponent(jobId)}`, { method: 'DELETE' }),
+  runAdminMaintenance: (idempotencyKey: string) => request<OperationReceipt>('/api/v1/admin/maintenance', {
+    method: 'POST', headers: { 'Idempotency-Key': idempotencyKey },
+  }),
   createAdminBackup: () => request<BackupRecord>('/api/v1/admin/backups', { method: 'POST' }),
   adjustBalance: (userId: string, amountMinor: string, reason: string) => request<LedgerEntry>(`/api/v1/admin/users/${encodeURIComponent(userId)}/balance-adjustments`, {
     method: 'POST',

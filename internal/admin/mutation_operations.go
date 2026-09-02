@@ -35,6 +35,11 @@ func (s *Service) QueueJobRetry(ctx context.Context, actorID, jobID, key string)
 	return s.queueMutation(ctx, actorID, actorID, providerops.KindOutboxRetry, key, "outbox_job", jobID, nil)
 }
 
+// QueueMaintenance creates or replays an audited manual maintenance command.
+func (s *Service) QueueMaintenance(ctx context.Context, actorID, key string) (model.OperationReceipt, error) {
+	return s.queueMutation(ctx, actorID, actorID, providerops.KindAdminMaintenance, key, "maintenance", "retention", nil)
+}
+
 // QueueRefund creates or replays a provider-aware payment refund command.
 func (s *Service) QueueRefund(ctx context.Context, actorID, orderID, reason, key string) (model.OperationReceipt, error) {
 	reason = strings.TrimSpace(reason)
