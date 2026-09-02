@@ -90,6 +90,9 @@ func (a *Application) runScheduler(ctx context.Context, startupComplete chan<- s
 				if maintenanceResult.BackupRetentionWarning != nil {
 					a.logger.Warn("verified backup retention failed after daily cleanup", "error", maintenanceResult.BackupRetentionWarning)
 				}
+				if maintenanceResult.MigrationSnapshotRetentionWarning != nil {
+					a.logger.Error("migration snapshot retention failed", "error", maintenanceResult.MigrationSnapshotRetentionWarning)
+				}
 			}
 			cancel()
 			maintenanceTimer.Reset(time.Until(a.nextMaintenance(time.Now())))

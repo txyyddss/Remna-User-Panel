@@ -2,31 +2,33 @@ package app
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/maintenance"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 )
 
+type maintenanceTaskResult struct {
+	maintenance.RunResult
+	MigrationSnapshotRetentionWarning error
+}
+
 // runMaintenanceTask keeps the scheduled and manual commands on the same
 // backup-gated cleanup path, including adjacent migration snapshot pruning.
-func runMaintenanceTask(ctx context.Context, service *maintenance.Service, databasePath string,
-	at time.Time, force bool) (maintenance.RunResult, error) {
+func runMaintenanceTask(ctx context.Context, service *maintenance.Service, databasePath string, at time.Time,
+	force bool) (maintenanceTaskResult, error) {
 	var (
-		result maintenance.RunResult
+		result maintenanceTaskResult
 		err    error
 	)
 	if force {
-		result, err = service.RunManual(ctx, at)
+		result.RunResult, err = service.RunManual(ctx, at)
 	} else {
-		result, err = service.Run(ctx, at)
+		result.RunResult, err = service.Run(ctx, at)
 	}
 	if err != nil {
 		return result, err
 	}
-	if err := database.PruneExpansionBackups(databasePath, at); err != nil {
-		return result, fmt.Errorf("prune migration snapshots: %w", err)
-	}
+	result.MigrationSnapshotRetentionWarning = database.PruneExpansionBackups(databasePath, at)
 	return result, nil
 }

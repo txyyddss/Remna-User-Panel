@@ -56,8 +56,13 @@ func (h *maintenanceOperationHandler) HandleProviderOperation(ctx context.Contex
 		return h.complete(ctx, operation, item, providerops.Completion{Status: providerops.StatusFailed, ErrorCode: "MAINTENANCE_FAILED"})
 	}
 	resultJSON := "{}"
-	if result.BackupRetentionWarning != nil {
+	switch {
+	case result.BackupRetentionWarning != nil && result.MigrationSnapshotRetentionWarning != nil:
+		resultJSON = `{"backupRetentionWarning":true,"migrationSnapshotRetentionWarning":true}`
+	case result.BackupRetentionWarning != nil:
 		resultJSON = `{"backupRetentionWarning":true}`
+	case result.MigrationSnapshotRetentionWarning != nil:
+		resultJSON = `{"migrationSnapshotRetentionWarning":true}`
 	}
 	return h.complete(ctx, operation, item, providerops.Completion{Status: providerops.StatusSucceeded, ResultJSON: resultJSON})
 }
