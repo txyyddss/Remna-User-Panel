@@ -23,7 +23,7 @@ const emit = defineEmits<{
 const types: readonly SquadType[] = ['international_network', 'broadband', 'china_optimized']
 const squadOrder = computed(() => new Map(props.orderedIds.map((id, index) => [id, index])))
 const visibleSquads = computed(() => props.squads
-  .filter(squad => squad.profile && !props.hiddenIds?.includes(squad.id))
+  .filter(squad => squad.profile && !props.includedIds.includes(squad.id) && !props.hiddenIds?.includes(squad.id))
   .map((squad, index) => ({ squad, index }))
   .sort((left, right) => {
     const fallback = props.orderedIds.length
@@ -41,7 +41,6 @@ function squadsFor(type: SquadType): readonly SquadProduct[] {
   <section class="squad-selector">
     <div class="section-heading section-heading--stacked">
       <h2>{{ $t('catalog.optionalSquads') }}</h2>
-      <p>{{ $t('catalog.optionalSquadsHint') }}</p>
     </div>
     <div v-if="visibleSquads.length" class="squad-pricing-groups">
       <template v-for="type in types" :key="type">

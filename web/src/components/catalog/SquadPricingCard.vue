@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 
 import type { SquadProduct } from '@/api/types'
+import SquadProfileFacts from '@/components/squad-profile/SquadProfileFacts.vue'
 import SquadProfileSummary from '@/components/squad-profile/SquadProfileSummary.vue'
 import { useI18n } from '@/i18n'
 import { formatMoney } from '@/utils/format'
@@ -42,50 +43,56 @@ function toggle(): void {
     class="squad-pricing-card"
     :class="[
       `squad-pricing-card--${squad.profile?.type ?? 'unconfigured'}`,
-      { 'squad-pricing-card--selected': selected, 'squad-pricing-card--included': included },
+      {
+        'squad-pricing-card--selected': selected,
+        'squad-pricing-card--included': included,
+        'squad-pricing-card--nonselectable': included || isFull,
+      },
     ]"
     :aria-label="squad.name"
+    :aria-pressed="!included && !isFull ? selected : undefined"
+    :role="!included && !isFull ? 'button' : undefined"
+    :tabindex="!included && !isFull ? 0 : undefined"
+    @click="toggle"
+    @keydown.enter.prevent="toggle"
+    @keydown.space.prevent="toggle"
   >
-    <SquadProfileSummary
-      :name="squad.name"
-      :profile="squad.profile"
-      :description="squad.description"
-      compact
-      presentation="member"
-    >
-      <template #nameTags>
-        <UIcon v-if="featured" name="i-ph-crown" :aria-label="$t('catalog.featured')" />
-        <UBadge v-if="squad.activationRequired" color="warning" variant="subtle" :label="$t('catalog.activationRequired')" />
-        <UBadge v-if="isFull" color="error" variant="subtle" :label="$t('catalog.full')" />
-        <span v-if="!included && !isFull" class="squad-card__remaining" :aria-label="$t('catalog.remaining')">
-          <UIcon name="i-ph-gauge" aria-hidden="true" />
-          <strong>{{ remainingBadgeText }}</strong>
-        </span>
-      </template>
-      <template #headingMeta>
-        <UIcon v-if="selected" name="i-ph-check-bold" aria-hidden="true" />
-      </template>
-    </SquadProfileSummary>
-
-    <div v-if="squad.accessibleNodes.length" class="squad-card__nodes">
-      <span class="squad-card__nodes-label">{{ $t('catalog.nodes') }}</span>
-      <SquadNodeBlocks :nodes="squad.accessibleNodes" @open-geocheck="emit('openGeocheck', $event)" />
+    <div class="squad-card__header">
+      <SquadProfileSummary
+        :name="squad.name"
+        :profile="squad.profile"
+        :description="squad.visible ? squad.description : undefined"
+        compact
+        presentation="member"
+        :show-facts="false"
+      >
+        <template #namePrefix>
+          <UIcon v-if="featured" class="squad-card__featured" name="i-ph-crown" :aria-label="$t('catalog.featured')" />
+        </template>
+        <template #nameTags>
+          <UIcon v-if="!squad.visible" name="i-ph-lock-key" :aria-label="$t('catalog.hidden')" />
+          <UBadge v-if="squad.activationRequired" color="warning" variant="subtle" :label="$t('catalog.activationRequired')" />
+          <UBadge v-if="isFull" color="error" variant="subtle" :label="$t('catalog.full')" />
+          <span v-if="!included && !isFull" class="squad-card__remaining" :aria-label="$t('catalog.remaining')">
+            <UIcon name="i-ph-gauge" aria-hidden="true" />
+            <strong>{{ remainingBadgeText }}</strong>
+          </span>
+        </template>
+        <template #headingMeta>
+          <UIcon v-if="selected" name="i-ph-check-bold" aria-hidden="true" />
+        </template>
+      </SquadProfileSummary>
+      <div v-if="!included" class="squad-card__price">
+        <strong>{{ formatMoney(squad.price) }}</strong>
+      </div>
     </div>
 
-    <div v-if="!included" class="squad-card__purchase">
-      <strong>{{ formatMoney(squad.price) }}</strong>
-      <UButton
-        type="button"
-        block
-        size="lg"
-        :disabled="isFull"
-        :color="selected ? 'success' : 'neutral'"
-        :variant="selected ? 'solid' : 'outline'"
-        :label="$t(isFull ? 'catalog.full' : selected ? 'catalog.selectedBadge' : 'catalog.selectSquad')"
-        :aria-pressed="selected"
-        data-haptic="select"
-        @click="toggle"
-      />
+    <div v-if="squad.accessibleNodes.length" class="squad-card__nodes" @click.stop>
+      <div class="squad-card__nodes-heading">
+        <span class="squad-card__nodes-label">{{ $t('catalog.nodes') }}</span>
+        <SquadProfileFacts class="squad-card__tags" :profile="squad.profile" presentation="member" />
+      </div>
+      <SquadNodeBlocks :nodes="squad.accessibleNodes" @open-geocheck="emit('openGeocheck', $event)" />
     </div>
   </article>
 </template>
@@ -99,12 +106,18 @@ function toggle(): void {
   border: 1px solid var(--line);
   border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--surface-strong) 78%, transparent);
+  cursor: pointer;
 }
+.squad-pricing-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.squad-pricing-card--nonselectable { cursor: default; }
 .squad-pricing-card--selected {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 9%, var(--surface-strong));
 }
 .squad-pricing-card--included { opacity: 0.78; }
+.squad-card__header { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.65rem; align-items: start; }
+.squad-card__price { min-width: 0; padding-top: 0.05rem; text-align: right; }
+.squad-card__price > strong { display: block; white-space: nowrap; font-family: var(--font-mono); font-size: 1.1rem; }
 .squad-card__remaining { display: inline-flex; align-items: center; gap: 0.2rem; padding: 0.18rem 0.35rem; border: 1px solid var(--line); border-radius: 999px; color: var(--text-muted); font-size: 0.65rem; line-height: 1.2; }
 .squad-card__remaining strong { color: var(--text); font-family: var(--font-mono); font-weight: 700; }
 .squad-card__nodes {
@@ -113,6 +126,8 @@ function toggle(): void {
   padding-top: 0.65rem;
   border-top: 1px solid var(--line);
 }
+.squad-card__nodes-heading { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 0.55rem; }
+.squad-card__tags { justify-content: flex-end; margin-top: -0.25rem; }
 .squad-card__nodes-label {
   color: var(--text-muted);
   font-size: 0.68rem;
@@ -120,6 +135,4 @@ function toggle(): void {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.squad-card__purchase { display: grid; gap: 0.6rem; }
-.squad-card__purchase > strong { font-family: var(--font-mono); font-size: 1.1rem; }
 </style>

@@ -50,6 +50,7 @@
     "resetUnit": { "day": "天", "week": "周", "month": "月" },
     "includedSquads": "已包含节点组",
     "includedSquadCount": "{count}",
+    "hidden": "\u5df2\u9690\u85cf\u8282\u70b9\u7ec4",
     "optionalSquads": "可选区域",
     "optionalSquadsHint": "将区域加入同一流量预算和订阅周期。",
     "featured": "精选",

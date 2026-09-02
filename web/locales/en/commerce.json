@@ -49,6 +49,7 @@
     "resetUnit": { "day": "day", "week": "week", "month": "month" },
     "includedSquads": "Included squads",
     "includedSquadCount": "{count}",
+    "hidden": "Hidden squad",
     "optionalSquads": "Optional squads",
     "optionalSquadsHint": "Add regions to the same traffic budget and subscription term.",
     "featured": "Featured",

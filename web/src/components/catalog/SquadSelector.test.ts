@@ -55,6 +55,16 @@ describe('SquadSelector', () => {
     expect(wrapper.text()).not.toContain(unconfigured.name)
   })
 
+  it('omits combo-included squads from the optional squad step', () => {
+    const wrapper = shallowMount(SquadSelector, {
+      props: { squads: [international, broadband], selectedIds: [], includedIds: [international.id], featuredIds: [], orderedIds: [international.id, broadband.id] },
+    })
+
+    const tables = wrapper.findAllComponents(SquadPricingTable)
+    expect(tables).toHaveLength(1)
+    expect(tables[0]!.props('squads')).toEqual([broadband])
+  })
+
   it('forwards table selection and Geocheck events', async () => {
     const wrapper = shallowMount(SquadSelector, {
       props: { squads: [international], selectedIds: [], includedIds: [], featuredIds: [], orderedIds: [international.id] },
