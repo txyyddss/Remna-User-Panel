@@ -71,7 +71,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `affiliate_queries.go` projects member metrics, progress, and fixed referral pages with Telegram first/last names.
 - `affiliate_settlement.go` creates immutable first-payment commission snapshots and jobs.
 - `affiliate_rewards.go` applies exact-once tier rewards through shared transaction helpers.
-- `affiliate_settlement_test.go` covers first-payment uniqueness, floor rounding, pre-upgrade rates, and exact-once TXB awards.
+- `affiliate_settlement_test.go` covers first-payment uniqueness, floor rounding, pre-upgrade rates, exact-once TXB awards, and retention-preserved payment evidence.
 - `affiliate_referrals_test.go` covers missing, self, frozen, and authentication-locked inviters plus locale normalization.
 - `affiliate_config_test.go` covers immutable version increments and stale-write conflicts.
 - `notification_events.go` owns semantic event deduplication and atomic outbox
@@ -241,7 +241,7 @@ remain available for decryption fallback, while new writes use the stable
 profile record and preserve masked credentials.
 
 `billing_courtesy_test.go` covers terminal-payment courtesy-credit atomicity,
-idempotent replay, and late-provider-callback blocking.
+idempotent replay, late-provider-callback blocking, and retention-preserved payment evidence.
 
 `renewal_coupon.go` provides read-only recurring coupon reuse for retained legacy
 batch pricing without coupon-use writes. `renewal_batch.go` projects retained

@@ -56,3 +56,45 @@ func TestAffiliateSettlementUsesPreUpgradeTierOnce(t *testing.T) {
 		t.Fatalf("settlements/awards = %d/%d, want 1/1", settlements, awards)
 	}
 }
+
+func TestCompactAndPrunePreservesAffiliatePaymentEvidence(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := newTestStore(t)
+	createTestUser(t, store, 703)
+	if _, accepted, err := store.AcceptAffiliateReferral(ctx, 704, 703, time.Now().UTC()); err != nil || !accepted {
+		t.Fatalf("AcceptAffiliateReferral() = %v, %v", accepted, err)
+	}
+	invitee, _, err := store.UpsertTelegramUser(ctx, model.TelegramProfile{ID: 704, FirstName: "Invitee", Username: "invitee"}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	settledAt := time.Date(2026, time.August, 1, 2, 0, 0, 0, time.UTC)
+	order := createTestPaymentOrder(t, store, invitee.ID, "ezpay", 1_000, settledAt)
+	if _, changed, err := store.SettlePayment(ctx, "ezpay", "affiliate-retention", "hash", order.ID, "trade-retention", "", settledAt); err != nil || !changed {
+		t.Fatalf("SettlePayment() = %v, %v", changed, err)
+	}
+	if _, err := store.DB().ExecContext(ctx, `UPDATE payment_orders SET updated_at=? WHERE id=?`, stamp(settledAt), order.ID); err != nil {
+		t.Fatalf("age payment order: %v", err)
+	}
+
+	now := settledAt.Add(8 * 24 * time.Hour)
+	counts, err := store.CompactAndPrune(ctx, now.Add(-7*24*time.Hour), now.Add(-24*time.Hour), now)
+	if err != nil {
+		t.Fatalf("CompactAndPrune(): %v", err)
+	}
+	if counts["payment_orders"] != 0 {
+		t.Fatalf("pruned payment orders = %d, want 0", counts["payment_orders"])
+	}
+	if _, err := store.PaymentOrderByID(ctx, order.ID); err != nil {
+		t.Fatalf("PaymentOrderByID() = %v, want preserved affiliate evidence", err)
+	}
+	var settlements int
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM affiliate_settlements WHERE payment_order_id=?`, order.ID).Scan(&settlements); err != nil {
+		t.Fatalf("count affiliate settlements: %v", err)
+	}
+	if settlements != 1 {
+		t.Fatalf("affiliate settlements = %d, want 1", settlements)
+	}
+}

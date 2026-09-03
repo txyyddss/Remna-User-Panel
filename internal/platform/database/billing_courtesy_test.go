@@ -62,3 +62,42 @@ func TestCourtesyCreditPreservesTerminalPaymentState(t *testing.T) {
 		t.Fatalf("CourtesyCreditPayment(failed): %v", err)
 	}
 }
+
+func TestCompactAndPrunePreservesCourtesyCreditEvidence(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := newTestStore(t)
+	member := createTestUser(t, store, 10_009)
+	admin := createTestUser(t, store, 10_010)
+	creditedAt := time.Date(2026, time.August, 1, 10, 0, 0, 0, time.UTC)
+	order := createTestPaymentOrder(t, store, member.ID, "ezpay", 2_500, creditedAt)
+	if err := store.ExpirePaymentOrder(ctx, order.ID, "ezpay", creditedAt); err != nil {
+		t.Fatalf("ExpirePaymentOrder(): %v", err)
+	}
+	if _, err := store.CourtesyCreditPayment(ctx, admin.ID, order.ID, "provider support confirmed failure", creditedAt); err != nil {
+		t.Fatalf("CourtesyCreditPayment(): %v", err)
+	}
+	if _, err := store.DB().ExecContext(ctx, `UPDATE payment_orders SET updated_at=? WHERE id=?`, stamp(creditedAt), order.ID); err != nil {
+		t.Fatalf("age payment order: %v", err)
+	}
+
+	now := creditedAt.Add(8 * 24 * time.Hour)
+	counts, err := store.CompactAndPrune(ctx, now.Add(-7*24*time.Hour), now.Add(-24*time.Hour), now)
+	if err != nil {
+		t.Fatalf("CompactAndPrune(): %v", err)
+	}
+	if counts["payment_orders"] != 0 {
+		t.Fatalf("pruned payment orders = %d, want 0", counts["payment_orders"])
+	}
+	if _, err := store.PaymentOrderByID(ctx, order.ID); err != nil {
+		t.Fatalf("PaymentOrderByID() = %v, want preserved courtesy-credit evidence", err)
+	}
+	var credits int
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM courtesy_credits WHERE payment_order_id=?`, order.ID).Scan(&credits); err != nil {
+		t.Fatalf("count courtesy credits: %v", err)
+	}
+	if credits != 1 {
+		t.Fatalf("courtesy credits = %d, want 1", credits)
+	}
+}
