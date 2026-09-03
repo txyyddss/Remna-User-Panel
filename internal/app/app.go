@@ -137,7 +137,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	if err := registerMutationOperationHandlers(operationDispatcher, catalogService, embyOperations, questionnaireService, adminService); err != nil {
 		return cleanup(err)
 	}
-	if err := registerMaintenanceOperationHandler(operationDispatcher, store, maintenanceService, cfg.DatabasePath); err != nil {
+	if err := registerMaintenanceOperationHandler(operationDispatcher, store, maintenanceService, cfg.DatabasePath, logger); err != nil {
 		return cleanup(err)
 	}
 	if err := registerAdminOperationHandlers(operationDispatcher, store, remna); err != nil {

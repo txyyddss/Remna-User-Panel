@@ -23,7 +23,7 @@ stopped.
 - `payment_operations.go` registers durable payment create and cancellation handlers on that dispatcher.
 - `payment_profile_manager.go` probes BEPUSDT profiles at startup and after saves, publishes process-local discovered rails, and reports disabled profiles to every Telegram administrator.
 - `mutation_operation_composition.go` registers subscription, Emby, questionnaire, retry, and refund command handlers.
-- `maintenance_operation.go` registers the durable admin maintenance command with bounded execution, receipt completion, retries, and lease-aware recovery.
+- `maintenance_operation.go` registers the durable admin maintenance command with bounded execution, receipt completion, retries, lease-aware recovery, and structured failure diagnostics.
 - `maintenance_runner.go` shares the full backup-gated database and migration-snapshot cleanup flow between the scheduler and manual command worker.
 - `payment_refund_adapter.go` reconciles ambiguous Telegram Stars refunds from authoritative transaction history.
 - `application_lifecycle.go` starts and stops provider queues, the scheduler, HTTP serving, and database resources in dependency order.

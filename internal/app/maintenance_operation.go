@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/maintenance"
@@ -23,22 +24,23 @@ type maintenanceOperationHandler struct {
 	repository   maintenanceOperationRepository
 	maintenance  *maintenance.Service
 	databasePath string
+	logger       *slog.Logger
 	now          func() time.Time
 }
 
 func registerMaintenanceOperationHandler(dispatcher *providerops.Dispatcher, repository maintenanceOperationRepository,
-	service *maintenance.Service, databasePath string) error {
+	service *maintenance.Service, databasePath string, logger *slog.Logger) error {
 	if dispatcher == nil || repository == nil || service == nil || databasePath == "" {
 		return errors.New("maintenance operation dependencies are incomplete")
 	}
-	handler := &maintenanceOperationHandler{repository: repository, maintenance: service, databasePath: databasePath, now: time.Now}
+	handler := &maintenanceOperationHandler{repository: repository, maintenance: service, databasePath: databasePath, logger: logger, now: time.Now}
 	if err := dispatcher.Register(providerops.KindAdminMaintenance, handler); err != nil {
 		return fmt.Errorf("register %s operation: %w", providerops.KindAdminMaintenance, err)
 	}
 	return nil
 }
 
-func (h *maintenanceOperationHandler) HandleProviderOperation(ctx context.Context, operation providerops.Operation, _ model.OutboxJob) error {
+func (h *maintenanceOperationHandler) HandleProviderOperation(ctx context.Context, operation providerops.Operation, job model.OutboxJob) error {
 	operation, item, err := h.start(ctx, operation)
 	if err != nil {
 		return err
@@ -50,6 +52,7 @@ func (h *maintenanceOperationHandler) HandleProviderOperation(ctx context.Contex
 		return runErr
 	}
 	if runErr != nil {
+		h.logRunFailure(operation.Receipt.ID, item.Key, job.ID, runErr)
 		if errors.Is(runErr, context.Canceled) || errors.Is(runErr, context.DeadlineExceeded) {
 			return runErr
 		}
@@ -65,6 +68,14 @@ func (h *maintenanceOperationHandler) HandleProviderOperation(ctx context.Contex
 		resultJSON = `{"migrationSnapshotRetentionWarning":true}`
 	}
 	return h.complete(ctx, operation, item, providerops.Completion{Status: providerops.StatusSucceeded, ResultJSON: resultJSON})
+}
+
+func (h *maintenanceOperationHandler) logRunFailure(operationID, itemKey, jobID string, runErr error) {
+	if h.logger == nil {
+		return
+	}
+	h.logger.Error("manual maintenance failed", "operation_id", operationID, "operation_item_key", itemKey,
+		"outbox_job_id", jobID, "error", runErr)
 }
 
 func (h *maintenanceOperationHandler) start(ctx context.Context, operation providerops.Operation) (providerops.Operation, providerops.Item, error) {
