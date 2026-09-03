@@ -43,7 +43,7 @@ func (h *maintenanceOperationHandler) HandleProviderOperation(ctx context.Contex
 	if err != nil {
 		return err
 	}
-	runCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	runCtx, cancel := context.WithTimeout(ctx, maintenance.RunTimeout)
 	defer cancel()
 	result, runErr := runMaintenanceTask(runCtx, h.maintenance, h.databasePath, h.now().UTC(), true)
 	if errors.Is(runErr, maintenance.ErrBusy) {

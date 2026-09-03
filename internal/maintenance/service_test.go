@@ -41,6 +41,20 @@ func TestRunSkipsCompactionWhenBackupFails(t *testing.T) {
 	}
 }
 
+func TestRunRecordsFailureWhenWorkerContextExpires(t *testing.T) {
+	repository := &maintenanceRepository{runID: "run-1", acquired: true}
+	backup := &maintenanceBackup{err: context.DeadlineExceeded}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	if _, err := NewService(repository, backup, time.UTC).Run(ctx, time.Date(2026, 8, 18, 2, 0, 0, 0, time.UTC)); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("Run() error = %v, want deadline exceeded", err)
+	}
+	if repository.completedErr == nil || repository.completionContextErr != nil {
+		t.Fatalf("completed error=%v completion context error=%v", repository.completedErr, repository.completionContextErr)
+	}
+}
+
 func TestRunReturnsWithoutWorkWhenDateLeaseIsHeld(t *testing.T) {
 	repository := &maintenanceRepository{acquired: false}
 	service := NewService(repository, &maintenanceBackup{}, time.UTC)
@@ -85,17 +99,18 @@ func TestRunCompactsAfterVerifiedBackupRetentionWarning(t *testing.T) {
 }
 
 type maintenanceRepository struct {
-	runID         string
-	acquired      bool
-	claims        int
-	date          string
-	backupID      string
-	counts        map[string]int64
-	completedErr  error
-	calls         []string
-	compactErr    error
-	completionErr error
-	force         bool
+	runID                string
+	acquired             bool
+	claims               int
+	date                 string
+	backupID             string
+	counts               map[string]int64
+	completedErr         error
+	completionContextErr error
+	calls                []string
+	compactErr           error
+	completionErr        error
+	force                bool
 }
 
 func (r *maintenanceRepository) ClaimMaintenanceRun(_ context.Context, date, _ string, _, _ time.Time, force bool) (string, bool, error) {
@@ -111,8 +126,9 @@ func (r *maintenanceRepository) CompactAndPrune(context.Context, time.Time, time
 	}
 	return r.counts, r.compactErr
 }
-func (r *maintenanceRepository) CompleteMaintenanceRun(_ context.Context, _, backupID string, counts map[string]int64, runErr error, _ time.Time) error {
+func (r *maintenanceRepository) CompleteMaintenanceRun(ctx context.Context, _, backupID string, counts map[string]int64, runErr error, _ time.Time) error {
 	r.backupID, r.counts, r.completedErr = backupID, counts, runErr
+	r.completionContextErr = ctx.Err()
 	return r.completionErr
 }
 

@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"time"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/maintenance"
 )
 
 func (a *Application) runScheduler(ctx context.Context, startupComplete chan<- struct{}) {
@@ -81,7 +83,7 @@ func (a *Application) runScheduler(ctx context.Context, startupComplete chan<- s
 		case <-starsTicker.C:
 			a.reconcileStars(ctx)
 		case <-maintenanceTimer.C:
-			maintenanceCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+			maintenanceCtx, cancel := context.WithTimeout(ctx, maintenance.RunTimeout)
 			maintenanceNow := time.Now().UTC()
 			maintenanceResult, err := runMaintenanceTask(maintenanceCtx, a.maintenance, a.config.DatabasePath, maintenanceNow, false)
 			if err != nil && !errors.Is(err, context.Canceled) {

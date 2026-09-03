@@ -12,7 +12,15 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 )
 
-const maintenanceLease = 15 * time.Minute
+const (
+	maintenanceCompletionTimeout = 5 * time.Second
+	maintenanceLease             = RunTimeout + maintenanceCompletionTimeout
+)
+
+// RunTimeout bounds one scheduled or manual online backup and retention pass.
+// The lease remains valid slightly longer so a timed-out run can record its
+// failure without another process starting overlapping maintenance.
+const RunTimeout = 45 * time.Minute
 
 // ErrBusy indicates that another maintenance run still owns the active lease.
 var ErrBusy = errors.New("maintenance is already running")
@@ -102,5 +110,7 @@ func (s *Service) run(ctx context.Context, at time.Time, force bool) (RunResult,
 }
 
 func (s *Service) complete(ctx context.Context, runID, backupID string, counts map[string]int64, runErr error, now time.Time) error {
-	return s.repository.CompleteMaintenanceRun(ctx, runID, backupID, counts, runErr, now)
+	completionCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), maintenanceCompletionTimeout)
+	defer cancel()
+	return s.repository.CompleteMaintenanceRun(completionCtx, runID, backupID, counts, runErr, now)
 }
