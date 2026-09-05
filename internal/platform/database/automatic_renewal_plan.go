@@ -109,11 +109,7 @@ func automaticRenewalPlanTx(ctx context.Context, tx *sql.Tx, userID, purchaseID 
 	}
 	plan.Combo = combo
 	plan.GrossMinor, plan.DiscountMinor, plan.NetMinor = combo.PriceTXBMinor, 0, combo.PriceTXBMinor
-	addons, err := automaticRenewalAddonsTx(ctx, tx, purchase.ID)
-	if errors.Is(err, ErrNotFound) {
-		plan.IneligibleReason = AutoRenewalReasonPaidAddonUnavailable
-		return plan, nil
-	}
+	addons, err := renewalAddonsTx(ctx, tx, purchase.ID)
 	if err != nil {
 		return AutoRenewalPlan{}, err
 	}
@@ -123,12 +119,7 @@ func automaticRenewalPlanTx(ctx context.Context, tx *sql.Tx, userID, purchaseID 
 		plan.GrossMinor += addon.PriceTXBMinor
 		addonIDs = append(addonIDs, addon.RemnaSquadUUID)
 	}
-	if err := checkSquadStockTx(ctx, tx, addonIDs, userID); errors.Is(err, ErrStockUnavailable) {
-		plan.IneligibleReason = AutoRenewalReasonPaidAddonUnavailable
-		return plan, nil
-	} else if err != nil {
-		return AutoRenewalPlan{}, err
-	}
+	plan.NetMinor = plan.GrossMinor
 	discount := coupons.Discount{GrossMinor: plan.GrossMinor, NetMinor: plan.GrossMinor}
 	if purchase.RecurringDiscountAttached {
 		if purchase.CouponGrantID == nil {
@@ -145,26 +136,10 @@ func automaticRenewalPlanTx(ctx context.Context, tx *sql.Tx, userID, purchaseID 
 		}
 	}
 	plan.DiscountMinor, plan.NetMinor = discount.DiscountMinor, discount.NetMinor
+	if err := checkSquadStockTx(ctx, tx, addonIDs, userID); errors.Is(err, ErrStockUnavailable) {
+		plan.IneligibleReason = AutoRenewalReasonPaidAddonUnavailable
+	} else if err != nil {
+		return AutoRenewalPlan{}, err
+	}
 	return plan, nil
-}
-
-func automaticRenewalAddonsTx(ctx context.Context, tx *sql.Tx, purchaseID string) ([]model.SquadProduct, error) {
-	rows, err := tx.QueryContext(ctx, `SELECT remna_squad_uuid FROM purchase_addons WHERE purchase_id=? ORDER BY remna_squad_uuid`, purchaseID)
-	if err != nil {
-		return nil, fmt.Errorf("load automatic renewal add-ons: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	addons := make([]model.SquadProduct, 0)
-	for rows.Next() {
-		var squadID string
-		if err := rows.Scan(&squadID); err != nil {
-			return nil, err
-		}
-		addon, err := squadByIDTx(ctx, tx, squadID, true)
-		if err != nil {
-			return nil, err
-		}
-		addons = append(addons, addon)
-	}
-	return addons, rows.Err()
 }

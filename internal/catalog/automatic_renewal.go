@@ -145,9 +145,12 @@ func (s *Service) autoRenewalLiveReason(ctx context.Context, plan database.AutoR
 	for _, addon := range plan.Addons {
 		addonIDs = append(addonIDs, addon.RemnaSquadUUID)
 	}
-	catalog, err := s.Catalog(ctx)
+	catalog, reason, err := s.renewalCatalog(ctx, plan.Combo.ID, addonIDs)
 	if err != nil {
 		return nil, err
+	}
+	if reason != "" {
+		return autoRenewalReason(reason), nil
 	}
 	nodes := quoteAccessibleNodes(catalog, plan.Combo.ID, addonIDs)
 	if len(nodes) == 0 {

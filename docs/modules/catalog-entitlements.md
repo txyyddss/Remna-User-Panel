@@ -36,6 +36,8 @@ Automatic renewal creates exactly one queued successor from the current ride's c
 
 An attached recurring discount is persisted when the original purchase is made (and legacy rows are backfilled only from an already-linked recurring grant). Automatic renewal keeps that relationship even if the member later discards the wallet grant. It uses only the grant definition's latest discount mode, value, and percent cap; it deliberately ignores later coupon active state, expiry, quota, eligibility, and kind changes, and writes no coupon-use record. One-time coupons never attach.
 
+Renewal quotes and debits resolve each purchased optional squad by its Remnawave UUID at the current override price. Storefront visibility controls new purchases only; hiding or repricing an owned squad does not invalidate its renewal. Removing a sparse override restores the default zero price. Every retained squad must still exist upstream, and stock and current-price balance checks still apply. The debit transaction reloads prices, preserves original purchase charges, and stores the successor's actual charge. Stock-ineligible quotes still display the full current price and recurring discount.
+
 Members may cancel only their own queued purchase through `POST /api/v1/purchases/{id}/cancel`. The local transaction requires `status='queued'`, marks the purchase cancelled, credits the snapshotted charged TXB amount, and appends one `purchase_cancellation` ledger entry. Because the entitlement has not reached Remnawave, this path performs no provider call and no upstream job is needed; cancellation also releases the local stock reservation while retaining immutable purchase history.
 
 ## Rollover ordering and formula

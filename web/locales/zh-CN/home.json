@@ -54,7 +54,7 @@
     "autoRenewalEnabledAction": "自动续费已开启",
     "autoRenewalDisabledAction": "自动续费已关闭",
     "autoRenewalTitle": "自动续费",
-    "autoRenewalHint": "将在扣款日自动购买下一个周期。",
+    "autoRenewalHint": "将在扣款日按套餐及附加分组的现价自动续费一个周期。",
     "autoRenewalSwitch": "自动续费当前套餐",
     "autoRenewalGross": "优惠前价格",
     "autoRenewalDiscount": "优惠",

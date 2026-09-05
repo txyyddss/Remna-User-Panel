@@ -43,29 +43,10 @@ func renewalQuoteTx(ctx context.Context, tx *sql.Tx, userID, purchaseID string, 
 	if err != nil {
 		return model.RenewalQuote{}, model.Combo{}, nil, err
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT remna_squad_uuid FROM purchase_addons WHERE purchase_id=? ORDER BY remna_squad_uuid`, purchaseID)
+	addons, err := renewalAddonsTx(ctx, tx, purchaseID)
 	if err != nil {
 		return model.RenewalQuote{}, model.Combo{}, nil, err
 	}
-	addons := make([]model.SquadProduct, 0)
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			_ = rows.Close()
-			return model.RenewalQuote{}, model.Combo{}, nil, err
-		}
-		product, loadErr := squadByIDTx(ctx, tx, id, false)
-		if loadErr != nil {
-			_ = rows.Close()
-			return model.RenewalQuote{}, model.Combo{}, nil, loadErr
-		}
-		addons = append(addons, product)
-	}
-	if err := rows.Err(); err != nil {
-		_ = rows.Close()
-		return model.RenewalQuote{}, model.Combo{}, nil, err
-	}
-	_ = rows.Close()
 	// Included squads reserve capacity only on the initial purchase. A renewal
 	// rechecks its paid add-ons without displacing the current member.
 	selected := make([]string, 0, len(addons))

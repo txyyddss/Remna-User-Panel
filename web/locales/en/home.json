@@ -54,7 +54,7 @@
     "autoRenewalEnabledAction": "Automatic renewal on",
     "autoRenewalDisabledAction": "Automatic renewal off",
     "autoRenewalTitle": "Automatic renewal",
-    "autoRenewalHint": "Charge one next cycle automatically at the scheduled date.",
+    "autoRenewalHint": "Renew one cycle at the current combo and optional squad prices on the charge date.",
     "autoRenewalSwitch": "Renew this ride automatically",
     "autoRenewalGross": "Price before discount",
     "autoRenewalDiscount": "Discount",

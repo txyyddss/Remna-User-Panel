@@ -29,9 +29,12 @@ func (s *Service) RenewalQuote(ctx context.Context, user model.User, purchaseID 
 	if err != nil {
 		return model.RenewalQuote{}, err
 	}
-	catalog, err := s.Catalog(ctx)
+	catalog, reason, err := s.renewalCatalog(ctx, quote.ComboID, quote.AddonSquadUUIDs)
 	if err != nil {
 		return model.RenewalQuote{}, err
+	}
+	if reason != "" {
+		return model.RenewalQuote{}, database.ErrNotFound
 	}
 	quote.AccessibleNodes = quoteAccessibleNodes(catalog, quote.ComboID, quote.AddonSquadUUIDs)
 	if len(quote.AccessibleNodes) == 0 {
