@@ -8,7 +8,7 @@ Members can add visible optional squads to their active TX Carpool purchase. The
 
 `POST /api/v1/purchases/{id}/addons/quote` returns the authoritative price. `POST /api/v1/purchases/{id}/addons` requires `Idempotency-Key` and applies the same server-side validation. Each squad is priced as `min(fullPrice, ceil(fullPrice * remainingTerm / originalComboValidity))`; administrator extensions therefore cannot exceed the full squad price.
 
-The request validates owner, active unexpired term, visible upstream-present squad, duplicate or already-held squad, activation code, current stock, and absence of a separate queued term. `stockHeldByCurrentUser` is derived only in the catalog response from the active entitlement, so a member holding the final stock reservation can select it for a normal queued purchase while other members cannot.
+The request validates owner, active unexpired term, visible upstream-present squad, duplicate or already-held squad, activation code, current stock, and absence of a separate queued term. `stockHeldByCurrentUser` is derived only in the catalog response from the active entitlement, so a member holding a stock reservation can retain it for renewal or a normal queued purchase even after the capacity is reduced or new sales are closed. The server checks the held reservation inside the transaction; other members and newly selected squads still require spare capacity.
 
 ## Durability
 

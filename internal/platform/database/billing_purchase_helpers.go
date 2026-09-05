@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func checkSquadStockTx(ctx context.Context, tx *sql.Tx, squadUUIDs []string, excludeUserID ...string) error {
+func checkSquadStockTx(ctx context.Context, tx *sql.Tx, squadUUIDs []string, holderUserID ...string) error {
 	for _, squadUUID := range squadUUIDs {
 		var limit sql.NullInt64
 		if err := tx.QueryRowContext(ctx, `SELECT stock_limit FROM squad_product_overrides WHERE remna_squad_uuid=?`, squadUUID).Scan(&limit); err != nil {
@@ -25,16 +25,21 @@ func checkSquadStockTx(ctx context.Context, tx *sql.Tx, squadUUIDs []string, exc
 		if !limit.Valid {
 			continue
 		}
-		var reservations int64
-		exclude := ""
-		if len(excludeUserID) > 0 {
-			exclude = excludeUserID[0]
+		var reservations, heldByUser int64
+		holderID := ""
+		if len(holderUserID) > 0 {
+			holderID = holderUserID[0]
 		}
-		if err := tx.QueryRowContext(ctx, `SELECT COUNT(DISTINCT user_id) FROM purchases
+		if err := tx.QueryRowContext(ctx, `SELECT COUNT(DISTINCT user_id),COALESCE(MAX(user_id=?),0) FROM purchases
 			WHERE status IN ('activating','active','queued') AND (EXISTS (
 				SELECT 1 FROM json_each((SELECT included_squad_uuids FROM combos WHERE combos.id=purchases.combo_id)) WHERE value=?
-			) OR EXISTS (SELECT 1 FROM purchase_addons WHERE purchase_addons.purchase_id=purchases.id AND remna_squad_uuid=?)) AND (?='' OR user_id<>?)`, squadUUID, squadUUID, exclude, exclude).Scan(&reservations); err != nil {
+			) OR EXISTS (SELECT 1 FROM purchase_addons WHERE purchase_addons.purchase_id=purchases.id AND remna_squad_uuid=?))`, holderID, squadUUID, squadUUID).Scan(&reservations, &heldByUser); err != nil {
 			return fmt.Errorf("count squad reservations: %w", err)
+		}
+		// Capacity counts distinct members. Continuing an existing reservation
+		// needs no new seat, even if the limit was lowered or sales were closed.
+		if heldByUser == 1 {
+			continue
 		}
 		if reservations >= limit.Int64 {
 			return ErrStockUnavailable
