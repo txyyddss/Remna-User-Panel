@@ -32,7 +32,7 @@ func TestSquadStockRetainsExistingReservationsAfterLimitReduction(t *testing.T) 
 			other := createTestUser(t, store, 51_021)
 			var ownerPurchaseID string
 			for _, userID := range []string{owner.ID, other.ID} {
-				if _, err := store.AdjustBalance(ctx, userID, 1_000, "stock-seed", "seed", now); err != nil {
+				if _, err := store.AdjustBalance(ctx, userID, 1_000, "stock-seed:"+userID, "seed", now); err != nil {
 					t.Fatal(err)
 				}
 				purchase, err := store.CreatePurchase(ctx, PurchaseInput{UserID: userID, ComboID: combo.ID,
