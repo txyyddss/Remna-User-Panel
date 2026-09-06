@@ -38,7 +38,9 @@
   font-size: 0.78rem;
 }
 
-.admin-panel > .notice {
+.admin-panel > .notice,
+.admin-panel > .admin-error {
+  width: auto;
   margin: 1rem;
 }
 

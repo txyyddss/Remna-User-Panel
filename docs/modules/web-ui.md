@@ -18,6 +18,19 @@ Telegram bootstrap waits for a delayed WebApp bridge before binding events. It e
 
 The mobile audit keeps native form controls at a 16 px minimum for Telegram and iOS, uses Nuxt UI button variants without legacy class collisions, and keeps compact navigation/content above the safe-area-aware bottom bar. Backup and restore panels expose localized operational summaries instead of raw provider diagnostics.
 
+The shared `SwitchField` makes its full row a native label for the Nuxt UI
+switch. Its explicit label and help associations preserve the accessible name,
+native disabled behavior, and one model update per activation. Global button
+resets must preserve Nuxt UI foreground utilities and semantic color tokens.
+Inset admin notices use automatic width so their margins remain inside the
+panel. Compensation configuration and event grids use shrinkable tracks;
+long node and squad names wrap rather than enlarging the phone layout.
+
+Questionnaire distinguishes an unsuccessful initial request from a successful
+response with no active questionnaire. The former displays a localized retry;
+the latter displays the empty state. A refresh failure retains previously loaded
+questionnaire data with an inline notice.
+
 Localization is embedded from matching domain shards under `locales/en/` and `locales/zh-CN/` through `src/i18n/generated.ts`. Vite validates identical nested leaf keys and placeholders before a build; runtime `t()` supports interpolation, persisted switching, and Telegram-language defaulting. API and local failure states resolve to locale keys rather than displaying raw transport text. The language selector is available before authentication and inside the authenticated shell.
 
 ## Routes and state behavior

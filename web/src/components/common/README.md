@@ -5,5 +5,6 @@
 - `InlineNotice.vue`, `OperationStatusNotice.vue`, `SkeletonBlock.vue`, and `StatusBadge.vue` provide status feedback, including durable operation polling failures.
 - `LanguageSwitcher.vue` controls the active locale.
 - `SwitchField.vue`, `TxbAmountField.vue`, and `MarkdownEditorField.vue` provide domain form fields; `TxbAmountField.vue` keeps exact TXB entry and can add a bounded `USlider` for member funding without weakening minor-unit validation.
+- `SwitchField.vue` uses a native label for its entire 52px row, so tapping the copy or surrounding space toggles the associated Nuxt UI switch once. The name and optional help remain separate accessible associations, and disabled switches retain their native guard.
 - `MarkdownContent.vue` safely renders allowlisted Markdown.
 - `MarkdownContent.test.ts` covers Markdown sanitization and rendering.

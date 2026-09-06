@@ -51,9 +51,9 @@ function save(): void {
 </template>
 
 <style scoped>
-.compensation-config { display: grid; gap: 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface-raised); }
+.compensation-config { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface-raised); }
 .compensation-config h3, .compensation-config p { margin: 0; }
 .compensation-config p:not(.eyebrow) { margin-top: 0.3rem; color: var(--text-muted); font-size: 0.8rem; line-height: 1.5; }
-.compensation-config__fields { display: grid; gap: 0.8rem; }
-@media (min-width: 700px) { .compensation-config__fields { grid-template-columns: 1fr 1fr; } }
+.compensation-config__fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.8rem; }
+@media (min-width: 700px) { .compensation-config__fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>

@@ -17,6 +17,10 @@ const { questionnaire, participation, loading, joining, error, load, openQuestio
       <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
       <QuestionnaireAccessPanel :questionnaire="questionnaire" :participation="participation" :joining="joining" @open="openQuestionnaire" />
     </template>
+    <template v-else-if="error">
+      <InlineNotice tone="warning">{{ error }}</InlineNotice>
+      <UButton color="neutral" variant="outline" :label="$t('common.tryAgain')" data-haptic="retry" @click="load" />
+    </template>
     <section v-else class="section-block empty-inline">
       <div><h3>{{ $t('questionnaire.none') }}</h3><p>{{ $t('questionnaire.noneHint') }}</p></div>
       <UButton color="neutral" variant="outline" :label="$t('common.refresh')" data-haptic="refresh" @click="load" />

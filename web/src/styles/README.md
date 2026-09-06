@@ -2,7 +2,7 @@
 
 `main.css` is the ordered entry point for these cascade layers:
 
-- `foundation-01.css` defines tokens, document defaults, typography, and the accessible dark-mode primary-control shade.
+- `foundation-01.css` defines tokens, document defaults, typography, and the semantic mint primary color. Native resets preserve Nuxt UI foreground utilities so solid, outline, and ghost controls retain readable contrast.
 - `foundation-02.css` defines shared controls, surfaces, and utility patterns.
 - `shell-01.css` styles the application shell and primary navigation.
 - `shell-02.css` styles page framing, notices, and session states.
@@ -31,7 +31,7 @@
 - `billing-02.css` styles provider-payment details.
 - `billing-03.css` styles crypto currency/network selection plus the compact payment-instruction rhythm, address copy, QR loading, and fixed countdown.
 - `feedback-01.css` styles feedback, empty, and loading states.
-- `admin-01.css` styles administrative navigation and section layouts.
+- `admin-01.css` styles administrative navigation and section layouts, keeping inset notices within the panel width.
 - `admin-02.css` styles administrative forms, lists, and data surfaces.
 - `admin-03.css` styles administrative drawers and review workflows.
 - `admin-04.css` styles aggregate user profiles, bulk previews, operation resolution, and streamed backup upload.

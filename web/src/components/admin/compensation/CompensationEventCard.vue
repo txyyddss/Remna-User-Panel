@@ -37,14 +37,17 @@ function durationText(): string {
 </template>
 
 <style scoped>
-.compensation-event { display: grid; gap: 0.8rem; padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface-raised); }
+.compensation-event { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.8rem; padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface-raised); overflow-wrap: anywhere; }
 .compensation-event h3, .compensation-event p { margin: 0; }
 .compensation-event__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
+.compensation-event__top > div { min-width: 0; }
+.compensation-event__top > [data-slot='base'] { flex-shrink: 0; }
 .compensation-event__time, .compensation-event__note { color: var(--text-muted); font-size: 0.76rem; line-height: 1.5; }
-.compensation-event__facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--line); }
+.compensation-event__facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--line); }
 .compensation-event__facts span { min-width: 0; padding: 0.7rem; background: var(--surface); }
 .compensation-event__facts small, .compensation-event__facts strong { display: block; }
 .compensation-event__facts small { color: var(--text-faint); font-size: 0.65rem; }
 .compensation-event__facts strong { margin-top: 0.15rem; font-size: 0.88rem; }
 .compensation-event__squads { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.compensation-event__squads > [data-slot='base'] { max-width: 100%; white-space: normal; }
 </style>

@@ -63,7 +63,7 @@ async function review(action: 'approve' | 'dismiss', minutes: number, reason: st
 </template>
 
 <style scoped>
-.compensation-panel { display: grid; gap: 1rem; padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+.compensation-panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
 .compensation-panel__heading { align-items: start; justify-items: start; text-align: left; }
 .compensation-panel__heading > :only-child { justify-self: start; }
 .compensation-panel__toolbar { display: grid; margin-top: 1rem; }
