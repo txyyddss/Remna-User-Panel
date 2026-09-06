@@ -50,13 +50,17 @@ function toggle(): void {
       },
     ]"
     :aria-label="squad.name"
-    :aria-pressed="!included && !isFull ? selected : undefined"
-    :role="!included && !isFull ? 'button' : undefined"
-    :tabindex="!included && !isFull ? 0 : undefined"
-    @click="toggle"
-    @keydown.enter.prevent="toggle"
-    @keydown.space.prevent="toggle"
   >
+    <UButton
+      v-if="!included && !isFull"
+      type="button"
+      color="neutral"
+      variant="ghost"
+      class="squad-card__select"
+      :aria-label="squad.name"
+      :aria-pressed="selected"
+      @click="toggle"
+    />
     <div class="squad-card__header">
       <SquadProfileSummary
         :name="squad.name"
@@ -89,13 +93,14 @@ function toggle(): void {
         <span class="squad-card__nodes-label">{{ $t('catalog.nodes') }}</span>
         <SquadProfileFacts class="squad-card__tags" :profile="squad.profile" presentation="member" />
       </div>
-      <SquadNodeBlocks :nodes="squad.accessibleNodes" @open-geocheck="emit('openGeocheck', $event)" />
+      <SquadNodeBlocks class="squad-card__node-controls" :nodes="squad.accessibleNodes" @open-geocheck="emit('openGeocheck', $event)" />
     </div>
   </article>
 </template>
 
 <style scoped>
 .squad-pricing-card {
+  position: relative;
   min-width: 0;
   display: grid;
   gap: 0.7rem;
@@ -105,7 +110,9 @@ function toggle(): void {
   background: color-mix(in srgb, var(--surface-strong) 78%, transparent);
   cursor: pointer;
 }
-.squad-pricing-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.squad-card__select { position: absolute; inset: 0; width: 100%; min-height: 44px; padding: 0; border: 0; border-radius: inherit; background: transparent; cursor: pointer; }
+.squad-card__select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.squad-card__node-controls { position: relative; }
 .squad-pricing-card--nonselectable { cursor: default; }
 .squad-pricing-card--broadband { --squad-profile-tone: var(--accent); }
 .squad-pricing-card--china_optimized { --squad-profile-tone: var(--warning); }

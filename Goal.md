@@ -28,3 +28,14 @@ Test all frontend changes with Chrome Devtools MCP and constructed data when fin
 Push and commit to main branch when finish. Monitor actions run and fix issues when failed.
 
 ---
+
+## Task: Improve FRONTEND design & layout
+
+Follow the instructions:
+
+1. Construct datas covering edge cases in all situations
+2. Run dev server and use Chrome Devtools MCP to view the page and take screenshot
+    - Remember to click through all the buttons / dropdowns / switches / selections
+    - Resize the page to desktop and phones
+    - Run lighthouse to spot out performance issues
+3. Figure out issues and perform fixes

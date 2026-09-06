@@ -24,7 +24,7 @@ describe('SquadNodeBlocks', () => {
     expect(wrapper.text()).not.toContain('Tokyo relay')
     expect(wrapper.text()).not.toContain('Transit provider')
     expect(wrapper.text()).not.toContain('1/2')
-    expect(wrapper.get('.squad-node-list__node').attributes('aria-label')).toBe('View Geocheck result for node 1 of 2')
+    expect(wrapper.get('.squad-node-list__node').attributes('aria-label')).toBe('1.5x · View Geocheck result for node 1 of 2')
 
     await wrapper.get('.squad-node-list__node').trigger('click')
     expect(wrapper.emitted('openGeocheck')).toEqual([[nodes[0]]])

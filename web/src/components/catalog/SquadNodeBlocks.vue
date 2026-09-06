@@ -20,7 +20,7 @@ function formatMultiplier(value: number): string {
         color="neutral"
         variant="ghost"
         class="squad-node-list__node"
-        :aria-label="$t('catalog.openNodeGeocheck', { current: index + 1, total: nodes.length })"
+        :aria-label="$t('catalog.openNodeGeocheck', { current: index + 1, total: nodes.length, multiplier: $t('catalog.nodeMultiplier', { multiplier: formatMultiplier(node.consumptionMultiplier) }) })"
         data-haptic="open"
         @click.stop="emit('openGeocheck', node)"
         @keydown.stop

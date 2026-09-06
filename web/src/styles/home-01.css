@@ -21,8 +21,8 @@
 }
 
 .home-balance {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 1rem;
   padding: 1.15rem;
@@ -31,6 +31,10 @@
   color: var(--accent-ink);
   background: var(--accent);
 }
+
+.home-balance__copy { flex: 1 0 auto; min-width: 0; max-width: 100%; }
+.home-balance__copy strong { overflow-wrap: anywhere; }
+.home-balance__action { flex: 0 0 auto; margin-inline-start: auto; }
 
 .home-balance__copy p,
 .home-balance__copy strong {
@@ -53,7 +57,7 @@
 }
 
 .home-balance__notice {
-  grid-column: 1 / -1;
+  flex-basis: 100%;
 }
 
 .home-balance__button,

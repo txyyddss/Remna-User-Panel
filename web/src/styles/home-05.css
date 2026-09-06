@@ -1,12 +1,22 @@
 .home-layout,
 .home-layout__columns,
-.home-alerts {
+.home-alerts,
+.home-layout__columns > *,
+.home-ride__content > * {
   min-width: 0;
+}
+
+.home-layout,
+.home-layout__columns,
+.home-alerts,
+.home-ride__content,
+.home-ride__summary-face {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
 }
 
 .home-layout__columns,
 .home-alerts {
-  display: grid;
-  align-content: start;
   gap: 0.9rem;
 }
