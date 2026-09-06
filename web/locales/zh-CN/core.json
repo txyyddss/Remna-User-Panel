@@ -30,6 +30,9 @@
     "telegramLoading": "Telegram 身份验证仍在加载，请稍后重试。",
     "tryAgain": "重试",
     "securingRide": "正在保护你的行程",
+    "loadingPrefix": "TX",
+    "loadingOriginal": "拼车",
+    "loadingReplacement": "Carpool",
     "authenticationFailed": "身份验证未完成。",
     "browserUnsupportedTitle": "请更新 Telegram 后继续。",
     "browserUnsupportedDescription": "当前浏览器无法安全完成请求。请更新 Telegram，或在较新的浏览器中打开小程序。"

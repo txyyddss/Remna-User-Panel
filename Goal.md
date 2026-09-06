@@ -29,13 +29,9 @@ Push and commit to main branch when finish. Monitor actions run and fix issues w
 
 ---
 
-## Task: Improve FRONTEND design & layout
+## Task: Redo loading animation
 
-Follow the instructions:
-
-1. Construct datas covering edge cases in all situations
-2. Run dev server and use Chrome Devtools MCP to view the page and take screenshot
-    - Remember to click through all the buttons / dropdowns / switches / selections
-    - Resize the page to desktop and phones
-    - Run lighthouse to spot out performance issues
-3. Figure out issues and perform fixes
+Replace the current "car driving" loading animation to the one similar to this site:  https://next.clingword.com/
+Display "TX拼车" ("Cling词灵单词") and replace "拼车" ("词灵单词") with "carpool" ("Next") in the animation.
+Display TX at top, 拼车 at bottom for mobile devices, and display them at the same level (same as the sample) on desktop.
+Also display the smooth transition animation when finished loading and entering the page.

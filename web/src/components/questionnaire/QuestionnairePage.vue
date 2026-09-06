@@ -19,7 +19,7 @@ const { questionnaire, participation, loading, joining, error, load, openQuestio
     </template>
     <template v-else-if="error">
       <InlineNotice tone="warning">{{ error }}</InlineNotice>
-      <UButton color="neutral" variant="outline" :label="$t('common.tryAgain')" data-haptic="retry" @click="load" />
+      <UButton class="mt-3" color="neutral" variant="outline" :label="$t('common.tryAgain')" data-haptic="retry" @click="load" />
     </template>
     <section v-else class="section-block empty-inline">
       <div><h3>{{ $t('questionnaire.none') }}</h3><p>{{ $t('questionnaire.noneHint') }}</p></div>

@@ -151,6 +151,7 @@ declare module 'vue' {
     RolloverFlipCard: typeof import('./src/components/dashboard/RolloverFlipCard.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SessionEntrance: typeof import('./src/components/session/SessionEntrance.vue')['default']
     SkeletonBlock: typeof import('./src/components/common/SkeletonBlock.vue')['default']
     SquadActivationDialog: typeof import('./src/components/catalog/SquadActivationDialog.vue')['default']
     SquadAdditionCheckout: typeof import('./src/components/squad-addition/SquadAdditionCheckout.vue')['default']

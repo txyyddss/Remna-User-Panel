@@ -30,6 +30,9 @@
     "telegramLoading": "Telegram authentication is still loading. Try again in a moment.",
     "tryAgain": "Try again",
     "securingRide": "Securing your ride",
+    "loadingPrefix": "TX",
+    "loadingOriginal": "拼车",
+    "loadingReplacement": "Carpool",
     "authenticationFailed": "Authentication could not be completed.",
     "browserUnsupportedTitle": "Update Telegram to continue.",
     "browserUnsupportedDescription": "This browser cannot safely complete secure requests. Update Telegram or open the Mini App in a current browser."
