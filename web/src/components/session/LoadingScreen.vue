@@ -13,7 +13,11 @@ function alignWords(): void {
 
 onMounted(() => {
   alignWords()
-  observer = new window.ResizeObserver(alignWords)
+
+  const ResizeObserverCtor = globalThis.ResizeObserver
+  if (typeof ResizeObserverCtor === 'undefined') return
+
+  observer = new ResizeObserverCtor(alignWords)
   if (original.value) observer.observe(original.value)
   if (replacement.value) observer.observe(replacement.value)
 })
