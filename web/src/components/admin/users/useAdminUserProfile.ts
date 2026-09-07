@@ -1,3 +1,5 @@
+import { restoreCatalogOptions } from '@/api/cache/catalogOptions'
+import { restoreRef } from '@/api/cache/restore'
 import { computed, shallowReadonly, shallowRef, toValue, watch, type MaybeRefOrGetter } from 'vue'
 
 import { adminOperationsApi, type AdminCatalogOptions, type AdminUserDetail } from '@/api/adminOperations'
@@ -22,7 +24,8 @@ export function useAdminUserProfile(userId: MaybeRefOrGetter<string>) {
 
   async function load(): Promise<void> {
     const expectedId = toValue(userId)
-    loading.value = true
+    detail.value = null
+    loading.value = !restoreRef(`/api/v1/admin/users/${encodeURIComponent(expectedId)}`, detail)
     loadError.value = null
     try {
       const result = await adminOperationsApi.getUser(expectedId)
@@ -36,7 +39,7 @@ export function useAdminUserProfile(userId: MaybeRefOrGetter<string>) {
 
   async function loadOptions(): Promise<void> {
     if (optionsLoading.value || (options.value.combos.length && options.value.squads.length)) return
-    optionsLoading.value = true
+    optionsLoading.value = !restoreCatalogOptions(options)
     optionsError.value = null
     try {
       options.value = await adminOperationsApi.getCatalogOptions()

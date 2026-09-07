@@ -1,6 +1,7 @@
 import { onMounted, onUnmounted, readonly, shallowRef } from 'vue'
 
 import { api } from '@/api/client'
+import { restoreRef } from '@/api/cache/restore'
 import type { CommunityMembership, CommunitySpace } from '@/api/types'
 import { localizedError } from '@/i18n'
 import { useSessionStore } from '@/stores/session'
@@ -17,7 +18,7 @@ export function useCommunityMembership() {
   let telegram: TelegramWebApp | undefined
 
   async function load(initial = false): Promise<void> {
-    if (initial) loading.value = true
+    if (initial) loading.value = !restoreRef('/api/v1/community/membership/check', membership, { method: 'POST' })
     else refreshing.value = true
     error.value = null
     try {

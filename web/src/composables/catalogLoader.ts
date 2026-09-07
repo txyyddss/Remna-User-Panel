@@ -1,5 +1,6 @@
 import type { ShallowRef } from 'vue'
 import { api } from '@/api/client'
+import { restoreCached, restoreItems, restoreRef } from '@/api/cache/restore'
 import { featuresApi, type CouponGrant } from '@/api/features'
 import type { Catalog, Money } from '@/api/types'
 import { localizedError } from '@/i18n'
@@ -23,7 +24,10 @@ export interface CatalogLoadState {
 
 export async function loadCatalogData(state: CatalogLoadState): Promise<boolean> {
   const token = state.latest.begin()
-  state.loading.value = true
+  state.loading.value = !restoreRef('/api/v1/catalog', state.catalog)
+  restoreCached<Awaited<ReturnType<typeof api.getBalance>>>('/api/v1/balance', value => { state.balance.value = value.balance })
+  restoreItems('/api/v1/coupons/wallet', state.couponGrants)
+  if (state.catalog.value) restoreSelection(state, state.catalog.value, state.couponGrants.value)
   state.error.value = null
   try {
     const [catalogResponse, balanceResponse, couponResponse] = await Promise.all([
@@ -33,19 +37,7 @@ export async function loadCatalogData(state: CatalogLoadState): Promise<boolean>
     state.catalog.value = catalogResponse
     state.balance.value = balanceResponse.balance
     state.couponGrants.value = couponResponse.items
-    if (!state.draftRestored.value) {
-      state.draftRestored.value = true
-      const draft = readCatalogDraft(state.userID())
-      if (draft) {
-        const validCombo = catalogResponse.combos.find((combo) => combo.active && combo.id === draft.comboId)
-        if (validCombo) state.selectedComboId.value = validCombo.id
-        const validSquads = new Set(catalogResponse.addons.filter((squad) => squad.visible && squad.upstreamPresent).map((squad) => squad.id))
-        state.selectedSquadIds.value = (draft.squadIds ?? []).filter((id) => validSquads.has(id))
-        state.selectedCouponGrantId.value = couponResponse.items.some((grant) => grant.id === draft.couponGrantId && grant.status === 'active') ? (draft.couponGrantId ?? null) : null
-      }
-    }
-    const preferred = catalogResponse.combos.find((combo) => combo.active)
-    if (!state.selectedComboId.value || !catalogResponse.combos.some((combo) => combo.active && combo.id === state.selectedComboId.value)) state.selectedComboId.value = preferred?.id ?? null
+    restoreSelection(state, catalogResponse, couponResponse.items)
     return true
   } catch (caught) {
     if (!state.latest.isCurrent(token)) return false
@@ -54,4 +46,20 @@ export async function loadCatalogData(state: CatalogLoadState): Promise<boolean>
   } finally {
     if (state.latest.isCurrent(token)) state.loading.value = false
   }
+}
+
+function restoreSelection(state: CatalogLoadState, catalogResponse: Catalog, coupons: CouponGrant[]): void {
+  if (!state.draftRestored.value) {
+    state.draftRestored.value = true
+    const draft = readCatalogDraft(state.userID())
+    if (draft) {
+      const validCombo = catalogResponse.combos.find((combo) => combo.active && combo.id === draft.comboId)
+      if (validCombo) state.selectedComboId.value = validCombo.id
+      const validSquads = new Set(catalogResponse.addons.filter((squad) => squad.visible && squad.upstreamPresent).map((squad) => squad.id))
+      state.selectedSquadIds.value = (draft.squadIds ?? []).filter((id) => validSquads.has(id))
+      state.selectedCouponGrantId.value = coupons.some((grant) => grant.id === draft.couponGrantId && grant.status === 'active') ? (draft.couponGrantId ?? null) : null
+    }
+  }
+  const preferred = catalogResponse.combos.find((combo) => combo.active)
+  if (!state.selectedComboId.value || !catalogResponse.combos.some((combo) => combo.active && combo.id === state.selectedComboId.value)) state.selectedComboId.value = preferred?.id ?? null
 }

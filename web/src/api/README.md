@@ -13,7 +13,8 @@
 - `features.ts` exposes feature-specific endpoints and contract types, including durable Emby and questionnaire commands, the browser-safe payment-return receipt projection, and member coupon soft-discard.
 - `features.test.ts` verifies feature request construction.
 - `generated.ts` contains the compact generated OpenAPI contract.
-- `http.ts` provides authenticated HTTP and error handling primitives.
+- `http.ts` provides authenticated HTTP and error handling primitives and records eligible responses through the session cache.
+- `cache/README.md` specifies session isolation, snapshot restoration, invalidation, and member/admin preload coverage.
 - `memberOperations.ts` exposes generated-type connection scans, signed-handle blocks, active block listing/removal, the account-wide reset automation resource, reset/refund quotes, and durable operation receipts.
 - `request-signing.ts` signs every protected request with Web Crypto or the audited pure-JS HMAC/SHA-256 fallback; it never sends an unsigned fallback.
 - `request-signing.test.ts` covers signing, nonce behavior, and missing-Web-Crypto behavior.

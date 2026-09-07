@@ -2,6 +2,7 @@ import { onMounted, readonly, shallowRef } from 'vue'
 
 import type { ActiveQuestionnaire, QuestionnaireParticipation } from '@/api/features'
 import { featuresApi } from '@/api/features'
+import { restoreRef } from '@/api/cache/restore'
 import { localizedError } from '@/i18n'
 import { createUuid } from '@/utils/browserCompatibility'
 import { notifyHaptic, openExternalLink } from '@/utils/telegram'
@@ -15,7 +16,8 @@ export function useQuestionnaires() {
   const joinKeys = new Map<string, string>()
 
   async function load(): Promise<void> {
-    loading.value = true
+    loading.value = !restoreRef('/api/v1/questionnaires/active', questionnaire)
+    participation.value = questionnaire.value?.participation ?? null
     error.value = null
     try {
       questionnaire.value = await featuresApi.getActiveQuestionnaire()

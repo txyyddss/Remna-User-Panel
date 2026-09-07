@@ -1,3 +1,4 @@
+import { restoreItems, restoreRef } from '@/api/cache/restore'
 import { onMounted, readonly, shallowRef } from 'vue'
 
 import type { AdminAffiliateView, AffiliateTier, CouponDefinition } from '@/api/features'
@@ -13,12 +14,20 @@ export function useAdminAffiliates() {
   const error = shallowRef<string | null>(null)
 
   async function load(): Promise<void> {
-    loading.value = true
+    loading.value = ![
+      restoreRef('/api/v1/admin/affiliates', configuration),
+      restoreItems('/api/v1/admin/coupons', coupons),
+    ].every(Boolean)
+    if (configuration.value) tiers.value = structuredClone(configuration.value.tiers)
+    coupons.value = coupons.value.filter(coupon => coupon.active && coupon.kind.startsWith('purchase_'))
+    const originalTiers = JSON.stringify(tiers.value)
     error.value = null
     try {
       const [config, couponPage] = await Promise.all([featuresApi.getAdminAffiliates(), featuresApi.getAdminCoupons()])
-      configuration.value = config
-      tiers.value = structuredClone(config.tiers)
+      if (JSON.stringify(tiers.value) === originalTiers) {
+        configuration.value = config
+        tiers.value = structuredClone(config.tiers)
+      }
       coupons.value = couponPage.items.filter((coupon) => coupon.active && coupon.kind.startsWith('purchase_'))
     } catch (caught) { error.value = localizedError(caught, 'adminAffiliates.loadFailed') }
     finally { loading.value = false }

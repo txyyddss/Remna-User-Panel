@@ -1,5 +1,12 @@
 # Composables
 
+- `dashboardNodeUsage.ts` owns the dashboard's date-range validation, cached usage display, latest-request guard and disposal.
+
+Page loaders restore typed session snapshots through `api/cache/restore.ts` before
+their existing requests. Cached content renders during refresh; backend responses
+replace it through the same state and error handling. Query and cursor keys remain
+separate. Action quotes and permission decisions still await the backend.
+
 - `useSquadAddition.ts` owns active-term optional-squad filtering, time-adjusted quote freshness, activation-code handoff, balance recovery, and idempotent commit feedback.
 
 - `useActivity.ts` loads games, draws, and check-in actions.

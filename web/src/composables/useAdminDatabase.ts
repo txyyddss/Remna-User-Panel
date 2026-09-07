@@ -1,3 +1,4 @@
+import { restoreCached, restoreItems } from '@/api/cache/restore'
 import { computed, onMounted, readonly, shallowRef } from 'vue'
 
 import type { DatabaseMutationInput, DatabaseMutationReview, DatabaseQueryInput, DatabaseRow, DatabaseTable } from '@/api/features'
@@ -19,7 +20,9 @@ export function useAdminDatabase() {
   const selectedTable = computed(() => tables.value.find((table) => table.name === selectedTableName.value) ?? null)
 
   async function loadTables(): Promise<void> {
-    loading.value = true
+    loading.value = !restoreItems('/api/v1/admin/database/tables', tables)
+    if (!selectedTableName.value) selectedTableName.value = tables.value[0]?.name ?? null
+    if (selectedTableName.value) restoreRows(selectedTableName.value, activeQuery.value)
     error.value = null
     try {
       const response = await featuresApi.getDatabaseTables()
@@ -39,12 +42,22 @@ export function useAdminDatabase() {
     return queryRows(table, activeQuery.value, options)
   }
 
+  function restoreRows(table: string, input: DatabaseQueryInput): void {
+    restoreCached<Awaited<ReturnType<typeof featuresApi.queryDatabaseRows>>>(
+      `/api/v1/admin/database/tables/${encodeURIComponent(table)}/query`, page => {
+        rows.value = page.items
+        nextCursor.value = page.nextCursor
+      }, { method: 'POST', body: { ...input, cursor: undefined } },
+    )
+  }
+
   async function queryRows(table: string, input: DatabaseQueryInput, options: { append?: boolean } = {}): Promise<void> {
     if (busy.value) return
     busy.value = true
     error.value = null
     try {
       const base = { ...input, filters: input.filters.map((filter) => ({ ...filter })), limit: Math.min(200, Math.max(1, input.limit || 50)) }
+      if (!options.append) restoreRows(table, base)
       const response = await featuresApi.queryDatabaseRows(table, { ...base, cursor: options.append ? nextCursor.value ?? undefined : undefined })
       activeQuery.value = base
       rows.value = options.append ? [...rows.value, ...response.items] : response.items

@@ -1,3 +1,4 @@
+import { restoreCached } from '@/api/cache/restore'
 import { computed, onScopeDispose, shallowRef, type ComputedRef, type Ref } from 'vue'
 
 import { api } from '@/api/client'
@@ -11,6 +12,7 @@ export function useCatalogSquadPresentation(
 ) {
   const composition = shallowRef<readonly NormalizedDistribution[]>([])
   let disposed = false
+  restoreCached<Awaited<ReturnType<typeof api.getStatistics>>>('/api/v1/statistics', value => { composition.value = value.database.squadByCombo })
 
   void api.getStatistics()
     .then((snapshot) => {

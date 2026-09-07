@@ -1,6 +1,7 @@
 import { computed, onMounted, readonly, shallowReadonly, shallowRef } from 'vue'
 
 import { ApiError } from '@/api/http'
+import { restoreCached } from '@/api/cache/restore'
 import { memberOperationsApi } from '@/api/memberOperations'
 import type { IPBlock } from '@/api/types'
 import { localizedError } from '@/i18n'
@@ -24,7 +25,7 @@ export function useConnectionBlocks() {
   const mutationActive = computed(() => busyAction.value !== null || operationIsActive(operation.receipt.value?.status))
 
   async function load(): Promise<void> {
-    loading.value = true
+    loading.value = !restoreCached<{ items: IPBlock[] }>('/api/v1/subscription/ip-blocks', value => { items.value = value.items })
     loadError.value = null
     try {
       items.value = (await memberOperationsApi.listIPBlocks()).items

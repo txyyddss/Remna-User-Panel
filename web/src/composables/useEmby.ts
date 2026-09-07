@@ -2,6 +2,7 @@ import { computed, onMounted, readonly, shallowRef } from 'vue'
 
 import type { EmbyOverview } from '@/api/features'
 import { featuresApi } from '@/api/features'
+import { restoreRef } from '@/api/cache/restore'
 import type { OperationReceipt } from '@/api/types'
 import { localizedError, t } from '@/i18n'
 import { notifyHaptic } from '@/utils/telegram'
@@ -39,7 +40,7 @@ export function useEmby() {
   const error = computed(() => loadError.value ?? command.error.value)
 
   async function load(): Promise<void> {
-    loading.value = true
+    loading.value = !restoreRef('/api/v1/emby/account', overview)
     loadError.value = null
     try {
       overview.value = await featuresApi.getEmby()

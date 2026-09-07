@@ -1,6 +1,7 @@
 import { onMounted, onUnmounted, readonly, shallowRef } from 'vue'
 
 import { api } from '@/api/client'
+import { restoreRef } from '@/api/cache/restore'
 import type { StatisticsNodesSnapshot, StatisticsSnapshot } from '@/api/types'
 import { localizedError } from '@/i18n'
 
@@ -35,7 +36,10 @@ export function useStatistics() {
   async function load(options: { quiet?: boolean } = {}): Promise<void> {
     const version = ++requestVersion
     if (options.quiet) refreshing.value = true
-    else loading.value = true
+    else loading.value = ![
+      restoreRef('/api/v1/statistics', snapshot),
+      restoreRef('/api/v1/statistics/nodes', nodeSnapshot),
+    ].some(Boolean)
     error.value = null
     const [statisticsResult, nodesResult] = await Promise.allSettled([
       api.getStatistics(),

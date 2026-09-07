@@ -1,6 +1,7 @@
 import { shallowRef } from 'vue'
 
 import { api } from '@/api/client'
+import { restoreRef } from '@/api/cache/restore'
 import type { RolloverProjection } from '@/api/types'
 import { localizedError } from '@/i18n'
 
@@ -14,7 +15,8 @@ export function useRolloverDetail() {
   async function load(id: string): Promise<void> {
     const version = ++requestVersion
     purchaseId.value = id
-    loading.value = true
+    detail.value = null
+    loading.value = !restoreRef(`/api/v1/purchases/${encodeURIComponent(id)}/rollover`, detail)
     error.value = null
     try {
       const response = await api.getPurchaseRollover(id)

@@ -1,6 +1,7 @@
 import { onMounted, onScopeDispose, readonly, shallowRef } from 'vue'
 
 import { api } from '@/api/client'
+import { restoreCached } from '@/api/cache/restore'
 import type { QueryValue } from '@/api/http'
 import type { AdminResource, Paginated } from '@/api/types'
 import { notifyHaptic } from '@/utils/telegram'
@@ -30,7 +31,10 @@ export function useAdminSection<T>(resource: AdminResource, options: { immediate
       : { ...(query ?? lastQuery), cursor: undefined }
     if (!append) lastQuery = requestQuery
     const token = latestLoad.begin()
-    loading.value = true
+    loading.value = append || !restoreCached<Paginated<T> | T[] | { items: T[] }>(`/api/v1/admin/${resource}`, payload => {
+      items.value = extractItems(payload)
+      nextCursor.value = Array.isArray(payload) || !('page' in payload) ? null : payload.page?.nextCursor ?? null
+    }, { query: requestQuery })
     error.value = null
     try {
       const payload = await api.getAdminResource<Paginated<T> | T[] | { items: T[] }>(resource, requestQuery)

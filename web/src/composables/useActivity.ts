@@ -1,6 +1,7 @@
 import { onMounted, onScopeDispose, readonly, shallowRef } from 'vue'
 
 import { featuresApi } from '@/api/features'
+import { restoreRef } from '@/api/cache/restore'
 import type { ActivityOverview, ActivityResult } from '@/api/features'
 import { activityNotification } from '@/components/activity/feedback'
 import { localizedError } from '@/i18n'
@@ -27,7 +28,7 @@ export function useActivity() {
 
   async function load(options: { quiet?: boolean } = {}): Promise<void> {
 	const token = latestLoad.begin()
-    if (!options.quiet) loading.value = true
+    if (!options.quiet) loading.value = !restoreRef('/api/v1/activity', overview)
     error.value = null
     try {
 	  const response = await featuresApi.getActivity()

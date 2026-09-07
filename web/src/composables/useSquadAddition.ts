@@ -1,3 +1,4 @@
+import { restoreRef } from '@/api/cache/restore'
 import { computed, readonly, shallowRef } from 'vue'
 
 import { ApiError, api } from '@/api/client'
@@ -59,7 +60,7 @@ export function useSquadAddition(options: SquadAdditionOptions) {
   }
 
   async function load(): Promise<boolean> {
-    loading.value = true
+    loading.value = !restoreRef('/api/v1/catalog', catalog)
     error.value = null
     try {
       catalog.value = await api.getCatalog()

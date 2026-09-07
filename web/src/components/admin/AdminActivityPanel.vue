@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { restoreItems } from '@/api/cache/restore'
 import { computed, onMounted, reactive, shallowRef } from 'vue'
 
 import type { AdminStatistics, BetGame, CouponDefinition, LuckyDrawAdmin, LuckyDrawWrite, StatisticsQuery } from '@/api/features'
@@ -49,7 +50,11 @@ async function removeActivity(): Promise<void> {
 }
 
 async function load(): Promise<void> {
-  loading.value = true
+  loading.value = ![
+    restoreItems('/api/v1/admin/activity-games', games),
+    restoreItems('/api/v1/admin/lucky-draw', draws),
+    restoreItems('/api/v1/admin/coupons', coupons),
+  ].every(Boolean)
   error.value = null
   try {
     const [gameResponse, drawResponse, couponResponse] = await Promise.all([

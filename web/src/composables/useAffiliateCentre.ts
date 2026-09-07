@@ -2,6 +2,7 @@ import { computed, onMounted, readonly, shallowRef } from 'vue'
 
 import type { AffiliateOverview, AffiliateReferralPage } from '@/api/features'
 import { featuresApi } from '@/api/features'
+import { restoreRef } from '@/api/cache/restore'
 import { localizedError } from '@/i18n'
 
 export function useAffiliateCentre() {
@@ -13,7 +14,10 @@ export function useAffiliateCentre() {
   const error = shallowRef<string | null>(null)
 
   async function load(): Promise<void> {
-    loading.value = true
+    loading.value = ![
+      restoreRef('/api/v1/affiliates', overview),
+      restoreRef('/api/v1/affiliates/referrals', referrals, { query: { page: page.value } }),
+    ].some(Boolean)
     error.value = null
     try {
       const [summary, rows] = await Promise.all([featuresApi.getAffiliates(), featuresApi.getAffiliateReferrals(page.value)])
@@ -29,7 +33,7 @@ export function useAffiliateCentre() {
   async function setPage(next: number): Promise<void> {
     if (next === page.value || next < 1) return
     page.value = next
-    referralsLoading.value = true
+    referralsLoading.value = !restoreRef('/api/v1/affiliates/referrals', referrals, { query: { page: next } })
     try {
       referrals.value = await featuresApi.getAffiliateReferrals(next)
     } catch (caught) {

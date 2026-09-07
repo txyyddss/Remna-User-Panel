@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { restoreCatalogOptions } from '@/api/cache/catalogOptions'
 import { onMounted, onScopeDispose, reactive, shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -36,6 +37,7 @@ function userQuery(): Record<string, string | number | readonly string[] | undef
 }
 
 async function loadFilterOptions(): Promise<void> {
+  restoreCatalogOptions(filterOptions)
   filterError.value = null
   try {
     filterOptions.value = await adminOperationsApi.getCatalogOptions()

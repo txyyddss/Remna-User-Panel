@@ -29,9 +29,14 @@ Push and commit to main branch when finish. Monitor actions run and fix issues w
 
 ---
 
-## Task: Redo loading animation
+## Task: Add frontend cache to improve user experience
 
-Replace the current "car driving" loading animation to the one similar to this site:  https://next.clingword.com/
-Display "TX拼车" ("Cling词灵单词") and replace "拼车" ("词灵单词") with "carpool" ("Next") in the animation.
-Display TX at top, 拼车 at bottom for mobile devices, and display them at the same level (same as the sample) on desktop.
-Also display the smooth transition animation when finished loading and entering the page.
+### Cache
+
+When got a backend api respond, temperarily store it in the current session to prevent lagging when switching page.
+Keep the current data-getting logic, but display cached data when haven't get backend respond.
+Rewrite cache immidiately and refresh the displayed datas and cached datas (do not refresh the page, only refresh the datas) once getted backend response.
+
+### Preload
+
+Preload ALL of the necessary data when loading, including admin page (for admins).

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { restoreItems } from '@/api/cache/restore'
 import { onMounted, reactive, shallowRef } from 'vue'
 
 import type { QuestionnaireAdminRecord } from '@/api/features'
@@ -22,7 +23,7 @@ const draft = reactive({ title: '', description: '', formUrl: '', rewardTxb: '5.
 const { t } = useI18n()
 
 async function load(): Promise<void> {
-  loading.value = true; error.value = null
+  loading.value = !restoreItems('/api/v1/admin/questionnaires', items); error.value = null
   try { items.value = (await featuresApi.getAdminQuestionnaires()).items }
   catch (caught) { error.value = localizedError(caught, 'adminQuestionnaires.loadFailed') }
   finally { loading.value = false }

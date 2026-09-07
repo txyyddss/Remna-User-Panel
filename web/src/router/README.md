@@ -1,5 +1,9 @@
 # Router
 
+Catalog navigation renders immediately while a live dashboard refresh checks the
+member's renewal gate. Only the latest navigation may redirect; cached data never
+grants purchase permission, and catalog/quote/purchase endpoints enforce eligibility.
+
 - `index.ts` declares routes and installs the session guard.
 - The bounded admin section route includes the System compensation workflow.
 - `history.ts` selects WebView-safe in-memory history or browser history.

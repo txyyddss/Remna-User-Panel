@@ -2,6 +2,7 @@ import { onMounted, readonly, shallowRef } from 'vue'
 
 import type { CouponGrant } from '@/api/features'
 import { featuresApi } from '@/api/features'
+import { restoreItems } from '@/api/cache/restore'
 import { localizedError, t } from '@/i18n'
 import { createUuid } from '@/utils/browserCompatibility'
 import { isCouponGrantAvailable } from '@/utils/coupons'
@@ -17,7 +18,8 @@ export function useCoupons() {
   const redemptionKeys = new Map<string, string>()
 
   async function load(): Promise<void> {
-    loading.value = true
+    loading.value = !restoreItems('/api/v1/coupons/wallet', grants)
+    grants.value = grants.value.filter(isCouponGrantAvailable)
     error.value = null
     try { grants.value = (await featuresApi.getCouponWallet()).items.filter((grant) => isCouponGrantAvailable(grant)) } catch (caught) { error.value = localizedError(caught, 'errors.couponWallet') } finally { loading.value = false }
   }

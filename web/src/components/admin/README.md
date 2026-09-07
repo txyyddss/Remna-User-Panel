@@ -2,6 +2,10 @@
 
 Localized route-level panels and shared admin-only Nuxt UI.
 
+Page loaders restore session response snapshots before refreshing. Editable settings,
+payment profiles, activity configuration, and onboarding/affiliate drafts preserve
+edits made while refreshed data is pending. See `../../api/cache/README.md`.
+
 Admin section labels are locale-owned, use Nuxt UI controls, and avoid visual separator literals in component code.
 Admin controls inherit guarded action feedback, modal dismissal stays soft, audited confirmation uses rigid feedback, and destructive entry or confirmation uses heavy feedback.
 

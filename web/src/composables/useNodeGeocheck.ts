@@ -1,6 +1,7 @@
 import { computed, getCurrentInstance, onUnmounted, readonly, shallowRef } from 'vue'
 
 import { api } from '@/api/client'
+import { restoreRef } from '@/api/cache/restore'
 import type { NodeGeocheckTarget, StatisticsNodeGeocheck } from '@/api/types'
 import { localizedError } from '@/i18n'
 
@@ -21,7 +22,7 @@ export function useNodeGeocheck() {
     selectedNode.value = node
     result.value = null
     error.value = null
-    loading.value = true
+    loading.value = !restoreRef(`/api/v1/statistics/nodes/${encodeURIComponent(node.uuid)}/geocheck`, result)
     try {
       const response = await api.getNodeGeocheck(node.uuid)
       if (version === requestVersion) result.value = response

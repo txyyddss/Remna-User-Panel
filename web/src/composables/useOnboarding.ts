@@ -2,6 +2,7 @@ import { computed, onMounted, reactive, readonly, shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { api, ApiError } from '@/api/client'
+import { restoreRef } from '@/api/cache/restore'
 import { featuresApi, type PublishedOnboarding } from '@/api/features'
 import type { OnboardingStep } from '@/api/types'
 import { useI18n } from '@/i18n'
@@ -66,6 +67,7 @@ export function useOnboarding() {
     }
   }
   async function loadContent(): Promise<void> {
+    restoreRef('/api/v1/onboarding/content', content, { query: { locale: locale.value } })
     const response = await run(() => featuresApi.getPublishedOnboarding(locale.value))
     if (!response) return
     content.value = response

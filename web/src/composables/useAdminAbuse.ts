@@ -2,6 +2,7 @@ import { onMounted, onScopeDispose, shallowRef } from 'vue'
 
 import { abuseApi, type AbuseNode, type AbusePolicy, type AbusePunishment, type AbuseRecord, type AbuseRule } from '@/api/abuse'
 import { localizedError } from '@/i18n'
+import { restoreCached, restoreRef } from '@/api/cache/restore'
 import { haptic, notifyHaptic, type HapticIntent } from '@/utils/telegramHaptics'
 import { createLatestRequest } from '@/utils/latestRequest'
 
@@ -31,7 +32,18 @@ export function useAdminAbuse() {
   async function load(): Promise<boolean> {
     const loadToken = latestLoad.begin()
     const recordsToken = latestRecords.begin()
-    loading.value = true
+    loading.value = ![
+      restoreRef('/api/v1/admin/abuse/policy', policy),
+      restoreRef('/api/v1/admin/abuse/nodes', nodes),
+      restoreRef('/api/v1/admin/abuse/rules', rules),
+      restoreRef('/api/v1/admin/abuse/punishments', punishments),
+      restoreRef('/api/v1/admin/abuse/statistics', statistics),
+      restoreRef('/api/v1/admin/abuse/whitelist', whitelist),
+      restoreCached<Awaited<ReturnType<typeof abuseApi.adminRecords>>>('/api/v1/admin/abuse/records', page => {
+        records.value = page.items
+        nextRecordsCursor.value = page.nextCursor
+      }),
+    ].every(Boolean)
     loadError.value = null
     try {
       const [nextPolicy, nextNodes, nextRules, nextPunishments, page, nextStatistics, nextWhitelist] = await Promise.all([

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { restoreItems } from '@/api/cache/restore'
+import { mergeRefreshedDraft } from '@/api/cache/drafts'
 import { computed, onMounted, reactive, shallowRef } from 'vue'
 
 import { api, type AdminPaymentProfile } from '@/api/client'
@@ -55,10 +57,16 @@ function providerChanged(profile: AdminPaymentProfile): void {
 }
 
 async function load(): Promise<void> {
-  loading.value = true
+  loading.value = !restoreItems('/api/v1/admin/payment-profiles', profiles)
+  for (const profile of profiles.value) drafts[profile.id] = { ...profile, enabledChannels: [...profile.enabledChannels] }
+  const previous = JSON.parse(JSON.stringify(drafts)) as typeof drafts
   try {
-    profiles.value = (await api.getAdminPaymentProfiles()).items
-    for (const profile of profiles.value) drafts[profile.id] = { ...profile, enabledChannels: [...profile.enabledChannels] }
+    const response = await api.getAdminPaymentProfiles()
+    profiles.value = [...response.items, ...profiles.value.filter(profile => profile.id.startsWith('draft-'))]
+    for (const profile of response.items) {
+      if (!drafts[profile.id]) drafts[profile.id] = { ...profile, enabledChannels: [...profile.enabledChannels] }
+      else mergeRefreshedDraft(drafts[profile.id], profile, previous[profile.id])
+    }
   } catch (caught) { error.value = localizedError(caught, 'errors.adminLoad') } finally { loading.value = false }
 }
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { restoreRef } from '@/api/cache/restore'
 import { computed, onMounted, reactive, shallowRef, useTemplateRef, watch } from 'vue'
 
 import type { AdminSetting } from '@/api/types'
@@ -47,8 +48,13 @@ const sectionsLoading = computed(() => loading.value
   || paymentProfilesRef.value?.loading === true)
 const saving = computed(() => savingAll.value || busy.value || activityBusy.value)
 
-watch(items, (next) => {
-  for (const item of next) draft[item.key] = item.encrypted ? '' : item.value
+watch(items, (next, previous) => {
+  for (const item of next) {
+    const old = previous?.find(value => value.key === item.key)
+    if (draft[item.key] === undefined || draft[item.key] === (old?.encrypted ? '' : old?.value)) {
+      draft[item.key] = item.encrypted ? '' : item.value
+    }
+  }
 }, { immediate: true })
 
 function settingLabel(setting: AdminSetting): string {
@@ -106,7 +112,7 @@ async function saveAll(): Promise<void> {
 }
 
 async function loadActivitySettings(): Promise<void> {
-  activityLoading.value = true
+  activityLoading.value = !restoreRef('/api/v1/admin/activity-settings', activitySettings)
   activityError.value = null
   try {
     activitySettings.value = await featuresApi.getAdminActivitySettings()

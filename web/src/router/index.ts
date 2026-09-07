@@ -49,8 +49,21 @@ const router = createRouter({
   ],
 })
 
-router.afterEach((to) => {
+let catalogCheckVersion = 0
+router.afterEach((to, _from, failure) => {
   completeRouteRecovery(to.fullPath)
+  if (failure) return
+  const version = ++catalogCheckVersion
+  const store = useSessionStore()
+  if (to.name !== 'catalog' || !store.user || store.user.role === 'admin') return
+  const userId = store.user.id
+  // Render the page snapshot while retaining the live, server-enforced renewal gate.
+  void api.getDashboard().then(dashboard => {
+    if (version !== catalogCheckVersion || store.user?.id !== userId) return
+    if (dashboard.activePurchase?.autoRenewEnabled || dashboard.queuedPurchase?.autoRenewEnabled) {
+      void router.replace({ name: 'home', query: { autoRenewBlocked: '1' } })
+    }
+  }).catch(() => undefined)
 })
 
 router.onError((error, to) => {
@@ -73,16 +86,6 @@ router.beforeEach(async (to) => {
   if (store.status === 'error') return true
   const protectedRedirect = resolveProtectedRoute(to, store.user)
   if (protectedRedirect) return protectedRedirect
-  if (to.name !== 'catalog' || store.user?.role === 'admin') return true
-
-  try {
-    const dashboard = await api.getDashboard()
-    if (dashboard.activePurchase?.autoRenewEnabled || dashboard.queuedPurchase?.autoRenewEnabled) {
-      return { name: 'home', query: { autoRenewBlocked: '1' } }
-    }
-  } catch {
-    // The catalog request remains server-enforced when a dashboard refresh is unavailable.
-  }
   return true
 })
 

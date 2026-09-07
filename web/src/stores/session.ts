@@ -2,6 +2,8 @@ import { computed, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
 
 import { api, ApiError } from '@/api/client'
+import { setCacheSession } from '@/api/cache/session'
+import { preloadSession, stopSessionPreload } from '@/api/cache/preload'
 import type { Session } from '@/api/types'
 import { localizedError, t } from '@/i18n'
 import { getTelegramInitData, isTelegramWebAppDetected } from '@/utils/telegram'
@@ -34,8 +36,10 @@ export const useSessionStore = defineStore('session', () => {
         }
         session.value = await api.authTelegram(initData)
       }
-      status.value = 'ready'
+      updateSession(session.value)
     } catch (caught) {
+      stopSessionPreload()
+      setCacheSession(null)
       session.value = null
       status.value = 'error'
       error.value = localizedError(caught, 'auth.authenticationFailed')
@@ -43,12 +47,16 @@ export const useSessionStore = defineStore('session', () => {
   }
 
   function updateSession(next: Session): void {
+    const changed = setCacheSession(`${next.user.id}:${next.user.role}:${next.user.onboardingState}`)
     session.value = next
     status.value = 'ready'
     error.value = null
+    if (changed) preloadSession(next)
   }
 
   function clear(): void {
+    stopSessionPreload()
+    setCacheSession(null)
     session.value = null
     status.value = 'idle'
     error.value = null

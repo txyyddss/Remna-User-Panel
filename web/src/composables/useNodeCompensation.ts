@@ -1,6 +1,7 @@
 import { onMounted, shallowRef } from 'vue'
 
 import { compensationApi } from '@/api/compensation'
+import { restoreCached, restoreRef } from '@/api/cache/restore'
 import type { NodeCompensationConfig, NodeCompensationConfigWrite, NodeCompensationEvent, NodeCompensationStatus } from '@/api/contracts/compensation'
 import { localizedError } from '@/i18n'
 import { createUuid } from '@/utils/browserCompatibility'
@@ -17,7 +18,13 @@ export function useNodeCompensation() {
   const reviewKeys = new Map<string, string>()
 
   async function load(): Promise<void> {
-    loading.value = true
+    loading.value = ![
+      restoreRef('/api/v1/admin/node-compensation/config', config),
+      restoreCached<Awaited<ReturnType<typeof compensationApi.events>>>('/api/v1/admin/node-compensation/events', page => {
+        events.value = page.items
+        nextCursor.value = page.nextCursor
+      }, { query: { status: status.value || undefined, limit: 25 } }),
+    ].every(Boolean)
     error.value = null
     try {
       const [nextConfig, page] = await Promise.all([compensationApi.config(), compensationApi.events(status.value)])

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { restoreItems } from '@/api/cache/restore'
 import { computed, onMounted, reactive, shallowRef } from 'vue'
 
 import { api } from '@/api/client'
@@ -38,7 +39,7 @@ const comboItems = computed(() => combos.value.map((combo) => ({ value: combo.id
 const squadItems = computed(() => squads.value.map((squad) => ({ value: squad.id, label: squad.name })))
 
 async function load(): Promise<void> {
-  loading.value = true
+  loading.value = !restoreItems('/api/v1/admin/coupons', items)
   error.value = null
   try { items.value = (await featuresApi.getAdminCoupons()).items }
   catch (caught) { error.value = localizedError(caught, 'adminCoupons.loadFailed') }
@@ -46,6 +47,8 @@ async function load(): Promise<void> {
 }
 
 async function loadOptions(): Promise<void> {
+  restoreItems('/api/v1/admin/combos', combos)
+  restoreItems('/api/v1/admin/squad-products', squads)
   try {
     const [comboResponse, squadResponse] = await Promise.all([
       api.getAdminResource<{ items: Combo[] }>('combos'),

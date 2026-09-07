@@ -2,19 +2,21 @@
 import { reactive, watch } from 'vue'
 
 import type { ActivitySettings, ActivitySettingsWrite } from '@/api/features'
+import { mergeRefreshedDraft } from '@/api/cache/drafts'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
 import { useI18n } from '@/i18n'
 const props = defineProps<{ settings: ActivitySettings | null; busy: boolean; save: (value: ActivitySettingsWrite) => Promise<void> }>()
 const draft = reactive({ timezone: 'Asia/Shanghai', dailyRewardMinTxb: '0.00', dailyRewardMaxTxb: '0.00', groupMessageThreshold: 0, groupMessageRewardTxb: '0.00' })
 const { t } = useI18n()
 
-watch(() => props.settings, (settings) => {
+watch(() => props.settings, (settings, previous) => {
   if (!settings) return
-  draft.timezone = settings.timezone
-  draft.dailyRewardMinTxb = settings.dailyRewardMinTxb
-  draft.dailyRewardMaxTxb = settings.dailyRewardMaxTxb
-  draft.groupMessageThreshold = settings.groupMessageThreshold
-  draft.groupMessageRewardTxb = settings.groupMessageRewardTxb
+  const pick = (value: ActivitySettings) => ({
+    timezone: value.timezone, dailyRewardMinTxb: value.dailyRewardMinTxb,
+    dailyRewardMaxTxb: value.dailyRewardMaxTxb, groupMessageThreshold: value.groupMessageThreshold,
+    groupMessageRewardTxb: value.groupMessageRewardTxb,
+  })
+  mergeRefreshedDraft(draft, pick(settings), previous ? pick(previous) : undefined)
 }, { immediate: true })
 
 async function saveActivitySettings(): Promise<void> {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { restoreRef } from '@/api/cache/restore'
 import { computed, onMounted, shallowRef } from 'vue'
 
 import { featuresApi, type OnboardingBundle, type OnboardingLocalizedContent } from '@/api/features'
@@ -28,11 +29,15 @@ function syncDraft(next: OnboardingBundle): void {
 
 async function load(nextKind: BundleKind = kind.value): Promise<void> {
   kind.value = nextKind
-  loading.value = true
+  loading.value = !restoreRef(`/api/v1/admin/onboarding/content/${nextKind}`, bundle)
+  if (!loading.value && bundle.value) syncDraft(bundle.value)
+  const originalDraft = JSON.stringify(draft.value)
   error.value = null
   message.value = null
   try {
-    bundle.value = await featuresApi.getAdminOnboardingBundle(nextKind)
+    const response = await featuresApi.getAdminOnboardingBundle(nextKind)
+    if (kind.value !== nextKind || JSON.stringify(draft.value) !== originalDraft) return
+    bundle.value = response
     syncDraft(bundle.value)
   } catch (caught) {
     error.value = localizedError(caught, 'errors.adminLoad')

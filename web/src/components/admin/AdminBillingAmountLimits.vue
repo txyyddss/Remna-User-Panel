@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { restoreCached } from '@/api/cache/restore'
+import { mergeRefreshedDraft } from '@/api/cache/drafts'
 import { computed, onMounted, reactive, shallowRef } from 'vue'
 
 import { adminBillingApi } from '@/api/adminBilling'
@@ -31,13 +33,20 @@ const canSave = computed(() => {
 })
 
 async function load(): Promise<void> {
-  loading.value = true
-  error.value = null
-  saved.value = false
-  try {
-    const response = await api.getBalance()
+  loading.value = !restoreCached<Awaited<ReturnType<typeof api.getBalance>>>('/api/v1/balance', response => {
     draft.minimum = txbInputFromMinor(response.addAmountLimits.minimum.minor)
     draft.maximum = txbInputFromMinor(response.addAmountLimits.maximum.minor)
+    updatedAt.value = response.addAmountLimits.updatedAt
+  })
+  error.value = null
+  saved.value = false
+  const previous = { ...draft }
+  try {
+    const response = await api.getBalance()
+    mergeRefreshedDraft(draft, {
+      minimum: txbInputFromMinor(response.addAmountLimits.minimum.minor),
+      maximum: txbInputFromMinor(response.addAmountLimits.maximum.minor),
+    }, previous)
     updatedAt.value = response.addAmountLimits.updatedAt
   } catch (caught) {
     error.value = localizedError(caught, 'errors.adminLoad')

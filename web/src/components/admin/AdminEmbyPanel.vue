@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { restoreItems } from '@/api/cache/restore'
 import { onMounted, shallowRef } from 'vue'
 
 import type { EmbyAccount } from '@/api/features'
@@ -17,7 +18,7 @@ const error = shallowRef<string | null>(null)
 const retryCommand = useDurableCommand({ errorKey: 'adminEmby.retryFailed', onTerminal: () => load() })
 
 async function load(): Promise<void> {
-  loading.value = true
+  loading.value = !restoreItems('/api/v1/admin/emby-accounts', items)
   error.value = null
   try { items.value = (await featuresApi.getAdminEmbyAccounts()).items }
   catch (caught) { error.value = localizedError(caught, 'adminEmby.loadFailed') }
