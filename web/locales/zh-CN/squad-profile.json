@@ -2,9 +2,9 @@
   "squadProfile": {
     "type": "网络配置",
     "types": {
-      "broadband": "家庭宽带",
+      "broadband": "宽带",
       "chinaOptimized": "中国优化",
-      "internationalNetwork": "国际网络"
+      "internationalNetwork": "国际优化"
     },
     "isp": "运营商",
     "ispPlaceholder": "互联网服务商",
