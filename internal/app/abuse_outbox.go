@@ -91,17 +91,29 @@ func handleAbuseNotification(ctx context.Context, job model.OutboxJob, store *da
 	if delivery.Delivered {
 		return nil
 	}
-	message := abuseMessage(delivery.Reason, delivery.QPS, delivery.Limit, string(delivery.Action), delivery.ExpiresAt)
+	message := abuseMessage(delivery)
 	if err = telegram.SendMarkdownV2Message(ctx, telegramID, 0, message); err != nil {
 		return err
 	}
 	return store.MarkAbuseDelivery(ctx, recordID, telegramID, time.Now().UTC())
 }
-func abuseMessage(reason string, qps, limit int, action string, expires *time.Time) string {
-	parts := []string{"⚠️ *Abuse detector*", "Reason: " + escapeMarkdown(reason), fmt.Sprintf("QPS: %d / %d", qps, limit), "Action: " + escapeMarkdown(action)}
-	if expires != nil {
-		parts = append(parts, "Expiry: "+escapeMarkdown(expires.UTC().Format(time.RFC3339)))
+func abuseMessage(delivery database.AbuseDelivery) string {
+	username := strings.TrimSpace(delivery.Username)
+	if username == "" {
+		username = "未知"
 	}
+	const timeFormat = "2006-01-02 15:04 UTC"
+	parts := []string{
+		"⚠️ *滥用检测*",
+		"用户: " + escapeMarkdown(username),
+		"时间: " + escapeMarkdown(delivery.OccurredAt.UTC().Format(timeFormat)),
+		"原因: " + escapeMarkdown(fmt.Sprintf("%s (QPS %d/%d)", delivery.Reason, delivery.QPS, delivery.Limit)),
+		"处罚: " + escapeMarkdown(string(delivery.Action)),
+	}
+	if delivery.ExpiresAt != nil {
+		parts = append(parts, "到期时间: "+escapeMarkdown(delivery.ExpiresAt.UTC().Format(timeFormat)))
+	}
+	parts = append(parts, "请立即停止您的滥用行为，否则可能被封禁且不予退款。")
 	return strings.Join(parts, "\n")
 }
 func escapeMarkdown(value string) string {

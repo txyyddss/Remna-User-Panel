@@ -21,6 +21,8 @@ type AbuseDelivery struct {
 	AbuseJob
 	TelegramID int64
 	Delivered  bool
+	Username   string
+	OccurredAt time.Time
 }
 
 func (s *Store) AbuseJob(ctx context.Context, recordID string) (AbuseJob, error) {
@@ -69,7 +71,17 @@ func (s *Store) AbuseDelivery(ctx context.Context, recordID string, telegramID i
 	item.AbuseJob = job
 	item.TelegramID = telegramID
 	var delivered sql.NullString
-	err = s.db.QueryRowContext(ctx, `SELECT delivered_at FROM abuse_notification_deliveries WHERE record_id=? AND recipient_telegram_id=? AND kind='incident'`, recordID, telegramID).Scan(&delivered)
+	var occurred string
+	err = s.db.QueryRowContext(ctx, `SELECT delivery.delivered_at,COALESCE(user.username,''),record.incident_bucket_at
+		FROM abuse_notification_deliveries delivery
+		JOIN abuse_records record ON record.id=delivery.record_id
+		JOIN users user ON user.id=record.user_id
+		WHERE delivery.record_id=? AND delivery.recipient_telegram_id=? AND delivery.kind='incident'`, recordID, telegramID).
+		Scan(&delivered, &item.Username, &occurred)
+	if err != nil {
+		return item, err
+	}
+	item.OccurredAt, err = parseStamp(occurred)
 	if err != nil {
 		return item, err
 	}

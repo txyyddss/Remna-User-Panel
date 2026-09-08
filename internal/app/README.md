@@ -50,7 +50,7 @@ stopped.
 - `remna_abuse_adapter.go` supplies queue-backed node identity to detector key provisioning.
 - `remna_abuse_actions.go` keeps every detector-triggered Remnawave call in the provider queue.
 - `abuse_ip_ban.go` persists and resumes asynchronous Remnawave connection scans before applying an IP ban.
-- `abuse_outbox.go` consumes durable detector punishment, restoration, and Telegram delivery jobs.
+- `abuse_outbox.go` consumes durable detector punishment, restoration, and Telegram delivery jobs. Incident messages use the Chinese notice format with the linked Remnawave username, actual detection time in UTC, reason and QPS, selected action, optional expiry, and the stop-abuse warning; dynamic fields remain MarkdownV2-escaped.
 - `abuse_scheduler.go` performs startup catch-up and UTC-aligned `:00`/`:30` durable abuse processing.
 - `abuse_outbox_test.go` covers MarkdownV2 escaping for detector notifications.
 - `maintenance_operation_test.go` covers successful, failed, and active-lease maintenance receipts.
