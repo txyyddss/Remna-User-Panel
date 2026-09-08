@@ -96,7 +96,11 @@ AbusePolicy:
     globalLimit: { type: integer, minimum: 0, maximum: 100000 }
     streakSeconds: { type: integer, minimum: 1, maximum: 1800 }
     warningValidityDays: { type: integer, minimum: 1, maximum: 365 }
-    warningCooldownMinutes: { type: integer, minimum: 0, maximum: 525600 }
+    warningCooldownMinutes:
+      type: integer
+      minimum: 0
+      maximum: 525600
+      description: Per-user cooldown between abuse record creation times for every action, including records without punishment. Zero disables it. Suppressed detections do not advance escalation or extend the cooldown. The field name is retained for compatibility.
     revision: { type: integer, minimum: 0 }
 
 AbuseRecord:

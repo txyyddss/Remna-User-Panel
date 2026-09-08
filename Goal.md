@@ -29,14 +29,3 @@ Push and commit to main branch when finish. Monitor actions run and fix issues w
 
 ---
 
-## Task: Add frontend cache to improve user experience
-
-### Cache
-
-When got a backend api respond, temperarily store it in the current session to prevent lagging when switching page.
-Keep the current data-getting logic, but display cached data when haven't get backend respond.
-Rewrite cache immidiately and refresh the displayed datas and cached datas (do not refresh the page, only refresh the datas) once getted backend response.
-
-### Preload
-
-Preload ALL of the necessary data when loading, including admin page (for admins).

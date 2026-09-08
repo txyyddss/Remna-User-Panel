@@ -49,7 +49,7 @@ type Policy struct {
 	GlobalLimit            int  `json:"globalLimit"`
 	StreakSeconds          int  `json:"streakSeconds"`
 	WarningValidityDays    int  `json:"warningValidityDays"`
-	WarningCooldownMinutes int  `json:"warningCooldownMinutes"`
+	WarningCooldownMinutes int  `json:"warningCooldownMinutes"` // Applies to all abuse records; legacy API name.
 	Revision               int  `json:"revision"`
 }
 type PunishmentRule struct {

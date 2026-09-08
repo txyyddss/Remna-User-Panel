@@ -16,7 +16,7 @@
     "streakSeconds": "Continuous streak (seconds)",
     "streakSecondsCopy": "Create one incident after this many uninterrupted seconds at or above the applicable QPS limit.",
     "validity": "Detector record retention days",
-    "warningCooldown": "Warning record cooldown (minutes; 0 disables)",
+    "warningCooldown": "Abuse record cooldown (minutes; 0 disables)",
     "invalidGlobalLimit": "Enter a whole-number global limit from 0 to 100,000.",
     "invalidStreakSeconds": "Enter a whole-number streak from 1 to 1,800 seconds.",
     "invalidValidity": "Enter detector record retention from 1 to 365 days.",

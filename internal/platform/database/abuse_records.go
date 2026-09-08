@@ -26,7 +26,8 @@ func ensureAbuseRecordTx(ctx context.Context, tx *sql.Tx, userID string, bucket 
 		return "", false, err
 	}
 	var count int
-	if err = tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM abuse_incident_facts WHERE user_id=? AND created_at>=?`, userID, stamp(now.AddDate(0, 0, -policy.WarningValidityDays))).Scan(&count); err != nil {
+	// Detections suppressed by cooldown must not advance the punishment ladder.
+	if err = tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM abuse_incident_facts fact JOIN abuse_records record ON record.id=fact.incident_id WHERE fact.user_id=? AND fact.created_at>=?`, userID, stamp(now.AddDate(0, 0, -policy.WarningValidityDays))).Scan(&count); err != nil {
 		return "", false, err
 	}
 	action, duration := selectPunishment(rules, count+1)
@@ -34,13 +35,9 @@ func ensureAbuseRecordTx(ctx context.Context, tx *sql.Tx, userID string, bucket 
 	if err != nil {
 		return "", false, err
 	}
-	blocked := false
-	if action == abuse.ActionWarning {
-		var cooldownErr error
-		blocked, cooldownErr = warningCooldownBlockedTx(ctx, tx, userID, policy, now)
-		if cooldownErr != nil {
-			return "", false, cooldownErr
-		}
+	blocked, err := abuseRecordCooldownBlockedTx(ctx, tx, userID, policy, now)
+	if err != nil {
+		return "", false, err
 	}
 	factAction := action
 	if blocked {

@@ -143,9 +143,9 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `compensation_config.go`, `compensation_observation.go`, `compensation_events.go`, `compensation_review.go`, `compensation_notification.go`, and `compensation_dismiss.go` persist revisioned outage policy, node observations, frozen snapshots, cursor-safe projections, atomic reviewed extensions, and provider-gated compensation detail cards.
 - `automatic_renewal_plan.go` and `automatic_renewal_commit.go` preserve explicit administrator entitlement overrides and edited term lengths when creating a successor.
 - `abuse_event_claims.go`, `abuse_legacy_samples.go`, and `abuse_evaluation.go` recover and claim bounded normalized-event batches, drain legacy samples, and atomically commit rollups, boundary state, incident facts, details, and outbox work.
-- `abuse_records.go`, `abuse_incident.go`, and `abuse_warning_cooldown.go` provide replay-safe escalation facts, cooldown-gated detailed records, and incident queueing.
+- `abuse_records.go`, `abuse_incident.go`, and `abuse_record_cooldown.go` provide replay-safe incident facts, per-user cooldowns for every abuse record, and incident queueing. Suppressed facts prevent replay but do not advance escalation, extend the cooldown, or queue punishments/notifications; only emitted records count. Zero disables cooldown, and the exact expiry permits the next record.
 - `abuse_admin.go`, `abuse_record_queries.go`, `abuse_ip_ban_scans.go`, and `abuse_outbox.go` provide encrypted node-key metadata, compact QPS statistics, username-bearing record projections, resumable IP-ban scans, completion evidence, restoration state, and retention.
-- `migrations/035_abuse_warning_cooldown.sql` persists the policy-controlled warning record cooldown.
+- `migrations/035_abuse_warning_cooldown.sql` persists the policy-controlled abuse record cooldown under its original column name for compatibility.
 - `migrations/038_durable_abuse_processing.sql` adds the bounded streak policy, normalized pending events, 30-minute rollups, emitted-state compatibility, compact incident facts, and punishment completion evidence.
 - `migrations/039_abuse_record_retention_and_ip_bans.sql` adds configurable record retention support and resumable IP-ban scan state.
 - `migrations/040_admin_user_provider_commands.sql` adds durable manual temporary-ban state.
@@ -252,4 +252,4 @@ batch pricing without coupon-use writes. `renewal_batch.go` projects retained
 renewal batches and their purchase records. Automatic renewal uses its own
 attached-coupon policy and a unique source-successor link.
 
-`abuse_policy_test.go`, `abuse_processing_test.go`, and `abuse_records_test.go` cover streak bounds and revisions, cross-task/replay evaluation, compact rollups, warning cooldown, and completion-gated detail pruning.
+`abuse_policy_test.go`, `abuse_processing_test.go`, `abuse_record_cooldown_test.go`, and `abuse_records_test.go` cover streak bounds and revisions, cross-task/replay evaluation, compact rollups, all-action cooldown and escalation boundaries, and completion-gated detail pruning.
