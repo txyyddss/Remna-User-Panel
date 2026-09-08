@@ -23,9 +23,7 @@ const uiLocale = computed(() => locale.value === 'zh-CN' ? zh_cn : en)
   <UApp :locale="uiLocale" :toaster="{ position: 'top-center' }">
     <AppErrorBoundary>
       <RouterView v-if="browserPublic" v-slot="{ Component, route: currentRoute }">
-        <Transition name="route" mode="out-in">
-          <component :is="Component" :key="currentRoute.fullPath" />
-        </Transition>
+        <component :is="Component" :key="currentRoute.fullPath" />
       </RouterView>
       <SessionEntrance v-else :status="sessionStore.status">
         <AuthGate
@@ -35,15 +33,11 @@ const uiLocale = computed(() => locale.value === 'zh-CN' ? zh_cn : en)
         />
         <template v-else>
           <RouterView v-if="immersive" v-slot="{ Component, route: currentRoute }">
-            <Transition name="route" mode="out-in">
-              <component :is="Component" :key="currentRoute.fullPath" />
-            </Transition>
+            <component :is="Component" :key="currentRoute.fullPath" />
           </RouterView>
           <AppShell v-else>
             <RouterView v-slot="{ Component, route: currentRoute }">
-              <Transition name="route" mode="out-in">
-                <component :is="Component" :key="currentRoute.fullPath" />
-              </Transition>
+              <component :is="Component" :key="currentRoute.fullPath" />
             </RouterView>
           </AppShell>
         </template>

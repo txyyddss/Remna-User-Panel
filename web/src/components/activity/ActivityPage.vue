@@ -13,7 +13,7 @@ const { overview, result, loading, busy, error, load, checkIn, placeBet, draw, c
 </script>
 
 <template>
-  <div v-auto-animate class="page page--activity">
+  <div class="page page--activity">
     <header class="page-header">
       <h1>{{ $t('activity.title') }}</h1>
     </header>

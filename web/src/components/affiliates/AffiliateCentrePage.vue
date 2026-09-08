@@ -14,7 +14,7 @@ useTelegramBackButton(computed(() => true), async () => { await router.push('/ho
 </script>
 
 <template>
-  <div v-auto-animate class="page affiliate-page">
+  <div class="page affiliate-page">
     <header class="affiliate-heading">
       <p class="eyebrow">{{ $t('dashboard.aroundTx') }}</p>
       <h1>{{ $t('affiliates.title') }}</h1>

@@ -76,7 +76,7 @@ function toggle(): void {
         <template #nameTags>
           <UIcon v-if="!squad.visible" name="i-ph-lock-key" :aria-label="$t('catalog.hidden')" />
           <UBadge v-if="squad.activationRequired" color="warning" variant="subtle" :label="$t('catalog.activationRequired')" />
-          <UBadge v-if="isFull" color="error" variant="subtle" :label="$t('catalog.full')" />
+          <UBadge v-if="isFull" size="sm" class="shrink-0 rounded-[2px] px-1.5 py-0.5" color="error" variant="subtle" :label="$t('catalog.full')" />
           <span v-if="!included && !isFull" class="squad-card__remaining" :aria-label="$t('catalog.remaining')">
             <UIcon name="i-ph-gauge" aria-hidden="true" />
             <strong>{{ remainingBadgeText }}</strong>

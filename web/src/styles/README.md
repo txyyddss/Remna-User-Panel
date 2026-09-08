@@ -39,14 +39,18 @@
 - `admin-06.css` styles the compact user-editor shell, responsive action/context rail, profile signals, and overlay form sizing.
 - `admin-07.css` styles shared administrative headings, dense rows, and responsive action/control layouts.
 - `overlays-01.css` resolves Telegram safe-area bounds while retaining Nuxt UI's native centered position for teleported modals, provides symmetric opt-in centered modal headers, and owns responsive drawer/slideover layouts.
-- `motion-01.css` defines short transitions and state motion.
-- `motion-02.css` adds reduced-motion-safe staggered page entry, tactile press response, status arrival, and active-navigation feedback.
+- `motion-01.css` defines onboarding and intro transitions without delaying route changes.
+- `motion-02.css` adds reduced-motion-safe tactile press response, status arrival, and active-navigation feedback. Page content stays visible immediately without staggered reveal animations.
 - `responsive-01.css` owns shared motion keyframes used by compact surfaces.
 - `responsive-02.css` expands the phone-first shell into a fixed-width resizable Nuxt UI sticky sidebar desktop layout, and restores wide route, dialog, catalog, settings, and administrative list arrangements.
 - `responsive-03.css` applies compact administrative rows below 640px and owns reduced-motion/transparency fallbacks.
 - `desktop-01.css` adds rail member context and balanced wide-page widths for desktop while keeping the compact phone shell untouched.
 
 The system is dark-only, flat, gradient-free, and uses borders instead of decorative shadows.
+
+Route roots render without Transition or AutoAnimate wrappers so restoring cached
+data cannot fade or scale the whole page. List-level animations and action feedback
+remain local to their components.
 
 ## Admin layout
 

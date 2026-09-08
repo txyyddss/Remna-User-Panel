@@ -12,8 +12,6 @@
   font-size: 0.61rem;
 }
 
-.route-enter-active,
-.route-leave-active,
 .onboarding-step-enter-active,
 .onboarding-step-leave-active,
 .intro-copy-enter-active,
@@ -21,13 +19,11 @@
   transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out);
 }
 
-.route-enter-from,
 .onboarding-step-enter-from {
   opacity: 0;
   transform: translateY(8px);
 }
 
-.route-leave-to,
 .onboarding-step-leave-to {
   opacity: 0;
   transform: translateY(-5px);

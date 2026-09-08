@@ -78,7 +78,7 @@ function consumeHomeRequest(name: 'revoke' | 'addSquads'): void {
 </script>
 
 <template>
-  <div v-auto-animate class="page page--home">
+  <div class="page page--home">
     <template v-if="loading">
       <SkeletonBlock height="13rem" />
       <div class="content-grid">

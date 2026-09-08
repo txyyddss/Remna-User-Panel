@@ -10,7 +10,7 @@ const { overview, loading, busy, blocked, receipt, checking, error, message, loa
 </script>
 
 <template>
-  <div v-auto-animate class="page page--emby">
+  <div class="page page--emby">
     <header class="page-header"><h1>{{ $t('emby.title') }}</h1></header>
     <SkeletonBlock v-if="loading" height="28rem" />
     <template v-else-if="overview">
