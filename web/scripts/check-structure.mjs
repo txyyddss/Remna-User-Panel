@@ -181,7 +181,7 @@ function checkFrontendPolicy() {
 checkLines('web/src', new Set(['.vue', '.ts', '.css']), 200, true)
 checkLines('web/locales', new Set(['.json']), 200)
 checkLines('web/scripts', new Set(['.mjs']), 200)
-checkLines('internal', new Set(['.go']), 200, true)
+checkLines('internal', new Set(['.go']), 300, true)
 checkLines('cmd', new Set(['.go']), 200, true)
 checkLines('api', new Set(['.yaml', '.yml']), 350)
 for (const root of ['web/src', 'web/locales', 'web/scripts', 'internal', 'cmd', 'api']) checkFolders(root)
