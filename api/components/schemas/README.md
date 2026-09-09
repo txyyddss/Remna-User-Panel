@@ -24,3 +24,4 @@ Schema definitions are grouped into bounded sequential shards. The root componen
 - `schemas-20.yaml`: affiliate member projections, tier rewards, bot identity, and optimistic administrator writes
 - `schemas-21.yaml`: `PaymentMethod` with provider display name and pending-order-aware `BalanceResponse`
 - `schemas-22.yaml`: revisioned node-compensation configuration, outage projections, review writes, recipient-safe event pages, and the abuse policy contract
+`schemas-02.yaml` includes the optional per-squad `geocheckEnabled` display setting. Existing squads default on; omitted writes preserve their stored setting.

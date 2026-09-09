@@ -44,3 +44,4 @@ The editor also provides dropdowns for coupon-eligible combos and squads, a stoc
 limit field for squad products, a table-name search for database recovery work,
 and mobile-safe backup controls. Balance adjustments use the shared audited
 admin endpoint for both credits and deductions.
+`AdminSquadEditor.vue` edits the default-on per-squad Geocheck switch alongside existing merchandising fields.

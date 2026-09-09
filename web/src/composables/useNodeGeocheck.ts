@@ -3,7 +3,7 @@ import { computed, getCurrentInstance, onUnmounted, readonly, shallowRef } from 
 import { api } from '@/api/client'
 import { restoreRef } from '@/api/cache/restore'
 import type { NodeGeocheckTarget, StatisticsNodeGeocheck } from '@/api/types'
-import { localizedError } from '@/i18n'
+import { localizedError, t } from '@/i18n'
 
 export function useNodeGeocheck() {
   const selectedNode = shallowRef<NodeGeocheckTarget | null>(null)
@@ -22,12 +22,15 @@ export function useNodeGeocheck() {
     selectedNode.value = node
     result.value = null
     error.value = null
-    loading.value = !restoreRef(`/api/v1/statistics/nodes/${encodeURIComponent(node.uuid)}/geocheck`, result)
+    loading.value = false
+    if (node.geocheckEnabled === false) return
+    loading.value = Boolean(node.squadUuid) || !restoreRef(`/api/v1/statistics/nodes/${encodeURIComponent(node.uuid)}/geocheck`, result)
     try {
-      const response = await api.getNodeGeocheck(node.uuid)
+      const response = node.squadUuid ? await api.getNodeGeocheck(node.uuid, node.squadUuid) : await api.getNodeGeocheck(node.uuid)
       if (version === requestVersion) result.value = response
     } catch (caught) {
-      if (version === requestVersion) error.value = localizedError(caught, 'statistics.geocheck.unavailable')
+      if (version === requestVersion) error.value = (caught as { code?: string })?.code === 'SQUAD_GEOCHECK_DISABLED'
+        ? t('statistics.geocheck.disabled') : localizedError(caught, 'statistics.geocheck.unavailable')
     } finally {
       if (version === requestVersion) loading.value = false
     }

@@ -1,5 +1,7 @@
 # Statistics components
 
+Squad-context Geocheck popups show the localized disabled state without restoring an image or starting a request when disabled. Enabled contexts pass the squad UUID for the server to recheck the live setting. General node statistics and shared background image collection retain their existing behavior.
+
 - `StatisticsPage.vue` is the thin page orchestrator for loading, stale, empty, and partial-error states, with separate Overview, Nodes, Seven-day traffic, Distributions, and Squad composition tabs. Overview also contains both source-freshness panels.
 - `StatisticsPage.test.ts` covers tab-panel separation and the node-card selection flow into the on-demand Geocheck modal.
 - `StatisticsFreshness.vue` exposes the Remnawave and database snapshot timestamps as independent Overview panels with separate stale state.

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import type { SquadProduct } from '@/api/types'
+import type { NodeGeocheckTarget, SquadProduct } from '@/api/types'
 import SquadProfileFacts from '@/components/squad-profile/SquadProfileFacts.vue'
 import SquadProfileSummary from '@/components/squad-profile/SquadProfileSummary.vue'
 import { useI18n } from '@/i18n'
@@ -18,7 +18,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   toggle: [id: string]
-  openGeocheck: [node: SquadProduct['accessibleNodes'][number]]
+  openGeocheck: [node: NodeGeocheckTarget]
 }>()
 const { t } = useI18n()
 
@@ -93,7 +93,7 @@ function toggle(): void {
         <span class="squad-card__nodes-label">{{ $t('catalog.nodes') }}</span>
         <SquadProfileFacts class="squad-card__tags" :profile="squad.profile" presentation="member" />
       </div>
-      <SquadNodeBlocks class="squad-card__node-controls" :nodes="squad.accessibleNodes" @open-geocheck="emit('openGeocheck', $event)" />
+      <SquadNodeBlocks class="squad-card__node-controls" :nodes="squad.accessibleNodes" @open-geocheck="emit('openGeocheck', { ...$event, squadUuid: squad.remnaSquadUuid, geocheckEnabled: squad.geocheckEnabled ?? true })" />
     </div>
   </article>
 </template>

@@ -39,6 +39,7 @@
     "uploadRate": "上传速率",
     "perSecond": "{value}/秒",
     "geocheck": {
+      "disabled": "Geocheck 已禁用。",
       "open": "查看 Geocheck 结果",
       "title": "{node} Geocheck",
       "checkedAt": "检查时间：{date}",

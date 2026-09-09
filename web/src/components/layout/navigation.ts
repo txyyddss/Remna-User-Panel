@@ -45,11 +45,11 @@ export function mobileNavigationItems(isAdmin: boolean): MobileNavigationItem[] 
 export function desktopNavigationItems(t: Translate, isAdmin: boolean, hasValidCombo = false): NavigationMenuItem[] {
   const items: NavigationMenuItem[] = [
     {
-      label: t('nav.home'), to: '/home', icon: 'i-ph-house', defaultOpen: true,
+      label: t('nav.home'), to: '/home', icon: 'i-ph-house', defaultOpen: true, exactQuery: true,
       children: [
         { label: t('nav.connections'), to: '/connections', icon: 'i-ph-devices' },
-        { label: t('nav.revoke'), to: { path: '/home', query: { revoke: '1' } }, icon: 'i-ph-trash' },
-        { label: t('nav.addSquads'), to: { path: '/home', query: { addSquads: '1' } }, icon: 'i-ph-plus' },
+        { label: t('nav.revoke'), to: { path: '/home', query: { revoke: '1' } }, icon: 'i-ph-trash', exactQuery: true },
+        { label: t('nav.addSquads'), to: { path: '/home', query: { addSquads: '1' } }, icon: 'i-ph-plus', exactQuery: true },
       ],
     },
     { label: t('nav.explore'), to: '/catalog', icon: 'i-ph-compass' },

@@ -7,4 +7,5 @@
 - `SwitchField.vue`, `TxbAmountField.vue`, and `MarkdownEditorField.vue` provide domain form fields; `TxbAmountField.vue` keeps exact TXB entry and can add a bounded `USlider` for member funding without weakening minor-unit validation.
 - `SwitchField.vue` uses a native label for its entire 52px row, so tapping the copy or surrounding space toggles the associated Nuxt UI switch once. The name and optional help remain separate accessible associations, and disabled switches retain their native guard.
 - `MarkdownContent.vue` safely renders allowlisted Markdown.
+- `MarkdownEditorField.vue` wraps Nuxt UI `UEditor` and `UEditorToolbar`, retaining Markdown persistence and the sanitized member preview. `markdownToolbar.ts` owns localized formatting actions; `MarkdownStyleControls.vue` applies safe text styling and `markdownStyle.ts` round-trips the existing color/size directives through the editor.
 - `MarkdownContent.test.ts` covers Markdown sanitization and rendering.

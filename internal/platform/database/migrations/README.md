@@ -75,3 +75,4 @@ file instead.
 - `041_admin_coupon_discard_commands.sql` records administrator coupon-discard idempotency without deleting historical grants.
 - `042_community_membership.sql` maps legacy membership onboarding users to username when unnamed or agreement when named.
 - `043_maintenance_run_history.sql` removes the one-row-per-date restriction while retaining active lease serialization and run history.
+- `044_squad_geocheck.sql` stores only the default-off disabled bit on existing sparse squad overrides; existing squads remain enabled.

@@ -142,3 +142,4 @@ Member connection scans, purchase reset/refund resources, operation receipts, st
 - `api-v1-payments-return-provider-orderid-status.yaml`: `/api/v1/payments/return/{provider}/{orderID}/status`; short-lived signed receipt projection for provider-return pages
 - `healthz.yaml`: `/healthz`
 - `readyz.yaml`: `/readyz`
+`api-v1-statistics-nodes-nodeuuid-geocheck.yaml` accepts a squad context and documents disabled (403) and settings-unavailable (503) responses.

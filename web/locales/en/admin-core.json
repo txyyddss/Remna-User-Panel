@@ -82,9 +82,22 @@
     "extraLarge": "Extra large",
     "apply": "Apply style",
     "preview": "Live preview",
-    "descriptionPreview": "Description preview"
+    "descriptionPreview": "Description preview",
+    "undo": "Undo",
+    "redo": "Redo",
+    "bold": "Bold",
+    "italic": "Italic",
+    "strike": "Strikethrough",
+    "heading": "Heading",
+    "bulletList": "Bullet list",
+    "orderedList": "Numbered list",
+    "blockquote": "Quote",
+    "code": "Code",
+    "tooLong": "Use no more than {max} characters."
   },
   "adminSquad": {
+    "geocheckEnabled": "Enable Geocheck",
+    "geocheckHint": "Show Geocheck results when members open a node in this squad.",
     "activationRequired": "Require activation code",
     "activationRequiredHint": "Keep this squad visible, but request a code before a new purchase.",
     "activationCode": "Activation code",

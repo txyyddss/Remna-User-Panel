@@ -154,6 +154,15 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  optimizeDeps: {
+    include: [
+      '@tiptap/core', '@tiptap/vue-3', '@tiptap/markdown', '@tiptap/starter-kit',
+      'prosemirror-state', 'prosemirror-view', 'prosemirror-model', 'prosemirror-transform',
+      'prosemirror-gapcursor', 'prosemirror-keymap', 'prosemirror-commands', 'prosemirror-history',
+      '@tiptap/pm/state', '@tiptap/pm/view', '@tiptap/pm/model', '@tiptap/pm/transform',
+      '@tiptap/pm/gapcursor', '@tiptap/pm/keymap', '@tiptap/pm/commands', '@tiptap/pm/history',
+    ],
+  },
   build: {
     target: 'es2020',
     outDir: '../internal/webui/dist',

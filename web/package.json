@@ -24,6 +24,7 @@
     "@iconify-json/ph": "^1.2.2",
     "@noble/hashes": "2.2.0",
     "@nuxt/ui": "https://pkg.pr.new/@nuxt/ui@6813",
+    "@tiptap/core": "^3.30.5",
     "dompurify": "^3.4.13",
     "markdown-it": "^15.0.0",
     "pinia": "^4.0.2",
@@ -55,7 +56,7 @@
   },
   "overrides": {
     "@redocly/openapi-core": {
-      "js-yaml": "4.3.1"
+      "js-yaml": "4.3.2"
     },
     "esbuild": "$esbuild"
   }

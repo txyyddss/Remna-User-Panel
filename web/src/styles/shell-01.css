@@ -74,8 +74,7 @@
 .bottom-nav {
   width: min(100%, 560px);
   height: calc(68px + var(--shell-safe-bottom));
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
   position: fixed;
   right: auto;
   bottom: 0;
@@ -86,10 +85,6 @@
   background: rgb(14 17 15 / 0.94);
   backdrop-filter: blur(20px);
   transform: translateX(-50%);
-}
-
-.bottom-nav--admin {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .bottom-nav__item {
@@ -113,9 +108,8 @@
   transition: color 180ms var(--ease-out), background-color 180ms var(--ease-out);
 }
 
-.bottom-nav__item--active {
+.bottom-nav__item[data-state='active'] {
   color: var(--accent);
-  background: rgb(166 217 187 / 0.07);
 }
 
 .language-control { display: inline-flex; align-items: center; gap: 0.5rem; }

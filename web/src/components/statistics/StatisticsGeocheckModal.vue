@@ -35,7 +35,11 @@ useTelegramBackButton(computed(() => open.value), () => { open.value = false })
   >
     <template #body>
       <section class="statistics-geocheck">
-        <div v-if="loading" class="statistics-geocheck__state" role="status" aria-live="polite">
+        <div v-if="node?.geocheckEnabled === false" class="statistics-geocheck__state" role="status">
+          <UIcon name="i-ph-eye-slash" aria-hidden="true" />
+          <span>{{ $t('statistics.geocheck.disabled') }}</span>
+        </div>
+        <div v-else-if="loading" class="statistics-geocheck__state" role="status" aria-live="polite">
           <UIcon class="icon-spin" name="i-ph-spinner-gap" aria-hidden="true" />
           <span>{{ $t('statistics.geocheck.loading') }}</span>
         </div>

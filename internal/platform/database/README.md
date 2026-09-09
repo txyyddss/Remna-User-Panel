@@ -1,4 +1,5 @@
 # SQLite store
+- `catalog_geocheck.go` reads the per-squad Geocheck display setting, defaulting to enabled without creating rows. `catalog_geocheck_test.go` covers default-on, omission-preserving writes, and sparse override cleanup when re-enabled.
 - `activation_codes.go` validates selected combo/add-on activation-code maps in the purchase transaction while keeping only bcrypt hashes in local overrides.
 - `activation_codes_test.go` covers missing, invalid, extra, and bcrypt-validated purchase codes.
 - `activity_draws_part2.go` continues the focused implementation from its original package module.

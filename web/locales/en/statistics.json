@@ -39,6 +39,7 @@
     "uploadRate": "Upload rate",
     "perSecond": "{value}/s",
     "geocheck": {
+      "disabled": "Geocheck disabled.",
       "open": "View Geocheck result",
       "title": "{node} Geocheck",
       "checkedAt": "Checked {date}",

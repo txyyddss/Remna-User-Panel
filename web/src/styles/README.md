@@ -1,5 +1,7 @@
 # Visual system
 
+- `page-transitions.css` slides outgoing/incoming viewport snapshots synchronously, horizontally below 900px and vertically on desktop. Stationary sidebar and bottom-navigation snapshots sit above the clipped page layer; reduced motion skips the slides.
+
 `main.css` is the ordered entry point for these cascade layers:
 
 - `foundation-01.css` defines tokens, document defaults, typography, and the semantic mint primary color. Native resets preserve Nuxt UI foreground utilities so solid, outline, and ghost controls retain readable contrast.

@@ -1,12 +1,10 @@
-<script setup lang="ts">
-import { computed, nextTick, shallowRef } from 'vue'
-
-import MarkdownContent from '@/components/common/MarkdownContent.vue'
+﻿<script setup lang="ts">
+import { computed } from 'vue'
+import MarkdownContent from './MarkdownContent.vue'
+import MarkdownStyleControls from './MarkdownStyleControls.vue'
+import { markdownStyle } from './markdownStyle'
+import { markdownToolbar } from './markdownToolbar'
 import { useI18n } from '@/i18n'
-
-interface TextareaExpose {
-  textareaRef?: globalThis.HTMLTextAreaElement
-}
 
 const model = defineModel<string>({ required: true })
 const props = withDefaults(defineProps<{
@@ -14,59 +12,27 @@ const props = withDefaults(defineProps<{
   placeholder?: string
   required?: boolean
   maxlength?: number
-}>(), {
-  placeholder: '',
-  required: false,
-  maxlength: 1000,
-})
-
-const textarea = shallowRef<TextareaExpose>()
-const color = shallowRef('accent')
-const size = shallowRef('lg')
+}>(), { placeholder: '', required: false, maxlength: 1000 })
 const { t } = useI18n()
-const colorItems = computed(() => ['default', 'muted', 'accent', 'success', 'warning', 'danger'].map((value) => ({
-  value,
-  label: t(`markdown.${value}`),
-})))
-const sizeItems = computed(() => [
-  { value: 'sm', label: t('markdown.small') },
-  { value: 'base', label: t('markdown.base') },
-  { value: 'lg', label: t('markdown.large') },
-  { value: 'xl', label: t('markdown.extraLarge') },
-])
-
-async function applyDirective(): Promise<void> {
-  const field = textarea.value?.textareaRef
-  if (!field) return
-  const start = field.selectionStart
-  const end = field.selectionEnd
-  const selected = model.value.slice(start, end) || t('markdown.text')
-  const directive = `[${selected}]{color=${color.value} size=${size.value}}`
-  model.value = `${model.value.slice(0, start)}${directive}${model.value.slice(end)}`
-  await nextTick()
-  field.focus()
-  field.setSelectionRange(start + 1, start + 1 + selected.length)
-}
+const toolbar = computed(() => markdownToolbar(t))
+const error = computed(() => model.value.length > props.maxlength ? t('markdown.tooLong', { max: props.maxlength }) : undefined)
 </script>
 
 <template>
   <div class="markdown-field">
-    <UFormField :label="label" :required="required">
-      <UTextarea
-        ref="textarea"
-        v-model="model"
-        :rows="4"
-        :maxlength="props.maxlength"
-        :placeholder="placeholder"
-        :required="required"
-        autoresize
-      />
+    <UFormField :label="label" :required="required" :error="error">
+      <UEditor
+        v-slot="{ editor }" v-model="model" content-type="markdown"
+        :extensions="[markdownStyle]" :placeholder="placeholder" :aria-label="label"
+        :aria-required="required" :aria-invalid="Boolean(error)" :mention="false" :image="false"
+        :starter-kit="{ underline: false, heading: { levels: [1, 2, 3] } }"
+        :ui="{ base: 'min-h-36 px-3 py-3 text-base' }"
+        class="markdown-field__editor w-full rounded-lg border border-default"
+      >
+        <UEditorToolbar :editor="editor" :items="toolbar" class="flex-wrap border-b border-default p-1" />
+        <MarkdownStyleControls :editor="editor" />
+      </UEditor>
     </UFormField>
-    <div class="markdown-field__toolbar" role="toolbar" :aria-label="t('markdown.toolbar')">
-      <USelect v-model="color" :items="colorItems" value-key="value" icon="i-ph-palette" :aria-label="t('markdown.color')" />
-      <USelect v-model="size" :items="sizeItems" value-key="value" icon="i-ph-text-aa" :aria-label="t('markdown.size')" />
-      <UButton :label="t('markdown.apply')" color="neutral" variant="soft" @click="applyDirective" />
-    </div>
     <div class="markdown-field__preview">
       <span>{{ t('markdown.preview') }}</span>
       <MarkdownContent :source="model || placeholder || t('markdown.descriptionPreview')" compact />
@@ -75,8 +41,17 @@ async function applyDirective(): Promise<void> {
 </template>
 
 <style scoped>
-.markdown-field { display: grid; gap: 0.55rem; }
-.markdown-field__toolbar { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; }
+.markdown-field { display: grid; min-width: 0; gap: 0.55rem; }
+.markdown-field__editor { overflow-wrap: anywhere; }
 .markdown-field__preview { min-height: 58px; padding: 0.7rem; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface); }
 .markdown-field__preview > span { display: block; margin-bottom: 0.45rem; color: var(--text-faint); font-size: 0.68rem; font-weight: 700; }
+.markdown-field__editor :deep(.md-color-default) { color: var(--text); }
+.markdown-field__editor :deep(.md-color-muted) { color: var(--text-muted); }
+.markdown-field__editor :deep(.md-color-accent), .markdown-field__editor :deep(.md-color-success) { color: var(--accent); }
+.markdown-field__editor :deep(.md-color-warning) { color: var(--warning); }
+.markdown-field__editor :deep(.md-color-danger) { color: var(--danger); }
+.markdown-field__editor :deep(.md-size-sm) { font-size: 0.85em; }
+.markdown-field__editor :deep(.md-size-base) { font-size: 1em; }
+.markdown-field__editor :deep(.md-size-lg) { font-size: 1.15em; }
+.markdown-field__editor :deep(.md-size-xl) { font-size: 1.3em; }
 </style>

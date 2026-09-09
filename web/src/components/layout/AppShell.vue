@@ -9,7 +9,10 @@ import { useSessionStore } from '@/stores/session'
 import { focusWithoutScrolling } from '@/utils/dom'
 import { telegramFullscreenState } from '@/utils/telegram'
 import LanguageControl from './LanguageControl.vue'
-import { desktopNavigationItems, mobileNavigationItems } from './navigation'
+import MobileNavigation from './MobileNavigation.vue'
+import SidebarMember from './SidebarMember.vue'
+import { desktopNavigationItems } from './navigation'
+import { usePageTransition } from './usePageTransition'
 
 const route = useRoute()
 const router = useRouter()
@@ -17,9 +20,8 @@ const sessionStore = useSessionStore()
 const { t } = useI18n()
 const { activeCombo: hasValidCombo, refresh: refreshCommunityAccess } = useCommunityAccess()
 
-const activePath = computed(() => route.path)
-const mobileItems = computed(() => mobileNavigationItems(sessionStore.isAdmin))
 const desktopItems = computed(() => desktopNavigationItems(t, sessionStore.isAdmin, hasValidCombo.value))
+usePageTransition(router, () => desktopItems.value)
 const showBackButton = computed(() => !['/', '/home'].includes(route.path))
 const appContent = useTemplateRef<globalThis.HTMLDivElement>('appContent')
 const mainContent = useTemplateRef<globalThis.HTMLElement>('mainContent')
@@ -35,10 +37,6 @@ function goBack(): void {
   } catch {
     // The router may already be disposing the current view.
   }
-}
-
-function goTo(to: string): void {
-  void router.push(to).catch(() => undefined)
 }
 
 useTelegramBackButton(showBackButton, goBack)
@@ -57,17 +55,13 @@ watch(() => route.path, (_next, previous) => {
     .catch(() => undefined)
 })
 
-function isActive(to: string): boolean {
-  if (to === '/admin/settings') return activePath.value.startsWith('/admin')
-  return activePath.value === to || (to === '/home' && activePath.value === '/')
-}
 </script>
 
 <template>
   <div class="app-frame" :class="{ 'app-frame--fullscreen': isFullscreen }">
     <a class="skip-link" href="#main-content">{{ $t('nav.skip') }}</a>
     <UDashboardGroup class="app-dashboard" storage="local" storage-key="tx-carpool-shell" unit="rem">
-      <UDashboardSidebar class="side-rail app-dashboard__sidebar" :default-size="15" :min-size="13" :max-size="20" resizable>
+      <UDashboardSidebar id="navigation-compact" class="side-rail app-dashboard__sidebar" :default-size="13" :min-size="13" :max-size="20" :ui="{ body: 'px-0', footer: 'px-0' }" resizable>
         <template #default>
           <nav class="side-rail__nav" :aria-label="$t('nav.primary')">
             <UNavigationMenu :items="desktopItems" orientation="vertical" color="primary" variant="pill" />
@@ -75,13 +69,7 @@ function isActive(to: string): boolean {
         </template>
         <template #footer>
           <footer class="side-rail__footer">
-            <div class="side-rail__member">
-              <UIcon name="i-ph-user-circle" />
-              <div>
-                <strong>{{ sessionStore.user?.username || sessionStore.user?.firstName || $t('nav.memberFallback') }}</strong>
-                <span>{{ $t('nav.member') }}</span>
-              </div>
-            </div>
+            <SidebarMember />
             <LanguageControl show-label />
           </footer>
         </template>
@@ -97,22 +85,6 @@ function isActive(to: string): boolean {
       </div>
     </UDashboardGroup>
 
-    <nav class="bottom-nav" :class="{ 'bottom-nav--admin': sessionStore.isAdmin }" :aria-label="$t('nav.primary')">
-      <UButton
-        v-for="item in mobileItems"
-        :key="item.to"
-        type="button"
-        color="neutral"
-        variant="ghost"
-        class="bottom-nav__item"
-        :class="{ 'bottom-nav__item--active': isActive(item.to) }"
-        :aria-current="isActive(item.to) ? 'page' : undefined"
-        data-haptic="navigate"
-        @click="goTo(item.to)"
-      >
-        <UIcon :name="item.icon" />
-        <span>{{ $t(item.labelKey) }}</span>
-      </UButton>
-    </nav>
+    <MobileNavigation :is-admin="sessionStore.isAdmin" />
   </div>
 </template>

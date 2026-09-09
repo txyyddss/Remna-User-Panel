@@ -41,7 +41,7 @@ function submit(): void {
   const priceTxbMinor = moneyFromTxbInput(draft.priceTxb)
   const trafficLimitBytes = trafficBytesFromInput(draft.trafficLimitBytes)
   trafficInvalid.value = trafficLimitBytes === ''
-  if (!priceTxbMinor || trafficInvalid.value) return
+  if (!priceTxbMinor || trafficInvalid.value || !draft.description.trim() || draft.description.length > 2000) return
   draft.trafficLimitBytes = trafficLimitBytes
   emit('save', {
     name: draft.name, description: draft.description, priceTxbMinor,
