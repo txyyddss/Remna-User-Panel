@@ -1,5 +1,9 @@
 # Admin components
 
+Administrative collections use restrained local Motion presence/layout only for
+row insertion, removal, filtering, and state handoffs. Admin panels do not use
+generic page entrances, card cascades, or springy table transitions.
+
 Localized route-level panels and shared admin-only Nuxt UI.
 
 Page loaders restore session response snapshots before refreshing. Editable settings,

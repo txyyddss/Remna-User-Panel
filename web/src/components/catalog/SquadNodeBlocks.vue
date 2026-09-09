@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import { AnimatePresence, motion } from 'motion-v'
+
 import type { CatalogNode } from '@/api/types'
 import CountryFlag from '@/components/common/CountryFlag.vue'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 
 defineProps<{ nodes: readonly CatalogNode[] }>()
 const emit = defineEmits<{ openGeocheck: [node: CatalogNode] }>()
+const { reducedMotion } = useMotionPreferences()
 
 function formatMultiplier(value: number): string {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value)
@@ -12,23 +16,25 @@ function formatMultiplier(value: number): string {
 
 <template>
   <div v-if="nodes.length" class="squad-node-list">
-    <div class="squad-node-list__grid">
-      <UButton
-        v-for="(node, index) in nodes"
-        :key="node.uuid"
-        type="button"
-        color="neutral"
-        variant="ghost"
-        class="squad-node-list__node"
-        :aria-label="$t('catalog.openNodeGeocheck', { current: index + 1, total: nodes.length, multiplier: $t('catalog.nodeMultiplier', { multiplier: formatMultiplier(node.consumptionMultiplier) }) })"
-        data-haptic="open"
-        @click.stop="emit('openGeocheck', node)"
-        @keydown.stop
-      >
-        <CountryFlag :code="node.countryCode" />
-        <span class="squad-node-list__multiplier">{{ $t('catalog.nodeMultiplier', { multiplier: formatMultiplier(node.consumptionMultiplier) }) }}</span>
-      </UButton>
-    </div>
+    <motion.div layout class="squad-node-list__grid">
+      <AnimatePresence :initial="false" mode="popLayout">
+        <motion.div v-for="(node, index) in nodes" :key="node.uuid" layout :initial="reducedMotion ? false : { opacity: 0, y: 4 }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.14, ease: 'easeOut' }">
+          <UButton
+            type="button"
+            color="neutral"
+            variant="ghost"
+            class="squad-node-list__node"
+            :aria-label="$t('catalog.openNodeGeocheck', { current: index + 1, total: nodes.length, multiplier: $t('catalog.nodeMultiplier', { multiplier: formatMultiplier(node.consumptionMultiplier) }) })"
+            data-haptic="open"
+            @click.stop="emit('openGeocheck', node)"
+            @keydown.stop
+          >
+            <CountryFlag :code="node.countryCode" />
+            <span class="squad-node-list__multiplier">{{ $t('catalog.nodeMultiplier', { multiplier: formatMultiplier(node.consumptionMultiplier) }) }}</span>
+          </UButton>
+        </motion.div>
+      </AnimatePresence>
+    </motion.div>
   </div>
 </template>
 

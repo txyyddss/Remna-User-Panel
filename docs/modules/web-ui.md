@@ -2,6 +2,22 @@
 
 ## Composition and ownership
 
+### Motion architecture
+
+Motion Vue is the semantic animation layer. `motionPresets.ts` owns the shared
+timings and critically damped layout spring; `useMotionPreferences.ts` reads
+`prefers-reduced-motion` through Motion and returns opacity-only fallbacks. The
+shell owns one keyed route presence boundary, navigation owns shared active
+markers, and feature components own list/layout/presence feedback. CSS remains
+responsible for perpetual loaders, skeletons, radar, and particles. No global
+selector animates `.notice`, `.operation-status`, or `.status-badge` on mount.
+
+The interaction contract is: press feedback is immediate, outgoing content
+exits locally, incoming content settles within 180-240ms, and reduced motion
+removes translation, scale, rotation, and celebration movement while retaining
+a short opacity handoff. Stable domain IDs remain the keys for list presence;
+editor-only drafts use a memory-only client key that is never persisted.
+
 The web module is a mobile-first Telegram Mini App built with Vue 3 Composition API and `<script setup lang="ts">`. Route views are composition surfaces; typed feature composables own remote state, polling, and mutations; reusable components own presentation and local interaction state.
 
 The main boundaries are:

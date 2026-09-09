@@ -1,31 +1,37 @@
 <script setup lang="ts">
+import { AnimatePresence, motion } from 'motion-v'
+
 import type { LuckyDraw } from '@/api/features'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { txbInputFromMinor } from '@/utils/format'
 
 defineProps<{ draws: readonly LuckyDraw[]; busy: boolean }>()
 defineEmits<{ draw: [id: string] }>()
+const { reducedMotion, offset } = useMotionPreferences()
 </script>
 
 <template>
-  <section v-auto-animate class="section-block draw-list">
+  <motion.section layout class="section-block draw-list">
     <div class="section-heading section-heading--stacked"><h2>{{ $t('activity.luckyDraws') }}</h2><p>{{ $t('activity.drawCopy') }}</p></div>
-    <article v-for="draw in draws" :key="draw.id" class="draw-panel">
-      <span class="feature-icon"><UIcon name="i-ph-gift" /></span>
-      <div class="draw-panel__copy">
-        <h3>{{ draw.name }}</h3>
-        <p>{{ draw.description || $t('activity.weightedPrize') }}</p>
-        <span class="draw-panel__safety"><UIcon name="i-ph-shield-check" /> {{ $t('activity.drawSafety') }}</span>
-      </div>
-      <UButton
-        :disabled="!draw.enabled || busy"
-        :loading="busy"
-        :label="busy ? $t('activity.drawing') : $t('activity.drawFor', { amount: txbInputFromMinor(draw.feeTxbMinor) })"
-        data-haptic="confirm"
-        @click="$emit('draw', draw.id)"
-      />
-    </article>
-    <div v-if="!draws.length" class="empty-inline"><div><h3>{{ $t('activity.noDraws') }}</h3><p>{{ $t('activity.publishDraw') }}</p></div></div>
-  </section>
+    <AnimatePresence :initial="false" mode="popLayout">
+      <motion.article v-for="draw in draws" :key="draw.id" layout class="draw-panel" :initial="reducedMotion ? false : { opacity: 0, y: offset(8) }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0, y: reducedMotion ? 0 : -6 }" :transition="{ duration: reducedMotion ? 0.08 : 0.18, ease: 'easeOut' }">
+        <span class="feature-icon"><UIcon name="i-ph-gift" /></span>
+        <div class="draw-panel__copy">
+          <h3>{{ draw.name }}</h3>
+          <p>{{ draw.description || $t('activity.weightedPrize') }}</p>
+          <span class="draw-panel__safety"><UIcon name="i-ph-shield-check" /> {{ $t('activity.drawSafety') }}</span>
+        </div>
+        <UButton
+          :disabled="!draw.enabled || busy"
+          :loading="busy"
+          :label="busy ? $t('activity.drawing') : $t('activity.drawFor', { amount: txbInputFromMinor(draw.feeTxbMinor) })"
+          data-haptic="confirm"
+          @click="$emit('draw', draw.id)"
+        />
+      </motion.article>
+      <motion.div v-if="!draws.length" key="empty" class="empty-inline" :initial="{ opacity: 0 }" :animate="{ opacity: 1 }" :exit="{ opacity: 0 }"><div><h3>{{ $t('activity.noDraws') }}</h3><p>{{ $t('activity.publishDraw') }}</p></div></motion.div>
+    </AnimatePresence>
+  </motion.section>
 </template>
 
 <style scoped>

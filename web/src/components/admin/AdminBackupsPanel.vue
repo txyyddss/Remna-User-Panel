@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onScopeDispose, shallowRef } from 'vue'
-
+import { AnimatePresence, motion } from 'motion-v'
 import type { BackupRecord, JobRecord } from '@/api/types'
 import type { RestoreOperation } from '@/api/features'
 import { featuresApi } from '@/api/features'
@@ -10,6 +10,7 @@ import StatusBadge from '@/components/common/StatusBadge.vue'
 import { useAdminSection } from '@/composables/useAdminSection'
 import { useDurableCommand } from '@/composables/useDurableCommand'
 import { localizedError, useI18n } from '@/i18n'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { createUuid } from '@/utils/browserCompatibility'
 import { formatBytes, formatDateTime } from '@/utils/format'
 import AdminSectionState from './AdminSectionState.vue'
@@ -17,7 +18,6 @@ import MaintenanceTrigger from './backups/MaintenanceTrigger.vue'
 import RestoreBackupDialog from './backups/RestoreBackupDialog.vue'
 import BackupUploadPanel from './backups/BackupUploadPanel.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
-
 const backups = useAdminSection<BackupRecord>('backups')
 const jobs = useAdminSection<JobRecord>('jobs')
 const jobRetry = useDurableCommand({ errorKey: 'errors.adminAction', onTerminal: (receipt) => receipt.status === 'succeeded' ? jobs.load() : undefined })
@@ -28,6 +28,7 @@ const actionError = shallowRef<string | null>(null)
 const backupDeleteTarget = shallowRef<BackupRecord | null>(null)
 const jobDeleteTarget = shallowRef<JobRecord | null>(null)
 const { t } = useI18n()
+const { reducedMotion, offset } = useMotionPreferences()
 let restorePollTimer: ReturnType<typeof globalThis.setTimeout> | undefined
 let restoreAttempt: { fingerprint: string; key: string } | undefined
 function isScheduled(job: JobRecord): boolean { return job.status === 'pending' && new Date(job.availableAt).getTime() > Date.now() }
@@ -56,11 +57,9 @@ async function pollRestore(): Promise<void> {
 function createBackup(): void {
   void backups.perform(() => import('@/api/client').then(({ api }) => api.createAdminBackup()))
 }
-
 function refreshSections(): void {
   void Promise.allSettled([backups.load(), jobs.load()])
 }
-
 function retryJob(id: string): void {
   void jobRetry.execute(id, `job-retry:${id}`, (key) => import('@/api/client').then(({ api }) => api.retryAdminJob(id, key)))
 }
@@ -145,15 +144,17 @@ onScopeDispose(stopRestorePolling)
     <InlineNotice v-if="restoreOperation" :tone="restoreOperation.status === 'failed' ? 'warning' : 'success'" :title="restoreOperation.status === 'complete' ? t('adminBackups.restoreComplete') : restoreOperation.status === 'failed' ? t('adminBackups.restoreFailedTitle') : t('adminBackups.restoreStaged')">{{ t('adminBackups.operationStatus', { id: restoreOperation.id, status: t(`adminBackups.status.${restoreOperation.status}`) }) }} {{ restoreFollowUp(restoreOperation) }}</InlineNotice>
     <InlineNotice v-if="actionError" tone="warning">{{ actionError }}</InlineNotice>
     <AdminSectionState :loading="backups.loading.value" :error="backups.error.value" @retry="backups.load()">
-      <div v-auto-animate class="backup-grid">
-        <article v-for="backup in backups.items.value" :key="backup.id" class="backup-card">
-          <span class="feature-icon"><UIcon name="i-ph-database" /></span>
-          <div><strong>{{ backupName(backup) }}</strong><small>{{ formatBytes(backup.sizeBytes) }} / {{ formatDateTime(backup.createdAt) }}</small></div>
-          <span class="backup-card__verified"><UIcon name="i-ph-check-circle-fill" /> {{ backup.status === 'complete' ? t('adminBackups.verified') : t(`adminBackups.status.${backup.status}`) }}</span>
-          <div v-if="backup.status === 'complete'" class="backup-card__actions"><UButton size="sm" color="neutral" variant="outline" icon="i-ph-download-simple" :label="t('adminBackups.download')" @click="download(backup)" /><UButton size="sm" color="error" variant="ghost" icon="i-ph-upload-simple" :label="t('adminBackups.restore')" data-haptic="destructive" @click="restoreTarget = backup" /><UButton size="sm" color="error" variant="ghost" icon="i-ph-trash" :label="t('adminBackups.delete')" data-haptic="destructive" @click="backupDeleteTarget = backup" /></div>
-        </article>
-        <div v-if="!backups.items.value.length" class="empty-inline"><div><h3>{{ t('adminBackups.none') }}</h3><p>{{ t('adminBackups.noneHint') }}</p></div></div>
-      </div>
+      <motion.div layout class="backup-grid">
+        <AnimatePresence :initial="false" mode="popLayout">
+          <motion.article v-for="backup in backups.items.value" :key="backup.id" layout class="backup-card" :initial="reducedMotion ? false : { opacity: 0, y: offset(6) }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.22, ease: 'easeOut' }">
+            <span class="feature-icon"><UIcon name="i-ph-database" /></span>
+            <div><strong>{{ backupName(backup) }}</strong><small>{{ formatBytes(backup.sizeBytes) }} / {{ formatDateTime(backup.createdAt) }}</small></div>
+            <span class="backup-card__verified"><UIcon name="i-ph-check-circle-fill" /> {{ backup.status === 'complete' ? t('adminBackups.verified') : t(`adminBackups.status.${backup.status}`) }}</span>
+            <div v-if="backup.status === 'complete'" class="backup-card__actions"><UButton size="sm" color="neutral" variant="outline" icon="i-ph-download-simple" :label="t('adminBackups.download')" @click="download(backup)" /><UButton size="sm" color="error" variant="ghost" icon="i-ph-upload-simple" :label="t('adminBackups.restore')" data-haptic="destructive" @click="restoreTarget = backup" /><UButton size="sm" color="error" variant="ghost" icon="i-ph-trash" :label="t('adminBackups.delete')" data-haptic="destructive" @click="backupDeleteTarget = backup" /></div>
+          </motion.article>
+          <motion.div v-if="!backups.items.value.length" key="empty-backups" class="empty-inline" :initial="{ opacity: 0 }" :animate="{ opacity: 1 }"><div><h3>{{ t('adminBackups.none') }}</h3><p>{{ t('adminBackups.noneHint') }}</p></div></motion.div>
+        </AnimatePresence>
+      </motion.div>
     </AdminSectionState>
     <RestoreBackupDialog :open="restoreTarget !== null" :backup-name="restoreTarget ? backupName(restoreTarget) : ''" :busy="restoring" @update:open="!$event && (restoreTarget = null)" @restore="restore" />
     <ConfirmDialog :open="Boolean(backupDeleteTarget)" :title="t('adminBackups.deleteTitle', { name: backupDeleteTarget ? backupName(backupDeleteTarget) : t('adminBackups.backup') })" :description="t('adminBackups.deleteDescription')" :confirm-label="t('adminBackups.deleteBackup')" danger @update:open="!$event && (backupDeleteTarget = null)" @confirm="deleteBackup" />
@@ -161,17 +162,19 @@ onScopeDispose(stopRestorePolling)
     <div class="admin-subsection-heading"><div><h3>{{ t('adminBackups.jobs') }}</h3><p>{{ t('adminBackups.jobsHint') }}</p></div><UButton color="neutral" variant="ghost" icon="i-ph-arrow-clockwise" :label="t('common.refresh')" @click="jobs.load()" /></div>
     <OperationStatusNotice :receipt="jobRetry.receipt.value" :error="jobRetry.error.value" :checking="jobRetry.checking.value" @refresh="jobRetry.refresh" />
     <AdminSectionState :loading="jobs.loading.value" :error="jobs.error.value" @retry="jobs.load()">
-      <div v-auto-animate class="admin-list admin-list--compact">
-        <article v-for="job in jobs.items.value" :key="job.id" class="admin-list-row admin-list-row--job">
-          <div><strong>{{ job.kind }}</strong><small>{{ t('adminBackups.attempts', { count: job.attempts }) }}<template v-if="job.status === 'pending'"> / {{ t('adminBackups.availableAt', { date: formatDateTime(job.availableAt) }) }}</template><template v-else> / {{ formatDateTime(job.updatedAt) }}</template><template v-if="job.lastError"> / {{ t('adminBackups.jobError') }}</template></small></div>
-          <StatusBadge :tone="job.status === 'done' ? 'success' : job.status === 'failed' ? 'danger' : 'warning'" :label="t(isScheduled(job) ? 'adminBackups.status.scheduled' : `adminBackups.status.${job.status}`)" />
-          <div class="row-actions">
-            <UButton v-if="job.status === 'failed'" size="sm" color="neutral" variant="outline" icon="i-ph-arrow-clockwise" :disabled="jobs.busy.value || jobRetry.blocksMutations.value" :loading="jobRetry.busy.value && jobRetry.activeCommandId.value === job.id" :label="t('adminBackups.retry')" @click="retryJob(job.id)" />
-            <UButton color="error" variant="ghost" icon="i-ph-trash" :disabled="job.status === 'processing' || jobs.busy.value || jobRetry.blocksMutations.value" :aria-label="t('adminBackups.deleteJobLabel', { kind: job.kind })" data-haptic="destructive" @click="jobDeleteTarget = job" />
-          </div>
-        </article>
-        <div v-if="!jobs.items.value.length" class="empty-inline"><div><h3>{{ t('adminBackups.noJobs') }}</h3><p>{{ t('adminBackups.noJobsHint') }}</p></div></div>
-      </div>
+      <motion.div layout class="admin-list admin-list--compact">
+        <AnimatePresence :initial="false" mode="popLayout">
+          <motion.article v-for="job in jobs.items.value" :key="job.id" layout class="admin-list-row admin-list-row--job" :initial="reducedMotion ? false : { opacity: 0, y: offset(6) }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.18, ease: 'easeOut' }">
+            <div><strong>{{ job.kind }}</strong><small>{{ t('adminBackups.attempts', { count: job.attempts }) }}<template v-if="job.status === 'pending'"> / {{ t('adminBackups.availableAt', { date: formatDateTime(job.availableAt) }) }}</template><template v-else> / {{ formatDateTime(job.updatedAt) }}</template><template v-if="job.lastError"> / {{ t('adminBackups.jobError') }}</template></small></div>
+            <StatusBadge :tone="job.status === 'done' ? 'success' : job.status === 'failed' ? 'danger' : 'warning'" :label="t(isScheduled(job) ? 'adminBackups.status.scheduled' : `adminBackups.status.${job.status}`)" />
+            <div class="row-actions">
+              <UButton v-if="job.status === 'failed'" size="sm" color="neutral" variant="outline" icon="i-ph-arrow-clockwise" :disabled="jobs.busy.value || jobRetry.blocksMutations.value" :loading="jobRetry.busy.value && jobRetry.activeCommandId.value === job.id" :label="t('adminBackups.retry')" @click="retryJob(job.id)" />
+              <UButton color="error" variant="ghost" icon="i-ph-trash" :disabled="job.status === 'processing' || jobs.busy.value || jobRetry.blocksMutations.value" :aria-label="t('adminBackups.deleteJobLabel', { kind: job.kind })" data-haptic="destructive" @click="jobDeleteTarget = job" />
+            </div>
+          </motion.article>
+          <motion.div v-if="!jobs.items.value.length" key="empty-jobs" class="empty-inline" :initial="{ opacity: 0 }" :animate="{ opacity: 1 }"><div><h3>{{ t('adminBackups.noJobs') }}</h3><p>{{ t('adminBackups.noJobsHint') }}</p></div></motion.div>
+        </AnimatePresence>
+      </motion.div>
       <UButton v-if="jobs.nextCursor.value" class="database-load-more" color="neutral" variant="outline" icon="i-ph-arrow-down" :loading="jobs.loading.value" :disabled="jobs.loading.value" :label="t('adminBackups.loadMoreJobs')" @click="jobs.loadMore" />
     </AdminSectionState>
     <ConfirmDialog :open="Boolean(jobDeleteTarget)" :title="t('adminBackups.deleteJobTitle')" :description="t('adminBackups.deleteJobDescription')" :confirm-label="t('adminBackups.deleteJob')" danger @update:open="!$event && (jobDeleteTarget = null)" @confirm="deleteJob" />

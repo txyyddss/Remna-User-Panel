@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { shallowRef } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import { featuresApi, type AdminStatistics, type StatisticsQuery } from '@/api/features'
 import type { Combo, SquadProduct, SquadProductWrite } from '@/api/types'
@@ -8,6 +9,7 @@ import StatusBadge from '@/components/common/StatusBadge.vue'
 import SquadProfileSummary from '@/components/squad-profile/SquadProfileSummary.vue'
 import { useAdminSection } from '@/composables/useAdminSection'
 import { useI18n } from '@/i18n'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { formatBytes, formatMoney } from '@/utils/format'
 import AdminCatalogEditor from './AdminCatalogEditor.vue'
 import AdminSectionState from './AdminSectionState.vue'
@@ -21,6 +23,7 @@ const deleting = shallowRef<Combo | null>(null)
 const editingSquad = shallowRef<SquadProduct | null>(null)
 const statisticsTarget = shallowRef<{ kind: 'combo' | 'squad'; id: string; title: string } | null>(null)
 const { t } = useI18n()
+const { reducedMotion, offset } = useMotionPreferences()
 
 function loadStatistics(query: StatisticsQuery): Promise<AdminStatistics> {
   const target = statisticsTarget.value
@@ -63,19 +66,21 @@ async function saveSquad(payload: SquadProductWrite): Promise<void> {
     </div>
     <AdminCatalogEditor v-if="editing !== undefined" :combo="editing ?? undefined" :squads="squads.items.value" :busy="combos.busy.value" @save="save" @cancel="editing = undefined" />
     <AdminSectionState :loading="combos.loading.value" :error="combos.error.value" @retry="combos.load()">
-      <div v-auto-animate class="admin-list">
-        <article v-for="combo in combos.items.value" :key="combo.id" class="admin-list-row admin-list-row--catalog">
-          <div><strong>{{ combo.name }}</strong><small>{{ t('adminCatalog.comboSummary', { traffic: formatBytes(combo.trafficLimitBytes), days: combo.validityDays }) }}</small></div>
-          <strong>{{ formatMoney(combo.price) }}</strong>
-          <StatusBadge :tone="combo.active ? 'success' : 'neutral'" :label="combo.active ? t('adminCatalog.available') : t('adminCatalog.paused')" />
-          <div class="row-actions">
-            <UButton color="neutral" variant="ghost" square icon="i-ph-chart-bar" :aria-label="t('adminCatalog.statisticsFor', { name: combo.name })" @click="statisticsTarget = { kind: 'combo', id: combo.id, title: t('adminCatalog.statisticsTitle', { name: combo.name }) }" />
-            <UButton color="neutral" variant="ghost" square icon="i-ph-pencil-simple" :aria-label="t('adminCatalog.editNamed', { name: combo.name })" @click="editing = combo" />
-            <UButton color="error" variant="ghost" square icon="i-ph-trash" :aria-label="t('adminCatalog.hideNamed', { name: combo.name })" data-haptic="destructive" @click="deleting = combo" />
-          </div>
-        </article>
-        <div v-if="!combos.items.value.length" class="empty-inline"><div><h3>{{ t('adminCatalog.noCombos') }}</h3><p>{{ t('adminCatalog.noCombosHint') }}</p></div></div>
-      </div>
+      <motion.div layout class="admin-list">
+        <AnimatePresence :initial="false" mode="popLayout">
+          <motion.article v-for="combo in combos.items.value" :key="combo.id" layout class="admin-list-row admin-list-row--catalog" :initial="reducedMotion ? false : { opacity: 0, y: offset(6) }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.18, ease: 'easeOut' }">
+            <div><strong>{{ combo.name }}</strong><small>{{ t('adminCatalog.comboSummary', { traffic: formatBytes(combo.trafficLimitBytes), days: combo.validityDays }) }}</small></div>
+            <strong>{{ formatMoney(combo.price) }}</strong>
+            <StatusBadge :tone="combo.active ? 'success' : 'neutral'" :label="combo.active ? t('adminCatalog.available') : t('adminCatalog.paused')" />
+            <div class="row-actions">
+              <UButton color="neutral" variant="ghost" square icon="i-ph-chart-bar" :aria-label="t('adminCatalog.statisticsFor', { name: combo.name })" @click="statisticsTarget = { kind: 'combo', id: combo.id, title: t('adminCatalog.statisticsTitle', { name: combo.name }) }" />
+              <UButton color="neutral" variant="ghost" square icon="i-ph-pencil-simple" :aria-label="t('adminCatalog.editNamed', { name: combo.name })" @click="editing = combo" />
+              <UButton color="error" variant="ghost" square icon="i-ph-trash" :aria-label="t('adminCatalog.hideNamed', { name: combo.name })" data-haptic="destructive" @click="deleting = combo" />
+            </div>
+          </motion.article>
+          <motion.div v-if="!combos.items.value.length" key="empty-combos" class="empty-inline" :initial="{ opacity: 0 }" :animate="{ opacity: 1 }"><div><h3>{{ t('adminCatalog.noCombos') }}</h3><p>{{ t('adminCatalog.noCombosHint') }}</p></div></motion.div>
+        </AnimatePresence>
+      </motion.div>
     </AdminSectionState>
     <AdminStatisticsPanel v-if="statisticsTarget?.kind === 'combo'" :title="statisticsTarget.title" :load="loadStatistics" @close="statisticsTarget = null" />
 
@@ -91,18 +96,20 @@ async function saveSquad(payload: SquadProductWrite): Promise<void> {
       @cancel="editingSquad = null"
     />
     <AdminSectionState :loading="squads.loading.value" :error="squads.error.value" @retry="squads.load()">
-      <div v-auto-animate class="admin-list admin-list--compact">
-        <article v-for="squad in squads.items.value" :key="squad.id" class="admin-list-row">
-          <div><strong>{{ squad.name }}</strong><SquadProfileSummary :profile="squad.profile" :description="squad.description" compact /><small v-if="!squad.profile">{{ squad.remnaSquadUuid }}</small></div>
-          <strong>{{ formatMoney(squad.price) }}</strong>
-          <StatusBadge :tone="squad.upstreamPresent && squad.visible ? 'success' : 'neutral'" :label="squad.upstreamPresent && squad.visible ? t('adminCatalog.available') : t('adminCatalog.hidden')" />
-          <div class="row-actions">
-            <UButton color="neutral" variant="ghost" square icon="i-ph-chart-bar" :aria-label="t('adminCatalog.statisticsFor', { name: squad.name })" @click="statisticsTarget = { kind: 'squad', id: squad.id, title: t('adminCatalog.statisticsTitle', { name: squad.name }) }" />
-            <UButton color="neutral" variant="ghost" square icon="i-ph-pencil-simple" :aria-label="t('adminCatalog.editNamed', { name: squad.name })" @click="editingSquad = squad" />
-          </div>
-        </article>
-        <div v-if="!squads.items.value.length" class="empty-inline"><div><h3>{{ t('adminCatalog.noSquads') }}</h3><p>{{ t('adminCatalog.noSquadsHint') }}</p></div></div>
-      </div>
+      <motion.div layout class="admin-list admin-list--compact">
+        <AnimatePresence :initial="false" mode="popLayout">
+          <motion.article v-for="squad in squads.items.value" :key="squad.id" layout class="admin-list-row" :initial="reducedMotion ? false : { opacity: 0, y: offset(6) }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.18, ease: 'easeOut' }">
+            <div><strong>{{ squad.name }}</strong><SquadProfileSummary :profile="squad.profile" :description="squad.description" compact /><small v-if="!squad.profile">{{ squad.remnaSquadUuid }}</small></div>
+            <strong>{{ formatMoney(squad.price) }}</strong>
+            <StatusBadge :tone="squad.upstreamPresent && squad.visible ? 'success' : 'neutral'" :label="squad.upstreamPresent && squad.visible ? t('adminCatalog.available') : t('adminCatalog.hidden')" />
+            <div class="row-actions">
+              <UButton color="neutral" variant="ghost" square icon="i-ph-chart-bar" :aria-label="t('adminCatalog.statisticsFor', { name: squad.name })" @click="statisticsTarget = { kind: 'squad', id: squad.id, title: t('adminCatalog.statisticsTitle', { name: squad.name }) }" />
+              <UButton color="neutral" variant="ghost" square icon="i-ph-pencil-simple" :aria-label="t('adminCatalog.editNamed', { name: squad.name })" @click="editingSquad = squad" />
+            </div>
+          </motion.article>
+          <motion.div v-if="!squads.items.value.length" key="empty-squads" class="empty-inline" :initial="{ opacity: 0 }" :animate="{ opacity: 1 }"><div><h3>{{ t('adminCatalog.noSquads') }}</h3><p>{{ t('adminCatalog.noSquadsHint') }}</p></div></motion.div>
+        </AnimatePresence>
+      </motion.div>
     </AdminSectionState>
     <AdminStatisticsPanel v-if="statisticsTarget?.kind === 'squad'" :title="statisticsTarget.title" :load="loadStatistics" @close="statisticsTarget = null" />
 

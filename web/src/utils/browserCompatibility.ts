@@ -1,4 +1,5 @@
 export const browserCapabilityCode = 'BROWSER_CAPABILITY_UNSUPPORTED'
+export { copyText } from './browserClipboard'
 
 export class BrowserCapabilityError extends Error {
   readonly code = browserCapabilityCode
@@ -98,27 +99,6 @@ export function supportsNativePointerEvents(): boolean {
     && window.PointerEvent !== window.MouseEvent
 }
 
-/**
- * AutoAnimate 0.10.x uses these APIs internally. Its own top-level support
- * guard only checks ResizeObserver, so importing it can still fail in a
- * partially capable embedded engine.
- */
-export function supportsAutoAnimate(): boolean {
-  if (typeof window === 'undefined') return false
-
-  try {
-    return typeof globalThis.ResizeObserver === 'function'
-      && typeof globalThis.MutationObserver === 'function'
-      && typeof globalThis.IntersectionObserver === 'function'
-      && typeof globalThis.requestAnimationFrame === 'function'
-      && typeof globalThis.Element === 'function'
-      && typeof globalThis.Element.prototype.animate === 'function'
-      && typeof globalThis.matchMedia === 'function'
-  } catch {
-    return false
-  }
-}
-
 export function mediaQueryList(query: string): MediaQueryList | undefined {
   try {
     return typeof globalThis.matchMedia === 'function'
@@ -127,6 +107,10 @@ export function mediaQueryList(query: string): MediaQueryList | undefined {
   } catch {
     return undefined
   }
+}
+
+export function prefersReducedMotion(): boolean {
+  return mediaQueryList('(prefers-reduced-motion: reduce)')?.matches ?? false
 }
 
 export function watchMediaQuery(
@@ -142,62 +126,6 @@ export function watchMediaQuery(
 
   queryList.addListener?.(listener)
   return () => queryList.removeListener?.(listener)
-}
-
-async function copyWithClipboardAPI(value: string): Promise<boolean> {
-  try {
-    const clipboard = globalThis.navigator?.clipboard
-    if (typeof clipboard?.writeText !== 'function') return false
-    await clipboard.writeText(value)
-    return true
-  } catch {
-    return false
-  }
-}
-
-function copyWithSelection(value: string): boolean {
-  if (
-    typeof document === 'undefined'
-    || !document.body
-    || typeof document.execCommand !== 'function'
-  ) {
-    return false
-  }
-
-  const active = document.activeElement as HTMLElement | null
-  const textarea = document.createElement('textarea')
-  textarea.value = value
-  textarea.setAttribute('readonly', '')
-  textarea.style.position = 'fixed'
-  textarea.style.top = '-9999px'
-  textarea.style.left = '-9999px'
-  textarea.style.opacity = '0'
-  document.body.appendChild(textarea)
-
-  try {
-    textarea.focus()
-    textarea.select()
-    textarea.setSelectionRange?.(0, value.length)
-    return document.execCommand('copy')
-  } catch {
-    return false
-  } finally {
-    textarea.parentNode?.removeChild(textarea)
-    try {
-      active?.focus({ preventScroll: true })
-    } catch {
-      try {
-        active?.focus()
-      } catch {
-        // The focused control may have been detached.
-      }
-    }
-  }
-}
-
-export async function copyText(value: string): Promise<boolean> {
-  if (await copyWithClipboardAPI(value)) return true
-  return copyWithSelection(value)
 }
 
 function supportsCapability(read: () => unknown): boolean {

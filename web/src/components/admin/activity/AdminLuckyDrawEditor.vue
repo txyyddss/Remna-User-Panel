@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import { computed, reactive, shallowRef, watch } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import type { CouponDefinition, LuckyDrawAdmin, LuckyDrawPrize, LuckyDrawWrite, Reward } from '@/api/features'
 import SwitchField from '@/components/common/SwitchField.vue'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
 import { useI18n } from '@/i18n'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
+import { createUuid } from '@/utils/browserCompatibility'
 import { moneyFromTxbInput, signedMoneyFromTxbInput, txbInputFromMinor } from '@/utils/format'
 
 type RewardKind = Reward['kind']
 interface PrizeDraft {
   id: string
+  clientId: string
   name: string
   weight: string
   stockRemaining: string
@@ -24,6 +28,7 @@ const emit = defineEmits<{ save: [value: LuckyDrawWrite]; cancel: [] }>()
 const draft = reactive({ name: '', description: '', fee: '0.00', enabled: true, prizes: [] as PrizeDraft[] })
 const validationError = shallowRef<string | null>(null)
 const { t } = useI18n()
+const { reducedMotion, offset } = useMotionPreferences()
 const rewardItems = computed(() => [
   { value: 'none', label: t('adminLuckyDraw.noPrize') },
   { value: 'txb_delta', label: t('adminLuckyDraw.txbChange') },
@@ -33,12 +38,13 @@ const rewardItems = computed(() => [
 const couponItems = computed(() => props.coupons.map((coupon) => ({ value: coupon.id, label: t('adminLuckyDraw.couponLabel', { code: coupon.code, name: coupon.name }) })))
 
 function blankPrize(): PrizeDraft {
-  return { id: '', name: t('adminLuckyDraw.noPrize'), weight: '1', stockRemaining: '', kind: 'none', txbDelta: '1.00', couponId: '', extensionDays: 1 }
+  return { id: '', clientId: createUuid(), name: t('adminLuckyDraw.noPrize'), weight: '1', stockRemaining: '', kind: 'none', txbDelta: '1.00', couponId: '', extensionDays: 1 }
 }
 
 function prizeDraft(prize: LuckyDrawPrize): PrizeDraft {
   return {
     id: prize.id,
+    clientId: prize.id || createUuid(),
     name: prize.name,
     weight: prize.weight,
     stockRemaining: prize.stockRemaining == null ? '' : String(prize.stockRemaining),
@@ -110,18 +116,20 @@ function save(): void {
 
     <section class="prize-list catalog-editor__wide" aria-labelledby="prize-list-title">
       <div class="prize-list__heading"><div><h4 id="prize-list-title">{{ t('adminLuckyDraw.weightedPrizes') }}</h4><p>{{ t('adminLuckyDraw.prizeHint') }}</p></div><UButton color="neutral" variant="outline" icon="i-ph-plus" :label="t('adminLuckyDraw.addPrize')" @click="draft.prizes.push(blankPrize())" /></div>
-      <div v-auto-animate class="prize-list__items">
-        <article v-for="(prize, index) in draft.prizes" :key="`${prize.id}-${index}`" class="prize-row">
-          <UFormField :name="`prize-name-${index}`" :label="t('adminLuckyDraw.prizeName')" required><UInput v-model.trim="prize.name" class="w-full" :maxlength="80" /></UFormField>
-          <UFormField :name="`prize-weight-${index}`" :label="t('adminLuckyDraw.weight')" required><UInput v-model.trim="prize.weight" class="w-full" inputmode="numeric" pattern="[0-9]+" /></UFormField>
-          <UFormField :name="`prize-stock-${index}`" :label="t('adminLuckyDraw.stock')"><UInput v-model.trim="prize.stockRemaining" class="w-full" inputmode="numeric" pattern="[0-9]*" :placeholder="t('adminLuckyDraw.unlimited')" /></UFormField>
-          <UFormField :name="`prize-reward-${index}`" :label="t('adminLuckyDraw.reward')"><USelect v-model="prize.kind" class="w-full" :items="rewardItems" /></UFormField>
-          <UFormField v-if="prize.kind === 'txb_delta'" :name="`prize-change-${index}`" :label="t('adminLuckyDraw.signedChange')" required><UInput v-model.trim="prize.txbDelta" class="w-full" inputmode="decimal" :placeholder="t('adminLuckyDraw.signedPlaceholder')" /></UFormField>
-          <UFormField v-else-if="prize.kind === 'coupon_grant'" :name="`prize-coupon-${index}`" :label="t('adminLuckyDraw.coupon')" required><USelect v-model="prize.couponId" class="w-full" :items="couponItems" :placeholder="t('adminLuckyDraw.selectCoupon')" /></UFormField>
-          <UFormField v-else-if="prize.kind === 'subscription_extension'" :name="`prize-days-${index}`" :label="t('adminLuckyDraw.extensionDays')" required><UInput v-model.number="prize.extensionDays" class="w-full" type="number" :min="1" :max="3650" :step="1" /></UFormField>
-          <UButton class="prize-row__remove" color="error" variant="ghost" square icon="i-ph-trash" :disabled="draft.prizes.length === 1" :aria-label="t('adminLuckyDraw.removePrize', { name: prize.name || t('adminLuckyDraw.prizeNumber', { index: index + 1 }) })" data-haptic="destructive" @click="draft.prizes.splice(index, 1)" />
-        </article>
-      </div>
+      <motion.div layout class="prize-list__items">
+        <AnimatePresence :initial="false" mode="popLayout">
+          <motion.article v-for="(prize, index) in draft.prizes" :key="prize.clientId" layout class="prize-row" :initial="reducedMotion ? false : { opacity: 0, y: offset(6) }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.18, ease: 'easeOut' }">
+            <UFormField :name="`prize-name-${index}`" :label="t('adminLuckyDraw.prizeName')" required><UInput v-model.trim="prize.name" class="w-full" :maxlength="80" /></UFormField>
+            <UFormField :name="`prize-weight-${index}`" :label="t('adminLuckyDraw.weight')" required><UInput v-model.trim="prize.weight" class="w-full" inputmode="numeric" pattern="[0-9]+" /></UFormField>
+            <UFormField :name="`prize-stock-${index}`" :label="t('adminLuckyDraw.stock')"><UInput v-model.trim="prize.stockRemaining" class="w-full" inputmode="numeric" pattern="[0-9]*" :placeholder="t('adminLuckyDraw.unlimited')" /></UFormField>
+            <UFormField :name="`prize-reward-${index}`" :label="t('adminLuckyDraw.reward')"><USelect v-model="prize.kind" class="w-full" :items="rewardItems" /></UFormField>
+            <UFormField v-if="prize.kind === 'txb_delta'" :name="`prize-change-${index}`" :label="t('adminLuckyDraw.signedChange')" required><UInput v-model.trim="prize.txbDelta" class="w-full" inputmode="decimal" :placeholder="t('adminLuckyDraw.signedPlaceholder')" /></UFormField>
+            <UFormField v-else-if="prize.kind === 'coupon_grant'" :name="`prize-coupon-${index}`" :label="t('adminLuckyDraw.coupon')" required><USelect v-model="prize.couponId" class="w-full" :items="couponItems" :placeholder="t('adminLuckyDraw.selectCoupon')" /></UFormField>
+            <UFormField v-else-if="prize.kind === 'subscription_extension'" :name="`prize-days-${index}`" :label="t('adminLuckyDraw.extensionDays')" required><UInput v-model.number="prize.extensionDays" class="w-full" type="number" :min="1" :max="3650" :step="1" /></UFormField>
+            <UButton class="prize-row__remove" color="error" variant="ghost" square icon="i-ph-trash" :disabled="draft.prizes.length === 1" :aria-label="t('adminLuckyDraw.removePrize', { name: prize.name || t('adminLuckyDraw.prizeNumber', { index: index + 1 }) })" data-haptic="destructive" @click="draft.prizes.splice(index, 1)" />
+          </motion.article>
+        </AnimatePresence>
+      </motion.div>
     </section>
 
     <p v-if="validationError" class="field-error catalog-editor__wide" role="alert">{{ validationError }}</p>

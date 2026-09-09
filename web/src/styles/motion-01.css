@@ -12,31 +12,15 @@
   font-size: 0.61rem;
 }
 
-.onboarding-step-enter-active,
-.onboarding-step-leave-active,
-.intro-copy-enter-active,
-.intro-copy-leave-active {
-  transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out);
-}
-
-.onboarding-step-enter-from {
-  opacity: 0;
-  transform: translateY(8px);
-}
-
-.onboarding-step-leave-to {
-  opacity: 0;
-  transform: translateY(-5px);
-}
-
-.intro-copy-enter-from {
-  opacity: 0;
-  transform: translateY(14px);
-}
-
-.intro-copy-leave-to {
-  opacity: 0;
-  transform: translateY(-14px);
+:root {
+  --motion-instant: 110ms;
+  --motion-fast: 160ms;
+  --motion-normal: 200ms;
+  --motion-step: 240ms;
+  --motion-panel: 260ms;
+  --motion-data: 450ms;
+  --motion-flip: 450ms;
+  --motion-celebration: 720ms;
 }
 
 .icon-spin {

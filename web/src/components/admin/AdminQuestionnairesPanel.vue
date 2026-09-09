@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { restoreItems } from '@/api/cache/restore'
 import { onMounted, reactive, shallowRef } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import type { QuestionnaireAdminRecord } from '@/api/features'
 import { featuresApi } from '@/api/features'
@@ -8,6 +9,7 @@ import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
 import { localizedError, useI18n } from '@/i18n'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { moneyFromTxbInput, txbInputFromMinor } from '@/utils/format'
 import QuestionnaireImportWorkflow from './questionnaires/QuestionnaireImportWorkflow.vue'
 
@@ -21,6 +23,7 @@ const closing = shallowRef<QuestionnaireAdminRecord | null>(null)
 const deleting = shallowRef<QuestionnaireAdminRecord | null>(null)
 const draft = reactive({ title: '', description: '', formUrl: '', rewardTxb: '5.00' })
 const { t } = useI18n()
+const { reducedMotion, offset } = useMotionPreferences()
 
 async function load(): Promise<void> {
   loading.value = !restoreItems('/api/v1/admin/questionnaires', items); error.value = null
@@ -90,19 +93,21 @@ onMounted(() => void load())
     </form>
     <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
     <USkeleton v-if="loading" class="m-4 h-28" />
-    <div v-else v-auto-animate class="admin-list">
-      <article v-for="questionnaire in items" :key="questionnaire.id" class="admin-list-row admin-list-row--questionnaire questionnaire-row">
-        <div><strong>{{ questionnaire.title }}</strong><small>{{ t('adminQuestionnaires.summary', { status: statusLabel(questionnaire.status), count: questionnaire.participantCount, reward: txbInputFromMinor(questionnaire.rewardTxbMinor) }) }}</small></div>
-        <div class="row-actions">
-          <UButton v-if="questionnaire.status === 'draft'" size="sm" color="neutral" variant="outline" icon="i-ph-arrow-square-out" :disabled="busy" :label="t('adminQuestionnaires.activate')" @click="activate(questionnaire.id)" />
-          <UButton v-if="questionnaire.status === 'active'" size="sm" color="neutral" variant="outline" icon="i-ph-stop-circle" :disabled="busy" :label="t('common.close')" @click="closing = questionnaire" />
-          <UButton v-if="['active', 'closed', 'settled'].includes(questionnaire.status)" size="sm" color="neutral" variant="outline" icon="i-ph-file-csv" :label="t('adminQuestionnaires.importCsv')" @click="importing = questionnaire" />
-          <UButton color="neutral" variant="ghost" icon="i-ph-pencil-simple" :aria-label="t('adminQuestionnaires.editNamed', { name: questionnaire.title })" @click="edit(questionnaire)" />
-          <UButton color="error" variant="ghost" icon="i-ph-trash" :aria-label="t('adminQuestionnaires.deleteNamed', { name: questionnaire.title })" data-haptic="destructive" @click="deleting = questionnaire" />
-        </div>
-      </article>
-      <div v-if="!items.length" class="empty-inline"><div><h3>{{ t('adminQuestionnaires.none') }}</h3><p>{{ t('adminQuestionnaires.noneHint') }}</p></div></div>
-    </div>
+    <motion.div v-else layout class="admin-list">
+      <AnimatePresence :initial="false" mode="popLayout">
+        <motion.article v-for="questionnaire in items" :key="questionnaire.id" layout class="admin-list-row admin-list-row--questionnaire questionnaire-row" :initial="reducedMotion ? false : { opacity: 0, y: offset(6) }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.17, ease: 'easeOut' }">
+          <div><strong>{{ questionnaire.title }}</strong><small>{{ t('adminQuestionnaires.summary', { status: statusLabel(questionnaire.status), count: questionnaire.participantCount, reward: txbInputFromMinor(questionnaire.rewardTxbMinor) }) }}</small></div>
+          <div class="row-actions">
+            <UButton v-if="questionnaire.status === 'draft'" size="sm" color="neutral" variant="outline" icon="i-ph-arrow-square-out" :disabled="busy" :label="t('adminQuestionnaires.activate')" @click="activate(questionnaire.id)" />
+            <UButton v-if="questionnaire.status === 'active'" size="sm" color="neutral" variant="outline" icon="i-ph-stop-circle" :disabled="busy" :label="t('common.close')" @click="closing = questionnaire" />
+            <UButton v-if="['active', 'closed', 'settled'].includes(questionnaire.status)" size="sm" color="neutral" variant="outline" icon="i-ph-file-csv" :label="t('adminQuestionnaires.importCsv')" @click="importing = questionnaire" />
+            <UButton color="neutral" variant="ghost" icon="i-ph-pencil-simple" :aria-label="t('adminQuestionnaires.editNamed', { name: questionnaire.title })" @click="edit(questionnaire)" />
+            <UButton color="error" variant="ghost" icon="i-ph-trash" :aria-label="t('adminQuestionnaires.deleteNamed', { name: questionnaire.title })" data-haptic="destructive" @click="deleting = questionnaire" />
+          </div>
+        </motion.article>
+        <motion.div v-if="!items.length" key="empty-questionnaires" class="empty-inline" :initial="{ opacity: 0 }" :animate="{ opacity: 1 }"><div><h3>{{ t('adminQuestionnaires.none') }}</h3><p>{{ t('adminQuestionnaires.noneHint') }}</p></div></motion.div>
+      </AnimatePresence>
+    </motion.div>
     <QuestionnaireImportWorkflow v-if="importing" :questionnaire="importing" @close="importing = null" />
     <ConfirmDialog :open="Boolean(closing)" :title="t('adminQuestionnaires.closeTitle', { name: closing?.title ?? t('adminQuestionnaires.questionnaire') })" :description="t('adminQuestionnaires.closeDescription')" :confirm-label="t('common.close')" :busy="busy" @update:open="!$event && (closing = null)" @confirm="closeQuestionnaire" />
     <ConfirmDialog :open="Boolean(deleting)" :title="t('adminQuestionnaires.deleteTitle', { name: deleting?.title ?? t('adminQuestionnaires.questionnaire') })" :description="t('adminQuestionnaires.deleteDescription')" :confirm-label="t('adminQuestionnaires.deletePermanently')" :busy="busy" danger @update:open="!$event && (deleting = null)" @confirm="remove" />

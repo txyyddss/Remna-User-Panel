@@ -34,7 +34,7 @@ Go HTTP server :8080 ---- embedded Vue assets
 
 `cmd/server` is deliberately thin and exposes two commands: `serve` and `healthcheck`. Domain packages live under `internal`; blocking operations accept `context.Context`, and provider clients are hidden behind consumer-owned interfaces. SQLite enables foreign keys, WAL, a busy timeout, and bounded connections. Balance changes, purchases, webhook deduplication, and outbox creation are transactional.
 
-The Vue application lives in `web` and uses Composition API, `<script setup lang="ts">`, Vue Router, Pinia for session-wide identity only, Nuxt UI v4, external Iconify Phosphor/country icons, Zod validation, and AutoAnimate. English and Simplified Chinese ship as parity-checked locale modules. `npm run build` writes to `internal/webui/dist`; Go embeds that directory and serves the SPA with same-origin APIs.
+The Vue application lives in `web` and uses Composition API, `<script setup lang="ts">`, Vue Router, Pinia for session-wide identity only, Nuxt UI v4, Motion for Vue, external Iconify Phosphor/country icons, and Zod validation. English and Simplified Chinese ship as parity-checked locale modules. `npm run build` writes to `internal/webui/dist`; Go embeds that directory and serves the SPA with same-origin APIs.
 
 After Telegram authentication, the server issues an HttpOnly `txc_session` cookie and a separate request-signing key. The browser signs the exact method, escaped path/query, timestamp, nonce, and body hash; the server rejects stale, replayed, malformed, or unsigned protected requests. Provider callbacks, payment returns, probes, and Telegram bootstrap retain their own documented unsigned protocols.
 

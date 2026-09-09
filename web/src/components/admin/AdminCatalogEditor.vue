@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import type { Combo, ResetCadence, SquadProduct } from '@/api/types'
 import MarkdownEditorField from '@/components/common/MarkdownEditorField.vue'
 import SwitchField from '@/components/common/SwitchField.vue'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
 import { useI18n } from '@/i18n'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { moneyFromTxbInput, trafficBytesFromInput, txbInputFromMinor } from '@/utils/format'
 
 const props = defineProps<{ combo?: Combo; squads: readonly SquadProduct[]; busy: boolean }>()
@@ -19,6 +21,7 @@ const draft = reactive({
   rolloverMinRemainingPercent: 0, active: true,
 })
 const trafficInvalid = ref(false)
+const { reducedMotion, offset } = useMotionPreferences()
 
 watch(() => props.combo, (combo) => {
   Object.assign(draft, combo ? {
@@ -79,13 +82,15 @@ function setSquad(id: string, selected: boolean): void {
     <UFormField name="rollover-minimum" :label="t('adminCatalogEditor.rolloverMinimum')" required><UInput v-model.number="draft.rolloverMinRemainingPercent" class="w-full" type="number" :min="0" :max="100" :step="0.01" /></UFormField>
     <fieldset class="catalog-editor__wide squad-picker">
       <legend>{{ t('adminCatalogEditor.includedSquads') }}</legend>
-      <div v-auto-animate class="squad-picker__items">
-        <div v-for="squad in squads" :key="squad.id" class="squad-picker__option">
-          <span><strong>{{ squad.name }}</strong><small>{{ squad.remnaSquadUuid }}</small></span>
-          <UCheckbox :model-value="draft.squadProductIds.includes(squad.id)" :aria-label="squad.name" @update:model-value="setSquad(squad.id, Boolean($event))" />
-        </div>
-        <p v-if="!squads.length">{{ t('adminCatalogEditor.noSquads') }}</p>
-      </div>
+      <motion.div layout class="squad-picker__items">
+        <AnimatePresence :initial="false" mode="popLayout">
+          <motion.div v-for="squad in squads" :key="squad.id" layout class="squad-picker__option" :initial="reducedMotion ? false : { opacity: 0, y: offset(6) }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.22, ease: 'easeOut' }">
+            <span><strong>{{ squad.name }}</strong><small>{{ squad.remnaSquadUuid }}</small></span>
+            <UCheckbox :model-value="draft.squadProductIds.includes(squad.id)" :aria-label="squad.name" @update:model-value="setSquad(squad.id, Boolean($event))" />
+          </motion.div>
+          <motion.p v-if="!squads.length" key="empty-squads" :initial="{ opacity: 0 }" :animate="{ opacity: 1 }">{{ t('adminCatalogEditor.noSquads') }}</motion.p>
+        </AnimatePresence>
+      </motion.div>
     </fieldset>
     <SwitchField id="combo-active" v-model="draft.active" class="catalog-editor__wide" :label="t('adminCatalogEditor.available')" :help="t('adminCatalogEditor.liveTermsHint')" />
     <UButton class="catalog-editor__wide" type="submit" icon="i-ph-floppy-disk" :loading="busy" :disabled="busy" :label="busy ? t('common.saving') : t('adminCatalogEditor.save')" />

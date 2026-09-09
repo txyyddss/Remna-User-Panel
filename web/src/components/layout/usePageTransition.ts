@@ -16,7 +16,7 @@ function navigationPath(path: string): string {
 }
 
 /**
- * Select the CSS slide direction before Vue commits the next route.
+ * Select the local Motion direction before Vue commits the next route.
  *
  * Do not serialize router navigation on a Transition lifecycle callback.
  * Embedded WebViews can skip/cancel transition callbacks when the document is
@@ -24,8 +24,10 @@ function navigationPath(path: string): string {
  * leave the router waiting forever.
  */
 export function usePageTransition(router: Router, items: () => NavigationMenuItem[]) {
-  const name = shallowRef('page-forward')
+  const direction = shallowRef<'forward' | 'backward'>('forward')
   const reducedMotion = mediaQueryList('(prefers-reduced-motion: reduce)')
+  const wideViewport = mediaQueryList('(min-width: 900px)')
+  const wide = shallowRef(wideViewport?.matches ?? false)
 
   const removeGuard = router.beforeResolve((to, from) => {
     if (
@@ -43,9 +45,9 @@ export function usePageTransition(router: Router, items: () => NavigationMenuIte
 
     // Unknown/detail routes have no stable tab rank. Keep the default forward
     // direction instead of deriving a direction from index -1.
-    name.value = fromRank >= 0 && toRank >= 0 && toRank < fromRank
-      ? 'page-backward'
-      : 'page-forward'
+    direction.value = fromRank >= 0 && toRank >= 0 && toRank < fromRank
+      ? 'backward'
+      : 'forward'
   })
 
   function leave(element: Element): void {
@@ -59,6 +61,18 @@ export function usePageTransition(router: Router, items: () => NavigationMenuIte
   }
 
   onScopeDispose(removeGuard)
+  const stopWideWatch = wideViewport
+    ? (() => {
+      const listener = () => { wide.value = wideViewport.matches }
+      if (typeof wideViewport.addEventListener === 'function') wideViewport.addEventListener('change', listener)
+      else wideViewport.addListener?.(listener)
+      return () => {
+        if (typeof wideViewport.removeEventListener === 'function') wideViewport.removeEventListener('change', listener)
+        else wideViewport.removeListener?.(listener)
+      }
+    })()
+    : () => undefined
+  onScopeDispose(stopWideWatch)
 
-  return { name, leave }
+  return { direction, wide, leave }
 }

@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { AnimatePresence, motion } from 'motion-v'
+
 import type { Combo } from '@/api/types'
 import MarkdownContent from '@/components/common/MarkdownContent.vue'
 import { useI18n } from '@/i18n'
 import { formatBytes, formatMoney } from '@/utils/format'
 import { selectionHaptic } from '@/utils/telegram'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 
 const props = defineProps<{
   combo: Combo
@@ -12,6 +15,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ select: [id: string] }>()
 const { t } = useI18n()
+const { reducedMotion } = useMotionPreferences()
 
 function trafficTerm(): string {
   const key = props.combo.resetStrategy === 'DAY' ? 'day' : props.combo.resetStrategy === 'WEEK' ? 'week' : 'month'
@@ -39,7 +43,9 @@ function selectCombo(): void {
       <span>
         <strong>{{ combo.name }}</strong>
       </span>
-      <span v-if="selected" class="selection-mark"><UIcon name="i-ph-check-bold" /></span>
+      <AnimatePresence :initial="false">
+        <motion.span v-if="selected" key="selected" class="selection-mark" :initial="reducedMotion ? false : { opacity: 0, scale: 0.84 }" :animate="{ opacity: 1, scale: 1 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.14, ease: 'easeOut' }"><UIcon name="i-ph-check-bold" /></motion.span>
+      </AnimatePresence>
     </span>
     <MarkdownContent class="combo-option__description" :source="combo.description" compact />
     <span class="combo-option__metrics">

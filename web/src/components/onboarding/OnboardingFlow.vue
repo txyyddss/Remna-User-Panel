@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import LanguageControl from '@/components/layout/LanguageControl.vue'
@@ -9,6 +10,8 @@ import AgreementPanel from './AgreementPanel.vue'
 import IntroSequence from './IntroSequence.vue'
 import { useOnboardingMainButton } from './useOnboardingMainButton'
 import UsernamePanel from './UsernamePanel.vue'
+import { motionDurations } from '@/composables/motionPresets'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 
 const {
   step,
@@ -43,6 +46,8 @@ const mainAction = computed(() => {
   return null
 })
 const { available: mainButtonAvailable } = useOnboardingMainButton(mainAction)
+const { reducedMotion, offset } = useMotionPreferences()
+const stepDirection = computed(() => step.value === 'agreement' ? 1 : -1)
 </script>
 
 <template>
@@ -56,29 +61,43 @@ const { available: mainButtonAvailable } = useOnboardingMainButton(mainAction)
     />
 
     <div class="onboarding-shell__stage">
-      <Transition name="onboarding-step" mode="out-in">
-        <UsernamePanel
+      <AnimatePresence mode="wait" :initial="false">
+        <motion.div
           v-if="step === 'username'"
           key="username"
-          v-model="form.username"
-          :valid="usernameValid"
-          :hint="usernameHint"
-          :loading="loading"
-          :show-action="!mainButtonAvailable"
-          @submit="submitUsername"
-        />
-        <AgreementPanel
+          :initial="{ opacity: 0, y: offset(10) * stepDirection }"
+          :animate="{ opacity: 1, y: 0 }"
+          :exit="{ opacity: 0, y: reducedMotion ? 0 : -8 * stepDirection }"
+          :transition="{ duration: reducedMotion ? 0.08 : motionDurations.step, ease: 'easeOut' }"
+        >
+          <UsernamePanel
+            v-model="form.username"
+            :valid="usernameValid"
+            :hint="usernameHint"
+            :loading="loading"
+            :show-action="!mainButtonAvailable"
+            @submit="submitUsername"
+          />
+        </motion.div>
+        <motion.div
           v-else-if="step === 'agreement'"
           key="agreement"
-          :agreements="content?.agreements ?? []"
-          :selected-ids="form.agreementIds"
-          :all-accepted="allAgreementsAccepted"
-          :loading="loading"
-          :show-action="!mainButtonAvailable"
-          @toggle="toggleAgreement"
-          @submit="acceptAgreement"
-        />
-      </Transition>
+          :initial="{ opacity: 0, y: offset(10) * stepDirection }"
+          :animate="{ opacity: 1, y: 0 }"
+          :exit="{ opacity: 0, y: reducedMotion ? 0 : -8 * stepDirection }"
+          :transition="{ duration: reducedMotion ? 0.08 : motionDurations.step, ease: 'easeOut' }"
+        >
+          <AgreementPanel
+            :agreements="content?.agreements ?? []"
+            :selected-ids="form.agreementIds"
+            :all-accepted="allAgreementsAccepted"
+            :loading="loading"
+            :show-action="!mainButtonAvailable"
+            @toggle="toggleAgreement"
+            @submit="acceptAgreement"
+          />
+        </motion.div>
+      </AnimatePresence>
       <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
     </div>
     <footer class="onboarding-shell__locale"><LanguageControl /></footer>

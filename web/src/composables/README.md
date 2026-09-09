@@ -1,5 +1,8 @@
 # Composables
 
+- `motionPresets.ts` owns the shared timing tokens and critically damped layout spring.
+- `useMotionPreferences.ts` is the central reduced-motion boundary for Motion Vue components; it returns reduced-safe transitions and bounded offsets without storing animation state in components.
+
 - `dashboardNodeUsage.ts` owns the dashboard's date-range validation, cached usage display, latest-request guard and disposal.
 
 Page loaders restore typed session snapshots through `api/cache/restore.ts` before

@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import type { BetGame } from '@/api/features'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { moneyFromTxbInput, txbInputFromMinor } from '@/utils/format'
 import { selectionHaptic } from '@/utils/telegram'
 import { gameIcon } from './gameIcons'
@@ -12,6 +14,7 @@ const props = defineProps<{
   busy: boolean
 }>()
 const emit = defineEmits<{ bet: [payload: { gameId: string; stakeTxbMinor: string }] }>()
+const { reducedMotion, offset } = useMotionPreferences()
 
 const selectedId = shallowRef<string | null>(null)
 const stake = shallowRef('')
@@ -53,26 +56,28 @@ function selectGame(id: string): void {
       <h2>{{ $t('activity.betGames') }}</h2>
       <p>{{ $t('activity.betCopy') }}</p>
     </div>
-    <div v-if="games.length" v-auto-animate class="bet-grid">
-      <UButton
-        v-for="game in games"
-        :key="game.id"
-        class="bet-option"
-        :class="{ 'bet-option--selected': game.id === selectedId }"
-        color="neutral"
-        variant="ghost"
-        :disabled="!game.enabled || busy"
-        :aria-pressed="game.id === selectedId"
-        @click="selectGame(game.id)"
-      >
-        <span class="bet-option__icon"><UIcon :name="gameIcon(game.icon)" /></span>
-        <span>
-          <strong>{{ game.name }}</strong>
-          <small>{{ game.description || $t('activity.stakeRange', { minimum: txbInputFromMinor(game.minimumStakeMinor), maximum: txbInputFromMinor(game.maximumStakeMinor) }) }}</small>
-        </span>
-        <span class="bet-option__odds">{{ (game.winChanceBps / 100).toFixed(2) }}%</span>
-      </UButton>
-    </div>
+    <motion.div v-if="games.length" layout class="bet-grid">
+      <AnimatePresence :initial="false" mode="popLayout">
+        <motion.div v-for="game in games" :key="game.id" layout :initial="reducedMotion ? false : { opacity: 0, y: offset(8) }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.2, ease: 'easeOut' }">
+          <UButton
+            class="bet-option"
+            :class="{ 'bet-option--selected': game.id === selectedId }"
+            color="neutral"
+            variant="ghost"
+            :disabled="!game.enabled || busy"
+            :aria-pressed="game.id === selectedId"
+            @click="selectGame(game.id)"
+          >
+            <span class="bet-option__icon"><UIcon :name="gameIcon(game.icon)" /></span>
+            <span>
+              <strong>{{ game.name }}</strong>
+              <small>{{ game.description || $t('activity.stakeRange', { minimum: txbInputFromMinor(game.minimumStakeMinor), maximum: txbInputFromMinor(game.maximumStakeMinor) }) }}</small>
+            </span>
+            <span class="bet-option__odds">{{ (game.winChanceBps / 100).toFixed(2) }}%</span>
+          </UButton>
+        </motion.div>
+      </AnimatePresence>
+    </motion.div>
     <div v-if="selected" class="bet-form">
       <TxbAmountField
         id="bet-stake"

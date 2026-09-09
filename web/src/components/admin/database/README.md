@@ -1,5 +1,9 @@
 # Database admin
 
+`DatabaseMobileRowCard.vue` uses stable field names with local layout/presence
+when the visible field preview expands or contracts. Sensitive data rules and
+the typed database editor boundary remain unchanged.
+
 - `AdminDatabasePanel.vue` coordinates table selection, debounced queries, row views, and mutation requests.
 - `DatabaseTablePicker.vue` provides the searchable phone select and preserves the searchable desktop table list.
 - `DatabaseTablePicker.test.ts` covers searchable table selection on both responsive presentations.

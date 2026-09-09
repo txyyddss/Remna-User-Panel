@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { restoreItems } from '@/api/cache/restore'
 import { computed, onMounted, reactive, shallowRef } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import { api } from '@/api/client'
 import { featuresApi, type CouponDefinition } from '@/api/features'
@@ -9,6 +10,7 @@ import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import SwitchField from '@/components/common/SwitchField.vue'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
 import { localizedError, useI18n } from '@/i18n'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { moneyFromTxbInput, txbInputFromMinor } from '@/utils/format'
 
 const items = shallowRef<CouponDefinition[]>([])
@@ -25,6 +27,7 @@ const draft = reactive({
   eligibleComboIds: [] as string[], eligibleSquadIds: [] as string[], expiresAt: '', active: true,
 })
 const { t } = useI18n()
+const { reducedMotion, offset } = useMotionPreferences()
 const kindItems = computed(() => [
   { value: 'purchase_once', label: t('adminCoupons.oneTime') },
   { value: 'purchase_recurring', label: t('adminCoupons.recurring') },
@@ -144,10 +147,12 @@ onMounted(() => { void load(); void loadOptions() })
     </form>
     <UAlert v-if="error" class="admin-error" color="warning" variant="soft" icon="i-ph-warning" :description="error" />
     <USkeleton v-if="loading" class="m-4 h-24" />
-    <div v-else v-auto-animate class="admin-list">
-      <article v-for="coupon in items" :key="coupon.id" class="admin-list-row admin-list-row--coupon"><span class="feature-icon feature-icon--small"><UIcon name="i-ph-ticket" /></span><div><strong>{{ coupon.code }} {{ t('common.rangeSeparator') }} {{ coupon.name }}</strong><small>{{ t('adminCoupons.summary', { kind: kindLabel(coupon.kind), status: coupon.active ? t('common.active') : t('adminCatalog.paused'), uses: coupon.usageCount, limit: coupon.globalUseLimit ?? t('adminCoupons.unlimited') }) }}</small></div><div class="row-actions"><UButton color="neutral" variant="ghost" square icon="i-ph-pencil-simple" :aria-label="t('adminCoupons.editNamed', { code: coupon.code })" @click="edit(coupon)" /><UButton v-if="coupon.active" size="sm" color="error" variant="ghost" icon="i-ph-pause" :disabled="busy" :label="t('adminCoupons.deactivate')" data-haptic="destructive" @click="deactivating = coupon" /></div></article>
-      <div v-if="!items.length" class="empty-inline"><div><h3>{{ t('adminCoupons.none') }}</h3><p>{{ t('adminCoupons.noneHint') }}</p></div></div>
-    </div>
+    <motion.div v-else layout class="admin-list">
+      <AnimatePresence :initial="false" mode="popLayout">
+        <motion.article v-for="coupon in items" :key="coupon.id" layout class="admin-list-row admin-list-row--coupon" :initial="reducedMotion ? false : { opacity: 0, y: offset(6) }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.17, ease: 'easeOut' }"><span class="feature-icon feature-icon--small"><UIcon name="i-ph-ticket" /></span><div><strong>{{ coupon.code }} {{ t('common.rangeSeparator') }} {{ coupon.name }}</strong><small>{{ t('adminCoupons.summary', { kind: kindLabel(coupon.kind), status: coupon.active ? t('common.active') : t('adminCatalog.paused'), uses: coupon.usageCount, limit: coupon.globalUseLimit ?? t('adminCoupons.unlimited') }) }}</small></div><div class="row-actions"><UButton color="neutral" variant="ghost" square icon="i-ph-pencil-simple" :aria-label="t('adminCoupons.editNamed', { code: coupon.code })" @click="edit(coupon)" /><UButton v-if="coupon.active" size="sm" color="error" variant="ghost" icon="i-ph-pause" :disabled="busy" :label="t('adminCoupons.deactivate')" data-haptic="destructive" @click="deactivating = coupon" /></div></motion.article>
+        <motion.div v-if="!items.length" key="empty-coupons" class="empty-inline" :initial="{ opacity: 0 }" :animate="{ opacity: 1 }"><div><h3>{{ t('adminCoupons.none') }}</h3><p>{{ t('adminCoupons.noneHint') }}</p></div></motion.div>
+      </AnimatePresence>
+    </motion.div>
     <ConfirmDialog :open="Boolean(deactivating)" :title="t('adminCoupons.deactivate')" :description="t('adminCoupons.deactivateConfirm', { code: deactivating?.code ?? '' })" :confirm-label="t('adminCoupons.deactivate')" :busy="busy" danger @update:open="!$event && (deactivating = null)" @confirm="deactivate" />
   </section>
 </template>

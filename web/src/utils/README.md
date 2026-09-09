@@ -1,5 +1,7 @@
 # Utilities
 
+- `browserClipboard.ts` isolates the clipboard API and selection fallback; `browserCompatibility.ts` re-exports `copyText` for existing callers while keeping browser capability checks focused.
+
 - `format.ts` formats money, dates, bytes, and TXB input.
 - `dom.ts` provides WebView-safe focus restoration.
 - `dom.test.ts` covers focus restoration behavior.

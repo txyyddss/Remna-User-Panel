@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, shallowRef } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import type { AdminStatistics, StatisticsQuery } from '@/api/features'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import { useI18n } from '@/i18n'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { txbInputFromMinor } from '@/utils/format'
 
 const props = defineProps<{ title: string; load: (query: StatisticsQuery) => Promise<AdminStatistics> }>()
@@ -16,6 +18,7 @@ const monthAgo = new Date(Date.now() - 29 * 86_400_000).toISOString().slice(0, 1
 const filters = reactive<Required<Pick<StatisticsQuery, 'from' | 'to' | 'bucket'>>>({ from: monthAgo, to: today, bucket: 'daily' })
 const maximumCount = computed(() => Math.max(1, ...(statistics.value?.series.map((point) => point.count) ?? [1])))
 const { t } = useI18n()
+const { reducedMotion, offset } = useMotionPreferences()
 const bucketItems = computed(() => [
   { value: 'daily', label: t('adminStatistics.daily') },
   { value: 'weekly', label: t('adminStatistics.weekly') },
@@ -75,7 +78,11 @@ onMounted(() => void refresh())
         <span v-for="point in statistics.series" :key="point.periodStart" class="statistics-chart__bar" :style="{ height: `${Math.max(4, point.count / maximumCount * 100)}%` }" />
       </div>
       <div class="statistics-table"><p>{{ t('adminStatistics.caption', { grouping: t(`adminStatistics.${statistics.bucket}`) }) }}</p><UTable :data="tableData" :columns="tableColumns" /></div>
-      <ul v-if="statistics.distribution.length" v-auto-animate class="statistics-distribution"><li v-for="slice in statistics.distribution" :key="slice.id"><span>{{ slice.label }}</span><strong>{{ slice.count }}</strong></li></ul>
+      <motion.ul v-if="statistics.distribution.length" layout class="statistics-distribution">
+        <AnimatePresence :initial="false" mode="popLayout">
+          <motion.li v-for="slice in statistics.distribution" :key="slice.id" layout :initial="reducedMotion ? false : { opacity: 0, y: offset(6) }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.18, ease: 'easeOut' }"><span>{{ slice.label }}</span><strong>{{ slice.count }}</strong></motion.li>
+        </AnimatePresence>
+      </motion.ul>
     </div>
     <USkeleton v-else-if="loading" class="h-44 w-full" />
   </section>

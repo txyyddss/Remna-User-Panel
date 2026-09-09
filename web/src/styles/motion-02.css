@@ -1,7 +1,7 @@
 @media (prefers-reduced-motion: no-preference) {
   [data-haptic] {
     transition-property: color, background-color, border-color, opacity, transform;
-    transition-duration: 180ms;
+    transition-duration: var(--motion-instant);
     transition-timing-function: var(--ease-out);
   }
 
@@ -9,37 +9,4 @@
     transform: translateY(1px) scale(0.985);
   }
 
-  .notice,
-  .operation-status {
-    animation: feedback-arrive 280ms var(--ease-out) both;
-  }
-
-  .status-badge {
-    animation: status-settle 240ms var(--ease-out) both;
-  }
-
-  .bottom-nav__item--active svg,
-  .nav-item--active svg {
-    animation: nav-icon-settle 300ms var(--ease-out) both;
-  }
-}
-
-@keyframes feedback-arrive {
-  from {
-    opacity: 0;
-    transform: translateY(-6px) scale(0.99);
-  }
-}
-
-@keyframes status-settle {
-  from {
-    opacity: 0;
-    transform: scale(0.94);
-  }
-}
-
-@keyframes nav-icon-settle {
-  0% { transform: translateY(2px) scale(0.92); }
-  65% { transform: translateY(-1px) scale(1.06); }
-  100% { transform: translateY(0) scale(1); }
 }

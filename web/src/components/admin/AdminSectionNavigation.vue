@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { LayoutGroup, motion } from 'motion-v'
+import { motionSpring } from '@/composables/motionPresets'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
+
 interface AdminNavigationSection {
   value: string
   label: string
@@ -17,37 +21,41 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{ select: [section: string] }>()
+const { reducedMotion } = useMotionPreferences()
 </script>
 
 <template>
   <nav class="admin-section-navigation" :aria-label="label">
-    <div
-      v-for="(group, groupIndex) in groups"
-      :key="group.label"
-      class="admin-section-navigation__group"
-      role="group"
-      :aria-labelledby="`admin-section-group-${groupIndex}`"
-    >
-      <span :id="`admin-section-group-${groupIndex}`" class="admin-section-navigation__label">
-        {{ group.label }}
-      </span>
-      <div class="admin-section-navigation__items">
-        <UButton
-          v-for="section in group.sections"
-          :key="section.value"
-          type="button"
-          class="admin-section-navigation__link"
-          :class="{ 'admin-section-navigation__link--active': activeSection === section.value }"
-          :color="activeSection === section.value ? 'primary' : 'neutral'"
-          :variant="activeSection === section.value ? 'soft' : 'ghost'"
-          :icon="section.icon"
-          :label="section.label"
-          :aria-current="activeSection === section.value ? 'page' : undefined"
-          data-haptic="navigate"
-          @click="emit('select', section.value)"
-        />
+    <LayoutGroup>
+      <div
+        v-for="(group, groupIndex) in groups"
+        :key="group.label"
+        class="admin-section-navigation__group"
+        role="group"
+        :aria-labelledby="`admin-section-group-${groupIndex}`"
+      >
+        <span :id="`admin-section-group-${groupIndex}`" class="admin-section-navigation__label">
+          {{ group.label }}
+        </span>
+        <div class="admin-section-navigation__items">
+          <div v-for="section in group.sections" :key="section.value" class="admin-section-navigation__item">
+            <motion.span v-if="activeSection === section.value" layout-id="admin-section-indicator" class="admin-section-navigation__indicator" :transition="reducedMotion ? { duration: 0.08 } : motionSpring" aria-hidden="true" />
+            <UButton
+              type="button"
+              class="admin-section-navigation__link"
+              :class="{ 'admin-section-navigation__link--active': activeSection === section.value }"
+              :color="activeSection === section.value ? 'primary' : 'neutral'"
+              :variant="activeSection === section.value ? 'soft' : 'ghost'"
+              :icon="section.icon"
+              :label="section.label"
+              :aria-current="activeSection === section.value ? 'page' : undefined"
+              data-haptic="navigate"
+              @click="emit('select', section.value)"
+            />
+          </div>
+        </div>
       </div>
-    </div>
+    </LayoutGroup>
   </nav>
 </template>
 
@@ -100,6 +108,8 @@ const emit = defineEmits<{ select: [section: string] }>()
   gap: 0.35rem;
 }
 
+.admin-section-navigation__item { position: relative; min-width: 0; }
+
 .admin-section-navigation__link {
   width: 100%;
   min-width: 0;
@@ -107,7 +117,8 @@ const emit = defineEmits<{ select: [section: string] }>()
   justify-content: flex-start;
 }
 
-.admin-section-navigation__link:only-child { grid-column: 1 / -1; }
-.admin-section-navigation__link--active { box-shadow: inset 3px 0 0 var(--accent); }
+.admin-section-navigation__item:only-child { grid-column: 1 / -1; }
+.admin-section-navigation__indicator { position: absolute; inset: 0 auto 0 0; z-index: 1; width: 3px; border-radius: inherit; background: var(--accent); pointer-events: none; }
+.admin-section-navigation__link--active { position: relative; z-index: 2; }
 .admin-section-navigation__link :deep([data-slot='label']) { min-width: 0; overflow-wrap: anywhere; white-space: normal; text-align: left; }
 </style>

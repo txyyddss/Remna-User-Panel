@@ -1,5 +1,9 @@
 # Layout components
 
+- `AppShell.vue` is the single route-motion entrance. It uses keyed `AnimatePresence` with 14px local offsets, no initial hydration animation, and a reduced-motion opacity-only path.
+- `MobileNavigation.vue` and `AdminSectionNavigation.vue` own shared `layoutId` active markers and short icon/selection feedback. Nuxt UI remains the control system for desktop navigation and buttons.
+- `usePageTransition.ts` computes forward/backward direction from navigation order and tracks the wide viewport axis without blocking router resolution on animation callbacks.
+
 - `AppShell.vue` owns the fullscreen safe-area shell, route-change scroll reset, content focus, Telegram back navigation, and the resizable Nuxt UI `UDashboardSidebar` desktop shell. Phones keep their centered fixed bottom navigation, while desktop exposes the complete member and administrator route hierarchy without a fold control or product wordmark; its Home parent is a real route link while its quick actions remain expanded children.
 - Route focus restoration and Telegram BackButton callbacks are guarded against WebView teardown and rejected promises. The native BackButton uses a shared owner stack so an open payment sheet closes before route history changes.
 - `LanguageControl.vue` provides the compact `ULocaleSelect` language control. Home exposes it on mobile, while the desktop rail, auth, and onboarding keep localized entry points in their own context.

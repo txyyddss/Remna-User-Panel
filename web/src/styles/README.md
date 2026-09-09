@@ -1,6 +1,6 @@
 # Visual system
 
-- `page-transitions.css` slides equal-sized outgoing/incoming scroll panels synchronously, horizontally below 900px and vertically on desktop. A clipped content viewport keeps the stationary sidebar and bottom navigation above page movement; reduced motion completes immediately.
+- `page-transitions.css` provides the clipped route viewport while Motion owns the keyed outgoing/incoming handoff: local horizontal movement on phones and local vertical movement on wide screens. Reduced motion removes translation and retains a short opacity change.
 
 `main.css` is the ordered entry point for these cascade layers:
 
@@ -12,7 +12,7 @@
 - `onboarding-01.css` styles onboarding structure and progress.
 - `onboarding-02.css` styles onboarding forms and agreements.
 - `onboarding-03.css` styles onboarding completion and supporting states.
-- `session-01.css` owns the responsive loading wordmark, outline-to-fill letter reveal, Chinese-to-English replacement, session cover/page transitions, and reduced-motion fallback. Its 1.9-second introduction is coordinated with `useLoadingSequence.ts`.
+- `session-01.css` owns the responsive loading wordmark, outline-to-fill letter reveal, Chinese-to-English replacement, and continuous loading keyframes. `SessionEntrance.vue` owns the keyed Motion handoff and `useLoadingSequence.ts` coordinates its 1.9-second introduction.
 - `dashboard-01.css` styles dashboard summaries and account details.
 - `dashboard-02.css` styles dashboard lists, actions, and secondary states.
 - `home-01.css` styles the wrapping balance/action row, 44px Home actions, narrow-phone subscription layout, Nuxt UI usage-progress detail, and traffic surfaces.
@@ -41,8 +41,8 @@
 - `admin-06.css` styles the compact user-editor shell, responsive action/context rail, profile signals, and overlay form sizing.
 - `admin-07.css` styles shared administrative headings, dense rows, and responsive action/control layouts.
 - `overlays-01.css` resolves Telegram safe-area bounds while retaining Nuxt UI's native centered position for teleported modals, provides symmetric opt-in centered modal headers, and owns responsive drawer/slideover layouts.
-- `motion-01.css` defines onboarding and intro transitions without delaying route changes.
-- `motion-02.css` adds reduced-motion-safe tactile press response, status arrival, and active-navigation feedback. Page content stays visible immediately without staggered reveal animations.
+- `motion-01.css` defines shared duration tokens and retains only low-level loading keyframes.
+- `motion-02.css` adds reduced-motion-safe tactile press response. Motion owns status arrival, active-navigation feedback, and local semantic transitions in their components.
 - `responsive-01.css` owns shared motion keyframes used by compact surfaces.
 - `responsive-02.css` expands the phone-first shell into a fixed-width resizable Nuxt UI sticky sidebar desktop layout, and restores wide route, dialog, catalog, settings, and administrative list arrangements.
 - `responsive-03.css` applies compact administrative rows below 640px and owns reduced-motion/transparency fallbacks.
@@ -50,9 +50,10 @@
 
 The system is dark-only, flat, gradient-free, and uses borders instead of decorative shadows.
 
-Route roots render without Transition or AutoAnimate wrappers so restoring cached
-data cannot fade or scale the whole page. List-level animations and action feedback
-remain local to their components.
+Route roots render through one keyed Motion presence boundary so restoring cached
+data does not replay a full-page entrance. List-level layout/presence and action
+feedback remain local to their components. CSS keyframes are reserved for
+perpetual loaders, skeletons, radar, and particles.
 
 ## Admin layout
 

@@ -1,5 +1,9 @@
 # Activity components
 
+Dynamic game and lucky-draw collections use local Motion layout/presence
+boundaries. Routine refreshes do not stagger the whole activity surface;
+selection and pending feedback remain short and haptic-aware.
+
 - `ActivityPage.vue` composes community activity states in one phone column and a balanced two-column desktop grid.
 - `DailyCheckInCard.vue`, `GroupMessageRewardPanel.vue`, `BetGamesPanel.vue`, and `LuckyDrawPanel.vue` implement member activities with selection, confirmation, and authoritative outcome haptics; `GroupMessageRewardPanel.vue` presents message count, reward amount, progress, and claimed/available state in one card.
 - `ActivityResultDialog.vue` presents authoritative results, including the exact TXB amount added by a daily check-in and rewards returned by lucky draws, and mounts success feedback only for winning bets.

@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, useTemplateRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { AnimatePresence, motion } from 'motion-v'
 
 import { useCommunityAccess } from '@/composables/useCommunityAccess'
 import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
 import { useI18n } from '@/i18n'
 import { useSessionStore } from '@/stores/session'
+import { motionDurations } from '@/composables/motionPresets'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { focusWithoutScrolling } from '@/utils/dom'
 import { isTelegramWebAppDetected, telegramFullscreenState } from '@/utils/telegram'
 import LanguageControl from './LanguageControl.vue'
@@ -22,6 +25,7 @@ const { activeCombo: hasValidCombo, refresh: refreshCommunityAccess } = useCommu
 
 const desktopItems = computed(() => desktopNavigationItems(t, sessionStore.isAdmin, hasValidCombo.value))
 const transition = usePageTransition(router, () => desktopItems.value)
+const { reducedMotion, offset } = useMotionPreferences()
 const showBackButton = computed(() => !['/', '/home'].includes(route.path))
 const appContent = useTemplateRef<globalThis.HTMLDivElement>('appContent')
 const mainContent = useTemplateRef<globalThis.HTMLElement>('mainContent')
@@ -30,6 +34,19 @@ const greetingName = computed(() => t('nav.fullscreenGreeting', {
   name: sessionStore.user?.firstName?.trim() || t('nav.memberFallback'),
 }))
 const greetingUsername = computed(() => sessionStore.user?.username?.trim() || sessionStore.user?.telegramUsername?.trim() || '')
+const pageMotion = computed(() => {
+  const distance = offset(14)
+  const axis = transition.wide.value ? 'y' : 'x'
+  const direction = transition.direction.value === 'backward' ? -1 : 1
+  const enter = { opacity: reducedMotion.value ? 0 : 0.75, [axis]: direction * distance }
+  const exit = { opacity: 0, [axis]: direction * -distance }
+  return {
+    initial: reducedMotion.value ? { opacity: 0 } : enter,
+    animate: { opacity: 1, [axis]: 0 },
+    exit: reducedMotion.value ? { opacity: 0 } : exit,
+    transition: { duration: reducedMotion.value ? 0.08 : motionDurations.normal, ease: 'easeOut' as const },
+  }
+})
 
 function resolveDashboardStorage(): 'localStorage' | false {
   if (isTelegramWebAppDetected()) return false
@@ -91,8 +108,16 @@ watch(() => route.path, (_next, previous) => {
       </UDashboardSidebar>
 
       <div class="app-route-viewport">
-        <Transition :name="transition.name.value" @before-leave="transition.leave">
-          <div :key="route.fullPath" ref="appContent" class="app-frame__content">
+        <AnimatePresence :initial="false" mode="sync">
+          <motion.div
+            :key="route.fullPath"
+            ref="appContent"
+            class="app-frame__content"
+            :initial="pageMotion.initial"
+            :animate="pageMotion.animate"
+            :exit="pageMotion.exit"
+            :transition="pageMotion.transition"
+          >
             <div v-if="isFullscreen" class="app-greeting" role="status">
               <strong>{{ greetingName }}</strong>
               <span v-if="greetingUsername">@{{ greetingUsername }}</span>
@@ -100,8 +125,8 @@ watch(() => route.path, (_next, previous) => {
             <main id="main-content" ref="mainContent" class="app-main" tabindex="-1">
               <slot />
             </main>
-          </div>
-        </Transition>
+          </motion.div>
+        </AnimatePresence>
       </div>
     </UDashboardGroup>
 

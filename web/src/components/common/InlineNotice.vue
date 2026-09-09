@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
+
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 
 const props = withDefaults(defineProps<{
   tone?: 'info' | 'warning' | 'success'
@@ -14,18 +17,30 @@ const presentation = computed(() => ({
   warning: { icon: 'i-ph-warning-circle-fill', color: 'warning' },
   success: { icon: 'i-ph-check-circle-fill', color: 'success' },
 } as const)[props.tone])
+const { reducedMotion, offset } = useMotionPreferences()
 </script>
 
 <template>
-  <UAlert
-    class="notice"
-    :class="`notice--${tone}`"
-    :icon="presentation.icon"
-    :color="presentation.color"
-    variant="soft"
-    :title="title"
-    role="status"
-  >
-    <template #description><slot /></template>
-  </UAlert>
+  <AnimatePresence :initial="false">
+    <motion.div
+      key="notice"
+      class="notice-motion"
+      :initial="{ opacity: 0, y: offset(-5) }"
+      :animate="{ opacity: 1, y: 0 }"
+      :exit="{ opacity: 0, y: reducedMotion ? 0 : -5 }"
+      :transition="{ duration: reducedMotion ? 0.08 : 0.2, ease: 'easeOut' }"
+    >
+      <UAlert
+        class="notice"
+        :class="`notice--${tone}`"
+        :icon="presentation.icon"
+        :color="presentation.color"
+        variant="soft"
+        :title="title"
+        role="status"
+      >
+        <template #description><slot /></template>
+      </UAlert>
+    </motion.div>
+  </AnimatePresence>
 </template>

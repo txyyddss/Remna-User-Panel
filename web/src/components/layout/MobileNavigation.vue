@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { LayoutGroup, motion } from 'motion-v'
+import { motionSpring } from '@/composables/motionPresets'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
 import { mobileNavigationItems } from './navigation'
 
@@ -8,6 +11,7 @@ const props = defineProps<{ isAdmin: boolean }>()
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
+const { reducedMotion } = useMotionPreferences()
 const items = computed(() => mobileNavigationItems(props.isAdmin).map(item => ({
   label: t(item.labelKey), icon: item.icon, value: item.to,
 })))
@@ -20,16 +24,29 @@ function navigate(value: string | number): void {
 
 <template>
   <nav class="bottom-nav" :class="{ 'bottom-nav--admin': isAdmin }" :aria-label="t('nav.primary')">
-    <UTabs
-      :model-value="active" :items="items" :content="false" color="primary" class="w-full"
-      :ui="{
-        list: 'justify-around w-full bg-transparent p-0',
-        trigger: 'bottom-nav__item grow basis-0 flex-col gap-1 py-1 data-[state=active]:text-primary',
-        indicator: 'bg-primary/10 shadow-none duration-320 ease-in-out',
-        label: 'text-[10px]/3', leadingIcon: 'size-5',
-      }"
-      data-haptic="navigate"
-      @update:model-value="navigate"
-    />
+    <LayoutGroup>
+      <div class="bottom-nav__list" role="tablist">
+        <UButton
+          v-for="item in items"
+          :key="item.value"
+          type="button"
+          class="bottom-nav__item"
+          :class="{ 'bottom-nav__item--active': item.value === active }"
+          color="neutral"
+          variant="ghost"
+          role="tab"
+          :aria-selected="item.value === active"
+          :tabindex="item.value === active ? 0 : -1"
+          data-haptic="navigate"
+          @click="navigate(item.value)"
+        >
+          <motion.span v-if="item.value === active" layout-id="mobile-nav-indicator" class="bottom-nav__indicator" :transition="reducedMotion ? { duration: 0.08 } : motionSpring" aria-hidden="true" />
+          <motion.span class="bottom-nav__icon" :animate="item.value === active ? { scale: reducedMotion ? 1 : [0.94, 1.04, 1] } : { scale: 1 }" :transition="reducedMotion ? { duration: 0.08 } : { duration: 0.18, ease: 'easeOut' }">
+            <UIcon :name="item.icon" />
+          </motion.span>
+          <span class="bottom-nav__label">{{ item.label }}</span>
+        </UButton>
+      </div>
+    </LayoutGroup>
   </nav>
 </template>

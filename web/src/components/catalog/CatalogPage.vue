@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { AnimatePresence, motion } from 'motion-v'
 
 import type { SquadProduct } from '@/api/types'
 import InlineNotice from '@/components/common/InlineNotice.vue'
@@ -8,6 +9,8 @@ import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { useCatalog } from '@/composables/useCatalog'
 import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
 import { useSessionStore } from '@/stores/session'
+import { motionDurations } from '@/composables/motionPresets'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import CatalogCheckout from './CatalogCheckout.vue'
 import CatalogConfirmation from './CatalogConfirmation.vue'
 import CatalogCouponStep from './CatalogCouponStep.vue'
@@ -19,8 +22,10 @@ import SquadActivationDialog from './SquadActivationDialog.vue'
 import { useCatalogSquadPresentation } from './useCatalogSquadPresentation'
 
 const activeStep = shallowRef(1)
+const stepDirection = shallowRef(1)
 const sessionStore = useSessionStore()
 const router = useRouter()
+const { reducedMotion, offset } = useMotionPreferences()
 const stepKey = () => sessionStore.user?.id ? `txc-catalog-step:v2:${sessionStore.user.id}` : null
 
 const {
@@ -85,7 +90,7 @@ onMounted(() => {
   void restoreStepQuote()
 })
 
-watch(activeStep, (value) => {
+watch(activeStep, (value, previous) => {
   try {
     const key = stepKey()
     if (key) globalThis.sessionStorage?.setItem(key, String(value))
@@ -94,6 +99,7 @@ watch(activeStep, (value) => {
   }
 
   scrollCatalogToTop()
+  stepDirection.value = value >= (previous ?? value) ? 1 : -1
 })
 
 watch(
@@ -243,8 +249,15 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
           {{ error }}
         </InlineNotice>
 
-        <Transition name="catalog-flow" mode="out-in">
-          <section :key="activeStep" class="catalog-flow-step">
+        <AnimatePresence mode="wait" :initial="false">
+          <motion.section
+            :key="activeStep"
+            class="catalog-flow-step"
+            :initial="{ opacity: 0, x: offset(14 * stepDirection) }"
+            :animate="{ opacity: 1, x: 0 }"
+            :exit="{ opacity: 0, x: reducedMotion ? 0 : -10 * stepDirection }"
+            :transition="{ duration: reducedMotion ? 0.08 : motionDurations.normal, ease: 'easeOut' }"
+          >
             <div v-if="activeStep === 2" class="combo-section">
               <div class="section-heading">
                 <h2>{{ $t('catalog.coreCombos') }}</h2>
@@ -306,8 +319,8 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
               @back="goBack"
               @confirm="handlePurchase"
             />
-          </section>
-        </Transition>
+          </motion.section>
+        </AnimatePresence>
 
         <CatalogFlowControls
           v-if="activeStep < 4"
@@ -344,31 +357,4 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
 .catalog-flow-step { min-height: 14rem; }
 .combo-section { display: grid; gap: 0.8rem; }
 
-.catalog-flow-enter-active,
-.catalog-flow-leave-active {
-  transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
-}
-
-.catalog-flow-enter-from {
-  opacity: 0;
-  transform: translateY(8px);
-}
-
-.catalog-flow-leave-to {
-  opacity: 0;
-  transform: translateY(-6px);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .catalog-flow-enter-active,
-  .catalog-flow-leave-active {
-    transition: none;
-  }
-
-  .catalog-flow-enter-from,
-  .catalog-flow-leave-to {
-    opacity: 1;
-    transform: none;
-  }
-}
 </style>

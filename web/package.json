@@ -19,7 +19,6 @@
     "check": "npm run audit:structure && npm run lint && npm run typecheck && npm run test && vite build"
   },
   "dependencies": {
-    "@formkit/auto-animate": "^0.10.0",
     "@iconify-json/circle-flags": "^1.2.10",
     "@iconify-json/ph": "^1.2.2",
     "@noble/hashes": "2.2.0",
@@ -27,6 +26,7 @@
     "@tiptap/core": "^3.30.5",
     "dompurify": "^3.4.13",
     "markdown-it": "^15.0.0",
+    "motion-v": "^2.4.2",
     "pinia": "^4.0.2",
     "qrcode": "^1.5.4",
     "vue": "^3.5.41",

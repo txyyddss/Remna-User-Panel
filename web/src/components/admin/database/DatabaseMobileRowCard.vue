@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, shallowRef } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import type { DatabaseColumn, DatabaseRow, DatabaseValue } from '@/api/features'
 import { useI18n } from '@/i18n'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 
 const props = defineProps<{
   row: DatabaseRow
@@ -14,6 +16,7 @@ const emit = defineEmits<{
 }>()
 const { t } = useI18n()
 const expanded = shallowRef(false)
+const { reducedMotion, offset } = useMotionPreferences()
 const keyEntries = computed(() => Object.entries(props.row.key))
 const safeFields = computed(() => props.columns
   .filter((column) => !column.sensitive && column.primaryKeyPosition === 0 && !(column.name in props.row.key))
@@ -40,12 +43,14 @@ function displayValue(value: DatabaseValue | undefined): string {
         </div>
       </dl>
     </section>
-    <dl v-if="visibleFields.length" v-auto-animate class="database-row-card__preview">
-      <div v-for="field in visibleFields" :key="field.name">
-        <dt>{{ field.name }}</dt>
-        <dd><code>{{ displayValue(field.value) }}</code></dd>
-      </div>
-    </dl>
+    <motion.dl v-if="visibleFields.length" layout class="database-row-card__preview">
+      <AnimatePresence :initial="false" mode="popLayout">
+        <motion.div v-for="field in visibleFields" :key="field.name" layout :initial="reducedMotion ? false : { opacity: 0, y: offset(4) }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.16, ease: 'easeOut' }">
+          <dt>{{ field.name }}</dt>
+          <dd><code>{{ displayValue(field.value) }}</code></dd>
+        </motion.div>
+      </AnimatePresence>
+    </motion.dl>
     <UButton
       v-if="hiddenCount"
       class="database-row-card__expand"

@@ -19,7 +19,7 @@ npm run dev
 ## Application boundaries
 
 - `src/App.vue` provides Nuxt UI's `UApp` context and locale binding.
-- `src/main.ts` bootstraps compatibility before loading the app bundle, then either mounts a localized capability gate or initializes Telegram, Pinia, Vue Router, Nuxt UI, AutoAnimate, and global styles.
+- `src/main.ts` bootstraps compatibility before loading the app bundle, then either mounts a localized capability gate or initializes Telegram, Pinia, Vue Router, Nuxt UI, Motion for Vue, and global styles.
 - `src/router/` lazy-loads member and administrator views and enforces onboarding/role access.
 - `src/stores/` holds only session-wide authenticated identity state.
 - `src/api/` contains generated OpenAPI types, focused contracts, and one same-origin transport. Authenticated calls use the companion request key to sign the exact method, path/query, timestamp, nonce, and body bytes, including a secure HMAC fallback when Web Crypto is unavailable.
@@ -45,7 +45,7 @@ Each source folder has its own `README.md` file map. Start with [the source map]
 
 ## Administration
 
-The live admin routes cover settings, catalog/squads, activity, coupons, questionnaires/CSV settlement, onboarding content, users, Emby accounts, entitlements, payments/refunds, backups/restore, the reviewed database editor, and audit history. Nuxt UI provides forms, selects, tables, modals, drawers, alerts, badges, and loading states; dynamic lists use AutoAnimate.
+The live admin routes cover settings, catalog/squads, activity, coupons, questionnaires/CSV settlement, onboarding content, users, Emby accounts, entitlements, payments/refunds, backups/restore, the reviewed database editor, and audit history. Nuxt UI provides forms, selects, tables, modals, drawers, alerts, badges, and loading states; Motion owns local list presence, layout, selection, and workflow feedback.
 
 Financial and destructive operations retain text labels, busy states, explicit reasons, confirmations, and localized failures. The database editor never sends raw SQL: it uses typed filters, cursors, optimistic hashes, server diff review, rescue backup, and typed confirmation.
 

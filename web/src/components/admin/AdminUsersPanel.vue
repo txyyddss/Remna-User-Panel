@@ -2,6 +2,7 @@
 import { restoreCatalogOptions } from '@/api/cache/catalogOptions'
 import { onMounted, onScopeDispose, reactive, shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { AnimatePresence, motion } from 'motion-v'
 
 import { adminOperationsApi, type AdminCatalogOptions, type OperationReceipt } from '@/api/adminOperations'
 import type { AdminUserSummary } from '@/api/types'
@@ -10,6 +11,7 @@ import StatusBadge from '@/components/common/StatusBadge.vue'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
 import { useAdminSection } from '@/composables/useAdminSection'
 import { localizedError, useI18n } from '@/i18n'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { formatDate, formatMoney, moneyFromTxbInput } from '@/utils/format'
 import AdminSectionState from './AdminSectionState.vue'
 import AdminBulkExtensionDialog from './users/AdminBulkExtensionDialog.vue'
@@ -26,6 +28,7 @@ const bulkOpen = shallowRef(false)
 const filterOptions = shallowRef<AdminCatalogOptions>({ combos: [], squads: [] })
 const filters = shallowRef<AdminUserSearchFiltersValue>({ state: '', comboIds: [], squadUuids: [], match: 'and' })
 const filterError = shallowRef<string | null>(null)
+const { reducedMotion, offset } = useMotionPreferences()
 
 let searchTimer: ReturnType<typeof globalThis.setTimeout> | undefined
 
@@ -106,22 +109,24 @@ function bulkQueued(receipt: OperationReceipt): void {
     <InlineNotice v-if="success" tone="success">{{ success }}</InlineNotice>
     <InlineNotice v-if="filterError" tone="warning">{{ filterError }}</InlineNotice>
     <AdminSectionState :loading="loading" :error="error" @retry="reloadUsers">
-      <div v-auto-animate class="admin-list">
-        <article v-for="summary in items" :key="summary.user.id" class="admin-list-row admin-list-row--user">
-          <UAvatar :text="displayName(summary).slice(0, 2).toUpperCase()" size="sm" />
-          <div>
-            <strong>{{ displayName(summary) }}</strong>
-            <small>{{ t('adminUsers.meta', { identity: summary.user.username ? `@${summary.user.username}` : summary.user.telegramId, date: formatDate(summary.createdAt) }) }}</small>
-          </div>
-          <strong>{{ formatMoney(summary.balance) }}</strong>
-          <StatusBadge :tone="summary.synchronization.status === 'synchronized' ? 'success' : 'warning'" :label="summary.synchronization.status === 'synchronized' ? t('adminUsers.synchronized') : t('adminUsers.notProvisioned')" />
-          <div class="row-actions">
-            <UButton size="sm" color="neutral" variant="outline" icon="i-ph-user-focus" :label="t('adminUserProfile.open')" @click="openProfile(summary)" />
-            <UButton size="sm" color="neutral" variant="ghost" icon="i-ph-coins" :label="t('adminUsers.adjust')" @click="selected = summary" />
-          </div>
-        </article>
-        <div v-if="!items.length" class="empty-inline"><div><h3>{{ t('adminUsers.none') }}</h3><p>{{ t('adminUsers.noneHint') }}</p></div></div>
-      </div>
+      <motion.div layout class="admin-list">
+        <AnimatePresence :initial="false" mode="popLayout">
+          <motion.article v-for="summary in items" :key="summary.user.id" layout class="admin-list-row admin-list-row--user" :initial="reducedMotion ? false : { opacity: 0, y: offset(6) }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.16, ease: 'easeOut' }">
+            <UAvatar :text="displayName(summary).slice(0, 2).toUpperCase()" size="sm" />
+            <div>
+              <strong>{{ displayName(summary) }}</strong>
+              <small>{{ t('adminUsers.meta', { identity: summary.user.username ? `@${summary.user.username}` : summary.user.telegramId, date: formatDate(summary.createdAt) }) }}</small>
+            </div>
+            <strong>{{ formatMoney(summary.balance) }}</strong>
+            <StatusBadge :tone="summary.synchronization.status === 'synchronized' ? 'success' : 'warning'" :label="summary.synchronization.status === 'synchronized' ? t('adminUsers.synchronized') : t('adminUsers.notProvisioned')" />
+            <div class="row-actions">
+              <UButton size="sm" color="neutral" variant="outline" icon="i-ph-user-focus" :label="t('adminUserProfile.open')" @click="openProfile(summary)" />
+              <UButton size="sm" color="neutral" variant="ghost" icon="i-ph-coins" :label="t('adminUsers.adjust')" @click="selected = summary" />
+            </div>
+          </motion.article>
+          <motion.div v-if="!items.length" key="empty-users" class="empty-inline" :initial="{ opacity: 0 }" :animate="{ opacity: 1 }"><div><h3>{{ t('adminUsers.none') }}</h3><p>{{ t('adminUsers.noneHint') }}</p></div></motion.div>
+        </AnimatePresence>
+      </motion.div>
       <UButton v-if="nextCursor" class="database-load-more" color="neutral" variant="outline" icon="i-ph-arrow-down" :loading="loading" :disabled="loading" :label="t('adminUsers.loadMore')" @click="loadMore" />
     </AdminSectionState>
 
