@@ -11,11 +11,8 @@ const { t } = useI18n()
 const items = computed(() => mobileNavigationItems(props.isAdmin).map(item => ({
   label: t(item.labelKey), icon: item.icon, value: item.to,
 })))
-
-function isCurrent(value: string): boolean {
-  if (route.path.startsWith('/admin')) return value === '/admin/settings'
-  return value === route.path || (value === '/home' && route.path === '/')
-}
+const active = computed(() => route.path.startsWith('/admin') ? '/admin/settings'
+  : items.value.some(item => item.value === route.path) ? route.path : '/home')
 
 function normalizeRouteValue(value: unknown): string | undefined {
   if (typeof value === 'string' || typeof value === 'number') return String(value)
@@ -35,24 +32,33 @@ function navigate(value: unknown): void {
   if (!nextValue) return
   void router.push(nextValue).catch(() => undefined)
 }
+
+function handleNavClick(event: MouseEvent): void {
+  const target = event.target as HTMLElement | null
+  const trigger = target?.closest('.bottom-nav__item') as HTMLElement | null
+  if (!trigger) return
+
+  const nav = trigger.closest('.bottom-nav') as HTMLElement | null
+  const index = nav ? Array.from(nav.querySelectorAll('.bottom-nav__item')).indexOf(trigger) : -1
+  const nextValue = index >= 0 ? items.value[index]?.value : undefined
+  if (!nextValue) return
+
+  void router.push(String(nextValue)).catch(() => undefined)
+}
 </script>
 
 <template>
-  <nav class="bottom-nav" :class="{ 'bottom-nav--admin': props.isAdmin }" :aria-label="t('nav.primary')">
-    <div class="flex w-full justify-around">
-      <UButton
-        v-for="item in items"
-        :key="item.value"
-        :label="item.label"
-        :icon="item.icon"
-        :color="isCurrent(item.value) ? 'primary' : 'neutral'"
-        variant="ghost"
-        class="bottom-nav__item grow basis-0 flex-col gap-1 py-1"
-        :data-state="isCurrent(item.value) ? 'active' : undefined"
-        :aria-current="isCurrent(item.value) ? 'page' : undefined"
-        data-haptic="navigate"
-        @click="navigate(item.value)"
-      />
-    </div>
+  <nav class="bottom-nav" :class="{ 'bottom-nav--admin': props.isAdmin }" :aria-label="t('nav.primary')" @click="handleNavClick">
+    <UTabs
+      :model-value="active" :items="items" :content="false" color="primary" class="w-full"
+      :ui="{
+        list: 'justify-around w-full bg-transparent p-0',
+        trigger: 'bottom-nav__item grow basis-0 flex-col gap-1 py-1 data-[state=active]:text-primary',
+        indicator: 'bg-primary/10 shadow-none duration-320 ease-in-out',
+        label: 'text-[10px]/3', leadingIcon: 'size-5',
+      }"
+      data-haptic="navigate"
+      @update:model-value="navigate"
+    />
   </nav>
 </template>
