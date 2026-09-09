@@ -29,42 +29,7 @@ Push and commit to main branch when finish. Monitor actions run and fix issues w
 
 ---
 
-## Task1: Add page switching sliding animation
-
-Display sliding animation when switching pages
-
-- Previous page: Slide out
-- Target page: Slide in
-- Display both aimation synchronously with no overlapping or interrupting
-- The direction of animation should follow and be the opposite of the one on navigation bar
-- e.g. on phones, "explore" sliding in from right to left when switching from home, vice versa
-- e.g. on desktop, "explore" sliding in from bottom to top when switching from home, vice versa
-- Sliding up/down on desktop and left/right on phones
-
-## Task2: Replace current Vue component to NUXT component
-
-### Navigation bar on phones
-
-Refer to NUXT UI docs "Tabs" - "With bottom tab bar"
-
-### Markdown Editor on admin interface
-
-Refer to NUXT UI docs "Editor"
-
-## Task3: Improve sidebar display on desktop
-
-- No longer display a "member" icon, display the real user avatar from telegram instead, remember to use the NUXT "avatar" component
-- Do not display "Telegram member", display the telegram username instead, and cut long names
-- Do not display the greeting on the top for desktop as it duplicates with the one on sidebar
-- Default resize the sidebar into minimal width of displaying full wordings of sidebar items.
-
-## Task4: Add the ability to disable geockeck for internal squad
-
-Admin could disable geockeck (default on) on per-squad settings.
-Display "Geockeck disabled." on geocheck popup on user interface.
-Do not change other displays related to geocheck.
-
-## Task5: Fix issues
+## Task1: Fix issues
 
 - Add squad interface always appears empty on desktop
 - It appears error when the new backend responce does not match the cached one on frontend
