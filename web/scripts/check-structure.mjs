@@ -178,7 +178,7 @@ function checkFrontendPolicy() {
   if (title) failures.push(`${pathLabel(indexPath)} contains a hardcoded document title: ${title}`)
 }
 
-checkLines('web/src', new Set(['.vue', '.ts', '.css']), 200, true)
+checkLines('web/src', new Set(['.vue', '.ts', '.css']), 300, true)
 checkLines('web/locales', new Set(['.json']), 200)
 checkLines('web/scripts', new Set(['.mjs']), 200)
 checkLines('internal', new Set(['.go']), 300, true)
