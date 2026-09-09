@@ -27,7 +27,7 @@ const {
 } = useSquadAddition({ purchaseId: () => props.active.id, activeSquadUuids: () => activeSquadUuids.value })
 const { featuredIds, orderedIds } = useCatalogSquadPresentation(visibleSquads, emptyIncludedIds, comboId)
 
-watch(open, (visible) => {
+watch([open, () => props.active.id], ([visible]) => {
   if (!visible) {
     if (activationResolver) resolveActivation(null)
     return
@@ -35,7 +35,7 @@ watch(open, (visible) => {
   step.value = 1
   reset()
   void load()
-})
+}, { immediate: true })
 
 async function continueToCheckout(): Promise<void> {
   if (!selectedSquadIds.value.length || !(await refreshQuote())) return

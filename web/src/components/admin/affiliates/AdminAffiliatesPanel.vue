@@ -15,7 +15,7 @@ function move(index: number, offset: number): void {
 }
 function remove(index: number): void { state.replace(state.tiers.value.filter((_, itemIndex) => itemIndex !== index)) }
 function add(): void {
-  const last = state.tiers.value.at(-1)
+  const last = state.tiers.value[state.tiers.value.length - 1]
   state.replace([...state.tiers.value, { id: '', name: '', threshold: (last?.threshold ?? 0) + 1, enabled: true, commissionEnabled: false, commissionBps: 0, reward: { kind: 'none' } }])
 }
 </script>

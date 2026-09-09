@@ -125,6 +125,7 @@
     "questionnaireUnavailable": "Questionnaire is unavailable.",
     "questionnaireOpen": "Questionnaire could not be opened.",
     "api": {
+      "API_RESPONSE_INCOMPATIBLE": "This data could not be refreshed. Please try again.",
       "ACTIVE_COMBO_REQUIRED": "A current active combo is required to join this community.",
       "COMMUNITY_ALREADY_JOINED": "Telegram already confirms that you are a member.",
       "ONBOARDING_REQUIRED": "Finish setting up your account before opening community access.",

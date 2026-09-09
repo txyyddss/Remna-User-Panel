@@ -2,6 +2,8 @@ import type { ApiErrorBody } from './types'
 import { applyRequestSignature, requestBodyBytes } from './request-signing'
 import { cachedTransport } from './cache/transport'
 import { clearResponseCache } from './cache/session'
+import { responseCacheKey } from './cache/policy'
+import { isResponseCompatible } from './contracts/responses'
 
 export type QueryValue = string | number | boolean | readonly string[] | undefined
 
@@ -86,7 +88,14 @@ async function responsePayload<T>(response: Response): Promise<T> {
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  return cachedTransport(createUrl(path, options.query), options, async () => responsePayload<T>(await send(path, options)))
+  const url = createUrl(path, options.query)
+  return cachedTransport(url, options, async () => {
+    const value = await responsePayload<T>(await send(path, options))
+    if (responseCacheKey(url, options) && !isResponseCompatible(path, (options.method ?? 'GET').toUpperCase(), value)) {
+      throw new ApiError(502, { code: 'API_RESPONSE_INCOMPATIBLE', message: 'API_RESPONSE_INCOMPATIBLE' })
+    }
+    return value
+  })
 }
 
 // Backup candidates bypass body signing so the browser never materializes a

@@ -62,6 +62,14 @@ function mountDialog() {
 }
 
 describe('SquadAdditionDialog', () => {
+  it('loads squads when the desktop route mounts an already-open dialog', () => {
+    const wrapper = mountDialog()
+    const controller = squadAdditionMock.useSquadAddition.mock.results.at(-1)!.value
+    expect(controller.reset).toHaveBeenCalledOnce()
+    expect(controller.load).toHaveBeenCalledOnce()
+    wrapper.unmount()
+  })
+
   it('keeps Checkout inactive until squad selection is continued', async () => {
     const wrapper = mountDialog()
 

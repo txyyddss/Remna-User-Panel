@@ -29,7 +29,7 @@ export function useImageZoom() {
   function onPointerDown(event: PointerEvent): void {
     const target = event.currentTarget as HTMLElement
     if (event.cancelable) event.preventDefault()
-    target.setPointerCapture(event.pointerId)
+    target.setPointerCapture?.(event.pointerId)
     const current = point(event)
     pointers.set(event.pointerId, current)
     isInteracting.value = true
@@ -75,7 +75,7 @@ export function useImageZoom() {
     const target = event.currentTarget as HTMLElement
     const wasGesture = moved || pointers.size > 1
     pointers.delete(event.pointerId)
-    if (target.hasPointerCapture(event.pointerId)) target.releasePointerCapture(event.pointerId)
+    if (target.hasPointerCapture?.(event.pointerId)) target.releasePointerCapture?.(event.pointerId)
     if (pointers.size >= 2) startPinch(target)
     else if (pointers.size === 1) {
       pinch = undefined

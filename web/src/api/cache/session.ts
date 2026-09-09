@@ -32,12 +32,16 @@ export function readResponseCache<T>(key: string): T | undefined {
   if (serialized === undefined || owner === null) return undefined
   entries.delete(key)
   entries.set(key, serialized)
-  return JSON.parse(serialized) as T
+  try { return JSON.parse(serialized) as T }
+  catch { removeResponseCache(key); return undefined }
 }
 
 export function writeResponseCache(key: string, value: unknown, expectedGeneration: number): void {
   if (owner === null || expectedGeneration !== generation || value === undefined) return
-  const serialized = JSON.stringify(value)
+  let serialized: string | undefined
+  try { serialized = JSON.stringify(value) }
+  catch { removeResponseCache(key); return }
+  if (serialized === undefined) return
   if (serialized.length * 2 > maximumBytes / 2) {
     removeResponseCache(key)
     return

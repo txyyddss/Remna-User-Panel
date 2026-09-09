@@ -1,4 +1,6 @@
-import { computed, onScopeDispose, ref, watch } from 'vue'
+import { computed, onScopeDispose, shallowRef, watch } from 'vue'
+
+import { mediaQueryList, watchMediaQuery } from '@/utils/browserCompatibility'
 
 import type { SessionStatus } from '@/stores/session'
 
@@ -6,9 +8,9 @@ import type { SessionStatus } from '@/stores/session'
 const INTRO_DURATION_MS = 1900
 
 export function useLoadingSequence(status: () => SessionStatus) {
-  const motion = window.matchMedia('(prefers-reduced-motion: reduce)')
-  const reducedMotion = ref(motion.matches)
-  const introComplete = ref(true)
+  const motion = mediaQueryList('(prefers-reduced-motion: reduce)')
+  const reducedMotion = shallowRef(motion?.matches ?? false)
+  const introComplete = shallowRef(true)
   const loading = computed(() => status() === 'idle' || status() === 'loading')
   let timer: ReturnType<typeof setTimeout> | undefined
 
@@ -38,10 +40,10 @@ export function useLoadingSequence(status: () => SessionStatus) {
     status() === 'ready' && !introComplete.value && !reducedMotion.value
   ))
 
-  motion.addEventListener('change', syncMotion)
+  const stopMotionWatch = watchMediaQuery(motion, syncMotion)
   onScopeDispose(() => {
     clearTimer()
-    motion.removeEventListener('change', syncMotion)
+    stopMotionWatch()
   })
 
   return { loading, showing }

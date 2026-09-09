@@ -22,5 +22,6 @@ export function showBootstrapFailure(): void {
   reload.textContent = copy.reload
   reload.addEventListener('click', () => window.location.reload())
   main.append(heading, description, reload)
-  root.replaceChildren(main)
+  while (root.firstChild) root.removeChild(root.firstChild)
+  root.appendChild(main)
 }

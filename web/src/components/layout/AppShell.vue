@@ -21,7 +21,7 @@ const { t } = useI18n()
 const { activeCombo: hasValidCombo, refresh: refreshCommunityAccess } = useCommunityAccess()
 
 const desktopItems = computed(() => desktopNavigationItems(t, sessionStore.isAdmin, hasValidCombo.value))
-usePageTransition(router, () => desktopItems.value)
+const transition = usePageTransition(router, () => desktopItems.value)
 const showBackButton = computed(() => !['/', '/home'].includes(route.path))
 const appContent = useTemplateRef<globalThis.HTMLDivElement>('appContent')
 const mainContent = useTemplateRef<globalThis.HTMLElement>('mainContent')
@@ -74,14 +74,18 @@ watch(() => route.path, (_next, previous) => {
           </footer>
         </template>
       </UDashboardSidebar>
-      <div ref="appContent" class="app-frame__content">
-        <div v-if="isFullscreen" class="app-greeting" role="status">
-          <strong>{{ greetingName }}</strong>
-          <span v-if="greetingUsername">@{{ greetingUsername }}</span>
-        </div>
-        <main id="main-content" ref="mainContent" class="app-main" tabindex="-1">
-          <slot />
-        </main>
+      <div class="app-route-viewport">
+        <Transition :name="transition.name.value" @before-leave="transition.leave" @after-enter="transition.finish" @enter-cancelled="transition.finish">
+          <div :key="route.path" ref="appContent" class="app-frame__content">
+            <div v-if="isFullscreen" class="app-greeting" role="status">
+              <strong>{{ greetingName }}</strong>
+              <span v-if="greetingUsername">@{{ greetingUsername }}</span>
+            </div>
+            <main id="main-content" ref="mainContent" class="app-main" tabindex="-1">
+              <slot />
+            </main>
+          </div>
+        </Transition>
       </div>
     </UDashboardGroup>
 

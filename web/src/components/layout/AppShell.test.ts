@@ -29,7 +29,7 @@ describe('AppShell accessibility', () => {
     document.body.innerHTML = ''
   })
 
-  it.skip('restores focus after routing and drives Telegram BackButton', async () => {
+  it('restores focus after routing and drives Telegram BackButton', async () => {
     const show = vi.fn()
     const hide = vi.fn()
     const onClick = vi.fn()
@@ -64,7 +64,7 @@ describe('AppShell accessibility', () => {
     scrollContainer.scrollTop = 240
     await router.push('/catalog')
     await nextTick()
-    expect(scrollContainer.scrollTop).toBe(0)
+    expect(wrapper.get('.app-frame__content').element.scrollTop).toBe(0)
     expect(document.activeElement).toBe(wrapper.get('main').element)
     expect(show).toHaveBeenCalled()
     expect(onClick).toHaveBeenCalledOnce()
@@ -80,7 +80,7 @@ describe('AppShell accessibility', () => {
     expect(bottomNavigationItems).toHaveLength(3)
     expect(wrapper.find('.bottom-nav__locale').exists()).toBe(false)
     expect(wrapper.find('.side-rail__footer').exists()).toBe(true)
-    await bottomNavigationItems[1].trigger('click')
+    await bottomNavigationItems[1].trigger('keydown', { key: 'Enter' })
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/catalog'))
     expect(window.location.href).toBe(launchURL)
 
@@ -88,7 +88,7 @@ describe('AppShell accessibility', () => {
     expect(offClick).toHaveBeenCalledOnce()
   })
 
-  it.skip('adds the admin entry to mobile navigation for administrators', async () => {
+  it('adds the admin entry to mobile navigation for administrators', async () => {
     const pinia = createPinia()
     useSessionStore(pinia).session = session('admin')
     const router = createRouter({
@@ -109,7 +109,7 @@ describe('AppShell accessibility', () => {
     expect(wrapper.find('.bottom-nav__locale').exists()).toBe(false)
     expect(bottomNavigationItems[3]?.text()).toContain('Admin')
 
-    await bottomNavigationItems[3]?.trigger('click')
+    await bottomNavigationItems[3]?.trigger('keydown', { key: 'Enter' })
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/admin/settings'))
     expect(wrapper.find('.bottom-nav').classes()).toContain('bottom-nav--admin')
 

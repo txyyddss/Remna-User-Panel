@@ -1,6 +1,6 @@
 # Visual system
 
-- `page-transitions.css` slides outgoing/incoming viewport snapshots synchronously, horizontally below 900px and vertically on desktop. Stationary sidebar and bottom-navigation snapshots sit above the clipped page layer; reduced motion skips the slides.
+- `page-transitions.css` slides equal-sized outgoing/incoming scroll panels synchronously, horizontally below 900px and vertically on desktop. A clipped content viewport keeps the stationary sidebar and bottom navigation above page movement; reduced motion completes immediately.
 
 `main.css` is the ordered entry point for these cascade layers:
 

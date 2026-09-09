@@ -35,10 +35,6 @@ function goToBalance(): void {
       <UButton class="squad-addition-checkout__back" color="neutral" variant="ghost" icon="i-ph-arrow-left" :label="$t('catalog.back')" data-haptic="navigate" @click="emit('back')" />
       <div class="squad-addition-checkout__intro">
         <div class="section-heading section-heading--stacked"><h2>{{ $t('home.squadAddition.checkoutTitle') }}</h2><p>{{ $t('home.squadAddition.checkoutDescription') }}</p></div>
-        <div class="squad-addition-checkout__amount" aria-live="polite">
-          <span>{{ $t('home.squadAddition.proratedTotal') }}</span>
-          <strong>{{ quote ? formatMoney(quote.price) : quoting ? $t('catalog.quoting') : $t('common.notAvailable') }}</strong>
-        </div>
       </div>
       <div class="squad-addition-checkout__content">
         <div class="squad-addition-checkout__summary">
@@ -70,11 +66,8 @@ function goToBalance(): void {
 <style scoped>
 .squad-addition-checkout { display: grid; gap: 0.85rem; }
 .squad-addition-checkout__back { justify-self: start; padding-inline: 0; }
-.squad-addition-checkout__intro { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 1rem; }
 .squad-addition-checkout__intro .section-heading { margin-bottom: 0; }
-.squad-addition-checkout__amount { display: grid; justify-items: end; gap: 0.2rem; padding-bottom: 0.15rem; white-space: nowrap; }
-.squad-addition-checkout__amount span, .squad-addition-checkout__total span, .squad-addition-checkout__total small { color: var(--text-faint); font-size: 0.68rem; }
-.squad-addition-checkout__amount strong { color: var(--accent); font-family: var(--font-mono); font-size: 1.35rem; }
+.squad-addition-checkout__total span, .squad-addition-checkout__total small { color: var(--text-faint); font-size: 0.68rem; }
 .squad-addition-checkout__content { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(10rem, 0.65fr); align-items: start; gap: 0.75rem; }
 .squad-addition-checkout__summary, .squad-addition-checkout__aside { min-width: 0; padding: 0.85rem; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface-raised); }
 .squad-addition-checkout__summary { display: grid; gap: 0.7rem; }
@@ -94,8 +87,6 @@ function goToBalance(): void {
 .squad-addition-checkout__success p { margin: 0.3rem 0 0; color: var(--text-muted); font-size: 0.8rem; }
 
 @media (max-width: 639px) {
-  .squad-addition-checkout__intro { grid-template-columns: 1fr; align-items: start; gap: 0.45rem; }
-  .squad-addition-checkout__amount { justify-items: start; padding: 0.75rem 0.85rem; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface-raised); }
   .squad-addition-checkout__content { grid-template-columns: 1fr; }
   .squad-addition-checkout__aside { position: static; }
 }
