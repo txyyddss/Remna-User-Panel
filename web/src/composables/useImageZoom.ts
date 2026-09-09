@@ -1,5 +1,7 @@
 import { computed, readonly, shallowRef } from 'vue'
 
+import { supportsNativePointerEvents } from '@/utils/browserCompatibility'
+
 const minimumScale = 1
 const maximumScale = 4
 const zoomStep = 0.5
@@ -22,6 +24,7 @@ export function useImageZoom() {
   let pinch: PinchState | undefined
   let moved = false
   let lastTap: Point & { at: number } | undefined
+  const touchFallback = !supportsNativePointerEvents()
 
   const isZoomed = computed(() => scale.value > minimumScale)
   const imageStyle = computed(() => ({ transform: `translate3d(${offsetX.value}px, ${offsetY.value}px, 0) scale(${scale.value})` }))
@@ -91,6 +94,34 @@ export function useImageZoom() {
 
   function onDoubleClick(event: MouseEvent): void {
     toggle(event.currentTarget as HTMLElement, point(event))
+  }
+
+  function touchPointer(event: TouchEvent, touch: Touch): PointerEvent {
+    return {
+      pointerId: touch.identifier,
+      pointerType: 'touch',
+      isPrimary: event.touches[0]?.identifier === touch.identifier,
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      currentTarget: event.currentTarget,
+      cancelable: event.cancelable,
+      preventDefault: () => event.preventDefault(),
+    } as unknown as PointerEvent
+  }
+
+  function onTouchStart(event: TouchEvent): void {
+    if (!touchFallback) return
+    for (const touch of Array.from(event.changedTouches)) onPointerDown(touchPointer(event, touch))
+  }
+
+  function onTouchMove(event: TouchEvent): void {
+    if (!touchFallback) return
+    for (const touch of Array.from(event.changedTouches)) onPointerMove(touchPointer(event, touch))
+  }
+
+  function onTouchEnd(event: TouchEvent): void {
+    if (!touchFallback) return
+    for (const touch of Array.from(event.changedTouches)) onPointerUp(touchPointer(event, touch))
   }
 
   function onWheel(event: WheelEvent): void {
@@ -178,7 +209,8 @@ export function useImageZoom() {
 
   return {
     scale: readonly(scale), isZoomed, isInteracting: readonly(isInteracting), imageStyle,
-    onPointerDown, onPointerMove, onPointerUp, onDoubleClick, onWheel, zoomIn, zoomOut, reset,
+    onPointerDown, onPointerMove, onPointerUp, onTouchStart, onTouchMove, onTouchEnd,
+    onDoubleClick, onWheel, zoomIn, zoomOut, reset,
   }
 }
 

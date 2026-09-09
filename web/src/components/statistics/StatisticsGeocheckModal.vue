@@ -58,6 +58,10 @@ useTelegramBackButton(computed(() => open.value), () => { open.value = false })
             @pointermove="zoom.onPointerMove"
             @pointerup="zoom.onPointerUp"
             @pointercancel="zoom.onPointerUp"
+            @touchstart="zoom.onTouchStart"
+            @touchmove="zoom.onTouchMove"
+            @touchend="zoom.onTouchEnd"
+            @touchcancel="zoom.onTouchEnd"
             @dblclick="zoom.onDoubleClick"
             @wheel.prevent="zoom.onWheel"
           >

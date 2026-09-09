@@ -20,8 +20,8 @@ export function useLoadingSequence(status: () => SessionStatus) {
   }
 
   function syncMotion(): void {
-    reducedMotion.value = motion.matches
-    if (motion.matches) {
+    reducedMotion.value = motion?.matches ?? false
+    if (motion?.matches) {
       clearTimer()
       introComplete.value = true
     }

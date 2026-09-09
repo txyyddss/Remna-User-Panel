@@ -1,5 +1,7 @@
 import { onBeforeUnmount, shallowRef, useTemplateRef } from 'vue'
 
+import { supportsNativePointerEvents } from '@/utils/browserCompatibility'
+
 const daySelector = '[data-statistics-traffic-day]'
 const segmentSelector = '[data-statistics-traffic-id]'
 
@@ -45,6 +47,7 @@ export function useStatisticsTrafficScrub(options: TrafficScrubOptions) {
   let previewedId: string | undefined
   let suppressClick = false
   let clickResetTimer: ReturnType<typeof setTimeout> | undefined
+  const touchFallback = !supportsNativePointerEvents()
 
   function interactionAt(event: PointerEvent | MouseEvent): string | undefined {
     return plot.value
@@ -76,6 +79,10 @@ export function useStatisticsTrafficScrub(options: TrafficScrubOptions) {
     suppressClick = true
     if (clickResetTimer) clearTimeout(clickResetTimer)
     clickResetTimer = setTimeout(() => { suppressClick = false }, 400)
+  }
+
+  function onPointerUp(event: PointerEvent): void {
+    endPointer(event)
   }
 
   function onPointerDown(event: PointerEvent): void {
@@ -110,9 +117,45 @@ export function useStatisticsTrafficScrub(options: TrafficScrubOptions) {
     options.deactivate(interactionId)
   }
 
+  function touchPointer(event: TouchEvent, touch: Touch): PointerEvent {
+    return {
+      pointerId: touch.identifier,
+      pointerType: 'touch',
+      isPrimary: event.touches[0]?.identifier === touch.identifier,
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      currentTarget: event.currentTarget,
+      cancelable: event.cancelable,
+      preventDefault: () => event.preventDefault(),
+    } as unknown as PointerEvent
+  }
+
+  function onTouchStart(event: TouchEvent): void {
+    if (!touchFallback) return
+    for (const touch of Array.from(event.changedTouches)) onPointerDown(touchPointer(event, touch))
+  }
+
+  function onTouchMove(event: TouchEvent): void {
+    if (!touchFallback) return
+    for (const touch of Array.from(event.changedTouches)) onPointerMove(touchPointer(event, touch))
+  }
+
+  function onTouchEnd(event: TouchEvent): void {
+    if (!touchFallback) return
+    for (const touch of Array.from(event.changedTouches)) endPointer(touchPointer(event, touch))
+  }
+
+  function onTouchCancel(event: TouchEvent): void {
+    if (!touchFallback) return
+    for (const touch of Array.from(event.changedTouches)) onPointerCancel(touchPointer(event, touch))
+  }
+
   onBeforeUnmount(() => {
     if (clickResetTimer) clearTimeout(clickResetTimer)
   })
 
-  return { plot, isScrubbing, onPointerDown, onPointerMove, onPointerUp: endPointer, onPointerCancel, onClick }
+  return {
+    plot, isScrubbing, onPointerDown, onPointerMove, onPointerUp, onPointerCancel,
+    onTouchStart, onTouchMove, onTouchEnd, onTouchCancel, onClick,
+  }
 }

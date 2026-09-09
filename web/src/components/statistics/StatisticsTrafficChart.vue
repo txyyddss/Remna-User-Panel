@@ -41,7 +41,7 @@ const days = computed(() => {
 const hasTraffic = computed(() => days.value.some((day) => day.total > 0n))
 const trafficSegments = computed(() => days.value.flatMap((day) => day.segments))
 const { activeItem, hasActive, activate, deactivate, select, isActive, isSelected } = useStatisticsChartSelection(trafficSegments)
-const { isScrubbing, onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onClick } = useStatisticsTrafficScrub({ activate, deactivate, select })
+const { isScrubbing, onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onTouchStart, onTouchMove, onTouchEnd, onTouchCancel, onClick } = useStatisticsTrafficScrub({ activate, deactivate, select })
 </script>
 
 <template>
@@ -61,6 +61,10 @@ const { isScrubbing, onPointerDown, onPointerMove, onPointerUp, onPointerCancel,
         @pointerup="onPointerUp"
         @pointercancel="onPointerCancel"
         @lostpointercapture="onPointerCancel"
+        @touchstart="onTouchStart"
+        @touchmove="onTouchMove"
+        @touchend="onTouchEnd"
+        @touchcancel="onTouchCancel"
         @click.capture="onClick"
       >
         <div v-for="day in days" :key="day.date" class="statistics-traffic__day" data-statistics-traffic-day>
