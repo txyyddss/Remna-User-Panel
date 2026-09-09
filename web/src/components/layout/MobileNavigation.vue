@@ -39,6 +39,7 @@ function navigate(value: string | number): void {
           :tabindex="item.value === active ? 0 : -1"
           data-haptic="navigate"
           @click="navigate(item.value)"
+          @keydown.enter.prevent="navigate(item.value)"
         >
           <motion.span v-if="item.value === active" layout-id="mobile-nav-indicator" class="bottom-nav__indicator" :transition="reducedMotion ? { duration: 0.08 } : motionSpring" aria-hidden="true" />
           <motion.span class="bottom-nav__icon" :animate="item.value === active ? { scale: reducedMotion ? 1 : [0.94, 1.04, 1] } : { scale: 1 }" :transition="reducedMotion ? { duration: 0.08 } : { duration: 0.18, ease: 'easeOut' }">
