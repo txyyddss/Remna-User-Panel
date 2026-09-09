@@ -17,10 +17,24 @@ function encodeText(value: string): Uint8Array {
 }
 
 function readCookie(name: string): string | undefined {
+  let cookies: string
+  try {
+    if (typeof document === 'undefined') return undefined
+    cookies = document.cookie
+  } catch {
+    // Cookie access can be blocked by embedded/restricted WebView policies.
+    return undefined
+  }
+
   const prefix = `${name}=`
-  for (const part of document.cookie.split(';')) {
+  for (const part of cookies.split(';')) {
     const value = part.trim()
-    if (value.startsWith(prefix)) return decodeURIComponent(value.slice(prefix.length))
+    if (!value.startsWith(prefix)) continue
+    try {
+      return decodeURIComponent(value.slice(prefix.length))
+    } catch {
+      return undefined
+    }
   }
   return undefined
 }

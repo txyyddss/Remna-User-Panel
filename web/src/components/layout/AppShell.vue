@@ -7,7 +7,7 @@ import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
 import { useI18n } from '@/i18n'
 import { useSessionStore } from '@/stores/session'
 import { focusWithoutScrolling } from '@/utils/dom'
-import { telegramFullscreenState } from '@/utils/telegram'
+import { isTelegramWebAppDetected, telegramFullscreenState } from '@/utils/telegram'
 import LanguageControl from './LanguageControl.vue'
 import MobileNavigation from './MobileNavigation.vue'
 import SidebarMember from './SidebarMember.vue'
@@ -30,6 +30,22 @@ const greetingName = computed(() => t('nav.fullscreenGreeting', {
   name: sessionStore.user?.firstName?.trim() || t('nav.memberFallback'),
 }))
 const greetingUsername = computed(() => sessionStore.user?.username?.trim() || sessionStore.user?.telegramUsername?.trim() || '')
+
+function resolveDashboardStorage(): 'localStorage' | false {
+  if (isTelegramWebAppDetected()) return false
+
+  try {
+    const storage = globalThis.localStorage
+    const probeKey = '__txc_dashboard_storage_probe__'
+    storage.setItem(probeKey, '1')
+    storage.removeItem(probeKey)
+    return 'localStorage'
+  } catch {
+    return false
+  }
+}
+
+const dashboardStorage = resolveDashboardStorage()
 
 function goBack(): void {
   try {
@@ -59,7 +75,7 @@ watch(() => route.path, (_next, previous) => {
 <template>
   <div class="app-frame" :class="{ 'app-frame--fullscreen': isFullscreen }">
     <a class="skip-link" href="#main-content">{{ $t('nav.skip') }}</a>
-    <UDashboardGroup class="app-dashboard" storage="local" storage-key="tx-carpool-shell" unit="rem">
+    <UDashboardGroup class="app-dashboard" :storage="dashboardStorage" storage-key="tx-carpool-shell" unit="rem">
       <UDashboardSidebar id="navigation-compact" class="side-rail app-dashboard__sidebar" :default-size="13" :min-size="13" :max-size="20" :ui="{ body: 'px-0', footer: 'px-0' }" resizable>
         <template #default>
           <nav class="side-rail__nav" :aria-label="$t('nav.primary')">

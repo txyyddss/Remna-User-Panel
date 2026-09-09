@@ -243,69 +243,71 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
           {{ error }}
         </InlineNotice>
 
-        <section :key="activeStep" class="catalog-flow-step">
-          <div v-if="activeStep === 2" class="combo-section">
-            <div class="section-heading">
-              <h2>{{ $t('catalog.coreCombos') }}</h2>
+        <Transition name="catalog-flow" mode="out-in">
+          <section :key="activeStep" class="catalog-flow-step">
+            <div v-if="activeStep === 2" class="combo-section">
+              <div class="section-heading">
+                <h2>{{ $t('catalog.coreCombos') }}</h2>
+              </div>
+
+              <CatalogComboPricingTable
+                v-if="visibleCombos.length"
+                :combos="visibleCombos"
+                :selected-id="selectedComboId"
+                @select="selectCombo"
+              />
+
+              <div v-else class="empty-inline">
+                <div>
+                  <h3>{{ $t('catalog.noCombos') }}</h3>
+                  <p>{{ $t('catalog.noCombosHint') }}</p>
+                </div>
+                <UButton
+                  color="neutral"
+                  variant="outline"
+                  :label="$t('common.refresh')"
+                  data-haptic="refresh"
+                  @click="load"
+                />
+              </div>
             </div>
 
-            <CatalogComboPricingTable
-              v-if="visibleCombos.length"
-              :combos="visibleCombos"
-              :selected-id="selectedComboId"
-              @select="selectCombo"
+            <CatalogSquadStep
+              v-else-if="activeStep === 1"
+              :squads="visibleSquads"
+              :selected-ids="selectedSquadIds"
+              :included-ids="includedSquadIds"
+              :featured-ids="featuredSquadIds"
+              :ordered-ids="orderedSquadIds"
+              @toggle="toggleSquad"
             />
 
-            <div v-else class="empty-inline">
-              <div>
-                <h3>{{ $t('catalog.noCombos') }}</h3>
-                <p>{{ $t('catalog.noCombosHint') }}</p>
-              </div>
-              <UButton
-                color="neutral"
-                variant="outline"
-                :label="$t('common.refresh')"
-                data-haptic="refresh"
-                @click="load"
-              />
-            </div>
-          </div>
+            <CatalogCouponStep
+              v-else-if="activeStep === 3"
+              v-model:coupon-grant-id="selectedCouponGrantId"
+              :coupons="eligibleCoupons"
+              :eligible-ids="eligibleCoupons.map((grant) => grant.id)"
+              :discarding="couponDiscarding"
+              :discard-coupon="discardCoupon"
+              :quoting="quoting"
+              @redeemed="handleCouponRedeemed"
+            />
 
-          <CatalogSquadStep
-            v-else-if="activeStep === 1"
-            :squads="visibleSquads"
-            :selected-ids="selectedSquadIds"
-            :included-ids="includedSquadIds"
-            :featured-ids="featuredSquadIds"
-            :ordered-ids="orderedSquadIds"
-            @toggle="toggleSquad"
-          />
-
-          <CatalogCouponStep
-            v-else-if="activeStep === 3"
-            v-model:coupon-grant-id="selectedCouponGrantId"
-            :coupons="eligibleCoupons"
-            :eligible-ids="eligibleCoupons.map((grant) => grant.id)"
-            :discarding="couponDiscarding"
-            :discard-coupon="discardCoupon"
-            :quoting="quoting"
-            @redeemed="handleCouponRedeemed"
-          />
-
-          <CatalogCheckout
-            v-else-if="activeStep === 4"
-            :combo="selectedCombo"
-            :squads="selectedSquads"
-            :coupon="selectedCoupon"
-            :quote="quote"
-            :quoting="quoting"
-            :error="error"
-            :purchasing="purchasing || activationPrompting"
-            :needs-balance="needsBalance"
-            @back="goBack"
-            @confirm="handlePurchase"
-          />
-        </section>
+            <CatalogCheckout
+              v-else-if="activeStep === 4"
+              :combo="selectedCombo"
+              :squads="selectedSquads"
+              :coupon="selectedCoupon"
+              :quote="quote"
+              :quoting="quoting"
+              :error="error"
+              :purchasing="purchasing || activationPrompting"
+              :needs-balance="needsBalance"
+              @back="goBack"
+              @confirm="handlePurchase"
+            />
+          </section>
+        </Transition>
 
         <CatalogFlowControls
           v-if="activeStep < 4"
@@ -341,4 +343,32 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
 <style scoped>
 .catalog-flow-step { min-height: 14rem; }
 .combo-section { display: grid; gap: 0.8rem; }
+
+.catalog-flow-enter-active,
+.catalog-flow-leave-active {
+  transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
+}
+
+.catalog-flow-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.catalog-flow-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .catalog-flow-enter-active,
+  .catalog-flow-leave-active {
+    transition: none;
+  }
+
+  .catalog-flow-enter-from,
+  .catalog-flow-leave-to {
+    opacity: 1;
+    transform: none;
+  }
+}
 </style>

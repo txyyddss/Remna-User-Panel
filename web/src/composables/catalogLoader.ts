@@ -1,5 +1,6 @@
 import type { ShallowRef } from 'vue'
 import { api } from '@/api/client'
+import { normalizeCatalog } from '@/api/catalog-normalization'
 import { restoreCached, restoreItems, restoreRef } from '@/api/cache/restore'
 import { featuresApi, type CouponGrant } from '@/api/features'
 import type { Catalog, Money } from '@/api/types'
@@ -22,19 +23,6 @@ export interface CatalogLoadState {
   latest: LatestRequest
 }
 
-function usableCatalog(value: Catalog): boolean {
-  return Array.isArray(value?.combos) && Array.isArray(value?.addons)
-}
-
-function normalizedCatalog(value: Catalog): Catalog {
-  return {
-    ...value,
-    combos: Array.isArray(value.combos) ? value.combos : [],
-    addons: Array.isArray(value.addons) ? value.addons : [],
-    nodes: Array.isArray(value.nodes) ? value.nodes : [],
-  }
-}
-
 export async function loadCatalogData(state: CatalogLoadState): Promise<boolean> {
   const token = state.latest.begin()
 
@@ -46,7 +34,7 @@ export async function loadCatalogData(state: CatalogLoadState): Promise<boolean>
   restoreItems('/api/v1/coupons/wallet', state.couponGrants)
 
   if (state.catalog.value) {
-    state.catalog.value = normalizedCatalog(state.catalog.value)
+    state.catalog.value = normalizeCatalog(state.catalog.value)
     restoreSelection(state, state.catalog.value, state.couponGrants.value)
   }
 
@@ -70,9 +58,8 @@ export async function loadCatalogData(state: CatalogLoadState): Promise<boolean>
 
   try {
     if (!catalogResult.ok) throw catalogResult.reason
-    if (!usableCatalog(catalogResult.value)) throw new TypeError('CATALOG_RESPONSE_INVALID')
 
-    state.catalog.value = normalizedCatalog(catalogResult.value)
+    state.catalog.value = normalizeCatalog(catalogResult.value)
 
     // Balance is not a prerequisite for browsing/selecting a combo. Checkout
     // is server-priced and already reports INSUFFICIENT_BALANCE on purchase.

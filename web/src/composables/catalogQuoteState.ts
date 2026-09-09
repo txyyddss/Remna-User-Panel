@@ -1,5 +1,6 @@
 import { computed, readonly, shallowRef } from 'vue'
 
+import { normalizePurchaseQuote } from '@/api/catalog-normalization'
 import { api } from '@/api/client'
 import type { PurchaseQuote } from '@/api/types'
 
@@ -41,7 +42,7 @@ export function useCatalogQuote(options: CatalogQuoteOptions) {
     try {
       const response = await api.quotePurchase(selection.comboId, selection.squadProductIds, selection.couponGrantId)
       if (version !== requestVersion || options.fingerprint() !== fingerprint) return false
-      quote.value = response
+      quote.value = normalizePurchaseQuote(response)
       quoteFingerprint.value = fingerprint
       return true
     } catch (caught) {

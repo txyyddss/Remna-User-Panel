@@ -59,6 +59,18 @@ describe('request signing', () => {
     expect(headers.has('X-TXC-Signature')).toBe(false)
   })
 
+  it('skips signing when cookie access is blocked by the WebView', async () => {
+    vi.spyOn(document, 'cookie', 'get').mockImplementation(() => {
+      throw new Error('cookie access blocked')
+    })
+    const headers = new Headers()
+
+    await expect(applyRequestSignature(headers, 'POST', '/api/v1/example', requestBodyBytes('{}')))
+      .resolves.toBeUndefined()
+
+    expect(headers.has('X-TXC-Signature')).toBe(false)
+  })
+
   it('keeps protected requests signed without Web Crypto subtle', async () => {
     const nativeCrypto = globalThis.crypto
     vi.stubGlobal('crypto', { getRandomValues: nativeCrypto.getRandomValues.bind(nativeCrypto) })
