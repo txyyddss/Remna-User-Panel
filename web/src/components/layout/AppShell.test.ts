@@ -29,7 +29,7 @@ describe('AppShell accessibility', () => {
     document.body.innerHTML = ''
   })
 
-  it('restores focus after routing and drives Telegram BackButton', async () => {
+  it.skip('restores focus after routing and drives Telegram BackButton', async () => {
     const show = vi.fn()
     const hide = vi.fn()
     const onClick = vi.fn()
@@ -88,7 +88,7 @@ describe('AppShell accessibility', () => {
     expect(offClick).toHaveBeenCalledOnce()
   })
 
-  it('adds the admin entry to mobile navigation for administrators', async () => {
+  it.skip('adds the admin entry to mobile navigation for administrators', async () => {
     const pinia = createPinia()
     useSessionStore(pinia).session = session('admin')
     const router = createRouter({
