@@ -20,3 +20,5 @@
 - `request-signing.test.ts` covers signing, nonce behavior, and missing-Web-Crypto behavior.
 - `openapiContract.test.ts` compile-checks reset automation, required squad-node groups, nullable provider fallback, predicted-rollover ownership, and the required abuse streak contract.
 - `types.ts` exports stable aliases over generated schema types, including payment-operation envelopes, connection scans, durable operation receipts, reset automation, statistics snapshots, member mutation quotes, and typed squad profile read/write unions.
+- `catalog-normalization.ts` normalizes catalog and purchase-quote payloads by coercing missing or null `combos`, `addons`, `nodes`, `includedSquads`, and `accessibleNodes` values into empty arrays so downstream UI code can safely iterate them.
+- `catalog-normalization.test.ts` verifies recursive catalog and quote normalization for nullable or omitted nested collections, ensuring null API fields are converted into safe empty arrays.
