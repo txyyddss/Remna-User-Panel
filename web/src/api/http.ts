@@ -2,8 +2,6 @@ import type { ApiErrorBody } from './types'
 import { applyRequestSignature, requestBodyBytes } from './request-signing'
 import { cachedTransport } from './cache/transport'
 import { clearResponseCache } from './cache/session'
-import { responseCacheKey } from './cache/policy'
-import { isResponseCompatible } from './contracts/responses'
 
 export type QueryValue = string | number | boolean | readonly string[] | undefined
 
@@ -30,14 +28,16 @@ export class ApiError extends Error {
 
 export function createUrl(path: string, query?: Record<string, QueryValue>): string {
   if (!query) return path
-	const params = new URLSearchParams()
-	for (const [key, value] of Object.entries(query)) {
-		if (Array.isArray(value)) {
-			for (const item of value) params.append(key, item)
-		} else if (value !== undefined) {
-			params.set(key, String(value))
-		}
+
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(query)) {
+    if (Array.isArray(value)) {
+      for (const item of value) params.append(key, item)
+    } else if (value !== undefined) {
+      params.set(key, String(value))
+    }
   }
+
   const encoded = params.toString()
   return encoded ? `${path}?${encoded}` : path
 }
@@ -77,25 +77,28 @@ async function responseError(response: Response): Promise<ApiError> {
 async function responsePayload<T>(response: Response): Promise<T> {
   if (!response.ok) throw await responseError(response)
   if (response.status === 204) return undefined as T
+
   const contentType = response.headers.get('content-type') ?? ''
   const payload = contentType.includes('application/json')
     ? await response.json() as unknown
     : await response.text()
+
   if (typeof payload === 'object' && payload !== null && 'data' in payload) {
     return (payload as { data: T }).data
   }
+
   return payload as T
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const url = createUrl(path, options.query)
-  return cachedTransport(url, options, async () => {
-    const value = await responsePayload<T>(await send(path, options))
-    if (responseCacheKey(url, options) && !isResponseCompatible(path, (options.method ?? 'GET').toUpperCase(), value)) {
-      throw new ApiError(502, { code: 'API_RESPONSE_INCOMPATIBLE', message: 'API_RESPONSE_INCOMPATIBLE' })
-    }
-    return value
-  })
+
+  // Live 2xx data is authoritative. Runtime OpenAPI-shape validation belongs
+  // to optional rendering snapshots, where it can safely discard stale cache.
+  // Rejecting a fresh response here breaks rolling frontend/backend deploys:
+  // a temporarily skewed generated contract turns an otherwise usable API
+  // response into a synthetic 502 before feature code can apply fallbacks.
+  return cachedTransport(url, options, async () => responsePayload<T>(await send(path, options)))
 }
 
 // Backup candidates bypass body signing so the browser never materializes a

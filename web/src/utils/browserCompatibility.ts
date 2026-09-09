@@ -19,7 +19,10 @@ function browserCrypto(): Crypto | undefined {
 
 export function secureRandomBytes(length: number): Uint8Array {
   const crypto = browserCrypto()
-  if (!crypto || typeof crypto.getRandomValues !== 'function') throw new BrowserCapabilityError()
+  if (!crypto || typeof crypto.getRandomValues !== 'function') {
+    throw new BrowserCapabilityError()
+  }
+
   try {
     return crypto.getRandomValues(new Uint8Array(length))
   } catch {
@@ -29,6 +32,7 @@ export function secureRandomBytes(length: number): Uint8Array {
 
 export function createUuid(): string {
   const crypto = browserCrypto()
+
   if (typeof crypto?.randomUUID === 'function') {
     try {
       return crypto.randomUUID()
@@ -36,6 +40,7 @@ export function createUuid(): string {
       // Some constrained WebViews expose the method but reject it at runtime.
     }
   }
+
   const bytes = secureRandomBytes(16)
   bytes[6] = (bytes[6] & 0x0f) | 0x40
   bytes[8] = (bytes[8] & 0x3f) | 0x80
@@ -43,13 +48,37 @@ export function createUuid(): string {
   return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`
 }
 
+/**
+ * Clone JSON/API editing state without requiring structuredClone.
+ * API DTOs used by the panel are JSON-compatible values.
+ */
+export function cloneForEditing<T>(value: T): T {
+  try {
+    const clone = globalThis.structuredClone
+    if (typeof clone === 'function') return clone(value)
+  } catch {
+    // Fall through for WebViews that expose structuredClone but reject a value.
+  }
+
+  try {
+    return JSON.parse(JSON.stringify(value)) as T
+  } catch {
+    throw new BrowserCapabilityError()
+  }
+}
+
 function installConstructorFallback(name: string, fallback: unknown): void {
   if (typeof window === 'undefined') return
   const host = window as unknown as Record<string, unknown>
   if (typeof host[name] === 'function') return
   if (typeof fallback !== 'function') return
+
   try {
-    Object.defineProperty(window, name, { configurable: true, value: fallback, writable: true })
+    Object.defineProperty(window, name, {
+      configurable: true,
+      value: fallback,
+      writable: true,
+    })
   } catch {
     // An immutable host object cannot be made compatible here.
   }
@@ -63,25 +92,54 @@ export function installBrowserCompatibility(): void {
 
 export function supportsNativePointerEvents(): boolean {
   if (typeof window === 'undefined') return false
+
   return 'onpointerdown' in window
     && typeof window.PointerEvent === 'function'
     && window.PointerEvent !== window.MouseEvent
 }
 
+/**
+ * AutoAnimate 0.10.x uses these APIs internally. Its own top-level support
+ * guard only checks ResizeObserver, so importing it can still fail in a
+ * partially capable embedded engine.
+ */
+export function supportsAutoAnimate(): boolean {
+  if (typeof window === 'undefined') return false
+
+  try {
+    return typeof globalThis.ResizeObserver === 'function'
+      && typeof globalThis.MutationObserver === 'function'
+      && typeof globalThis.IntersectionObserver === 'function'
+      && typeof globalThis.requestAnimationFrame === 'function'
+      && typeof globalThis.Element === 'function'
+      && typeof globalThis.Element.prototype.animate === 'function'
+      && typeof globalThis.matchMedia === 'function'
+  } catch {
+    return false
+  }
+}
+
 export function mediaQueryList(query: string): MediaQueryList | undefined {
   try {
-    return typeof globalThis.matchMedia === 'function' ? globalThis.matchMedia(query) : undefined
+    return typeof globalThis.matchMedia === 'function'
+      ? globalThis.matchMedia(query)
+      : undefined
   } catch {
     return undefined
   }
 }
 
-export function watchMediaQuery(queryList: MediaQueryList | undefined, listener: () => void): () => void {
+export function watchMediaQuery(
+  queryList: MediaQueryList | undefined,
+  listener: () => void,
+): () => void {
   if (!queryList) return () => undefined
+
   if (typeof queryList.addEventListener === 'function') {
     queryList.addEventListener('change', listener)
     return () => queryList.removeEventListener('change', listener)
   }
+
   queryList.addListener?.(listener)
   return () => queryList.removeListener?.(listener)
 }
@@ -98,7 +156,14 @@ async function copyWithClipboardAPI(value: string): Promise<boolean> {
 }
 
 function copyWithSelection(value: string): boolean {
-  if (typeof document === 'undefined' || !document.body || typeof document.execCommand !== 'function') return false
+  if (
+    typeof document === 'undefined'
+    || !document.body
+    || typeof document.execCommand !== 'function'
+  ) {
+    return false
+  }
+
   const active = document.activeElement as HTMLElement | null
   const textarea = document.createElement('textarea')
   textarea.value = value
@@ -108,6 +173,7 @@ function copyWithSelection(value: string): boolean {
   textarea.style.left = '-9999px'
   textarea.style.opacity = '0'
   document.body.appendChild(textarea)
+
   try {
     textarea.focus()
     textarea.select()
@@ -120,7 +186,11 @@ function copyWithSelection(value: string): boolean {
     try {
       active?.focus({ preventScroll: true })
     } catch {
-      try { active?.focus() } catch { /* The focused control may have been detached. */ }
+      try {
+        active?.focus()
+      } catch {
+        // The focused control may have been detached.
+      }
     }
   }
 }
@@ -152,5 +222,8 @@ export function missingBrowserCapabilities(): string[] {
     ['btoa', () => globalThis.btoa],
     ['crypto.getRandomValues', () => browserCrypto()?.getRandomValues],
   ]
-  return capabilities.filter(([, read]) => !supportsCapability(read)).map(([name]) => name)
+
+  return capabilities
+    .filter(([, read]) => !supportsCapability(read))
+    .map(([name]) => name)
 }

@@ -54,7 +54,6 @@ watch(() => route.path, (_next, previous) => {
     })
     .catch(() => undefined)
 })
-
 </script>
 
 <template>
@@ -74,9 +73,10 @@ watch(() => route.path, (_next, previous) => {
           </footer>
         </template>
       </UDashboardSidebar>
+
       <div class="app-route-viewport">
-        <Transition :name="transition.name.value" @before-leave="transition.leave" @after-enter="transition.finish" @enter-cancelled="transition.finish">
-          <div :key="route.path" ref="appContent" class="app-frame__content">
+        <Transition :name="transition.name.value" @before-leave="transition.leave">
+          <div :key="route.fullPath" ref="appContent" class="app-frame__content">
             <div v-if="isFullscreen" class="app-greeting" role="status">
               <strong>{{ greetingName }}</strong>
               <span v-if="greetingUsername">@{{ greetingUsername }}</span>

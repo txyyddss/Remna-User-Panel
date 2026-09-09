@@ -13,6 +13,7 @@ async function bootstrap(): Promise<void> {
       import('./components/session/BrowserCapabilityGate.vue'),
       import('./i18n'),
     ])
+
     const app = createApp(BrowserCapabilityGate)
     app.config.globalProperties.$t = t
     app.config.errorHandler = () => showBootstrapFailure()
@@ -23,9 +24,9 @@ async function bootstrap(): Promise<void> {
   const { initializeTelegram, markTelegramReady, waitForTelegramContext } = await import('./utils/telegram')
   await waitForTelegramContext()
   const disposeTelegram = initializeTelegram()
+
   const [
     { createPinia },
-    { autoAnimatePlugin },
     { default: ui },
     { createApp },
     { default: App },
@@ -33,18 +34,50 @@ async function bootstrap(): Promise<void> {
     { t },
   ] = await Promise.all([
     import('pinia'),
-    import('@formkit/auto-animate/vue'),
     import('@nuxt/ui/vue-plugin'),
     import('vue'),
     import('./App.vue'),
     import('./router'),
     import('./i18n'),
   ])
+
+  // Do not import AutoAnimate until its actual runtime prerequisites exist.
+  // @formkit/auto-animate touches observer/animation APIs internally; a
+  // partially capable Telegram WebView must still be able to boot the app.
+  let autoAnimatePlugin: Awaited<
+    ReturnType<typeof importAutoAnimatePlugin>
+  > | null = null
+
+  if (compatibility.supportsAutoAnimate()) {
+    try {
+      autoAnimatePlugin = await importAutoAnimatePlugin()
+    } catch {
+      autoAnimatePlugin = null
+    }
+  }
+
   const app = createApp(App)
   app.config.globalProperties.$t = t
   app.config.errorHandler = () => showBootstrapFailure()
-  app.use(createPinia()).use(router).use(ui).use(autoAnimatePlugin)
+
+  app.use(createPinia())
+  app.use(router)
+  app.use(ui)
+
+  if (autoAnimatePlugin) {
+    app.use(autoAnimatePlugin)
+  } else {
+    // Keep v-auto-animate templates valid while degrading to static layout.
+    app.directive('auto-animate', {})
+  }
+
   app.mount('#app')
   markTelegramReady()
+
   window.addEventListener('pagehide', disposeTelegram, { once: true })
+}
+
+async function importAutoAnimatePlugin() {
+  const module = await import('@formkit/auto-animate/vue')
+  return module.autoAnimatePlugin
 }

@@ -1,19 +1,25 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { request } from '../http'
+import { describe, expect, it } from 'vitest'
 import { isResponseCompatible } from './responses'
 
-afterEach(() => vi.unstubAllGlobals())
-
-describe('live response compatibility', () => {
+describe('rendering snapshot compatibility', () => {
   it('accepts fresh catalog contents without requiring a previous snapshot shape', () => {
-    expect(isResponseCompatible('/api/v1/catalog', 'GET', { combos: [], addons: [], nodes: [], revision: 5 })).toBe(true)
-    expect(isResponseCompatible('/api/v1/catalog', 'GET', { combos: null, addons: [], nodes: [] })).toBe(false)
+    expect(isResponseCompatible('/api/v1/catalog', 'GET', {
+      combos: [],
+      addons: [],
+      nodes: [],
+      revision: 5,
+    })).toBe(true)
   })
 
-  it('rejects malformed success data before a loader can assign it', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ combos: null, addons: [], nodes: [] }), {
-      status: 200, headers: { 'Content-Type': 'application/json' },
-    })))
-    await expect(request('/api/v1/catalog')).rejects.toMatchObject({ code: 'API_RESPONSE_INCOMPATIBLE', status: 502 })
+  it('rejects malformed cached catalog data before it reaches Vue state', () => {
+    expect(isResponseCompatible('/api/v1/catalog', 'GET', {
+      combos: null,
+      addons: [],
+      nodes: [],
+    })).toBe(false)
+  })
+
+  it('does not claim a contract for an unknown route', () => {
+    expect(isResponseCompatible('/api/v1/future-resource', 'GET', { any: 'shape' })).toBe(true)
   })
 })
