@@ -120,7 +120,7 @@ describe('AppShell accessibility', () => {
 
     await router.push('/admin/settings')
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/admin/settings'))
-    expect(wrapper.find('.bottom-nav__item[data-state="active"]')).toHaveLength(1)
+    expect(wrapper.findAll('.bottom-nav__item[data-state="active"]')).toHaveLength(1)
 
     wrapper.unmount()
   })
