@@ -20,23 +20,13 @@ const { reducedMotion } = useMotionPreferences()
 
 <template>
   <motion.div
-    v-if="reducedMotion"
-    class="bet-fireworks bet-fireworks--reduced"
-    :initial="{ opacity: 0, scale: 0.9 }"
+    class="bet-fireworks"
+    :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.98 }"
     :animate="{ opacity: 1, scale: 1 }"
-    :transition="{ duration: 0.15, ease: 'easeOut' }"
+    :transition="{ duration: reducedMotion ? 0.08 : 0.22, ease: 'easeOut' }"
     aria-hidden="true"
   >
     <UIcon class="bet-fireworks__success" name="i-ph-check-circle-fill" />
-  </motion.div>
-  <motion.div
-    v-else
-    class="bet-fireworks"
-    :initial="{ opacity: 0, scale: 0.98 }"
-    :animate="{ opacity: 1, scale: 1 }"
-    :transition="{ duration: 0.22, ease: 'easeOut' }"
-    aria-hidden="true"
-  >
     <span
       v-for="burst in bursts"
       :key="burst.id"
@@ -55,8 +45,7 @@ const { reducedMotion } = useMotionPreferences()
 
 <style scoped>
 .bet-fireworks { position: absolute; inset: 0; z-index: 2; overflow: hidden; pointer-events: none; }
-.bet-fireworks--reduced { display: grid; place-items: center; }
-.bet-fireworks__success { color: var(--success); font-size: 2rem; }
+.bet-fireworks__success { display: none; color: var(--success); font-size: 2rem; }
 .bet-fireworks__burst { position: absolute; left: var(--x); top: var(--y); width: 0.35rem; height: 0.35rem; animation: bet-fireworks-bloom 760ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: var(--burst-delay); }
 .bet-fireworks__spark { position: absolute; left: 50%; bottom: 50%; width: 2px; height: 0.9rem; border-radius: 1px; background: var(--accent); transform-origin: 50% 100%; animation: bet-fireworks-spark 820ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: var(--spark-delay); }
 .bet-fireworks__spark:nth-child(3n) { background: var(--success); }
@@ -75,6 +64,8 @@ const { reducedMotion } = useMotionPreferences()
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bet-fireworks:not(.bet-fireworks--reduced) { display: none; }
+  .bet-fireworks { display: grid; place-items: center; }
+  .bet-fireworks__burst { display: none; }
+  .bet-fireworks__success { display: block; }
 }
 </style>
