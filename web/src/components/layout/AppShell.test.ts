@@ -76,16 +76,18 @@ describe('AppShell accessibility', () => {
 
     await router.push('/home')
     await nextTick()
+    const tabs = wrapper.findComponent({ name: 'UTabs' })
+    expect(tabs.exists()).toBe(true)
     const bottomNavigationItems = wrapper.findAll('.bottom-nav__item')
     expect(bottomNavigationItems).toHaveLength(3)
     expect(bottomNavigationItems[0]?.attributes('data-state')).toBe('active')
     expect(wrapper.find('.bottom-nav__locale').exists()).toBe(false)
     expect(wrapper.find('.side-rail__footer').exists()).toBe(true)
-    await bottomNavigationItems[1].trigger('click')
+    await (tabs.vm as any).$emit('update:model-value', '/catalog')
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/catalog'))
     expect(window.location.href).toBe(launchURL)
 
-    await bottomNavigationItems[2].trigger('click')
+    await (tabs.vm as any).$emit('update:model-value', '/activity')
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/activity'))
 
     await router.push('/connections')
@@ -112,12 +114,14 @@ describe('AppShell accessibility', () => {
     await router.isReady()
     const wrapper = mount(AppShell, { global: { plugins: [pinia, router] }, slots: { default: '<h1>Content</h1>' } })
 
+    const tabs = wrapper.findComponent({ name: 'UTabs' })
+    expect(tabs.exists()).toBe(true)
     const bottomNavigationItems = wrapper.findAll('.bottom-nav__item')
     expect(bottomNavigationItems).toHaveLength(4)
     expect(wrapper.find('.bottom-nav__locale').exists()).toBe(false)
     expect(bottomNavigationItems[3]?.text()).toContain('Admin')
 
-    await bottomNavigationItems[3]?.trigger('click')
+    await (tabs.vm as any).$emit('update:model-value', '/admin/settings')
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/admin/settings'))
     expect(wrapper.find('.bottom-nav__item[data-state="active"]')).toHaveLength(1)
 
