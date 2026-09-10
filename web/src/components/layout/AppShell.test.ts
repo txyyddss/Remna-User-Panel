@@ -78,11 +78,19 @@ describe('AppShell accessibility', () => {
     await nextTick()
     const bottomNavigationItems = wrapper.findAll('.bottom-nav__item')
     expect(bottomNavigationItems).toHaveLength(3)
+    expect(bottomNavigationItems[0]?.attributes('data-state')).toBe('active')
     expect(wrapper.find('.bottom-nav__locale').exists()).toBe(false)
     expect(wrapper.find('.side-rail__footer').exists()).toBe(true)
-    await bottomNavigationItems[1].trigger('keydown', { key: 'Enter' })
+    await bottomNavigationItems[1].trigger('click')
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/catalog'))
     expect(window.location.href).toBe(launchURL)
+
+    await bottomNavigationItems[2].trigger('click')
+    await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/activity'))
+
+    await router.push('/connections')
+    await nextTick()
+    expect(wrapper.findAll('.bottom-nav__item[data-state="active"]')).toHaveLength(0)
 
     wrapper.unmount()
     expect(offClick).toHaveBeenCalledOnce()
@@ -109,9 +117,9 @@ describe('AppShell accessibility', () => {
     expect(wrapper.find('.bottom-nav__locale').exists()).toBe(false)
     expect(bottomNavigationItems[3]?.text()).toContain('Admin')
 
-    await bottomNavigationItems[3]?.trigger('keydown', { key: 'Enter' })
+    await bottomNavigationItems[3]?.trigger('click')
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/admin/settings'))
-    expect(wrapper.find('.bottom-nav').classes()).toContain('bottom-nav--admin')
+    expect(wrapper.find('.bottom-nav__item[data-state="active"]')).toHaveLength(1)
 
     wrapper.unmount()
   })
