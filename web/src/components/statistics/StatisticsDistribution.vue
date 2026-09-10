@@ -72,16 +72,26 @@ watch(mode, () => selectionHaptic())
           <motion.rect
             v-for="segment in row.segments"
             :key="segment.id"
+            class="statistics-distribution__motion"
+            :class="{ 'statistics-chart-segment--muted': hasActive && !isActive(segment.interactionId) }"
+            y="0"
+            height="20"
+            :fill="segment.color"
+            :initial="false"
+            :animate="{ x: segment.x, width: segment.width }"
+            :transition="{ duration: reducedMotion ? 0.08 : motionDurations.data, ease: 'easeOut' }"
+            aria-hidden="true"
+          />
+          <rect
+            v-for="segment in row.segments"
+            :key="`interaction-${segment.id}`"
             class="statistics-distribution__segment statistics-chart-segment"
             :class="{ 'statistics-chart-segment--muted': hasActive && !isActive(segment.interactionId) }"
             :x="segment.x"
             y="0"
             :width="segment.width"
             height="20"
-            :fill="segment.color"
-            :initial="false"
-            :animate="{ x: segment.x, width: segment.width }"
-            :transition="{ duration: reducedMotion ? 0.08 : motionDurations.data, ease: 'easeOut' }"
+            fill="transparent"
             role="button"
             :aria-label="$t('statistics.compositionPoint', { group: row.label, segment: segment.label, value: formatStatisticPercent(segment.width) })"
             :aria-pressed="isSelected(segment.interactionId)"
@@ -109,3 +119,7 @@ watch(mode, () => selectionHaptic())
     <div v-else class="statistics-empty statistics-empty--panel"><UIcon name="i-ph-stack" aria-hidden="true" /><span>{{ $t('statistics.noDistribution') }}</span></div>
   </section>
 </template>
+
+<style scoped>
+.statistics-distribution__motion { pointer-events: none; }
+</style>
