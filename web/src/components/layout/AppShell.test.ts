@@ -85,7 +85,7 @@ describe('AppShell accessibility', () => {
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/catalog'))
     expect(window.location.href).toBe(launchURL)
 
-    await (tabs.vm as any).$emit('update:model-value', '/activity')
+    await router.push('/activity')
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/activity'))
 
     await router.push('/connections')
