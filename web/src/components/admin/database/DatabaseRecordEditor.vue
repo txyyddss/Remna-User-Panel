@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, reactive, shallowRef, watch } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import type { DatabaseMutationReview, DatabaseRow, DatabaseTable, DatabaseValue } from '@/api/features'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
 import DatabaseMutationReviewPanel from './DatabaseMutationReviewPanel.vue'
 import DatabaseRecordFields from './DatabaseRecordFields.vue'
@@ -36,6 +38,8 @@ const drawerUi = {
   body: 'database-record-editor__scroll-body',
   footer: 'database-record-editor__footer',
 } as const
+const workflowState = computed(() => props.busy ? 'processing' : props.review ? 'review' : props.action)
+const { reducedMotion } = useMotionPreferences()
 
 watch([() => props.row, () => props.action, () => props.table], ([row]) => {
   for (const key of Object.keys(draft)) delete draft[key]
@@ -90,37 +94,41 @@ function submit(): void {
     </template>
     <template #body>
       <div class="database-record-editor__body">
-        <UAlert v-if="!review" color="warning" variant="soft" icon="i-ph-warning" :description="table.warning || t('databaseRecord.warning')" />
-        <form :id="formId" class="database-form" @submit.prevent="submit">
-          <DatabaseMutationReviewPanel v-if="review" v-model="confirmation" :review="review" />
-          <template v-else>
-            <div v-if="action === 'delete'" class="database-delete-summary">
-              <strong>{{ t('databaseRecord.recordKey') }}</strong>
-              <code>{{ JSON.stringify(row?.key ?? {}) }}</code>
-              <p>{{ t('databaseRecord.deleteHint') }}</p>
-            </div>
-            <DatabaseRecordFields
-              v-else
-              :columns="table.columns"
-              :draft="draft"
-              :text-draft="textDraft"
-              :null-draft="nullDraft"
-              @update:text="updateText"
-              @update:boolean="updateBoolean"
-              @update:null="updateNull"
-            />
-            <UFormField name="reason" :label="t('databaseRecord.reason')" required>
-              <UTextarea
-                v-model.trim="reason"
-                class="database-record-editor__reason"
-                :rows="3"
-                :minlength="4"
-                :placeholder="t('databaseRecord.reasonPlaceholder')"
-                @update:model-value="emit('invalidate')"
-              />
-            </UFormField>
-          </template>
-        </form>
+        <AnimatePresence mode="wait" :initial="false">
+          <motion.div :key="workflowState" class="database-record-editor__workflow" layout :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.18, ease: 'easeOut' }">
+            <UAlert v-if="!review" color="warning" variant="soft" icon="i-ph-warning" :description="table.warning || t('databaseRecord.warning')" />
+            <form :id="formId" class="database-form" @submit.prevent="submit">
+              <DatabaseMutationReviewPanel v-if="review" v-model="confirmation" :review="review" />
+              <template v-else>
+                <div v-if="action === 'delete'" class="database-delete-summary">
+                  <strong>{{ t('databaseRecord.recordKey') }}</strong>
+                  <code>{{ JSON.stringify(row?.key ?? {}) }}</code>
+                  <p>{{ t('databaseRecord.deleteHint') }}</p>
+                </div>
+                <DatabaseRecordFields
+                  v-else
+                  :columns="table.columns"
+                  :draft="draft"
+                  :text-draft="textDraft"
+                  :null-draft="nullDraft"
+                  @update:text="updateText"
+                  @update:boolean="updateBoolean"
+                  @update:null="updateNull"
+                />
+                <UFormField name="reason" :label="t('databaseRecord.reason')" required>
+                  <UTextarea
+                    v-model.trim="reason"
+                    class="database-record-editor__reason"
+                    :rows="3"
+                    :minlength="4"
+                    :placeholder="t('databaseRecord.reasonPlaceholder')"
+                    @update:model-value="emit('invalidate')"
+                  />
+                </UFormField>
+              </template>
+            </form>
+          </motion.div>
+        </AnimatePresence>
       </div>
     </template>
     <template #footer>
@@ -134,6 +142,7 @@ function submit(): void {
 
 <style scoped>
 .database-record-editor__body,
+.database-record-editor__workflow,
 .database-form { display: grid; min-width: 0; gap: 0.8rem; }
 .database-record-editor__reason :deep(textarea) { font-size: 1rem; }
 .database-delete-summary { display: grid; gap: 0.45rem; padding: 0.8rem; border: 1px solid var(--danger); border-radius: var(--radius-control); background: var(--danger-soft); }

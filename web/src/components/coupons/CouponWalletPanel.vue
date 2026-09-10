@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import { computed, shallowRef } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import type { CouponGrant } from '@/api/features'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import { useCoupons } from '@/composables/useCoupons'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import CouponGrantList from './CouponGrantList.vue'
 
 const { grants, loading, redeeming, discarding, error, message, redeem, discard } = useCoupons()
 const code = shallowRef('')
 const selectedGrant = shallowRef<CouponGrant | null>(null)
 const discardingGrantId = computed(() => discarding.value ? selectedGrant.value?.id ?? null : null)
+const walletState = computed(() => loading.value ? 'loading' : grants.value.length ? 'grants' : 'empty')
+const { reducedMotion } = useMotionPreferences()
 
 async function submit(): Promise<void> {
   if (await redeem(code.value)) code.value = ''
@@ -54,9 +58,20 @@ async function confirmDiscard(): Promise<void> {
     </form>
     <InlineNotice v-if="message" tone="success">{{ message }}</InlineNotice>
     <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
-    <USkeleton v-if="loading" class="h-10" />
-    <CouponGrantList v-else-if="grants.length" :grants="grants" :discarding-id="discardingGrantId" @discard="selectedGrant = $event" />
-    <div v-else class="empty-inline"><div><h3>{{ $t('coupons.empty') }}</h3><p>{{ $t('coupons.emptyHint') }}</p></div></div>
+    <AnimatePresence mode="wait" :initial="false">
+      <motion.div
+        :key="walletState"
+        layout
+        :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }"
+        :animate="{ opacity: 1, y: 0 }"
+        :exit="{ opacity: 0 }"
+        :transition="{ duration: reducedMotion ? 0.08 : 0.16, ease: 'easeOut' }"
+      >
+        <USkeleton v-if="loading" class="h-10" />
+        <CouponGrantList v-else-if="grants.length" :grants="grants" :discarding-id="discardingGrantId" @discard="selectedGrant = $event" />
+        <div v-else class="empty-inline"><div><h3>{{ $t('coupons.empty') }}</h3><p>{{ $t('coupons.emptyHint') }}</p></div></div>
+      </motion.div>
+    </AnimatePresence>
 
     <UModal
       :open="selectedGrant !== null"

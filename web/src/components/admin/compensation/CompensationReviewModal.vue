@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import type { NodeCompensationEvent } from '@/api/contracts/compensation'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import { useTelegramProtection } from '@/composables/useTelegramProtection'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
 import { eventExtension, multiplierFactor } from './format'
 
@@ -21,25 +23,31 @@ watch(() => props.event, (event) => {
 })
 const ready = computed(() => reason.value.trim().length >= 3 && Number.isInteger(minutes.value)
   && minutes.value >= 1 && minutes.value <= 5_256_000)
+const workflowState = computed(() => props.busy ? 'applying' : props.error ? `error:${props.error}` : props.event ? `review:${props.event.id}` : 'empty')
+const { reducedMotion } = useMotionPreferences()
 useTelegramProtection(computed(() => open.value && (props.busy || reason.value.trim() !== '')))
 </script>
 
 <template>
   <UModal v-model:open="open" :title="t('adminCompensation.reviewTitle')" :description="t('adminCompensation.reviewCopy')" :dismissible="!busy" :close="false" :ui="{ header: 'tg-overlay-header--centered', wrapper: 'tg-overlay-copy--centered', footer: 'justify-end flex-wrap' }">
     <template v-if="event" #body>
-      <dl class="review-facts">
-        <div><dt>{{ t('adminCompensation.node') }}</dt><dd>{{ event.nodeName }}</dd></div>
-        <div><dt>{{ t('adminCompensation.squads') }}</dt><dd>{{ event.squads.map((squad) => squad.name).join(', ') || '—' }}</dd></div>
-        <div><dt>{{ t('adminCompensation.frozenRecipients') }}</dt><dd>{{ event.frozenRecipientCount }}</dd></div>
-        <div><dt>{{ t('adminCompensation.snapshotRule') }}</dt><dd>{{ event.thresholdMinutes }}m · {{ multiplierFactor(event.multiplierBps) }}×</dd></div>
-      </dl>
-      <UFormField :label="t('adminCompensation.extensionMinutes')" required>
-        <UInputNumber v-model="minutes" class="w-full" :min="1" :max="5256000" :step="1" />
-      </UFormField>
-      <UFormField :label="t('adminCompensation.reviewReason')" required>
-        <UTextarea v-model.trim="reason" :rows="3" :minlength="3" :maxlength="500" />
-      </UFormField>
-      <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
+      <AnimatePresence mode="wait" :initial="false">
+        <motion.div :key="workflowState" :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.18, ease: 'easeOut' }">
+          <dl class="review-facts">
+            <div><dt>{{ t('adminCompensation.node') }}</dt><dd>{{ event.nodeName }}</dd></div>
+            <div><dt>{{ t('adminCompensation.squads') }}</dt><dd>{{ event.squads.map((squad) => squad.name).join(', ') || '—' }}</dd></div>
+            <div><dt>{{ t('adminCompensation.frozenRecipients') }}</dt><dd>{{ event.frozenRecipientCount }}</dd></div>
+            <div><dt>{{ t('adminCompensation.snapshotRule') }}</dt><dd>{{ event.thresholdMinutes }}m · {{ multiplierFactor(event.multiplierBps) }}×</dd></div>
+          </dl>
+          <UFormField :label="t('adminCompensation.extensionMinutes')" required>
+            <UInputNumber v-model="minutes" class="w-full" :min="1" :max="5256000" :step="1" />
+          </UFormField>
+          <UFormField :label="t('adminCompensation.reviewReason')" required>
+            <UTextarea v-model.trim="reason" :rows="3" :minlength="3" :maxlength="500" />
+          </UFormField>
+          <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
+        </motion.div>
+      </AnimatePresence>
     </template>
     <template #footer>
       <UButton color="neutral" variant="outline" :label="t('adminCompensation.dismiss')" :disabled="busy || reason.trim().length < 3" data-haptic="dismiss" @click="emit('review', 'dismiss', minutes, reason)" />

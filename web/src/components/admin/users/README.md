@@ -19,3 +19,4 @@
 - `AdminUserProviderActions.vue` emits the queued provider receipt to the profile shell before its reload.
 - `adminUserFormat.ts` owns profile-specific status tones and date conversion helpers.
 - `useAdminUserProfile.ts` loads the aggregate and serializes idempotent profile mutations with conflict handling.
+- Search-filter geometry, entitlement and block row mutations, timeline layout, and review workflows use local Motion without moving the profile route.

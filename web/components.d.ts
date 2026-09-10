@@ -186,6 +186,7 @@ declare module 'vue' {
     TrafficNodeChart: typeof import('./src/components/dashboard/TrafficNodeChart.vue')['default']
     TrafficResetAutomationControl: typeof import('./src/components/dashboard/TrafficResetAutomationControl.vue')['default']
     TrafficUsageBar: typeof import('./src/components/dashboard/TrafficUsageBar.vue')['default']
+    TrafficUsageBarDetails: typeof import('./src/components/dashboard/TrafficUsageBarDetails.vue')['default']
     TrafficUsageDetails: typeof import('./src/components/dashboard/TrafficUsageDetails.vue')['default']
     TxbAmountField: typeof import('./src/components/common/TxbAmountField.vue')['default']
     UAlert: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Alert.vue')['default']

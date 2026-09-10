@@ -2,11 +2,14 @@
 import { restoreItems } from '@/api/cache/restore'
 import { mergeRefreshedDraft } from '@/api/cache/drafts'
 import { computed, onMounted, reactive, shallowRef } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import { api, type AdminPaymentProfile } from '@/api/client'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import SwitchField from '@/components/common/SwitchField.vue'
+import { motionSpring } from '@/composables/motionPresets'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { localizedError, useI18n } from '@/i18n'
 
 const { t } = useI18n()
@@ -22,6 +25,7 @@ const providerItems = computed(() => (['ezpay', 'bepusdt'] as const).map((provid
   label: t(`payment.providers.${provider}`),
   value: provider,
 })))
+const { reducedMotion } = useMotionPreferences()
 
 function channelItems(): { label: string; value: string }[] {
   return channelIds.map((channel) => ({
@@ -121,38 +125,40 @@ onMounted(() => void load())
     <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
     <div v-if="loading" class="payment-profiles__loading"><USkeleton v-for="index in 2" :key="index" class="h-32" /></div>
     <div v-else class="payment-profiles__grid">
-      <article v-for="profile in profiles" :key="profile.id" class="payment-profile">
-        <div class="payment-profile__header">
-          <div>
-            <span class="eyebrow">{{ t(`payment.providers.${drafts[profile.id].provider}`) }}</span>
-            <h3>{{ drafts[profile.id].providerName || t('adminPaymentProfiles.unnamed') }}</h3>
+      <AnimatePresence :initial="false" mode="popLayout">
+        <motion.article
+          v-for="profile in profiles"
+          :key="profile.id"
+          class="payment-profile"
+          layout
+          :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: 5 }"
+          :animate="{ opacity: 1, y: 0 }"
+          :exit="{ opacity: 0, y: reducedMotion ? 0 : -4 }"
+          :transition="reducedMotion ? { duration: 0.08 } : motionSpring"
+        >
+          <div class="payment-profile__header">
+            <div>
+              <span class="eyebrow">{{ t(`payment.providers.${drafts[profile.id].provider}`) }}</span>
+              <h3>{{ drafts[profile.id].providerName || t('adminPaymentProfiles.unnamed') }}</h3>
+            </div>
+            <div class="payment-profile__actions">
+              <SwitchField :id="`payment-profile-${profile.id}`" v-model="drafts[profile.id].enabled" :label="t('common.enabled')" />
+              <UTooltip :text="t('adminPaymentProfiles.delete')">
+                <UButton color="error" variant="ghost" icon="i-ph-trash" :aria-label="t('adminPaymentProfiles.delete')" :disabled="busy === profile.id" data-haptic="destructive" @click="deleting = profile" />
+              </UTooltip>
+            </div>
           </div>
-          <div class="payment-profile__actions">
-            <SwitchField :id="`payment-profile-${profile.id}`" v-model="drafts[profile.id].enabled" :label="t('common.enabled')" />
-            <UTooltip :text="t('adminPaymentProfiles.delete')">
-              <UButton color="error" variant="ghost" icon="i-ph-trash" :aria-label="t('adminPaymentProfiles.delete')" :disabled="busy === profile.id" data-haptic="destructive" @click="deleting = profile" />
-            </UTooltip>
-          </div>
-        </div>
-        <UFormField v-if="profile.id.startsWith('draft-')" :label="t('adminPaymentProfiles.provider')">
-          <USelect v-model="drafts[profile.id].provider" :items="providerItems" @update:model-value="providerChanged(profile)" />
-        </UFormField>
-        <UFormField :label="t('adminPaymentProfiles.providerName')"><UInput v-model="drafts[profile.id].providerName" /></UFormField>
-        <UFormField v-if="drafts[profile.id].provider === 'ezpay'" :label="t('adminPaymentProfiles.channels')" :description="t('adminPaymentProfiles.channelHint')">
-          <UCheckboxGroup
-            v-model="drafts[profile.id].enabledChannels"
-            :items="channelItems()"
-            orientation="vertical"
-            variant="card"
-          />
-        </UFormField>
-        <UAlert v-if="drafts[profile.id].provider === 'ezpay' && !drafts[profile.id].enabledChannels.length" color="warning" variant="soft" :description="t('adminPaymentProfiles.noChannels')" />
-        <UAlert v-else-if="drafts[profile.id].provider === 'bepusdt'" color="neutral" variant="soft" icon="i-ph-arrows-clockwise" :description="t('adminPaymentProfiles.discoveryHint')" />
-        <UFormField :label="t('adminPaymentProfiles.endpoint')"><UInput v-model="drafts[profile.id].endpoint" type="url" /></UFormField>
-        <UFormField v-if="drafts[profile.id].provider === 'ezpay'" :label="t('adminPaymentProfiles.merchantId')"><UInput v-model="drafts[profile.id].merchantId" /></UFormField>
-        <UFormField :label="t('adminPaymentProfiles.credential')"><UInput v-model="drafts[profile.id].credential" type="password" :placeholder="profile.configured ? t('adminPaymentProfiles.keepCredential') : ''" autocomplete="new-password" /></UFormField>
-        <UFormField :label="t('adminPaymentProfiles.acknowledgement')"><UInput v-model="drafts[profile.id].acknowledgement" /></UFormField>
-      </article>
+          <motion.div v-if="profile.id.startsWith('draft-')" layout :transition="{ duration: reducedMotion ? 0.08 : 0.18, ease: 'easeOut' }"><UFormField :label="t('adminPaymentProfiles.provider')"><USelect v-model="drafts[profile.id].provider" :items="providerItems" @update:model-value="providerChanged(profile)" /></UFormField></motion.div>
+          <UFormField :label="t('adminPaymentProfiles.providerName')"><UInput v-model="drafts[profile.id].providerName" /></UFormField>
+          <motion.div v-if="drafts[profile.id].provider === 'ezpay'" layout :transition="{ duration: reducedMotion ? 0.08 : 0.18, ease: 'easeOut' }"><UFormField :label="t('adminPaymentProfiles.channels')" :description="t('adminPaymentProfiles.channelHint')"><UCheckboxGroup v-model="drafts[profile.id].enabledChannels" :items="channelItems()" orientation="vertical" variant="card" /></UFormField></motion.div>
+          <UAlert v-if="drafts[profile.id].provider === 'ezpay' && !drafts[profile.id].enabledChannels.length" color="warning" variant="soft" :description="t('adminPaymentProfiles.noChannels')" />
+          <UAlert v-else-if="drafts[profile.id].provider === 'bepusdt'" color="neutral" variant="soft" icon="i-ph-arrows-clockwise" :description="t('adminPaymentProfiles.discoveryHint')" />
+          <UFormField :label="t('adminPaymentProfiles.endpoint')"><UInput v-model="drafts[profile.id].endpoint" type="url" /></UFormField>
+          <motion.div v-if="drafts[profile.id].provider === 'ezpay'" layout :transition="{ duration: reducedMotion ? 0.08 : 0.18, ease: 'easeOut' }"><UFormField :label="t('adminPaymentProfiles.merchantId')"><UInput v-model="drafts[profile.id].merchantId" /></UFormField></motion.div>
+          <UFormField :label="t('adminPaymentProfiles.credential')"><UInput v-model="drafts[profile.id].credential" type="password" :placeholder="profile.configured ? t('adminPaymentProfiles.keepCredential') : ''" autocomplete="new-password" /></UFormField>
+          <UFormField :label="t('adminPaymentProfiles.acknowledgement')"><UInput v-model="drafts[profile.id].acknowledgement" /></UFormField>
+        </motion.article>
+      </AnimatePresence>
     </div>
     <ConfirmDialog
       :open="Boolean(deleting)"

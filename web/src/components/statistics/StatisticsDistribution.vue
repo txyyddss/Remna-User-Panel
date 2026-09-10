@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue'
+import { motion } from 'motion-v'
 
 import type { NormalizedDistribution, StatisticsSnapshot } from '@/api/types'
+import { motionDurations } from '@/composables/motionPresets'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
 import { selectionHaptic } from '@/utils/telegram'
 import StatisticsChartDetail from './StatisticsChartDetail.vue'
@@ -44,6 +47,7 @@ const barRows = computed(() => rows.value.map((row) => {
 }))
 const allSegments = computed(() => barRows.value.flatMap((row) => row.segments))
 const { activeItem, hasActive, activate, deactivate, select, isActive, isSelected } = useStatisticsChartSelection(allSegments)
+const { reducedMotion } = useMotionPreferences()
 
 watch(mode, () => selectionHaptic())
 </script>
@@ -65,16 +69,17 @@ watch(mode, () => selectionHaptic())
           :aria-label="$t('statistics.compositionLabel', { name: row.label })"
         >
           <rect class="statistics-distribution__track" x="0" y="0" width="100" height="20" aria-hidden="true" />
-          <rect
+          <motion.rect
             v-for="segment in row.segments"
             :key="segment.id"
             class="statistics-distribution__segment statistics-chart-segment"
             :class="{ 'statistics-chart-segment--muted': hasActive && !isActive(segment.interactionId) }"
-            :x="segment.x"
             y="0"
-            :width="segment.width"
             height="20"
             :fill="segment.color"
+            :initial="false"
+            :animate="{ x: segment.x, width: segment.width }"
+            :transition="{ duration: reducedMotion ? 0.08 : motionDurations.data, ease: 'easeOut' }"
             role="button"
             :aria-label="$t('statistics.compositionPoint', { group: row.label, segment: segment.label, value: formatStatisticPercent(segment.width) })"
             :aria-pressed="isSelected(segment.interactionId)"

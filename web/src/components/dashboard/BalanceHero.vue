@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { shallowRef, watch } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import type { FeaturePaymentMethod, FeaturePaymentOrder } from '@/api/features'
 import { api } from '@/api/client'
 import type { Money } from '@/api/types'
 import BalancePaymentSheet from '@/components/billing/BalancePaymentSheet.vue'
 import InlineNotice from '@/components/common/InlineNotice.vue'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { localizedError } from '@/i18n'
 import { formatMoney } from '@/utils/format'
 
@@ -29,6 +31,7 @@ const reissueOrder = shallowRef<FeaturePaymentOrder | null>(null)
 const paymentOpen = shallowRef(false)
 const paymentLoading = shallowRef(false)
 const paymentError = shallowRef<string | null>(null)
+const { reducedMotion } = useMotionPreferences()
 
 function openTopUpPayment(reissueOrderId?: string): boolean {
   if (paymentLoading.value) return false
@@ -73,7 +76,17 @@ watch(() => props.reissueOrderId, (orderId) => {
 <template>
   <section class="home-balance">
     <div class="home-balance__copy">
-      <strong>{{ formatMoney(balance) }}</strong>
+      <AnimatePresence mode="wait" :initial="false">
+        <motion.strong
+          :key="`${balance.currency}:${balance.minor}`"
+          :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: 3 }"
+          :animate="{ opacity: 1, y: 0 }"
+          :exit="{ opacity: 0 }"
+          :transition="{ duration: reducedMotion ? 0.08 : 0.2, ease: 'easeOut' }"
+        >
+          {{ formatMoney(balance) }}
+        </motion.strong>
+      </AnimatePresence>
     </div>
     <div class="home-balance__action">
       <UButton

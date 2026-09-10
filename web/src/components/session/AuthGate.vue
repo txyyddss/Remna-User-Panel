@@ -1,16 +1,25 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { motion } from 'motion-v'
 
 import LanguageControl from '@/components/layout/LanguageControl.vue'
+import { motionDurations } from '@/composables/motionPresets'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { isTelegramWebAppDetected } from '@/utils/telegram'
 
 const props = defineProps<{ message: string }>()
 defineEmits<{ retry: [] }>()
 const authRequestFailed = computed(() => isTelegramWebAppDetected() && props.message !== '')
+const { reducedMotion, offset } = useMotionPreferences()
 </script>
 
 <template>
-  <main class="auth-screen">
+  <motion.main
+    class="auth-screen"
+    :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: offset(4) }"
+    :animate="{ opacity: 1, y: 0 }"
+    :transition="{ duration: reducedMotion ? 0.08 : motionDurations.fast, ease: 'easeOut' }"
+  >
     <div class="auth-screen__copy">
       <p class="eyebrow">{{ $t('auth.telegramAccess') }}</p>
       <h1>{{ authRequestFailed ? $t('auth.authenticationFailed') : $t('auth.openInTelegram') }}</h1>
@@ -23,5 +32,5 @@ const authRequestFailed = computed(() => isTelegramWebAppDetected() && props.mes
       @click="$emit('retry')"
     />
     <footer class="auth-screen__locale"><LanguageControl /></footer>
-  </main>
+  </motion.main>
 </template>

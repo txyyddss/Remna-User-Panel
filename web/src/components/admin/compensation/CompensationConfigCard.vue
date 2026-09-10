@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
+import { motion } from 'motion-v'
 
 import type { NodeCompensationConfig, NodeCompensationConfigWrite } from '@/api/contracts/compensation'
 import SwitchField from '@/components/common/SwitchField.vue'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
 
 const props = defineProps<{ config: NodeCompensationConfig; busy: boolean }>()
 const emit = defineEmits<{ save: [value: NodeCompensationConfigWrite] }>()
 const { t } = useI18n()
 const draft = reactive({ enabled: false, thresholdMinutes: 60, multiplier: 1 })
+const { reducedMotion } = useMotionPreferences()
 
 watch(() => props.config, (config) => {
   draft.enabled = config.enabled
@@ -31,7 +34,7 @@ function save(): void {
 </script>
 
 <template>
-  <form class="compensation-config" @submit.prevent="save">
+  <motion.form class="compensation-config" layout :transition="{ duration: reducedMotion ? 0.08 : 0.18, ease: 'easeOut' }" @submit.prevent="save">
     <div>
       <p class="eyebrow">{{ t('adminCompensation.configEyebrow') }}</p>
       <h3>{{ t('adminCompensation.configTitle') }}</h3>
@@ -47,7 +50,7 @@ function save(): void {
       </UFormField>
     </div>
     <UButton type="submit" block icon="i-ph-floppy-disk" :label="busy ? t('common.working') : t('common.save')" :loading="busy" :disabled="busy || !valid" data-haptic="confirm" />
-  </form>
+  </motion.form>
 </template>
 
 <style scoped>

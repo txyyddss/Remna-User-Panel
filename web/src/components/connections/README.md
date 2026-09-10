@@ -7,3 +7,4 @@
 - `ConnectionBlockDialog.vue` owns block confirmation plus shared-IP and three-day disclosures; `ConnectionUnblockDialog.vue` owns early-removal confirmation. Close is soft, status checks are light, unblock confirmation is rigid, and destructive block confirmation remains heavy.
 - `ConnectionBlockDialog.test.ts` and `ConnectionUnblockDialog.test.ts` cover native Back ownership, warnings, expiry, and confirmation.
 - `types.ts` defines the UI-only selected connection target passed from the list to the confirmation surface.
+- `ConnectionScanStatus.vue`, `ConnectionNodeList.vue`, `ConnectionBlockList.vue`, `ConnectionBlockDialog.vue`, and `ConnectionUnblockDialog.vue` own reduced-motion-safe scan, list, and workflow transitions. The continuous radar stays CSS-owned.

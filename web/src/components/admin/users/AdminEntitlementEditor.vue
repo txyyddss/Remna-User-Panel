@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
+import { motion } from 'motion-v'
 
 import type { AdminEntitlement, Combo, EntitlementEditRequest, SquadProduct } from '@/api/adminOperations'
 import InlineNotice from '@/components/common/InlineNotice.vue'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
 import { fromLocalDateTime, toLocalDateTime } from './adminUserFormat'
 
@@ -28,6 +30,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ 'update:open': [value: boolean]; save: [body: EntitlementEditRequest] }>()
 const { t } = useI18n()
+const { reducedMotion } = useMotionPreferences()
 const draft = reactive<EditorDraft>({
   comboId: '', validFrom: '', validUntil: '', status: 'active', trafficLimitBytes: '',
   resetStrategy: 'MONTH_ROLLING', squadUuids: [], reason: '',
@@ -81,24 +84,26 @@ function submit(): void {
   <USlideover :open="open" :title="t('adminUserProfile.editorTitle')" :description="t('adminUserProfile.editorHint')" :dismissible="!busy" :close="{ 'data-haptic': 'dismiss' }" :ui="{ footer: 'justify-end' }" @update:open="emit('update:open', $event)">
     <template #body>
       <UAlert color="warning" variant="soft" icon="i-ph-warning-circle" :title="t('adminUserProfile.editorWarning')" :description="t('adminUserProfile.editorWarningHint')" />
-      <UForm id="entitlement-editor" :state="draft" class="form-stack" @submit="submit">
-        <UFormField name="comboId" :label="t('adminUserProfile.combo')" required>
-          <USelect v-model="draft.comboId" class="w-full" :items="comboItems" value-key="value" :loading="optionsLoading" />
-        </UFormField>
-        <div class="admin-form-grid">
-          <UFormField name="validFrom" :label="t('adminUserProfile.validFrom')" required><UInput v-model="draft.validFrom" type="datetime-local" /></UFormField>
-          <UFormField name="validUntil" :label="t('adminUserProfile.validUntil')" required><UInput v-model="draft.validUntil" type="datetime-local" /></UFormField>
-        </div>
-        <UAlert v-if="draft.validFrom && draft.validUntil && !datesValid" color="error" variant="soft" :description="t('adminUserProfile.invalidDates')" />
-        <div class="admin-form-grid">
-          <UFormField name="status" :label="t('adminUserProfile.status')" required><USelect v-model="draft.status" :items="statusItems" value-key="value" /></UFormField>
-          <UFormField name="resetStrategy" :label="t('adminUserProfile.resetStrategy')" required><USelect v-model="draft.resetStrategy" :items="cadenceItems" value-key="value" /></UFormField>
-        </div>
-        <UFormField name="trafficLimitBytes" :label="t('adminUserProfile.trafficLimit')" required><UInput v-model.trim="draft.trafficLimitBytes" inputmode="numeric" /></UFormField>
-        <UFormField name="squadUuids" :label="t('adminUserProfile.squads')"><USelectMenu v-model="draft.squadUuids" class="w-full" :items="squadItems" value-key="value" label-key="label" multiple :loading="optionsLoading" /></UFormField>
-        <UFormField name="reason" :label="t('adminReason.reason')" required><UTextarea v-model.trim="draft.reason" :rows="3" :minlength="3" :maxlength="500" /></UFormField>
-        <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
-      </UForm>
+      <motion.div layout :transition="{ duration: reducedMotion ? 0.08 : 0.18, ease: 'easeOut' }">
+        <UForm id="entitlement-editor" :state="draft" class="form-stack" @submit="submit">
+          <UFormField name="comboId" :label="t('adminUserProfile.combo')" required>
+            <USelect v-model="draft.comboId" class="w-full" :items="comboItems" value-key="value" :loading="optionsLoading" />
+          </UFormField>
+          <div class="admin-form-grid">
+            <UFormField name="validFrom" :label="t('adminUserProfile.validFrom')" required><UInput v-model="draft.validFrom" type="datetime-local" /></UFormField>
+            <UFormField name="validUntil" :label="t('adminUserProfile.validUntil')" required><UInput v-model="draft.validUntil" type="datetime-local" /></UFormField>
+          </div>
+          <motion.div v-if="draft.validFrom && draft.validUntil && !datesValid" :initial="{ opacity: 0 }" :animate="{ opacity: 1 }" :transition="{ duration: reducedMotion ? 0.08 : 0.16, ease: 'easeOut' }"><UAlert color="error" variant="soft" :description="t('adminUserProfile.invalidDates')" /></motion.div>
+          <div class="admin-form-grid">
+            <UFormField name="status" :label="t('adminUserProfile.status')" required><USelect v-model="draft.status" :items="statusItems" value-key="value" /></UFormField>
+            <UFormField name="resetStrategy" :label="t('adminUserProfile.resetStrategy')" required><USelect v-model="draft.resetStrategy" :items="cadenceItems" value-key="value" /></UFormField>
+          </div>
+          <UFormField name="trafficLimitBytes" :label="t('adminUserProfile.trafficLimit')" required><UInput v-model.trim="draft.trafficLimitBytes" inputmode="numeric" /></UFormField>
+          <UFormField name="squadUuids" :label="t('adminUserProfile.squads')"><USelectMenu v-model="draft.squadUuids" class="w-full" :items="squadItems" value-key="value" label-key="label" multiple :loading="optionsLoading" /></UFormField>
+          <UFormField name="reason" :label="t('adminReason.reason')" required><UTextarea v-model.trim="draft.reason" :rows="3" :minlength="3" :maxlength="500" /></UFormField>
+          <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
+        </UForm>
+      </motion.div>
     </template>
     <template #footer>
       <UButton color="neutral" variant="outline" :label="t('common.cancel')" :disabled="busy" @click="emit('update:open', false)" />

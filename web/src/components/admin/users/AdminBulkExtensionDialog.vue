@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, reactive, shallowRef, watch } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import { adminOperationsApi, type AdminCatalogOptions, type BulkExtensionPreview, type OperationReceipt } from '@/api/adminOperations'
 import { ApiError } from '@/api/http'
 import InlineNotice from '@/components/common/InlineNotice.vue'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { localizedError, useI18n } from '@/i18n'
 import { createUuid } from '@/utils/browserCompatibility'
 import AdminDurationField from './AdminDurationField.vue'
@@ -30,6 +32,8 @@ const hasFilter = computed(() => draft.comboIds.length > 0 || draft.addonSquadUu
 const normalizedMinutes = computed(() => durationMinutes(draft.duration))
 const canPreview = computed(() => hasFilter.value && validDurationDraft(draft.duration))
 const canCreate = computed(() => preview.value !== null && preview.value.matchedUsers > 0 && draft.reason.trim().length >= 3)
+const workflowState = computed(() => creating.value ? 'processing' : error.value ? `error:${error.value}` : preview.value ? 'review' : 'configure')
+const { reducedMotion } = useMotionPreferences()
 
 watch(() => [draft.comboIds.join(','), draft.addonSquadUuids.join(','), normalizedMinutes.value], () => {
   preview.value = null
@@ -95,20 +99,24 @@ async function create(): Promise<void> {
 <template>
   <UModal v-model:open="open" :title="t('adminBulkExtension.title')" :description="t('adminBulkExtension.copy')" :dismissible="!creating" :close="false" :ui="{ header: 'tg-overlay-header--centered', wrapper: 'tg-overlay-copy--centered', footer: 'justify-end' }">
     <template #body>
-      <UAlert color="info" variant="soft" icon="i-ph-funnel" :description="t('adminBulkExtension.orHint')" />
-      <UForm :state="draft" class="form-stack" @submit="create">
-        <UFormField name="comboIds" :label="t('adminBulkExtension.combos')"><USelectMenu v-model="draft.comboIds" class="w-full" :items="comboItems" value-key="value" label-key="label" multiple :loading="optionsLoading" /></UFormField>
-        <UFormField name="addonSquadUuids" :label="t('adminBulkExtension.addons')"><USelectMenu v-model="draft.addonSquadUuids" class="w-full" :items="squadItems" value-key="value" label-key="label" multiple :loading="optionsLoading" /></UFormField>
-        <AdminDurationField v-model="draft.duration" />
-        <UButton color="neutral" variant="outline" icon="i-ph-magnifying-glass" :label="previewing ? t('adminBulkExtension.previewing') : t('adminBulkExtension.preview')" :loading="previewing" :disabled="!canPreview || previewing || creating" @click="requestPreview" />
-        <div v-if="preview" class="admin-preview-band">
-          <div><strong>{{ preview.matchedUsers }}</strong><span>{{ t('adminBulkExtension.members') }}</span></div>
-          <div><strong>{{ preview.activePurchases }}</strong><span>{{ t('adminBulkExtension.active') }}</span></div>
-          <div><strong>{{ preview.queuedSuccessors }}</strong><span>{{ t('adminBulkExtension.queued') }}</span></div>
-        </div>
-        <UFormField v-if="preview" name="reason" :label="t('adminReason.reason')" required><UTextarea v-model.trim="draft.reason" :rows="3" :minlength="3" :maxlength="500" /></UFormField>
-        <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
-      </UForm>
+      <AnimatePresence mode="wait" :initial="false">
+        <motion.div :key="workflowState" :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.18, ease: 'easeOut' }">
+          <UAlert color="info" variant="soft" icon="i-ph-funnel" :description="t('adminBulkExtension.orHint')" />
+          <UForm :state="draft" class="form-stack" @submit="create">
+            <UFormField name="comboIds" :label="t('adminBulkExtension.combos')"><USelectMenu v-model="draft.comboIds" class="w-full" :items="comboItems" value-key="value" label-key="label" multiple :loading="optionsLoading" /></UFormField>
+            <UFormField name="addonSquadUuids" :label="t('adminBulkExtension.addons')"><USelectMenu v-model="draft.addonSquadUuids" class="w-full" :items="squadItems" value-key="value" label-key="label" multiple :loading="optionsLoading" /></UFormField>
+            <AdminDurationField v-model="draft.duration" />
+            <UButton color="neutral" variant="outline" icon="i-ph-magnifying-glass" :label="previewing ? t('adminBulkExtension.previewing') : t('adminBulkExtension.preview')" :loading="previewing" :disabled="!canPreview || previewing || creating" @click="requestPreview" />
+            <div v-if="preview" class="admin-preview-band">
+              <div><strong>{{ preview.matchedUsers }}</strong><span>{{ t('adminBulkExtension.members') }}</span></div>
+              <div><strong>{{ preview.activePurchases }}</strong><span>{{ t('adminBulkExtension.active') }}</span></div>
+              <div><strong>{{ preview.queuedSuccessors }}</strong><span>{{ t('adminBulkExtension.queued') }}</span></div>
+            </div>
+            <UFormField v-if="preview" name="reason" :label="t('adminReason.reason')" required><UTextarea v-model.trim="draft.reason" :rows="3" :minlength="3" :maxlength="500" /></UFormField>
+            <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
+          </UForm>
+        </motion.div>
+      </AnimatePresence>
     </template>
     <template #footer>
       <UButton color="neutral" variant="outline" :label="t('common.cancel')" :disabled="creating" @click="open = false" />

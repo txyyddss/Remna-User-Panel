@@ -7,3 +7,4 @@
 - `format.test.ts` covers exact factor formatting and duration flooring.
 - `statusFilter.ts` maps the non-empty Nuxt UI selection sentinel to the API's empty status query.
 - `statusFilter.test.ts` prevents empty select items from reintroducing a render failure.
+- Configuration geometry, event status, and review workflow transitions are local and reduced-motion safe; the panel does not animate as a whole.

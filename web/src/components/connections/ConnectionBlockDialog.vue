@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import type { OperationReceipt, OperationStatus } from '@/api/types'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import CountryFlag from '@/components/common/CountryFlag.vue'
 import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { t } from '@/i18n'
 import type { ConnectionTarget } from './types'
 
@@ -21,6 +23,8 @@ const emit = defineEmits<{ confirm: []; refresh: [] }>()
 const ownsBack = computed(() => open.value)
 const statusTone = computed(() => props.receipt?.status === 'succeeded' ? 'success'
   : props.receipt?.status === 'queued' || props.receipt?.status === 'processing' ? 'info' : 'warning')
+const workflowState = computed(() => props.busy ? 'processing' : props.error ? 'error' : props.receipt?.status ?? 'confirm')
+const { reducedMotion } = useMotionPreferences()
 
 function close(): void {
   if (!props.busy) open.value = false
@@ -36,17 +40,27 @@ useTelegramBackButton(ownsBack, close)
 <template>
   <UModal v-model:open="open" :title="$t('connections.blockTitle')" :description="target ? $t('connections.blockDescription', { ip: target.connection.ip }) : ''" :dismissible="!busy" :close="false" :ui="{ header: 'tg-overlay-header--centered', wrapper: 'tg-overlay-copy--centered', footer: 'justify-end' }">
     <template #body>
-      <div v-if="target" class="connection-drop">
-        <div class="connection-drop__target">
-          <CountryFlag :code="target.countryCode" />
-          <div><strong>{{ target.nodeName }}</strong><code>{{ target.connection.ip }}</code></div>
-        </div>
-        <InlineNotice tone="warning">{{ $t('connections.sharedIpWarning') }}</InlineNotice>
-        <InlineNotice tone="info">{{ $t('connections.expiryWarning') }}</InlineNotice>
-        <InlineNotice v-if="receipt" :tone="statusTone" :title="statusLabel(receipt.status)">{{ $t(`connections.blockOperation.${receipt.status}`) }}</InlineNotice>
-        <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
-        <UButton v-if="receipt && error" color="neutral" variant="outline" icon="i-ph-arrow-clockwise" :loading="checking" :label="$t('operations.checkStatus')" data-haptic="retry" @click="emit('refresh')" />
-      </div>
+      <AnimatePresence mode="wait" :initial="false">
+        <motion.div
+          v-if="target"
+          :key="workflowState"
+          class="connection-drop"
+          :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }"
+          :animate="{ opacity: 1, y: 0 }"
+          :exit="{ opacity: 0 }"
+          :transition="{ duration: reducedMotion ? 0.08 : 0.18, ease: 'easeOut' }"
+        >
+          <div class="connection-drop__target">
+            <CountryFlag :code="target.countryCode" />
+            <div><strong>{{ target.nodeName }}</strong><code>{{ target.connection.ip }}</code></div>
+          </div>
+          <InlineNotice tone="warning">{{ $t('connections.sharedIpWarning') }}</InlineNotice>
+          <InlineNotice tone="info">{{ $t('connections.expiryWarning') }}</InlineNotice>
+          <InlineNotice v-if="receipt" :tone="statusTone" :title="statusLabel(receipt.status)">{{ $t(`connections.blockOperation.${receipt.status}`) }}</InlineNotice>
+          <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
+          <UButton v-if="receipt && error" color="neutral" variant="outline" icon="i-ph-arrow-clockwise" :loading="checking" :label="$t('operations.checkStatus')" data-haptic="retry" @click="emit('refresh')" />
+        </motion.div>
+      </AnimatePresence>
     </template>
     <template #footer>
       <UButton color="neutral" variant="outline" :disabled="busy" :label="$t('common.close')" data-haptic="dismiss" @click="close" />

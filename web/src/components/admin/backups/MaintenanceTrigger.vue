@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { computed, shallowRef } from 'vue'
+import { motion } from 'motion-v'
 
 import { api } from '@/api/client'
 import type { OperationReceipt } from '@/api/types'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import OperationStatusNotice from '@/components/common/OperationStatusNotice.vue'
 import { useDurableCommand } from '@/composables/useDurableCommand'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
 
 const emit = defineEmits<{ completed: [] }>()
 const { t } = useI18n()
 const confirmationOpen = shallowRef(false)
+const { reducedMotion } = useMotionPreferences()
 const maintenance = useDurableCommand({
   errorKey: 'errors.adminAction',
   onTerminal: (receipt: OperationReceipt) => {
@@ -36,7 +39,7 @@ function queueMaintenance(): void {
 </script>
 
 <template>
-  <div class="maintenance-trigger">
+  <motion.div class="maintenance-trigger" layout :transition="{ duration: reducedMotion ? 0.08 : 0.16, ease: 'easeOut' }">
     <UButton
       icon="i-ph-broom"
       color="neutral"
@@ -63,7 +66,7 @@ function queueMaintenance(): void {
       danger
       @confirm="queueMaintenance"
     />
-  </div>
+  </motion.div>
 </template>
 
 <style scoped>

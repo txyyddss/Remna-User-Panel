@@ -1,7 +1,6 @@
 .home-ride__content { display: grid; gap: 1rem; }
 .home-ride__flip-card { perspective: 1000px; }
-.home-ride__flip-inner { position: relative; transform-style: preserve-3d; transition: height 420ms var(--ease-out), transform 420ms var(--ease-out); }
-.home-ride__flip-card.is-flipped .home-ride__flip-inner { transform: rotateY(180deg); }
+.home-ride__flip-inner { position: relative; transform-style: preserve-3d; }
 .home-ride__flip-face { min-width: 0; backface-visibility: hidden; }
 .home-ride__flip-face--front { position: relative; z-index: 1; }
 .home-ride__flip-face--back { position: absolute; inset: 0; transform: rotateY(180deg); }
@@ -33,8 +32,6 @@
 .home-ride__window-metrics dt { color: var(--text-faint); font-size: 0.65rem; }
 .home-ride__window-metrics dd { margin: 0.2rem 0 0; overflow: hidden; font-family: var(--font-mono); font-size: 0.7rem; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) {
-  .home-ride__flip-inner { transition: height 120ms linear, opacity 120ms linear; }
-  .home-ride__flip-card.is-flipped .home-ride__flip-inner { transform: none; }
   .home-ride__flip-card:not(.is-flipped) .home-ride__flip-face--back,
   .home-ride__flip-card.is-flipped .home-ride__flip-face--front { visibility: hidden; opacity: 0; transform: none; }
   .home-ride__flip-card.is-flipped .home-ride__flip-face--back { visibility: visible; opacity: 1; transform: none; }

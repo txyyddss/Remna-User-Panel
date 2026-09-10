@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import type { NamedShare, StatisticsSnapshot } from '@/api/types'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
 import { formatBytes, formatMoney } from '@/utils/format'
 import StatisticsDonut from './StatisticsDonut.vue'
@@ -9,6 +11,7 @@ import { formatSignedStatistic, formatStatisticNumber, formatStatisticPercent } 
 
 const props = defineProps<{ snapshot: StatisticsSnapshot }>()
 const { t } = useI18n()
+const { reducedMotion } = useMotionPreferences()
 
 const conversion = computed(() => Math.min(100, Math.max(0, props.snapshot.database.newUserConversionPercent)))
 const conversionItems = computed<NamedShare[]>(() => [
@@ -49,7 +52,19 @@ const metrics = computed(() => {
         <dl class="statistics-metrics__grid">
           <div v-for="metric in metrics" :key="metric.id">
             <dt><UIcon :name="metric.icon" aria-hidden="true" />{{ metric.label }}</dt>
-            <dd :title="metric.value">{{ metric.value }}</dd>
+            <dd :title="metric.value">
+              <AnimatePresence mode="wait" :initial="false">
+                <motion.output
+                  :key="`${metric.id}:${metric.value}`"
+                  :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: 3 }"
+                  :animate="{ opacity: 1, y: 0 }"
+                  :exit="{ opacity: 0 }"
+                  :transition="{ duration: reducedMotion ? 0.08 : 0.2, ease: 'easeOut' }"
+                >
+                  {{ metric.value }}
+                </motion.output>
+              </AnimatePresence>
+            </dd>
           </div>
         </dl>
       </article>

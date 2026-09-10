@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, shallowRef, useTemplateRef, watch } from 'vue'
+import { motion } from 'motion-v'
 
 import type { Purchase } from '@/api/types'
 import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
+import { motionSpring, reducedMotionTransition } from '@/composables/motionPresets'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import RideSummaryFace from './RideSummaryFace.vue'
 import RolloverDetailFace from './RolloverDetailFace.vue'
 import { useRolloverDetail } from '@/composables/useRolloverDetail'
@@ -21,6 +24,7 @@ const summaryFace = useTemplateRef<globalThis.HTMLElement>('summaryFace')
 const rolloverFace = useTemplateRef<globalThis.HTMLElement>('rolloverFace')
 const flipInnerStyle = computed(() => cardHeight.value ? { height: cardHeight.value } : undefined)
 const ownsTelegramBackButton = computed(() => flipped.value)
+const { reducedMotion } = useMotionPreferences()
 let changingFace = false
 let resizeObserver: globalThis.ResizeObserver | undefined
 let animationFrame: number | undefined
@@ -112,7 +116,13 @@ onUnmounted(() => {
 
 <template>
   <div class="home-ride__summary home-ride__flip-card" :class="{ 'is-flipped': flipped }">
-    <div class="home-ride__flip-inner" :style="flipInnerStyle">
+    <motion.div
+      class="home-ride__flip-inner"
+      :style="flipInnerStyle"
+      layout
+      :animate="{ rotateY: reducedMotion ? 0 : flipped ? 180 : 0 }"
+      :transition="reducedMotion ? reducedMotionTransition : motionSpring"
+    >
       <div ref="summaryFace" class="home-ride__flip-face home-ride__flip-face--front">
         <UButton
           id="your-ride-summary"
@@ -141,6 +151,6 @@ onUnmounted(() => {
       <div id="your-ride-rollover" ref="rolloverFace" class="home-ride__flip-face home-ride__flip-face--back" :aria-hidden="!flipped" :inert="!flipped">
         <RolloverDetailFace :detail="detail" :loading="loading" :error="error" @back="showSummary" @retry="retry" />
       </div>
-    </div>
+    </motion.div>
   </div>
 </template>

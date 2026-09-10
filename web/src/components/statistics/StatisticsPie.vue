@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { motion } from 'motion-v'
 
 import type { NamedShare } from '@/api/types'
+import { motionDurations } from '@/composables/motionPresets'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { pieSlices } from './statisticsGeometry'
 import StatisticsChartDetail from './StatisticsChartDetail.vue'
 import { chartSegments, formatStatisticNumber, formatStatisticPercent } from './statisticsFormat'
@@ -19,6 +22,7 @@ const segments = computed(() => chartSegments(props.items).map((segment) => ({
 })))
 const slices = computed(() => pieSlices(segments.value))
 const { activeItem, hasActive, activate, deactivate, select, isActive, isSelected } = useStatisticsChartSelection(segments)
+const { reducedMotion } = useMotionPreferences()
 </script>
 
 <template>
@@ -32,13 +36,15 @@ const { activeItem, hasActive, activate, deactivate, select, isActive, isSelecte
     >
       <title>{{ chartLabel }}</title>
       <g>
-        <path
+        <motion.path
           v-for="slice in slices"
           :key="slice.id"
           class="statistics-chart-segment"
           :class="{ 'statistics-chart-segment--muted': hasActive && !isActive(slice.interactionId) }"
-          :d="slice.path"
           :fill="slice.color"
+          :initial="{ opacity: 0 }"
+          :animate="{ opacity: 1, d: slice.path }"
+          :transition="{ duration: reducedMotion ? 0.08 : motionDurations.data, ease: 'easeOut' }"
           role="button"
           tabindex="0"
           :aria-label="$t('statistics.chartSeries', { series: slice.label, segment: $t('statistics.chartPointValue', { value: formatStatisticNumber(slice.value), percent: formatStatisticPercent(slice.percentage) }) })"

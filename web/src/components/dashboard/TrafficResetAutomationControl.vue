@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { motion } from 'motion-v'
+
 import InlineNotice from '@/components/common/InlineNotice.vue'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { selectionHaptic } from '@/utils/telegram'
 
 defineProps<{
@@ -10,6 +13,7 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{ update: [enabled: boolean] }>()
+const { reducedMotion } = useMotionPreferences()
 
 function update(enabled: boolean): void {
   selectionHaptic()
@@ -18,7 +22,7 @@ function update(enabled: boolean): void {
 </script>
 
 <template>
-  <section class="reset-automation">
+  <motion.section class="reset-automation" layout :transition="{ duration: reducedMotion ? 0.08 : 0.16, ease: 'easeOut' }">
     <div class="reset-automation__copy">
       <strong>{{ $t('purchaseOperations.automation.label') }}</strong>
       <p>{{ $t('purchaseOperations.automation.description') }}</p>
@@ -31,7 +35,7 @@ function update(enabled: boolean): void {
       @update:model-value="update"
     />
     <InlineNotice v-if="error" class="reset-automation__error" tone="warning">{{ error }}</InlineNotice>
-  </section>
+  </motion.section>
 </template>
 
 <style scoped>

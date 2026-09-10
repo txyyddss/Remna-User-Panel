@@ -33,7 +33,7 @@ describe('DatabaseMobileRowCard', () => {
   it('renders structured keys and the first three safe schema fields', () => {
     const wrapper = mount(DatabaseMobileRowCard, {
       props: { row, columns },
-      global: { stubs: { Button: ButtonStub }, directives: { autoAnimate: {} } },
+      global: { stubs: { Button: ButtonStub } },
     })
 
     expect(wrapper.findAll('.database-row-card__key-list dt').map((item) => item.text())).toEqual(['tenant_id', 'id'])
@@ -49,7 +49,7 @@ describe('DatabaseMobileRowCard', () => {
   it('expands safe fields and exposes labeled row actions', async () => {
     const wrapper = mount(DatabaseMobileRowCard, {
       props: { row, columns },
-      global: { stubs: { Button: ButtonStub }, directives: { autoAnimate: {} } },
+      global: { stubs: { Button: ButtonStub } },
     })
 
     await wrapper.get('[data-test="expand-action"]').trigger('click')

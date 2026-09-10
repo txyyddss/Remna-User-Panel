@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import type { PaymentStage } from '@/composables/usePaymentOrder'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
 import { useI18n } from '@/i18n'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { txbInputFromMinor } from '@/utils/format'
 import { selectionHaptic } from '@/utils/telegram'
 import PaymentCryptoChannelPicker from './PaymentCryptoChannelPicker.vue'
@@ -30,6 +32,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const { reducedMotion } = useMotionPreferences()
 const isCrypto = computed(() => props.channels.some((channel) => channel.cryptoCurrency))
 
 function chooseMethod(id: string): void {
@@ -77,7 +80,19 @@ function chooseMethod(id: string): void {
           <UIcon v-else name="i-ph-credit-card" aria-hidden="true" />
         </span>
         <span><strong>{{ item.label }}</strong><small v-if="item.description">{{ item.description }}</small></span>
-        <UIcon v-if="selectedMethodId === item.value" class="provider-option__check" name="i-ph-check-circle-fill" aria-hidden="true" />
+        <AnimatePresence :initial="false">
+          <motion.span
+            v-if="selectedMethodId === item.value"
+            :key="item.value"
+            class="provider-option__check"
+            :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.84 }"
+            :animate="{ opacity: 1, scale: 1 }"
+            :exit="{ opacity: 0 }"
+            :transition="{ duration: reducedMotion ? 0.08 : 0.14, ease: 'easeOut' }"
+          >
+            <UIcon name="i-ph-check-circle-fill" aria-hidden="true" />
+          </motion.span>
+        </AnimatePresence>
       </UButton>
     </fieldset>
     <UAlert v-if="error" color="error" variant="soft" :description="error" />

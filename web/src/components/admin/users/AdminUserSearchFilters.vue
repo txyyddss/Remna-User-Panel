@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, reactive, shallowRef } from 'vue'
+import { motion } from 'motion-v'
 
 import type { Combo, SquadProduct } from '@/api/adminOperations'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
 
 export interface AdminUserSearchFiltersValue {
@@ -29,6 +31,7 @@ const matchItems = computed(() => [
 ])
 const comboItems = computed(() => props.combos.map((item) => ({ label: item.name, value: item.id })))
 const squadItems = computed(() => props.squads.map((item) => ({ label: item.name, value: item.remnaSquadUuid })))
+const { reducedMotion } = useMotionPreferences()
 
 function apply(): void {
   emit('apply', { state: value.state === 'all' ? '' : value.state, comboIds: [...value.comboIds], squadUuids: [...value.squadUuids], match: value.match })
@@ -57,12 +60,12 @@ function clear(): void {
     <UButton class="admin-user-filters__mobile" color="neutral" variant="outline" icon="i-ph-funnel" :label="t('adminUsers.filters')" data-haptic="open" @click="drawerOpen = true" />
     <UDrawer v-model:open="drawerOpen" :title="t('adminUsers.filters')" :description="t('adminUsers.filtersHint')">
       <template #body>
-        <div class="form-stack admin-user-filters__drawer">
+        <motion.div class="form-stack admin-user-filters__drawer" layout :transition="{ duration: reducedMotion ? 0.08 : 0.18, ease: 'easeOut' }">
           <UFormField name="state" :label="t('adminUsers.entitlementState')"><USelect v-model="value.state" :items="stateItems" value-key="value" label-key="label" /></UFormField>
           <UFormField name="combo" :label="t('adminUsers.combos')"><USelectMenu v-model="value.comboIds" :items="comboItems" value-key="value" label-key="label" multiple /></UFormField>
           <UFormField name="squad" :label="t('adminUsers.squads')"><USelectMenu v-model="value.squadUuids" :items="squadItems" value-key="value" label-key="label" multiple /></UFormField>
           <UFormField name="match" :label="t('adminUsers.match')"><URadioGroup v-model="value.match" :items="matchItems" value-key="value" /></UFormField>
-        </div>
+        </motion.div>
       </template>
       <template #footer><UButton color="neutral" variant="outline" :label="t('common.clear')" @click="clear" /><UButton color="primary" :label="t('adminUsers.applyFilters')" data-haptic="confirm" @click="apply" /></template>
     </UDrawer>
