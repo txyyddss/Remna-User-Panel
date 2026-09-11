@@ -40,11 +40,11 @@ function formatMultiplier(value: number): string {
 
 <style scoped>
 .squad-node-list { min-width: 0; display: grid; gap: 0.45rem; }
-.squad-node-list__grid { min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 7rem), 1fr)); gap: 0.45rem; }
+.squad-node-list__grid { min-width: 0; display: flex; flex-wrap: wrap; align-items: start; gap: 0.45rem; }
+.squad-node-list__grid > * { min-width: 0; }
 .squad-node-list__node { min-width: 0; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.45rem 0.55rem; border: 1px solid var(--line); border-radius: var(--radius-control); color: var(--text); background: var(--surface); cursor: pointer; }
 .squad-node-list__node:hover { border-color: var(--line-strong); }
 .squad-node-list__node:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .squad-node-list__node :deep(.country-flag) { width: 1.7rem; height: 1.2rem; flex: 0 0 auto; }
 .squad-node-list__multiplier { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.68rem; }
-@media (min-width: 900px) { .squad-node-list__grid { grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr)); } }
 </style>
