@@ -15,7 +15,7 @@ when it completes, without navigation or a document reload.
 - `catalogOptions.ts` restores the two catalog resources used by admin filters and account actions.
 - `drafts.ts` merges refreshed form fields without replacing edits made while the response was pending.
 - `drafts.test.ts` covers refreshes that arrive while an administrator edits cached fields.
-- `preload.ts` schedules three background reads at a time after authentication, contains individual failures, aborts on session changes, and limits each read to 20 seconds.
+- `preload.ts` schedules five background reads at a time after authentication, contains individual failures, aborts on session changes, and limits each read to 20 seconds.
 - `preloadRoutes.ts` inventories initial member and admin page data, including the default query parameters. Admin resources require an authenticated admin role; incomplete onboarding preloads its content and any authorized admin pages.
 - `session.test.ts` covers isolation, copy ownership, bounded retention, and invalidation.
 - `transport.test.ts` covers fresh responses, overlapping reads, mutations, errors, and excluded endpoints.

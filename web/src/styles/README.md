@@ -12,7 +12,7 @@
 - `onboarding-01.css` styles onboarding structure and progress.
 - `onboarding-02.css` styles onboarding forms and agreements.
 - `onboarding-03.css` styles onboarding completion and supporting states.
-- `session-01.css` owns the responsive loading wordmark, outline-to-fill letter reveal, Chinese-to-English replacement, and continuous loading keyframes. `SessionEntrance.vue` owns the keyed Motion handoff and `useLoadingSequence.ts` coordinates its 1.9-second introduction.
+- `session-01.css` owns the responsive loading wordmark, outline-to-fill letter reveal, Chinese-to-English replacement, and continuous loading keyframes. `SessionEntrance.vue` owns the keyed Motion handoff and `useLoadingSequence.ts` coordinates its 1.2-second introduction.
 - `dashboard-01.css` styles dashboard summaries and account details.
 - `dashboard-02.css` styles dashboard lists, actions, and secondary states.
 - `home-01.css` styles the wrapping balance/action row, 44px Home actions, narrow-phone subscription layout, Nuxt UI usage-progress detail, and traffic surfaces.

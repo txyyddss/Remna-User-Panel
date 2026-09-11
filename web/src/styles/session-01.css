@@ -50,13 +50,13 @@
 .session-loading__original {
   gap: 0.025em;
   letter-spacing: 0;
-  animation: session-word-out 560ms 1120ms cubic-bezier(0.76, 0, 0.24, 1) both;
+  animation: session-word-out 400ms 700ms cubic-bezier(0.76, 0, 0.24, 1) both;
 }
 
 .session-loading__replacement {
   font-family: var(--font-sans);
   font-weight: 400;
-  animation: session-word-in 560ms 1120ms cubic-bezier(0.76, 0, 0.24, 1) both;
+  animation: session-word-in 400ms 700ms cubic-bezier(0.76, 0, 0.24, 1) both;
 }
 
 .session-loading__letter {
@@ -66,7 +66,7 @@
   display: inline-block;
   color: transparent;
   -webkit-text-stroke: 1px var(--text);
-  animation: session-letter-in 700ms var(--letter-delay) var(--ease-out) both;
+  animation: session-letter-in 500ms var(--letter-delay) var(--ease-out) both;
 }
 
 .session-loading__letter:nth-child(even) { --letter-x: 0; --letter-y: -0.12em; }
@@ -79,7 +79,7 @@
   inset: 0;
   color: var(--text);
   -webkit-text-stroke: 0;
-  animation: session-letter-fill 500ms calc(var(--letter-delay) + 250ms) ease-out both;
+  animation: session-letter-fill 360ms calc(var(--letter-delay) + 160ms) ease-out both;
 }
 
 .session-loading__original .session-loading__letter::after { color: var(--text-muted); }
@@ -120,7 +120,7 @@
     align-items: baseline;
     gap: 0.16em;
     font-size: clamp(4.5rem, 8vw, 7.5rem);
-    animation: session-brand-settle 560ms 1120ms cubic-bezier(0.76, 0, 0.24, 1) both;
+    animation: session-brand-settle 400ms 700ms cubic-bezier(0.76, 0, 0.24, 1) both;
   }
   .session-loading__words { font-size: 1em; }
   /* Match the ideographs' ink height and bottom edge to the Latin capitals. */
