@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { shallowRef } from 'vue'
+import { motion } from 'motion-v'
 
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
 import DatabaseFilterFields from './DatabaseFilterFields.vue'
 import type { DatabaseColumnOption, DatabaseOperatorOption, TextDatabaseFilter } from './types'
@@ -24,6 +26,7 @@ const drawerUi = {
   body: 'database-filter-drawer__body',
   footer: 'database-filter-drawer__footer',
 } as const
+const { reducedMotion } = useMotionPreferences()
 
 function cloneFilters(filters: readonly TextDatabaseFilter[]): TextDatabaseFilter[] {
   return filters.map((filter) => ({ ...filter }))
@@ -100,22 +103,24 @@ function applyMobileFilters(): void {
         <UButton icon="i-ph-x" color="neutral" variant="ghost" :aria-label="t('common.cancel')" data-haptic="dismiss" />
       </template>
       <template #body>
-        <DatabaseFilterFields
-          :filters="mobileDraft"
-          :column-items="columnItems"
-          :operators="operators"
-          @update:filters="mobileDraft = $event"
-        />
-        <UButton
-          class="database-query__mobile-add"
-          block
-          color="neutral"
-          variant="outline"
-          icon="i-ph-plus"
-          :disabled="mobileDraft.length >= 5 || !columnItems.length"
-          :label="t('adminDatabase.addFilter')"
-          @click="mobileDraft = withAddedFilter(mobileDraft)"
-        />
+        <motion.div layout :transition="{ duration: reducedMotion ? 0.08 : 0.18, ease: 'easeOut' }">
+          <DatabaseFilterFields
+            :filters="mobileDraft"
+            :column-items="columnItems"
+            :operators="operators"
+            @update:filters="mobileDraft = $event"
+          />
+          <UButton
+            class="database-query__mobile-add"
+            block
+            color="neutral"
+            variant="outline"
+            icon="i-ph-plus"
+            :disabled="mobileDraft.length >= 5 || !columnItems.length"
+            :label="t('adminDatabase.addFilter')"
+            @click="mobileDraft = withAddedFilter(mobileDraft)"
+          />
+        </motion.div>
       </template>
       <template #footer>
         <div class="database-query__drawer-actions">

@@ -17,3 +17,4 @@ the typed database editor boundary remain unchanged.
 - `DatabaseRecordFields.vue` renders editable, nullable, BLOB, and protected record metadata.
 - `DatabaseMutationReviewPanel.vue` renders exact before/after values, backup guidance, and typed confirmation.
 - `types.ts` contains shared readonly and query-control contracts for the database feature.
+- Query filters, result/empty handoff, record-editor stages, field geometry, and table selection own local Motion feedback; table data remains stable during edits.

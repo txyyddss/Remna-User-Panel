@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { motion } from 'motion-v'
 
 import type { NamedShare } from '@/api/types'
+import { motionDurations } from '@/composables/motionPresets'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import StatisticsChartDetail from './StatisticsChartDetail.vue'
 import { ringSegments } from './statisticsGeometry'
 import { chartSegments, formatStatisticNumber, formatStatisticPercent } from './statisticsFormat'
@@ -21,6 +24,7 @@ const segments = computed(() => chartSegments(props.items).map((segment) => ({
 })))
 const rings = computed(() => ringSegments(segments.value))
 const { activeItem, hasActive, activate, deactivate, select, isActive, isSelected } = useStatisticsChartSelection(segments)
+const { reducedMotion } = useMotionPreferences()
 </script>
 
 <template>
@@ -29,7 +33,7 @@ const { activeItem, hasActive, activate, deactivate, select, isActive, isSelecte
       <svg viewBox="0 0 120 120" role="group" :aria-label="chartLabel">
         <title>{{ chartLabel }}</title>
         <circle class="statistics-ring-track" cx="60" cy="60" r="47" pathLength="100" />
-        <circle
+        <motion.circle
           v-for="ring in rings"
           :key="ring.id"
           class="statistics-ring-segment"
@@ -39,8 +43,9 @@ const { activeItem, hasActive, activate, deactivate, select, isActive, isSelecte
           r="47"
           pathLength="100"
           :stroke="ring.color"
-          :stroke-dasharray="ring.dasharray"
-          :stroke-dashoffset="ring.dashoffset"
+          :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, strokeDasharray: '0 100' }"
+          :animate="{ opacity: 1, strokeDasharray: ring.dasharray, strokeDashoffset: ring.dashoffset }"
+          :transition="{ duration: reducedMotion ? 0.08 : motionDurations.data, ease: 'easeOut' }"
           role="button"
           tabindex="0"
           :aria-label="$t('statistics.chartSeries', { series: ring.label, segment: $t('statistics.chartPointValue', { value: formatStatisticNumber(ring.value), percent: formatStatisticPercent(ring.percentage) }) })"

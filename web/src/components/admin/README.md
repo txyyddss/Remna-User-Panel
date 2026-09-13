@@ -49,3 +49,4 @@ limit field for squad products, a table-name search for database recovery work,
 and mobile-safe backup controls. Balance adjustments use the shared audited
 admin endpoint for both credits and deductions.
 `AdminSquadEditor.vue` edits the default-on per-squad Geocheck switch alongside existing merchandising fields.
+- `AdminSectionState.vue` is the shared loading/error/content presence boundary. Panel roots stay still; focused child workflows own their local Motion state.

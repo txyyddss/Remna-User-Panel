@@ -4,8 +4,8 @@ import { mediaQueryList, watchMediaQuery } from '@/utils/browserCompatibility'
 
 import type { SessionStatus } from '@/stores/session'
 
-// Matches the word replacement's delay + duration + a short settled hold in session-01.css.
-const INTRO_DURATION_MS = 1900
+// Matches the accelerated word replacement and its short settled hold in session-01.css.
+const INTRO_DURATION_MS = 1200
 
 export function useLoadingSequence(status: () => SessionStatus) {
   const motion = mediaQueryList('(prefers-reduced-motion: reduce)')

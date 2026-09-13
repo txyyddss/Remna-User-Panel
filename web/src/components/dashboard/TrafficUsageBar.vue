@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, shallowRef } from 'vue'
+import { motion } from 'motion-v'
 
 import type { CatalogNode, TopNode } from '@/api/types'
-import CountryFlag from '@/components/common/CountryFlag.vue'
+import { motionDurations } from '@/composables/motionPresets'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { getLocale, t } from '@/i18n'
 import { formatBytes } from '@/utils/format'
 import { selectionHaptic } from '@/utils/telegram'
+import TrafficUsageBarDetails from './TrafficUsageBarDetails.vue'
 const props = defineProps<{
   nodes: readonly TopNode[]
   totalBytes: string
@@ -21,8 +24,9 @@ const minimumSharePercent = 3n
 const hoveredKey = shallowRef<string | null>(null)
 const selectedKey = shallowRef<string | null>(null)
 const trackRef = shallowRef<globalThis.HTMLElement | null>(null)
+const { reducedMotion } = useMotionPreferences()
 
-interface Segment { key: string; name: string; countryCode: string; bytes: bigint; startBytes: bigint; widthBasis: bigint; color: string; bytesLabel: string; percentageLabel: string; multiplierLabel: string; isOther: boolean; ariaLabel: string }
+export interface TrafficUsageSegment { key: string; name: string; countryCode: string; bytes: bigint; startBytes: bigint; widthBasis: bigint; color: string; bytesLabel: string; percentageLabel: string; multiplierLabel: string; isOther: boolean; ariaLabel: string }
 interface SourceNode { node: TopNode; index: number; bytes: bigint; calculatedBytes: bigint; multiplier: number | null }
 
 function byteCount(value: string): bigint {
@@ -77,7 +81,7 @@ const colorByUuid = computed(() => {
   return new Map(uuids.map((uuid, index) => [uuid, index % paletteSize]))
 })
 
-const segments = computed<Segment[]>(() => {
+const segments = computed<TrafficUsageSegment[]>(() => {
   const total = totalForBar.value
   if (total <= 0n || sourceNodes.value.length === 0) return []
   const visibleNodes = sourceNodes.value.filter((entry) => entry.calculatedBytes * 100n >= total * minimumSharePercent)
@@ -117,7 +121,7 @@ const segments = computed<Segment[]>(() => {
     const ariaLabel = entry.isOther
       ? t('home.trafficOtherAria', { usage: bytesLabel, percentage })
       : t('home.trafficSegmentAria', { name: entry.name, country: entry.countryCode, usage: bytesLabel, percentage, multiplier: entry.multiplierLabel })
-    const segment: Segment = { ...entry, startBytes, widthBasis, bytesLabel, percentageLabel: percentage, ariaLabel }
+    const segment: TrafficUsageSegment = { ...entry, startBytes, widthBasis, bytesLabel, percentageLabel: percentage, ariaLabel }
     startBytes += entry.bytes
     return segment
   })
@@ -128,7 +132,7 @@ const activeSegment = computed(() => {
   return segments.value.find((segment) => segment.key === key) ?? null
 })
 
-function segmentAt(clientX: number): Segment | null {
+function segmentAt(clientX: number): TrafficUsageSegment | null {
   const rect = trackRef.value?.getBoundingClientRect()
   const total = totalForBar.value
   if (!rect || rect.width <= 0 || total <= 0n) return null
@@ -151,27 +155,19 @@ function clearSelection(): void { selectedKey.value = null; hoveredKey.value = n
 <template>
   <div v-if="segments.length" class="traffic-usage-bar">
     <div ref="trackRef" class="traffic-usage-bar__track" role="group" :aria-label="$t('home.trafficBarLabel')" @click="selectAt" @pointermove="previewAt" @pointerleave="clearHover" @pointercancel="clearHover" @keydown.escape.stop.prevent="clearSelection">
-      <span v-for="segment in segments" :key="'visual-' + segment.key" class="traffic-usage-bar__visual" :style="{ width: Number(segment.widthBasis) / 100 + '%', backgroundColor: segment.color }" aria-hidden="true" />
+      <motion.span
+        v-for="segment in segments"
+        :key="'visual-' + segment.key"
+        class="traffic-usage-bar__visual"
+        :style="{ backgroundColor: segment.color }"
+        :initial="false"
+        :animate="{ width: Number(segment.widthBasis) / 100 + '%' }"
+        :transition="{ duration: reducedMotion ? 0.08 : motionDurations.data, ease: 'easeOut' }"
+        aria-hidden="true"
+      />
       <UButton v-for="(segment, index) in segments" :key="segment.key" type="button" color="neutral" variant="ghost" class="traffic-usage-bar__segment" :class="{ 'traffic-usage-bar__segment--selected': selectedKey === segment.key, 'traffic-usage-bar__segment--first': index === 0, 'traffic-usage-bar__segment--last': index === segments.length - 1 }" :style="{ left: Number(segment.startBytes * scale / totalForBar) / 100 + '%', width: Number(segment.widthBasis) / 100 + '%' }" :aria-label="segment.ariaLabel" :aria-pressed="selectedKey === segment.key" @click.stop="toggleSelection(segment.key)" @focus="hoveredKey = segment.key" @blur="clearHover" />
     </div>
-    <article v-if="activeSegment" class="traffic-usage-bar__details" role="status" aria-live="polite">
-      <header class="traffic-usage-bar__header">
-        <span class="traffic-usage-bar__swatch" :style="{ backgroundColor: activeSegment.color }" aria-hidden="true" />
-        <div>
-          <strong>{{ activeSegment.name }}</strong>
-          <span v-if="!activeSegment.isOther" class="traffic-usage-bar__country">
-            <CountryFlag :code="activeSegment.countryCode" />
-            {{ activeSegment.countryCode }}
-          </span>
-        </div>
-      </header>
-      <p v-if="activeSegment.isOther" class="traffic-usage-bar__description">{{ $t('home.trafficOtherDescription') }}</p>
-      <dl class="traffic-usage-bar__stats">
-        <div><dt>{{ $t('home.trafficNodeUsage') }}</dt><dd>{{ activeSegment.bytesLabel }}</dd></div>
-        <div><dt>{{ $t('home.trafficNodeShare') }}</dt><dd>{{ activeSegment.percentageLabel }}%</dd></div>
-        <div><dt>{{ $t('home.trafficNodeMultiplier') }}</dt><dd>{{ activeSegment.multiplierLabel }}</dd></div>
-      </dl>
-    </article>
+    <TrafficUsageBarDetails v-if="activeSegment" :key="activeSegment.key" :segment="activeSegment" />
   </div>
 </template>
 <style scoped>
@@ -183,17 +179,4 @@ function clearSelection(): void { selectedKey.value = null; hoveredKey.value = n
 .traffic-usage-bar__segment--last { border-start-end-radius: inherit; border-end-end-radius: inherit; }
 .traffic-usage-bar__segment:focus-visible { outline: 2px solid var(--text); outline-offset: -3px; }
 .traffic-usage-bar__segment--selected { box-shadow: inset 0 0 0 2px var(--text); }
-.traffic-usage-bar__details { margin-top: 0.65rem; padding: 0.8rem 0.9rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-raised); }
-.traffic-usage-bar__header { display: flex; align-items: center; gap: 0.65rem; }
-.traffic-usage-bar__header strong { display: block; color: var(--text); font-size: 0.88rem; }
-.traffic-usage-bar__country { display: inline-flex; align-items: center; gap: 0.2rem; color: var(--text-muted); font-size: 0.74rem; }
-.traffic-usage-bar__swatch { width: 0.65rem; height: 0.65rem; flex: 0 0 auto; border-radius: 3px; }
-.traffic-usage-bar__description { margin: 0.55rem 0 0; color: var(--text-muted); font-size: 0.76rem; }
-.traffic-usage-bar__stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.65rem; margin: 0.7rem 0 0; }
-.traffic-usage-bar__stats div { min-width: 0; }
-.traffic-usage-bar__stats dt { color: var(--text-muted); font-size: 0.68rem; }
-.traffic-usage-bar__stats dd { margin: 0.15rem 0 0; color: var(--text); font-size: 0.78rem; font-weight: 700; overflow-wrap: anywhere; }
-@media (max-width: 360px) { .traffic-usage-bar__stats { gap: 0.35rem; } .traffic-usage-bar__stats dt, .traffic-usage-bar__stats dd { font-size: 0.66rem; } }
-@media (prefers-reduced-motion: no-preference) { .traffic-usage-bar__details { animation: traffic-details-in 160ms ease-out; } }
-@keyframes traffic-details-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }
 </style>

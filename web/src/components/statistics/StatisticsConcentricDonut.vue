@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { motion } from 'motion-v'
 
 import type { NamedShare } from '@/api/types'
+import { motionDurations } from '@/composables/motionPresets'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { ringSegments } from './statisticsGeometry'
 import StatisticsChartDetail from './StatisticsChartDetail.vue'
 import { chartSegments, formatStatisticNumber, formatStatisticPercent } from './statisticsFormat'
@@ -32,6 +35,7 @@ const chartRings = computed(() => props.rings.map((ring) => ({
 const hasSegments = computed(() => chartRings.value.some((ring) => ring.segments.length > 0))
 const allSegments = computed(() => chartRings.value.flatMap((ring) => ring.segments))
 const { activeItem, hasActive, activate, deactivate, select, isActive, isSelected } = useStatisticsChartSelection(allSegments)
+const { reducedMotion } = useMotionPreferences()
 </script>
 
 <template>
@@ -40,7 +44,7 @@ const { activeItem, hasActive, activate, deactivate, select, isActive, isSelecte
       <svg viewBox="0 0 120 120" role="group" :aria-label="chartLabel">
         <title>{{ chartLabel }}</title>
         <template v-for="(ring, index) in chartRings" :key="ring.id">
-          <circle
+          <motion.circle
             class="statistics-ring-track"
             :class="index === 0 ? 'statistics-concentric-ring--outer' : 'statistics-concentric-ring--inner'"
             cx="60"
@@ -62,8 +66,9 @@ const { activeItem, hasActive, activate, deactivate, select, isActive, isSelecte
             :r="index === 0 ? 50 : 32"
             pathLength="100"
             :stroke="segment.color"
-            :stroke-dasharray="segment.dasharray"
-            :stroke-dashoffset="segment.dashoffset"
+            :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, strokeDasharray: '0 100' }"
+            :animate="{ opacity: 1, strokeDasharray: segment.dasharray, strokeDashoffset: segment.dashoffset }"
+            :transition="{ duration: reducedMotion ? 0.08 : motionDurations.data, delay: reducedMotion ? 0 : index * 0.03, ease: 'easeOut' }"
             role="button"
             tabindex="0"
             :aria-label="$t('statistics.chartSeries', { series: segment.ringLabel, segment: $t('statistics.chartSeries', { series: segment.label, segment: $t('statistics.chartPointValue', { value: formatStatisticNumber(segment.value), percent: formatStatisticPercent(segment.percentage) }) }) })"

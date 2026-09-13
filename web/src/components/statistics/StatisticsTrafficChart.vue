@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { motion } from 'motion-v'
 
 import type { StatisticsSnapshot } from '@/api/types'
+import { motionDurations } from '@/composables/motionPresets'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import StatisticsChartDetail from './StatisticsChartDetail.vue'
 import { statisticsColors, formatShortStatisticDate, formatStatisticBytes, formatStatisticPercent, safeStatisticBytes, sumStatisticBytes } from './statisticsFormat'
 import { useStatisticsChartSelection } from './useStatisticsChartSelection'
@@ -42,6 +45,7 @@ const hasTraffic = computed(() => days.value.some((day) => day.total > 0n))
 const trafficSegments = computed(() => days.value.flatMap((day) => day.segments))
 const { activeItem, hasActive, activate, deactivate, select, isActive, isSelected } = useStatisticsChartSelection(trafficSegments)
 const { isScrubbing, onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onTouchStart, onTouchMove, onTouchEnd, onTouchCancel, onClick } = useStatisticsTrafficScrub({ activate, deactivate, select })
+const { reducedMotion } = useMotionPreferences()
 </script>
 
 <template>
@@ -69,7 +73,12 @@ const { isScrubbing, onPointerDown, onPointerMove, onPointerUp, onPointerCancel,
       >
         <div v-for="day in days" :key="day.date" class="statistics-traffic__day" data-statistics-traffic-day>
           <div class="statistics-traffic__track">
-            <div class="statistics-traffic__stack" :style="{ height: `${day.height}%` }">
+            <motion.div
+              class="statistics-traffic__stack"
+              :initial="false"
+              :animate="{ height: `${day.height}%` }"
+              :transition="{ duration: reducedMotion ? 0.08 : motionDurations.data, ease: 'easeOut' }"
+            >
               <UTooltip v-for="segment in day.segments" :key="segment.id" :content="{ side: 'top' }">
                 <span
                   class="statistics-traffic__segment"
@@ -91,7 +100,7 @@ const { isScrubbing, onPointerDown, onPointerMove, onPointerUp, onPointerCancel,
                   <div class="statistics-chart-tooltip"><strong>{{ segment.name }}</strong><span>{{ day.date }}</span><span>{{ formatStatisticBytes(segment.value) }}</span></div>
                 </template>
               </UTooltip>
-            </div>
+            </motion.div>
           </div>
           <span>{{ formatShortStatisticDate(day.date) }}</span>
         </div>

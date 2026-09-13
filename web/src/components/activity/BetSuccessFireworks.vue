@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { motion } from 'motion-v'
+
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
+
 const bursts = [
   { id: 'center', x: '50%', y: '38%', delay: '0ms' },
   { id: 'left', x: '30%', y: '55%', delay: '120ms' },
@@ -11,10 +15,18 @@ const sparks = Array.from({ length: 12 }, (_, index) => ({
   distance: `${2.4 + (index % 4) * 0.55}rem`,
   delay: `${(index % 4) * 45}ms`,
 }))
+const { reducedMotion } = useMotionPreferences()
 </script>
 
 <template>
-  <div class="bet-fireworks" aria-hidden="true">
+  <motion.div
+    class="bet-fireworks"
+    :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.98 }"
+    :animate="{ opacity: 1, scale: 1 }"
+    :transition="{ duration: reducedMotion ? 0.08 : 0.22, ease: 'easeOut' }"
+    aria-hidden="true"
+  >
+    <UIcon class="bet-fireworks__success" name="i-ph-check-circle-fill" />
     <span
       v-for="burst in bursts"
       :key="burst.id"
@@ -28,11 +40,12 @@ const sparks = Array.from({ length: 12 }, (_, index) => ({
         :style="{ '--angle': spark.angle, '--distance': spark.distance, '--spark-delay': spark.delay }"
       />
     </span>
-  </div>
+  </motion.div>
 </template>
 
 <style scoped>
 .bet-fireworks { position: absolute; inset: 0; z-index: 2; overflow: hidden; pointer-events: none; }
+.bet-fireworks__success { display: none; color: var(--success); font-size: 2rem; }
 .bet-fireworks__burst { position: absolute; left: var(--x); top: var(--y); width: 0.35rem; height: 0.35rem; animation: bet-fireworks-bloom 760ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: var(--burst-delay); }
 .bet-fireworks__spark { position: absolute; left: 50%; bottom: 50%; width: 2px; height: 0.9rem; border-radius: 1px; background: var(--accent); transform-origin: 50% 100%; animation: bet-fireworks-spark 820ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: var(--spark-delay); }
 .bet-fireworks__spark:nth-child(3n) { background: var(--success); }
@@ -51,6 +64,8 @@ const sparks = Array.from({ length: 12 }, (_, index) => ({
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bet-fireworks { display: none; }
+  .bet-fireworks { display: grid; place-items: center; }
+  .bet-fireworks__burst { display: none; }
+  .bet-fireworks__success { display: block; }
 }
 </style>

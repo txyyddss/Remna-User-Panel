@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { AnimatePresence, motion } from 'motion-v'
+
 import type { ActiveQuestionnaire, QuestionnaireParticipation } from '@/api/features'
 import MarkdownContent from '@/components/common/MarkdownContent.vue'
 import { useClipboard } from '@/composables/useClipboard'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { formatDateTime, txbInputFromMinor } from '@/utils/format'
 
 defineProps<{
@@ -12,6 +15,7 @@ defineProps<{
 defineEmits<{ open: [] }>()
 
 const { copied, copy } = useClipboard()
+const { reducedMotion } = useMotionPreferences()
 </script>
 
 <template>
@@ -24,22 +28,32 @@ const { copied, copy } = useClipboard()
       </div>
     </div>
     <MarkdownContent :source="questionnaire.description" />
-    <div v-if="participation" class="validation-code">
-      <span>{{ $t('questionnaire.validationCode') }}</span>
-      <div>
-        <code>{{ participation.validationCode }}</code>
-        <UButton
-          class="icon-button"
-          color="neutral"
-          variant="ghost"
-          :icon="copied ? 'i-ph-check-circle' : 'i-ph-copy'"
-          :aria-label="copied ? $t('questionnaire.codeCopied') : $t('questionnaire.copyCode')"
-          data-haptic="copy"
-          @click="copy(participation.validationCode)"
-        />
-      </div>
-      <small>{{ $t('questionnaire.codeHint') }}</small>
-    </div>
+    <AnimatePresence :initial="false">
+      <motion.div
+        v-if="participation"
+        :key="participation.validationCode"
+        class="validation-code"
+        :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }"
+        :animate="{ opacity: 1, y: 0 }"
+        :exit="{ opacity: 0 }"
+        :transition="{ duration: reducedMotion ? 0.08 : 0.16, ease: 'easeOut' }"
+      >
+        <span>{{ $t('questionnaire.validationCode') }}</span>
+        <div>
+          <code>{{ participation.validationCode }}</code>
+          <UButton
+            class="icon-button"
+            color="neutral"
+            variant="ghost"
+            :icon="copied ? 'i-ph-check-circle' : 'i-ph-copy'"
+            :aria-label="copied ? $t('questionnaire.codeCopied') : $t('questionnaire.copyCode')"
+            data-haptic="copy"
+            @click="copy(participation.validationCode)"
+          />
+        </div>
+        <small>{{ $t('questionnaire.codeHint') }}</small>
+      </motion.div>
+    </AnimatePresence>
     <div class="questionnaire-card__footer">
       <span>{{ questionnaire.closesAt ? $t('questionnaire.closes', { date: formatDateTime(questionnaire.closesAt) }) : $t('questionnaire.noClose') }}</span>
       <UButton

@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 import type { AffiliateOverview } from '@/api/features'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
 import { txbInputFromMinor } from '@/utils/format'
 
 const props = defineProps<{ progress: AffiliateOverview['tierProgress'] }>()
 const { t } = useI18n()
+const { reducedMotion } = useMotionPreferences()
 const value = computed(() => props.progress.successful - props.progress.current.threshold)
 const maximum = computed(() => Math.max(1, (props.progress.next?.threshold ?? props.progress.successful) - props.progress.current.threshold))
 function commission(bps: number, enabled: boolean): string { return enabled ? `${(bps / 100).toFixed(2)}%` : t('affiliates.off') }
@@ -24,6 +27,19 @@ function reward(): string {
     <div v-if="progress.topTier" class="affiliate-top-tier"><UIcon name="i-ph-crown" /><strong>{{ $t('affiliates.topTierTitle') }}</strong><span>{{ $t('affiliates.topTierCopy') }}</span></div>
     <template v-else-if="progress.next">
       <UProgress :model-value="value" :max="maximum" :get-value-text="() => $t('affiliates.progressText', { current: value, total: maximum })" />
+      <AnimatePresence :initial="false">
+        <motion.div
+          v-if="progress.remaining === 0"
+          class="affiliate-tier__milestone"
+          :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.88 }"
+          :animate="{ opacity: 1, scale: 1 }"
+          :exit="{ opacity: 0 }"
+          :transition="{ duration: reducedMotion ? 0.08 : 0.18, ease: 'easeOut' }"
+          aria-hidden="true"
+        >
+          <UIcon name="i-ph-check-circle-fill" />
+        </motion.div>
+      </AnimatePresence>
       <div class="affiliate-tier__facts">
         <div><span>{{ $t('affiliates.toUpgrade') }}</span><strong>{{ $t('affiliates.referralsLeft', { count: progress.remaining }) }}</strong></div>
         <div><span>{{ $t('affiliates.nextTier', { name: progress.next.name }) }}</span><strong>{{ commission(progress.next.commissionBps, progress.next.commissionEnabled) }}</strong><small>{{ reward() }}</small></div>
@@ -31,3 +47,8 @@ function reward(): string {
     </template>
   </section>
 </template>
+
+<style scoped>
+.affiliate-tier { position: relative; }
+.affiliate-tier__milestone { position: absolute; inset: auto 0 4.5rem auto; color: var(--success); font-size: 1.1rem; }
+</style>

@@ -2,11 +2,13 @@
 import { restoreCached } from '@/api/cache/restore'
 import { mergeRefreshedDraft } from '@/api/cache/drafts'
 import { computed, onMounted, reactive, shallowRef } from 'vue'
+import { motion } from 'motion-v'
 
 import { adminBillingApi } from '@/api/adminBilling'
 import { api } from '@/api/client'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { localizedError, useI18n } from '@/i18n'
 import { formatDateTime, moneyFromTxbInput, txbInputFromMinor } from '@/utils/format'
 import { notifyHaptic } from '@/utils/telegram'
@@ -19,6 +21,7 @@ const error = shallowRef<string | null>(null)
 const saved = shallowRef(false)
 const updatedAt = shallowRef<string | null>(null)
 const { t } = useI18n()
+const { reducedMotion } = useMotionPreferences()
 
 const minimumMinor = computed(() => moneyFromTxbInput(draft.minimum))
 const maximumMinor = computed(() => moneyFromTxbInput(draft.maximum))
@@ -89,7 +92,13 @@ onMounted(() => void load())
       </div>
     </div>
     <USkeleton v-if="loading" class="billing-limits__skeleton" />
-    <form v-else class="billing-limits__form" @submit.prevent>
+    <motion.form
+      v-else
+      class="billing-limits__form"
+      layout
+      :transition="{ duration: reducedMotion ? 0.08 : 0.2, ease: 'easeOut' }"
+      @submit.prevent
+    >
       <div class="billing-limits__fields">
         <TxbAmountField
           id="billing-minimum-txb"
@@ -119,7 +128,7 @@ onMounted(() => void load())
         <UButton v-if="error" type="button" color="neutral" variant="outline" icon="i-ph-arrow-clockwise" :label="t('adminSection.retry')" @click="load" />
       </div>
       <small v-if="updatedAt" class="billing-limits__updated">{{ t('adminSettings.amountLimits.updated', { date: formatDateTime(updatedAt) }) }}</small>
-    </form>
+    </motion.form>
   </section>
 </template>
 

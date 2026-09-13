@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { restoreRef } from '@/api/cache/restore'
 import { computed, onMounted, shallowRef } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import { featuresApi, type OnboardingBundle, type OnboardingLocalizedContent } from '@/api/features'
 import InlineNotice from '@/components/common/InlineNotice.vue'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { localizedError, useI18n } from '@/i18n'
 import OnboardingAgreementEditor from './onboarding/OnboardingAgreementEditor.vue'
 import OnboardingWelcomeEditor from './onboarding/OnboardingWelcomeEditor.vue'
@@ -22,6 +24,7 @@ const kindItems = computed(() => [
   { value: 'welcome', label: t('adminOnboarding.welcome') },
   { value: 'agreements', label: t('adminOnboarding.agreements') },
 ])
+const { reducedMotion } = useMotionPreferences()
 
 function syncDraft(next: OnboardingBundle): void {
   draft.value = next.draft
@@ -90,21 +93,32 @@ onMounted(() => void load())
     <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
     <InlineNotice v-if="message" tone="success">{{ message }}</InlineNotice>
     <USkeleton v-if="loading" class="m-4 h-40" />
-    <template v-else-if="bundle && draft">
-      <div class="revision-strip" role="status"><UBadge color="neutral" variant="soft" :label="t('adminOnboarding.draftRevision', { revision: bundle.draftRevision })" /><UBadge color="neutral" variant="soft" :label="t('adminOnboarding.publishedRevision', { revision: bundle.publishedRevision })" /></div>
-      <p class="field-hint">{{ kind === 'welcome' ? t('adminOnboarding.welcomeHint') : t('adminOnboarding.agreementHint') }}</p>
-      <OnboardingWelcomeEditor v-if="kind === 'welcome'" :content="draft" @update:content="draft = $event" />
-      <OnboardingAgreementEditor v-else :content="draft" @update:content="draft = $event" />
-      <div class="button-row">
-        <UButton color="neutral" variant="outline" icon="i-ph-floppy-disk" :disabled="Boolean(busy)" :loading="busy === 'save'" :label="busy === 'save' ? t('common.saving') : t('adminOnboarding.saveDraft')" @click="save" />
-        <UButton icon="i-ph-cloud-arrow-up" :disabled="Boolean(busy)" :loading="busy === 'publish'" :label="busy === 'publish' ? t('adminOnboarding.publishing') : t('adminOnboarding.publish')" @click="publish" />
-      </div>
-    </template>
+    <AnimatePresence mode="wait" :initial="false">
+      <motion.div
+        v-if="!loading && bundle && draft"
+        :key="kind"
+        class="onboarding-editor__content"
+        layout
+        :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: 5 }"
+        :animate="{ opacity: 1, y: 0 }"
+        :exit="{ opacity: 0 }"
+        :transition="{ duration: reducedMotion ? 0.08 : 0.18, ease: 'easeOut' }"
+      >
+        <div class="revision-strip" role="status"><UBadge color="neutral" variant="soft" :label="t('adminOnboarding.draftRevision', { revision: bundle.draftRevision })" /><UBadge color="neutral" variant="soft" :label="t('adminOnboarding.publishedRevision', { revision: bundle.publishedRevision })" /></div>
+        <p class="field-hint">{{ kind === 'welcome' ? t('adminOnboarding.welcomeHint') : t('adminOnboarding.agreementHint') }}</p>
+        <OnboardingWelcomeEditor v-if="kind === 'welcome'" :content="draft" @update:content="draft = $event" />
+        <OnboardingAgreementEditor v-else :content="draft" @update:content="draft = $event" />
+        <div class="button-row">
+          <UButton color="neutral" variant="outline" icon="i-ph-floppy-disk" :disabled="Boolean(busy)" :loading="busy === 'save'" :label="busy === 'save' ? t('common.saving') : t('adminOnboarding.saveDraft')" @click="save" />
+          <UButton icon="i-ph-cloud-arrow-up" :disabled="Boolean(busy)" :loading="busy === 'publish'" :label="busy === 'publish' ? t('adminOnboarding.publishing') : t('adminOnboarding.publish')" @click="publish" />
+        </div>
+      </motion.div>
+    </AnimatePresence>
   </section>
 </template>
 
 <style scoped>
-.onboarding-editor { display: grid; gap: 0.9rem; }
+.onboarding-editor, .onboarding-editor__content { display: grid; gap: 0.9rem; }
 .revision-strip { display: flex; flex-wrap: wrap; gap: 0.45rem; padding: 0 1rem; }
-.onboarding-editor > .field-hint, .onboarding-editor > .button-row { margin-inline: 1rem; }
+.onboarding-editor__content > .field-hint, .onboarding-editor__content > .button-row { margin-inline: 1rem; }
 </style>

@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { AnimatePresence, motion } from 'motion-v'
+
 import type { NodeCompensationEvent } from '@/api/contracts/compensation'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
 import { formatDateTime } from '@/utils/format'
 import { durationParts, multiplierFactor } from './format'
@@ -7,6 +10,7 @@ import { durationParts, multiplierFactor } from './format'
 const props = defineProps<{ event: NodeCompensationEvent }>()
 defineEmits<{ review: [event: NodeCompensationEvent] }>()
 const { t } = useI18n()
+const { reducedMotion } = useMotionPreferences()
 
 function durationText(): string {
   if (props.event.observedDurationSeconds === null) return t('adminCompensation.ongoing')
@@ -30,8 +34,10 @@ function durationText(): string {
     <div v-if="event.squads.length" class="compensation-event__squads">
       <UBadge v-for="squad in event.squads" :key="squad.uuid" color="neutral" variant="outline" :label="squad.name" />
     </div>
-    <p v-if="event.ineligibleReason" class="compensation-event__note">{{ t(`adminCompensation.reason.${event.ineligibleReason}`) }}</p>
-    <p v-else-if="event.operation" class="compensation-event__note">{{ t('adminCompensation.operation', { status: event.operation.status }) }}</p>
+    <AnimatePresence mode="wait" :initial="false">
+      <motion.p v-if="event.ineligibleReason" :key="`reason:${event.ineligibleReason}`" class="compensation-event__note" :initial="{ opacity: 0 }" :animate="{ opacity: 1 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.16, ease: 'easeOut' }">{{ t(`adminCompensation.reason.${event.ineligibleReason}`) }}</motion.p>
+      <motion.p v-else-if="event.operation" :key="`operation:${event.operation.status}`" class="compensation-event__note" :initial="{ opacity: 0 }" :animate="{ opacity: 1 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.16, ease: 'easeOut' }">{{ t('adminCompensation.operation', { status: event.operation.status }) }}</motion.p>
+    </AnimatePresence>
     <UButton v-if="event.status === 'pending_review'" block color="warning" variant="soft" icon="i-ph-magnifying-glass" :label="t('adminCompensation.review')" data-haptic="open" @click="$emit('review', event)" />
   </article>
 </template>

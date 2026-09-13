@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import type { Purchase } from '@/api/types'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import { useAutoRenewal } from '@/composables/useAutoRenewal'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { t } from '@/i18n'
 import { formatDate, formatMoney } from '@/utils/format'
 import { selectionHaptic } from '@/utils/telegram'
@@ -22,6 +24,8 @@ const actionColor = computed(() => enabled.value ? 'success' : 'error')
 const actionLabel = computed(() => t(enabled.value ? 'home.autoRenewalEnabledAction' : 'home.autoRenewalDisabledAction'))
 const eligibilityMessage = computed(() => localizedReason(ineligibleReason.value, 'home.autoRenewalUnavailable'))
 const showSwitch = computed(() => canEnable.value || enabled.value)
+const switchState = computed(() => updating.value ? 'updating' : error.value ? `error:${error.value}` : enabled.value ? 'enabled' : 'disabled')
+const { reducedMotion } = useMotionPreferences()
 
 watch(open, (next) => {
   if (next) void load()
@@ -71,8 +75,12 @@ async function updateRenewal(next: boolean): Promise<void> {
               <div><dt>{{ $t('home.autoRenewalChargeDate') }}</dt><dd>{{ formatDate(renewal.scheduledAt) }}</dd></div>
               <div><dt>{{ $t('home.autoRenewalNextCycleDate') }}</dt><dd>{{ formatDate(renewal.nextCycleEndsAt) }}</dd></div>
             </dl>
-            <USwitch v-if="showSwitch" v-model="switchValue" :color="enabled ? 'success' : 'error'" :label="$t('home.autoRenewalSwitch')" :loading="updating" :disabled="updating" @update:model-value="updateRenewal" />
-            <InlineNotice v-else tone="warning">{{ eligibilityMessage }}</InlineNotice>
+            <AnimatePresence mode="wait" :initial="false">
+              <motion.div :key="switchState" :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: 3 }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.16, ease: 'easeOut' }">
+                <USwitch v-if="showSwitch" v-model="switchValue" :color="enabled ? 'success' : 'error'" :label="$t('home.autoRenewalSwitch')" :loading="updating" :disabled="updating" @update:model-value="updateRenewal" />
+                <InlineNotice v-else tone="warning">{{ eligibilityMessage }}</InlineNotice>
+              </motion.div>
+            </AnimatePresence>
           </template>
           <InlineNotice v-else tone="warning">{{ error ?? $t('errors.autoRenewalFailed') }}</InlineNotice>
           <InlineNotice v-if="error && renewal" tone="warning">{{ error }}</InlineNotice>

@@ -12,6 +12,12 @@ markers, and feature components own list/layout/presence feedback. CSS remains
 responsible for perpetual loaders, skeletons, radar, and particles. No global
 selector animates `.notice`, `.operation-status`, or `.status-badge` on mount.
 
+P1-P3 motion remains component-owned: dashboard value and flip changes,
+connection/admin workflows, chart data updates, and completion feedback move
+only when their underlying state changes. Route wrappers and admin panel roots
+remain static, and every new stateful path uses the central reduced-motion
+policy.
+
 The interaction contract is: press feedback is immediate, outgoing content
 exits locally, incoming content settles within 180-240ms, and reduced motion
 removes translation, scale, rotation, and celebration movement while retaining

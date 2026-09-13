@@ -28,3 +28,4 @@ Squad-context Geocheck popups show the localized disabled state without restorin
 - `useStatisticsChartSelection.ts` centralizes hover, focus, and pinned tap selection state, emitting one semantic pulse only when a selection is committed or cleared.
 - `useStatisticsTrafficScrub.ts` maps touch and pointer coordinates to the nearest rendered traffic segment while preserving vertical page scrolling.
 - `useStatisticsTrafficScrub.test.ts` covers nearest-day and nearest-segment touch hit testing.
+- Chart components animate data geometry, rankings, selected detail, and freshness only. `StatisticsPage.vue` stays static so refreshes never replay the whole route.

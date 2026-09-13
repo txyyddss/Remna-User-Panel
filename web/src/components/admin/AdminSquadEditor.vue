@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { reactive, shallowRef, watch } from 'vue'
+import { motion } from 'motion-v'
 
 import type { SquadProduct, SquadProductWrite, SquadProfileWrite } from '@/api/types'
 import MarkdownEditorField from '@/components/common/MarkdownEditorField.vue'
 import SwitchField from '@/components/common/SwitchField.vue'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
 import { moneyFromTxbInput, txbInputFromMinor } from '@/utils/format'
 import AdminSquadProfileEditor from './squad-profile/AdminSquadProfileEditor.vue'
@@ -32,6 +34,7 @@ const draft = reactive({
 })
 const profileAttempted = shallowRef(false)
 const { t } = useI18n()
+const { reducedMotion } = useMotionPreferences()
 
 watch(() => props.squad, (squad) => {
   Object.assign(draft, {
@@ -86,7 +89,7 @@ function submit(): void {
     <SwitchField id="squad-visible" v-model="draft.visible" :label="t('adminSquad.visible')" :help="t('adminSquad.visibleHint')" />
     <SwitchField id="squad-geocheck" v-model="draft.geocheckEnabled" :label="t('adminSquad.geocheckEnabled')" :help="t('adminSquad.geocheckHint')" />
     <SwitchField id="squad-activation-required" v-model="draft.activationRequired" :label="t('adminSquad.activationRequired')" :help="t('adminSquad.activationRequiredHint')" />
-    <UFormField v-if="draft.activationRequired" name="squad-activation-code" :label="t('adminSquad.activationCode')" :hint="t('adminSquad.activationCodeHint')" required><UInput v-model="draft.activationCode" type="password" autocomplete="new-password" inputmode="text" /></UFormField>
+    <motion.div v-if="draft.activationRequired" layout :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }" :animate="{ opacity: 1, y: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.18, ease: 'easeOut' }"><UFormField name="squad-activation-code" :label="t('adminSquad.activationCode')" :hint="t('adminSquad.activationCodeHint')" required><UInput v-model="draft.activationCode" type="password" autocomplete="new-password" inputmode="text" /></UFormField></motion.div>
     <UButton class="catalog-editor__wide" type="submit" icon="i-ph-floppy-disk" :loading="busy" :disabled="busy" :label="busy ? t('common.saving') : t('adminSquad.saveSquad')" />
   </UForm>
 </template>

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { t } from '@/i18n'
 
 interface Props {
@@ -13,6 +15,8 @@ const props = defineProps<Props>()
 const displayPercent = computed(() => Math.min(100, Math.max(0, Math.round(props.progressPercent))))
 const progressValue = computed(() => props.starting ? null : displayPercent.value)
 const descriptionKey = computed(() => props.starting ? 'connections.startingDescription' : 'connections.scanDescription')
+const scanState = computed(() => props.starting ? 'starting' : 'scanning')
+const { reducedMotion } = useMotionPreferences()
 
 function progressValueText(value: number | null | undefined): string {
   return t('connections.progress', { percent: Math.round(value ?? 0) })
@@ -44,11 +48,21 @@ function progressValueLabel(): string {
     </div>
 
     <div class="connection-scan__content">
-      <p class="connection-scan__status">
-        <span />{{ $t('connections.scanStatus') }}
-      </p>
-      <h2>{{ $t('connections.scanning') }}</h2>
-      <p class="connection-scan__description">{{ $t(descriptionKey) }}</p>
+      <AnimatePresence mode="wait" :initial="false">
+        <motion.div
+          :key="scanState"
+          :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }"
+          :animate="{ opacity: 1, y: 0 }"
+          :exit="{ opacity: 0 }"
+          :transition="{ duration: reducedMotion ? 0.08 : 0.16, ease: 'easeOut' }"
+        >
+          <p class="connection-scan__status">
+            <span />{{ $t('connections.scanStatus') }}
+          </p>
+          <h2>{{ $t('connections.scanning') }}</h2>
+          <p class="connection-scan__description">{{ $t(descriptionKey) }}</p>
+        </motion.div>
+      </AnimatePresence>
 
       <div class="connection-scan__progress">
         <div class="connection-scan__progress-meta">

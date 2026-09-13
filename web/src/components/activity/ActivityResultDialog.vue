@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import type { ActivityResult } from '@/api/features'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
 import { formatMoney } from '@/utils/format'
 import BetSuccessFireworks from './BetSuccessFireworks.vue'
@@ -12,6 +14,7 @@ defineEmits<{ close: [] }>()
 
 const { t } = useI18n()
 const showFireworks = computed(() => isSuccessfulBet(props.result))
+const { reducedMotion } = useMotionPreferences()
 
 const rewardLabel = computed(() => {
   const result = props.result
@@ -49,20 +52,32 @@ const description = computed(() => {
     <template v-if="result" #body>
       <div class="result-body">
         <BetSuccessFireworks v-if="showFireworks" :key="result.id" />
-        <UIcon
-          :name="result.outcome === 'loss' ? 'i-ph-warning-circle-fill' : 'i-ph-check-circle-fill'"
-          class="feature-icon"
-          :class="{ 'feature-icon--warning': result.outcome === 'loss' }"
-          aria-hidden="true"
-        />
-        <div class="result-balance">
-          <span>{{ $t('activity.balanceAfter') }}</span>
-          <strong>{{ formatMoney(result.balanceAfter) }}</strong>
-        </div>
-        <div v-if="(result.kind === 'draw' || result.kind === 'check_in') && result.reward.kind !== 'none'" class="result-reward">
-          <span>{{ $t('activity.reward') }}</span>
-          <strong>{{ rewardLabel }}</strong>
-        </div>
+        <AnimatePresence mode="wait" :initial="false">
+          <motion.div
+            :key="result.id"
+            :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: 5 }"
+            :animate="{ opacity: 1, y: 0 }"
+            :exit="{ opacity: 0 }"
+            :transition="{ duration: reducedMotion ? 0.08 : 0.22, delay: reducedMotion ? 0 : 0.05, ease: 'easeOut' }"
+          >
+            <motion.div :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.86 }" :animate="{ opacity: 1, scale: 1 }" :transition="{ duration: reducedMotion ? 0.08 : 0.2, ease: 'easeOut' }">
+              <UIcon
+                :name="result.outcome === 'loss' ? 'i-ph-warning-circle-fill' : 'i-ph-check-circle-fill'"
+                class="feature-icon"
+                :class="{ 'feature-icon--warning': result.outcome === 'loss' }"
+                aria-hidden="true"
+              />
+            </motion.div>
+            <div class="result-balance">
+              <span>{{ $t('activity.balanceAfter') }}</span>
+              <strong>{{ formatMoney(result.balanceAfter) }}</strong>
+            </div>
+            <div v-if="(result.kind === 'draw' || result.kind === 'check_in') && result.reward.kind !== 'none'" class="result-reward">
+              <span>{{ $t('activity.reward') }}</span>
+              <strong>{{ rewardLabel }}</strong>
+            </div>
+          </motion.div>
+        </AnimatePresence>
       </div>
     </template>
     <template #footer="{ close }">

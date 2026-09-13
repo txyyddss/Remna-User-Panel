@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, shallowRef, watch } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import type { DatabaseMutationInput, DatabaseQueryInput, DatabaseRow, DatabaseValue } from '@/api/features'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import { useAdminDatabase } from '@/composables/useAdminDatabase'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
 import AdminSectionState from './AdminSectionState.vue'
 import DatabaseMobileRowCard from './database/DatabaseMobileRowCard.vue'
@@ -25,6 +27,7 @@ const editing = shallowRef<EditorState | null>(null)
 const search = shallowRef('')
 const filters = shallowRef<TextDatabaseFilter[]>([])
 const { t } = useI18n()
+const { reducedMotion } = useMotionPreferences()
 const operators = computed<DatabaseOperatorOption[]>(() => [
   { value: 'eq', label: t('adminDatabase.operators.eq') }, { value: 'ne', label: t('adminDatabase.operators.ne') },
   { value: 'contains', label: t('adminDatabase.operators.contains') }, { value: 'starts_with', label: t('adminDatabase.operators.startsWith') },
@@ -105,19 +108,40 @@ async function chooseTable(name: string): Promise<void> { closeEditor(); search.
             @update:search="updateSearch"
             @update:filters="updateFilters"
           />
-          <div v-if="selectedTable && rows.length" class="database-results">
-            <div class="database-table-view">
-              <div class="database-table-scroll">
-                <UTable :data="tableData" :columns="tableColumns">
-                  <template #actions-cell="{ row }"><div class="row-actions"><UButton color="neutral" variant="ghost" icon="i-ph-pencil-simple" :aria-label="t('adminDatabase.editRow')" @click="openEditor('update', row.original.__row)" /><UButton color="error" variant="ghost" icon="i-ph-trash" :aria-label="t('adminDatabase.deleteRow')" data-haptic="destructive" @click="openEditor('delete', row.original.__row)" /></div></template>
-                </UTable>
+          <AnimatePresence mode="wait" :initial="false">
+            <motion.div
+              v-if="selectedTable && rows.length"
+              :key="`results:${selectedTable.name}`"
+              class="database-results"
+              layout
+              :initial="{ opacity: 0 }"
+              :animate="{ opacity: 1 }"
+              :exit="{ opacity: 0 }"
+              :transition="{ duration: reducedMotion ? 0.08 : 0.16, ease: 'easeOut' }"
+            >
+              <div class="database-table-view">
+                <div class="database-table-scroll">
+                  <UTable :data="tableData" :columns="tableColumns">
+                    <template #actions-cell="{ row }"><div class="row-actions"><UButton color="neutral" variant="ghost" icon="i-ph-pencil-simple" :aria-label="t('adminDatabase.editRow')" @click="openEditor('update', row.original.__row)" /><UButton color="error" variant="ghost" icon="i-ph-trash" :aria-label="t('adminDatabase.deleteRow')" data-haptic="destructive" @click="openEditor('delete', row.original.__row)" /></div></template>
+                  </UTable>
+                </div>
               </div>
-            </div>
-            <div class="database-mobile-list">
-              <DatabaseMobileRowCard v-for="row in rows" :key="row.recordHash" :row="row" :columns="selectedTable.columns" @edit="openEditor('update', $event)" @delete="openEditor('delete', $event)" />
-            </div>
-          </div>
-          <div v-else class="empty-inline"><div><h3>{{ t('adminDatabase.noRows') }}</h3><p>{{ t('adminDatabase.empty') }}</p></div></div>
+              <div class="database-mobile-list">
+                <DatabaseMobileRowCard v-for="row in rows" :key="row.recordHash" :row="row" :columns="selectedTable.columns" @edit="openEditor('update', $event)" @delete="openEditor('delete', $event)" />
+              </div>
+            </motion.div>
+            <motion.div
+              v-else
+              key="empty"
+              class="empty-inline"
+              :initial="{ opacity: 0 }"
+              :animate="{ opacity: 1 }"
+              :exit="{ opacity: 0 }"
+              :transition="{ duration: reducedMotion ? 0.08 : 0.16, ease: 'easeOut' }"
+            >
+              <div><h3>{{ t('adminDatabase.noRows') }}</h3><p>{{ t('adminDatabase.empty') }}</p></div>
+            </motion.div>
+          </AnimatePresence>
           <UButton v-if="nextCursor && selectedTableName" class="database-load-more" color="neutral" variant="outline" :disabled="busy" :loading="busy" :label="busy ? t('common.loading') : t('adminDatabase.loadMore')" @click="queryRows(selectedTableName, queryInput(), { append: true })" />
         </div>
       </div>

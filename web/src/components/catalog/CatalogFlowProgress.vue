@@ -50,8 +50,9 @@ const items = computed(() => [
 .catalog-progress { overflow: hidden; margin: 0.3rem 0 1.15rem; padding: 0.15rem 0 0.35rem; }
 .catalog-progress :deep([data-slot='root']) { min-width: 0; }
 .catalog-progress :deep([data-slot='title']) { color: var(--text-muted); font-size: 0.64rem; line-height: 1.2; overflow-wrap: anywhere; }
+.catalog-progress :deep([data-slot='indicator']) { position: relative; isolation: isolate; }
 .catalog-progress :deep([data-slot='icon']) { position: relative; z-index: 10; }
-.catalog-progress__active { position: absolute; inset: -0.2rem; z-index: 0; border-radius: 999px; background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.catalog-progress__active { position: absolute; inset: -0.2rem; z-index: 0; border-radius: 999px; pointer-events: none; background: color-mix(in srgb, var(--accent) 16%, transparent); }
 .catalog-progress :deep(.catalog-progress__icon--completed) { color: var(--accent-ink); }
 
 @media (min-width: 480px) {

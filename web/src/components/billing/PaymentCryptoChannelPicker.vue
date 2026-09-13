@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import { useI18n } from '@/i18n'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { selectionHaptic } from '@/utils/telegram'
 import { paymentCurrencyLogo, paymentNetworkLogo, type PaymentChannelOption } from './paymentOptions'
 
@@ -11,6 +13,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ choose: [id: string] }>()
 const { t } = useI18n()
+const { reducedMotion } = useMotionPreferences()
 
 const currencies = computed(() => {
   const seen = new Set<string>()
@@ -53,7 +56,18 @@ function chooseCurrency(currency: 'USDT' | 'USDC'): void {
       >
         <img :src="paymentCurrencyLogo(item.cryptoCurrency!)" alt="" width="34" height="34" />
         <strong>{{ item.cryptoCurrency }}</strong>
-        <UIcon v-if="selectedCurrency === item.cryptoCurrency" name="i-ph-check-circle-fill" aria-hidden="true" />
+        <AnimatePresence :initial="false">
+          <motion.span
+            v-if="selectedCurrency === item.cryptoCurrency"
+            :key="item.cryptoCurrency"
+            :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.84 }"
+            :animate="{ opacity: 1, scale: 1 }"
+            :exit="{ opacity: 0 }"
+            :transition="{ duration: reducedMotion ? 0.08 : 0.14, ease: 'easeOut' }"
+          >
+            <UIcon name="i-ph-check-circle-fill" aria-hidden="true" />
+          </motion.span>
+        </AnimatePresence>
       </UButton>
     </div>
   </fieldset>
@@ -76,7 +90,19 @@ function chooseCurrency(currency: 'USDT' | 'USDC'): void {
           <img :src="paymentNetworkLogo(item.network ?? '', item.cryptoCurrency!)" alt="" width="28" height="28" />
         </span>
         <span><strong>{{ item.networkName || item.label }}</strong></span>
-        <UIcon v-if="selectedMethodId === item.value" class="provider-option__check" name="i-ph-check-circle-fill" aria-hidden="true" />
+        <AnimatePresence :initial="false">
+          <motion.span
+            v-if="selectedMethodId === item.value"
+            :key="item.value"
+            class="provider-option__check"
+            :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.84 }"
+            :animate="{ opacity: 1, scale: 1 }"
+            :exit="{ opacity: 0 }"
+            :transition="{ duration: reducedMotion ? 0.08 : 0.14, ease: 'easeOut' }"
+          >
+            <UIcon name="i-ph-check-circle-fill" aria-hidden="true" />
+          </motion.span>
+        </AnimatePresence>
       </UButton>
     </div>
   </fieldset>

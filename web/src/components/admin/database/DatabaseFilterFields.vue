@@ -1,5 +1,9 @@
 <script setup lang="ts">
+import { AnimatePresence, motion } from 'motion-v'
+
 import type { DatabaseFilterOperator } from '@/api/features'
+import { motionSpring } from '@/composables/motionPresets'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
 import type { DatabaseColumnOption, DatabaseOperatorOption, TextDatabaseFilter } from './types'
 
@@ -10,6 +14,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ 'update:filters': [value: TextDatabaseFilter[]] }>()
 const { t } = useI18n()
+const { reducedMotion } = useMotionPreferences()
 
 function updateFilter(index: number, patch: Partial<TextDatabaseFilter>): void {
   emit('update:filters', props.filters.map((filter, itemIndex) => itemIndex === index ? { ...filter, ...patch } : { ...filter }))
@@ -30,38 +35,49 @@ function isNullOperator(operator: DatabaseFilterOperator): boolean {
 
 <template>
   <div class="database-filter-fields">
-    <div v-for="(filter, index) in filters" :key="index" class="database-filter-fields__row">
-      <USelect
-        :model-value="filter.column"
-        :items="columnItems"
-        value-key="value"
-        :aria-label="t('adminDatabase.filterColumn')"
-        @update:model-value="updateFilter(index, { column: String($event) })"
-      />
-      <USelect
-        :model-value="filter.operator"
-        :items="operators"
-        value-key="value"
-        :aria-label="t('adminDatabase.filterOperator')"
-        @update:model-value="updateOperator(index, $event)"
-      />
-      <UInput
-        v-if="!isNullOperator(filter.operator)"
-        class="database-filter-fields__value"
-        :model-value="filter.value ?? ''"
-        :aria-label="t('adminDatabase.filterValue')"
-        :placeholder="t('adminDatabase.value')"
-        @update:model-value="updateFilter(index, { value: String($event) })"
-      />
-      <UButton
-        class="database-filter-fields__remove"
-        color="neutral"
-        variant="ghost"
-        icon="i-ph-x"
-        :aria-label="t('adminDatabase.removeFilter')"
-        @click="removeFilter(index)"
-      />
-    </div>
+    <AnimatePresence :initial="false" mode="popLayout">
+      <motion.div
+        v-for="(filter, index) in filters"
+        :key="`${filter.column}:${filter.operator}:${index}`"
+        class="database-filter-fields__row"
+        layout
+        :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }"
+        :animate="{ opacity: 1, y: 0 }"
+        :exit="{ opacity: 0, y: reducedMotion ? 0 : -3 }"
+        :transition="reducedMotion ? { duration: 0.08 } : motionSpring"
+      >
+        <USelect
+          :model-value="filter.column"
+          :items="columnItems"
+          value-key="value"
+          :aria-label="t('adminDatabase.filterColumn')"
+          @update:model-value="updateFilter(index, { column: String($event) })"
+        />
+        <USelect
+          :model-value="filter.operator"
+          :items="operators"
+          value-key="value"
+          :aria-label="t('adminDatabase.filterOperator')"
+          @update:model-value="updateOperator(index, $event)"
+        />
+        <UInput
+          v-if="!isNullOperator(filter.operator)"
+          class="database-filter-fields__value"
+          :model-value="filter.value ?? ''"
+          :aria-label="t('adminDatabase.filterValue')"
+          :placeholder="t('adminDatabase.value')"
+          @update:model-value="updateFilter(index, { value: String($event) })"
+        />
+        <UButton
+          class="database-filter-fields__remove"
+          color="neutral"
+          variant="ghost"
+          icon="i-ph-x"
+          :aria-label="t('adminDatabase.removeFilter')"
+          @click="removeFilter(index)"
+        />
+      </motion.div>
+    </AnimatePresence>
   </div>
 </template>
 

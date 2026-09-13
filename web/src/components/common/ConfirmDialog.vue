@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import { useTelegramProtection } from '@/composables/useTelegramProtection'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
 
 const open = defineModel<boolean>('open', { required: true })
@@ -28,6 +30,8 @@ const modalUi = computed(() => ({
   footer: 'justify-end',
   ...(props.centered ? { header: 'tg-overlay-header--centered', wrapper: 'tg-overlay-copy--centered' } : {}),
 }))
+const workflowState = computed(() => props.busy ? 'processing' : 'confirm')
+const { reducedMotion } = useMotionPreferences()
 useTelegramProtection(computed(() => open.value && (props.danger || props.busy)))
 </script>
 
@@ -40,15 +44,17 @@ useTelegramProtection(computed(() => open.value && (props.danger || props.busy))
     :ui="modalUi"
   >
     <template #title>
-      <span class="dialog-title">
-        <UIcon
-          name="i-ph-warning-fill"
-          class="dialog-icon"
-          :class="{ 'dialog-icon--danger': danger }"
-          aria-hidden="true"
-        />
-        <span>{{ title }}</span>
-      </span>
+      <AnimatePresence mode="wait" :initial="false">
+        <motion.span :key="workflowState" class="dialog-title" :initial="{ opacity: 0 }" :animate="{ opacity: 1 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.16, ease: 'easeOut' }">
+          <UIcon
+            name="i-ph-warning-fill"
+            class="dialog-icon"
+            :class="{ 'dialog-icon--danger': danger }"
+            aria-hidden="true"
+          />
+          <span>{{ title }}</span>
+        </motion.span>
+      </AnimatePresence>
     </template>
     <template #footer="{ close }">
       <UButton

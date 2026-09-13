@@ -8,3 +8,5 @@ mutation boundary.
 - `CouponGrantList.vue` renders wallet grants and emits an explicit discard request.
 
 Redemption uses action feedback, opening discard review is soft, and final discard confirmation is heavy.
+
+`CouponWalletPanel.vue` owns local wallet-state presence while `CouponGrantList.vue` owns coupon-row layout changes.

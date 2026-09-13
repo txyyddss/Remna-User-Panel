@@ -162,3 +162,15 @@
 @media (max-width: 360px) {
   .home-subscription__actions { grid-template-columns: 1fr; }
 }
+
+@media (max-width: 420px) {
+  .home-ride .empty-inline {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .home-ride__catalog {
+    width: 100%;
+  }
+}

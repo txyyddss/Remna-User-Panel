@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { motion } from 'motion-v'
 
 import { useI18n } from '@/i18n'
+import { motionDurations } from '@/composables/motionPresets'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { formatBytes } from '@/utils/format'
 
 const props = defineProps<{
@@ -12,6 +15,7 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
+const { reducedMotion } = useMotionPreferences()
 const values = computed(() => props.dailyBytes.map((value) => {
   try { return BigInt(value) } catch { return 0n }
 }))
@@ -26,7 +30,16 @@ const bars = computed(() => values.value.map((value, index) => {
 <template>
   <div class="traffic-node-chart" role="img" :aria-label="t('home.trafficChartNode', { name, value: formatBytes(totalBytes) })">
     <div class="traffic-node-chart__bars">
-      <span v-for="bar in bars" :key="bar.date" class="traffic-node-chart__bar" :style="{ height: bar.height }" :aria-label="bar.label" role="img" />
+      <motion.span
+        v-for="bar in bars"
+        :key="bar.date"
+        class="traffic-node-chart__bar"
+        :initial="false"
+        :animate="{ height: bar.height }"
+        :transition="{ duration: reducedMotion ? 0.08 : motionDurations.data, ease: 'easeOut' }"
+        :aria-label="bar.label"
+        role="img"
+      />
     </div>
     <div v-if="bars.length" class="traffic-node-chart__axis" aria-hidden="true"><span>{{ bars[0].date }}</span><span>{{ bars[bars.length - 1].date }}</span></div>
   </div>

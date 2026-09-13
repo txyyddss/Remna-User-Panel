@@ -29,7 +29,7 @@ describe('authenticated preload scheduling', () => {
     expect(request).toHaveBeenCalledWith('/api/v1/admin/database/tables/users/query', expect.objectContaining({ method: 'POST', body: { filters: [], limit: 50 } }))
   })
 
-  it('limits pending work to three reads and cancels it on logout', async () => {
+  it('limits pending work to five reads and cancels it on logout', async () => {
     const signals: AbortSignal[] = []
     request.mockImplementation((_path, options) => new Promise((_resolve, reject) => {
       signals.push(options.signal)
@@ -37,10 +37,10 @@ describe('authenticated preload scheduling', () => {
     }))
     preloadSession(session('admin'))
     await vi.advanceTimersByTimeAsync(0)
-    expect(request).toHaveBeenCalledTimes(3)
+    expect(request).toHaveBeenCalledTimes(5)
     stopSessionPreload()
     await vi.runAllTimersAsync()
     expect(signals.every(signal => signal.aborted)).toBe(true)
-    expect(request).toHaveBeenCalledTimes(3)
+    expect(request).toHaveBeenCalledTimes(5)
   })
 })

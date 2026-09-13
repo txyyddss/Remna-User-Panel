@@ -23,6 +23,60 @@
   --app-safe-inline: max(var(--app-safe-left), var(--app-safe-right));
 }
 
+.tg-glass-modal,
+.tg-glass-surface,
+.tg-glass-menu,
+.tg-glass-tooltip,
+.tg-glass-toast,
+.tg-glass-tabs {
+  color: var(--glass-text);
+  --ui-text: var(--glass-text);
+  --ui-text-muted: var(--glass-text-muted);
+  --ui-text-dimmed: var(--text-faint);
+  border: 1px solid var(--glass-border);
+  background-image: none;
+  box-shadow: inset 0 1px 0 var(--glass-edge-highlight), inset 0 -1px 0 var(--glass-edge-shadow) !important;
+}
+
+.tg-glass-surface {
+  background-color: var(--glass-surface) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(112%);
+  backdrop-filter: blur(12px) saturate(112%);
+}
+
+.tg-glass-modal {
+  border-color: var(--glass-dialog-border);
+  background-color: var(--glass-dialog) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(108%);
+  backdrop-filter: blur(16px) saturate(108%);
+}
+
+.tg-glass-menu,
+.tg-glass-tooltip,
+.tg-glass-toast,
+.tg-glass-tabs {
+  border-color: var(--glass-border-compact);
+  background-color: var(--glass-surface-compact) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(108%);
+  backdrop-filter: blur(8px) saturate(108%);
+}
+
+.tg-glass-backdrop {
+  background-color: var(--glass-backdrop) !important;
+  -webkit-backdrop-filter: blur(3px) saturate(90%);
+  backdrop-filter: blur(3px) saturate(90%);
+}
+
+.tg-glass-arrow {
+  fill: var(--glass-surface-compact) !important;
+  stroke: var(--glass-border-compact) !important;
+}
+
+.tg-glass-navigation-arrow {
+  background-color: var(--glass-surface-compact) !important;
+  border-color: var(--glass-border-compact) !important;
+}
+
 .tg-modal--windowed {
   width: min(32rem, calc(100vw - var(--app-safe-inline) - var(--app-safe-inline) - 1rem));
   max-width: none;

@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import type { DeepReadonly } from 'vue'
+import { computed, type DeepReadonly } from 'vue'
+import { motion } from 'motion-v'
 
 import type { Purchase } from '@/api/types'
+import { motionDurations } from '@/composables/motionPresets'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
 import { formatBytes, formatDate, formatMoney } from '@/utils/format'
 
@@ -14,6 +17,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const { reducedMotion, offset } = useMotionPreferences()
 
 function statusLabel(): string {
   return t(`catalog.purchaseStatus.${props.purchase.status}`)
@@ -22,55 +26,56 @@ function statusLabel(): string {
 function resetLabel(): string {
   return t(`home.reset.${props.purchase.resetStrategy}`)
 }
+
+const summaryLines = computed(() => [
+  { label: t('catalog.coreCombos'), value: props.purchase.comboName },
+  { label: t('catalog.purchaseCharged'), value: formatMoney(props.purchase.price) },
+  { label: t('catalog.purchaseDiscount'), value: formatMoney(props.purchase.couponDiscount) },
+  { label: t('catalog.purchaseStarts'), value: formatDate(props.purchase.validFrom) },
+  { label: t('catalog.purchaseEnds'), value: formatDate(props.purchase.validUntil) },
+  { label: t('catalog.purchaseStatusLabel'), value: statusLabel() },
+  { label: t('catalog.purchaseTraffic'), value: formatBytes(props.purchase.trafficLimitBytes) },
+  { label: t('catalog.purchaseReset'), value: resetLabel() },
+])
 </script>
 
 <template>
   <section class="catalog-confirmation" data-test="catalog-confirmation" role="status" aria-live="polite">
-    <div class="catalog-confirmation__hero">
-      <div class="catalog-confirmation__icon" aria-hidden="true">
+    <motion.div
+      class="catalog-confirmation__hero"
+      :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: offset(6) }"
+      :animate="{ opacity: 1, y: 0 }"
+      :transition="{ duration: reducedMotion ? 0.08 : motionDurations.normal, ease: 'easeOut' }"
+    >
+      <motion.div
+        class="catalog-confirmation__icon"
+        aria-hidden="true"
+        :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.8 }"
+        :animate="{ opacity: 1, scale: 1 }"
+        :transition="{ duration: reducedMotion ? 0.08 : 0.3, ease: 'easeOut' }"
+      >
         <UIcon name="i-ph-check-circle-fill" />
-      </div>
+      </motion.div>
       <div class="catalog-confirmation__copy">
         <p class="catalog-confirmation__eyebrow">{{ $t('catalog.purchaseConfirmed') }}</p>
         <h1>{{ $t('catalog.purchaseSuccessTitle') }}</h1>
         <p>{{ $t('catalog.purchaseScheduled', { name: purchase.comboName }) }}</p>
       </div>
-    </div>
+    </motion.div>
 
-    <div class="catalog-confirmation__summary" :aria-label="$t('catalog.purchaseSummary')">
-      <div class="catalog-confirmation__line">
-        <span>{{ $t('catalog.coreCombos') }}</span>
-        <strong>{{ purchase.comboName }}</strong>
-      </div>
-      <div class="catalog-confirmation__line">
-        <span>{{ $t('catalog.purchaseCharged') }}</span>
-        <strong>{{ formatMoney(purchase.price) }}</strong>
-      </div>
-      <div class="catalog-confirmation__line">
-        <span>{{ $t('catalog.purchaseDiscount') }}</span>
-        <strong>{{ formatMoney(purchase.couponDiscount) }}</strong>
-      </div>
-      <div class="catalog-confirmation__line">
-        <span>{{ $t('catalog.purchaseStarts') }}</span>
-        <strong>{{ formatDate(purchase.validFrom) }}</strong>
-      </div>
-      <div class="catalog-confirmation__line">
-        <span>{{ $t('catalog.purchaseEnds') }}</span>
-        <strong>{{ formatDate(purchase.validUntil) }}</strong>
-      </div>
-      <div class="catalog-confirmation__line">
-        <span>{{ $t('catalog.purchaseStatusLabel') }}</span>
-        <strong>{{ statusLabel() }}</strong>
-      </div>
-      <div class="catalog-confirmation__line">
-        <span>{{ $t('catalog.purchaseTraffic') }}</span>
-        <strong>{{ formatBytes(purchase.trafficLimitBytes) }}</strong>
-      </div>
-      <div class="catalog-confirmation__line">
-        <span>{{ $t('catalog.purchaseReset') }}</span>
-        <strong>{{ resetLabel() }}</strong>
-      </div>
-    </div>
+    <motion.div layout class="catalog-confirmation__summary" :aria-label="$t('catalog.purchaseSummary')">
+      <motion.div
+        v-for="(line, index) in summaryLines"
+        :key="line.label"
+        class="catalog-confirmation__line"
+        :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: offset(4) }"
+        :animate="{ opacity: 1, y: 0 }"
+        :transition="{ duration: reducedMotion ? 0.08 : motionDurations.fast, delay: reducedMotion ? 0 : 0.12 + index * 0.03, ease: 'easeOut' }"
+      >
+        <span>{{ line.label }}</span>
+        <strong>{{ line.value }}</strong>
+      </motion.div>
+    </motion.div>
 
     <UButton
       block

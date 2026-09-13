@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { motion } from 'motion-v'
+
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { txbInputFromMinor } from '@/utils/format'
 
 defineProps<{
@@ -10,11 +13,13 @@ defineProps<{
 }>()
 
 defineEmits<{ checkIn: [] }>()
+
+const { reducedMotion } = useMotionPreferences()
 </script>
 
 <template>
   <section class="section-block activity-card">
-    <span class="feature-icon"><UIcon name="i-ph-calendar-check" /></span>
+    <motion.span class="feature-icon" :animate="checkedIn && !reducedMotion ? { scale: [0.9, 1.12, 1] } : { scale: 1 }" :transition="{ duration: reducedMotion ? 0.08 : 0.2, ease: 'easeOut' }"><UIcon name="i-ph-calendar-check" /></motion.span>
     <div class="activity-card__copy">
       <h2>{{ $t('activity.dailyCheckIn') }}</h2>
       <p>

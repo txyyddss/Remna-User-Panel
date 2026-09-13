@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { motion } from 'motion-v'
 
 import type { DatabaseColumn, DatabaseValue } from '@/api/features'
 import SwitchField from '@/components/common/SwitchField.vue'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
 
 const props = defineProps<{
@@ -17,6 +19,7 @@ const emit = defineEmits<{
   'update:null': [column: string, value: boolean]
 }>()
 const { t } = useI18n()
+const { reducedMotion } = useMotionPreferences()
 const editableColumns = computed(() => props.columns.filter((column) => column.editable && !column.sensitive))
 const protectedColumns = computed(() => props.columns.filter((column) => !column.editable || column.sensitive))
 
@@ -46,7 +49,7 @@ function protectedValue(column: DatabaseColumn): string {
   <section class="database-record-fields" :aria-label="t('databaseRecord.editableFields')">
     <h3>{{ t('databaseRecord.editableFields') }}</h3>
     <p v-if="!editableColumns.length" class="database-record-fields__empty">{{ t('databaseRecord.noEditableFields') }}</p>
-    <div v-for="column in editableColumns" :key="column.name" class="database-record-fields__field">
+    <motion.div v-for="column in editableColumns" :key="column.name" class="database-record-fields__field" layout :transition="{ duration: reducedMotion ? 0.08 : 0.18, ease: 'easeOut' }">
       <SwitchField
         v-if="isBoolean(column) && !nullDraft[column.name]"
         :id="`db-${column.name}`"
@@ -80,7 +83,7 @@ function protectedValue(column: DatabaseColumn): string {
         :label="t('databaseRecord.storeNull')"
         @update:model-value="emit('update:null', column.name, Boolean($event))"
       />
-    </div>
+    </motion.div>
     <details v-if="protectedColumns.length" class="database-record-fields__protected">
       <summary>{{ t('databaseRecord.protectedFields', { count: protectedColumns.length }) }}</summary>
       <dl>

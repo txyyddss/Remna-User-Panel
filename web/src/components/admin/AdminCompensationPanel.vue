@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed, shallowRef } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import type { NodeCompensationEvent } from '@/api/contracts/compensation'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import { useNodeCompensation } from '@/composables/useNodeCompensation'
+import { motionSpring } from '@/composables/motionPresets'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
 import AdminSectionState from './AdminSectionState.vue'
 import CompensationConfigCard from './compensation/CompensationConfigCard.vue'
@@ -18,6 +21,7 @@ import {
 
 const { t } = useI18n()
 const state = useNodeCompensation()
+const { reducedMotion } = useMotionPreferences()
 const reviewOpen = shallowRef(false)
 const selected = shallowRef<NodeCompensationEvent | null>(null)
 const statusChoice = computed<CompensationStatusChoice>({
@@ -53,7 +57,9 @@ async function review(action: 'approve' | 'dismiss', minutes: number, reason: st
       </div>
       <InlineNotice v-if="state.error.value" tone="warning">{{ state.error.value }}</InlineNotice>
       <div class="compensation-panel__events">
-        <CompensationEventCard v-for="event in state.events.value" :key="event.id" :event="event" @review="openReview" />
+        <AnimatePresence :initial="false" mode="popLayout">
+          <motion.div v-for="event in state.events.value" :key="event.id" layout :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: 5 }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0, y: reducedMotion ? 0 : -4 }" :transition="reducedMotion ? { duration: 0.08 } : motionSpring"><CompensationEventCard :event="event" @review="openReview" /></motion.div>
+        </AnimatePresence>
         <div v-if="!state.events.value.length" class="empty-inline"><div><h3>{{ t('adminCompensation.none') }}</h3><p>{{ t('adminCompensation.noneHint') }}</p></div></div>
       </div>
       <UButton v-if="state.nextCursor.value" block color="neutral" variant="outline" icon="i-ph-caret-down" :label="t('adminCompensation.loadMore')" :loading="state.busy.value" @click="state.loadMore" />

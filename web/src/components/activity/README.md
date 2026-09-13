@@ -11,3 +11,4 @@ selection and pending feedback remain short and haptic-aware.
 - `feedback.ts` centralizes result classification and Telegram notification mapping.
 - `ActivityResultDialog.test.ts`, `BetSuccessFireworks.test.ts`, and `feedback.test.ts` cover result feedback boundaries and daily check-in reward rendering.
 - `gameIcons.ts` maps server-owned icon keys to external Iconify names.
+- `ActivityResultDialog.vue`, `DailyCheckInCard.vue`, `GroupMessageRewardPanel.vue`, and `BetSuccessFireworks.vue` own completion-only Motion feedback; particle trajectories remain CSS and reduced motion uses a single success marker.

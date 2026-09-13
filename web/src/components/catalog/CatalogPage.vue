@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, shallowRef, watch } from 'vue'
+import { computed, shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { AnimatePresence, motion } from 'motion-v'
 
@@ -8,9 +8,9 @@ import InlineNotice from '@/components/common/InlineNotice.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { useCatalog } from '@/composables/useCatalog'
 import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
-import { useSessionStore } from '@/stores/session'
 import { motionDurations } from '@/composables/motionPresets'
 import { useMotionPreferences } from '@/composables/useMotionPreferences'
+import { useSessionStore } from '@/stores/session'
 import CatalogCheckout from './CatalogCheckout.vue'
 import CatalogConfirmation from './CatalogConfirmation.vue'
 import CatalogCouponStep from './CatalogCouponStep.vue'
@@ -20,13 +20,13 @@ import CatalogSquadStep from './CatalogSquadStep.vue'
 import CatalogComboPricingTable from './CatalogComboPricingTable.vue'
 import SquadActivationDialog from './SquadActivationDialog.vue'
 import { useCatalogSquadPresentation } from './useCatalogSquadPresentation'
+import { useCatalogStepPersistence } from './useCatalogStepPersistence'
 
 const activeStep = shallowRef(1)
 const stepDirection = shallowRef(1)
 const sessionStore = useSessionStore()
 const router = useRouter()
 const { reducedMotion, offset } = useMotionPreferences()
-const stepKey = () => sessionStore.user?.id ? `txc-catalog-step:v2:${sessionStore.user.id}` : null
 
 const {
   catalog,
@@ -58,55 +58,27 @@ const {
   confirmPurchase,
 } = useCatalog()
 
+const { clearPersistedStep } = useCatalogStepPersistence({
+  activeStep,
+  userId: computed(() => sessionStore.user?.id),
+  loading,
+  quoting,
+  quoteUsable,
+  purchase,
+  selectedCombo,
+  selectedSquadIds,
+  selectedCouponGrantId,
+  refreshQuote,
+})
+
 const {
   featuredIds: featuredSquadIds,
   orderedIds: orderedSquadIds,
 } = useCatalogSquadPresentation(visibleSquads, includedSquadIds, selectedComboId)
 
-async function restoreStepQuote(): Promise<void> {
-  if (
-    ![3, 4].includes(activeStep.value)
-    || loading.value
-    || quoting.value
-    || quoteUsable.value
-    || purchase.value
-    || !selectedCombo.value
-  ) {
-    return
-  }
-
-  await refreshQuote()
-}
-
-onMounted(() => {
-  try {
-    const key = stepKey()
-    const value = key ? Number(globalThis.sessionStorage?.getItem(key)) : Number.NaN
-    if (value >= 1 && value <= 4) activeStep.value = value
-  } catch {
-    // Storage is optional in restricted WebViews.
-  }
-
-  void restoreStepQuote()
-})
-
 watch(activeStep, (value, previous) => {
-  try {
-    const key = stepKey()
-    if (key) globalThis.sessionStorage?.setItem(key, String(value))
-  } catch {
-    // Storage is optional in restricted WebViews.
-  }
-
-  scrollCatalogToTop()
   stepDirection.value = value >= (previous ?? value) ? 1 : -1
 })
-
-watch(
-  [activeStep, loading, selectedCombo, selectedSquadIds, selectedCouponGrantId],
-  () => { void restoreStepQuote() },
-  { deep: true },
-)
 
 watch(autoRenewalBlocked, (blocked) => {
   if (blocked) void router.replace({ path: '/home', query: { autoRenewBlocked: '1' } })
@@ -135,35 +107,6 @@ function goBack(): void {
 
 const showCatalogBack = computed(() => !purchase.value && activeStep.value > 1)
 useTelegramBackButton(showCatalogBack, goBack)
-
-function clearPersistedStep(): void {
-  try {
-    const key = stepKey()
-    if (key) globalThis.sessionStorage?.removeItem(key)
-  } catch {
-    // Storage is optional in restricted WebViews.
-  }
-}
-
-const catalogScrollOptions = { top: 0, left: 0, behavior: 'auto' as const }
-
-function scrollCatalogToTop(): void {
-  try {
-    globalThis.scrollTo?.(catalogScrollOptions)
-  } catch {
-    globalThis.scrollTo?.(0, 0)
-  }
-
-  const content = globalThis.document?.querySelector<globalThis.HTMLElement>('.app-frame__content')
-  if (!content) return
-
-  try {
-    content.scrollTo(catalogScrollOptions)
-  } catch {
-    content.scrollTop = 0
-    content.scrollLeft = 0
-  }
-}
 
 async function handlePurchase(): Promise<void> {
   if (activationPrompting.value || purchasing.value) return

@@ -5,6 +5,7 @@ import { getLocale } from '@/i18n'
 import { adminResources, memberResources, type PreloadResource } from './preloadRoutes'
 
 let active: AbortController | null = null
+const PRELOAD_CONCURRENCY = 5
 
 export function stopSessionPreload(): void {
   active?.abort()
@@ -53,9 +54,9 @@ export function preloadSession(session: Session): void {
     }
   }
 
-  // Start after bootstrap can mount the requested page. Three reads run at a time.
+  // Start after bootstrap can mount the requested page. Five reads run at a time.
   globalThis.setTimeout(() => {
     if (active !== controller || controller.signal.aborted) return
-    void Promise.allSettled(Array.from({ length: 3 }, worker))
+    void Promise.allSettled(Array.from({ length: PRELOAD_CONCURRENCY }, worker))
   }, 0)
 }

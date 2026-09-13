@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { AnimatePresence, motion } from 'motion-v'
 
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import { useTelegramProtection } from '@/composables/useTelegramProtection'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
 
 const open = defineModel<boolean>('open', { required: true })
@@ -19,16 +21,28 @@ const props = withDefaults(defineProps<{
 
 defineEmits<{ confirm: [] }>()
 const { t } = useI18n()
+const workflowState = computed(() => props.busy ? 'processing' : props.error ? `error:${props.error}` : 'reason')
+const { reducedMotion } = useMotionPreferences()
 useTelegramProtection(computed(() => open.value && (props.danger || props.busy || reason.value.trim() !== '')))
 </script>
 
 <template>
   <UModal v-model:open="open" :title="title" :description="description" :dismissible="!busy" :close="false" :ui="{ header: 'tg-overlay-header--centered', wrapper: 'tg-overlay-copy--centered', footer: 'justify-end' }">
     <template #body>
-      <UFormField name="reason" :label="t('adminReason.reason')" required>
-        <UTextarea v-model.trim="reason" :rows="3" :minlength="4" :maxlength="300" :placeholder="t('adminReason.placeholder')" />
-      </UFormField>
-      <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
+      <AnimatePresence mode="wait" :initial="false">
+        <motion.div
+          :key="workflowState"
+          :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }"
+          :animate="{ opacity: 1, y: 0 }"
+          :exit="{ opacity: 0 }"
+          :transition="{ duration: reducedMotion ? 0.08 : 0.18, ease: 'easeOut' }"
+        >
+          <UFormField name="reason" :label="t('adminReason.reason')" required>
+            <UTextarea v-model.trim="reason" :rows="3" :minlength="4" :maxlength="300" :placeholder="t('adminReason.placeholder')" />
+          </UFormField>
+          <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
+        </motion.div>
+      </AnimatePresence>
     </template>
     <template #footer="{ close }">
       <UButton color="neutral" variant="outline" :label="t('common.cancel')" :disabled="busy" data-haptic="dismiss" @click="close" />

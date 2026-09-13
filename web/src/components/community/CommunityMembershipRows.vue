@@ -1,5 +1,9 @@
 <script setup lang="ts">
+import { AnimatePresence, motion } from 'motion-v'
+
 import type { CommunitySpace } from '@/api/types'
+import { motionSpring } from '@/composables/motionPresets'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 
 const props = defineProps<{
   activeCombo: boolean
@@ -9,6 +13,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{ join: [space: CommunitySpace] }>()
+const { reducedMotion } = useMotionPreferences()
 
 const spaces: ReadonlyArray<{ kind: CommunitySpace; icon: string; titleKey: string; descriptionKey: string }> = [
   { kind: 'group', icon: 'i-ph-users-three', titleKey: 'community.groupTitle', descriptionKey: 'community.groupDescription' },
@@ -27,7 +32,7 @@ function state(space: CommunitySpace): 'joined' | 'unavailable' | 'ready' {
 
 <template>
   <section class="community-rows" :aria-label="$t('community.title')">
-    <article v-for="space in spaces" :key="space.kind" class="community-row">
+    <motion.article v-for="space in spaces" :key="space.kind" class="community-row" layout :transition="reducedMotion ? { duration: 0.08 } : motionSpring">
       <span class="community-row__icon" aria-hidden="true"><UIcon :name="space.icon" /></span>
       <div class="community-row__copy">
         <h2>{{ $t(space.titleKey) }}</h2>
@@ -35,22 +40,26 @@ function state(space: CommunitySpace): 'joined' | 'unavailable' | 'ready' {
         <small>{{ $t(`community.${state(space.kind)}Description`) }}</small>
       </div>
       <div class="community-row__action">
-        <UBadge v-if="state(space.kind) !== 'ready'" :color="state(space.kind) === 'joined' ? 'success' : 'neutral'" variant="subtle">
-          {{ $t(`community.${state(space.kind)}`) }}
-        </UBadge>
-        <UButton
-          v-else
-          color="primary"
-          size="lg"
-          class="community-row__join"
-          :loading="joining.includes(space.kind)"
-          :disabled="joining.includes(space.kind)"
-          :label="joining.includes(space.kind) ? $t('community.joining') : $t('community.join')"
-          data-haptic="open"
-          @click="emit('join', space.kind)"
-        />
+        <AnimatePresence mode="wait" :initial="false">
+          <motion.div :key="state(space.kind)" :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }" :animate="{ opacity: 1, scale: 1 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.16, ease: 'easeOut' }">
+            <UBadge v-if="state(space.kind) !== 'ready'" :color="state(space.kind) === 'joined' ? 'success' : 'neutral'" variant="subtle">
+              {{ $t(`community.${state(space.kind)}`) }}
+            </UBadge>
+            <UButton
+              v-else
+              color="primary"
+              size="lg"
+              class="community-row__join"
+              :loading="joining.includes(space.kind)"
+              :disabled="joining.includes(space.kind)"
+              :label="joining.includes(space.kind) ? $t('community.joining') : $t('community.join')"
+              data-haptic="open"
+              @click="emit('join', space.kind)"
+            />
+          </motion.div>
+        </AnimatePresence>
       </div>
-    </article>
+    </motion.article>
   </section>
 </template>
 
