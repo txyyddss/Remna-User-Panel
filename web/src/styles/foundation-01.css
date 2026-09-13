@@ -27,11 +27,22 @@
   --canvas-soft: #0e110f;
   --surface: #121512;
   --surface-raised: #181c19;
-  --glass-surface: rgb(24 31 27 / 0.16);
-  --glass-surface-compact: rgb(20 27 23 / 0.22);
-  --glass-float: rgb(23 30 26 / 0.18);
-  --glass-border: rgb(237 242 238 / 0.32);
-  --glass-backdrop: rgb(8 11 9 / 0.08);
+  --glass-dialog: rgb(14 18 16 / 0.92);
+  --glass-surface: rgb(18 23 20 / 0.86);
+  --glass-surface-compact: rgb(31 38 33 / 0.78);
+  --glass-float: rgb(27 33 29 / 0.66);
+  --glass-border: rgb(237 242 238 / 0.16);
+  --glass-border-compact: rgb(237 242 238 / 0.14);
+  --glass-dialog-border: rgb(237 242 238 / 0.2);
+  --glass-edge-highlight: rgb(255 255 255 / 0.12);
+  --glass-edge-shadow: rgb(0 0 0 / 0.16);
+  --glass-backdrop: rgb(8 11 9 / 0.62);
+  --glass-button-highlight: rgb(255 255 255 / 0.1);
+  --glass-button-highlight-hover: rgb(255 255 255 / 0.15);
+  --glass-button-border: rgb(237 242 238 / 0.2);
+  --glass-button-border-hover: rgb(237 242 238 / 0.28);
+  --glass-button-color: 82%;
+  --glass-button-color-hover: 78%;
   --surface-hover: #1d221e;
   --surface-pressed: #232923;
   --line: #292e2a;
@@ -164,6 +175,71 @@ select:disabled {
   white-space: nowrap;
   cursor: pointer;
   transition: transform 200ms var(--ease-out), background-color 200ms var(--ease-out), border-color 200ms var(--ease-out), color 200ms var(--ease-out);
+}
+
+.tg-glass-button {
+  border-color: var(--glass-button-border);
+  background-image: none;
+  box-shadow: inset 0 1px 0 var(--glass-button-highlight) !important;
+  -webkit-backdrop-filter: blur(4px) saturate(112%);
+  backdrop-filter: blur(4px) saturate(112%);
+  transition: transform 200ms var(--ease-out), background-color 200ms var(--ease-out), border-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out), color 200ms var(--ease-out);
+}
+
+.tg-glass-button:hover:not(:disabled):not([aria-disabled='true']) {
+  border-color: var(--glass-button-border-hover);
+  box-shadow: inset 0 1px 0 var(--glass-button-highlight-hover) !important;
+}
+
+.tg-glass-button:is(.bg-primary, .bg-secondary, .bg-success, .bg-info, .bg-warning, .bg-error) {
+  background-color: color-mix(in srgb, var(--glass-button-color-source) var(--glass-button-color), transparent);
+}
+
+.tg-glass-button.bg-primary { --glass-button-color-source: var(--ui-primary); }
+.tg-glass-button.bg-secondary { --glass-button-color-source: var(--ui-secondary); }
+.tg-glass-button.bg-success { --glass-button-color-source: var(--ui-success); }
+.tg-glass-button.bg-info { --glass-button-color-source: var(--ui-info); }
+.tg-glass-button.bg-warning { --glass-button-color-source: var(--ui-warning); }
+.tg-glass-button.bg-error { --glass-button-color-source: var(--ui-error); }
+
+.tg-glass-button:is(.bg-primary, .bg-secondary, .bg-success, .bg-info, .bg-warning, .bg-error):hover:not(:disabled):not([aria-disabled='true']),
+.tg-glass-button:is(.bg-primary, .bg-secondary, .bg-success, .bg-info, .bg-warning, .bg-error):active:not(:disabled):not([aria-disabled='true']) {
+  background-color: color-mix(in srgb, var(--glass-button-color-source) var(--glass-button-color-hover), transparent);
+}
+
+.tg-glass-button.bg-inverted {
+  background-color: color-mix(in srgb, var(--ui-bg-inverted) var(--glass-button-color), transparent);
+}
+
+.tg-glass-button.bg-default {
+  background-color: color-mix(in srgb, var(--ui-bg) var(--glass-button-color), transparent);
+}
+
+.tg-glass-button.bg-elevated {
+  background-color: color-mix(in srgb, var(--ui-bg-elevated) var(--glass-button-color), transparent);
+}
+
+.tg-glass-button.bg-inverted:hover:not(:disabled):not([aria-disabled='true']),
+.tg-glass-button.bg-inverted:active:not(:disabled):not([aria-disabled='true']) {
+  background-color: color-mix(in srgb, var(--ui-bg-inverted) var(--glass-button-color-hover), transparent);
+}
+
+.tg-glass-button.bg-default:hover:not(:disabled):not([aria-disabled='true']),
+.tg-glass-button.bg-default:active:not(:disabled):not([aria-disabled='true']) {
+  background-color: color-mix(in srgb, var(--ui-bg-elevated) var(--glass-button-color), transparent);
+}
+
+.tg-glass-button.bg-elevated:hover:not(:disabled):not([aria-disabled='true']),
+.tg-glass-button.bg-elevated:active:not(:disabled):not([aria-disabled='true']) {
+  background-color: color-mix(in srgb, var(--ui-bg-accented) var(--glass-button-color), transparent);
+}
+
+.tg-glass-button--link {
+  border-color: transparent;
+  background-image: none;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 .button:active:not(:disabled),

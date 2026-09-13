@@ -88,15 +88,25 @@ export default defineConfig({
         icons: uiIconRegistry,
         button: {
           slots: {
-            base: 'min-h-11 min-w-11 justify-center text-center',
+            base: 'tg-glass-button min-h-11 min-w-11 justify-center text-center',
             label: 'whitespace-normal text-wrap',
           },
           variants: {
+            variant: {
+              link: {
+                base: 'tg-glass-button--link',
+              },
+            },
             block: {
               true: {
                 trailingIcon: 'ms-0',
               },
             },
+          },
+        },
+        tabs: {
+          slots: {
+            list: 'tg-glass-tabs',
           },
         },
         input: { slots: { base: 'min-h-11' } },
@@ -115,7 +125,7 @@ export default defineConfig({
         },
         modal: {
           slots: {
-            overlay: 'tg-modal-overlay tg-glass-backdrop', content: 'tg-modal tg-glass-surface',
+            overlay: 'tg-modal-overlay tg-glass-backdrop', content: 'tg-modal tg-glass-modal tg-glass-surface',
             header: 'tg-overlay-header', wrapper: 'tg-overlay-copy', footer: 'tg-overlay-actions',
           },
           variants: {
