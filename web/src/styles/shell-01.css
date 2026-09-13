@@ -94,12 +94,11 @@
   max-width: 100%;
   padding: 0.25rem;
   overflow: hidden;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--glass-border);
   border-radius: 999px;
-  background: var(--surface-raised);
-  background: color-mix(in srgb, var(--surface-raised) 94%, transparent);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: var(--glass-float);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
 
 .bottom-nav__item {
@@ -112,7 +111,7 @@
   gap: 0.15rem;
   padding: 0.25rem 0.45rem;
   border-radius: 999px;
-  color: var(--text-faint);
+  color: var(--glass-text-muted);
   font-size: 0.64rem;
   font-weight: 700;
   line-height: 1;

@@ -27,6 +27,11 @@
   --canvas-soft: #0e110f;
   --surface: #121512;
   --surface-raised: #181c19;
+  --glass-surface: rgb(24 31 27 / 0.16);
+  --glass-surface-compact: rgb(20 27 23 / 0.22);
+  --glass-float: rgb(23 30 26 / 0.18);
+  --glass-border: rgb(237 242 238 / 0.32);
+  --glass-backdrop: rgb(8 11 9 / 0.08);
   --surface-hover: #1d221e;
   --surface-pressed: #232923;
   --line: #292e2a;
@@ -34,6 +39,8 @@
   --text: #edf2ee;
   --text-muted: #a6ada8;
   --text-faint: #858d87;
+  --glass-text: #f4f7f5;
+  --glass-text-muted: #cad0cb;
   --accent: #a6d9bb;
   --accent-strong: #b9e7c8;
   --accent-ink: #102017;

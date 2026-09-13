@@ -164,9 +164,28 @@
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  .bottom-nav,
+  .bottom-nav__list,
   .catalog-action,
-  .dialog-overlay {
+  .dialog-overlay,
+  .tg-glass-backdrop,
+  .tg-glass-surface,
+  .tg-glass-menu,
+  .tg-glass-tooltip,
+  .tg-glass-toast {
+    -webkit-backdrop-filter: none;
     backdrop-filter: none;
+  }
+
+  .tg-glass-surface,
+  .tg-glass-menu,
+  .tg-glass-tooltip,
+  .tg-glass-toast,
+  .bottom-nav__list,
+  .catalog-action {
+    background-color: var(--surface-raised) !important;
+  }
+
+  .tg-glass-backdrop {
+    background-color: var(--canvas-soft) !important;
   }
 }

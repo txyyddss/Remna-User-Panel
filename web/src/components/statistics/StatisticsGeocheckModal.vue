@@ -35,7 +35,7 @@ useTelegramBackButton(computed(() => open.value), () => { open.value = false })
     :title="title"
     :description="result ? $t('statistics.geocheck.checkedAt', { date: formatDateTime(result.checkedAt) }) : undefined"
     :close="{ 'data-haptic': 'dismiss' }"
-    :ui="{ content: 'statistics-geocheck-modal', body: 'statistics-geocheck-modal__body' }"
+    :ui="{ content: 'tg-glass-surface statistics-geocheck-modal', body: 'statistics-geocheck-modal__body' }"
   >
     <template #body>
       <section class="statistics-geocheck">

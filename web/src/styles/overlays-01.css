@@ -23,6 +23,46 @@
   --app-safe-inline: max(var(--app-safe-left), var(--app-safe-right));
 }
 
+.tg-glass-surface,
+.tg-glass-menu,
+.tg-glass-tooltip,
+.tg-glass-toast {
+  color: var(--glass-text);
+  --ui-text: var(--glass-text);
+  --ui-text-muted: var(--glass-text-muted);
+  --ui-text-dimmed: var(--text-faint);
+  border: 1px solid var(--glass-border);
+  box-shadow: none !important;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.tg-glass-surface {
+  background-color: var(--glass-surface) !important;
+}
+
+.tg-glass-menu,
+.tg-glass-tooltip,
+.tg-glass-toast {
+  background-color: var(--glass-surface-compact) !important;
+}
+
+.tg-glass-backdrop {
+  background-color: var(--glass-backdrop) !important;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+.tg-glass-arrow {
+  fill: var(--glass-surface-compact) !important;
+  stroke: var(--glass-border) !important;
+}
+
+.tg-glass-navigation-arrow {
+  background-color: var(--glass-surface-compact) !important;
+  border-color: var(--glass-border) !important;
+}
+
 .tg-modal--windowed {
   width: min(32rem, calc(100vw - var(--app-safe-inline) - var(--app-safe-inline) - 1rem));
   max-width: none;

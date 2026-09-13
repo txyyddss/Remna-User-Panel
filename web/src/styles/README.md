@@ -40,7 +40,7 @@
 - `admin-05.css` styles active IP blocks and mobile unblock controls in aggregate user profiles.
 - `admin-06.css` styles the compact user-editor shell, responsive action/context rail, profile signals, and overlay form sizing.
 - `admin-07.css` styles shared administrative headings, dense rows, and responsive action/control layouts.
-- `overlays-01.css` resolves Telegram safe-area bounds while retaining Nuxt UI's native centered position for teleported modals, provides symmetric opt-in centered modal headers, and owns responsive drawer/slideover layouts.
+- `overlays-01.css` resolves Telegram safe-area bounds while retaining Nuxt UI's native centered position for teleported modals, provides translucent high-contrast dark-glass overlay surfaces/backdrops, symmetric opt-in centered modal headers, and responsive drawer/slideover layouts. Its reduced-transparency fallback restores opaque elevated surfaces without changing overlay behavior.
 - `motion-01.css` defines shared duration tokens and retains only low-level loading keyframes.
 - `motion-02.css` adds reduced-motion-safe tactile press response. Motion owns status arrival, active-navigation feedback, and local semantic transitions in their components.
 - `responsive-01.css` owns shared motion keyframes used by compact surfaces.

@@ -8,10 +8,11 @@
   z-index: 15;
   margin-top: 1rem;
   padding: 0.7rem;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-panel);
-  background: rgb(18 21 18 / 0.94);
-  backdrop-filter: blur(18px);
+  background: var(--glass-float);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
 
 .catalog-action > span {

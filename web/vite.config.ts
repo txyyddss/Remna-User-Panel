@@ -101,11 +101,21 @@ export default defineConfig({
         },
         input: { slots: { base: 'min-h-11' } },
         inputNumber: { slots: { base: 'min-h-11 !px-12', increment: 'w-11 justify-center !pe-0', decrement: 'w-11 justify-center !ps-0' } },
-        select: { slots: { base: 'min-h-11', item: 'min-h-11 items-center' } },
-        selectMenu: { slots: { base: 'min-h-11', item: 'min-h-11 items-center' } },
+        select: {
+          slots: {
+            base: 'min-h-11', item: 'min-h-11 items-center',
+            content: 'tg-glass-menu', arrow: 'tg-glass-arrow',
+          },
+        },
+        selectMenu: {
+          slots: {
+            base: 'min-h-11', item: 'min-h-11 items-center',
+            content: 'tg-glass-menu', arrow: 'tg-glass-arrow',
+          },
+        },
         modal: {
           slots: {
-            overlay: 'tg-modal-overlay', content: 'tg-modal',
+            overlay: 'tg-modal-overlay tg-glass-backdrop', content: 'tg-modal tg-glass-surface',
             header: 'tg-overlay-header', wrapper: 'tg-overlay-copy', footer: 'tg-overlay-actions',
           },
           variants: {
@@ -115,16 +125,22 @@ export default defineConfig({
         },
         drawer: {
           slots: {
-            content: 'tg-drawer', container: 'tg-drawer__container',
+            overlay: 'tg-glass-backdrop', content: 'tg-drawer tg-glass-surface', container: 'tg-drawer__container',
             wrapper: 'tg-overlay-copy', footer: 'tg-overlay-actions tg-drawer__footer',
           },
         },
         slideover: {
           slots: {
-            content: 'tg-slideover', header: 'tg-overlay-header',
+            overlay: 'tg-glass-backdrop', content: 'tg-slideover tg-glass-surface', header: 'tg-overlay-header',
             wrapper: 'tg-overlay-copy', footer: 'tg-overlay-actions',
           },
         },
+        tooltip: { slots: { content: 'tg-glass-tooltip', arrow: 'tg-glass-arrow' } },
+        popover: { slots: { content: 'tg-glass-menu', arrow: 'tg-glass-arrow' } },
+        dropdownMenu: { slots: { content: 'tg-glass-menu', arrow: 'tg-glass-arrow' } },
+        contextMenu: { slots: { content: 'tg-glass-menu' } },
+        navigationMenu: { slots: { viewport: 'tg-glass-menu', arrow: 'tg-glass-navigation-arrow' } },
+        toast: { slots: { root: 'tg-glass-toast' } },
       },
       icon: {
         clientBundle: {
