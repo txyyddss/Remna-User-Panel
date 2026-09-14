@@ -180,6 +180,5 @@ textarea::placeholder {
   inset: 0;
   z-index: 40;
   background: rgb(5 7 6 / 0.72);
-  backdrop-filter: blur(6px);
   animation: overlay-in 200ms ease-out;
 }

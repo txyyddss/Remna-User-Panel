@@ -15,7 +15,7 @@ const { reducedMotion } = useMotionPreferences()
 
 <template>
   <div class="session-entrance">
-    <AnimatePresence :initial="false" mode="sync">
+    <AnimatePresence :initial="false" mode="wait">
       <motion.div
         v-if="!showing"
         key="session-page"

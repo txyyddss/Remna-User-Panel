@@ -107,19 +107,19 @@ function toggle(): void {
   padding: 0.8rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-control);
-  background: color-mix(in srgb, var(--surface-strong) 78%, transparent);
+  background: color-mix(in srgb, var(--surface-raised) 78%, transparent);
   cursor: pointer;
 }
-.squad-card__select { position: absolute; inset: 0; width: 100%; min-height: 44px; padding: 0; border: 0; border-radius: inherit; background: transparent; cursor: pointer; }
+.squad-card__select { position: absolute; z-index: 1; inset: 0; width: 100%; min-height: 44px; padding: 0; border: 0; border-radius: inherit; background: transparent; cursor: pointer; }
 .squad-card__select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.squad-card__node-controls { position: relative; }
+.squad-card__node-controls { position: relative; z-index: 2; }
 .squad-pricing-card--nonselectable { cursor: default; }
 .squad-pricing-card--broadband { --squad-profile-tone: var(--accent); }
 .squad-pricing-card--china_optimized { --squad-profile-tone: var(--warning); }
 .squad-pricing-card--international_network { --squad-profile-tone: #9ebddd; }
 .squad-pricing-card--selected {
   border-color: var(--squad-profile-tone, var(--accent));
-  background: color-mix(in srgb, var(--accent) 9%, var(--surface-strong));
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface-raised));
 }
 .squad-pricing-card--included { opacity: 0.78; }
 .squad-card__header { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.65rem; align-items: start; }

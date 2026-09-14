@@ -91,7 +91,6 @@ watch(() => route.path, (_next, previous) => {
 
 <template>
   <div class="app-frame" :class="{ 'app-frame--fullscreen': isFullscreen }">
-    <a class="skip-link" href="#main-content">{{ $t('nav.skip') }}</a>
     <UDashboardGroup class="app-dashboard" :storage="dashboardStorage" storage-key="tx-carpool-shell" unit="rem">
       <UDashboardSidebar id="navigation-compact" class="side-rail app-dashboard__sidebar" :default-size="13" :min-size="13" :max-size="20" :ui="{ body: 'px-0', footer: 'px-0' }" resizable>
         <template #default>

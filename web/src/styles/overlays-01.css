@@ -27,8 +27,7 @@
 .tg-glass-surface,
 .tg-glass-menu,
 .tg-glass-tooltip,
-.tg-glass-toast,
-.tg-glass-tabs {
+.tg-glass-toast {
   color: var(--glass-text);
   --ui-text: var(--glass-text);
   --ui-text-muted: var(--glass-text-muted);
@@ -40,31 +39,28 @@
 
 .tg-glass-surface {
   background-color: var(--glass-surface) !important;
-  -webkit-backdrop-filter: blur(12px) saturate(112%);
-  backdrop-filter: blur(12px) saturate(112%);
+  -webkit-backdrop-filter: blur(8px) saturate(112%);
+  backdrop-filter: blur(8px) saturate(112%);
 }
 
 .tg-glass-modal {
   border-color: var(--glass-dialog-border);
   background-color: var(--glass-dialog) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(108%);
-  backdrop-filter: blur(16px) saturate(108%);
+  -webkit-backdrop-filter: blur(10px) saturate(108%);
+  backdrop-filter: blur(10px) saturate(108%);
 }
 
 .tg-glass-menu,
 .tg-glass-tooltip,
-.tg-glass-toast,
-.tg-glass-tabs {
+.tg-glass-toast {
   border-color: var(--glass-border-compact);
   background-color: var(--glass-surface-compact) !important;
-  -webkit-backdrop-filter: blur(8px) saturate(108%);
-  backdrop-filter: blur(8px) saturate(108%);
+  -webkit-backdrop-filter: blur(6px) saturate(108%);
+  backdrop-filter: blur(6px) saturate(108%);
 }
 
 .tg-glass-backdrop {
   background-color: var(--glass-backdrop) !important;
-  -webkit-backdrop-filter: blur(3px) saturate(90%);
-  backdrop-filter: blur(3px) saturate(90%);
 }
 
 .tg-glass-arrow {

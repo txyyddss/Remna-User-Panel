@@ -43,6 +43,8 @@ const memberProfileText = computed(() => {
           <span class="squad-profile-summary__name-copy">
             <slot v-if="$slots.namePrefix" name="namePrefix" />
             <strong>{{ name }}</strong>
+          </span>
+          <span v-if="$slots.nameTags" class="squad-profile-summary__name-tags">
             <slot v-if="$slots.nameTags" name="nameTags" />
           </span>
           <slot name="headingMeta" />
@@ -63,9 +65,10 @@ const memberProfileText = computed(() => {
 .squad-profile-summary { display: grid; gap: 0.55rem; min-width: 0; }
 .squad-profile-summary__heading { display: flex; align-items: center; gap: 0.4rem; color: var(--text-muted); font-size: 0.72rem; }
 .squad-profile-summary__heading-copy { display: grid; min-width: 0; gap: 0.08rem; }
-.squad-profile-summary__name-row { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
-.squad-profile-summary__name-copy { min-width: 0; display: flex; flex: 1 1 auto; align-items: center; gap: 0.35rem; }
-.squad-profile-summary__name-copy strong { min-width: 0; flex: 0 1 auto; }
+.squad-profile-summary__name-row { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.35rem 0.5rem; }
+.squad-profile-summary__name-copy { min-width: 0; display: flex; flex: 1 1 10rem; align-items: center; gap: 0.35rem; }
+.squad-profile-summary__name-copy strong { min-width: 0; flex: 1 1 auto; }
+.squad-profile-summary__name-tags { min-width: 0; display: inline-flex; flex: 0 1 auto; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
 .squad-profile-summary__heading-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .squad-profile-summary__facts { min-width: 0; }
 .squad-profile-summary--compact { gap: 0.35rem; }
@@ -73,6 +76,7 @@ const memberProfileText = computed(() => {
 .squad-profile-summary--member.squad-profile-summary--china_optimized { --squad-profile-tone: var(--warning); --squad-profile-tone-soft: color-mix(in srgb, var(--warning) 11%, var(--surface)); --squad-profile-tone-line: color-mix(in srgb, var(--warning) 32%, var(--line)); }
 .squad-profile-summary--member.squad-profile-summary--international_network { --squad-profile-tone: #9ebddd; --squad-profile-tone-soft: color-mix(in srgb, #9ebddd 11%, var(--surface)); --squad-profile-tone-line: color-mix(in srgb, #9ebddd 32%, var(--line)); }
 .squad-profile-summary--member .squad-profile-summary__heading { align-items: flex-start; color: var(--text); }
+.squad-profile-summary--member .squad-profile-summary__heading-copy { flex: 1 1 auto; }
 .squad-profile-summary--member .squad-profile-summary__heading-copy strong { overflow: visible; overflow-wrap: anywhere; text-overflow: clip; white-space: normal; }
 .squad-profile-summary--member .squad-profile-summary__heading-copy span { color: var(--squad-profile-tone); font-size: 0.66rem; font-weight: 700; }
 .squad-profile-summary--member .squad-profile-summary__description { color: var(--text-muted); }

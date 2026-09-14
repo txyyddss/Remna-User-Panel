@@ -32,22 +32,6 @@
   --mobile-nav-clearance: calc(6rem + var(--shell-safe-bottom));
 }
 
-.skip-link {
-  position: fixed;
-  z-index: 50;
-  top: 0.75rem;
-  left: 0.75rem;
-  transform: translateY(-160%);
-  padding: 0.65rem 0.9rem;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-control);
-  background: var(--surface-raised);
-  color: var(--text);
-  transition: transform 140ms ease;
-}
-
-.skip-link:focus-visible { transform: translateY(0); }
-
 .side-rail {
   display: none;
 }
@@ -97,8 +81,8 @@
   border: 1px solid var(--glass-border);
   border-radius: 999px;
   background: var(--glass-float);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
 }
 
 .bottom-nav__item {

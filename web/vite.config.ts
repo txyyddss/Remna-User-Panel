@@ -88,25 +88,15 @@ export default defineConfig({
         icons: uiIconRegistry,
         button: {
           slots: {
-            base: 'tg-glass-button min-h-11 min-w-11 justify-center text-center',
+            base: 'min-h-11 min-w-11 justify-center text-center',
             label: 'whitespace-normal text-wrap',
           },
           variants: {
-            variant: {
-              link: {
-                base: 'tg-glass-button--link',
-              },
-            },
             block: {
               true: {
                 trailingIcon: 'ms-0',
               },
             },
-          },
-        },
-        tabs: {
-          slots: {
-            list: 'tg-glass-tabs',
           },
         },
         input: { slots: { base: 'min-h-11' } },

@@ -11,8 +11,8 @@
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-panel);
   background: var(--glass-float);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
 }
 
 .catalog-action > span {

@@ -167,8 +167,6 @@
   .bottom-nav__list,
   .catalog-action,
   .dialog-overlay,
-  .tg-glass-button,
-  .tg-glass-tabs,
   .tg-glass-backdrop,
   .tg-glass-modal,
   .tg-glass-surface,
@@ -183,7 +181,6 @@
   .tg-glass-menu,
   .tg-glass-tooltip,
   .tg-glass-toast,
-  .tg-glass-tabs,
   .bottom-nav__list,
   .catalog-action {
     background-color: var(--surface-raised) !important;
@@ -197,31 +194,11 @@
     background-color: var(--canvas-soft) !important;
   }
 
-  .tg-glass-button {
-    border-color: var(--line-strong);
-    background-image: none;
-    box-shadow: none !important;
-  }
-
   .tg-glass-modal,
   .tg-glass-surface,
   .tg-glass-menu,
   .tg-glass-tooltip,
-  .tg-glass-toast,
-  .tg-glass-tabs {
+  .tg-glass-toast {
     background-image: none;
-  }
-
-  .tg-glass-button:is(.bg-primary, .bg-secondary, .bg-success, .bg-info, .bg-warning, .bg-error) {
-    background-color: var(--glass-button-color-source);
-  }
-
-  .tg-glass-button.bg-inverted { background-color: var(--ui-bg-inverted); }
-  .tg-glass-button.bg-default { background-color: var(--ui-bg); }
-  .tg-glass-button.bg-elevated { background-color: var(--ui-bg-elevated); }
-
-  .tg-glass-button--link {
-    border-color: transparent;
-    background-color: transparent;
   }
 }
