@@ -1,7 +1,7 @@
 import { readonly, shallowRef } from 'vue'
 
 import type { DisplayCurrencyPreference, Money } from '@/api/types'
-import { formatMoney } from './format'
+import { formatMoney, moneyFromTxbInput, txbInputFromMinor } from './format'
 
 type DisplayCurrency = DisplayCurrencyPreference['currency']
 
@@ -35,6 +35,37 @@ export function formatCatalogMoney(money: Money): string {
   const native = formatMoney(money)
   const converted = formatMemberMoney(money)
   return converted === native ? native : `${native} (${converted})`
+}
+
+export function displayInputFromTXBMinor(minor: string): string {
+  const target = currency.value
+  if (target === 'TXB') return txbInputFromMinor(minor)
+  const rate = target === 'CNY' ? rates.value.cnyTxbPerUnit : rates.value.usdTxbPerUnit
+  const converted = rate ? convertTXBMoney(minor, target, rate) : null
+  return converted?.replace(` ${target}`, '') ?? txbInputFromMinor(minor)
+}
+
+export function displayInputMinimumFromTXBMinor(minor: string): string {
+  const target = currency.value
+  if (target === 'TXB') return txbInputFromMinor(minor)
+  const rate = target === 'CNY' ? rates.value.cnyTxbPerUnit : rates.value.usdTxbPerUnit
+  const parsedRate = rate ? parseRate(rate) : null
+  if (!parsedRate || !/^\d+$/.test(minor)) return displayInputFromTXBMinor(minor)
+  const source = BigInt(minor)
+  const numerator = source * (10n ** BigInt(parsedRate.scale))
+  const targetMinor = (numerator + parsedRate.coefficient - 1n) / parsedRate.coefficient
+  return `${targetMinor / 100n}.${(targetMinor % 100n).toString().padStart(2, '0')}`
+}
+
+export function displayInputToTXBMinor(value: string): string {
+  const target = currency.value
+  const numeric = Number(value)
+  const inputMinor = Number.isFinite(numeric) && numeric >= 0 ? moneyFromTxbInput(numeric.toFixed(2)) : ''
+  if (inputMinor === '' || target === 'TXB') return inputMinor
+  const rate = target === 'CNY' ? rates.value.cnyTxbPerUnit : rates.value.usdTxbPerUnit
+  const parsedRate = rate ? parseRate(rate) : null
+  if (!parsedRate) return ''
+  return (BigInt(inputMinor) * parsedRate.coefficient / (10n ** BigInt(parsedRate.scale))).toString()
 }
 
 export function convertTXBMoney(minor: string, target: Exclude<DisplayCurrency, 'TXB'>, rate: string): string | null {

@@ -64,7 +64,7 @@
     },
     "reset": {
       "title": "Reset traffic now?",
-      "description": "The server-calculated TXB price is charged before the provider reset starts.",
+      "description": "The server-calculated price is charged before the provider reset starts.",
       "confirm": "Pay and reset"
     },
     "refund": {
@@ -88,14 +88,14 @@
         "processing": "The provider is resetting traffic.",
         "succeeded": "Traffic was reset successfully.",
         "failed": "The reset failed before completion.",
-        "compensated": "The reset failed and the exact TXB charge was restored.",
+        "compensated": "The reset failed and the exact charge was restored.",
         "pending_review": "The provider outcome is unclear. Do not retry while it is reviewed.",
         "partial": "The reset completed only partially. Do not retry while it is reviewed."
       },
       "refund": {
         "queued": "Your refund is queued.",
         "processing": "Access is paused while zero usage is verified again.",
-        "succeeded": "The original net TXB debit was refunded.",
+        "succeeded": "The original net debit was refunded.",
         "failed": "The refund did not complete and access was restored when required.",
         "compensated": "The refund was reversed and access was restored.",
         "pending_review": "The provider outcome is unclear. Do not retry while it is reviewed.",

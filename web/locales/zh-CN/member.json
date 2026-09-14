@@ -64,12 +64,12 @@
     },
     "reset": {
       "title": "立即重置流量？",
-      "description": "开始服务商重置前，将扣除 TXB。",
+      "description": "开始服务商重置前，将扣除服务器计算的价格。",
       "confirm": "支付并重置"
     },
     "refund": {
       "title": "退款此购买？",
-      "description": "系统会先暂停访问并再次确认用量为零，再退回原始 TXB 净扣款。",
+      "description": "系统会先暂停访问并再次确认用量为零，再退回原始净扣款。",
       "confirm": "确认退款"
     },
     "reason": {
@@ -88,14 +88,14 @@
         "processing": "服务商正在重置流量。",
         "succeeded": "流量已成功重置。",
         "failed": "流量重置未能完成。",
-        "compensated": "流量重置失败，已原额退回本次 TXB 扣款。",
+        "compensated": "流量重置失败，已原额退回本次扣款。",
         "pending_review": "服务商结果不明确，审核期间请勿重试。",
         "partial": "流量重置仅部分完成，审核期间请勿重试。"
       },
       "refund": {
         "queued": "退款请求已排队。",
         "processing": "正在暂停访问并再次确认零用量。",
-        "succeeded": "原始 TXB 净扣款已退回。",
+        "succeeded": "原始净扣款已退回。",
         "failed": "退款未能完成，必要时访问权限已恢复。",
         "compensated": "退款已冲正，访问权限已恢复。",
         "pending_review": "服务商结果不明确，审核期间请勿重试。",

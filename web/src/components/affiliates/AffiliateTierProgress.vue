@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'motion-v'
 import type { AffiliateOverview } from '@/api/features'
 import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
-import { txbInputFromMinor } from '@/utils/format'
+import { formatMemberMoney } from '@/utils/displayCurrency'
 
 const props = defineProps<{ progress: AffiliateOverview['tierProgress'] }>()
 const { t } = useI18n()
@@ -16,7 +16,7 @@ function reward(): string {
   const next = props.progress.next?.reward
   if (!next || next.kind === 'none') return t('affiliates.noReward')
   if (next.kind === 'coupon') return next.couponName || t('affiliates.couponReward')
-  if (next.kind === 'txb') return t('affiliates.txbReward', { value: txbInputFromMinor(String(next.txbMinor)) })
+  if (next.kind === 'txb') return t('affiliates.txbReward', { value: formatMemberMoney({ currency: 'TXB', minor: String(next.txbMinor), display: '' }) })
   return t('affiliates.extensionReward', { days: next.extensionDays })
 }
 </script>

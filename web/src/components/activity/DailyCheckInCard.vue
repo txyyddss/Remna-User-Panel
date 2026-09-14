@@ -2,7 +2,7 @@
 import { motion } from 'motion-v'
 
 import { useMotionPreferences } from '@/composables/useMotionPreferences'
-import { txbInputFromMinor } from '@/utils/format'
+import { formatMemberMoney } from '@/utils/displayCurrency'
 
 defineProps<{
   checkedIn: boolean
@@ -15,6 +15,10 @@ defineProps<{
 defineEmits<{ checkIn: [] }>()
 
 const { reducedMotion } = useMotionPreferences()
+
+function displayMinor(minor: string): string {
+  return formatMemberMoney({ currency: 'TXB', minor, display: '' })
+}
 </script>
 
 <template>
@@ -24,8 +28,8 @@ const { reducedMotion } = useMotionPreferences()
       <h2>{{ $t('activity.dailyCheckIn') }}</h2>
       <p>
         {{ checkedIn ? $t('activity.todayComplete') : rewardMinTxbMinor === rewardMaxTxbMinor
-          ? $t('activity.claimToday', { amount: txbInputFromMinor(rewardMinTxbMinor) })
-          : $t('activity.claimRangeToday', { minimum: txbInputFromMinor(rewardMinTxbMinor), maximum: txbInputFromMinor(rewardMaxTxbMinor) }) }}
+          ? $t('activity.claimToday', { amount: displayMinor(rewardMinTxbMinor) })
+          : $t('activity.claimRangeToday', { minimum: displayMinor(rewardMinTxbMinor), maximum: displayMinor(rewardMaxTxbMinor) }) }}
       </p>
       <small>{{ $t('activity.resetsAt', { timezone: timeZone }) }}</small>
     </div>

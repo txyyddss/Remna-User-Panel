@@ -2,7 +2,7 @@
   "affiliates": {
     "title": "Affiliate Centre",
     "dashboardNote": "Invite friends and track rewards",
-    "subtitle": "Share your Telegram link. Your tier sets the commission on each friend's first Add TXB payment.",
+    "subtitle": "Share your Telegram link. Your tier sets the commission on each friend's first completed top-up.",
     "loadFailed": "Affiliate Centre could not be loaded.",
     "referralsFailed": "Referral history could not be loaded.",
     "unavailable": "Affiliate Centre is unavailable",
@@ -17,7 +17,7 @@
     "off": "Off",
     "noReward": "No upgrade reward",
     "couponReward": "Coupon reward",
-    "txbReward": "{value} TXB reward",
+    "txbReward": "{value} reward",
     "extensionReward": "{days}-day extension",
     "topTierTitle": "You reached the top tier",
     "topTierCopy": "Every new successful referral now settles at your highest available rate.",

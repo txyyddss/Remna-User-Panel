@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { convertTXBMoney, formatCatalogMoney, formatMemberMoney, resetDisplayCurrency, setDisplayCurrency } from './displayCurrency'
+import { convertTXBMoney, displayInputFromTXBMinor, displayInputMinimumFromTXBMinor, displayInputToTXBMinor, formatCatalogMoney, formatMemberMoney, resetDisplayCurrency, setDisplayCurrency } from './displayCurrency'
 
 const money = { currency: 'TXB', minor: '100', display: '1.00 TXB' } as const
 
@@ -12,6 +12,9 @@ describe('member display currency', () => {
 
     expect(formatMemberMoney(money)).toBe('0.33 CNY')
     expect(formatCatalogMoney(money)).toBe('1.00 TXB (0.33 CNY)')
+    expect(displayInputFromTXBMinor('300')).toBe('1.00')
+    expect(displayInputToTXBMinor('1.00')).toBe('300')
+    expect(displayInputMinimumFromTXBMinor('100')).toBe('0.34')
   })
 
   it('preserves signed values and uses USD when configured', () => {

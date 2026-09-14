@@ -3,11 +3,15 @@ import { AnimatePresence, motion } from 'motion-v'
 
 import type { LuckyDraw } from '@/api/features'
 import { useMotionPreferences } from '@/composables/useMotionPreferences'
-import { txbInputFromMinor } from '@/utils/format'
+import { formatMemberMoney } from '@/utils/displayCurrency'
 
 defineProps<{ draws: readonly LuckyDraw[]; busy: boolean }>()
 defineEmits<{ draw: [id: string] }>()
 const { reducedMotion, offset } = useMotionPreferences()
+
+function displayMinor(minor: string): string {
+  return formatMemberMoney({ currency: 'TXB', minor, display: '' })
+}
 </script>
 
 <template>
@@ -24,7 +28,7 @@ const { reducedMotion, offset } = useMotionPreferences()
         <UButton
           :disabled="!draw.enabled || busy"
           :loading="busy"
-          :label="busy ? $t('activity.drawing') : $t('activity.drawFor', { amount: txbInputFromMinor(draw.feeTxbMinor) })"
+          :label="busy ? $t('activity.drawing') : $t('activity.drawFor', { amount: displayMinor(draw.feeTxbMinor) })"
           data-haptic="confirm"
           @click="$emit('draw', draw.id)"
         />

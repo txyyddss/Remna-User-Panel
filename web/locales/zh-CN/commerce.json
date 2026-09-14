@@ -85,7 +85,7 @@
     "noCouponHint": "不使用优惠券，按服务器报价结算。",
     "noEligibleCoupons": "当前选择没有可用的钱包优惠券。",
     "couponIneligible": "当前选择不适用",
-    "paymentHint": "使用 TXB 余额确认服务器报价。",
+    "paymentHint": "使用余额确认服务器报价。",
     "returnHome": "返回首页",
     "validity": "有效期",
     "traffic": "流量",

@@ -84,7 +84,7 @@
     "noCouponHint": "Use the server price without a coupon.",
     "noEligibleCoupons": "No eligible wallet coupons for this selection.",
     "couponIneligible": "Not eligible for this selection",
-    "paymentHint": "Confirm the server-priced selection with your TXB balance.",
+    "paymentHint": "Confirm the server-priced selection with your balance.",
     "returnHome": "Return home",
     "validity": "Validity",
     "traffic": "Traffic",

@@ -2,7 +2,7 @@
   "affiliates": {
     "title": "推广中心",
     "dashboardNote": "邀请好友并查看奖励",
-    "subtitle": "分享你的 Telegram 链接。好友首次充值 TXB 时，将按你当时的等级计算返佣。",
+    "subtitle": "分享你的 Telegram 链接。好友首次完成充值时，将按你当时的等级计算返佣。",
     "loadFailed": "无法加载推广中心。",
     "referralsFailed": "无法加载邀请记录。",
     "unavailable": "推广中心暂不可用",
@@ -17,7 +17,7 @@
     "off": "关闭",
     "noReward": "无升级奖励",
     "couponReward": "优惠券奖励",
-    "txbReward": "{value} TXB 奖励",
+    "txbReward": "{value} 奖励",
     "extensionReward": "延长订阅 {days} 天",
     "topTierTitle": "你已达到最高等级",
     "topTierCopy": "后续成功邀请都将按当前最高返佣比例结算。",

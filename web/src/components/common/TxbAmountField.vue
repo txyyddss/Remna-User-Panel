@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 
 import { useI18n } from '@/i18n'
-import { moneyFromTxbInput } from '@/utils/format'
+import { moneyFromTxbInput, txbInputFromMinor } from '@/utils/format'
 
 const props = withDefaults(defineProps<{
   id: string
@@ -14,6 +14,10 @@ const props = withDefaults(defineProps<{
   slider?: boolean
   required?: boolean
   disabled?: boolean
+  suffix?: string
+  displayValue?: (minor: string) => string
+  displayMinimum?: (minor: string) => string
+  parseDisplayValue?: (value: string) => string
 }>(), {
   hint: undefined,
   minMinor: '0',
@@ -22,11 +26,15 @@ const props = withDefaults(defineProps<{
   slider: false,
   required: false,
   disabled: false,
+  suffix: undefined,
+  displayValue: undefined,
+  displayMinimum: undefined,
+  parseDisplayValue: undefined,
 })
 
 const model = defineModel<string>({ required: true })
 const { t } = useI18n()
-const minor = computed(() => moneyFromTxbInput(model.value))
+const minor = computed(() => props.parseDisplayValue?.(model.value) ?? moneyFromTxbInput(model.value))
 const numericModel = computed<number | null>({
   get: () => {
     if (!model.value) return null
@@ -41,8 +49,8 @@ const numericModel = computed<number | null>({
     model.value = props.integerOnly ? String(Math.trunc(value)) : value.toFixed(2)
   },
 })
-const minimum = computed(() => minorToNumber(props.minMinor))
-const maximum = computed(() => props.maxMinor === undefined ? undefined : minorToNumber(props.maxMinor))
+const minimum = computed(() => inputToNumber(props.displayMinimum?.(props.minMinor) ?? props.displayValue?.(props.minMinor) ?? txbInputFromMinor(props.minMinor)))
+const maximum = computed(() => props.maxMinor === undefined ? undefined : inputToNumber(props.displayValue?.(props.maxMinor) ?? txbInputFromMinor(props.maxMinor)))
 const showSlider = computed(() => props.slider && minimum.value !== undefined && maximum.value !== undefined && minimum.value < maximum.value)
 const sliderValue = computed(() => numericModel.value ?? minimum.value ?? 0)
 const sliderStep = computed(() => {
@@ -67,9 +75,9 @@ const error = computed(() => model.value && !valid.value ? message.value : undef
 
 defineExpose({ minor, valid })
 
-function minorToNumber(value: string): number | undefined {
-  if (!/^\d+$/.test(value)) return undefined
-  const amount = Number(BigInt(value)) / 100
+function inputToNumber(value: string): number | undefined {
+	if (!/^\d+(?:\.\d{1,2})?$/.test(value)) return undefined
+	const amount = Number(value)
   return Number.isFinite(amount) ? amount : undefined
 }
 
@@ -105,7 +113,7 @@ function updateSlider(value: number | number[]): void {
         :aria-invalid="model ? !valid : undefined"
         fixed
       />
-      <span>{{ t('common.currencyTxb') }}</span>
+      <span>{{ props.suffix ?? t('common.currencyTxb') }}</span>
       <USlider
         v-if="showSlider"
         class="txb-field__slider"

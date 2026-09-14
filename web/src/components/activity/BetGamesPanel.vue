@@ -5,7 +5,8 @@ import { AnimatePresence, motion } from 'motion-v'
 import type { BetGame } from '@/api/features'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
 import { useMotionPreferences } from '@/composables/useMotionPreferences'
-import { moneyFromTxbInput, txbInputFromMinor } from '@/utils/format'
+import { useDisplayCurrency } from '@/composables/useDisplayCurrency'
+import { displayInputFromTXBMinor, displayInputMinimumFromTXBMinor, displayInputToTXBMinor, formatMemberMoney } from '@/utils/displayCurrency'
 import { selectionHaptic } from '@/utils/telegram'
 import { gameIcon } from './gameIcons'
 
@@ -15,11 +16,12 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ bet: [payload: { gameId: string; stakeTxbMinor: string }] }>()
 const { reducedMotion, offset } = useMotionPreferences()
+const { currency } = useDisplayCurrency()
 
 const selectedId = shallowRef<string | null>(null)
 const stake = shallowRef('')
 const selected = computed(() => props.games.find((game) => game.id === selectedId.value))
-const stakeMinor = computed(() => moneyFromTxbInput(stake.value))
+const stakeMinor = computed(() => displayInputToTXBMinor(stake.value))
 const canBet = computed(() => {
   if (!selected.value || !stakeMinor.value) return false
   const amount = BigInt(stakeMinor.value)
@@ -35,8 +37,20 @@ watch(() => props.games, (games) => {
 
 watch(() => selected.value?.id, (gameId) => {
 	const game = props.games.find((candidate) => candidate.id === gameId)
-	stake.value = game ? txbInputFromMinor(game.minimumStakeMinor) : ''
+	stake.value = game ? displayInputMinimumFromTXBMinor(game.minimumStakeMinor) : ''
 }, { immediate: true })
+
+watch(currency, () => {
+  stake.value = selected.value ? displayInputMinimumFromTXBMinor(selected.value.minimumStakeMinor) : ''
+})
+
+function displayMinor(minor: string): string {
+  return formatMemberMoney({ currency: 'TXB', minor, display: '' })
+}
+
+function displayMinimum(minor: string): string {
+  return `${displayInputMinimumFromTXBMinor(minor)} ${currency.value}`
+}
 
 function submit(): void {
   if (!selected.value || !canBet.value) return
@@ -71,7 +85,7 @@ function selectGame(id: string): void {
             <span class="bet-option__icon"><UIcon :name="gameIcon(game.icon)" /></span>
             <span>
               <strong>{{ game.name }}</strong>
-              <small>{{ game.description || $t('activity.stakeRange', { minimum: txbInputFromMinor(game.minimumStakeMinor), maximum: txbInputFromMinor(game.maximumStakeMinor) }) }}</small>
+              <small>{{ game.description || $t('activity.stakeRange', { minimum: displayMinimum(game.minimumStakeMinor), maximum: displayMinor(game.maximumStakeMinor) }) }}</small>
             </span>
             <span class="bet-option__odds">{{ (game.winChanceBps / 100).toFixed(2) }}%</span>
           </UButton>
@@ -85,12 +99,16 @@ function selectGame(id: string): void {
         :label="$t('activity.stake')"
         :min-minor="selected.minimumStakeMinor"
         :max-minor="selected.maximumStakeMinor"
-        :hint="$t('activity.stakeRange', { minimum: txbInputFromMinor(selected.minimumStakeMinor), maximum: txbInputFromMinor(selected.maximumStakeMinor) })"
+        :hint="$t('activity.stakeRange', { minimum: displayMinimum(selected.minimumStakeMinor), maximum: displayMinor(selected.maximumStakeMinor) })"
+        :suffix="currency"
+        :display-value="displayInputFromTXBMinor"
+        :display-minimum="displayInputMinimumFromTXBMinor"
+        :parse-display-value="displayInputToTXBMinor"
         required
       />
       <div class="bet-disclosure">
         <UIcon name="i-ph-trend-up" />
-        <span><strong>{{ $t('activity.totalReturn', { multiplier: (selected.returnMultiplierBps / 10000).toFixed(2) }) }}</strong><small>{{ $t('activity.lossReturn') }}</small></span>
+        <span><strong>{{ $t('activity.totalReturn', { multiplier: (selected.returnMultiplierBps / 10000).toFixed(2) }) }}</strong><small>{{ $t('activity.lossReturn', { amount: displayMinor('0') }) }}</small></span>
       </div>
       <UButton :disabled="!canBet || busy" :loading="busy" :label="busy ? $t('activity.resolving') : $t('activity.confirmBet')" data-haptic="confirm" @click="submit" />
     </div>
