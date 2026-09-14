@@ -7,6 +7,7 @@ import { setLocale } from '@/i18n'
 import AbusePolicyCard from './AbusePolicyCard.vue'
 
 const policy: AbusePolicy = {
+  outboundTag: 'direct',
   globalEnabled: true,
   globalLimit: 120,
   streakSeconds: 30,

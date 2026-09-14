@@ -17,17 +17,18 @@ func TestAbusePolicyStreakBoundsAndRevision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if policy.StreakSeconds != abuse.DefaultStreakSeconds {
-		t.Fatalf("migration streak = %d, want %d", policy.StreakSeconds, abuse.DefaultStreakSeconds)
+	if policy.StreakSeconds != abuse.DefaultStreakSeconds || policy.OutboundTag != abuse.DefaultOutboundTag {
+		t.Fatalf("migration policy = %+v", policy)
 	}
 	for _, value := range []int{abuse.MinStreakSeconds, abuse.MaxStreakSeconds} {
 		policy.StreakSeconds = value
+		policy.OutboundTag = "proxy-main"
 		policy, err = store.UpdatePolicy(ctx, "admin", policy, now)
 		if err != nil {
 			t.Fatalf("UpdatePolicy(%d): %v", value, err)
 		}
-		if policy.StreakSeconds != value {
-			t.Fatalf("stored streak = %d, want %d", policy.StreakSeconds, value)
+		if policy.StreakSeconds != value || policy.OutboundTag != "proxy-main" {
+			t.Fatalf("stored policy = %+v", policy)
 		}
 	}
 	stale := policy

@@ -14,7 +14,11 @@ func (s *Service) Ingest(ctx context.Context, token, raw string, now time.Time) 
 	if err != nil {
 		return ReportCounts{}, err
 	}
-	lines, err := parseReport(raw, now, MaxReportEvents)
+	policy, err := s.repo.Policy(ctx)
+	if err != nil {
+		return ReportCounts{}, err
+	}
+	lines, err := parseReport(raw, now, MaxReportEvents, policy.OutboundTag)
 	if err != nil {
 		return ReportCounts{}, err
 	}

@@ -16,6 +16,8 @@ const (
 	MaxRuleTextLength         = 1024
 	MaxRuleNameLength         = 120
 	MaxRemoteIDLength         = 256
+	DefaultOutboundTag        = "direct"
+	MaxOutboundTagLength      = 120
 )
 
 type Action string
@@ -45,12 +47,13 @@ type DomainRule struct {
 	Revision   int    `json:"revision"`
 }
 type Policy struct {
-	GlobalEnabled          bool `json:"globalEnabled"`
-	GlobalLimit            int  `json:"globalLimit"`
-	StreakSeconds          int  `json:"streakSeconds"`
-	WarningValidityDays    int  `json:"warningValidityDays"`
-	WarningCooldownMinutes int  `json:"warningCooldownMinutes"` // Applies to all abuse records; legacy API name.
-	Revision               int  `json:"revision"`
+	OutboundTag            string `json:"outboundTag"`
+	GlobalEnabled          bool   `json:"globalEnabled"`
+	GlobalLimit            int    `json:"globalLimit"`
+	StreakSeconds          int    `json:"streakSeconds"`
+	WarningValidityDays    int    `json:"warningValidityDays"`
+	WarningCooldownMinutes int    `json:"warningCooldownMinutes"` // Applies to all abuse records; legacy API name.
+	Revision               int    `json:"revision"`
 }
 type PunishmentRule struct {
 	Action            Action `json:"action"`

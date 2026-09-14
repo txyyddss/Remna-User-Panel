@@ -40,15 +40,24 @@ type AutoRenewalPlan struct {
 
 // AutoRenewalPlan returns current local pricing and availability for an owned term.
 func (s *Store) AutoRenewalPlan(ctx context.Context, userID, purchaseID string, now time.Time) (AutoRenewalPlan, error) {
+	return s.autoRenewalPlan(ctx, userID, purchaseID, nil, now)
+}
+
+// AutoRenewalPlanExcludingAddons replans a renewal after live add-on validation.
+func (s *Store) AutoRenewalPlanExcludingAddons(ctx context.Context, userID, purchaseID string, excludedAddonIDs []string, now time.Time) (AutoRenewalPlan, error) {
+	return s.autoRenewalPlan(ctx, userID, purchaseID, excludedAddonIDs, now)
+}
+
+func (s *Store) autoRenewalPlan(ctx context.Context, userID, purchaseID string, excludedAddonIDs []string, now time.Time) (AutoRenewalPlan, error) {
 	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
 		return AutoRenewalPlan{}, fmt.Errorf("begin automatic renewal quote: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	return automaticRenewalPlanTx(ctx, tx, userID, purchaseID, now.UTC())
+	return automaticRenewalPlanTx(ctx, tx, userID, purchaseID, excludedAddonIDs, now.UTC())
 }
 
-func automaticRenewalPlanTx(ctx context.Context, tx *sql.Tx, userID, purchaseID string, now time.Time) (AutoRenewalPlan, error) {
+func automaticRenewalPlanTx(ctx context.Context, tx *sql.Tx, userID, purchaseID string, excludedAddonIDs []string, now time.Time) (AutoRenewalPlan, error) {
 	purchase, err := scanPurchase(tx.QueryRowContext(ctx, purchaseSelect+` WHERE purchases.id=? AND purchases.user_id=?`, purchaseID, userID))
 	if err != nil {
 		return AutoRenewalPlan{}, err
@@ -109,7 +118,7 @@ func automaticRenewalPlanTx(ctx context.Context, tx *sql.Tx, userID, purchaseID 
 	}
 	plan.Combo = combo
 	plan.GrossMinor, plan.DiscountMinor, plan.NetMinor = combo.PriceTXBMinor, 0, combo.PriceTXBMinor
-	addons, err := renewalAddonsTx(ctx, tx, purchase.ID)
+	addons, err := renewalAddonsTx(ctx, tx, purchase.ID, excludedAddonIDs)
 	if err != nil {
 		return AutoRenewalPlan{}, err
 	}

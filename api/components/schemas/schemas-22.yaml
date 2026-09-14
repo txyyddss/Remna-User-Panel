@@ -90,8 +90,14 @@ NodeCompensationDismissal:
 AbusePolicy:
   type: object
   additionalProperties: false
-  required: [globalEnabled, globalLimit, streakSeconds, warningValidityDays, warningCooldownMinutes, revision]
+  required: [outboundTag, globalEnabled, globalLimit, streakSeconds, warningValidityDays, warningCooldownMinutes, revision]
   properties:
+    outboundTag:
+      type: string
+      minLength: 1
+      maxLength: 120
+      pattern: '^[A-Za-z0-9][A-Za-z0-9._-]*$'
+      description: Xray outbound tag whose accepted domain connections are included in detector ingestion.
     globalEnabled: { type: boolean }
     globalLimit: { type: integer, minimum: 0, maximum: 100000 }
     streakSeconds: { type: integer, minimum: 1, maximum: 1800 }

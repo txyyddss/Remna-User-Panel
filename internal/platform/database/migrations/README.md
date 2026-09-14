@@ -76,3 +76,4 @@ file instead.
 - `042_community_membership.sql` maps legacy membership onboarding users to username when unnamed or agreement when named.
 - `043_maintenance_run_history.sql` removes the one-row-per-date restriction while retaining active lease serialization and run history.
 - `044_squad_geocheck.sql` stores only the default-off disabled bit on existing sparse squad overrides; existing squads remain enabled.
+- `045_abuse_outbound_tag.sql` persists the administrator-selected Xray outbound tag used for abuse-log filtering.

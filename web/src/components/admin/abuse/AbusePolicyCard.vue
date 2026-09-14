@@ -13,7 +13,8 @@ watch(() => props.policy, value => Object.assign(form, value))
 
 function validate(value: Partial<AbusePolicy>): FormError[] {
   const errors: FormError[] = []
-  const { globalLimit = -1, streakSeconds = 0, warningValidityDays = 0, warningCooldownMinutes = -1 } = value
+  const { outboundTag = '', globalLimit = -1, streakSeconds = 0, warningValidityDays = 0, warningCooldownMinutes = -1 } = value
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$/.test(outboundTag)) errors.push({ name: 'outboundTag', message: t('adminAbuse.invalidOutboundTag') })
   if (!Number.isInteger(globalLimit) || globalLimit < 0 || globalLimit > 100000) errors.push({ name: 'globalLimit', message: t('adminAbuse.invalidGlobalLimit') })
   if (!Number.isInteger(streakSeconds) || streakSeconds < 1 || streakSeconds > 1800) errors.push({ name: 'streakSeconds', message: t('adminAbuse.invalidStreakSeconds') })
   if (!Number.isInteger(warningValidityDays) || warningValidityDays < 1 || warningValidityDays > 365) errors.push({ name: 'warningValidityDays', message: t('adminAbuse.invalidValidity') })
@@ -29,6 +30,9 @@ function validate(value: Partial<AbusePolicy>): FormError[] {
       <h3>{{ t('adminAbuse.policyTitle') }}</h3>
     </div>
     <UForm :state="form" :validate="validate" @submit="emit('save', { ...form })">
+      <UFormField name="outboundTag" :label="t('adminAbuse.outboundTag')" :description="t('adminAbuse.outboundTagCopy')">
+        <UInput v-model="form.outboundTag" :maxlength="120" autocomplete="off" />
+      </UFormField>
       <UFormField name="globalEnabled" :label="t('adminAbuse.globalEnabled')">
         <USwitch v-model="form.globalEnabled" />
       </UFormField>

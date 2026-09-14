@@ -13,6 +13,15 @@ import (
 
 // CommitAutoRenewal atomically debits one due source and creates its one queued successor.
 func (s *Store) CommitAutoRenewal(ctx context.Context, purchaseID string, now time.Time) (model.Purchase, error) {
+	return s.commitAutoRenewal(ctx, purchaseID, nil, now)
+}
+
+// CommitAutoRenewalExcludingAddons creates a successor without unavailable paid squads.
+func (s *Store) CommitAutoRenewalExcludingAddons(ctx context.Context, purchaseID string, excludedAddonIDs []string, now time.Time) (model.Purchase, error) {
+	return s.commitAutoRenewal(ctx, purchaseID, excludedAddonIDs, now)
+}
+
+func (s *Store) commitAutoRenewal(ctx context.Context, purchaseID string, excludedAddonIDs []string, now time.Time) (model.Purchase, error) {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 	now = now.UTC()
@@ -36,7 +45,7 @@ func (s *Store) CommitAutoRenewal(ctx context.Context, purchaseID string, now ti
 		}
 		return model.Purchase{}, fmt.Errorf("load automatic renewal owner: %w", err)
 	}
-	plan, err := automaticRenewalPlanTx(ctx, tx, userID, purchaseID, now)
+	plan, err := automaticRenewalPlanTx(ctx, tx, userID, purchaseID, excludedAddonIDs, now)
 	if err != nil {
 		return model.Purchase{}, err
 	}

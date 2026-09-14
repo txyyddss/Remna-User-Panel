@@ -75,6 +75,28 @@ func (r *automaticRenewalCatalogRepository) DueAutoRenewals(context.Context, tim
 func (r *automaticRenewalCatalogRepository) CommitAutoRenewal(context.Context, string, time.Time) (model.Purchase, error) {
 	return model.Purchase{}, nil
 }
+
+func (r *automaticRenewalCatalogRepository) AutoRenewalPlanExcludingAddons(_ context.Context, _ string, _ string, excluded []string, _ time.Time) (database.AutoRenewalPlan, error) {
+	blocked := make(map[string]struct{}, len(excluded))
+	for _, id := range excluded {
+		blocked[id] = struct{}{}
+	}
+	plan := r.plan
+	plan.Addons = make([]model.SquadProduct, 0, len(r.plan.Addons))
+	for _, addon := range r.plan.Addons {
+		if _, skip := blocked[addon.RemnaSquadUUID]; skip {
+			plan.GrossMinor -= addon.PriceTXBMinor
+			plan.NetMinor -= addon.PriceTXBMinor
+			continue
+		}
+		plan.Addons = append(plan.Addons, addon)
+	}
+	return plan, nil
+}
+
+func (r *automaticRenewalCatalogRepository) CommitAutoRenewalExcludingAddons(context.Context, string, []string, time.Time) (model.Purchase, error) {
+	return model.Purchase{}, nil
+}
 func (r *automaticRenewalCatalogRepository) MarkAutoRenewalFailed(context.Context, string, string, time.Time) error {
 	return nil
 }

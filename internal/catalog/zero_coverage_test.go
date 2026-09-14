@@ -80,6 +80,7 @@ type renewalRepositoryStub struct {
 	renewalErr   error
 	renewalInput database.RenewalInput
 	renewalAt    time.Time
+	excluded     []string
 }
 
 func (r *renewalRepositoryStub) RenewalQuote(_ context.Context, userID, purchaseID string, termCount int, at time.Time) (model.RenewalQuote, error) {
@@ -89,6 +90,29 @@ func (r *renewalRepositoryStub) RenewalQuote(_ context.Context, userID, purchase
 
 func (r *renewalRepositoryStub) Renew(_ context.Context, input database.RenewalInput, at time.Time) (model.RenewalBatch, error) {
 	r.renewalInput, r.renewalAt = input, at
+	return r.renewal, r.renewalErr
+}
+
+func (r *renewalRepositoryStub) RenewalQuoteExcludingAddons(_ context.Context, userID, purchaseID string, termCount int, excluded []string, at time.Time) (model.RenewalQuote, error) {
+	r.quoteInput.userID, r.quoteInput.purchaseID, r.quoteInput.termCount, r.quoteInput.at = userID, purchaseID, termCount, at
+	r.excluded = append([]string(nil), excluded...)
+	blocked := make(map[string]struct{}, len(excluded))
+	for _, id := range excluded {
+		blocked[id] = struct{}{}
+	}
+	quote := r.quote
+	quote.AddonSquadUUIDs = make([]string, 0, len(r.quote.AddonSquadUUIDs))
+	for _, id := range r.quote.AddonSquadUUIDs {
+		if _, skip := blocked[id]; !skip {
+			quote.AddonSquadUUIDs = append(quote.AddonSquadUUIDs, id)
+		}
+	}
+	return quote, r.quoteErr
+}
+
+func (r *renewalRepositoryStub) RenewExcludingAddons(_ context.Context, input database.RenewalInput, excluded []string, at time.Time) (model.RenewalBatch, error) {
+	r.renewalInput, r.renewalAt = input, at
+	r.excluded = append([]string(nil), excluded...)
 	return r.renewal, r.renewalErr
 }
 
@@ -214,6 +238,11 @@ func (r *dueAutoRenewalRepository) AutoRenewalPlan(context.Context, string, stri
 }
 
 func (r *dueAutoRenewalRepository) CommitAutoRenewal(_ context.Context, purchaseID string, _ time.Time) (model.Purchase, error) {
+	r.commitIDs = append(r.commitIDs, purchaseID)
+	return model.Purchase{ID: purchaseID}, r.commitErr
+}
+
+func (r *dueAutoRenewalRepository) CommitAutoRenewalExcludingAddons(_ context.Context, purchaseID string, _ []string, _ time.Time) (model.Purchase, error) {
 	r.commitIDs = append(r.commitIDs, purchaseID)
 	return model.Purchase{ID: purchaseID}, r.commitErr
 }

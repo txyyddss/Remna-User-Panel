@@ -15,32 +15,52 @@ type renewalRepository interface {
 	Renew(context.Context, database.RenewalInput, time.Time) (model.RenewalBatch, error)
 }
 
+type renewalAddonSelectionRepository interface {
+	RenewalQuoteExcludingAddons(context.Context, string, string, int, []string, time.Time) (model.RenewalQuote, error)
+	RenewExcludingAddons(context.Context, database.RenewalInput, []string, time.Time) (model.RenewalBatch, error)
+}
+
 // RenewalQuote previews a contiguous renewal using current prices and any
 // valid recurring coupon attached to the source purchase.
 func (s *Service) RenewalQuote(ctx context.Context, user model.User, purchaseID string, termCount int) (model.RenewalQuote, error) {
 	if user.OnboardingState != "complete" || strings.TrimSpace(purchaseID) == "" || termCount < 1 || termCount > 6 {
 		return model.RenewalQuote{}, errors.New("invalid renewal selection")
 	}
+	quote, _, err := s.renewalQuoteWithLiveAddons(ctx, user.ID, purchaseID, termCount, s.now().UTC())
+	return quote, err
+}
+
+func (s *Service) renewalQuoteWithLiveAddons(ctx context.Context, userID, purchaseID string, termCount int, now time.Time) (model.RenewalQuote, []string, error) {
 	repository, ok := s.repository.(renewalRepository)
 	if !ok {
-		return model.RenewalQuote{}, errors.New("renewal is unavailable")
+		return model.RenewalQuote{}, nil, errors.New("renewal is unavailable")
 	}
-	quote, err := repository.RenewalQuote(ctx, user.ID, purchaseID, termCount, s.now().UTC())
+	quote, err := repository.RenewalQuote(ctx, userID, purchaseID, termCount, now)
 	if err != nil {
-		return model.RenewalQuote{}, err
+		return model.RenewalQuote{}, nil, err
 	}
-	catalog, reason, err := s.renewalCatalog(ctx, quote.ComboID, quote.AddonSquadUUIDs)
+	catalog, unavailable, reason, err := s.renewalCatalog(ctx, quote.ComboID, quote.AddonSquadUUIDs)
 	if err != nil {
-		return model.RenewalQuote{}, err
+		return model.RenewalQuote{}, nil, err
 	}
 	if reason != "" {
-		return model.RenewalQuote{}, database.ErrNotFound
+		return model.RenewalQuote{}, nil, database.ErrNotFound
+	}
+	if len(unavailable) > 0 {
+		selection, ok := repository.(renewalAddonSelectionRepository)
+		if !ok {
+			return model.RenewalQuote{}, nil, errors.New("renewal selection is unavailable")
+		}
+		quote, err = selection.RenewalQuoteExcludingAddons(ctx, userID, purchaseID, termCount, unavailable, now)
+		if err != nil {
+			return model.RenewalQuote{}, nil, err
+		}
 	}
 	quote.AccessibleNodes = quoteAccessibleNodes(catalog, quote.ComboID, quote.AddonSquadUUIDs)
 	if len(quote.AccessibleNodes) == 0 {
-		return model.RenewalQuote{}, ErrNoAccessibleNodes
+		return model.RenewalQuote{}, nil, ErrNoAccessibleNodes
 	}
-	return quote, nil
+	return quote, unavailable, nil
 }
 
 // Renew commits one atomic debit for 1-6 contiguous current-ride terms.
@@ -51,12 +71,21 @@ func (s *Service) Renew(ctx context.Context, user model.User, purchaseID string,
 	if strings.TrimSpace(idempotencyKey) == "" || len(idempotencyKey) > 128 {
 		return model.RenewalBatch{}, errors.New("invalid idempotency key")
 	}
-	if _, err := s.RenewalQuote(ctx, user, purchaseID, termCount); err != nil {
+	_, unavailable, err := s.renewalQuoteWithLiveAddons(ctx, user.ID, purchaseID, termCount, s.now().UTC())
+	if err != nil {
 		return model.RenewalBatch{}, err
 	}
 	repository, ok := s.repository.(renewalRepository)
 	if !ok {
 		return model.RenewalBatch{}, errors.New("renewal is unavailable")
 	}
-	return repository.Renew(ctx, database.RenewalInput{UserID: user.ID, PurchaseID: purchaseID, TermCount: termCount, IdempotencyKey: idempotencyKey}, s.now().UTC())
+	input := database.RenewalInput{UserID: user.ID, PurchaseID: purchaseID, TermCount: termCount, IdempotencyKey: idempotencyKey}
+	if len(unavailable) > 0 {
+		selection, ok := repository.(renewalAddonSelectionRepository)
+		if !ok {
+			return model.RenewalBatch{}, errors.New("renewal selection is unavailable")
+		}
+		return selection.RenewExcludingAddons(ctx, input, unavailable, s.now().UTC())
+	}
+	return repository.Renew(ctx, input, s.now().UTC())
 }

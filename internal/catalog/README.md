@@ -5,10 +5,11 @@ This package builds the live catalog, validates purchase selections against curr
 - `service.go` defines repository/provider contracts and coordinates quotes, purchases, process-local dashboard caching, and subscription revocation without durable bearer storage.
 - `catalog.go` hydrates sparse local merchandising and typed squad profiles with live Remnawave squad identities and one read-only node snapshot.
 - `automatic_renewal.go` owns member toggle/status projections, catalog blocking, due-cycle queue revalidation, one-successor commits, and failure notices. It keeps provider access behind the existing queued adapter boundary.
+- `automatic_renewal_selection.go` removes paid squads unavailable from the live provider before automatic renewal is repriced, balance-checked, and committed.
 - `automatic_renewal_test.go` covers catalog blocking and enablement eligibility without running provider calls.
 - `renewals.go` retains the internal legacy batch implementation only; manual renewal is no longer a public member flow.
 - `renewal_catalog.go` hydrates owned renewal selections independently of storefront visibility while verifying every retained squad against the queued live provider.
-- `renewal_catalog_test.go` covers repriced hidden-squad enablement and processing, current-price balance checks, missing-upstream rejection, and storefront isolation.
+- `renewal_catalog_test.go` covers repriced hidden-squad enablement and processing, current-price balance checks, missing-upstream exclusion, and storefront isolation.
 - `renewal_stock_integration_test.go` exercises status, enablement, and due renewal against the real SQLite store for a repriced owned squad with zero new-sale capacity, including one successor and one debit.
 - `cancellation.go` exposes the authenticated member operation for cancelling a queued purchase through the transactional store refund path.
 - `squad_additions.go` validates current catalog visibility and delegates active-term squad quotes and commits to the transactional store without making upstream calls; `squad_additions_test.go` covers forwarding, visibility, onboarding, and repository failure paths.

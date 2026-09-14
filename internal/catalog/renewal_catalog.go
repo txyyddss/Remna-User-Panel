@@ -8,12 +8,12 @@ import (
 )
 
 // renewalCatalog hydrates only an owned renewal selection. Retained add-ons
-// bypass storefront visibility, while every squad must still exist upstream.
+// bypass storefront visibility, while unavailable paid squads are excluded.
 // The provider adapter keeps all live reads behind the existing queue.
-func (s *Service) renewalCatalog(ctx context.Context, comboID string, addonIDs []string) (model.Catalog, string, error) {
+func (s *Service) renewalCatalog(ctx context.Context, comboID string, addonIDs []string) (model.Catalog, []string, string, error) {
 	combos, err := s.repository.ListCombos(ctx, true)
 	if err != nil {
-		return model.Catalog{}, "", err
+		return model.Catalog{}, nil, "", err
 	}
 	selectedCombos := make([]model.Combo, 0, 1)
 	for _, combo := range combos {
@@ -28,19 +28,20 @@ func (s *Service) renewalCatalog(ctx context.Context, comboID string, addonIDs [
 	}
 	catalog, err := s.hydrateLiveCatalog(ctx, selectedCombos, addons)
 	if err != nil {
-		return model.Catalog{}, "", err
+		return model.Catalog{}, nil, "", err
 	}
 	if len(catalog.Combos) == 0 {
-		return catalog, database.AutoRenewalReasonComboUnavailable, nil
+		return catalog, nil, database.AutoRenewalReasonComboUnavailable, nil
 	}
 	liveAddons := make(map[string]bool, len(catalog.Addons))
 	for _, addon := range catalog.Addons {
 		liveAddons[addon.RemnaSquadUUID] = true
 	}
+	unavailable := make([]string, 0)
 	for _, id := range addonIDs {
 		if !liveAddons[id] {
-			return catalog, database.AutoRenewalReasonPaidAddonUnavailable, nil
+			unavailable = append(unavailable, id)
 		}
 	}
-	return catalog, "", nil
+	return catalog, unavailable, "", nil
 }

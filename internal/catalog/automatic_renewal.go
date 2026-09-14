@@ -3,7 +3,6 @@ package catalog
 import (
 	"context"
 	"errors"
-	"strings"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
@@ -32,23 +31,8 @@ func (s *Service) AutomaticRenewal(ctx context.Context, user model.User, purchas
 }
 
 func (s *Service) automaticRenewalAt(ctx context.Context, user model.User, purchaseID string, now time.Time) (model.AutoRenewal, error) {
-	repository, ok := s.repository.(automaticRenewalRepository)
-	if !ok || strings.TrimSpace(user.ID) == "" || strings.TrimSpace(purchaseID) == "" {
-		return model.AutoRenewal{}, database.ErrNotFound
-	}
-	plan, err := repository.AutoRenewalPlan(ctx, user.ID, purchaseID, now)
-	if err != nil {
-		return model.AutoRenewal{}, err
-	}
-	result := autoRenewalFromPlan(plan)
-	if plan.IneligibleReason == "" {
-		result.IneligibleReason, err = s.autoRenewalLiveReason(ctx, plan)
-		if err != nil {
-			return model.AutoRenewal{}, err
-		}
-	}
-	result.CanEnable = result.IneligibleReason == nil
-	return result, nil
+	result, _, err := s.automaticRenewalSelectionAt(ctx, user, purchaseID, now)
+	return result, err
 }
 
 // SetAutomaticRenewal saves an eligible enablement choice or always permits disabling.
@@ -98,9 +82,9 @@ func (s *Service) ProcessDueAutoRenewals(ctx context.Context, now time.Time) err
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		status, statusErr := s.automaticRenewalAt(ctx, model.User{ID: candidate.UserID}, candidate.PurchaseID, now.UTC())
+		status, unavailable, statusErr := s.automaticRenewalSelectionAt(ctx, model.User{ID: candidate.UserID}, candidate.PurchaseID, now.UTC())
 		if statusErr == nil && status.CanEnable {
-			if _, err := repository.CommitAutoRenewal(ctx, candidate.PurchaseID, now.UTC()); err == nil {
+			if _, err := s.commitAutomaticRenewal(ctx, repository, candidate.PurchaseID, unavailable, now.UTC()); err == nil {
 				continue
 			} else {
 				statusErr = err
@@ -140,17 +124,10 @@ func autoRenewalFromPlan(plan database.AutoRenewalPlan) model.AutoRenewal {
 	return result
 }
 
-func (s *Service) autoRenewalLiveReason(ctx context.Context, plan database.AutoRenewalPlan) (*string, error) {
+func (s *Service) autoRenewalLiveReason(ctx context.Context, plan database.AutoRenewalPlan, catalog model.Catalog) (*string, error) {
 	addonIDs := make([]string, 0, len(plan.Addons))
 	for _, addon := range plan.Addons {
 		addonIDs = append(addonIDs, addon.RemnaSquadUUID)
-	}
-	catalog, reason, err := s.renewalCatalog(ctx, plan.Combo.ID, addonIDs)
-	if err != nil {
-		return nil, err
-	}
-	if reason != "" {
-		return autoRenewalReason(reason), nil
 	}
 	nodes := quoteAccessibleNodes(catalog, plan.Combo.ID, addonIDs)
 	if len(nodes) == 0 {

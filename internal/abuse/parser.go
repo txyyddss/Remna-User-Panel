@@ -11,10 +11,10 @@ import (
 )
 
 var (
-	emailPattern  = regexp.MustCompile(`(?i)email:\s*([^\s,]+)`)
-	targetPattern = regexp.MustCompile(`(?i)(?:tcp|udp):(?://)?([^\s:\[]+)(?::\d+)?`)
-	directPattern = regexp.MustCompile(`(?i)(?:>>\s*direct\b|outbound:\s*direct\b)`)
-	timePattern   = regexp.MustCompile(`\d{4}/\d{2}/\d{2}\s+\d{2}:\d{2}:\d{2}`)
+	emailPattern    = regexp.MustCompile(`(?i)email:\s*([^\s,]+)`)
+	targetPattern   = regexp.MustCompile(`(?i)(?:tcp|udp):(?://)?([^\s:\[]+)(?::\d+)?`)
+	outboundPattern = regexp.MustCompile(`(?i)(?:>>\s*|outbound:\s*)([a-z0-9._-]+)(?:\s|$)`)
+	timePattern     = regexp.MustCompile(`\d{4}/\d{2}/\d{2}\s+\d{2}:\d{2}:\d{2}`)
 )
 
 type parsedLine struct {
@@ -22,7 +22,7 @@ type parsedLine struct {
 	BucketAt                      time.Time
 }
 
-func parseReport(raw string, fallback time.Time, limit int) ([]parsedLine, error) {
+func parseReport(raw string, fallback time.Time, limit int, outboundTag string) ([]parsedLine, error) {
 	if limit < 1 {
 		return nil, ErrInvalid
 	}
@@ -30,7 +30,7 @@ func parseReport(raw string, fallback time.Time, limit int) ([]parsedLine, error
 	scanner := bufio.NewScanner(strings.NewReader(raw))
 	scanner.Buffer(make([]byte, 1024), 64<<10)
 	for scanner.Scan() {
-		if line, ok := parseLine(scanner.Text(), fallback); ok {
+		if line, ok := parseLine(scanner.Text(), fallback, outboundTag); ok {
 			lines = append(lines, line)
 			if len(lines) == limit {
 				break
@@ -43,9 +43,10 @@ func parseReport(raw string, fallback time.Time, limit int) ([]parsedLine, error
 	return lines, nil
 }
 
-func parseLine(line string, fallback time.Time) (parsedLine, bool) {
+func parseLine(line string, fallback time.Time, outboundTag string) (parsedLine, bool) {
 	lower := strings.ToLower(line)
-	if !directPattern.MatchString(lower) || !strings.Contains(lower, "accepted") || strings.Contains(lower, "error") {
+	outbound := outboundPattern.FindStringSubmatch(line)
+	if len(outbound) != 2 || !strings.EqualFold(outbound[1], outboundTag) || !strings.Contains(lower, "accepted") || strings.Contains(lower, "error") {
 		return parsedLine{}, false
 	}
 	email := emailPattern.FindStringSubmatch(line)

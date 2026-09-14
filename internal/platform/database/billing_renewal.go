@@ -27,11 +27,25 @@ func (s *Store) RenewalQuote(ctx context.Context, userID, purchaseID string, ter
 		return model.RenewalQuote{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	quote, _, _, err := renewalQuoteTx(ctx, tx, userID, purchaseID, termCount, now.UTC())
+	quote, _, _, err := renewalQuoteTx(ctx, tx, userID, purchaseID, termCount, nil, now.UTC())
 	return quote, err
 }
 
-func renewalQuoteTx(ctx context.Context, tx *sql.Tx, userID, purchaseID string, termCount int, now time.Time) (model.RenewalQuote, model.Combo, []model.SquadProduct, error) {
+// RenewalQuoteExcludingAddons previews a renewal without live-unavailable paid squads.
+func (s *Store) RenewalQuoteExcludingAddons(ctx context.Context, userID, purchaseID string, termCount int, excludedAddonIDs []string, now time.Time) (model.RenewalQuote, error) {
+	if termCount < 1 || termCount > 6 {
+		return model.RenewalQuote{}, ErrConflict
+	}
+	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		return model.RenewalQuote{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	quote, _, _, err := renewalQuoteTx(ctx, tx, userID, purchaseID, termCount, excludedAddonIDs, now.UTC())
+	return quote, err
+}
+
+func renewalQuoteTx(ctx context.Context, tx *sql.Tx, userID, purchaseID string, termCount int, excludedAddonIDs []string, now time.Time) (model.RenewalQuote, model.Combo, []model.SquadProduct, error) {
 	purchase, err := scanPurchase(tx.QueryRowContext(ctx, purchaseSelect+` WHERE purchases.id=? AND purchases.user_id=?`, purchaseID, userID))
 	if err != nil {
 		return model.RenewalQuote{}, model.Combo{}, nil, err
@@ -43,7 +57,7 @@ func renewalQuoteTx(ctx context.Context, tx *sql.Tx, userID, purchaseID string, 
 	if err != nil {
 		return model.RenewalQuote{}, model.Combo{}, nil, err
 	}
-	addons, err := renewalAddonsTx(ctx, tx, purchaseID)
+	addons, err := renewalAddonsTx(ctx, tx, purchaseID, excludedAddonIDs)
 	if err != nil {
 		return model.RenewalQuote{}, model.Combo{}, nil, err
 	}
@@ -86,6 +100,15 @@ func renewalQuoteTx(ctx context.Context, tx *sql.Tx, userID, purchaseID string, 
 
 // Renew creates all terms and one ledger debit in one SQLite transaction.
 func (s *Store) Renew(ctx context.Context, input RenewalInput, now time.Time) (model.RenewalBatch, error) {
+	return s.renew(ctx, input, nil, now)
+}
+
+// RenewExcludingAddons creates a renewal without live-unavailable paid squads.
+func (s *Store) RenewExcludingAddons(ctx context.Context, input RenewalInput, excludedAddonIDs []string, now time.Time) (model.RenewalBatch, error) {
+	return s.renew(ctx, input, excludedAddonIDs, now)
+}
+
+func (s *Store) renew(ctx context.Context, input RenewalInput, excludedAddonIDs []string, now time.Time) (model.RenewalBatch, error) {
 	if input.TermCount < 1 || input.TermCount > 6 || strings.TrimSpace(input.IdempotencyKey) == "" {
 		return model.RenewalBatch{}, ErrConflict
 	}
@@ -111,7 +134,7 @@ func (s *Store) Renew(ctx context.Context, input RenewalInput, now time.Time) (m
 	if !errors.Is(err, sql.ErrNoRows) {
 		return model.RenewalBatch{}, err
 	}
-	quote, combo, addons, err := renewalQuoteTx(ctx, tx, input.UserID, input.PurchaseID, input.TermCount, now.UTC())
+	quote, combo, addons, err := renewalQuoteTx(ctx, tx, input.UserID, input.PurchaseID, input.TermCount, excludedAddonIDs, now.UTC())
 	if err != nil {
 		return model.RenewalBatch{}, err
 	}

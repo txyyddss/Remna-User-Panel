@@ -56,7 +56,7 @@ describe('abuse administration API mutations', () => {
   })
 
   it('sends the required streak with every policy field', async () => {
-    const policy: AbusePolicy = { globalEnabled: true, globalLimit: 50, streakSeconds: 75, warningValidityDays: 7, warningCooldownMinutes: 30, revision: 4 }
+    const policy: AbusePolicy = { outboundTag: 'direct', globalEnabled: true, globalLimit: 50, streakSeconds: 75, warningValidityDays: 7, warningCooldownMinutes: 30, revision: 4 }
     fetchMock.mockResolvedValue(jsonResponse({ ...policy, revision: 5 }))
 
     await abuseApi.savePolicy(policy)

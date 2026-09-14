@@ -51,8 +51,8 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `billing.go` — purchase normalization, quotes, creation, pricing, and debit helpers.
 - `billing_bounds.go` persists the singleton inclusive Add TXB range and atomically audits administrator updates.
 - `billing_renewal.go` — renewal quotes, contiguous batch creation, and idempotent replay.
-- `renewal_addons.go` resolves owned optional-squad identities at current sparse-override prices, including hidden listings and zero-price defaults, for both renewal paths.
-- `renewal_price_changes_test.go` covers optional-squad repricing, hidden/default overrides, commit-time refresh, immutable source charges, and replay-safe debits.
+- `renewal_addons.go` resolves owned optional-squad identities at current sparse-override prices, including hidden listings and zero-price defaults, and can exclude upstream-unavailable add-ons from either renewal path.
+- `renewal_price_changes_test.go` and `renewal_unavailable_addon_test.go` cover optional-squad repricing, hidden/default overrides, unavailable-squad exclusion, commit-time refresh, immutable source charges, and replay-safe debits.
 - `renewal_stock_price_test.go` covers current recurring-discount quotes and debits while an existing member retains a seat in a squad closed to new sales.
 - `squad_stock_retention_test.go` covers held reservations after stock-limit reductions, new-member rejection, and seat release after expiry or cancellation.
 - `automatic_renewal_plan.go`, `automatic_renewal_coupon.go`, `automatic_renewal_state.go`, and `automatic_renewal_commit.go` — automatic-renewal current pricing, attached-coupon policy, owner state/failure records, and atomic one-successor debits.

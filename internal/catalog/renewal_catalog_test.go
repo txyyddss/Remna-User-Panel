@@ -15,11 +15,12 @@ func TestAutomaticRenewalRetainsRepricedHiddenSquads(t *testing.T) {
 		name       string
 		present    bool
 		balance    int64
+		wantPrice  int64
 		wantReason string
 	}{
-		{name: "hidden but live", present: true, balance: 1_700},
-		{name: "removed upstream", balance: 1_700, wantReason: database.AutoRenewalReasonPaidAddonUnavailable},
-		{name: "insufficient at current price", present: true, balance: 1_300, wantReason: database.AutoRenewalReasonInsufficientBalance},
+		{name: "hidden but live", present: true, balance: 1_700, wantPrice: 1_700},
+		{name: "removed upstream", balance: 1_700, wantPrice: 1_000},
+		{name: "insufficient at current price", present: true, balance: 1_300, wantPrice: 1_700, wantReason: database.AutoRenewalReasonInsufficientBalance},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
@@ -39,7 +40,7 @@ func TestAutomaticRenewalRetainsRepricedHiddenSquads(t *testing.T) {
 			service := newCatalogServiceForTest(repository, remote)
 			user := model.User{ID: plan.Purchase.UserID}
 			status, err := service.AutomaticRenewal(ctx, user, plan.Purchase.ID)
-			if err != nil || status.NetPrice.MinorInt64() != 1_700 || status.CanEnable != (test.wantReason == "") {
+			if err != nil || status.NetPrice.MinorInt64() != test.wantPrice || status.CanEnable != (test.wantReason == "") {
 				t.Fatalf("AutomaticRenewal() = (%+v, %v)", status, err)
 			}
 			if test.wantReason != "" && (status.IneligibleReason == nil || *status.IneligibleReason != test.wantReason) {
@@ -87,7 +88,8 @@ func TestRenewalNodesIncludeUnlistedOwnedSquads(t *testing.T) {
 	}
 	remote.squads = remote.squads[:1]
 	remote.accessible["core-squad"] = []string{"node-1"}
-	if _, err := service.RenewalQuote(ctx, user, "purchase", 1); !errors.Is(err, database.ErrNotFound) {
-		t.Fatalf("RenewalQuote(missing add-on) = %v, want ErrNotFound", err)
+	quote, err = service.RenewalQuote(ctx, user, "purchase", 1)
+	if err != nil || len(quote.AddonSquadUUIDs) != 0 || len(quote.AccessibleNodes) != 1 {
+		t.Fatalf("RenewalQuote(missing add-on) = (%+v, %v), want the core-only renewal", quote, err)
 	}
 }
