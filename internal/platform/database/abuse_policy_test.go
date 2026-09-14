@@ -17,17 +17,17 @@ func TestAbusePolicyStreakBoundsAndRevision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if policy.StreakSeconds != abuse.DefaultStreakSeconds || policy.OutboundTag != abuse.DefaultOutboundTag {
+	if policy.StreakSeconds != abuse.DefaultStreakSeconds || !equalStrings(policy.OutboundTags, []string{abuse.DefaultOutboundTag}) {
 		t.Fatalf("migration policy = %+v", policy)
 	}
 	for _, value := range []int{abuse.MinStreakSeconds, abuse.MaxStreakSeconds} {
 		policy.StreakSeconds = value
-		policy.OutboundTag = "proxy-main"
+		policy.OutboundTags = []string{"direct", "proxy-main"}
 		policy, err = store.UpdatePolicy(ctx, "admin", policy, now)
 		if err != nil {
 			t.Fatalf("UpdatePolicy(%d): %v", value, err)
 		}
-		if policy.StreakSeconds != value || policy.OutboundTag != "proxy-main" {
+		if policy.StreakSeconds != value || !equalStrings(policy.OutboundTags, []string{"direct", "proxy-main"}) {
 			t.Fatalf("stored policy = %+v", policy)
 		}
 	}
@@ -54,5 +54,10 @@ func TestAbusePolicyRejectsOutOfRangeStreak(t *testing.T) {
 		if _, err = store.UpdatePolicy(ctx, "admin", policy, time.Now().UTC()); !errors.Is(err, abuse.ErrInvalid) {
 			t.Fatalf("UpdatePolicy(%d) error = %v, want ErrInvalid", value, err)
 		}
+	}
+	policy.StreakSeconds = abuse.DefaultStreakSeconds
+	policy.OutboundTags = []string{"direct", "DIRECT"}
+	if _, err = store.UpdatePolicy(ctx, "admin", policy, time.Now().UTC()); !errors.Is(err, abuse.ErrInvalid) {
+		t.Fatalf("UpdatePolicy(duplicate tags) error = %v, want ErrInvalid", err)
 	}
 }

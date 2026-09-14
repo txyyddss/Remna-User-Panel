@@ -8,13 +8,13 @@ import (
 )
 
 type abusePolicyRequest struct {
-	OutboundTag            string `json:"outboundTag"`
-	GlobalEnabled          bool   `json:"globalEnabled"`
-	GlobalLimit            int    `json:"globalLimit"`
-	StreakSeconds          *int   `json:"streakSeconds"`
-	WarningValidityDays    int    `json:"warningValidityDays"`
-	WarningCooldownMinutes int    `json:"warningCooldownMinutes"`
-	Revision               int    `json:"revision"`
+	OutboundTags           []string `json:"outboundTags"`
+	GlobalEnabled          bool     `json:"globalEnabled"`
+	GlobalLimit            int      `json:"globalLimit"`
+	StreakSeconds          *int     `json:"streakSeconds"`
+	WarningValidityDays    int      `json:"warningValidityDays"`
+	WarningCooldownMinutes int      `json:"warningCooldownMinutes"`
+	Revision               int      `json:"revision"`
 }
 
 func (s *Server) adminAbusePolicy(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +41,7 @@ func (s *Server) adminUpdateAbusePolicy(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	value, err := s.deps.Abuse.UpdatePolicy(r.Context(), currentUser(r).ID, abuse.Policy{
-		OutboundTag:   input.OutboundTag,
+		OutboundTags:  input.OutboundTags,
 		GlobalEnabled: input.GlobalEnabled, GlobalLimit: input.GlobalLimit,
 		StreakSeconds: streakSeconds, WarningValidityDays: input.WarningValidityDays,
 		WarningCooldownMinutes: input.WarningCooldownMinutes, Revision: input.Revision,

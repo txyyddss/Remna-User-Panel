@@ -11,17 +11,27 @@ import (
 
 func (s *Store) Policy(ctx context.Context) (abuse.Policy, error) {
 	var item abuse.Policy
+	var rawTags string
 	var enabled int
-	err := s.db.QueryRowContext(ctx, `SELECT outbound_tag,global_enabled,global_limit,streak_seconds,warning_validity_days,warning_cooldown_minutes,revision FROM abuse_policy WHERE id=1`).Scan(&item.OutboundTag, &enabled, &item.GlobalLimit, &item.StreakSeconds, &item.WarningValidityDays, &item.WarningCooldownMinutes, &item.Revision)
+	err := s.db.QueryRowContext(ctx, `SELECT outbound_tags,global_enabled,global_limit,streak_seconds,warning_validity_days,warning_cooldown_minutes,revision FROM abuse_policy WHERE id=1`).Scan(&rawTags, &enabled, &item.GlobalLimit, &item.StreakSeconds, &item.WarningValidityDays, &item.WarningCooldownMinutes, &item.Revision)
+	if err != nil {
+		return item, err
+	}
+	tags, valid := abuse.NormalizeOutboundTags(strings.Split(rawTags, ","))
+	if !valid {
+		return item, abuse.ErrInvalid
+	}
+	item.OutboundTags = tags
 	item.GlobalEnabled = enabled == 1
-	return item, err
+	return item, nil
 }
 func (s *Store) UpdatePolicy(ctx context.Context, _ string, input abuse.Policy, now time.Time) (abuse.Policy, error) {
-	input.OutboundTag = strings.TrimSpace(input.OutboundTag)
-	if !abuse.ValidOutboundTag(input.OutboundTag) || input.GlobalLimit < 0 || input.GlobalLimit > abuse.MaxGlobalQPS || input.StreakSeconds < abuse.MinStreakSeconds || input.StreakSeconds > abuse.MaxStreakSeconds || input.WarningValidityDays < 1 || input.WarningValidityDays > abuse.MaxWarningValidityDays || input.WarningCooldownMinutes < 0 || input.WarningCooldownMinutes > abuse.MaxWarningCooldownMinutes || input.Revision < 0 {
+	tags, valid := abuse.NormalizeOutboundTags(input.OutboundTags)
+	if !valid || input.GlobalLimit < 0 || input.GlobalLimit > abuse.MaxGlobalQPS || input.StreakSeconds < abuse.MinStreakSeconds || input.StreakSeconds > abuse.MaxStreakSeconds || input.WarningValidityDays < 1 || input.WarningValidityDays > abuse.MaxWarningValidityDays || input.WarningCooldownMinutes < 0 || input.WarningCooldownMinutes > abuse.MaxWarningCooldownMinutes || input.Revision < 0 {
 		return abuse.Policy{}, abuse.ErrInvalid
 	}
-	result, err := s.db.ExecContext(ctx, `UPDATE abuse_policy SET outbound_tag=?,global_enabled=?,global_limit=?,streak_seconds=?,warning_validity_days=?,warning_cooldown_minutes=?,revision=revision+1,updated_at=? WHERE id=1 AND revision=?`, input.OutboundTag, boolInt(input.GlobalEnabled), input.GlobalLimit, input.StreakSeconds, input.WarningValidityDays, input.WarningCooldownMinutes, stamp(now), input.Revision)
+	input.OutboundTags = tags
+	result, err := s.db.ExecContext(ctx, `UPDATE abuse_policy SET outbound_tags=?,global_enabled=?,global_limit=?,streak_seconds=?,warning_validity_days=?,warning_cooldown_minutes=?,revision=revision+1,updated_at=? WHERE id=1 AND revision=?`, strings.Join(tags, ","), boolInt(input.GlobalEnabled), input.GlobalLimit, input.StreakSeconds, input.WarningValidityDays, input.WarningCooldownMinutes, stamp(now), input.Revision)
 	if err != nil {
 		return abuse.Policy{}, err
 	}

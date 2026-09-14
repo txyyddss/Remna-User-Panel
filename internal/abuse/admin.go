@@ -14,24 +14,12 @@ func (s *Service) MemberRecords(ctx context.Context, userID, cursor string, limi
 func (s *Service) Policy(ctx context.Context) (Policy, error) { return s.repo.Policy(ctx) }
 
 func (s *Service) UpdatePolicy(ctx context.Context, actor string, policy Policy, now time.Time) (Policy, error) {
-	policy.OutboundTag = strings.TrimSpace(policy.OutboundTag)
-	if !ValidOutboundTag(policy.OutboundTag) || policy.GlobalLimit < 0 || policy.GlobalLimit > MaxGlobalQPS || policy.StreakSeconds < MinStreakSeconds || policy.StreakSeconds > MaxStreakSeconds || policy.WarningValidityDays < 1 || policy.WarningValidityDays > MaxWarningValidityDays || policy.WarningCooldownMinutes < 0 || policy.WarningCooldownMinutes > MaxWarningCooldownMinutes || policy.Revision < 0 {
+	tags, valid := NormalizeOutboundTags(policy.OutboundTags)
+	if !valid || policy.GlobalLimit < 0 || policy.GlobalLimit > MaxGlobalQPS || policy.StreakSeconds < MinStreakSeconds || policy.StreakSeconds > MaxStreakSeconds || policy.WarningValidityDays < 1 || policy.WarningValidityDays > MaxWarningValidityDays || policy.WarningCooldownMinutes < 0 || policy.WarningCooldownMinutes > MaxWarningCooldownMinutes || policy.Revision < 0 {
 		return Policy{}, ErrInvalid
 	}
+	policy.OutboundTags = tags
 	return s.repo.UpdatePolicy(ctx, actor, policy, now.UTC())
-}
-
-// ValidOutboundTag reports whether value is a safe Xray outbound tag.
-func ValidOutboundTag(value string) bool {
-	if len(value) == 0 || len(value) > MaxOutboundTagLength || (value[0] < 'a' || value[0] > 'z') && (value[0] < 'A' || value[0] > 'Z') && (value[0] < '0' || value[0] > '9') {
-		return false
-	}
-	for _, character := range value {
-		if (character < 'a' || character > 'z') && (character < 'A' || character > 'Z') && (character < '0' || character > '9') && character != '.' && character != '_' && character != '-' {
-			return false
-		}
-	}
-	return true
 }
 
 func (s *Service) Rules(ctx context.Context) ([]DomainRule, error) { return s.repo.DomainRules(ctx) }

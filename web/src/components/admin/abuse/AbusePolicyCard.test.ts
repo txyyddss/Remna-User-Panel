@@ -7,7 +7,7 @@ import { setLocale } from '@/i18n'
 import AbusePolicyCard from './AbusePolicyCard.vue'
 
 const policy: AbusePolicy = {
-  outboundTag: 'direct',
+  outboundTags: ['direct', 'proxy-main'],
   globalEnabled: true,
   globalLimit: 120,
   streakSeconds: 30,
@@ -24,8 +24,16 @@ describe('AbusePolicyCard', () => {
   afterEach(() => setLocale('en'))
 
   it('loads, validates, and submits the streak without dropping policy fields', async () => {
-    const wrapper = mountCard()
-    const streak = wrapper.get<HTMLInputElement>('[data-test="streak-seconds"]')
+  const wrapper = mountCard()
+  const tags = wrapper.get<HTMLInputElement>('[data-test="outbound-tags"]')
+  expect(tags.element.value).toBe('direct, proxy-main')
+  await tags.setValue('direct, DIRECT')
+  await wrapper.get('form').trigger('submit')
+  await flushPromises()
+  expect(wrapper.emitted('save')).toBeUndefined()
+  expect(wrapper.text()).toContain('comma-separated tags')
+  await tags.setValue('direct, proxy-main')
+  const streak = wrapper.get<HTMLInputElement>('[data-test="streak-seconds"]')
     expect(streak.element.value).toBe('30')
     expect(streak.attributes()).toMatchObject({ 'aria-valuemin': '1', 'aria-valuemax': '1800' })
     expect(wrapper.text()).toContain('uninterrupted seconds')
@@ -42,6 +50,6 @@ describe('AbusePolicyCard', () => {
     await wrapper.setProps({ policy: { ...policy, streakSeconds: 75 } })
     await wrapper.get('form').trigger('submit')
     await flushPromises()
-    expect(wrapper.emitted('save')?.[0]?.[0]).toEqual({ ...policy, streakSeconds: 75 })
-  })
+  expect(wrapper.emitted('save')?.[0]?.[0]).toEqual({ ...policy, streakSeconds: 75 })
+})
 })

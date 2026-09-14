@@ -77,3 +77,4 @@ file instead.
 - `043_maintenance_run_history.sql` removes the one-row-per-date restriction while retaining active lease serialization and run history.
 - `044_squad_geocheck.sql` stores only the default-off disabled bit on existing sparse squad overrides; existing squads remain enabled.
 - `045_abuse_outbound_tag.sql` persists the administrator-selected Xray outbound tag used for abuse-log filtering.
+- `046_abuse_outbound_tags.sql` migrates the abuse filter to a validated comma-separated outbound-tag list.

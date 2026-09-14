@@ -22,7 +22,7 @@ type parsedLine struct {
 	BucketAt                      time.Time
 }
 
-func parseReport(raw string, fallback time.Time, limit int, outboundTag string) ([]parsedLine, error) {
+func parseReport(raw string, fallback time.Time, limit int, outboundTags []string) ([]parsedLine, error) {
 	if limit < 1 {
 		return nil, ErrInvalid
 	}
@@ -30,7 +30,7 @@ func parseReport(raw string, fallback time.Time, limit int, outboundTag string) 
 	scanner := bufio.NewScanner(strings.NewReader(raw))
 	scanner.Buffer(make([]byte, 1024), 64<<10)
 	for scanner.Scan() {
-		if line, ok := parseLine(scanner.Text(), fallback, outboundTag); ok {
+		if line, ok := parseLine(scanner.Text(), fallback, outboundTags); ok {
 			lines = append(lines, line)
 			if len(lines) == limit {
 				break
@@ -43,10 +43,10 @@ func parseReport(raw string, fallback time.Time, limit int, outboundTag string) 
 	return lines, nil
 }
 
-func parseLine(line string, fallback time.Time, outboundTag string) (parsedLine, bool) {
+func parseLine(line string, fallback time.Time, outboundTags []string) (parsedLine, bool) {
 	lower := strings.ToLower(line)
 	outbound := outboundPattern.FindStringSubmatch(line)
-	if len(outbound) != 2 || !strings.EqualFold(outbound[1], outboundTag) || !strings.Contains(lower, "accepted") || strings.Contains(lower, "error") {
+	if len(outbound) != 2 || !matchesOutboundTag(outbound[1], outboundTags) || !strings.Contains(lower, "accepted") || strings.Contains(lower, "error") {
 		return parsedLine{}, false
 	}
 	email := emailPattern.FindStringSubmatch(line)
@@ -66,4 +66,13 @@ func parseLine(line string, fallback time.Time, outboundTag string) (parsedLine,
 	}
 	fingerprint := sha256.Sum256([]byte(line))
 	return parsedLine{RemoteID: strings.TrimSpace(email[1]), Domain: strings.ToLower(domain), Fingerprint: hex.EncodeToString(fingerprint[:]), BucketAt: bucket}, true
+}
+
+func matchesOutboundTag(outbound string, tags []string) bool {
+	for _, tag := range tags {
+		if strings.EqualFold(outbound, tag) {
+			return true
+		}
+	}
+	return false
 }
