@@ -133,6 +133,8 @@ func New(deps Dependencies) (*Server, error) {
 		authenticated.Use(server.requireSignedRequest)
 		authenticated.Use(server.requireSession)
 		authenticated.Get("/api/v1/me", server.me)
+		authenticated.Get("/api/v1/me/display-currency", server.displayCurrency)
+		authenticated.Put("/api/v1/me/display-currency", server.updateDisplayCurrency)
 		authenticated.Get("/api/v1/me/abuse-records", server.memberAbuseRecords)
 		authenticated.Put("/api/v1/onboarding/username", server.reserveUsername)
 		authenticated.Post("/api/v1/onboarding/agreement", server.acceptAgreement)

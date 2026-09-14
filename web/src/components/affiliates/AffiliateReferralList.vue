@@ -5,6 +5,7 @@ import type { AffiliateReferral, AffiliateReferralPage } from '@/api/features'
 import { motionSpring } from '@/composables/motionPresets'
 import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { formatDate, formatDateTime } from '@/utils/format'
+import { formatMemberMoney } from '@/utils/displayCurrency'
 import { selectionHaptic } from '@/utils/telegram'
 
 const props = defineProps<{ page: AffiliateReferralPage; loading: boolean }>()
@@ -43,7 +44,7 @@ function updatePage(page: number): void {
             <UBadge :color="item.status === 'successful' ? 'success' : 'neutral'" variant="soft">{{ $t(`affiliates.status.${item.status}`) }}</UBadge>
             <template v-if="item.status === 'successful'">
               <small v-if="item.paybackAt">{{ formatDateTime(item.paybackAt) }}</small>
-              <strong v-if="item.commissionAmount">{{ item.commissionAmount.display }}</strong>
+              <strong v-if="item.commissionAmount">{{ formatMemberMoney(item.commissionAmount) }}</strong>
             </template>
           </div>
         </motion.article>

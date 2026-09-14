@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'motion-v'
 import type { ActivityResult } from '@/api/features'
 import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
-import { formatMoney } from '@/utils/format'
+import { formatMemberMoney } from '@/utils/displayCurrency'
 import BetSuccessFireworks from './BetSuccessFireworks.vue'
 import { isSuccessfulBet } from './feedback'
 
@@ -21,7 +21,7 @@ const rewardLabel = computed(() => {
   const reward = result && (result.kind === 'draw' || result.kind === 'check_in') ? result.reward : null
   if (!reward || reward.kind === 'none') return t('activity.noReward')
   if (reward.kind === 'txb_delta') {
-    const amount = formatMoney({ currency: 'TXB', minor: reward.txbDeltaMinor, display: '' })
+    const amount = formatMemberMoney({ currency: 'TXB', minor: reward.txbDeltaMinor, display: '' })
     return result?.kind === 'check_in' ? t('activity.checkInReward', { amount }) : t('activity.rewardTxb', { amount })
   }
   if (reward.kind === 'coupon_grant') return t('activity.rewardCoupon')
@@ -70,7 +70,7 @@ const description = computed(() => {
             </motion.div>
             <div class="result-balance">
               <span>{{ $t('activity.balanceAfter') }}</span>
-              <strong>{{ formatMoney(result.balanceAfter) }}</strong>
+              <strong>{{ formatMemberMoney(result.balanceAfter) }}</strong>
             </div>
             <div v-if="(result.kind === 'draw' || result.kind === 'check_in') && result.reward.kind !== 'none'" class="result-reward">
               <span>{{ $t('activity.reward') }}</span>

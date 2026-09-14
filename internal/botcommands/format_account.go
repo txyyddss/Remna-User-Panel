@@ -15,6 +15,11 @@ func FormatBalance(copy Copy, money model.Money) string {
 // FormatCheckIn renders an idempotent daily check-in result against an optional
 // cached historical average in TXB minor units.
 func FormatCheckIn(copy Copy, result activity.DailyCheckIn, averageMinor *int64) string {
+	return FormatCheckInWithMoney(copy, result, averageMinor, model.TXBMoney(result.RewardMinor), model.TXBMoney(result.BalanceAfterMinor))
+}
+
+// FormatCheckInWithMoney renders a check-in result with member-selected display values.
+func FormatCheckInWithMoney(copy Copy, result activity.DailyCheckIn, averageMinor *int64, reward, balance model.Money) string {
 	tone := copy.SignInNeutral
 	if result.AlreadyClaimed {
 		tone = copy.SignInAlready
@@ -30,8 +35,8 @@ func FormatCheckIn(copy Copy, result activity.DailyCheckIn, averageMinor *int64)
 	}
 	lines := []string{
 		escapeMarkdownV2(tone),
-		"🎁 *" + escapeMarkdownV2(copy.SignInReward) + ":* " + escapeMarkdownV2("+"+model.TXBMoney(result.RewardMinor).Display),
-		"💰 *" + escapeMarkdownV2(copy.BalanceLabel) + ":* " + escapeMarkdownV2(model.TXBMoney(result.BalanceAfterMinor).Display),
+		"🎁 *" + escapeMarkdownV2(copy.SignInReward) + ":* " + escapeMarkdownV2("+"+reward.Display),
+		"💰 *" + escapeMarkdownV2(copy.BalanceLabel) + ":* " + escapeMarkdownV2(balance.Display),
 	}
 	return Limit(strings.Join(lines, "\n"))
 }

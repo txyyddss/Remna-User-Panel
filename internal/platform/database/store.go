@@ -84,7 +84,7 @@ func (s *Store) UserByTelegramID(ctx context.Context, telegramID int64) (model.U
 const userColumns = `users.id,users.telegram_id,users.telegram_first_name,users.telegram_last_name,users.telegram_username,
 	users.username,users.role,users.onboarding_state,users.group_joined,users.channel_joined,users.policy_accepted_at,
 	users.accepted_agreement_revision,users.remna_user_id,users.recovery_reason,users.new_user,users.inviter_id,
-	users.notification_locale,users.auto_traffic_reset_enabled,users.created_at,users.updated_at`
+	users.notification_locale,users.display_currency,users.auto_traffic_reset_enabled,users.created_at,users.updated_at`
 
 const userSelect = `SELECT ` + userColumns + ` FROM users`
 
@@ -103,7 +103,7 @@ func scanUserWith(row rowScanner, extra ...any) (model.User, error) {
 	var createdAt, updatedAt string
 	destinations := []any{&user.ID, &user.TelegramID, &user.TelegramFirstName, &user.TelegramLastName, &user.TelegramUsername,
 		&username, &user.Role, &user.OnboardingState, &groupJoined, &channelJoined, &policy, &user.AgreementRevision, &remnaID, &recoveryReason,
-		&newUser, &inviterID, &user.NotificationLocale, &autoTrafficReset, &createdAt, &updatedAt}
+		&newUser, &inviterID, &user.NotificationLocale, &user.DisplayCurrency, &autoTrafficReset, &createdAt, &updatedAt}
 	destinations = append(destinations, extra...)
 	if err := row.Scan(destinations...); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

@@ -9,13 +9,16 @@
 
 .home-footer {
   display: flex;
-  justify-content: center;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   margin-top: 1.75rem;
   padding-top: 1rem;
   border-top: 1px solid var(--line);
 }
 
-.home-footer .language-control {
+.home-footer .language-control,
+.home-footer .currency-control {
   min-height: 44px;
   color: var(--text-faint);
 }

@@ -5,11 +5,11 @@ import { AnimatePresence, motion } from 'motion-v'
 import type { GroupMessageRewardStatus } from '@/api/features'
 import { motionDurations } from '@/composables/motionPresets'
 import { useMotionPreferences } from '@/composables/useMotionPreferences'
-import { formatMoney } from '@/utils/format'
+import { formatMemberMoney } from '@/utils/displayCurrency'
 
 const props = defineProps<{ reward: GroupMessageRewardStatus }>()
 const progress = computed(() => props.reward.threshold > 0 ? Math.min(100, (props.reward.messageCount / props.reward.threshold) * 100) : 0)
-const amount = computed(() => formatMoney({ minor: props.reward.rewardMinor, currency: 'TXB', display: '' }))
+const amount = computed(() => formatMemberMoney({ minor: props.reward.rewardMinor, currency: 'TXB', display: '' }))
 const remaining = computed(() => Math.max(props.reward.threshold - props.reward.messageCount, 0))
 const statusLabel = computed(() => props.reward.rewarded ? 'activity.groupRewardClaimed' : remaining.value === 0 ? 'activity.groupRewardAvailable' : 'activity.groupRewardInProgress')
 const { reducedMotion } = useMotionPreferences()

@@ -1,5 +1,10 @@
 {
   "app": {
+    "currency": "Currency",
+    "currencyTxb": "TXB",
+    "currencyCny": "CNY",
+    "currencyUsd": "USD",
+    "currencyRateUnavailable": "This currency rate is unavailable right now.",
     "name": "TX Carpool",
     "language": "Language",
     "english": "English",

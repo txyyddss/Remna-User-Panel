@@ -19,5 +19,6 @@ the package never calls persistence or providers directly.
   selection, and bounded output.
 - `format_test.go` covers both locales, exact start/balance copy, check-in and
   rollover states, mentions, MarkdownV2 escaping, and truncation boundaries.
+- `display_currency_test.go` verifies CNY/USD group-command money output for balance, check-in, rollover, and deductions.
 - `traffic_test.go` covers byte parsing/formatting, clamping, bar allocation,
   displayed-node totals, empty distributions, and the 4096-character limit.

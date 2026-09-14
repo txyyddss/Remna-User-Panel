@@ -3,9 +3,11 @@ package httpapi
 import (
 	"context"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/botcommands"
+	"github.com/txyyddss/Remna-User-Panel/internal/currencydisplay"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 )
 
@@ -17,14 +19,14 @@ func (s *Server) telegramSubscriptionReply(ctx context.Context, user model.User,
 	return botcommands.FormatSubscription(copy, dashboard, time.Now().UTC())
 }
 
-func (s *Server) telegramComboReply(ctx context.Context, user model.User, copy botcommands.Copy) string {
+func (s *Server) telegramComboReply(ctx context.Context, user model.User, copy botcommands.Copy, formatMoney func(model.Money) model.Money) string {
 	dashboard, err := s.deps.Catalog.Dashboard(ctx, user)
 	if err != nil || dashboard.ActivePurchase == nil {
 		return botcommands.FormatNoSubscription(copy)
 	}
 	purchase := dashboard.ActivePurchase
 	names := s.telegramSquadNames(ctx, purchase.SquadUUIDs)
-	return botcommands.FormatCombo(copy, purchase, names, s.telegramRolloverState(ctx, user, *purchase))
+	return botcommands.FormatCombo(copy, purchase, names, s.telegramRolloverState(ctx, user, *purchase, formatMoney))
 }
 
 func (s *Server) telegramSquadNames(ctx context.Context, squadUUIDs []string) []string {
@@ -52,7 +54,7 @@ func (s *Server) telegramSquadNames(ctx context.Context, squadUUIDs []string) []
 	return result
 }
 
-func (s *Server) telegramRolloverState(ctx context.Context, user model.User, purchase model.Purchase) botcommands.RolloverSummary {
+func (s *Server) telegramRolloverState(ctx context.Context, user model.User, purchase model.Purchase, formatMoney func(model.Money) model.Money) botcommands.RolloverSummary {
 	if !purchase.AutoRenewEnabled {
 		return botcommands.RolloverSummary{State: botcommands.RolloverDisabled}
 	}
@@ -74,10 +76,35 @@ func (s *Server) telegramRolloverState(ctx context.Context, user model.User, pur
 		return botcommands.RolloverSummary{State: botcommands.RolloverUnavailable}
 	}
 	if minor > 0 {
-		amount := *projection.PredictedRollover
+		amount := formatMoney(*projection.PredictedRollover)
 		return botcommands.RolloverSummary{State: botcommands.RolloverPredicted, Amount: &amount}
 	}
 	return botcommands.RolloverSummary{State: botcommands.RolloverIneligible}
+}
+
+func (s *Server) telegramDisplayFormatter(ctx context.Context, user model.User) func(model.Money) model.Money {
+	target, ok := currencydisplay.ParseCurrency(user.DisplayCurrency)
+	if !ok || target == currencydisplay.TXB {
+		return func(money model.Money) model.Money { return money }
+	}
+	key := "billing.rate.txb_per_cny"
+	if target == currencydisplay.USD {
+		key = "billing.rate.txb_per_usd"
+	}
+	rate, err := s.deps.Settings.Optional(ctx, key)
+	if err != nil || !currencydisplay.ValidRate(rate) {
+		if err != nil {
+			s.deps.Logger.Warn("load Telegram display currency rate", "user_id", user.ID, "currency", target, "error", err)
+		}
+		return func(money model.Money) model.Money { return money }
+	}
+	return func(money model.Money) model.Money {
+		converted, convertErr := currencydisplay.FormatMoney(money, target, strings.TrimSpace(rate))
+		if convertErr != nil {
+			return money
+		}
+		return converted
+	}
 }
 
 func (s *Server) telegramCheckInAverage(ctx context.Context) *int64 {

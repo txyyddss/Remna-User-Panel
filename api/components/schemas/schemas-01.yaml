@@ -95,6 +95,8 @@ User:
     agreementRevision:
       type: integer
       minimum: 0
+    displayCurrency:
+      $ref: '../../openapi.yaml#/components/schemas/DisplayCurrency'
     recoveryReason:
       type: string
       enum: ['', remnawave_user_missing]

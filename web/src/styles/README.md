@@ -15,7 +15,7 @@
 - `session-01.css` owns the responsive loading wordmark, outline-to-fill letter reveal, Chinese-to-English replacement, and continuous loading keyframes. `SessionEntrance.vue` owns the keyed Motion handoff and `useLoadingSequence.ts` coordinates its 1.2-second introduction.
 - `dashboard-01.css` styles dashboard summaries and account details.
 - `dashboard-02.css` styles dashboard lists, actions, and secondary states.
-- `home-01.css` styles the wrapping balance/action row, 44px Home actions, narrow-phone subscription layout, Nuxt UI usage-progress detail, and traffic surfaces.
+- `home-01.css` styles the wrapping balance/action row, paired Home language/currency controls, 44px Home actions, narrow-phone subscription layout, Nuxt UI usage-progress detail, and traffic surfaces.
 - `home-02.css` styles traffic details, ride facts, and Around TX links on Home.
 - `home-03.css` styles the compact renewal term slider and separated quote total/date block.
 - `home-04.css` styles the accessible Your ride rollover flip card, its concise current-term detail, size-safe face swap, and reduced-motion fallback.

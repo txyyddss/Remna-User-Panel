@@ -4,7 +4,7 @@ import { computed, reactive } from 'vue'
 import type { EmbyLibrary, EmbyRating } from '@/api/features'
 import type { Money } from '@/api/types'
 import { useI18n } from '@/i18n'
-import { formatMoney } from '@/utils/format'
+import { formatMemberMoney } from '@/utils/displayCurrency'
 import { selectionHaptic } from '@/utils/telegram'
 import EmbyLibraryPicker from './EmbyLibraryPicker.vue'
 
@@ -39,7 +39,7 @@ function submit(): void {
 
 <template>
   <form class="section-block emby-form" autocomplete="off" @submit.prevent="submit">
-    <div class="section-heading section-heading--stacked"><h2>{{ $t('emby.createAccount') }}</h2><p>{{ $t('emby.setupCost', { amount: formatMoney(price) }) }}</p></div>
+    <div class="section-heading section-heading--stacked"><h2>{{ $t('emby.createAccount') }}</h2><p>{{ $t('emby.setupCost', { amount: formatMemberMoney(price) }) }}</p></div>
     <UFormField name="password" :label="$t('emby.initialPassword')" :description="$t('emby.passwordHint')" required>
       <UInput v-model="draft.password" icon="i-ph-lock-key" type="password" :minlength="8" :disabled="blocked" required autocomplete="new-password" />
     </UFormField>
@@ -48,7 +48,7 @@ function submit(): void {
     </UFormField>
     <EmbyLibraryPicker :libraries="libraries" :selected-ids="draft.disabledLibraryIds" :disabled="blocked || busy" @toggle="toggleLibrary" />
     <UAlert class="emby-form__notice" color="success" variant="soft" icon="i-ph-shield-check" :description="$t('emby.safetyControls')" />
-    <UButton class="emby-form__submit" type="submit" :disabled="blocked || busy || draft.password.length < 8" :loading="busy" :label="busy ? $t('emby.startingSetup') : $t('emby.payAndCreate', { amount: formatMoney(price) })" data-haptic="confirm" />
+    <UButton class="emby-form__submit" type="submit" :disabled="blocked || busy || draft.password.length < 8" :loading="busy" :label="busy ? $t('emby.startingSetup') : $t('emby.payAndCreate', { amount: formatMemberMoney(price) })" data-haptic="confirm" />
   </form>
 </template>
 

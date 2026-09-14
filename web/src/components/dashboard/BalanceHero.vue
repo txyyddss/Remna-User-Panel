@@ -9,7 +9,7 @@ import BalancePaymentSheet from '@/components/billing/BalancePaymentSheet.vue'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { localizedError } from '@/i18n'
-import { formatMoney } from '@/utils/format'
+import { formatMemberMoney } from '@/utils/displayCurrency'
 
 const props = defineProps<{
   balance: Money
@@ -84,7 +84,7 @@ watch(() => props.reissueOrderId, (orderId) => {
           :exit="{ opacity: 0 }"
           :transition="{ duration: reducedMotion ? 0.08 : 0.2, ease: 'easeOut' }"
         >
-          {{ formatMoney(balance) }}
+          {{ formatMemberMoney(balance) }}
         </motion.strong>
       </AnimatePresence>
     </div>

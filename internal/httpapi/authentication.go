@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/accounts"
+	"github.com/txyyddss/Remna-User-Panel/internal/currencydisplay"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/requestauth"
 )
@@ -24,6 +25,7 @@ type userResponse struct {
 	ChannelJoined     bool       `json:"channelJoined"`
 	PolicyAcceptedAt  *time.Time `json:"policyAcceptedAt"`
 	AgreementRevision int        `json:"agreementRevision"`
+	DisplayCurrency   string     `json:"displayCurrency"`
 	RecoveryReason    string     `json:"recoveryReason"`
 	CreatedAt         time.Time  `json:"createdAt"`
 	UpdatedAt         time.Time  `json:"updatedAt"`
@@ -35,12 +37,17 @@ type authState struct {
 }
 
 func mapUser(user model.User) userResponse {
+	displayCurrency, ok := currencydisplay.ParseCurrency(user.DisplayCurrency)
+	if !ok {
+		displayCurrency = currencydisplay.TXB
+	}
 	return userResponse{
 		ID: user.ID, TelegramID: strconv.FormatInt(user.TelegramID, 10), FirstName: user.TelegramFirstName,
 		LastName: user.TelegramLastName, TelegramUsername: user.TelegramUsername, Username: user.Username, Role: user.Role,
 		OnboardingState: user.OnboardingState, GroupJoined: user.GroupJoined, ChannelJoined: user.ChannelJoined,
 		PolicyAcceptedAt: user.PolicyAcceptedAt, AgreementRevision: user.AgreementRevision, RecoveryReason: user.RecoveryReason,
-		CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt,
+		DisplayCurrency: string(displayCurrency),
+		CreatedAt:       user.CreatedAt, UpdatedAt: user.UpdatedAt,
 	}
 }
 

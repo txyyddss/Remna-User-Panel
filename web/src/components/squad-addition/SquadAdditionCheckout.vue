@@ -3,7 +3,8 @@ import type { DeepReadonly } from 'vue'
 import { useRouter } from 'vue-router'
 
 import type { Purchase, PurchaseAddonQuote, SquadProduct } from '@/api/types'
-import { formatDate, formatMoney } from '@/utils/format'
+import { formatDate } from '@/utils/format'
+import { formatMemberMoney } from '@/utils/displayCurrency'
 
 defineProps<{
   squads: readonly SquadProduct[]
@@ -48,7 +49,7 @@ function goToBalance(): void {
         <aside class="squad-addition-checkout__aside" :aria-label="$t('home.squadAddition.proratedTotal')">
           <div class="squad-addition-checkout__total">
             <span>{{ $t('home.squadAddition.proratedTotal') }}</span>
-            <strong>{{ quote ? formatMoney(quote.price) : quoting ? $t('catalog.quoting') : $t('common.notAvailable') }}</strong>
+            <strong>{{ quote ? formatMemberMoney(quote.price) : quoting ? $t('catalog.quoting') : $t('common.notAvailable') }}</strong>
             <small v-if="quote">{{ $t('home.squadAddition.validUntil') }}: {{ formatDate(quote.expiresAt) }}</small>
           </div>
         </aside>

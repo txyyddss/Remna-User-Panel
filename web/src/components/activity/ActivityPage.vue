@@ -2,7 +2,7 @@
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { useActivity } from '@/composables/useActivity'
-import { formatMoney } from '@/utils/format'
+import { formatMemberMoney } from '@/utils/displayCurrency'
 import BetGamesPanel from './BetGamesPanel.vue'
 import DailyCheckInCard from './DailyCheckInCard.vue'
 import LuckyDrawPanel from './LuckyDrawPanel.vue'
@@ -23,7 +23,7 @@ const { overview, result, loading, busy, error, load, checkIn, placeBet, draw, c
     </template>
     <template v-else-if="overview">
       <div class="page-toolbar">
-        <p>{{ $t('activity.balance', { amount: formatMoney(overview.balance) }) }}</p>
+        <p>{{ $t('activity.balance', { amount: formatMemberMoney(overview.balance) }) }}</p>
       </div>
       <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
       <div class="activity-layout">

@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'motion-v'
 import type { AffiliateOverview } from '@/api/features'
 import { useClipboard } from '@/composables/useClipboard'
 import { useMotionPreferences } from '@/composables/useMotionPreferences'
+import { formatMemberMoney } from '@/utils/displayCurrency'
 
 defineProps<{ overview: AffiliateOverview }>()
 const clipboard = useClipboard()
@@ -22,7 +23,7 @@ const { reducedMotion } = useMotionPreferences()
       />
     </div>
     <dl class="affiliate-metrics">
-      <div><dt>{{ $t('affiliates.totalCommission') }}</dt><dd><AnimatePresence mode="wait" :initial="false"><motion.output :key="overview.totalCommission.display" :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: 3 }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.2, ease: 'easeOut' }">{{ overview.totalCommission.display }}</motion.output></AnimatePresence></dd></div>
+      <div><dt>{{ $t('affiliates.totalCommission') }}</dt><dd><AnimatePresence mode="wait" :initial="false"><motion.output :key="formatMemberMoney(overview.totalCommission)" :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: 3 }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.2, ease: 'easeOut' }">{{ formatMemberMoney(overview.totalCommission) }}</motion.output></AnimatePresence></dd></div>
       <div><dt>{{ $t('affiliates.registered') }}</dt><dd><AnimatePresence mode="wait" :initial="false"><motion.output :key="overview.registeredCount" :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: 3 }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.2, ease: 'easeOut' }">{{ overview.registeredCount }}</motion.output></AnimatePresence></dd></div>
       <div><dt>{{ $t('affiliates.successful') }}</dt><dd><AnimatePresence mode="wait" :initial="false"><motion.output :key="overview.successfulCount" :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: 3 }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.2, ease: 'easeOut' }">{{ overview.successfulCount }}</motion.output></AnimatePresence></dd></div>
       <div><dt>{{ $t('affiliates.conversion') }}</dt><dd><AnimatePresence mode="wait" :initial="false"><motion.output :key="overview.conversionBps" :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: 3 }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.2, ease: 'easeOut' }">{{ (overview.conversionBps / 100).toFixed(2) }}%</motion.output></AnimatePresence></dd></div>

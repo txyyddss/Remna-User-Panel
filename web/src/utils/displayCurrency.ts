@@ -1,0 +1,58 @@
+import { readonly, shallowRef } from 'vue'
+
+import type { DisplayCurrencyPreference, Money } from '@/api/types'
+import { formatMoney } from './format'
+
+type DisplayCurrency = DisplayCurrencyPreference['currency']
+
+const currency = shallowRef<DisplayCurrency>('TXB')
+const rates = shallowRef<DisplayCurrencyPreference['rates']>({ cnyTxbPerUnit: null, usdTxbPerUnit: null })
+
+export const displayCurrencyState = {
+  currency: readonly(currency),
+  rates: readonly(rates),
+}
+
+export function setDisplayCurrency(preference: DisplayCurrencyPreference): void {
+  currency.value = preference.currency
+  rates.value = preference.rates
+}
+
+export function resetDisplayCurrency(value: DisplayCurrency = 'TXB'): void {
+  currency.value = value
+  rates.value = { cnyTxbPerUnit: null, usdTxbPerUnit: null }
+}
+
+export function formatMemberMoney(money: Money): string {
+  const target = currency.value
+  if (target === 'TXB' || money.currency !== 'TXB') return formatMoney(money)
+  const rate = target === 'CNY' ? rates.value.cnyTxbPerUnit : rates.value.usdTxbPerUnit
+  const converted = rate ? convertTXBMoney(money.minor, target, rate) : null
+  return converted ?? formatMoney(money)
+}
+
+export function formatCatalogMoney(money: Money): string {
+  const native = formatMoney(money)
+  const converted = formatMemberMoney(money)
+  return converted === native ? native : `${native} (${converted})`
+}
+
+export function convertTXBMoney(minor: string, target: Exclude<DisplayCurrency, 'TXB'>, rate: string): string | null {
+  const parsedRate = parseRate(rate)
+  if (!parsedRate || !/^-?\d+$/.test(minor)) return null
+  const source = BigInt(minor)
+  const negative = source < 0n
+  const absolute = negative ? -source : source
+  const targetMinor = absolute * (10n ** BigInt(parsedRate.scale)) / parsedRate.coefficient
+  const whole = targetMinor / 100n
+  const fraction = (targetMinor % 100n).toString().padStart(2, '0')
+  return `${negative && targetMinor > 0n ? '-' : ''}${whole}.${fraction} ${target}`
+}
+
+function parseRate(value: string): { coefficient: bigint; scale: number } | null {
+  const normalized = value.trim()
+  if (!/^\d+(?:\.\d+)?$/.test(normalized)) return null
+  const [whole, fraction = ''] = normalized.split('.')
+  const coefficient = BigInt(`${whole}${fraction}`)
+  return coefficient > 0n ? { coefficient, scale: fraction.length } : null
+}

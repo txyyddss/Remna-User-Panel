@@ -30,6 +30,7 @@ type User struct {
 	NewUser                 bool       `json:"-"`
 	InviterID               *int64     `json:"-"`
 	NotificationLocale      string     `json:"-"`
+	DisplayCurrency         string     `json:"displayCurrency"`
 	AutoTrafficResetEnabled bool       `json:"-"`
 	CreatedAt               time.Time  `json:"createdAt"`
 	UpdatedAt               time.Time  `json:"updatedAt"`

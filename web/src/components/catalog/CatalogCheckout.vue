@@ -3,7 +3,8 @@ import type { DeepReadonly } from 'vue'
 
 import type { Combo, PurchaseQuote, SquadProduct } from '@/api/types'
 import type { CouponGrant } from '@/api/features'
-import { formatBytes, formatDate, formatMoney } from '@/utils/format'
+import { formatBytes, formatDate } from '@/utils/format'
+import { formatCatalogMoney } from '@/utils/displayCurrency'
 import { useRouter } from 'vue-router'
 import { useI18n } from '@/i18n'
 
@@ -28,7 +29,7 @@ function couponEffect(): string {
       : 'coupons.effectPercent'
     return t(key, { value: (Number(props.coupon.coupon.valueMinorOrBps) / 100).toFixed(2) })
   }
-  return t('coupons.effectFixed', { amount: formatMoney({ currency: 'TXB', minor: props.coupon.coupon.valueMinorOrBps, display: '' }) })
+  return t('coupons.effectFixed', { amount: formatCatalogMoney({ currency: 'TXB', minor: props.coupon.coupon.valueMinorOrBps, display: '' }) })
 }
 function goToBalance(): void { void router.push({ path: '/home', query: { topUp: '1' } }) }
 </script>
@@ -70,11 +71,11 @@ function goToBalance(): void { void router.push({ path: '/home', query: { topUp:
         <div class="catalog-checkout__details">
           <div v-if="quote" class="catalog-checkout__line">
             <span>{{ $t('catalog.basePrice') }}</span>
-            <strong>{{ formatMoney(quote.grossPrice) }}</strong>
+            <strong>{{ formatCatalogMoney(quote.grossPrice) }}</strong>
           </div>
           <div v-if="quote" class="catalog-checkout__line">
             <span>{{ $t('catalog.couponSavings') }}</span>
-            <strong>{{ formatMoney(quote.discount) }}</strong>
+            <strong>{{ formatCatalogMoney(quote.discount) }}</strong>
           </div>
           <div v-if="quote" class="catalog-checkout__line">
             <span>{{ $t('catalog.validity') }}</span>
@@ -101,7 +102,7 @@ function goToBalance(): void { void router.push({ path: '/home', query: { topUp:
       <aside class="catalog-checkout__aside" :aria-label="$t('catalog.serverTotal')">
         <div class="catalog-checkout__total">
           <span>{{ quote?.queued ? $t('catalog.queuedEffectiveHint') : $t('catalog.immediateEffectiveHint') }}</span>
-          <strong>{{ quote ? formatMoney(quote.netPrice) : quoting ? $t('catalog.quoting') : $t('common.notAvailable') }}</strong>
+          <strong>{{ quote ? formatCatalogMoney(quote.netPrice) : quoting ? $t('catalog.quoting') : $t('common.notAvailable') }}</strong>
         </div>
       </aside>
     </div>

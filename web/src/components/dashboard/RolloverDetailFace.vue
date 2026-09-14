@@ -4,7 +4,8 @@ import { computed, toRefs } from 'vue'
 import type { RolloverProjection } from '@/api/types'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
-import { formatBytes, formatMoney } from '@/utils/format'
+import { formatBytes } from '@/utils/format'
+import { formatMemberMoney } from '@/utils/displayCurrency'
 
 const props = defineProps<{ detail: RolloverProjection | null; loading: boolean; error: string | null }>()
 const emit = defineEmits<{ back: []; retry: [] }>()
@@ -81,7 +82,7 @@ const rolloverPresentation = computed(() => rolloverPresentationByState[rollover
               <dt>{{ $t(rolloverMetricLabelKey) }}</dt>
               <dd v-if="rolloverState === 'alreadyExceeded'">{{ $t('home.rolloverNotAvailable') }}</dd>
               <dd v-else-if="rolloverState === 'predictedExceeded'">{{ formatBytes(detail.maximumDailyUsageBytes ?? '0') }}</dd>
-              <dd v-else>{{ formatMoney(detail.predictedRollover!) }}</dd>
+              <dd v-else>{{ formatMemberMoney(detail.predictedRollover!) }}</dd>
             </div>
           </dl>
         </section>

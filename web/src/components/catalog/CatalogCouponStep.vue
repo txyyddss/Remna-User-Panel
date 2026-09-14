@@ -6,7 +6,7 @@ import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import { useCouponRedemption } from '@/composables/useCouponRedemption'
 import { useI18n } from '@/i18n'
-import { formatMoney } from '@/utils/format'
+import { formatCatalogMoney } from '@/utils/displayCurrency'
 import { selectionHaptic } from '@/utils/telegram'
 
 const couponGrantId = defineModel<string | null>('couponGrantId', { required: true })
@@ -32,7 +32,7 @@ function couponEffect(grant: CouponGrant): string {
       : 'coupons.effectPercent'
     return t(key, { value: (Number(grant.coupon.valueMinorOrBps) / 100).toFixed(2) })
   }
-  return t('coupons.effectFixed', { amount: formatMoney({ currency: 'TXB', minor: grant.coupon.valueMinorOrBps, display: '' }) })
+  return t('coupons.effectFixed', { amount: formatCatalogMoney({ currency: 'TXB', minor: grant.coupon.valueMinorOrBps, display: '' }) })
 }
 
 async function submit(): Promise<void> {

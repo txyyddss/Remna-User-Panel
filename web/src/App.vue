@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import { en, zh_cn } from '@nuxt/ui/locale'
 
@@ -8,15 +8,23 @@ import AuthGate from '@/components/session/AuthGate.vue'
 import SessionEntrance from '@/components/session/SessionEntrance.vue'
 import AppErrorBoundary from '@/components/session/AppErrorBoundary.vue'
 import { useSessionStore } from '@/stores/session'
+import { useDisplayCurrency } from '@/composables/useDisplayCurrency'
 import { useI18n } from '@/i18n'
 import { isTelegramWebAppDetected } from '@/utils/telegram'
 
 const route = useRoute()
 const sessionStore = useSessionStore()
+const displayCurrency = useDisplayCurrency()
 const immersive = computed(() => route.meta.immersive === true)
 const browserPublic = computed(() => route.meta.browserPublic === true && !isTelegramWebAppDetected())
 const { locale } = useI18n()
 const uiLocale = computed(() => locale.value === 'zh-CN' ? zh_cn : en)
+
+watch(() => sessionStore.user?.id, (userID) => {
+  if (!userID) return
+  displayCurrency.hydrate(sessionStore.user?.displayCurrency)
+  void displayCurrency.refresh()
+}, { immediate: true })
 </script>
 
 <template>

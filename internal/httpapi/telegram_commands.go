@@ -100,25 +100,26 @@ func (s *Server) processTelegramCommand(ctx context.Context, message *telegram.M
 		s.sendTelegramReply(ctx, message, botcommands.FormatUnavailable(copy))
 		return
 	}
+	formatMoney := s.telegramDisplayFormatter(ctx, user)
 	var reply string
 	switch command.Name {
 	case botcommands.Balance:
 		money, balanceErr := s.deps.Store.Balance(ctx, user.ID)
 		if balanceErr == nil {
-			reply = botcommands.FormatBalance(copy, money)
+			reply = botcommands.FormatBalance(copy, formatMoney(money))
 		}
 	case botcommands.SignIn:
 		config, configErr := s.activityConfig(ctx)
 		if configErr == nil {
 			result, checkInErr := s.deps.Activity.CheckIn(ctx, user.ID, config)
 			if checkInErr == nil {
-				reply = botcommands.FormatCheckIn(copy, result, s.telegramCheckInAverage(ctx))
+				reply = botcommands.FormatCheckInWithMoney(copy, result, s.telegramCheckInAverage(ctx), formatMoney(model.TXBMoney(result.RewardMinor)), formatMoney(model.TXBMoney(result.BalanceAfterMinor)))
 			}
 		}
 	case botcommands.Sub:
 		reply = s.telegramSubscriptionReply(ctx, user, copy)
 	case botcommands.MyCombo:
-		reply = s.telegramComboReply(ctx, user, copy)
+		reply = s.telegramComboReply(ctx, user, copy, formatMoney)
 	}
 	if strings.TrimSpace(reply) == "" {
 		reply = botcommands.FormatUnavailable(copy)
@@ -173,7 +174,7 @@ func (s *Server) processTelegramDeduction(ctx context.Context, message *telegram
 		s.sendTelegramReply(ctx, message, botcommands.FormatDeductRejected(copy))
 		return
 	}
-	s.sendTelegramReply(ctx, message, botcommands.FormatDeductSucceeded(copy, model.TXBMoney(amount)))
+	s.sendTelegramReply(ctx, message, botcommands.FormatDeductSucceeded(copy, s.telegramDisplayFormatter(ctx, target)(model.TXBMoney(amount))))
 }
 
 func telegramDeductCommand(text string) (string, bool) {

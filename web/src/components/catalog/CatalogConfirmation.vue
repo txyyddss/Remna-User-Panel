@@ -6,7 +6,8 @@ import type { Purchase } from '@/api/types'
 import { motionDurations } from '@/composables/motionPresets'
 import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
-import { formatBytes, formatDate, formatMoney } from '@/utils/format'
+import { formatBytes, formatDate } from '@/utils/format'
+import { formatCatalogMoney } from '@/utils/displayCurrency'
 
 const props = defineProps<{
   purchase: DeepReadonly<Purchase>
@@ -29,8 +30,8 @@ function resetLabel(): string {
 
 const summaryLines = computed(() => [
   { label: t('catalog.coreCombos'), value: props.purchase.comboName },
-  { label: t('catalog.purchaseCharged'), value: formatMoney(props.purchase.price) },
-  { label: t('catalog.purchaseDiscount'), value: formatMoney(props.purchase.couponDiscount) },
+  { label: t('catalog.purchaseCharged'), value: formatCatalogMoney(props.purchase.price) },
+  { label: t('catalog.purchaseDiscount'), value: formatCatalogMoney(props.purchase.couponDiscount) },
   { label: t('catalog.purchaseStarts'), value: formatDate(props.purchase.validFrom) },
   { label: t('catalog.purchaseEnds'), value: formatDate(props.purchase.validUntil) },
   { label: t('catalog.purchaseStatusLabel'), value: statusLabel() },

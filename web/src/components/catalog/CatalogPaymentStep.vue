@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 
 import type { Combo, Purchase, PurchaseQuote } from '@/api/types'
 import CatalogConfirmation from './CatalogConfirmation.vue'
-import { formatMoney } from '@/utils/format'
+import { formatCatalogMoney } from '@/utils/displayCurrency'
 
 const router = useRouter()
 
@@ -40,7 +40,7 @@ function goToBalance(): void {
       </div>
       <div class="catalog-payment-total">
         <span>{{ $t('catalog.serverTotal') }}</span>
-        <strong>{{ quote ? formatMoney(quote.netPrice) : $t('common.notAvailable') }}</strong>
+        <strong>{{ quote ? formatCatalogMoney(quote.netPrice) : $t('common.notAvailable') }}</strong>
       </div>
       <UAlert v-if="error" color="warning" variant="soft" icon="i-ph-warning-circle" :description="error" />
       <UButton v-if="needsBalance" block trailing-icon="i-ph-plus" :label="$t('catalog.addBalance')" data-haptic="navigate" @click="goToBalance" />

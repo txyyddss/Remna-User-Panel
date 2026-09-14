@@ -89,6 +89,7 @@
 - `operations_shared.go` contains bounded-context and request-ID helpers.
 - `telegram_webhook.go` validates and dispatches Telegram membership and Stars payment updates.
 - `telegram_commands.go` dispatches localized slash commands before group-message rewards and preserves the unadvertised administrator deduction command.
+- `display_currency.go` exposes the owner-scoped display preference and the configured fixed TXB-per-CNY/USD rates without changing authoritative prices.
 - `telegram_command_replies.go` composes subscription/combo replies from
   existing catalog services and reads the cached statistics average for check-in copy.
 - `telegram_membership.go` refreshes membership and independently welcomes

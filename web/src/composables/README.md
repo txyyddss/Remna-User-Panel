@@ -24,6 +24,7 @@ separate. Action quotes and permission decisions still await the backend.
 - `useCouponRedemption.ts` redeems a coupon code for the guided purchase flow.
 - `useCouponRedemption.test.ts` covers guided redemption normalization and idempotency reuse.
 - `useAutoRenewal.ts` owns the owner-scoped automatic-renewal status load, eligibility, and server toggle update.
+- `useDisplayCurrency.ts` keeps the persisted member display choice and read-only CNY/USD rate snapshot in one reactive source of truth.
 - `useAutoRenewal.test.ts` covers the server-ineligible toggle constraint.
 - `useClipboard.ts` provides safe clipboard feedback.
 - `useConnectionScan.ts` creates one idempotent provider scan and polls its owner-scoped progress every second without repeating an ambiguous start mutation.

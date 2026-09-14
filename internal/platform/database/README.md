@@ -132,6 +132,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `member_operation_begin.go` and `member_operation_validation.go` atomically validate and create member reset/refund commands.
 - `member_reset_compensation.go` credits a failed paid-reset debit exactly once with terminal receipt state.
 - `traffic_reset_automation.go` reads and immediately saves the account-wide preference.
+- `display_currency.go` saves the member-only TXB, CNY, or USD presentation preference without changing authoritative TXB values.
 - `automatic_traffic_reset.go` revalidates the preference and active purchase, deduplicates the reset period, then atomically disables-and-notifies or creates the paid provider operation, ledger debit, and gated success event.
 - `member_refund_commit.go` atomically credits a first-term refund and advances the independent queued timeline.
 - `provider_operations.go`, `provider_operation_lifecycle.go`, `provider_operation_queries.go`, and `provider_operation_items.go` persist provider-neutral receipts, items, attempts, and replay facts.
@@ -220,6 +221,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `connection_scans_test.go` covers metadata-only scan lifecycle and expiry.
 - `member_operations_test.go` covers paid reset compensation and zero-usage first-term refunds.
 - `automatic_traffic_reset_test.go` covers strict transactional debit replay, provider-gated success, insufficient-balance disablement, and failure compensation notice release.
+- `display_currency_test.go` covers owner-scoped currency preference persistence and the TXB default for unrelated members.
 - `provider_operations_test.go` covers receipt state transitions, replay conflicts, and ambiguous outcomes.
 - `notification_events_test.go` covers provider-gate deduplication, reminder
   eligibility, and traffic reset-period rearming.

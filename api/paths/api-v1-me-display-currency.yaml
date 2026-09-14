@@ -1,0 +1,35 @@
+get:
+  tags: [Authentication]
+  operationId: getDisplayCurrency
+  summary: Get the member's display currency and current conversion rates
+  responses:
+    '200':
+      description: Persisted member preference and server-managed fixed rates.
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/DisplayCurrencyPreference' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+
+put:
+  tags: [Authentication]
+  operationId: updateDisplayCurrency
+  summary: Save the member's display currency
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: false
+          required: [currency]
+          properties:
+            currency: { $ref: '../openapi.yaml#/components/schemas/DisplayCurrency' }
+  responses:
+    '200':
+      description: Updated member preference and current conversion rates.
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/DisplayCurrencyPreference' }
+    '400': { $ref: '../openapi.yaml#/components/responses/BadRequest' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }

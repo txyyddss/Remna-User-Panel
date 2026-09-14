@@ -1,5 +1,10 @@
 {
   "app": {
+    "currency": "货币显示",
+    "currencyTxb": "TXB",
+    "currencyCny": "人民币",
+    "currencyUsd": "美元",
+    "currencyRateUnavailable": "当前无法获取该币种汇率。",
     "name": "TX Carpool",
     "language": "语言",
     "english": "English",

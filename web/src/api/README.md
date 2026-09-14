@@ -2,6 +2,7 @@
 
 - `purchaseAddons.ts` owns protected active-ride squad-addition quote and idempotent commit requests.
 - `community.ts` owns canonical community membership checks and one-space Telegram invite requests.
+- `displayCurrency.ts` owns the member display-currency preference and server-managed CNY/USD conversion-rate requests.
 
 - `adminBilling.ts` owns the atomic administrator update for global Add TXB bounds.
 - `abuse.ts` owns typed privacy-safe member and administrator detector resources, including configurable streaks, the revisioned abuse record cooldown (using the compatible `warningCooldownMinutes` field), and WebView-safe idempotency keys for mutations.

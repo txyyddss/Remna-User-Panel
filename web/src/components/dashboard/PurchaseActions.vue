@@ -6,7 +6,8 @@ import InlineNotice from '@/components/common/InlineNotice.vue'
 import { type PurchaseOperationKind, usePurchaseOperations } from '@/composables/usePurchaseOperations'
 import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
 import { t } from '@/i18n'
-import { formatDateTime, formatMoney } from '@/utils/format'
+import { formatDateTime } from '@/utils/format'
+import { formatMemberMoney } from '@/utils/displayCurrency'
 import AutoRenewalControl from './AutoRenewalControl.vue'
 import TrafficResetAutomationControl from './TrafficResetAutomationControl.vue'
 
@@ -30,7 +31,7 @@ const operationTone = computed(() => operation.receipt.value?.status === 'succee
 const operationMessage = computed(() => t(`purchaseOperations.operation.${operation.activeKind.value ?? 'reset'}.${operation.receipt.value?.status ?? 'queued'}`))
 
 function quoteAmount(quote: TrafficResetQuote | MemberRefundQuote): string {
-  return formatMoney('price' in quote ? quote.price : quote.refund)
+  return formatMemberMoney('price' in quote ? quote.price : quote.refund)
 }
 
 function reasonMessage(reason: string | null | undefined): string {

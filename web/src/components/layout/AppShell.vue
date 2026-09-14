@@ -12,6 +12,7 @@ import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { focusWithoutScrolling } from '@/utils/dom'
 import { isTelegramWebAppDetected, telegramFullscreenState } from '@/utils/telegram'
 import LanguageControl from './LanguageControl.vue'
+import CurrencyControl from './CurrencyControl.vue'
 import MobileNavigation from './MobileNavigation.vue'
 import SidebarMember from './SidebarMember.vue'
 import { desktopNavigationItems } from './navigation'
@@ -101,6 +102,7 @@ watch(() => route.path, (_next, previous) => {
         <template #footer>
           <footer class="side-rail__footer">
             <SidebarMember />
+            <CurrencyControl show-label />
             <LanguageControl show-label />
           </footer>
         </template>

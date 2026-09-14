@@ -6,6 +6,7 @@ import InlineNotice from '@/components/common/InlineNotice.vue'
 import OperationStatusNotice from '@/components/common/OperationStatusNotice.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import LanguageControl from '@/components/layout/LanguageControl.vue'
+import CurrencyControl from '@/components/layout/CurrencyControl.vue'
 import { useCommunityAccess } from '@/composables/useCommunityAccess'
 import { useDashboard } from '@/composables/useDashboard'
 import { useI18n } from '@/i18n'
@@ -147,6 +148,7 @@ function consumeHomeRequest(name: 'revoke' | 'addSquads'): void {
     </div>
     <footer class="home-footer">
       <LanguageControl show-label />
+      <CurrencyControl show-label />
     </footer>
   </div>
 </template>

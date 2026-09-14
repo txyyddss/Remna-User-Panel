@@ -78,3 +78,4 @@ file instead.
 - `044_squad_geocheck.sql` stores only the default-off disabled bit on existing sparse squad overrides; existing squads remain enabled.
 - `045_abuse_outbound_tag.sql` persists the administrator-selected Xray outbound tag used for abuse-log filtering.
 - `046_abuse_outbound_tags.sql` migrates the abuse filter to a validated comma-separated outbound-tag list.
+- `047_display_currency.sql` adds the TXB-default member display-currency preference constrained to TXB, CNY, or USD.

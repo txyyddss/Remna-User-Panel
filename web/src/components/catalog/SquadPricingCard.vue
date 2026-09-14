@@ -5,7 +5,7 @@ import type { NodeGeocheckTarget, SquadProduct } from '@/api/types'
 import SquadProfileFacts from '@/components/squad-profile/SquadProfileFacts.vue'
 import SquadProfileSummary from '@/components/squad-profile/SquadProfileSummary.vue'
 import { useI18n } from '@/i18n'
-import { formatMoney } from '@/utils/format'
+import { formatCatalogMoney } from '@/utils/displayCurrency'
 import { selectionHaptic } from '@/utils/telegram'
 import SquadNodeBlocks from './SquadNodeBlocks.vue'
 
@@ -84,7 +84,7 @@ function toggle(): void {
         </template>
       </SquadProfileSummary>
       <div v-if="!included" class="squad-card__price">
-        <strong>{{ formatMoney(squad.price) }}</strong>
+        <strong>{{ formatCatalogMoney(squad.price) }}</strong>
       </div>
     </div>
 

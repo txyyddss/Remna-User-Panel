@@ -7,7 +7,8 @@ import InlineNotice from '@/components/common/InlineNotice.vue'
 import { useAutoRenewal } from '@/composables/useAutoRenewal'
 import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { t } from '@/i18n'
-import { formatDate, formatMoney } from '@/utils/format'
+import { formatDate } from '@/utils/format'
+import { formatMemberMoney } from '@/utils/displayCurrency'
 import { selectionHaptic } from '@/utils/telegram'
 
 const props = defineProps<{ purchase: Purchase }>()
@@ -69,9 +70,9 @@ async function updateRenewal(next: boolean): Promise<void> {
           <USkeleton v-if="loading" class="h-36" />
           <template v-else-if="renewal">
             <dl class="auto-renewal-control__quote">
-              <div><dt>{{ $t('home.autoRenewalGross') }}</dt><dd>{{ formatMoney(renewal.grossPrice) }}</dd></div>
-              <div><dt>{{ $t('home.autoRenewalDiscount') }}</dt><dd>{{ formatMoney(renewal.discount) }}</dd></div>
-              <div><dt>{{ $t('home.autoRenewalPrice') }}</dt><dd>{{ formatMoney(renewal.netPrice) }}</dd></div>
+              <div><dt>{{ $t('home.autoRenewalGross') }}</dt><dd>{{ formatMemberMoney(renewal.grossPrice) }}</dd></div>
+              <div><dt>{{ $t('home.autoRenewalDiscount') }}</dt><dd>{{ formatMemberMoney(renewal.discount) }}</dd></div>
+              <div><dt>{{ $t('home.autoRenewalPrice') }}</dt><dd>{{ formatMemberMoney(renewal.netPrice) }}</dd></div>
               <div><dt>{{ $t('home.autoRenewalChargeDate') }}</dt><dd>{{ formatDate(renewal.scheduledAt) }}</dd></div>
               <div><dt>{{ $t('home.autoRenewalNextCycleDate') }}</dt><dd>{{ formatDate(renewal.nextCycleEndsAt) }}</dd></div>
             </dl>
