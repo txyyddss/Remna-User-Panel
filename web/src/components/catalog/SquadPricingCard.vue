@@ -81,8 +81,8 @@ function toggle(): void {
         <template #nameTags>
           <UIcon v-if="!squad.visible" name="i-ph-lock-key" :aria-label="$t('catalog.hidden')" />
           <UBadge v-if="squad.activationRequired" color="warning" variant="subtle" :label="$t('catalog.activationRequired')" />
-          <UBadge v-if="isFull" size="sm" class="shrink-0 rounded-[2px] px-1.5 py-0.5" color="error" variant="solid" icon="i-lucide-user-x" :label="$t('catalog.full')" />
-          <UBadge v-else-if="!included" size="sm" class="shrink-0 rounded-[2px] px-1.5 py-0.5" :color="remainingBadge.color" variant="solid" :icon="remainingBadge.icon" :label="remainingBadge.label" :aria-label="`${$t('catalog.remaining')} ${remainingBadge.label}`" />
+          <UBadge v-if="isFull" size="sm" class="shrink-0 rounded-full px-1.5 py-0.5 font-bold" color="error" variant="solid" icon="i-lucide-user-x" :label="$t('catalog.full')" />
+          <UBadge v-else-if="!included" size="sm" class="shrink-0 rounded-full px-1.5 py-0.5 font-bold" :color="remainingBadge.color" variant="solid" :icon="remainingBadge.icon" :label="remainingBadge.label" :aria-label="`${$t('catalog.remaining')} ${remainingBadge.label}`" />
         </template>
       </SquadProfileSummary>
       <div v-if="!included" class="squad-card__price">

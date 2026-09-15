@@ -34,6 +34,7 @@ const explicitlyBundledIcons = [
     ...Object.values(uiIconRegistry),
     ...Object.values(gameIconRegistry),
     ...Object.values(agreementIconRegistry),
+    'i-lucide-user', 'i-lucide-users', 'i-lucide-user-x',
   ]),
 ]
 

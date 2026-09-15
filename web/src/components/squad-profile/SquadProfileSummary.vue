@@ -39,7 +39,7 @@ const memberProfileText = computed(() => {
     <div class="squad-profile-summary__heading">
       <UIcon v-if="presentation !== 'member'" :name="typeMeta?.icon ?? 'i-ph-info'" aria-hidden="true" />
       <div class="squad-profile-summary__heading-copy">
-        <span v-if="presentation === 'member' && name" class="squad-profile-summary__name-row">
+        <span v-if="presentation === 'member' && name" class="squad-profile-summary__name-row" :class="{ 'squad-profile-summary__name-row--with-tags': $slots.nameTags }">
           <span class="squad-profile-summary__name-copy">
             <slot v-if="$slots.namePrefix" name="namePrefix" />
             <strong>{{ name }}</strong>
@@ -78,6 +78,10 @@ const memberProfileText = computed(() => {
 .squad-profile-summary--member .squad-profile-summary__heading { align-items: flex-start; color: var(--text); }
 .squad-profile-summary--member .squad-profile-summary__heading-copy { flex: 1 1 auto; }
 .squad-profile-summary--member .squad-profile-summary__heading-copy strong { overflow: visible; overflow-wrap: anywhere; text-overflow: clip; white-space: normal; }
+.squad-profile-summary--member .squad-profile-summary__name-row--with-tags { flex-wrap: nowrap; justify-content: flex-start; }
+.squad-profile-summary--member .squad-profile-summary__name-row--with-tags .squad-profile-summary__name-copy { flex: 0 1 auto; }
+.squad-profile-summary--member .squad-profile-summary__name-row--with-tags .squad-profile-summary__name-copy strong { overflow: hidden; overflow-wrap: normal; text-overflow: ellipsis; white-space: nowrap; }
+.squad-profile-summary--member .squad-profile-summary__name-row--with-tags .squad-profile-summary__name-tags { flex: 0 0 auto; flex-wrap: nowrap; }
 .squad-profile-summary--member .squad-profile-summary__heading-copy span { color: var(--squad-profile-tone); font-size: 0.66rem; font-weight: 700; }
 .squad-profile-summary--member .squad-profile-summary__description { color: var(--text-muted); }
 .squad-profile-summary--member.squad-profile-summary--compact { gap: 0.45rem; }
