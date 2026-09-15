@@ -4,7 +4,6 @@ import { computed } from 'vue'
 import type { NodeGeocheckTarget, SquadProduct } from '@/api/types'
 import SquadProfileFacts from '@/components/squad-profile/SquadProfileFacts.vue'
 import SquadProfileSummary from '@/components/squad-profile/SquadProfileSummary.vue'
-import { useI18n } from '@/i18n'
 import { formatMemberMoney } from '@/utils/displayCurrency'
 import { selectionHaptic } from '@/utils/telegram'
 import SquadNodeBlocks from './SquadNodeBlocks.vue'
@@ -20,16 +19,22 @@ const emit = defineEmits<{
   toggle: [id: string]
   openGeocheck: [node: NodeGeocheckTarget]
 }>()
-const { t } = useI18n()
-
 const isFull = computed(() => !props.included && props.squad.stockRemaining === 0 && !props.squad.stockHeldByCurrentUser)
-const remainingText = computed(() => {
-  if (props.squad.stockLimit === null || props.squad.stockLimit === undefined) return t('catalog.unlimitedStock')
-  if (props.squad.stockLimit <= 0) return '0%'
+const remainingPercentage = computed(() => {
+  if (props.squad.stockLimit === null || props.squad.stockLimit === undefined) return null
+  if (props.squad.stockLimit <= 0) return 0
   const count = Math.max(0, Math.min(props.squad.stockLimit, props.squad.stockRemaining ?? props.squad.stockLimit))
-  return `${Math.round(count * 100 / props.squad.stockLimit)}%`
+  return count * 100 / props.squad.stockLimit
 })
-const remainingBadgeText = computed(() => props.squad.stockLimit === null || props.squad.stockLimit === undefined ? '∞' : remainingText.value)
+const remainingBadge = computed(() => {
+  const percentage = remainingPercentage.value
+  const scarce = percentage !== null && percentage <= 20
+  return {
+    color: scarce ? 'warning' : 'info',
+    icon: scarce ? 'i-lucide-users' : 'i-lucide-user',
+    label: percentage === null ? '∞' : `${Math.round(percentage)}%`,
+  } as const
+})
 
 function toggle(): void {
   if (props.included || isFull.value) return
@@ -76,11 +81,8 @@ function toggle(): void {
         <template #nameTags>
           <UIcon v-if="!squad.visible" name="i-ph-lock-key" :aria-label="$t('catalog.hidden')" />
           <UBadge v-if="squad.activationRequired" color="warning" variant="subtle" :label="$t('catalog.activationRequired')" />
-          <UBadge v-if="isFull" size="sm" class="shrink-0 rounded-[2px] px-1.5 py-0.5" color="error" variant="subtle" :label="$t('catalog.full')" />
-          <span v-if="!included && !isFull" class="squad-card__remaining" :aria-label="$t('catalog.remaining')">
-            <UIcon name="i-ph-gauge" aria-hidden="true" />
-            <strong>{{ remainingBadgeText }}</strong>
-          </span>
+          <UBadge v-if="isFull" size="sm" class="shrink-0 rounded-[2px] px-1.5 py-0.5" color="error" variant="solid" icon="i-lucide-user-x" :label="$t('catalog.full')" />
+          <UBadge v-else-if="!included" size="sm" class="shrink-0 rounded-[2px] px-1.5 py-0.5" :color="remainingBadge.color" variant="solid" :icon="remainingBadge.icon" :label="remainingBadge.label" :aria-label="`${$t('catalog.remaining')} ${remainingBadge.label}`" />
         </template>
       </SquadProfileSummary>
       <div v-if="!included" class="squad-card__price">
@@ -125,8 +127,6 @@ function toggle(): void {
 .squad-card__header { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.65rem; align-items: start; }
 .squad-card__price { min-width: 0; padding-top: 0.05rem; text-align: right; }
 .squad-card__price > strong { display: block; white-space: nowrap; font-family: var(--font-mono); font-size: 1.1rem; }
-.squad-card__remaining { display: inline-flex; align-items: center; gap: 0.2rem; padding: 0.18rem 0.35rem; border: 1px solid var(--line); border-radius: 999px; color: var(--text-muted); font-size: 0.65rem; line-height: 1.2; }
-.squad-card__remaining strong { color: var(--text); font-family: var(--font-mono); font-weight: 700; }
 .squad-card__nodes {
   display: grid;
   gap: 0.35rem;
