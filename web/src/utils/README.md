@@ -2,11 +2,11 @@
 
 - `browserClipboard.ts` isolates the clipboard API and selection fallback; `browserCompatibility.ts` re-exports `copyText` for existing callers while keeping browser capability checks focused.
 
-- `format.ts` formats authoritative money, dates, bytes, and TXB input. `displayCurrency.ts` converts member-facing TXB displays with `BigInt` fixed-point arithmetic only.
+- `format.ts` formats authoritative money, dates, bytes, and TXB input; CNY/USD use `￥`/`$` prefixes. `displayCurrency.ts` converts member-facing TXB displays with `BigInt` fixed-point arithmetic only, falls back from a zero USD conversion to CNY and then to TXB, and supplies primary/approximate catalog price lines.
 - `dom.ts` provides WebView-safe focus restoration.
 - `dom.test.ts` covers focus restoration behavior.
 - `format.test.ts` covers formatting and money conversions.
-- `displayCurrency.test.ts` covers exact CNY/USD conversion, catalog dual-price output, sign handling, and unavailable-rate fallback.
+- `displayCurrency.test.ts` covers exact CNY/USD conversion, catalog dual-price output, symbol/sign handling, and unavailable-rate or zero-conversion CNY/TXB fallbacks.
 - `browserCompatibility.ts` checks baseline browser capabilities, supplies secure UUID entropy, and installs narrow WebView constructor fallbacks before the app bundle mounts.
 - `browserCompatibility.test.ts` covers constructor, UUID, and fail-closed entropy behavior.
 - `bootstrapFallback.ts` renders the locale-owned recovery action when the app

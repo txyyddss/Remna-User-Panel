@@ -118,6 +118,7 @@ declare module 'vue' {
     DatabaseRecordEditor: typeof import('./src/components/admin/database/DatabaseRecordEditor.vue')['default']
     DatabaseRecordFields: typeof import('./src/components/admin/database/DatabaseRecordFields.vue')['default']
     DatabaseTablePicker: typeof import('./src/components/admin/database/DatabaseTablePicker.vue')['default']
+    DualCurrencyMoney: typeof import('./src/components/common/DualCurrencyMoney.vue')['default']
     EmbyLibraryPicker: typeof import('./src/components/emby/EmbyLibraryPicker.vue')['default']
     EmbyPage: typeof import('./src/components/emby/EmbyPage.vue')['default']
     EmbyPreferencesPanel: typeof import('./src/components/emby/EmbyPreferencesPanel.vue')['default']

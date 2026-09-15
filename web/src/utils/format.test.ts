@@ -7,6 +7,11 @@ describe('format utilities', () => {
     expect(formatMoney({ currency: 'TXB', minor: '1250', display: '12.50 TXB' })).toBe('12.50 TXB')
   })
 
+  it('uses currency symbols for CNY and USD amounts', () => {
+    expect(formatMoney({ currency: 'CNY', minor: '125', display: '1.25 CNY' })).toBe('￥1.25')
+    expect(formatMoney({ currency: 'USD', minor: '-125', display: '-1.25 USD' })).toBe('-$1.25')
+  })
+
   it('parses user TXB input into integer hundredths', () => {
     expect(moneyFromTxbInput('20')).toBe('2000')
     expect(moneyFromTxbInput('20.5')).toBe('2050')

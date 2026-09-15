@@ -3,6 +3,7 @@ import type { DeepReadonly } from 'vue'
 
 import type { Combo, PurchaseQuote, SquadProduct } from '@/api/types'
 import type { CouponGrant } from '@/api/features'
+import DualCurrencyMoney from '@/components/common/DualCurrencyMoney.vue'
 import { formatBytes, formatDate } from '@/utils/format'
 import { formatCatalogMoney } from '@/utils/displayCurrency'
 import { useRouter } from 'vue-router'
@@ -102,7 +103,7 @@ function goToBalance(): void { void router.push({ path: '/home', query: { topUp:
       <aside class="catalog-checkout__aside" :aria-label="$t('catalog.serverTotal')">
         <div class="catalog-checkout__total">
           <span>{{ quote?.queued ? $t('catalog.queuedEffectiveHint') : $t('catalog.immediateEffectiveHint') }}</span>
-          <strong>{{ quote ? formatCatalogMoney(quote.netPrice) : quoting ? $t('catalog.quoting') : $t('common.notAvailable') }}</strong>
+          <strong><DualCurrencyMoney v-if="quote" :money="quote.netPrice" /><template v-else>{{ quoting ? $t('catalog.quoting') : $t('common.notAvailable') }}</template></strong>
         </div>
       </aside>
     </div>

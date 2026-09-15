@@ -3,13 +3,13 @@ import { getLocale, t } from '@/i18n'
 
 const unitSymbols: Record<Money['currency'], string> = {
   TXB: 'TXB',
-  CNY: 'CNY ',
+  CNY: '￥',
   USD: '$',
   XTR: 'XTR',
 }
 
 export function formatMoney(money: Money): string {
-  if (money.display) return money.display
+  if (money.display && (money.currency === 'TXB' || money.currency === 'XTR')) return money.display
   const negative = money.minor.startsWith('-')
   const absolute = BigInt(negative ? money.minor.slice(1) : money.minor || '0')
   const scale = money.currency === 'XTR' ? 0 : 2
@@ -18,9 +18,8 @@ export function formatMoney(money: Money): string {
   const fraction = (absolute % scaleFactor).toString().padStart(scale, '0')
   const numeric = scale > 0 ? `${whole}.${fraction}` : `${whole}`
   const value = negative ? `-${numeric}` : numeric
-  return money.currency === 'TXB' || money.currency === 'XTR'
-    ? `${value} ${unitSymbols[money.currency]}`
-    : `${unitSymbols[money.currency]}${value}`
+  if (money.currency === 'TXB' || money.currency === 'XTR') return `${value} ${unitSymbols[money.currency]}`
+  return `${negative ? '-' : ''}${unitSymbols[money.currency]}${numeric}`
 }
 
 export function formatBytes(raw: string | number): string {

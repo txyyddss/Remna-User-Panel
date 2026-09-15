@@ -28,13 +28,32 @@ export function formatMemberMoney(money: Money): string {
   if (target === 'TXB' || money.currency !== 'TXB') return formatMoney(money)
   const rate = target === 'CNY' ? rates.value.cnyTxbPerUnit : rates.value.usdTxbPerUnit
   const converted = rate ? convertTXBMoney(money.minor, target, rate) : null
-  return converted ?? formatMoney(money)
+  if (!converted || !isNonzeroMinor(money.minor) || !isZeroConvertedMoney(converted)) return converted ?? formatMoney(money)
+
+  const cnyFallback = target === 'USD' && rates.value.cnyTxbPerUnit
+    ? convertTXBMoney(money.minor, 'CNY', rates.value.cnyTxbPerUnit)
+    : null
+  return cnyFallback && !isZeroConvertedMoney(cnyFallback) ? cnyFallback : formatMoney(money)
 }
 
 export function formatCatalogMoney(money: Money): string {
   const native = formatMoney(money)
   const converted = formatMemberMoney(money)
   return converted === native ? native : `${native} (${converted})`
+}
+
+export interface CatalogMoneyLines {
+  primary: string
+  approximation: string | null
+}
+
+export function formatCatalogMoneyLines(money: Money): CatalogMoneyLines {
+  const primary = formatMoney(money)
+  const converted = formatMemberMoney(money)
+  return {
+    primary,
+    approximation: converted === primary ? null : `≈${converted}`,
+  }
 }
 
 export function displayInputFromTXBMinor(minor: string): string {
@@ -77,7 +96,16 @@ export function convertTXBMoney(minor: string, target: Exclude<DisplayCurrency, 
   const targetMinor = absolute * (10n ** BigInt(parsedRate.scale)) / parsedRate.coefficient
   const whole = targetMinor / 100n
   const fraction = (targetMinor % 100n).toString().padStart(2, '0')
-  return `${negative && targetMinor > 0n ? '-' : ''}${whole}.${fraction} ${target}`
+  const symbol = target === 'CNY' ? '￥' : '$'
+  return `${negative && targetMinor > 0n ? '-' : ''}${symbol}${whole}.${fraction}`
+}
+
+function isNonzeroMinor(value: string): boolean {
+  return /^-?\d+$/.test(value) && BigInt(value) !== 0n
+}
+
+function isZeroConvertedMoney(value: string): boolean {
+  return /^-?[￥$]0\.00$/.test(value)
 }
 
 function parseRate(value: string): { coefficient: bigint; scale: number } | null {
