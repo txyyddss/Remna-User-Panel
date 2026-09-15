@@ -29,9 +29,10 @@ const remainingPercentage = computed(() => {
 const remainingBadge = computed(() => {
   const percentage = remainingPercentage.value
   const scarce = percentage !== null && percentage <= 20
+  const abundant = percentage !== null && percentage > 80
   return {
-    color: scarce ? 'warning' : 'info',
-    icon: scarce ? 'i-lucide-users' : 'i-lucide-user',
+    color: abundant ? 'neutral' : scarce ? 'warning' : 'info',
+    icon: abundant ? 'i-lucide-user-plus' : scarce ? 'i-lucide-users' : 'i-lucide-user',
     label: percentage === null ? '∞' : `${Math.round(percentage)}%`,
   } as const
 })
@@ -81,8 +82,8 @@ function toggle(): void {
         <template #nameTags>
           <UIcon v-if="!squad.visible" name="i-ph-lock-key" :aria-label="$t('catalog.hidden')" />
           <UBadge v-if="squad.activationRequired" color="warning" variant="subtle" :label="$t('catalog.activationRequired')" />
-          <UBadge v-if="isFull" size="sm" class="shrink-0 rounded-full px-1.5 py-0.5 font-bold" color="error" variant="solid" icon="i-lucide-user-x" :label="$t('catalog.full')" />
-          <UBadge v-else-if="!included" size="sm" class="shrink-0 rounded-full px-1.5 py-0.5 font-bold" :color="remainingBadge.color" variant="solid" :icon="remainingBadge.icon" :label="remainingBadge.label" :aria-label="`${$t('catalog.remaining')} ${remainingBadge.label}`" />
+          <UBadge v-if="isFull" size="sm" class="shrink-0 rounded-full px-1.5 py-0.5 font-bold" color="error" variant="solid" icon="i-lucide-user-x" :aria-label="$t('catalog.full')" />
+          <UBadge v-else-if="!included" size="sm" class="shrink-0 rounded-full px-1.5 py-0.5 font-bold" :color="remainingBadge.color" variant="solid" :icon="remainingBadge.icon" :aria-label="`${$t('catalog.remaining')} ${remainingBadge.label}`" />
         </template>
       </SquadProfileSummary>
       <div v-if="!included" class="squad-card__price">
