@@ -5,7 +5,7 @@ import type { Combo } from '@/api/types'
 import MarkdownContent from '@/components/common/MarkdownContent.vue'
 import { useI18n } from '@/i18n'
 import { formatBytes } from '@/utils/format'
-import { formatCatalogMoney } from '@/utils/displayCurrency'
+import { formatMemberMoney } from '@/utils/displayCurrency'
 import { selectionHaptic } from '@/utils/telegram'
 import { useMotionPreferences } from '@/composables/useMotionPreferences'
 
@@ -55,7 +55,7 @@ function selectCombo(): void {
       <span><UIcon name="i-ph-chart-line-up" />{{ $t('catalog.rolloverThreshold', { threshold: (combo.rolloverMinRemainingBps / 100).toFixed(2) }) }}</span>
     </span>
     <span class="combo-option__price">
-      <strong>{{ formatCatalogMoney(combo.price) }}</strong>
+      <strong>{{ formatMemberMoney(combo.price) }}</strong>
       <small>{{ $t('catalog.perDays', { count: combo.validityDays }) }}</small>
     </span>
   </UButton>

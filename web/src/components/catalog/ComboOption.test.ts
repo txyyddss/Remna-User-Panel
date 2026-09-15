@@ -1,7 +1,8 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import type { Combo } from '@/api/types'
+import { resetDisplayCurrency, setDisplayCurrency } from '@/utils/displayCurrency'
 import ComboOption from './ComboOption.vue'
 
 const combo: Combo = {
@@ -45,12 +46,23 @@ const comboWithIncludedSquad: Combo = {
 }
 
 describe('ComboOption', () => {
+  afterEach(() => resetDisplayCurrency())
+
   it('renders server-formatted price and entitlement values', () => {
     const wrapper = mount(ComboOption, { props: { combo, selected: false } })
     expect(wrapper.text()).toContain('18.80 TXB')
     expect(wrapper.text()).toContain('100 GB/month')
     expect(wrapper.text()).toContain('per 30 days')
     expect(wrapper.text()).toContain('Above 0.00% remaining')
+  })
+
+  it('uses the configured display currency directly', () => {
+    setDisplayCurrency({ currency: 'USD', rates: { cnyTxbPerUnit: null, usdTxbPerUnit: '2.5' } })
+
+    const wrapper = mount(ComboOption, { props: { combo, selected: false } })
+
+    expect(wrapper.text()).toContain('$7.52')
+    expect(wrapper.text()).not.toContain('18.80 TXB')
   })
 
   it('does not display included squad detail', () => {
