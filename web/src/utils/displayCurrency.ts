@@ -61,7 +61,7 @@ export function displayInputFromTXBMinor(minor: string): string {
   if (target === 'TXB') return txbInputFromMinor(minor)
   const rate = target === 'CNY' ? rates.value.cnyTxbPerUnit : rates.value.usdTxbPerUnit
   const converted = rate ? convertTXBMoney(minor, target, rate) : null
-  return converted?.replace(` ${target}`, '') ?? txbInputFromMinor(minor)
+  return converted?.replace(/^(-?)(?:￥|\$)/, '$1') ?? txbInputFromMinor(minor)
 }
 
 export function displayInputMinimumFromTXBMinor(minor: string): string {

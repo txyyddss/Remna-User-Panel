@@ -98,8 +98,18 @@ func (s *Server) telegramDisplayFormatter(ctx context.Context, user model.User) 
 		}
 		return func(money model.Money) model.Money { return money }
 	}
+	rates := currencydisplay.Rates{CNYTXBPerUnit: strings.TrimSpace(rate)}
+	if target == currencydisplay.USD {
+		rates.USDTXBPerUnit = strings.TrimSpace(rate)
+		cnyRate, cnyErr := s.deps.Settings.Optional(ctx, "billing.rate.txb_per_cny")
+		if cnyErr == nil && currencydisplay.ValidRate(cnyRate) {
+			rates.CNYTXBPerUnit = strings.TrimSpace(cnyRate)
+		} else if cnyErr != nil {
+			s.deps.Logger.Warn("load Telegram CNY display fallback rate", "user_id", user.ID, "error", cnyErr)
+		}
+	}
 	return func(money model.Money) model.Money {
-		converted, convertErr := currencydisplay.FormatMoney(money, target, strings.TrimSpace(rate))
+		converted, convertErr := currencydisplay.FormatMoneyWithFallback(money, target, rates)
 		if convertErr != nil {
 			return money
 		}

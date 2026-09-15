@@ -35,6 +35,31 @@ func TestFormatMoneyRejectsInvalidRate(t *testing.T) {
 	}
 }
 
+func TestFormatMoneyWithFallback(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name         string
+		minor        int64
+		target       Currency
+		rates        Rates
+		wantCurrency string
+		wantDisplay  string
+	}{
+		{name: "nonzero USD falls back to CNY", minor: 1, target: USD, rates: Rates{CNYTXBPerUnit: "0.2", USDTXBPerUnit: "1000"}, wantCurrency: "CNY", wantDisplay: "0.05 CNY"},
+		{name: "nonzero CNY falls back to TXB", minor: 1, target: CNY, rates: Rates{CNYTXBPerUnit: "1000"}, wantCurrency: "TXB", wantDisplay: "0.01 TXB"},
+		{name: "zero TXB remains zero USD", minor: 0, target: USD, rates: Rates{CNYTXBPerUnit: "0.2", USDTXBPerUnit: "1000"}, wantCurrency: "USD", wantDisplay: "0.00 USD"},
+		{name: "missing CNY fallback returns TXB", minor: 1, target: USD, rates: Rates{USDTXBPerUnit: "1000"}, wantCurrency: "TXB", wantDisplay: "0.01 TXB"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			money, err := FormatMoneyWithFallback(model.TXBMoney(test.minor), test.target, test.rates)
+			if err != nil || money.Currency != test.wantCurrency || money.Display != test.wantDisplay {
+				t.Fatalf("FormatMoneyWithFallback() = (%+v, %v), want (%s, %s, nil)", money, err, test.wantCurrency, test.wantDisplay)
+			}
+		})
+	}
+}
+
 func TestValidRate(t *testing.T) {
 	t.Parallel()
 	if !ValidRate("2.50") || ValidRate("0") || ValidRate("invalid") {

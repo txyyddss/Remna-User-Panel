@@ -18,6 +18,12 @@ const (
 	USD Currency = "USD"
 )
 
+// Rates contains the configured TXB-per-currency conversion rates.
+type Rates struct {
+	CNYTXBPerUnit string
+	USDTXBPerUnit string
+}
+
 // ParseCurrency normalizes a supported display currency.
 func ParseCurrency(value string) (Currency, bool) {
 	switch Currency(strings.ToUpper(strings.TrimSpace(value))) {
@@ -64,6 +70,35 @@ func FormatMoney(money model.Money, target Currency, rate string) (model.Money, 
 		Minor:    targetMinor.String(),
 		Display:  formatMinor(targetMinor, target),
 	}, nil
+}
+
+// FormatMoneyWithFallback converts a member-facing amount without displaying a
+// zero-valued conversion for a nonzero TXB amount. USD falls back to CNY when
+// available, and CNY or an unavailable fallback ultimately returns TXB.
+func FormatMoneyWithFallback(money model.Money, target Currency, rates Rates) (model.Money, error) {
+	converted, err := FormatMoney(money, target, rates.rateFor(target))
+	if err != nil || !isNonzeroMinor(money.Minor) || converted.Minor != "0" {
+		return converted, err
+	}
+	if target == USD {
+		cny, cnyErr := FormatMoney(money, CNY, rates.CNYTXBPerUnit)
+		if cnyErr == nil && cny.Minor != "0" {
+			return cny, nil
+		}
+	}
+	return money, nil
+}
+
+func (r Rates) rateFor(target Currency) string {
+	if target == USD {
+		return r.USDTXBPerUnit
+	}
+	return r.CNYTXBPerUnit
+}
+
+func isNonzeroMinor(value string) bool {
+	minor, ok := new(big.Int).SetString(strings.TrimSpace(value), 10)
+	return ok && minor.Sign() != 0
 }
 
 func parseRate(value string) (*big.Int, int, error) {
