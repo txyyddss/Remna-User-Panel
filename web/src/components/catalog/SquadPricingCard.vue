@@ -28,11 +28,12 @@ const remainingPercentage = computed(() => {
 })
 const remainingBadge = computed(() => {
   const percentage = remainingPercentage.value
+  const unlimited = percentage === null
   const scarce = percentage !== null && percentage <= 20
   const abundant = percentage !== null && percentage >= 80
   return {
-    color: abundant ? 'neutral' : scarce ? 'warning' : 'info',
-    icon: abundant ? 'i-lucide-user-plus' : scarce ? 'i-lucide-users' : 'i-lucide-user',
+    color: unlimited || abundant ? 'neutral' : scarce ? 'warning' : 'info',
+    icon: unlimited ? 'i-lucide-infinity' : abundant ? 'i-lucide-user-plus' : scarce ? 'i-lucide-users' : 'i-lucide-user',
     label: percentage === null ? '∞' : `${Math.round(percentage)}%`,
   } as const
 })
