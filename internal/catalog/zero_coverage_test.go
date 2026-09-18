@@ -334,3 +334,55 @@ func TestProcessDueAutoRenewalsAndFailureReasons(t *testing.T) {
 		t.Fatalf("autoRenewalFailureReason(generic) = %q", got)
 	}
 }
+
+type rolloverAwareRenewalRepository struct {
+	*dueAutoRenewalRepository
+	awaitingRollover bool
+	awaitingCalls    int
+	awaitingErr      error
+}
+
+func (r *rolloverAwareRenewalRepository) RenewalAwaitingRollover(context.Context, string) (bool, error) {
+	r.awaitingCalls++
+	return r.awaitingRollover, r.awaitingErr
+}
+
+func TestProcessDueAutoRenewalsDefersInsufficientBalanceUntilRolloverSettles(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	now := time.Date(2026, 8, 14, 12, 0, 0, 0, time.UTC)
+	newRepository := func() *rolloverAwareRenewalRepository {
+		plan := eligibleAutoRenewalPlan()
+		plan.GrossMinor, plan.NetMinor = 100, 100
+		base := dueAutoRenewalRepositoryForPlan(plan)
+		base.balance = model.TXBMoney(50)
+		return &rolloverAwareRenewalRepository{dueAutoRenewalRepository: base}
+	}
+
+	deferred := newRepository()
+	deferred.awaitingRollover = true
+	if err := newCatalogServiceForTest(deferred, renewalTestRemote()).ProcessDueAutoRenewals(ctx, now); err != nil {
+		t.Fatalf("ProcessDueAutoRenewals(deferred) = %v", err)
+	}
+	if len(deferred.failed) != 0 || len(deferred.commitIDs) != 0 || deferred.awaitingCalls != 1 {
+		t.Fatalf("deferred renewal failures=%v commits=%v checks=%d, want no failure while rollover is pending", deferred.failed, deferred.commitIDs, deferred.awaitingCalls)
+	}
+
+	settled := newRepository()
+	if err := newCatalogServiceForTest(settled, renewalTestRemote()).ProcessDueAutoRenewals(ctx, now); err != nil {
+		t.Fatalf("ProcessDueAutoRenewals(settled) = %v", err)
+	}
+	if len(settled.failed) != 1 || settled.failed[0].reason != database.AutoRenewalReasonInsufficientBalance {
+		t.Fatalf("settled renewal failures=%v, want one insufficient-balance failure", settled.failed)
+	}
+
+	unreadable := newRepository()
+	unreadable.awaitingErr = errors.New("rollover lookup failure")
+	if err := newCatalogServiceForTest(unreadable, renewalTestRemote()).ProcessDueAutoRenewals(ctx, now); err != nil {
+		t.Fatalf("ProcessDueAutoRenewals(lookup failure) = %v", err)
+	}
+	if len(unreadable.failed) != 1 || unreadable.failed[0].reason != database.AutoRenewalReasonInsufficientBalance {
+		t.Fatalf("unreadable rollover failures=%v, want fail-safe immediate failure", unreadable.failed)
+	}
+}

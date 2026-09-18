@@ -174,3 +174,43 @@ func TestAutomaticRenewalFailureDisablesWithoutCharging(t *testing.T) {
 		t.Fatalf("rollovers after failure = %d, want 1", rollovers)
 	}
 }
+
+func TestRenewalAwaitingRolloverTracksSettlement(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := newTestStore(t)
+	user := createTestUser(t, store, 48_004)
+	combo := saveTestCombo(t, store, "rollover-awaiting", 100, 30)
+	now := time.Date(2026, 8, 14, 12, 0, 0, 0, time.UTC)
+	if _, err := store.AdjustBalance(ctx, user.ID, 100, "awaiting-seed", "seed", now); err != nil {
+		t.Fatal(err)
+	}
+	source, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID, IdempotencyKey: "awaiting-source"}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if awaiting, err := store.RenewalAwaitingRollover(ctx, source.ID); err != nil || !awaiting {
+		t.Fatalf("RenewalAwaitingRollover(active) = (%t, %v), want true", awaiting, err)
+	}
+	if awaiting, err := store.RenewalAwaitingRollover(ctx, "missing-purchase"); err != nil || awaiting {
+		t.Fatalf("RenewalAwaitingRollover(unknown) = (%t, %v), want false", awaiting, err)
+	}
+	if err := store.EnqueueDueEntitlementTransitions(ctx, source.ValidUntil); err != nil {
+		t.Fatalf("EnqueueDueEntitlementTransitions(): %v", err)
+	}
+	if awaiting, err := store.RenewalAwaitingRollover(ctx, source.ID); err != nil || !awaiting {
+		t.Fatalf("RenewalAwaitingRollover(pending) = (%t, %v), want true", awaiting, err)
+	}
+	if err := store.MarkRolloverProcessing(ctx, source.ID, source.ValidUntil); err != nil {
+		t.Fatal(err)
+	}
+	if awaiting, err := store.RenewalAwaitingRollover(ctx, source.ID); err != nil || !awaiting {
+		t.Fatalf("RenewalAwaitingRollover(processing) = (%t, %v), want true", awaiting, err)
+	}
+	if _, err := store.FinalizeRollover(ctx, source.ID, 100*1024*1024, 0, "", source.ValidUntil); err != nil {
+		t.Fatal(err)
+	}
+	if awaiting, err := store.RenewalAwaitingRollover(ctx, source.ID); err != nil || awaiting {
+		t.Fatalf("RenewalAwaitingRollover(settled) = (%t, %v), want false", awaiting, err)
+	}
+}

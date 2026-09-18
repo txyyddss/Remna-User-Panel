@@ -95,6 +95,21 @@ func (s *Store) DueAutoRenewals(ctx context.Context, now time.Time) ([]DueAutoRe
 	return result, rows.Err()
 }
 
+// RenewalAwaitingRollover reports whether a due term's rollover settlement has
+// not completed yet. An insufficient-balance renewal should then be retried
+// after the rollover credit instead of being permanently disabled.
+func (s *Store) RenewalAwaitingRollover(ctx context.Context, purchaseID string) (bool, error) {
+	var awaiting int
+	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM purchases purchase WHERE purchase.id=?
+		AND (purchase.status IN ('active','activating')
+			OR EXISTS (SELECT 1 FROM purchase_rollovers rollover WHERE rollover.purchase_id=purchase.id
+				AND rollover.status IN ('pending','processing'))))`, purchaseID).Scan(&awaiting)
+	if err != nil {
+		return false, fmt.Errorf("check pending rollover settlement: %w", err)
+	}
+	return awaiting == 1, nil
+}
+
 // MarkAutoRenewalFailed disables a due source without charging its owner.
 func (s *Store) MarkAutoRenewalFailed(ctx context.Context, purchaseID, reason string, now time.Time) error {
 	if reason == "" {
