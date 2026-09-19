@@ -82,7 +82,7 @@ function toggle(): void {
         </template>
         <template #nameTags>
           <UIcon v-if="!squad.visible" name="i-ph-lock-key" :aria-label="$t('catalog.hidden')" />
-          <UBadge v-if="squad.activationRequired" color="warning" variant="subtle" :label="$t('catalog.activationRequired')" />
+          <UBadge v-if="squad.activationRequired" size="sm" class="shrink-0 rounded-full px-1.5 py-0.5 font-bold" color="warning" variant="solid" icon="i-ph-lock-key" :aria-label="$t('catalog.activationRequired')" />
           <UBadge v-if="isFull" size="sm" class="shrink-0 rounded-full px-1.5 py-0.5 font-bold" color="error" variant="solid" icon="i-lucide-user-x" :aria-label="$t('catalog.full')" />
           <UBadge v-else-if="!included" size="sm" class="shrink-0 rounded-full px-1.5 py-0.5 font-bold" :color="remainingBadge.color" variant="solid" :icon="remainingBadge.icon" :aria-label="`${$t('catalog.remaining')} ${remainingBadge.label}`" />
         </template>
