@@ -79,3 +79,4 @@ file instead.
 - `045_abuse_outbound_tag.sql` persists the administrator-selected Xray outbound tag used for abuse-log filtering.
 - `046_abuse_outbound_tags.sql` migrates the abuse filter to a validated comma-separated outbound-tag list.
 - `047_display_currency.sql` adds the TXB-default member display-currency preference constrained to TXB, CNY, or USD.
+- `048_rollover_calculated_settlement.sql` adds the calculated rollover state so traffic can be measured before an atomic automatic-renewal settlement.

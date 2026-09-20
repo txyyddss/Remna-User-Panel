@@ -25,10 +25,6 @@ type automaticRenewalFailureRepository interface {
 	AutoRenewalFailure(context.Context, string) (*model.AutoRenewalFailure, error)
 }
 
-type renewalRolloverPendingRepository interface {
-	RenewalAwaitingRollover(context.Context, string) (bool, error)
-}
-
 // AutomaticRenewal returns a member's authoritative current next-cycle quote.
 func (s *Service) AutomaticRenewal(ctx context.Context, user model.User, purchaseID string) (model.AutoRenewal, error) {
 	return s.automaticRenewalAt(ctx, user, purchaseID, s.now().UTC())
@@ -72,7 +68,7 @@ func (s *Service) SetAutomaticRenewal(ctx context.Context, user model.User, purc
 	return status, nil
 }
 
-// ProcessDueAutoRenewals revalidates due terms through the queued provider before expiry work.
+// ProcessDueAutoRenewals settles calculated rollover before creating a successor.
 func (s *Service) ProcessDueAutoRenewals(ctx context.Context, now time.Time) error {
 	repository, ok := s.repository.(automaticRenewalRepository)
 	if !ok {
@@ -95,29 +91,11 @@ func (s *Service) ProcessDueAutoRenewals(ctx context.Context, now time.Time) err
 			}
 		}
 		reason := autoRenewalFailureReason(status, statusErr)
-		if reason == database.AutoRenewalReasonInsufficientBalance && s.renewalDeferredByRollover(ctx, candidate.PurchaseID) {
-			continue
-		}
 		if err := repository.MarkAutoRenewalFailed(ctx, candidate.PurchaseID, reason, now.UTC()); err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-// renewalDeferredByRollover reports whether an insufficient-balance failure
-// should wait for the pending rollover credit instead of disabling renewal.
-// Repositories without rollover insight keep the immediate-failure behavior.
-func (s *Service) renewalDeferredByRollover(ctx context.Context, purchaseID string) bool {
-	repository, ok := s.repository.(renewalRolloverPendingRepository)
-	if !ok {
-		return false
-	}
-	awaiting, err := repository.RenewalAwaitingRollover(ctx, purchaseID)
-	if err != nil {
-		return false
-	}
-	return awaiting
 }
 
 func (s *Service) ensureCatalogAvailable(ctx context.Context, userID string) error {
@@ -154,13 +132,6 @@ func (s *Service) autoRenewalLiveReason(ctx context.Context, plan database.AutoR
 	nodes := quoteAccessibleNodes(catalog, plan.Combo.ID, addonIDs)
 	if len(nodes) == 0 {
 		return autoRenewalReason(database.AutoRenewalReasonNoAccessibleNodes), nil
-	}
-	balance, err := s.repository.Balance(ctx, plan.Purchase.UserID)
-	if err != nil {
-		return nil, err
-	}
-	if balance.MinorInt64() < plan.NetMinor {
-		return autoRenewalReason(database.AutoRenewalReasonInsufficientBalance), nil
 	}
 	return nil, nil
 }

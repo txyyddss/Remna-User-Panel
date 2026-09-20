@@ -25,10 +25,7 @@ func ProjectUsage(purchase model.Purchase, threshold int, snapshot UsageSnapshot
 	}
 	current := calculateUsageRange(threshold, snapshot, anchor, start, now)
 	full := CalculateUsage(purchase, threshold, snapshot)
-	actual := current.UsedBytes
-	if snapshot.NodeSeriesAvailable {
-		actual = snapshot.WeightedUsedBytes
-	}
+	actual := snapshot.WeightedUsedBytes
 	projected := projectFullTerm(actual, now.Sub(start), purchase.ValidUntil.Sub(start))
 	maximum := maximumAllowableUsage(full.AllocatedBytes, threshold)
 	remaining := full.AllocatedBytes - projected

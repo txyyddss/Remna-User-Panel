@@ -45,7 +45,6 @@ func TestRemnawaveAdapterMethodsEnterQueueBeforeClientCreation(t *testing.T) {
 		{name: "reset traffic", call: func() error { return adapter.ResetTraffic(context.Background(), "1") }},
 		{name: "remove entitlement", call: func() error { return adapter.RemoveEntitlement(context.Background(), "1") }},
 		{name: "quiesce rollover", call: func() error { return adapter.QuiesceForRollover(context.Background(), "1") }},
-		{name: "read rollover traffic", call: func() error { _, _, err := adapter.TrafficForRollover(context.Background(), "1"); return err }},
 		{name: "list notification traffic", call: func() error {
 			_, _, _, err := adapter.ListNotificationUsers(context.Background(), "", 1000)
 			return err

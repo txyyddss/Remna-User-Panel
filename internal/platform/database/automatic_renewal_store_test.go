@@ -9,7 +9,7 @@ import (
 	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
 )
 
-func TestAutomaticRenewalCommitsAtContinuityBoundary(t *testing.T) {
+func TestAutomaticRenewalCommitsAfterCalculatedRollover(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	store := newTestStore(t)
@@ -33,31 +33,21 @@ func TestAutomaticRenewalCommitsAtContinuityBoundary(t *testing.T) {
 	if _, err := store.CommitAutoRenewal(ctx, source.ID, tooEarly); !errors.Is(err, ErrConflict) {
 		t.Fatalf("CommitAutoRenewal(early) = %v, want ErrConflict", err)
 	}
-	boundary := source.ValidUntil.Add(-EntitlementContinuityLead)
-	if due, err := store.DueAutoRenewals(ctx, boundary); err != nil || len(due) != 1 || due[0].PurchaseID != source.ID {
-		t.Fatalf("DueAutoRenewals(boundary) = (%v, %v)", due, err)
+	if due, err := store.DueAutoRenewals(ctx, source.ValidUntil); err != nil || len(due) != 0 {
+		t.Fatalf("DueAutoRenewals(before calculation) = (%v, %v)", due, err)
 	}
-	successor, err := store.CommitAutoRenewal(ctx, source.ID, boundary)
+	recordAutomaticRollover(t, store, source.ID, source.ValidUntil, 500, 500)
+	if due, err := store.DueAutoRenewals(ctx, source.ValidUntil); err != nil || len(due) != 1 || due[0].PurchaseID != source.ID {
+		t.Fatalf("DueAutoRenewals(calculated) = (%v, %v)", due, err)
+	}
+	successor, err := store.CommitAutoRenewal(ctx, source.ID, source.ValidUntil)
 	if err != nil {
-		t.Fatalf("CommitAutoRenewal(boundary): %v", err)
+		t.Fatalf("CommitAutoRenewal(calculated): %v", err)
 	}
-	var availableValue string
-	if err := store.DB().QueryRowContext(ctx, `SELECT available_at FROM outbox_jobs WHERE kind=? AND payload=?`, jobpayload.ContinuityKind,
-		`{"purchaseId":"`+successor.ID+`"}`).Scan(&availableValue); err != nil {
-		t.Fatalf("load automatic continuity job: %v", err)
-	}
-	available, err := parseStamp(availableValue)
-	if err != nil || !available.Equal(boundary) {
-		t.Fatalf("automatic continuity available_at = %s, %v", available, err)
-	}
-	if err := store.EnqueueDueEntitlementTransitions(ctx, source.ValidUntil); err != nil {
-		t.Fatalf("EnqueueDueEntitlementTransitions(): %v", err)
-	}
-	if err := store.MarkRolloverProcessing(ctx, source.ID, source.ValidUntil); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := store.FinalizeRollover(ctx, source.ID, 1_000, 500, "", source.ValidUntil); err != nil {
-		t.Fatal(err)
+	var applyJobs int
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind='remna_apply_entitlement' AND payload=?`,
+		`{"purchaseId":"`+successor.ID+`"}`).Scan(&applyJobs); err != nil || applyJobs != 1 {
+		t.Fatalf("automatic activation jobs = %d, %v", applyJobs, err)
 	}
 	if err := store.MarkPurchaseSyncResult(ctx, successor.ID, true, source.ValidUntil); err != nil {
 		t.Fatal(err)
@@ -94,8 +84,9 @@ func TestAutomaticRenewalDefaultsToggleAndSuccessorIdempotency(t *testing.T) {
 	if err := store.SetAutoRenewal(ctx, user.ID, first.ID, true, now); err != nil {
 		t.Fatalf("SetAutoRenewal(on): %v", err)
 	}
+	recordAutomaticRollover(t, store, first.ID, first.ValidUntil, 1_000, 0)
 	successor, err := store.CommitAutoRenewal(ctx, first.ID, first.ValidUntil)
-	if err != nil || successor.Status != "queued" || !successor.AutoRenewEnabled || successor.CoreGrossTXBMinor != combo.PriceTXBMinor {
+	if err != nil || successor.Status != "activating" || !successor.AutoRenewEnabled || successor.CoreGrossTXBMinor != combo.PriceTXBMinor {
 		t.Fatalf("CommitAutoRenewal() = (%+v, %v)", successor, err)
 	}
 	replayed, err := store.CommitAutoRenewal(ctx, first.ID, first.ValidUntil.Add(time.Second))
@@ -104,12 +95,6 @@ func TestAutomaticRenewalDefaultsToggleAndSuccessorIdempotency(t *testing.T) {
 	}
 	if due, err := store.DueAutoRenewals(ctx, first.ValidUntil.Add(time.Second)); err != nil || len(due) != 0 {
 		t.Fatalf("DueAutoRenewals(after successor) = (%+v, %v), want none", due, err)
-	}
-	if err := store.SetAutoRenewal(ctx, user.ID, first.ID, false, first.ValidUntil); err != nil {
-		t.Fatalf("SetAutoRenewal(disable chain): %v", err)
-	}
-	if queuedSuccessor, err := store.PurchaseByID(ctx, successor.ID); err != nil || queuedSuccessor.AutoRenewEnabled {
-		t.Fatalf("PurchaseByID(disabled successor) = (%+v, %v)", queuedSuccessor, err)
 	}
 	var successors, debits int
 	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM purchases WHERE auto_renew_source_purchase_id=?`, first.ID).Scan(&successors); err != nil {
@@ -152,6 +137,7 @@ func TestAutomaticRenewalFailureDisablesWithoutCharging(t *testing.T) {
 	if err := store.SetAutoRenewal(ctx, user.ID, source.ID, true, now); err != nil {
 		t.Fatalf("SetAutoRenewal(on): %v", err)
 	}
+	recordAutomaticRollover(t, store, source.ID, source.ValidUntil, 1_000, 0)
 	if _, err := store.CommitAutoRenewal(ctx, source.ID, source.ValidUntil); !errors.Is(err, ErrInsufficientBalance) {
 		t.Fatalf("CommitAutoRenewal(insufficient) = %v, want ErrInsufficientBalance", err)
 	}

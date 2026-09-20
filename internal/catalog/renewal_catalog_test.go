@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
-	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 )
 
 func TestAutomaticRenewalRetainsRepricedHiddenSquads(t *testing.T) {
@@ -20,7 +19,7 @@ func TestAutomaticRenewalRetainsRepricedHiddenSquads(t *testing.T) {
 	}{
 		{name: "hidden but live", present: true, balance: 1_700, wantPrice: 1_700},
 		{name: "removed upstream", balance: 1_700, wantPrice: 1_000},
-		{name: "insufficient at current price", present: true, balance: 1_300, wantPrice: 1_700, wantReason: database.AutoRenewalReasonInsufficientBalance},
+		{name: "low balance is checked at settlement", present: true, balance: 1_300, wantPrice: 1_700},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()

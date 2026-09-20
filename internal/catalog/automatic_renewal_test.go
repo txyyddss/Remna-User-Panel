@@ -29,7 +29,7 @@ func TestCheckoutOperationsBlockWhileAutomaticRenewalIsEnabled(t *testing.T) {
 	}
 }
 
-func TestAutomaticRenewalToggleRejectsIneligibleEnablement(t *testing.T) {
+func TestAutomaticRenewalToggleDefersBalanceValidationToSettlement(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 8, 14, 12, 0, 0, 0, time.UTC)
 	plan := database.AutoRenewalPlan{Purchase: model.Purchase{ID: "purchase", UserID: "member"}, Combo: model.Combo{ID: "combo", ValidityDays: 30,
@@ -42,13 +42,9 @@ func TestAutomaticRenewalToggleRejectsIneligibleEnablement(t *testing.T) {
 	service.now = func() time.Time { return now }
 	user := model.User{ID: "member"}
 	status, err := service.AutomaticRenewal(context.Background(), user, plan.Purchase.ID)
-	if err != nil || status.CanEnable || status.IneligibleReason == nil || *status.IneligibleReason != database.AutoRenewalReasonInsufficientBalance {
+	if err != nil || !status.CanEnable || status.IneligibleReason != nil {
 		t.Fatalf("AutomaticRenewal() = (%+v, %v)", status, err)
 	}
-	if _, err := service.SetAutomaticRenewal(context.Background(), user, plan.Purchase.ID, true); !errors.Is(err, ErrAutoRenewalIneligible) {
-		t.Fatalf("SetAutomaticRenewal(ineligible) = %v, want ErrAutoRenewalIneligible", err)
-	}
-	repository.balance = model.TXBMoney(100)
 	updated, err := service.SetAutomaticRenewal(context.Background(), user, plan.Purchase.ID, true)
 	if err != nil || !updated.Enabled || !repository.setEnabled {
 		t.Fatalf("SetAutomaticRenewal(eligible) = (%+v, %v), stored=%t", updated, err, repository.setEnabled)

@@ -39,6 +39,7 @@ func TestEditAdminEntitlementUsesUpdatedAtAndPreservesPricingFacts(t *testing.T)
 	if err := store.SetAutoRenewal(ctx, user.ID, updated.ID, true, updatedAt); err != nil {
 		t.Fatalf("SetAutoRenewal(on): %v", err)
 	}
+	recordAutomaticRollover(t, store, updated.ID, updated.ValidUntil, 1_000, 0)
 	successor, err := store.CommitAutoRenewal(ctx, updated.ID, updated.ValidUntil)
 	if err != nil {
 		t.Fatalf("CommitAutoRenewal(): %v", err)

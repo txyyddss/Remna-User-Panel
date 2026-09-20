@@ -65,11 +65,14 @@ func (s *Service) RolloverProjection(ctx context.Context, user model.User, purch
 		end = purchase.ValidUntil
 	}
 	snapshot, err := remote.UsageSnapshotForRollover(ctx, *user.RemnaUserID, purchase.ValidFrom, end)
-	if errors.Is(err, rollover.ErrRemoteUserMissing) {
+	if errors.Is(err, rollover.ErrRemoteUserMissing) || errors.Is(err, rollover.ErrPerNodeUsageUnavailable) {
 		return model.RolloverProjection{}, ErrRolloverUnavailable
 	}
 	if err != nil {
 		return model.RolloverProjection{}, fmt.Errorf("fetch rollover projection: %w", err)
+	}
+	if !snapshot.NodeSeriesAvailable {
+		return model.RolloverProjection{}, ErrRolloverUnavailable
 	}
 	projection := rollover.ProjectUsage(purchase, purchase.RolloverMinRemainingBPS, snapshot, now)
 	projection.FetchedAt = now

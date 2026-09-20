@@ -1,35 +1,32 @@
-// Package rollover settles unused-traffic credits before a term can reset.
+// Package rollover settles unused-traffic credits before automatic renewal.
 package rollover
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/outbox"
-	"time"
 )
 
 var ErrRemoteUserMissing = errors.New("Remnawave user is missing")
+var ErrPerNodeUsageUnavailable = errors.New("per-node rollover usage is unavailable")
 
 type Repository interface {
 	RolloverByPurchase(context.Context, string) (model.PurchaseRollover, error)
 	UserForPurchase(context.Context, string) (model.User, error)
-	MarkRolloverProcessing(context.Context, string, time.Time) error
-	FinalizeRollover(context.Context, string, int64, int64, string, time.Time) (model.PurchaseRollover, error)
-}
-
-type usageFinalizer interface {
-	FinalizeRolloverUsage(context.Context, string, model.RolloverUsageSummary, string, time.Time) (model.PurchaseRollover, error)
-}
-
-type purchaseLoader interface {
 	PurchaseByID(context.Context, string) (model.Purchase, error)
+	RolloverEligible(context.Context, string) (bool, error)
+	MarkRolloverProcessing(context.Context, string, time.Time) error
+	RecordRolloverCalculation(context.Context, string, model.RolloverUsageSummary, time.Time) (model.PurchaseRollover, error)
+	FinalizeRollover(context.Context, string, int64, int64, string, time.Time) (model.PurchaseRollover, error)
 }
 
 type Remote interface {
 	QuiesceForRollover(context.Context, string) error
-	TrafficForRollover(context.Context, string) (limitBytes, usedBytes int64, err error)
+	UsageSnapshotForRollover(context.Context, string, time.Time, time.Time) (UsageSnapshot, error)
 }
 
 type DailyUsage struct {
@@ -38,19 +35,13 @@ type DailyUsage struct {
 }
 
 type UsageSnapshot struct {
-	LimitBytes  int64
-	Strategy    string
-	LastResetAt *time.Time
-	// CurrentUsedBytes is the authoritative counter for the newest reset period.
-	// A nil value means callers should fall back to daily usage buckets.
+	LimitBytes          int64
+	Strategy            string
+	LastResetAt         *time.Time
 	CurrentUsedBytes    *int64
 	Daily               []DailyUsage
 	WeightedUsedBytes   int64
 	NodeSeriesAvailable bool
-}
-
-type usageSnapshotRemote interface {
-	UsageSnapshotForRollover(context.Context, string, time.Time, time.Time) (UsageSnapshot, error)
 }
 
 type Service struct {
@@ -75,50 +66,31 @@ func (s *Service) HandleOutbox(ctx context.Context, job model.OutboxJob) error {
 	if err != nil {
 		return err
 	}
-	if rollover.Status == "credited" || rollover.Status == "zero" || rollover.Status == "exception" {
+	if rolloverTerminal(rollover.Status) || rollover.Status == "calculated" {
 		return nil
 	}
-	loader, hasPurchase := s.repository.(purchaseLoader)
-	if hasPurchase {
-		purchase, loadErr := loader.PurchaseByID(ctx, purchaseID)
-		if loadErr != nil {
-			return loadErr
-		}
-		if !purchase.AutoRenewEnabled {
-			if rollover.Status == "pending" {
-				if err := s.repository.MarkRolloverProcessing(ctx, purchaseID, s.now().UTC()); err != nil {
-					return err
-				}
-			}
-			if finalizer, ok := s.repository.(usageFinalizer); ok {
-				_, err := finalizer.FinalizeRolloverUsage(ctx, purchaseID, model.RolloverUsageSummary{AlgorithmVersion: "disabled-v1"}, "", s.now().UTC())
-				return err
-			}
-			_, err := s.repository.FinalizeRollover(ctx, purchaseID, 0, 0, "", s.now().UTC())
-			return err
-		}
+	eligible, err := s.repository.RolloverEligible(ctx, purchaseID)
+	if err != nil {
+		return err
+	}
+	if !eligible {
+		return s.finalizeWithoutCalculation(ctx, purchaseID, rollover, "")
+	}
+	purchase, err := s.repository.PurchaseByID(ctx, purchaseID)
+	if err != nil {
+		return err
 	}
 	user, err := s.repository.UserForPurchase(ctx, purchaseID)
 	if err != nil {
 		return err
 	}
 	if user.RemnaUserID == nil {
-		if rollover.Status == "pending" {
-			if err := s.repository.MarkRolloverProcessing(ctx, purchaseID, s.now().UTC()); err != nil {
-				return err
-			}
-		}
-		_, err := s.repository.FinalizeRollover(ctx, purchaseID, 0, 0, "local_identity_missing", s.now().UTC())
-		return err
+		return s.finalizeWithoutCalculation(ctx, purchaseID, rollover, "local_identity_missing")
 	}
 	if rollover.Status == "pending" {
 		if err := s.remote.QuiesceForRollover(ctx, *user.RemnaUserID); err != nil {
 			if errors.Is(err, ErrRemoteUserMissing) {
-				if markErr := s.repository.MarkRolloverProcessing(ctx, purchaseID, s.now().UTC()); markErr != nil {
-					return markErr
-				}
-				_, finalizeErr := s.repository.FinalizeRollover(ctx, purchaseID, 0, 0, "remnawave_user_missing", s.now().UTC())
-				return finalizeErr
+				return s.finalizeWithoutCalculation(ctx, purchaseID, rollover, "remnawave_user_missing")
 			}
 			return fmt.Errorf("quiesce rollover: %w", err)
 		}
@@ -126,40 +98,34 @@ func (s *Service) HandleOutbox(ctx context.Context, job model.OutboxJob) error {
 			return err
 		}
 	}
-	if extended, ok := s.remote.(usageSnapshotRemote); ok {
-		if loader, loadOK := s.repository.(purchaseLoader); loadOK {
-			purchase, loadErr := loader.PurchaseByID(ctx, purchaseID)
-			if loadErr != nil {
-				return loadErr
-			}
-			snapshot, snapshotErr := extended.UsageSnapshotForRollover(ctx, *user.RemnaUserID, purchase.ValidFrom, purchase.ValidUntil)
-			if errors.Is(snapshotErr, ErrRemoteUserMissing) {
-				_, snapshotErr = s.repository.FinalizeRollover(ctx, purchaseID, 0, 0, "remnawave_user_missing", s.now().UTC())
-				return snapshotErr
-			}
-			if snapshotErr != nil {
-				return fmt.Errorf("fetch rollover traffic: %w", snapshotErr)
-			}
-			if finalizer, finalizerOK := s.repository.(usageFinalizer); finalizerOK {
-				summary := CalculateUsage(purchase, rollover.MinimumRemainingBPS, snapshot)
-				_, finalErr := finalizer.FinalizeRolloverUsage(ctx, purchaseID, summary, "", s.now().UTC())
-				return finalErr
-			}
-		}
-	}
-	limit, used, err := s.remote.TrafficForRollover(ctx, *user.RemnaUserID)
+	snapshot, err := s.remote.UsageSnapshotForRollover(ctx, *user.RemnaUserID, purchase.ValidFrom, purchase.ValidUntil)
 	if errors.Is(err, ErrRemoteUserMissing) {
-		_, err = s.repository.FinalizeRollover(ctx, purchaseID, 0, 0, "remnawave_user_missing", s.now().UTC())
-		return err
+		return s.finalizeWithoutCalculation(ctx, purchaseID, rollover, "remnawave_user_missing")
 	}
 	if err != nil {
-		return fmt.Errorf("fetch rollover traffic: %w", err)
+		return fmt.Errorf("fetch per-node rollover traffic: %w", err)
 	}
-	_, err = s.repository.FinalizeRollover(ctx, purchaseID, limit, used, "", s.now().UTC())
+	if !snapshot.NodeSeriesAvailable {
+		return ErrPerNodeUsageUnavailable
+	}
+	_, err = s.repository.RecordRolloverCalculation(ctx, purchaseID, CalculateUsage(purchase, rollover.MinimumRemainingBPS, snapshot), s.now().UTC())
 	return err
+}
+
+func (s *Service) finalizeWithoutCalculation(ctx context.Context, purchaseID string, rollover model.PurchaseRollover, exception string) error {
+	if rollover.Status == "pending" {
+		if err := s.repository.MarkRolloverProcessing(ctx, purchaseID, s.now().UTC()); err != nil {
+			return err
+		}
+	}
+	_, err := s.repository.FinalizeRollover(ctx, purchaseID, 0, 0, exception, s.now().UTC())
+	return err
+}
+
+func rolloverTerminal(status string) bool {
+	return status == "credited" || status == "zero" || status == "exception"
 }
 
 const UsageAlgorithmVersion = "cadence-v3"
 
-// CalculateUsage derives cadence allowances from daily upstream data without
-// retaining the raw provider series.
+// CalculateUsage derives cadence allowances from weighted per-node daily usage.

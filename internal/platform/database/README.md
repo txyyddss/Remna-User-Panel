@@ -56,6 +56,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `renewal_stock_price_test.go` covers current recurring-discount quotes and debits while an existing member retains a seat in a squad closed to new sales.
 - `squad_stock_retention_test.go` covers held reservations after stock-limit reductions, new-member rejection, and seat release after expiry or cancellation.
 - `automatic_renewal_plan.go`, `automatic_renewal_coupon.go`, `automatic_renewal_state.go`, and `automatic_renewal_commit.go` — automatic-renewal current pricing, attached-coupon policy, owner state/failure records, and atomic one-successor debits.
+- `automatic_renewal_rollover.go` settles a calculated rollover and automatic renewal in one transaction, including insufficient-funds expiry and explicit later re-enable handling.
 - `billing_purchase_helpers.go` — distinct-member stock checks that retain existing seats, purchase fingerprints, catalog row loaders, and balance debit helpers.
 - `billing_ledger.go` — balances, audited adjustments, deductions, and ledger reads.
 - `ledger_page.go` — stable cursor-based ledger pagination.
@@ -166,7 +167,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `maintenance_runs.go` acquires the configured local-day maintenance lease, supports forced same-day history rows, and records backup-gated cleanup completion.
 - `administration_records.go` — audit events, administrator user lists, and backup
   run records.
-- `rollover.go` — durable rollover processing and finalization.
+- `rollover.go` and `automatic_renewal_rollover.go` persist a calculated rollover before atomically crediting, debiting, expiring, and activating an automatic renewal.
 - `payment_profiles.go` — provider-account profile masking, protected deletion, and encrypted credential persistence.
 - `retention.go` — bounded cleanup of aged operational records.
 - `retention_activity_rollups.go`, `retention_payment_rollups.go`, and

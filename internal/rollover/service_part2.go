@@ -61,9 +61,6 @@ func calculateUsageRange(threshold int, snapshot UsageSnapshot, anchor, start, e
 			}
 			periodUsed += proportionalBytes(usageByDay[day.Format(time.DateOnly)], portion.Nanoseconds(), (24 * time.Hour).Nanoseconds())
 		}
-		if currentUsed, ok := currentPeriodUsage(snapshot, period, start, end); ok {
-			periodUsed = currentUsed
-		}
 		if allowance < 0 {
 			allowance = 0
 		}
@@ -81,32 +78,6 @@ func calculateUsageRange(threshold int, snapshot UsageSnapshot, anchor, start, e
 		}
 	}
 	return model.RolloverUsageSummary{AllocatedBytes: allocated, UsedBytes: used, EligibleUnusedBytes: eligible, AlgorithmVersion: UsageAlgorithmVersion}
-}
-
-func currentPeriodUsage(snapshot UsageSnapshot, period cadencePeriod, start, end time.Time) (int64, bool) {
-	if snapshot.NodeSeriesAvailable {
-		return 0, false
-	}
-	if snapshot.CurrentUsedBytes == nil || *snapshot.CurrentUsedBytes < 0 {
-		return 0, false
-	}
-	if snapshot.Strategy == "NO_RESET" {
-		if period.start.Equal(start) {
-			return *snapshot.CurrentUsedBytes, true
-		}
-		return 0, false
-	}
-	if snapshot.LastResetAt == nil {
-		return 0, false
-	}
-	resetAt := snapshot.LastResetAt.UTC()
-	if resetAt.Before(start) || !resetAt.Before(end) {
-		return 0, false
-	}
-	if period.start.Equal(resetAt) {
-		return *snapshot.CurrentUsedBytes, true
-	}
-	return 0, false
 }
 
 func strictlyAboveBPS(remaining, allowance int64, threshold int) bool {

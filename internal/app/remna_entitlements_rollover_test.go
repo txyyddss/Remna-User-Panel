@@ -25,7 +25,7 @@ func (c *rolloverStatsClient) GetUserStats(_ context.Context, _ int64, start, en
 		return nil, errors.New("stats range is invalid")
 	}
 	c.start, c.end = start, end
-	return &remnawave.UserStats{}, nil
+	return &remnawave.UserStats{Categories: []string{}, Series: []remnawave.NodeUsageSeries{}}, nil
 }
 
 func TestRolloverUsageSnapshotKeepsInclusiveFinalDate(t *testing.T) {
@@ -41,8 +41,12 @@ func TestRolloverUsageSnapshotKeepsInclusiveFinalDate(t *testing.T) {
 	client := &rolloverStatsClient{}
 	adapter := remnaAdapter{queue: queue, clientFactory: func(context.Context) (remnaClient, error) { return client, nil }}
 	moment := time.Date(2026, 8, 19, 10, 30, 0, 0, time.FixedZone("CST", 8*60*60))
-	if _, err := adapter.UsageSnapshotForRollover(context.Background(), "7", moment, moment); err != nil {
+	snapshot, err := adapter.UsageSnapshotForRollover(context.Background(), "7", moment, moment)
+	if err != nil {
 		t.Fatalf("UsageSnapshotForRollover(): %v", err)
+	}
+	if !snapshot.NodeSeriesAvailable || len(snapshot.Daily) != 0 {
+		t.Fatalf("empty per-node series = %+v, want an available zero-usage series", snapshot)
 	}
 	if !client.start.Equal(moment.UTC()) || !client.end.Equal(moment.UTC()) {
 		t.Fatalf("stats range = %s to %s, want %s to %s", client.start, client.end, moment.UTC(), moment.UTC())

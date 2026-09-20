@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"math"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/admin"
@@ -83,7 +84,7 @@ func (a remnaAdapter) nodeMultiplier(ctx context.Context, uuid string) (int64, e
 	if value, ok := a.multipliers.get(uuid); ok {
 		return value, nil
 	}
-	return 0, nil
+	return 0, fmt.Errorf("node multiplier is unavailable for %q", uuid)
 }
 
 func (a remnaAdapter) AccessibleCatalogNodeUUIDs(ctx context.Context, squadUUID string) ([]string, error) {
