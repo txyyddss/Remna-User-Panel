@@ -50,6 +50,9 @@ func TestRenewalRetainsStockAtCurrentDiscountedPrice(t *testing.T) {
 	if balance, err := store.Balance(ctx, user.ID); err != nil || balance.MinorInt64() != 3_830 {
 		t.Fatalf("Balance(before renewal) = (%+v, %v), want no quote debit", balance, err)
 	}
+	if err := store.SetAutoRenewal(ctx, user.ID, source.ID, true, now); err != nil {
+		t.Fatalf("SetAutoRenewal(on): %v", err)
+	}
 	renewed, err := store.CommitAutoRenewal(ctx, source.ID, source.ValidUntil)
 	if err != nil || renewed.PriceTXBMinor != 1_530 || renewed.CouponDiscountTXBMinor != 170 || !renewed.RecurringDiscountAttached {
 		t.Fatalf("CommitAutoRenewal(held stock) = (%+v, %v)", renewed, err)

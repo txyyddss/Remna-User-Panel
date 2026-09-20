@@ -113,8 +113,9 @@ func automaticResetFixture(t *testing.T, telegramID, seed int64) (*Store, string
 	if _, err := store.DB().ExecContext(ctx, `UPDATE users SET remna_user_id=? WHERE id=?`, strconv.FormatInt(telegramID, 10), user.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.SetTrafficResetAutomation(ctx, user.ID, true, now); err != nil {
-		t.Fatal(err)
+	setting, err := store.TrafficResetAutomation(ctx, user.ID)
+	if err != nil || !setting.Enabled {
+		t.Fatalf("TrafficResetAutomation(default) = (%+v, %v), want enabled", setting, err)
 	}
 	return store, user.ID, purchase.ID, now
 }

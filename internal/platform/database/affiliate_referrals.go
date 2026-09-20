@@ -36,8 +36,8 @@ func (s *Store) AcceptAffiliateReferral(ctx context.Context, inviteeTelegramID, 
 	if err != nil {
 		return "", false, err
 	}
-	result, err := tx.ExecContext(ctx, `INSERT INTO users(id,telegram_id,new_user,inviter_id,notification_locale,created_at,updated_at)
-		VALUES(?,?,1,?,'en',?,?) ON CONFLICT(telegram_id) DO UPDATE SET inviter_id=excluded.inviter_id,updated_at=excluded.updated_at
+	result, err := tx.ExecContext(ctx, `INSERT INTO users(id,telegram_id,new_user,inviter_id,notification_locale,auto_traffic_reset_enabled,created_at,updated_at)
+		VALUES(?,?,1,?,'en',1,?,?) ON CONFLICT(telegram_id) DO UPDATE SET inviter_id=excluded.inviter_id,updated_at=excluded.updated_at
 		WHERE users.new_user=1 AND users.inviter_id IS NULL`, stubID, inviteeTelegramID, inviterTelegramID, stamp(now), stamp(now))
 	if err != nil {
 		return "", false, fmt.Errorf("freeze affiliate inviter: %w", err)

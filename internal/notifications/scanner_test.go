@@ -25,16 +25,16 @@ func (r *scanRepositoryStub) EnqueueExpiryReminderNotifications(context.Context,
 
 func TestScannerUsesStrictAutomaticResetBoundary(t *testing.T) {
 	t.Parallel()
-	if aboveNinetyNinePercent(990, 1000) {
-		t.Fatal("exactly 99% was considered above 99%")
+	if aboveNinetyFivePercent(950, 1000) {
+		t.Fatal("exactly 95% was considered above 95%")
 	}
-	if !aboveNinetyNinePercent(991, 1000) || !aboveNinetyNinePercent(math.MaxInt64, math.MaxInt64-1) {
-		t.Fatal("aboveNinetyNinePercent rejected an eligible value")
+	if !aboveNinetyFivePercent(951, 1000) || !aboveNinetyFivePercent(math.MaxInt64, math.MaxInt64-1) {
+		t.Fatal("aboveNinetyFivePercent rejected an eligible value")
 	}
 	repository := &scanRepositoryStub{automaticHandled: true}
 	scanner := NewScanner(repository, trafficRemoteStub{users: []TrafficUser{
-		{ID: 1, UsedBytes: 990, LimitBytes: 1000},
-		{ID: 2, UsedBytes: 991, LimitBytes: 1000},
+		{ID: 1, UsedBytes: 950, LimitBytes: 1000},
+		{ID: 2, UsedBytes: 951, LimitBytes: 1000},
 	}}, nil)
 	if err := scanner.Scan(context.Background(), time.Now().UTC()); err != nil {
 		t.Fatalf("Scan(): %v", err)

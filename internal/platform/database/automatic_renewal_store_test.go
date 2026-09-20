@@ -23,6 +23,9 @@ func TestAutomaticRenewalCommitsAtContinuityBoundary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := store.SetAutoRenewal(ctx, user.ID, source.ID, true, now); err != nil {
+		t.Fatalf("SetAutoRenewal(on): %v", err)
+	}
 	tooEarly := source.ValidUntil.Add(-EntitlementContinuityLead - time.Second)
 	if due, err := store.DueAutoRenewals(ctx, tooEarly); err != nil || len(due) != 0 {
 		t.Fatalf("DueAutoRenewals(early) = (%v, %v)", due, err)
@@ -82,8 +85,8 @@ func TestAutomaticRenewalDefaultsToggleAndSuccessorIdempotency(t *testing.T) {
 		t.Fatal(err)
 	}
 	first, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID, IdempotencyKey: "automatic-first"}, now)
-	if err != nil || !first.AutoRenewEnabled {
-		t.Fatalf("CreatePurchase(immediate) = (%+v, %v), want auto renewal enabled", first, err)
+	if err != nil || first.AutoRenewEnabled {
+		t.Fatalf("CreatePurchase(immediate) = (%+v, %v), want auto renewal disabled", first, err)
 	}
 	if err := store.SetAutoRenewal(ctx, user.ID, first.ID, false, now); err != nil {
 		t.Fatalf("SetAutoRenewal(off): %v", err)
@@ -145,6 +148,9 @@ func TestAutomaticRenewalFailureDisablesWithoutCharging(t *testing.T) {
 	source, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID, IdempotencyKey: "failure-source"}, now)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if err := store.SetAutoRenewal(ctx, user.ID, source.ID, true, now); err != nil {
+		t.Fatalf("SetAutoRenewal(on): %v", err)
 	}
 	if _, err := store.CommitAutoRenewal(ctx, source.ID, source.ValidUntil); !errors.Is(err, ErrInsufficientBalance) {
 		t.Fatalf("CommitAutoRenewal(insufficient) = %v, want ErrInsufficientBalance", err)

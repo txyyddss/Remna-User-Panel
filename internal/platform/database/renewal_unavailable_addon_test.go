@@ -28,6 +28,9 @@ func TestRenewalSelectionExcludesUnavailableAddons(t *testing.T) {
 			}
 			var renewedID string
 			if automatic {
+				if err := store.SetAutoRenewal(ctx, user.ID, source.ID, true, now); err != nil {
+					t.Fatalf("SetAutoRenewal(on): %v", err)
+				}
 				purchase, renewErr := store.CommitAutoRenewalExcludingAddons(ctx, source.ID, []string{addon.ID}, source.ValidUntil)
 				if renewErr != nil {
 					t.Fatal(renewErr)

@@ -8,7 +8,7 @@
   the frozen node, squads, observation interval, applied duration, expiry change,
   review reason, and capped-calculation indicator.
 - `worker.go` delivers durable private-chat jobs through the queued Telegram sender.
-- `scanner.go` evaluates the 48-hour reminder, strict 90% notice boundary, and strict-above-99% automatic-reset handoff.
+- `scanner.go` evaluates the 48-hour reminder, strict 90% notice boundary, and strict-above-95% automatic-reset handoff.
 - Automatic-reset success is provider-gated; insufficient balance disables the preference in the reset transaction, while definitive failure produces a localized refund notice.
 - `format_test.go`, `automatic_reset_format_test.go`, `scanner_test.go`, and `worker_test.go` cover formatting,
   localized reset details, threshold behavior, and retryable delivery failures.

@@ -71,7 +71,7 @@ func (s *Scanner) scanTraffic(ctx context.Context, now time.Time) (int, error) {
 			if user.ID <= 0 || !aboveNinetyPercent(user.UsedBytes, user.LimitBytes) {
 				continue
 			}
-			if aboveNinetyNinePercent(user.UsedBytes, user.LimitBytes) {
+			if aboveNinetyFivePercent(user.UsedBytes, user.LimitBytes) {
 				result, resetErr := s.repository.ProcessAutomaticTrafficResetObservation(ctx, strconv.FormatInt(user.ID, 10),
 					user.UsedBytes, user.LimitBytes, user.ResetStrategy, user.LastTrafficResetAt, now)
 				if resetErr != nil {
@@ -100,12 +100,12 @@ func (s *Scanner) scanTraffic(ctx context.Context, now time.Time) (int, error) {
 	}
 }
 
-func aboveNinetyNinePercent(used, limit int64) bool {
+func aboveNinetyFivePercent(used, limit int64) bool {
 	if used < 0 || limit <= 0 {
 		return false
 	}
-	usedHi, usedLo := bits.Mul64(uint64(used), 100)
-	limitHi, limitLo := bits.Mul64(uint64(limit), 99)
+	usedHi, usedLo := bits.Mul64(uint64(used), 20)
+	limitHi, limitLo := bits.Mul64(uint64(limit), 19)
 	return usedHi > limitHi || usedHi == limitHi && usedLo > limitLo
 }
 

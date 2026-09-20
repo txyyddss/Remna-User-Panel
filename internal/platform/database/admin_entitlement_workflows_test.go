@@ -36,6 +36,9 @@ func TestEditAdminEntitlementUsesUpdatedAtAndPreservesPricingFacts(t *testing.T)
 		updated.CoreGrossTXBMinor != purchase.CoreGrossTXBMinor || !updated.CreatedAt.Equal(purchase.CreatedAt) {
 		t.Fatalf("immutable purchase facts changed: before=%+v after=%+v", purchase, updated)
 	}
+	if err := store.SetAutoRenewal(ctx, user.ID, updated.ID, true, updatedAt); err != nil {
+		t.Fatalf("SetAutoRenewal(on): %v", err)
+	}
 	successor, err := store.CommitAutoRenewal(ctx, updated.ID, updated.ValidUntil)
 	if err != nil {
 		t.Fatalf("CommitAutoRenewal(): %v", err)
