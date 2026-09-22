@@ -12,12 +12,23 @@ import (
 
 // CommitAutoRenewal atomically settles one calculated rollover and successor.
 func (s *Store) CommitAutoRenewal(ctx context.Context, purchaseID string, now time.Time) (model.Purchase, error) {
-	return s.commitAutoRenewal(ctx, purchaseID, nil, now)
+	return s.commitAutoRenewal(ctx, purchaseID, nil, true, now)
 }
 
 // CommitAutoRenewalExcludingAddons excludes upstream-unavailable paid squads.
 func (s *Store) CommitAutoRenewalExcludingAddons(ctx context.Context, purchaseID string, excludedAddonIDs []string, now time.Time) (model.Purchase, error) {
-	return s.commitAutoRenewal(ctx, purchaseID, excludedAddonIDs, now)
+	return s.commitAutoRenewal(ctx, purchaseID, excludedAddonIDs, true, now)
+}
+
+// CommitAutoRenewalWithRolloverBalance settles automatic renewal under the
+// current global policy for whether rollover credit counts toward its balance.
+func (s *Store) CommitAutoRenewalWithRolloverBalance(ctx context.Context, purchaseID string, rolloverCountsTowardBalance bool, now time.Time) (model.Purchase, error) {
+	return s.commitAutoRenewal(ctx, purchaseID, nil, rolloverCountsTowardBalance, now)
+}
+
+// CommitAutoRenewalExcludingAddonsWithRolloverBalance also excludes live-unavailable paid squads.
+func (s *Store) CommitAutoRenewalExcludingAddonsWithRolloverBalance(ctx context.Context, purchaseID string, excludedAddonIDs []string, rolloverCountsTowardBalance bool, now time.Time) (model.Purchase, error) {
+	return s.commitAutoRenewal(ctx, purchaseID, excludedAddonIDs, rolloverCountsTowardBalance, now)
 }
 
 func automaticRenewalSuccessorIDTx(ctx context.Context, tx *sql.Tx, sourceID string) (string, bool, error) {

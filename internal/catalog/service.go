@@ -55,6 +55,7 @@ type Service struct {
 	now        func() time.Time
 	cacheMu    sync.RWMutex
 	cache      map[string]cachedDashboard
+	settings   AutomaticRenewalSettings
 }
 
 // NewService creates a catalog service.

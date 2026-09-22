@@ -32,6 +32,7 @@
       "payments": "支付",
       "emby": "Emby",
       "activity": "活动",
+      "renewal": "续费",
       "application": "应用"
     },
     "settingLabels": {
@@ -62,7 +63,11 @@
       "activity_daily_reward_min_txb": "每日奖励最小值",
       "activity_daily_reward_max_txb": "每日奖励最大值",
       "activity_group_message_threshold": "群消息阈值",
-      "activity_group_message_reward_txb": "群消息奖励"
+      "activity_group_message_reward_txb": "群消息奖励",
+      "renewal_rollover_before_auto_renewal_enabled": "在自动续费前结转余额"
+    },
+    "settingHints": {
+      "renewal_rollover_before_auto_renewal_enabled": "启用后，已计算的结转金额会计入自动续费所需余额。关闭后，续费价格必须在结转余额入账前由现有余额覆盖。"
     }
   },
   "adminPaymentProfiles": {

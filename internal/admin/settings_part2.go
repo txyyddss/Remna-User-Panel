@@ -26,7 +26,10 @@ func (s *SettingsService) SafeList(ctx context.Context) ([]model.Setting, error)
 	for _, key := range keys {
 		definition := settingDefinitions[key]
 		setting, exists := byKey[key]
-		value := setting.Value
+		value := definition.Default
+		if exists {
+			value = setting.Value
+		}
 		if definition.Secret {
 			value = ""
 		}
@@ -49,6 +52,8 @@ func settingCategory(key string) string {
 		return "emby"
 	case strings.HasPrefix(key, "activity."):
 		return "activity"
+	case strings.HasPrefix(key, "renewal."):
+		return "renewal"
 	default:
 		return "application"
 	}

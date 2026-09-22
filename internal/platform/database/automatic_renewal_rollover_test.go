@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -60,6 +61,42 @@ func TestCalculatedRolloverFundsAutomaticRenewalAtomically(t *testing.T) {
 	}
 	if credits != 1 || debits != 1 {
 		t.Fatalf("credit/debit ledgers = %d/%d, want 1/1", credits, debits)
+	}
+}
+
+func TestCalculatedRolloverCanBeExcludedFromAutomaticRenewalBalance(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := newTestStore(t)
+	user := createTestUser(t, store, 48_012)
+	combo := saveTestCombo(t, store, "rollover-after-renewal", 100, 1)
+	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
+	if _, err := store.AdjustBalance(ctx, user.ID, 160, "rollover-after-renewal-seed", "seed", now); err != nil {
+		t.Fatal(err)
+	}
+	source, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID, IdempotencyKey: "rollover-after-renewal-source"}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SetAutoRenewal(ctx, user.ID, source.ID, true, now); err != nil {
+		t.Fatal(err)
+	}
+	recordAutomaticRollover(t, store, source.ID, source.ValidUntil, 500, 500)
+	if _, err := store.CommitAutoRenewalWithRolloverBalance(ctx, source.ID, false, source.ValidUntil); !errors.Is(err, ErrInsufficientBalance) {
+		t.Fatalf("CommitAutoRenewalWithRolloverBalance() = %v, want ErrInsufficientBalance", err)
+	}
+	if balance, err := store.Balance(ctx, user.ID); err != nil || balance.MinorInt64() != 60 {
+		t.Fatalf("Balance() = (%+v, %v), want 60", balance, err)
+	}
+	var credits, debits int
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM ledger_entries WHERE kind='rollover_credit'`).Scan(&credits); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM ledger_entries WHERE kind='automatic_renewal'`).Scan(&debits); err != nil {
+		t.Fatal(err)
+	}
+	if credits != 0 || debits != 0 {
+		t.Fatalf("credit/debit ledgers = %d/%d, want 0/0", credits, debits)
 	}
 }
 

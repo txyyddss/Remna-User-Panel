@@ -11,7 +11,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 )
 
-func (s *Store) commitAutoRenewal(ctx context.Context, purchaseID string, excludedAddonIDs []string, now time.Time) (model.Purchase, error) {
+func (s *Store) commitAutoRenewal(ctx context.Context, purchaseID string, excludedAddonIDs []string, rolloverCountsTowardBalance bool, now time.Time) (model.Purchase, error) {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 	now = now.UTC()
@@ -59,7 +59,7 @@ func (s *Store) commitAutoRenewal(ctx context.Context, purchaseID string, exclud
 	if calculated {
 		credit = calculatedRolloverCredit(rollover)
 	}
-	if !renewalFundsCover(balance, credit, plan.NetMinor) {
+	if !renewalFundsCover(balance, credit, plan.NetMinor, rolloverCountsTowardBalance) {
 		settled, failErr := s.failCalculatedAutoRenewalTx(ctx, tx, purchaseID, userID, AutoRenewalReasonInsufficientBalance, now)
 		if failErr != nil {
 			return model.Purchase{}, failErr
@@ -190,6 +190,9 @@ func calculatedRolloverCredit(rollover model.PurchaseRollover) int64 {
 	return proportionalFloor(rollover.NetPaidTXBMinor, *rollover.EligibleUnusedBytes, *rollover.AllocatedBytes)
 }
 
-func renewalFundsCover(balance, credit, price int64) bool {
+func renewalFundsCover(balance, credit, price int64, rolloverCountsTowardBalance bool) bool {
+	if !rolloverCountsTowardBalance {
+		credit = 0
+	}
 	return price >= 0 && balance >= 0 && (balance >= price || (credit >= 0 && credit >= price-balance))
 }

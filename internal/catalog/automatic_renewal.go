@@ -3,6 +3,9 @@ package catalog
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
@@ -11,6 +14,15 @@ import (
 
 var ErrAutoRenewalEnabled = errors.New("automatic renewal is enabled")
 var ErrAutoRenewalIneligible = errors.New("automatic renewal is currently ineligible")
+
+// RolloverBeforeAutoRenewalSetting controls whether a calculated rollover can
+// cover an automatic-renewal balance shortfall.
+const RolloverBeforeAutoRenewalSetting = "renewal.rollover_before_auto_renewal_enabled"
+
+// AutomaticRenewalSettings supplies the global automatic-renewal policy.
+type AutomaticRenewalSettings interface {
+	Optional(context.Context, string) (string, error)
+}
 
 type automaticRenewalRepository interface {
 	AutoRenewalPlan(context.Context, string, string, time.Time) (database.AutoRenewalPlan, error)
@@ -23,6 +35,11 @@ type automaticRenewalRepository interface {
 
 type automaticRenewalFailureRepository interface {
 	AutoRenewalFailure(context.Context, string) (*model.AutoRenewalFailure, error)
+}
+
+// SetAutomaticRenewalSettings attaches the global renewal policy reader.
+func (s *Service) SetAutomaticRenewalSettings(settings AutomaticRenewalSettings) {
+	s.settings = settings
 }
 
 // AutomaticRenewal returns a member's authoritative current next-cycle quote.
@@ -74,6 +91,10 @@ func (s *Service) ProcessDueAutoRenewals(ctx context.Context, now time.Time) err
 	if !ok {
 		return nil
 	}
+	rolloverCountsTowardBalance, err := s.rolloverCountsTowardAutoRenewalBalance(ctx)
+	if err != nil {
+		return err
+	}
 	candidates, err := repository.DueAutoRenewals(ctx, now.UTC())
 	if err != nil {
 		return err
@@ -84,7 +105,7 @@ func (s *Service) ProcessDueAutoRenewals(ctx context.Context, now time.Time) err
 		}
 		status, unavailable, statusErr := s.automaticRenewalSelectionAt(ctx, model.User{ID: candidate.UserID}, candidate.PurchaseID, now.UTC())
 		if statusErr == nil && status.CanEnable {
-			if _, err := s.commitAutomaticRenewal(ctx, repository, candidate.PurchaseID, unavailable, now.UTC()); err == nil {
+			if _, err := s.commitAutomaticRenewal(ctx, repository, candidate.PurchaseID, unavailable, rolloverCountsTowardBalance, now.UTC()); err == nil {
 				continue
 			} else {
 				statusErr = err
@@ -96,6 +117,24 @@ func (s *Service) ProcessDueAutoRenewals(ctx context.Context, now time.Time) err
 		}
 	}
 	return nil
+}
+
+func (s *Service) rolloverCountsTowardAutoRenewalBalance(ctx context.Context) (bool, error) {
+	if s.settings == nil {
+		return true, nil
+	}
+	raw, err := s.settings.Optional(ctx, RolloverBeforeAutoRenewalSetting)
+	if err != nil {
+		return false, fmt.Errorf("load automatic renewal rollover policy: %w", err)
+	}
+	if strings.TrimSpace(raw) == "" {
+		return true, nil
+	}
+	value, err := strconv.ParseBool(raw)
+	if err != nil {
+		return false, fmt.Errorf("parse automatic renewal rollover policy: %w", err)
+	}
+	return value, nil
 }
 
 func (s *Service) ensureCatalogAvailable(ctx context.Context, userID string) error {

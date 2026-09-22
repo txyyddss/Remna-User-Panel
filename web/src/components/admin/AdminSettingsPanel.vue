@@ -69,6 +69,11 @@ function categoryLabel(category: string): string {
   const translated = t(key)
   return translated === key ? category : translated
 }
+function settingHelp(setting: AdminSetting): string {
+  const key = `adminSettings.settingHints.${setting.key.replace(/\./g, '_')}`
+  const translated = t(key)
+  return translated === key ? t('adminSettings.validated') : translated
+}
 
 function isSensitive(setting: AdminSetting): boolean {
   return setting.encrypted
@@ -168,7 +173,7 @@ onMounted(() => void loadActivitySettings())
               :id="`setting-${setting.key}`"
               :model-value="draft[setting.key] === 'true'"
               :label="t('common.enabled')"
-              :help="t('adminSettings.validated')"
+              :help="settingHelp(setting)"
               @update:model-value="setBoolean(setting.key, $event)"
             />
             <UInput

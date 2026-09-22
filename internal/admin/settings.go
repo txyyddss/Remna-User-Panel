@@ -6,12 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"github.com/txyyddss/Remna-User-Panel/internal/billing"
+	"github.com/txyyddss/Remna-User-Panel/internal/catalog"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/secret"
 	"strings"
 )
 
 type SettingDefinition struct {
+	Default  string
 	Secret   bool
 	Required bool
 	Validate func(string) error
@@ -46,6 +48,7 @@ var settingDefinitions = map[string]SettingDefinition{
 	"activity.daily_reward_max_txb":          {Validate: validateNonnegativeTXB},
 	"activity.group_message_threshold":       {Validate: validateNonnegativeInteger},
 	"activity.group_message_reward_txb":      {Validate: validateNonnegativeTXB},
+	catalog.RolloverBeforeAutoRenewalSetting: {Default: "true", Validate: validateBoolean},
 }
 
 // SettingsRepository stores encrypted or plain values without interpreting them.

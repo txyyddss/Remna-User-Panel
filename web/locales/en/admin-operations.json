@@ -32,6 +32,7 @@
       "payments": "Payments",
       "emby": "Emby",
       "activity": "Activity",
+      "renewal": "Renewal",
       "application": "Application"
     },
     "settingLabels": {
@@ -62,7 +63,11 @@
       "activity_daily_reward_min_txb": "Minimum daily reward",
       "activity_daily_reward_max_txb": "Maximum daily reward",
       "activity_group_message_threshold": "Group-message threshold",
-      "activity_group_message_reward_txb": "Group-message reward"
+      "activity_group_message_reward_txb": "Group-message reward",
+      "renewal_rollover_before_auto_renewal_enabled": "Apply rollover before automatic renewal"
+    },
+    "settingHints": {
+      "renewal_rollover_before_auto_renewal_enabled": "When enabled, calculated rollover counts toward the balance required for automatic renewal. When disabled, the renewal price must be covered before rollover credit is applied."
     }
   },
   "adminPaymentProfiles": {

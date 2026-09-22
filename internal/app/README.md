@@ -28,7 +28,7 @@ stopped.
 - `payment_refund_adapter.go` reconciles ambiguous Telegram Stars refunds from authoritative transaction history.
 - `application_lifecycle.go` starts and stops provider queues, the scheduler, HTTP serving, and database resources in dependency order.
 - Startup upload reconciliation receives an independent ten-minute context so a large verified candidate is not truncated by the ordinary bootstrap deadline.
-- `bootstrap_settings.go` validates and persists the encrypted provider settings required at first startup.
+- `bootstrap_settings.go` persists startup defaults, including the automatic-renewal rollover-balance policy, and creates the encrypted provider settings required at first startup.
 - `provider_queues.go` configures, starts, and shuts down the independent Remnawave and Emby admission queues.
 - `adapters.go` implements Telegram identity/membership and payment-provider bridges used by domain services.
 - `remna_adapter.go` owns queued Remnawave client creation, shared call helpers, user-ID validation, and domain mapping.
