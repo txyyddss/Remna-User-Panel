@@ -40,6 +40,8 @@ stopped.
 - `node_multiplier_cache.go` owns the copied five-minute node-multiplier cache shared by queued Remnawave projections and rollover usage mapping.
 - `node_multiplier_cache_test.go` covers cache expiry at the five-minute boundary.
 - `remna_entitlements_adapter.go` implements queued entitlement, traffic reset, removal, and rollover operations.
+- `remna_entitlements_rollover_statistics.go` validates complete per-node rollover snapshots against the provider aggregate and rejects malformed, truncated, or unweighted data as retryable.
+- `remna_entitlements_rollover_validation_test.go` covers complete multi-node rollover data and retryable malformed-statistics failures for hosted CI.
 - `remna_notifications_adapter.go` maps documented queued user-stream pages to
   the narrow traffic-threshold projection.
 - `remna_member_operations_adapter.go` implements queued connection scans, plugin block/unblock execution, disconnect reconciliation, usage, quiesce, and restore calls.

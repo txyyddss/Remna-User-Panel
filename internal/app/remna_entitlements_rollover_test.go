@@ -12,20 +12,28 @@ import (
 
 type rolloverStatsClient struct {
 	remnaClient
-	start time.Time
-	end   time.Time
+	start, end time.Time
+	limit      int
+	user       *remnawave.User
+	stats      *remnawave.UserStats
 }
 
 func (c *rolloverStatsClient) GetUserByID(context.Context, int64) (*remnawave.User, error) {
-	return &remnawave.User{}, nil
+	if c.user != nil {
+		return c.user, nil
+	}
+	return &remnawave.User{TrafficLimitStrategy: remnawave.TrafficNoReset}, nil
 }
 
-func (c *rolloverStatsClient) GetUserStats(_ context.Context, _ int64, start, end time.Time, _ int) (*remnawave.UserStats, error) {
+func (c *rolloverStatsClient) GetUserStats(_ context.Context, _ int64, start, end time.Time, limit int) (*remnawave.UserStats, error) {
 	if start.After(end) {
 		return nil, errors.New("stats range is invalid")
 	}
-	c.start, c.end = start, end
-	return &remnawave.UserStats{Categories: []string{}, Series: []remnawave.NodeUsageSeries{}}, nil
+	c.start, c.end, c.limit = start, end, limit
+	if c.stats != nil {
+		return c.stats, nil
+	}
+	return &remnawave.UserStats{Categories: []string{}, SparklineData: []int64{}, Series: []remnawave.NodeUsageSeries{}}, nil
 }
 
 func TestRolloverUsageSnapshotKeepsInclusiveFinalDate(t *testing.T) {
@@ -50,5 +58,8 @@ func TestRolloverUsageSnapshotKeepsInclusiveFinalDate(t *testing.T) {
 	}
 	if !client.start.Equal(moment.UTC()) || !client.end.Equal(moment.UTC()) {
 		t.Fatalf("stats range = %s to %s, want %s to %s", client.start, client.end, moment.UTC(), moment.UTC())
+	}
+	if client.limit != rolloverStatsTopNodesLimit {
+		t.Fatalf("topNodesLimit = %d, want %d", client.limit, rolloverStatsTopNodesLimit)
 	}
 }

@@ -92,7 +92,7 @@ func (a remnaAdapter) UsageSnapshotForRollover(ctx context.Context, remoteID str
 	stats, err := remnaCall(ctx, a, func(callCtx context.Context, client remnaClient) (*remnawave.UserStats, error) {
 		// Remnawave accepts date-only, inclusive ranges. Keep the final date so
 		// a newly activated term with equal start and end timestamps remains valid.
-		return client.GetUserStats(callCtx, userID, start.UTC(), end.UTC(), 20)
+		return client.GetUserStats(callCtx, userID, start.UTC(), end.UTC(), rolloverStatsTopNodesLimit)
 	})
 	if remnawave.IsNotFound(err) {
 		return rollover.UsageSnapshot{}, rollover.ErrRemoteUserMissing
@@ -100,25 +100,15 @@ func (a remnaAdapter) UsageSnapshotForRollover(ctx context.Context, remoteID str
 	if err != nil {
 		return rollover.UsageSnapshot{}, err
 	}
-	if stats.Categories == nil || stats.Series == nil {
-		return rollover.UsageSnapshot{}, rollover.ErrPerNodeUsageUnavailable
-	}
-	categories := make([]time.Time, 0, len(stats.Categories))
-	for _, category := range stats.Categories {
-		date, parseErr := time.Parse(time.DateOnly, category)
-		if parseErr != nil {
-			return rollover.UsageSnapshot{}, rollover.ErrPerNodeUsageUnavailable
-		}
-		categories = append(categories, date)
+	categories, validationErr := validateRolloverStatistics(user, stats, start, end)
+	if validationErr != nil {
+		return rollover.UsageSnapshot{}, validationErr
 	}
 	nodeSeries := make([]rollover.NodeUsageSeries, 0, len(stats.Series))
 	for _, series := range stats.Series {
-		if series.UUID == "" || len(series.Data) != len(categories) {
-			return rollover.UsageSnapshot{}, rollover.ErrPerNodeUsageUnavailable
-		}
 		multiplier, multiplierErr := a.nodeMultiplier(ctx, series.UUID)
-		if multiplierErr != nil {
-			return rollover.UsageSnapshot{}, multiplierErr
+		if multiplierErr != nil || multiplier <= 0 {
+			return rollover.UsageSnapshot{}, rollover.ErrPerNodeUsageUnavailable
 		}
 		nodeSeries = append(nodeSeries, rollover.NodeUsageSeries{UUID: series.UUID, MultiplierFP: multiplier, Data: append([]int64(nil), series.Data...)})
 	}
