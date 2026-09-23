@@ -17,7 +17,7 @@ func TestRolloverProjectionValidatesOwnerAndUsesQueuedSnapshot(t *testing.T) {
 	purchase := model.Purchase{ID: "purchase-1", UserID: "user-1", Status: "active", AutoRenewEnabled: true,
 		PriceTXBMinor: 10_000, ValidFrom: now.Add(-24 * time.Hour), ValidUntil: now.Add(24 * time.Hour),
 		Price: model.TXBMoney(10_000)}
-	remote := &rolloverRemote{catalogRemnawave: &catalogRemnawave{}, snapshot: rollover.UsageSnapshot{LimitBytes: 1_000, Strategy: "NO_RESET"}}
+	remote := &rolloverRemote{catalogRemnawave: &catalogRemnawave{}, snapshot: rollover.UsageSnapshot{LimitBytes: 1_000, Strategy: "NO_RESET", NodeSeriesAvailable: true}}
 	repository := &rolloverRepository{catalogRepository: &catalogRepository{}, purchase: purchase}
 	service := NewService(repository, remote, time.Minute)
 	service.now = func() time.Time { return now }

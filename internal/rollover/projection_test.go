@@ -17,7 +17,7 @@ func TestProjectUsageUsesNetPaidAndTermProjection(t *testing.T) {
 	for day := 0; day < 10; day++ {
 		daily = append(daily, DailyUsage{Date: start.AddDate(0, 0, day), Bytes: 90})
 	}
-	projection := ProjectUsage(purchase, 0, UsageSnapshot{LimitBytes: 1_000, Strategy: "NO_RESET", Daily: daily}, purchase.ValidUntil)
+	projection := ProjectUsage(purchase, 0, UsageSnapshot{LimitBytes: 1_000, Strategy: "NO_RESET", Daily: daily, WeightedUsedBytes: 900}, purchase.ValidUntil)
 	if projection.Term.Rollover.Minor != "1000" || projection.PredictedRollover == nil || projection.PredictedRollover.Minor != "1000" {
 		t.Fatalf("projection = %+v, want 1000 minor predicted credit", projection)
 	}
@@ -35,7 +35,7 @@ func TestProjectUsageProvidesMaximumDailyUsageBeforeForecastExceeds(t *testing.T
 	purchase := model.Purchase{ID: "purchase-daily-limit", PriceTXBMinor: 10_000, ValidFrom: start, ValidUntil: start.AddDate(0, 0, 3)}
 	projection := ProjectUsage(purchase, 5_000, UsageSnapshot{
 		LimitBytes: 1_000, Strategy: "DAY", LastResetAt: &reset,
-		Daily: []DailyUsage{{Date: start, Bytes: 200}, {Date: start.AddDate(0, 0, 1), Bytes: 800}},
+		Daily: []DailyUsage{{Date: start, Bytes: 200}, {Date: start.AddDate(0, 0, 1), Bytes: 800}}, WeightedUsedBytes: 1_000,
 	}, start.AddDate(0, 0, 2))
 	if projection.PredictedRollover != nil || projection.MaximumDailyUsageBytes == nil || *projection.MaximumDailyUsageBytes != 499 {
 		t.Fatalf("projection = %+v, want no credit and 499 bytes per remaining day", projection)
@@ -159,8 +159,12 @@ func TestProjectUsageUsesFullAllowanceWithoutCap(t *testing.T) {
 				ID: "purchase-maximum-" + test.name, PriceTXBMinor: 10_000,
 				ValidFrom: start, ValidUntil: start.AddDate(0, 0, test.days),
 			}
+			weightedUsed := int64(0)
+			for _, usage := range daily {
+				weightedUsed += usage.Bytes
+			}
 			projection := ProjectUsage(purchase, 5_000, UsageSnapshot{
-				LimitBytes: 1_000, Strategy: test.strategy, LastResetAt: &reset, Daily: daily,
+				LimitBytes: 1_000, Strategy: test.strategy, LastResetAt: &reset, Daily: daily, WeightedUsedBytes: weightedUsed,
 			}, purchase.ValidUntil)
 			if projection.Term.AllocatedTrafficBytes != test.wantAllocated || projection.Term.EligibleUnusedBytes != test.wantEligible {
 				t.Fatalf("term allowance = (%d, %d), want (%d, %d)", projection.Term.AllocatedTrafficBytes, projection.Term.EligibleUnusedBytes, test.wantAllocated, test.wantEligible)

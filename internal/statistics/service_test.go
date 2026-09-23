@@ -22,8 +22,8 @@ func TestRefreshRemoteUsesCreatedUsersAndRolloverTermUsage(t *testing.T) {
 	provider := &statisticsProviderStub{
 		digest: Digest{CreatedUsers: 9, ExpiredUsers: 4},
 		snapshots: map[string]rollover.UsageSnapshot{
-			firstID:  {LimitBytes: 1_000, Strategy: "NO_RESET", CurrentUsedBytes: &firstUsed},
-			secondID: {LimitBytes: 1_000, Strategy: "NO_RESET", CurrentUsedBytes: &secondUsed},
+			firstID:  {LimitBytes: 1_000, Strategy: "NO_RESET", WeightedUsedBytes: firstUsed, NodeSeriesAvailable: true},
+			secondID: {LimitBytes: 1_000, Strategy: "NO_RESET", WeightedUsedBytes: secondUsed, NodeSeriesAvailable: true},
 		},
 	}
 	remote, err := NewService(repository, provider).refreshRemote(context.Background(), now)
@@ -66,7 +66,7 @@ func TestRefreshRemoteSkipsMembersWithoutUsableProviderIdentity(t *testing.T) {
 		{Purchase: model.Purchase{ID: "usable", UserID: "user-3", ValidFrom: now.AddDate(0, 0, -10), ValidUntil: now.AddDate(0, 0, 10)}, RemoteUserID: remoteID},
 	}}
 	provider := &statisticsProviderStub{
-		snapshots:   map[string]rollover.UsageSnapshot{remoteID: {LimitBytes: 1_000, Strategy: "NO_RESET", CurrentUsedBytes: &used}},
+		snapshots:   map[string]rollover.UsageSnapshot{remoteID: {LimitBytes: 1_000, Strategy: "NO_RESET", WeightedUsedBytes: used, NodeSeriesAvailable: true}},
 		usageErrors: map[string]error{"missing": rollover.ErrRemoteUserMissing},
 	}
 	remote, err := NewService(repository, provider).refreshRemote(context.Background(), now)

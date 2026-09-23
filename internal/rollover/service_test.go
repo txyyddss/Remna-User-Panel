@@ -20,7 +20,7 @@ func TestHandleOutboxCalculatesBeforeAutomaticRenewal(t *testing.T) {
 		wantError               bool
 	}{
 		{name: "happy", status: "pending", wantEvents: []string{"quiesce", "mark", "usage", "calculated"}},
-		{name: "missing after quiesce", status: "pending", usageErr: ErrRemoteUserMissing, exception: "remnawave_user_missing", wantEvents: []string{"quiesce", "mark", "finalize"}},
+		{name: "missing after quiesce", status: "pending", usageErr: ErrRemoteUserMissing, exception: "remnawave_user_missing", wantEvents: []string{"quiesce", "mark", "usage", "finalize"}},
 		{name: "quiesce retry", status: "pending", quiesceErr: transient, wantEvents: []string{"quiesce"}, wantError: true},
 		{name: "usage retry", status: "processing", usageErr: transient, wantEvents: []string{"usage"}, wantError: true},
 	}
