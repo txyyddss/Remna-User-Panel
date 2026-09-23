@@ -13,7 +13,8 @@ import (
 func (s *Store) insertExpirationNotificationTx(ctx context.Context, tx *sql.Tx, purchaseID, gateKey string, now time.Time) error {
 	var userID, combo, expired string
 	err := tx.QueryRowContext(ctx, `SELECT purchases.user_id,combos.name,purchases.valid_until
-		FROM purchases JOIN combos ON combos.id=purchases.combo_id WHERE purchases.id=? AND NOT EXISTS (
+		FROM purchases JOIN combos ON combos.id=purchases.combo_id WHERE purchases.id=?
+		AND purchases.auto_renew_enabled=0 AND purchases.auto_renew_failure_reason='' AND NOT EXISTS (
 			SELECT 1 FROM purchases successor WHERE successor.user_id=purchases.user_id AND successor.id<>purchases.id
 			AND successor.status IN ('queued','activating','active') AND successor.valid_until>purchases.valid_until
 		)`, purchaseID).Scan(&userID, &combo, &expired)

@@ -106,6 +106,10 @@ func (s *Store) AddPurchaseAddons(ctx context.Context, input PurchaseAddonInput,
 	if err := insertOutboxTx(ctx, tx, "remna_sync_user", `{"userId":"`+input.UserID+`"}`, now, now); err != nil {
 		return model.Purchase{}, err
 	}
+	if err := s.insertAddonNoticeTx(ctx, tx, adjustmentID, input.UserID, input.PurchaseID,
+		products, quote.PriceTXBMinor, newBalance, now); err != nil {
+		return model.Purchase{}, err
+	}
 	if err := tx.Commit(); err != nil {
 		return model.Purchase{}, fmt.Errorf("commit purchase add-on: %w", err)
 	}

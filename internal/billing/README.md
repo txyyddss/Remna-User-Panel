@@ -14,8 +14,8 @@ Payment-method discovery, exact decimal arithmetic, checkout creation, provider 
 - `payment_callback_operations.go` lets authoritative paid callbacks resolve matching checkout operations.
 - `payment_announcement.go` delivers immutable successful-payment snapshots to
   the optional standalone Telegram channel through the durable outbox.
-- `payment_announcement_format.go` renders the fixed Chinese receipt layout,
-  administrator provider snapshot, localized rails, and MarkdownV2 escaping.
+- `payment_announcement_format.go` renders the fixed Chinese receipt layout with the administrator provider snapshot, localized rails, shared MarkdownV2 escaping, and Telegram length bounding.
+- `payment_announcement_bounds_test.go` covers the Telegram limit after dynamic MarkdownV2 escaping.
 - `amount_bounds.go` loads the global inclusive Add TXB range and rejects checkout amounts outside it.
 - `amount_bounds_test.go` covers configured inclusive payment boundaries.
 - `payment_operations_test.go` covers atomic command queueing, idempotency conflicts, ambiguous outcomes, and callback resolution.

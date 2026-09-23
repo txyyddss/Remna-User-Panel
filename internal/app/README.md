@@ -21,7 +21,7 @@ stopped.
 - `outbox_composition.go` registers core jobs, user/payment/affiliate Telegram notifications, the scheduled IP-unblock backstop, and the shared provider-operation dispatcher.
 - `admin_user_outbox.go` schedules due manual temporary-ban restoration through the shared provider-operation lane.
 - `payment_operations.go` registers durable payment create and cancellation handlers on that dispatcher.
-- `payment_profile_manager.go` probes BEPUSDT profiles at startup and after saves, publishes process-local discovered rails, and reports disabled profiles to every Telegram administrator.
+- `payment_profile_manager.go` probes BEPUSDT profiles at startup and after saves, publishes process-local discovered rails, and reports disabled profiles in each Telegram administrator's locale when available.
 - `mutation_operation_composition.go` registers subscription, Emby, questionnaire, retry, and refund command handlers.
 - `maintenance_operation.go` registers the durable admin maintenance command with bounded execution, receipt completion, retries, lease-aware recovery, and structured failure diagnostics.
 - `maintenance_runner.go` shares the full backup-gated database and migration-snapshot cleanup flow between the scheduler and manual command worker.
@@ -52,9 +52,9 @@ stopped.
 - `remna_abuse_adapter.go` supplies queue-backed node identity to detector key provisioning.
 - `remna_abuse_actions.go` keeps every detector-triggered Remnawave call in the provider queue.
 - `abuse_ip_ban.go` persists and resumes asynchronous Remnawave connection scans before applying an IP ban.
-- `abuse_outbox.go` consumes durable detector punishment, restoration, and Telegram delivery jobs. Incident messages use the Chinese notice format with the linked Remnawave username, actual detection time in UTC, reason and QPS, selected action, optional expiry, and the stop-abuse warning; dynamic fields remain MarkdownV2-escaped.
+- `abuse_outbox.go` consumes durable detector punishment, restoration, and Telegram delivery jobs. Incident messages retain the approved Chinese field layout and have a matching English version; both use the linked username, actual detection time in UTC, reason and QPS, selected action, optional expiry, and escaped dynamic values.
 - `abuse_scheduler.go` performs startup catch-up and UTC-aligned `:00`/`:30` durable abuse processing.
-- `abuse_outbox_test.go` covers MarkdownV2 escaping for detector notifications.
+- `abuse_outbox_test.go` and `payment_profile_manager_test.go` cover localized private alerts and MarkdownV2 escaping.
 - `maintenance_operation_test.go` covers successful, failed, and active-lease maintenance receipts.
 - `remna_statistics_adapter_test.go` covers bounded rounding of Remnawave live numeric fields.
 - `emby_adapter.go` implements queued Emby client creation, account operations, policy updates, and metadata lookups.

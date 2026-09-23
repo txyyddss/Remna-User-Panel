@@ -89,6 +89,8 @@ func (s *Store) CompensateTrafficReset(ctx context.Context, operationID, errorCo
 			}, now); err != nil {
 			return err
 		}
+	} else if err := s.insertManualResetNoticeTx(ctx, tx, operation, true, code, now); err != nil {
+		return err
 	}
 	return tx.Commit()
 }

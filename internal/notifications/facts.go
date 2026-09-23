@@ -52,4 +52,7 @@ const (
 	FactRecovered          = "recovered"
 	FactDowntimeSeconds    = "downtimeSeconds"
 	FactCompensationCapped = "compensationCapped"
+	FactValidFrom          = "validFrom"
+	FactTermCount          = "termCount"
+	FactReplacement        = "replacement"
 )

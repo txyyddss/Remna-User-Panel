@@ -2,7 +2,7 @@
 
 - `facts.go` owns stable immutable payload fact keys.
 - `copy.go` owns matching English and Simplified Chinese notification copy.
-- `format.go`, `format_fields.go`, and `format_admin.go` render concise,
+- `format.go`, `format_fields.go`, `format_admin.go`, and `format_new.go` render concise,
   escaped MarkdownV2 cards with one title emoji and ordered detail rows.
 - Immediate combo activation, successful Add TXB settlement, and provider refunds
   enqueue private receipts after their authoritative state changes. Refund cards
@@ -16,6 +16,8 @@
 - `worker.go` delivers durable private-chat jobs through the queued Telegram sender.
 - `scanner.go` evaluates the 48-hour reminder, strict 90% notice boundary, and strict-above-95% automatic-reset handoff.
 - Automatic-reset success is provider-gated; insufficient balance disables the preference in the reset transaction, while definitive failure produces a localized refund notice.
+- Queued purchases and renewal batches acknowledge the TXB debit without claiming access is active. Add-on success waits for user sync; cancellation, manual reset, first-term refund, and automatic-renewal failure cards report final financial or access outcomes.
+- `format_new_test.go` covers both locales for every new event, dynamic MarkdownV2 escaping, and localized failure reasons.
 - `format_test.go`, `automatic_reset_format_test.go`, `scanner_test.go`, and `worker_test.go` cover formatting,
   localized reset details, threshold behavior, and retryable delivery failures.
 - `format_compensation_test.go` covers localized compensation details and MarkdownV2 escaping.

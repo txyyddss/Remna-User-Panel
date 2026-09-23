@@ -182,6 +182,10 @@ func (s *Store) renew(ctx context.Context, input RenewalInput, excludedAddonIDs 
 	if _, err := insertLedgerTx(ctx, tx, input.UserID, -quote.TotalPrice.MinorInt64(), newBalance, "purchase_debit", batchID, "renewal batch", now); err != nil {
 		return model.RenewalBatch{}, err
 	}
+	if err := s.insertRenewalScheduledNoticeTx(ctx, tx, batchID, input.UserID, combo.Name, input.TermCount,
+		quote.TotalPrice.MinorInt64(), newBalance, start, start.AddDate(0, 0, combo.ValidityDays*input.TermCount), now); err != nil {
+		return model.RenewalBatch{}, err
+	}
 	if err := tx.Commit(); err != nil {
 		return model.RenewalBatch{}, err
 	}

@@ -17,6 +17,11 @@ type cardField struct{ label, value string }
 func Format(payload jobpayload.UserNotification, location *time.Location) (string, error) {
 	copy := copyFor(payload.Locale)
 	title := copy.titles[payload.Kind]
+	if payload.Kind == jobpayload.UserEventAdminUpdate {
+		if specific := copy.titles["admin_"+payload.Facts[FactChange]]; specific != "" {
+			title = specific
+		}
+	}
 	if title == "" {
 		return "", errors.New("notification title is unavailable")
 	}
@@ -28,6 +33,9 @@ func Format(payload jobpayload.UserNotification, location *time.Location) (strin
 	lines := []string{parts[0] + " *" + telegramformat.Escape(parts[1]) + "*"}
 	for _, field := range fields {
 		lines = append(lines, "*"+telegramformat.Escape(field.label)+":* "+telegramformat.Escape(field.value))
+	}
+	if guidance := copy.guidance[payload.Kind]; guidance != "" {
+		lines = append(lines, "", telegramformat.Escape(guidance))
 	}
 	return telegramformat.Limit(strings.Join(lines, "\n")), nil
 }
@@ -72,6 +80,12 @@ func notificationFields(payload jobpayload.UserNotification, copy copySet, locat
 		return adminFields(copy, facts, location, payload.Kind == jobpayload.UserEventAdminExtension, payload.Locale == "zh-CN")
 	case jobpayload.UserEventNodeCompensation:
 		return compensationFields(copy, facts, location, payload.Locale == "zh-CN")
+	case jobpayload.UserEventPurchaseQueued, jobpayload.UserEventRenewalScheduled,
+		jobpayload.UserEventAddonActivated, jobpayload.UserEventQueuedCancellation,
+		jobpayload.UserEventAutoRenewalFailed, jobpayload.UserEventManualResetCompleted,
+		jobpayload.UserEventManualResetRefunded, jobpayload.UserEventMemberRefundCompleted,
+		jobpayload.UserEventMemberRefundFailed:
+		return newEventFields(payload.Kind, copy, facts, location)
 	default:
 		return nil, errors.New("unsupported notification format")
 	}

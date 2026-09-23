@@ -63,6 +63,10 @@ func (s *Store) FinalizeMemberRefund(ctx context.Context, operationID, purchaseI
 	if affected, rowsErr := result.RowsAffected(); rowsErr != nil || affected != 1 {
 		return purchaseops.RefundResult{}, ErrConflict
 	}
+	if err := s.insertMemberRefundCompletedNoticeTx(ctx, tx, operationID, operation.OwnerUserID,
+		facts.Purchase.ComboName, successorID, facts.Purchase.PriceTXBMinor, balance, now); err != nil {
+		return purchaseops.RefundResult{}, err
+	}
 	if err = tx.Commit(); err != nil {
 		return purchaseops.RefundResult{}, err
 	}

@@ -108,7 +108,9 @@ func notificationPayloadForRelease(encoded string, now time.Time) (string, error
 	if err := json.Unmarshal([]byte(encoded), &payload); err != nil {
 		return "", fmt.Errorf("decode gated notification: %w", err)
 	}
-	if payload.Kind != jobpayload.UserEventAutomaticReset {
+	switch payload.Kind {
+	case jobpayload.UserEventAutomaticReset, jobpayload.UserEventAddonActivated, jobpayload.UserEventMemberRefundCompleted:
+	default:
 		return encoded, nil
 	}
 	completed := now.UTC().Format(time.RFC3339Nano)

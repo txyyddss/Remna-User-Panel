@@ -57,6 +57,18 @@ func TestAddPurchaseAddonsDebitsOnceAndFeedsFutureTotals(t *testing.T) {
 	if err != nil || replayed.ID != updated.ID || replayed.PriceTXBMinor != updated.PriceTXBMinor {
 		t.Fatalf("AddPurchaseAddons(replay) = (%+v, %v)", replayed, err)
 	}
+	var pending, notices int
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*),SUM(CASE WHEN queued_at IS NULL THEN 1 ELSE 0 END)
+		FROM user_notification_events WHERE source_kind='addon-activated'`).Scan(&notices, &pending); err != nil || notices != 1 || pending != 1 {
+		t.Fatalf("add-on notice before sync = %d total, %d pending, %v", notices, pending, err)
+	}
+	if err := store.ReleaseUserSyncNotifications(ctx, user.ID, quotedAt); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM user_notification_events
+		WHERE source_kind='addon-activated' AND queued_at IS NOT NULL`).Scan(&notices); err != nil || notices != 1 {
+		t.Fatalf("add-on notice after sync = %d, %v", notices, err)
+	}
 	plan, err := store.AutoRenewalPlan(ctx, user.ID, purchase.ID, quotedAt)
 	if err != nil || plan.GrossMinor != 1_301 {
 		t.Fatalf("AutoRenewalPlan() = (%+v, %v), want full-term 1301", plan, err)

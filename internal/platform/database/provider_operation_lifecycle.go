@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/providerops"
+	"github.com/txyyddss/Remna-User-Panel/internal/purchaseops"
 )
 
 // BeginProviderOperationAttempt durably marks the attempt before provider mutation.
@@ -71,6 +72,16 @@ func (s *Store) CompleteProviderOperation(ctx context.Context, operationID strin
 	operation, err := scanProviderOperation(tx.QueryRowContext(ctx, providerOperationSelect+` WHERE id=?`, operationID))
 	if err != nil {
 		return providerops.Operation{}, err
+	}
+	if completion.Status == providerops.StatusSucceeded && operation.Receipt.Kind == purchaseops.OperationResetKind {
+		if err := s.insertManualResetNoticeTx(ctx, tx, operation, false, "", now); err != nil {
+			return providerops.Operation{}, err
+		}
+	}
+	if completion.Status == providerops.StatusFailed && operation.Receipt.Kind == purchaseops.OperationRefundKind {
+		if err := s.insertMemberRefundFailedNoticeTx(ctx, tx, operation, completion.ErrorCode, now); err != nil {
+			return providerops.Operation{}, err
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return providerops.Operation{}, fmt.Errorf("commit provider completion: %w", err)

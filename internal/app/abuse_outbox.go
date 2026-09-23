@@ -6,11 +6,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/txyyddss/Remna-User-Panel/internal/abuse"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/remnawave"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/outbox"
+	"github.com/txyyddss/Remna-User-Panel/internal/telegramformat"
 )
 
 func registerAbuseOutboxHandlers(worker *outbox.Worker, store *database.Store, remna remnaAdapter, telegram *queuedTelegram) error {
@@ -99,24 +101,55 @@ func handleAbuseNotification(ctx context.Context, job model.OutboxJob, store *da
 }
 func abuseMessage(delivery database.AbuseDelivery) string {
 	username := strings.TrimSpace(delivery.Username)
+	chinese := delivery.Locale == "zh-CN"
 	if username == "" {
-		username = "未知"
+		username = "Unknown"
+		if chinese {
+			username = "未知"
+		}
 	}
 	const timeFormat = "2006-01-02 15:04 UTC"
-	parts := []string{
-		"⚠️ *滥用检测*",
-		"用户: " + escapeMarkdown(username),
-		"时间: " + escapeMarkdown(delivery.OccurredAt.UTC().Format(timeFormat)),
-		"原因: " + escapeMarkdown(fmt.Sprintf("%s (QPS %d/%d)", delivery.Reason, delivery.QPS, delivery.Limit)),
-		"处罚: " + escapeMarkdown(string(delivery.Action)),
+	label := [5]string{"User: ", "Time: ", "Reason: ", "Action: ", "Until: "}
+	title, warning := "⚠️ *Abuse detected*", "Stop abusive activity now. Further violations may lead to a ban without a refund."
+	if chinese {
+		label = [5]string{"用户: ", "时间: ", "原因: ", "处罚: ", "到期时间: "}
+		title, warning = "⚠️ *滥用检测*", "请立即停止您的滥用行为，否则可能被封禁且不予退款。"
+	}
+	parts := []string{title,
+		label[0] + telegramformat.Escape(username),
+		label[1] + telegramformat.Escape(delivery.OccurredAt.UTC().Format(timeFormat)),
+		label[2] + telegramformat.Escape(fmt.Sprintf("%s (QPS %d/%d)", delivery.Reason, delivery.QPS, delivery.Limit)),
+		label[3] + telegramformat.Escape(abuseActionLabel(delivery.Action, chinese)),
 	}
 	if delivery.ExpiresAt != nil {
-		parts = append(parts, "到期时间: "+escapeMarkdown(delivery.ExpiresAt.UTC().Format(timeFormat)))
+		parts = append(parts, label[4]+telegramformat.Escape(delivery.ExpiresAt.UTC().Format(timeFormat)))
 	}
-	parts = append(parts, "请立即停止您的滥用行为，否则可能被封禁且不予退款。")
-	return strings.Join(parts, "\n")
+	parts = append(parts, telegramformat.Escape(warning))
+	return telegramformat.Limit(strings.Join(parts, "\n"))
 }
-func escapeMarkdown(value string) string {
-	replacer := strings.NewReplacer("\\", "\\\\", "_", "\\_", "*", "\\*", "[", "\\[", "]", "\\]", "(", "\\(", ")", "\\)", "~", "\\~", "`", "\\`", ">", "\\>", "#", "\\#", "+", "\\+", "-", "\\-", "=", "\\=", "|", "\\|", "{", "\\{", "}", "\\}", ".", "\\.", "!", "\\!")
-	return replacer.Replace(value)
+func abuseActionLabel(action abuse.Action, chinese bool) string {
+	if chinese {
+		switch action {
+		case abuse.ActionWarning:
+			return "警告"
+		case abuse.ActionIPBan:
+			return "封禁 IP"
+		case abuse.ActionRevoke:
+			return "撤销订阅"
+		case abuse.ActionTemporaryBan:
+			return "临时封禁"
+		}
+	} else {
+		switch action {
+		case abuse.ActionWarning:
+			return "Warning"
+		case abuse.ActionIPBan:
+			return "IP ban"
+		case abuse.ActionRevoke:
+			return "Subscription revoked"
+		case abuse.ActionTemporaryBan:
+			return "Temporary ban"
+		}
+	}
+	return string(action)
 }

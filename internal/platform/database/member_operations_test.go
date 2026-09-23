@@ -57,6 +57,7 @@ func TestTrafficResetDebitReplayAndCompensationAreAtomic(t *testing.T) {
 	if err := store.CompensateTrafficReset(ctx, operation.Receipt.ID, "RESET_REJECTED", now.Add(4*time.Hour)); err != nil {
 		t.Fatalf("CompensateTrafficReset(replay): %v", err)
 	}
+	assertEventKind(t, store, "manual-reset-refunded:"+operation.Receipt.ID, jobpayload.UserEventManualResetRefunded)
 	balance, err := store.Balance(ctx, user.ID)
 	if err != nil || balance.Minor != "4699" {
 		t.Fatalf("Balance() = (%+v, %v), want 4699", balance, err)

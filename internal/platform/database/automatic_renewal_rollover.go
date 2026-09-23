@@ -168,7 +168,13 @@ func (s *Store) failCalculatedAutoRenewalTx(ctx context.Context, tx *sql.Tx, pur
 			return false, fmt.Errorf("record resumed automatic renewal failure: %w", updateErr)
 		}
 		rows, rowsErr := result.RowsAffected()
-		return rows == 1, rowsErr
+		if rowsErr != nil {
+			return false, rowsErr
+		}
+		if rows != 1 {
+			return false, nil
+		}
+		return true, s.insertAutoRenewalFailureNoticeTx(ctx, tx, purchaseID, userID, reason, "", now)
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE purchases SET status='expired',auto_renew_enabled=0,auto_renew_failure_reason=?,auto_renew_failed_at=?,updated_at=?
 		WHERE id=? AND status IN ('active','activating')`, reason, stamp(now), stamp(now), purchaseID); err != nil {
@@ -177,22 +183,8 @@ func (s *Store) failCalculatedAutoRenewalTx(ctx context.Context, tx *sql.Tx, pur
 	if err := insertOutboxTx(ctx, tx, "remna_sync_user", `{"userId":"`+userID+`"}`, now, now); err != nil {
 		return false, err
 	}
-	if err := s.insertExpirationNotificationTx(ctx, tx, purchaseID, userSyncGate(userID), now); err != nil {
+	if err := s.insertAutoRenewalFailureNoticeTx(ctx, tx, purchaseID, userID, reason, userSyncGate(userID), now); err != nil {
 		return false, err
 	}
 	return true, nil
-}
-
-func calculatedRolloverCredit(rollover model.PurchaseRollover) int64 {
-	if rollover.AllocatedBytes == nil || rollover.EligibleUnusedBytes == nil {
-		return 0
-	}
-	return proportionalFloor(rollover.NetPaidTXBMinor, *rollover.EligibleUnusedBytes, *rollover.AllocatedBytes)
-}
-
-func renewalFundsCover(balance, credit, price int64, rolloverCountsTowardBalance bool) bool {
-	if !rolloverCountsTowardBalance {
-		credit = 0
-	}
-	return price >= 0 && balance >= 0 && (balance >= price || (credit >= 0 && credit >= price-balance))
 }

@@ -85,8 +85,11 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `affiliate_config_test.go` covers immutable version increments and stale-write conflicts.
 - `notification_events.go` owns semantic event deduplication and atomic outbox
   release, including provider-completion timestamps; `notification_scans.go` owns 48-hour and reset-period eligibility.
-- `notification_purchases.go` snapshots expiration, immediate and queued activation, and
-  automatic-renewal rollover outcomes.
+- `notification_purchases.go` snapshots expiration, immediate and queued activation, and automatic-renewal rollover outcomes.
+- `notification_new_events.go` and `notification_operation_events.go` snapshot scheduled charges, add-on activation, cancellations, renewal failures, and terminal member operation receipts with stable event keys.
+- `billing_quote.go` owns read-only purchase quoting; `automatic_renewal_calculation.go` owns pure rollover-credit and renewal-funds calculations.
+- `notification_new_events_test.go` and `notification_refund_events_test.go` cover queued charges, terminal-only reset/refund messages, and renewal-failure suppression of generic expiry.
+- `store_catalog_renewal_test.go` and `store_outbox_test.go` keep catalog and outbox regression coverage in focused files.
 - `notification_receipts_test.go` covers activation and payment receipt snapshots.
 - `notification_admin_finance.go`, `notification_admin_cancel.go`, and
   `notification_admin_entitlements.go` snapshot detailed administrator changes.
@@ -152,7 +155,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `abuse_event_claims.go`, `abuse_legacy_samples.go`, and `abuse_evaluation.go` recover and claim bounded normalized-event batches, drain legacy samples, and atomically commit rollups, boundary state, incident facts, details, and outbox work.
 - `abuse_records.go`, `abuse_incident.go`, and `abuse_record_cooldown.go` provide replay-safe incident facts, per-user cooldowns for every abuse record, and incident queueing. Suppressed facts prevent replay but do not advance escalation, extend the cooldown, or queue punishments/notifications; only emitted records count. Zero disables cooldown, and the exact expiry permits the next record.
 - `abuse_admin.go`, `abuse_record_queries.go`, `abuse_ip_ban_scans.go`, and `abuse_outbox.go` provide encrypted node-key metadata, compact QPS statistics, username-bearing record projections, resumable IP-ban scans, completion evidence, restoration state, and retention.
-- Abuse notification deliveries read the offending account's linked username and `incident_bucket_at` from existing rows, so administrator copies identify the same account and delayed delivery retains the detection time.
+- Abuse notification deliveries read the offending account's linked username, notification locale, and `incident_bucket_at` from existing rows, so delayed delivery retains the detection time and uses the recipient's language.
 - `migrations/035_abuse_warning_cooldown.sql` persists the policy-controlled abuse record cooldown under its original column name for compatibility.
 - `migrations/038_durable_abuse_processing.sql` adds the bounded streak policy, normalized pending events, 30-minute rollups, emitted-state compatibility, compact incident facts, and punishment completion evidence.
 - `migrations/039_abuse_record_retention_and_ip_bans.sql` adds configurable record retention support and resumable IP-ban scan state.

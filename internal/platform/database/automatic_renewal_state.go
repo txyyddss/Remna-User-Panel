@@ -136,9 +136,17 @@ func (s *Store) MarkAutoRenewalFailed(ctx context.Context, purchaseID, reason st
 		return err
 	}
 	if !settled {
-		if _, err := tx.ExecContext(ctx, `UPDATE purchases SET auto_renew_enabled=0,auto_renew_failure_reason=?,auto_renew_failed_at=?,updated_at=?
-			WHERE id=? AND auto_renew_enabled=1 AND status IN ('active','activating','expired') AND valid_until<=?`, reason, stamp(now), stamp(now), purchaseID, stamp(now.UTC())); err != nil {
+		result, err := tx.ExecContext(ctx, `UPDATE purchases SET auto_renew_enabled=0,auto_renew_failure_reason=?,auto_renew_failed_at=?,updated_at=?
+			WHERE id=? AND auto_renew_enabled=1 AND status IN ('active','activating','expired') AND valid_until<=?`, reason, stamp(now), stamp(now), purchaseID, stamp(now.UTC()))
+		if err != nil {
 			return fmt.Errorf("record automatic renewal failure: %w", err)
+		}
+		if affected, rowsErr := result.RowsAffected(); rowsErr != nil {
+			return rowsErr
+		} else if affected == 1 {
+			if err := s.insertAutoRenewalFailureNoticeTx(ctx, tx, purchaseID, userID, reason, "", now); err != nil {
+				return err
+			}
 		}
 	}
 	if err := tx.Commit(); err != nil {

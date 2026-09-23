@@ -13,6 +13,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/billing"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/bepusdt"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/upstreamqueue"
 	"github.com/txyyddss/Remna-User-Panel/internal/telegramformat"
@@ -24,15 +25,16 @@ type PaymentProfileManager struct {
 	cache    *billing.PaymentChannelCache
 	queue    *upstreamqueue.Queue
 	telegram *queuedTelegram
+	users    *database.Store
 	admins   []int64
 	public   *url.URL
 	logger   *slog.Logger
 }
 
 func newPaymentProfileManager(settings *admin.SettingsService, cache *billing.PaymentChannelCache,
-	queue *upstreamqueue.Queue, telegram *queuedTelegram, admins []int64, public *url.URL, logger *slog.Logger) *PaymentProfileManager {
+	queue *upstreamqueue.Queue, telegram *queuedTelegram, users *database.Store, admins []int64, public *url.URL, logger *slog.Logger) *PaymentProfileManager {
 	return &PaymentProfileManager{settings: settings, cache: cache, queue: queue, telegram: telegram,
-		admins: append([]int64(nil), admins...), public: public, logger: logger}
+		users: users, admins: append([]int64(nil), admins...), public: public, logger: logger}
 }
 
 // RefreshAll probes every enabled BEPUSDT profile during startup.
@@ -116,16 +118,32 @@ func (m *PaymentProfileManager) disableFailed(ctx context.Context, profile model
 }
 
 func (m *PaymentProfileManager) notifyFailure(ctx context.Context, profile model.PaymentProfile, cause error) error {
-	body := "*BEPUSDT payment profile disabled*\nProfile: " + telegramformat.Escape(profile.ProviderName) +
-		"\nReason: " + telegramformat.Escape(cause.Error())
 	var sendErrors []error
 	for _, adminID := range m.admins {
-		if err := m.telegram.SendMarkdownV2Message(ctx, adminID, 0, telegramformat.Limit(body)); err != nil {
+		locale := "en"
+		if m.users != nil {
+			if user, err := m.users.UserByTelegramID(ctx, adminID); err == nil {
+				locale = user.NotificationLocale
+			} else if !errors.Is(err, database.ErrNotFound) {
+				m.logger.Warn("load administrator notification locale", "telegram_id", adminID, "error", err)
+			}
+		}
+		if err := m.telegram.SendMarkdownV2Message(ctx, adminID, 0, paymentProfileFailureMessage(profile, cause, locale)); err != nil {
 			sendErrors = append(sendErrors, err)
 			m.logger.Error("notify administrator about BEPUSDT profile failure", "telegram_id", adminID, "profile_id", profile.ID, "error", err)
 		}
 	}
 	return errors.Join(sendErrors...)
+}
+
+func paymentProfileFailureMessage(profile model.PaymentProfile, cause error, locale string) string {
+	title, profileLabel, reasonLabel := "BEPUSDT payment profile disabled", "Profile", "Reason"
+	if locale == "zh-CN" {
+		title, profileLabel, reasonLabel = "BEPUSDT 支付配置已停用", "配置", "原因"
+	}
+	body := "*" + telegramformat.Escape(title) + "*\n*" + telegramformat.Escape(profileLabel) + ":* " + telegramformat.Escape(profile.ProviderName) +
+		"\n*" + telegramformat.Escape(reasonLabel) + ":* " + telegramformat.Escape(cause.Error())
+	return telegramformat.Limit(body)
 }
 
 func discoveredPaymentChannels(methods []bepusdt.AvailableMethod) ([]model.PaymentChannel, error) {

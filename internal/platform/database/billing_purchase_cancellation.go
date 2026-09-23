@@ -50,6 +50,9 @@ func (s *Store) CancelQueuedPurchase(ctx context.Context, userID, purchaseID, re
 	if _, err := insertLedgerTx(ctx, tx, userID, purchase.PriceTXBMinor, balance, "purchase_cancellation", purchase.ID, reason, now); err != nil {
 		return model.Purchase{}, err
 	}
+	if err := s.insertQueuedCancellationNoticeTx(ctx, tx, purchase, balance, now); err != nil {
+		return model.Purchase{}, err
+	}
 	if err := tx.Commit(); err != nil {
 		return model.Purchase{}, err
 	}

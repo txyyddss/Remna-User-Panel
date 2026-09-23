@@ -1,9 +1,10 @@
 package notifications
 
 type copySet struct {
-	titles map[string]string
-	labels map[string]string
-	values map[string]string
+	titles   map[string]string
+	labels   map[string]string
+	values   map[string]string
+	guidance map[string]string
 }
 
 var englishCopy = copySet{
@@ -18,6 +19,15 @@ var englishCopy = copySet{
 		"traffic_threshold": "⚠️ Traffic above 90%", "group_reward": "🎁 Group reward received",
 		"admin_extension": "🎁 Extended by admin", "admin_update": "🛠 Updated by admin",
 		"node_compensation": "🎁 Node outage compensation received",
+		"purchase_queued":   "🕒 Combo purchase scheduled", "renewal_scheduled": "🕒 Renewal scheduled",
+		"addon_activated": "✅ Squads added", "queued_cancellation": "↩️ Queued combo cancelled",
+		"auto_renewal_failed":    "⚠️ Automatic renewal did not complete",
+		"manual_reset_completed": "✅ Traffic reset completed", "manual_reset_refunded": "↩️ Traffic reset refunded",
+		"member_refund_completed": "↩️ Combo refunded", "member_refund_failed": "⚠️ Combo refund did not complete",
+		"admin_balance_adjustment": "🛠 Balance adjusted by admin", "admin_balance_deduction": "🛠 Balance deducted by admin",
+		"admin_payment_refund": "↩️ Payment refunded by admin", "admin_courtesy_credit": "🎁 Credit received",
+		"admin_entitlement_refund": "↩️ Combo refunded by admin", "admin_entitlement_cancel": "🛑 Combo cancelled by admin",
+		"admin_combo_replacement": "🛠 Combo replaced by admin", "admin_entitlement_edit": "🛠 Subscription updated by admin",
 	},
 	labels: map[string]string{
 		"charged": "Charged", "requiredCharge": "Required charge", "currentBalance": "Current balance",
@@ -34,6 +44,8 @@ var englishCopy = copySet{
 		"node": "Node", "affectedSquads": "Affected squads", "downtime": "Outage duration",
 		"outageStarted": "Offline observed", "recovered": "Recovery observed", "compensation": "Compensation",
 		"capApplied": "Calculation capped", "appliedAt": "Applied at",
+		"starts": "Starts", "termCount": "Terms", "refundAmount": "Refunded", "noCharge": "Renewal charge",
+		"replacement": "Next combo", "addedSquads": "Added squads",
 	},
 	values: map[string]string{
 		"disabled": "Disabled", "resetFailed": "The reset could not be completed",
@@ -46,6 +58,21 @@ var englishCopy = copySet{
 		"courtesy_credit": "Courtesy credit", "entitlement_refund": "Entitlement refund",
 		"entitlement_cancel": "Entitlement cancellation", "combo_replacement": "Combo replacement", "entitlement_edit": "Entitlement edit",
 		"activating": "Activating", "active": "Active", "queued": "Queued", "expired": "Expired", "cancelled": "Cancelled", "failed": "Failed",
+		"notCharged": "Not charged", "memberRefundFailed": "Your combo was not refunded",
+		"QUEUED_PURCHASE": "A next combo is already queued", "PURCHASE_UNAVAILABLE": "This combo is no longer eligible",
+		"COMBO_UNAVAILABLE": "This combo is no longer available", "PAID_ADDON_UNAVAILABLE": "A paid squad is unavailable",
+		"RECURRING_DISCOUNT_UNAVAILABLE": "The recurring discount is unavailable", "INSUFFICIENT_BALANCE": "Insufficient TXB balance",
+		"NO_ACCESSIBLE_NODES": "No accessible nodes are available", "RENEWAL_UNAVAILABLE": "Renewal is temporarily unavailable",
+		"REFUND_TRAFFIC_USED": "Traffic was already used", "REFUND_QUIESCE_FAILED": "The provider could not pause the subscription",
+		"REFUND_STATE_CONFLICT": "The subscription changed before the refund completed",
+		"RESET_FAILED":          "The provider could not complete the reset", "REFUND_UNAVAILABLE": "The refund could not be completed",
+	},
+	guidance: map[string]string{
+		"expiration":                           "Open TX Carpool to restore access.",
+		"expiry_reminder":                      "Choose a new combo in TX Carpool before expiry.",
+		"traffic_threshold":                    "Check your remaining traffic in TX Carpool.",
+		"automatic_traffic_reset_insufficient": "Add TXB, then re-enable automatic reset in TX Carpool.",
+		"auto_renewal_failed":                  "Open TX Carpool to choose a new combo.",
 	},
 }
 
@@ -61,6 +88,15 @@ var chineseCopy = copySet{
 		"traffic_threshold": "⚠️ 流量已超过 90%", "group_reward": "🎁 群聊奖励到账",
 		"admin_extension": "🎁 管理员已延长订阅", "admin_update": "🛠 管理员已更新账户",
 		"node_compensation": "🎁 节点故障补偿已到账",
+		"purchase_queued":   "🕒 套餐购买已排队", "renewal_scheduled": "🕒 续费已安排",
+		"addon_activated": "✅ 节点组已添加", "queued_cancellation": "↩️ 排队套餐已取消",
+		"auto_renewal_failed":    "⚠️ 自动续费未完成",
+		"manual_reset_completed": "✅ 流量重置已完成", "manual_reset_refunded": "↩️ 流量重置已退款",
+		"member_refund_completed": "↩️ 套餐已退款", "member_refund_failed": "⚠️ 套餐退款未完成",
+		"admin_balance_adjustment": "🛠 管理员已调整余额", "admin_balance_deduction": "🛠 管理员已扣减余额",
+		"admin_payment_refund": "↩️ 管理员已办理支付退款", "admin_courtesy_credit": "🎁 补偿金已到账",
+		"admin_entitlement_refund": "↩️ 管理员已退还套餐费用", "admin_entitlement_cancel": "🛑 管理员已取消套餐",
+		"admin_combo_replacement": "🛠 管理员已更换套餐", "admin_entitlement_edit": "🛠 管理员已更新订阅",
 	},
 	labels: map[string]string{
 		"charged": "已扣款", "requiredCharge": "所需费用", "currentBalance": "当前余额",
@@ -77,6 +113,8 @@ var chineseCopy = copySet{
 		"node": "节点", "affectedSquads": "受影响节点组", "downtime": "故障时长",
 		"outageStarted": "离线时间", "recovered": "恢复时间", "compensation": "补偿时长",
 		"capApplied": "计算结果已封顶", "appliedAt": "发放时间",
+		"starts": "开始时间", "termCount": "周期数", "refundAmount": "退款", "noCharge": "续费扣款",
+		"replacement": "下个套餐", "addedSquads": "新增节点组",
 	},
 	values: map[string]string{
 		"disabled": "已关闭", "resetFailed": "流量重置未能完成",
@@ -89,6 +127,21 @@ var chineseCopy = copySet{
 		"courtesy_credit": "补偿金", "entitlement_refund": "套餐退款",
 		"entitlement_cancel": "取消套餐", "combo_replacement": "更换套餐", "entitlement_edit": "编辑订阅",
 		"activating": "激活中", "active": "使用中", "queued": "排队中", "expired": "已到期", "cancelled": "已取消", "failed": "失败",
+		"notCharged": "未扣款", "memberRefundFailed": "套餐未能退款",
+		"QUEUED_PURCHASE": "已有排队中的下个套餐", "PURCHASE_UNAVAILABLE": "此套餐已不符合续费条件",
+		"COMBO_UNAVAILABLE": "此套餐已不可用", "PAID_ADDON_UNAVAILABLE": "付费节点组已不可用",
+		"RECURRING_DISCOUNT_UNAVAILABLE": "循环优惠已不可用", "INSUFFICIENT_BALANCE": "TXB 余额不足",
+		"NO_ACCESSIBLE_NODES": "当前没有可用节点", "RENEWAL_UNAVAILABLE": "续费暂时不可用",
+		"REFUND_TRAFFIC_USED": "套餐流量已经使用", "REFUND_QUIESCE_FAILED": "服务商无法暂停订阅",
+		"REFUND_STATE_CONFLICT": "退款完成前订阅状态已变化",
+		"RESET_FAILED":          "服务商未能完成重置", "REFUND_UNAVAILABLE": "退款未能完成",
+	},
+	guidance: map[string]string{
+		"expiration":                           "请前往 TX Carpool 重新开通。",
+		"expiry_reminder":                      "请在到期前前往 TX Carpool 选择新套餐。",
+		"traffic_threshold":                    "请前往 TX Carpool 查看剩余流量。",
+		"automatic_traffic_reset_insufficient": "请补充 TXB 后在 TX Carpool 重新开启自动重置。",
+		"auto_renewal_failed":                  "请前往 TX Carpool 选择新套餐。",
 	},
 }
 

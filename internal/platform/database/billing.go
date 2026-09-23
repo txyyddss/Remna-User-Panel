@@ -116,26 +116,16 @@ func (s *Store) CreatePurchase(ctx context.Context, input PurchaseInput, now tim
 	if err := enqueuePurchaseTransitionTx(ctx, tx, purchaseID, status, validFrom, now); err != nil {
 		return model.Purchase{}, err
 	}
+	if status == "queued" {
+		if err := s.insertQueuedPurchaseNoticeTx(ctx, tx, purchaseID, input.UserID, combo, addonRows,
+			netPrice, newBalance, validFrom, validUntil, now); err != nil {
+			return model.Purchase{}, err
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return model.Purchase{}, fmt.Errorf("commit purchase: %w", err)
 	}
 	return s.PurchaseByID(ctx, purchaseID)
-}
-
-// QuotePurchase performs the same catalog, coupon, and effective-date checks as
-// checkout without changing balances, coupon grants, or entitlement state.
-func (s *Store) QuotePurchase(ctx context.Context, input PurchaseInput, now time.Time) (model.PurchaseQuote, error) {
-	input.IdempotencyKey = "quote"
-	if _, err := normalizeAndFingerprintPurchase(&input); err != nil {
-		return model.PurchaseQuote{}, err
-	}
-	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
-	if err != nil {
-		return model.PurchaseQuote{}, fmt.Errorf("begin purchase quote: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-	quote, _, _, err := quotePurchaseTx(ctx, tx, input, now.UTC())
-	return quote, err
 }
 
 func quotePurchaseTx(ctx context.Context, tx *sql.Tx, input PurchaseInput, now time.Time) (model.PurchaseQuote, model.Combo, []model.SquadProduct, error) {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
+	"github.com/txyyddss/Remna-User-Panel/internal/telegramformat"
 )
 
 var paymentAnnouncementChannelsZH = map[string]string{
@@ -45,16 +46,11 @@ func formatPaymentSuccessAnnouncement(payload jobpayload.PaymentSuccessAnnouncem
 	for index := range lines {
 		lines[index] = markdownV2Escape(lines[index])
 	}
-	return strings.Join(lines, "\n")
+	return telegramformat.Limit(strings.Join(lines, "\n"))
 }
 
-var markdownV2Escaper = strings.NewReplacer(
-	"\\", "\\\\", "_", "\\_", "*", "\\*", "[", "\\[", "]", "\\]", "(", "\\(", ")", "\\)",
-	"~", "\\~", "`", "\\`", ">", "\\>", "#", "\\#", "+", "\\+", "-", "\\-", "=", "\\=", "|", "\\|", "{", "\\{", "}", "\\}", ".", "\\.", "!", "\\!",
-)
-
 func markdownV2Escape(value string) string {
-	return markdownV2Escaper.Replace(value)
+	return telegramformat.Escape(value)
 }
 
 func validatePaymentSuccessAnnouncement(payload jobpayload.PaymentSuccessAnnouncement) error {

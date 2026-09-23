@@ -30,4 +30,13 @@ const (
 	UserEventAdminExtension             = "admin_extension"
 	UserEventAdminUpdate                = "admin_update"
 	UserEventNodeCompensation           = "node_compensation"
+	UserEventPurchaseQueued             = "purchase_queued"
+	UserEventRenewalScheduled           = "renewal_scheduled"
+	UserEventAddonActivated             = "addon_activated"
+	UserEventQueuedCancellation         = "queued_cancellation"
+	UserEventAutoRenewalFailed          = "auto_renewal_failed"
+	UserEventManualResetCompleted       = "manual_reset_completed"
+	UserEventManualResetRefunded        = "manual_reset_refunded"
+	UserEventMemberRefundCompleted      = "member_refund_completed"
+	UserEventMemberRefundFailed         = "member_refund_failed"
 )

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
 )
 
 func TestRenewalsUseCurrentOptionalSquadPrices(t *testing.T) {
@@ -78,6 +79,7 @@ func TestRenewalsUseCurrentOptionalSquadPrices(t *testing.T) {
 					if err != nil || replayed.ID != batch.ID || replayed.TotalPrice != batch.TotalPrice {
 						t.Fatalf("Renew(replay) = (%+v, %v)", replayed, err)
 					}
+					assertEventKind(t, store, "renewal-scheduled:"+batch.ID, jobpayload.UserEventRenewalScheduled)
 				}
 				for _, purchase := range renewed {
 					if purchase.PriceTXBMinor != charged || purchase.GrossPriceTXBMinor != charged || purchase.CoreGrossTXBMinor != 1_000 {

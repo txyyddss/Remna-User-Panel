@@ -93,7 +93,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	affiliateService := affiliates.NewService(store, queuedTelegramClient)
 	telegramBridge := telegramAdapter{client: queuedTelegramClient}
 	paymentBridge := paymentAdapter{settings: settings, telegram: queuedTelegramClient, queue: upstreams.payment, users: store}
-	paymentProfiles := newPaymentProfileManager(settings, paymentChannels, upstreams.payment, queuedTelegramClient, cfg.AdminTelegramIDs, cfg.PublicBaseURL, logger)
+	paymentProfiles := newPaymentProfileManager(settings, paymentChannels, upstreams.payment, queuedTelegramClient, store, cfg.AdminTelegramIDs, cfg.PublicBaseURL, logger)
 	backupService := backup.NewService(db, store, filepath.Join(cfg.DataDir, "backups"), cfg.BackupRetention)
 	reconcileCtx, reconcileCancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	reconcileErr := backupService.ReconcileUploads(reconcileCtx, migrationVersions)

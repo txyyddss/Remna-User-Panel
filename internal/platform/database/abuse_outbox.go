@@ -22,6 +22,7 @@ type AbuseDelivery struct {
 	TelegramID int64
 	Delivered  bool
 	Username   string
+	Locale     string
 	OccurredAt time.Time
 }
 
@@ -72,12 +73,13 @@ func (s *Store) AbuseDelivery(ctx context.Context, recordID string, telegramID i
 	item.TelegramID = telegramID
 	var delivered sql.NullString
 	var occurred string
-	err = s.db.QueryRowContext(ctx, `SELECT delivery.delivered_at,COALESCE(user.username,''),record.incident_bucket_at
+	err = s.db.QueryRowContext(ctx, `SELECT delivery.delivered_at,COALESCE(user.username,''),COALESCE(recipient.notification_locale,'en'),record.incident_bucket_at
 		FROM abuse_notification_deliveries delivery
 		JOIN abuse_records record ON record.id=delivery.record_id
 		JOIN users user ON user.id=record.user_id
+		LEFT JOIN users recipient ON recipient.telegram_id=delivery.recipient_telegram_id
 		WHERE delivery.record_id=? AND delivery.recipient_telegram_id=? AND delivery.kind='incident'`, recordID, telegramID).
-		Scan(&delivered, &item.Username, &occurred)
+		Scan(&delivered, &item.Username, &item.Locale, &occurred)
 	if err != nil {
 		return item, err
 	}
