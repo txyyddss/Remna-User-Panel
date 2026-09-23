@@ -4,11 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
+	"time"
+
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/notifications"
 	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
-	"time"
 )
 
 // RefundPayment appends a reversal and unwinds entitlements until the account is solvent or no purchases remain.
@@ -106,6 +108,24 @@ func (s *Store) RefundPayment(ctx context.Context, actorID *string, orderID, rea
 		}
 		if _, err := s.insertUserNotificationTx(ctx, tx, "admin:"+refundID+":"+order.UserID, order.UserID,
 			jobpayload.UserEventAdminUpdate, gate, facts, now); err != nil {
+			return model.PaymentOrder{}, err
+		}
+	} else {
+		facts := map[string]string{
+			notifications.FactProvider: order.Provider,
+			notifications.FactAmount:   strconv.FormatInt(order.TXBMinor, 10),
+			notifications.FactBalance:  strconv.FormatInt(balance, 10),
+			notifications.FactTime:     now.UTC().Format(time.RFC3339Nano),
+		}
+		if len(cancelledNames) > 0 {
+			facts[notifications.FactCancelledCombos] = squadSummary(cancelledNames)
+		}
+		gate := ""
+		if requiresSync {
+			gate = userSyncGate(order.UserID)
+		}
+		if _, err := s.insertUserNotificationTx(ctx, tx, "payment-refund:"+refundID, order.UserID,
+			jobpayload.UserEventPaymentRefunded, gate, facts, now); err != nil {
 			return model.PaymentOrder{}, err
 		}
 	}

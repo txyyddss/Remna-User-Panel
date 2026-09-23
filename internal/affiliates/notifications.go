@@ -28,13 +28,13 @@ func (w *NotificationWorker) HandleOutbox(ctx context.Context, job model.OutboxJ
 		if err != nil {
 			return err
 		}
-		return w.sender.SendMarkdownV2Message(ctx, payload.ChatID, 0, formatSuccess(payload))
+		return w.sender.SendMarkdownV2Message(ctx, payload.ChatID, 0, telegramformat.Limit(formatSuccess(payload)))
 	case jobpayload.AffiliateTierUpgradeKind:
 		payload, err := jobpayload.DecodeAffiliateTierUpgrade(job)
 		if err != nil {
 			return err
 		}
-		return w.sender.SendMarkdownV2Message(ctx, payload.ChatID, 0, formatUpgrade(payload))
+		return w.sender.SendMarkdownV2Message(ctx, payload.ChatID, 0, telegramformat.Limit(formatUpgrade(payload)))
 	default:
 		return fmt.Errorf("unsupported affiliate notification kind: %s", job.Kind)
 	}

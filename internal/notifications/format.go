@@ -41,9 +41,21 @@ func notificationFields(payload jobpayload.UserNotification, copy copySet, locat
 		return requiredFields(copy, facts, pair("combo", FactCombo), datePair("expires", FactExpires, location),
 			fixedPair("autoRenewal", "off", copy), fixedPair("queuedCombo", "none", copy))
 	case jobpayload.UserEventQueuedActivation:
-		return activationFields(copy, facts, location)
+		return activationFields(copy, facts, location, false)
+	case jobpayload.UserEventPurchaseActivation:
+		return activationFields(copy, facts, location, true)
 	case jobpayload.UserEventAutoRenewal:
 		return renewalFields(copy, facts, location)
+	case jobpayload.UserEventPaymentCredited:
+		return requiredFields(copy, facts, translatedPair("provider", FactProvider, copy), pair("paymentAmount", FactPaymentAmount),
+			moneyPair("txbCredited", FactAmount), moneyPair("balance", FactBalance), datePair("time", FactTime, location))
+	case jobpayload.UserEventPaymentRefunded:
+		fields, err := requiredFields(copy, facts, translatedPair("provider", FactProvider, copy), moneyPair("txbReversed", FactAmount),
+			moneyPair("balance", FactBalance), datePair("time", FactTime, location))
+		if err != nil {
+			return nil, err
+		}
+		return insertOptional(fields, len(fields)-1, copy, facts, "cancelledCombos", FactCancelledCombos), nil
 	case jobpayload.UserEventTrafficThreshold:
 		return trafficFields(copy, facts)
 	case jobpayload.UserEventAutomaticReset:
@@ -52,7 +64,7 @@ func notificationFields(payload jobpayload.UserNotification, copy copySet, locat
 		return automaticResetInsufficientFields(copy, facts)
 	case jobpayload.UserEventAutomaticResetFailed:
 		return requiredFields(copy, facts, pair("combo", FactCombo), moneyPair("refunded", FactAmount),
-			moneyPair("balance", FactBalance), pair("reason", FactReason), datePair("time", FactTime, location))
+			moneyPair("balance", FactBalance), resetFailurePair(copy), datePair("time", FactTime, location))
 	case jobpayload.UserEventGroupReward:
 		return requiredFields(copy, facts, pair("messages", FactMessages), moneyPair("reward", FactReward),
 			moneyPair("balance", FactBalance), datePair("time", FactTime, location))
@@ -85,9 +97,14 @@ func automaticResetInsufficientFields(copy copySet, facts map[string]string) ([]
 		fixedPair("automation", "disabled", copy))
 }
 
-func activationFields(copy copySet, facts map[string]string, location *time.Location) ([]cardField, error) {
-	fields, err := requiredFields(copy, facts, pair("combo", FactCombo), bytesPair("traffic", FactTrafficLimit),
-		translatedPair("reset", FactReset, copy), datePair("validUntil", FactValidUntil, location))
+func activationFields(copy copySet, facts map[string]string, location *time.Location, purchased bool) ([]cardField, error) {
+	specs := []fieldSpec{pair("combo", FactCombo)}
+	if purchased {
+		specs = append(specs, moneyPair("charged", FactCharge))
+	}
+	specs = append(specs, bytesPair("traffic", FactTrafficLimit), translatedPair("reset", FactReset, copy),
+		datePair("validUntil", FactValidUntil, location))
+	fields, err := requiredFields(copy, facts, specs...)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +123,7 @@ func renewalFields(copy copySet, facts map[string]string, location *time.Locatio
 			return nil, err
 		}
 	}
-	fields, err := requiredFields(copy, facts, pair("combo", FactCombo), moneyPair("renewalDebit", FactRenewalDebit),
+	fields, err := requiredFields(copy, facts, pair("combo", FactCombo), debitPair("renewalDebit", FactRenewalDebit),
 		literalPair("usedAllocated", used), bytesPair("eligible", FactEligible), literalPair("rollover", rollover),
 		moneyPair("balance", FactBalance), datePair("validUntil", FactValidUntil, location))
 	return fields, err

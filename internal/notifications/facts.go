@@ -3,6 +3,8 @@ package notifications
 
 const (
 	FactCombo              = "combo"
+	FactProvider           = "provider"
+	FactPaymentAmount      = "paymentAmount"
 	FactExpires            = "expires"
 	FactExpired            = "expired"
 	FactAutoRenewal        = "autoRenewal"

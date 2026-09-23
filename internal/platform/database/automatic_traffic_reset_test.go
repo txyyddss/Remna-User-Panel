@@ -24,7 +24,7 @@ func TestAutomaticTrafficResetDebitIsIdempotentAndSuccessGated(t *testing.T) {
 		t.Fatalf("automatic reset replay = (%+v, %v)", replay, err)
 	}
 	assertAutomaticResetCounts(t, store, userID, 1, 1)
-	assertNotificationCounts(t, store, 1, 0)
+	assertNotificationCounts(t, store, 2, 1)
 
 	var operationID string
 	if err := store.DB().QueryRow(`SELECT id FROM provider_operations WHERE kind='purchase_traffic_reset'`).Scan(&operationID); err != nil {
@@ -41,10 +41,11 @@ func TestAutomaticTrafficResetDebitIsIdempotentAndSuccessGated(t *testing.T) {
 		providerops.Completion{Status: providerops.StatusSucceeded, ResultJSON: "{}"}, completedAt); err != nil {
 		t.Fatal(err)
 	}
-	assertNotificationCounts(t, store, 1, 1)
+	assertNotificationCounts(t, store, 2, 2)
 	var completion string
 	if err := store.DB().QueryRow(`SELECT json_extract(payload,'$.facts.time') FROM outbox_jobs
-		WHERE kind=?`, jobpayload.UserNotificationKind).Scan(&completion); err != nil || completion != completedAt.Format(time.RFC3339Nano) {
+		WHERE kind=? AND json_extract(payload,'$.kind')=?`, jobpayload.UserNotificationKind,
+		jobpayload.UserEventAutomaticReset).Scan(&completion); err != nil || completion != completedAt.Format(time.RFC3339Nano) {
 		t.Fatalf("completion time = %q, %v", completion, err)
 	}
 }
@@ -63,7 +64,7 @@ func TestAutomaticTrafficResetInsufficientBalanceDisablesPreference(t *testing.T
 		t.Fatalf("automation setting = (%+v, %v), want disabled", setting, err)
 	}
 	assertAutomaticResetCounts(t, store, userID, 0, 0)
-	assertNotificationCounts(t, store, 1, 1)
+	assertNotificationCounts(t, store, 2, 2)
 	if replay, err := store.ProcessAutomaticTrafficResetObservation(ctx, "88101", 999, 1_000, "NO_RESET", nil, now.Add(time.Minute)); err != nil || replay.Handled {
 		t.Fatalf("disabled replay = (%+v, %v)", replay, err)
 	}
@@ -90,7 +91,7 @@ func TestAutomaticTrafficResetFailureCompensatesAndNotifies(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertAutomaticResetCounts(t, store, userID, 1, 1)
-	assertNotificationCounts(t, store, 2, 1)
+	assertNotificationCounts(t, store, 3, 2)
 }
 
 func automaticResetFixture(t *testing.T, telegramID, seed int64) (*Store, string, string, time.Time) {

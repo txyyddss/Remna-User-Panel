@@ -60,7 +60,8 @@ func validateUserNotification(payload UserNotification) error {
 		return errors.New("user notification locale is unsupported")
 	}
 	switch payload.Kind {
-	case UserEventExpiration, UserEventExpiryReminder, UserEventQueuedActivation, UserEventAutoRenewal,
+	case UserEventExpiration, UserEventExpiryReminder, UserEventQueuedActivation, UserEventPurchaseActivation,
+		UserEventAutoRenewal, UserEventPaymentCredited, UserEventPaymentRefunded,
 		UserEventTrafficThreshold, UserEventAutomaticReset, UserEventAutomaticResetInsufficient,
 		UserEventAutomaticResetFailed, UserEventGroupReward, UserEventAdminExtension, UserEventAdminUpdate,
 		UserEventNodeCompensation:

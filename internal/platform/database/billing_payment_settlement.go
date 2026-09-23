@@ -5,9 +5,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/notifications"
 	jobpayload "github.com/txyyddss/Remna-User-Panel/internal/outbox"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 )
@@ -124,6 +126,16 @@ func (s *Store) SettlePayment(ctx context.Context, provider, dedupeKey, payloadH
 	}
 	if err := insertOutboxTx(ctx, tx, jobpayload.PaymentSuccessAnnouncementKind, announcement, now, now); err != nil {
 		return model.PaymentOrder{}, false, fmt.Errorf("queue payment success announcement: %w", err)
+	}
+	if _, err := s.insertUserNotificationTx(ctx, tx, "payment:"+order.ID, order.UserID,
+		jobpayload.UserEventPaymentCredited, "", map[string]string{
+			notifications.FactProvider:      order.Provider,
+			notifications.FactPaymentAmount: order.PayableAmount + " " + order.PayableCurrency,
+			notifications.FactAmount:        strconv.FormatInt(order.TXBMinor, 10),
+			notifications.FactBalance:       strconv.FormatInt(balance, 10),
+			notifications.FactTime:          now.UTC().Format(time.RFC3339Nano),
+		}, now); err != nil {
+		return model.PaymentOrder{}, false, fmt.Errorf("queue payment receipt: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO payment_callback_tombstones(provider,dedupe_key,order_id,
 		payload_hash,received_at,processed_at) VALUES(?,?,?,?,?,?)`, provider, dedupeKey, order.ID,

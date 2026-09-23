@@ -69,7 +69,9 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `billing_purchase_cancellation.go` — owner-scoped queued cancellation with
   atomic status transition, TXB refund, and immutable ledger entry.
 - `billing_payment_settlement.go` — customer cancellation, idempotent provider
-  settlement transitions, and atomic immutable payment-announcement queueing.
+  settlement transitions, and atomic channel announcement and private receipt queueing.
+- `billing_refunds.go` records provider refund receipts with final TXB balance and
+  cancelled combos, gating delivery on upstream sync when entitlements changed.
 - `billing_payment_announcement.go` resolves the settlement-time username and
   administrator provider label and encodes the immutable outbox payload inside
   the payment transaction.
@@ -83,8 +85,9 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `affiliate_config_test.go` covers immutable version increments and stale-write conflicts.
 - `notification_events.go` owns semantic event deduplication and atomic outbox
   release, including provider-completion timestamps; `notification_scans.go` owns 48-hour and reset-period eligibility.
-- `notification_purchases.go` snapshots expiration, queued activation, and
+- `notification_purchases.go` snapshots expiration, immediate and queued activation, and
   automatic-renewal rollover outcomes.
+- `notification_receipts_test.go` covers activation and payment receipt snapshots.
 - `notification_admin_finance.go`, `notification_admin_cancel.go`, and
   `notification_admin_entitlements.go` snapshot detailed administrator changes.
 - `payment_operations.go` atomically stores checkout/cancellation intents with provider-operation receipts.

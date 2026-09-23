@@ -73,7 +73,7 @@ func TestExpiryReminderRequiresNoRenewalOrQueuedSuccessor(t *testing.T) {
 	if count, err := store.EnqueueExpiryReminderNotifications(context.Background(), purchase.ValidUntil.Add(-46*time.Hour)); err != nil || count != 0 {
 		t.Fatalf("replayed reminder = %d, %v", count, err)
 	}
-	assertNotificationCounts(t, store, 1, 1)
+	assertNotificationCounts(t, store, 2, 2)
 }
 
 func TestTrafficNotificationRearmsAfterResetOnly(t *testing.T) {
@@ -110,7 +110,7 @@ func TestTrafficNotificationRearmsAfterResetOnly(t *testing.T) {
 	if err != nil || !inserted {
 		t.Fatalf("next-period threshold = %t, %v", inserted, err)
 	}
-	assertNotificationCounts(t, store, 2, 2)
+	assertNotificationCounts(t, store, 3, 3)
 }
 
 func TestNoResetTrafficNotificationIsLifetimeOnly(t *testing.T) {
@@ -142,7 +142,7 @@ func TestNoResetTrafficNotificationIsLifetimeOnly(t *testing.T) {
 	if err != nil || second {
 		t.Fatalf("replayed NO_RESET threshold = %t, %v", second, err)
 	}
-	assertNotificationCounts(t, store, 1, 1)
+	assertNotificationCounts(t, store, 2, 2)
 }
 
 func TestImmediateAdminFinanceNotificationIsAtomic(t *testing.T) {

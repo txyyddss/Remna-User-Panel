@@ -49,12 +49,19 @@ func (s *Store) insertActivationNotificationTx(ctx context.Context, tx *sql.Tx, 
 		return err
 	}
 	createdAt, err := parseStamp(created)
-	if err != nil || !starts.After(createdAt) {
+	if err != nil {
 		return err
+	}
+	kind := jobpayload.UserEventPurchaseActivation
+	if starts.After(createdAt) {
+		kind = jobpayload.UserEventQueuedActivation
 	}
 	facts := map[string]string{
 		notifications.FactCombo: combo, notifications.FactTrafficLimit: strconv.FormatInt(traffic, 10),
 		notifications.FactReset: reset, notifications.FactValidUntil: validUntil,
+	}
+	if kind == jobpayload.UserEventPurchaseActivation {
+		facts[notifications.FactCharge] = strconv.FormatInt(debit, 10)
 	}
 	if addOns, err := purchaseAddonSummaryTx(ctx, tx, purchaseID); err != nil {
 		return err
@@ -62,7 +69,7 @@ func (s *Store) insertActivationNotificationTx(ctx context.Context, tx *sql.Tx, 
 		facts[notifications.FactAddOns] = addOns
 	}
 	_, err = s.insertUserNotificationTx(ctx, tx, "activation:"+purchaseID, userID,
-		jobpayload.UserEventQueuedActivation, "", facts, now)
+		kind, "", facts, now)
 	return err
 }
 

@@ -19,6 +19,9 @@ type fieldSpec struct {
 func pair(label, key string) fieldSpec          { return fieldSpec{label: label, key: key} }
 func literalPair(label, value string) fieldSpec { return fieldSpec{label: label, value: value} }
 func moneyPair(label, key string) fieldSpec     { return fieldSpec{label: label, key: key, format: money} }
+func debitPair(label, key string) fieldSpec {
+	return fieldSpec{label: label, key: key, format: debitMoney}
+}
 func bytesPair(label, key string) fieldSpec {
 	return fieldSpec{label: label, key: key, format: bytesValue}
 }
@@ -79,6 +82,23 @@ func money(value string) (string, error) {
 		return "", err
 	}
 	return model.TXBMoney(minor).Display, nil
+}
+
+func debitMoney(value string) (string, error) {
+	minor, err := strconv.ParseInt(value, 10, 64)
+	if err != nil || minor > 0 || minor == -1<<63 {
+		return "", errors.New("invalid renewal debit")
+	}
+	return model.TXBMoney(-minor).Display, nil
+}
+
+func resetFailurePair(copy copySet) fieldSpec {
+	return fieldSpec{label: "reason", key: FactReason, format: func(value string) (string, error) {
+		if reason := copy.values[value]; reason != "" {
+			return reason, nil
+		}
+		return copy.values["resetFailed"], nil
+	}}
 }
 
 func bytesValue(value string) (string, error) {
