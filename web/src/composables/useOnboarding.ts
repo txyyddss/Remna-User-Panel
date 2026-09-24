@@ -27,6 +27,7 @@ export function useOnboarding() {
   const error = shallowRef<string | null>(null)
   const content = shallowRef<PublishedOnboarding | null>(null)
   const form = reactive({ username: '', agreementIds: [] as string[] })
+  const recoveryReason = computed(() => sessionStore.user?.recoveryReason ?? '')
   const progress = computed(() => {
     const order: OnboardingStep[] = ['intro', 'username', 'agreement', 'complete']
     return Math.max(0, order.indexOf(step.value)) / (order.length - 1)
@@ -143,6 +144,7 @@ export function useOnboarding() {
     error: readonly(error),
     content: readonly(content),
     form,
+		recoveryReason,
     usernameValid,
     usernameHint,
     allAgreementsAccepted,

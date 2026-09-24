@@ -43,7 +43,7 @@ func (r *communityHTTPRepository) ReserveUsername(context.Context, string, strin
 func (r *communityHTTPRepository) CurrentAgreementContract(context.Context) (int, []string, error) {
 	return 1, nil, nil
 }
-func (r *communityHTTPRepository) CompleteOnboardingRevision(context.Context, string, string, int, []string, time.Time) (model.User, error) {
+func (r *communityHTTPRepository) CompleteOnboardingRevision(context.Context, string, int, []string, time.Time) (model.User, error) {
 	return r.user, nil
 }
 func (r *communityHTTPRepository) HasActiveCombo(context.Context, string, time.Time) (bool, error) {

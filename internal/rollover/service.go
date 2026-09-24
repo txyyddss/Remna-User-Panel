@@ -69,16 +69,19 @@ func (s *Service) HandleOutbox(ctx context.Context, job model.OutboxJob) error {
 	if rolloverTerminal(rollover.Status) || rollover.Status == "calculated" {
 		return nil
 	}
+	purchase, err := s.repository.PurchaseByID(ctx, purchaseID)
+	if err != nil {
+		return err
+	}
+	if purchase.Status == "cancelled" {
+		return nil
+	}
 	eligible, err := s.repository.RolloverEligible(ctx, purchaseID)
 	if err != nil {
 		return err
 	}
 	if !eligible {
 		return s.finalizeWithoutCalculation(ctx, purchaseID, rollover, "")
-	}
-	purchase, err := s.repository.PurchaseByID(ctx, purchaseID)
-	if err != nil {
-		return err
 	}
 	user, err := s.repository.UserForPurchase(ctx, purchaseID)
 	if err != nil {
@@ -126,6 +129,6 @@ func rolloverTerminal(status string) bool {
 	return status == "credited" || status == "zero" || status == "exception"
 }
 
-const UsageAlgorithmVersion = "cadence-v3"
+const UsageAlgorithmVersion = "cadence-v4"
 
 // CalculateUsage derives cadence allowances from weighted per-node daily usage.

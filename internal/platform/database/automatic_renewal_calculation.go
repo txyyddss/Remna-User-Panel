@@ -1,12 +1,22 @@
 package database
 
-import "github.com/txyyddss/Remna-User-Panel/internal/model"
+import (
+	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/rollover"
+)
 
-func calculatedRolloverCredit(rollover model.PurchaseRollover) int64 {
-	if rollover.AllocatedBytes == nil || rollover.EligibleUnusedBytes == nil {
+func normalizedRolloverEligible(value model.PurchaseRollover) int64 {
+	if value.AllocatedBytes == nil || value.UsedTrafficBytes == nil {
 		return 0
 	}
-	return proportionalFloor(rollover.NetPaidTXBMinor, *rollover.EligibleUnusedBytes, *rollover.AllocatedBytes)
+	return rollover.EligibleUnused(*value.AllocatedBytes, *value.UsedTrafficBytes, value.MinimumRemainingBPS)
+}
+
+func calculatedRolloverCredit(value model.PurchaseRollover) int64 {
+	if value.AllocatedBytes == nil {
+		return 0
+	}
+	return rollover.CreditMinor(value.NetPaidTXBMinor, normalizedRolloverEligible(value), *value.AllocatedBytes)
 }
 
 func renewalFundsCover(balance, credit, price int64, rolloverCountsTowardBalance bool) bool {

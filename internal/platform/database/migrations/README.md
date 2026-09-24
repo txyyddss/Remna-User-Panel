@@ -80,3 +80,8 @@ file instead.
 - `046_abuse_outbound_tags.sql` migrates the abuse filter to a validated comma-separated outbound-tag list.
 - `047_display_currency.sql` adds the TXB-default member display-currency preference constrained to TXB, CNY, or USD.
 - `048_rollover_calculated_settlement.sql` adds the calculated rollover state so traffic can be measured before an atomic automatic-renewal settlement.
+- `049_retry_rejected_telegram_markup.sql` requeues only failed Telegram jobs whose
+  stored error proves a Markdown entity rejection; ambiguous sends stay failed.
+- `050_restore_missing_remna_signup.sql` returns members stranded by the former
+  missing-user agreement flow to completed local onboarding; startup queues paid
+  unlinked accounts for reconciliation.

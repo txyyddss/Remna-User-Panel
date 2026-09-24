@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
-	"math/big"
 )
 
 func scanRollover(row rowScanner) (model.PurchaseRollover, error) {
@@ -46,22 +45,4 @@ func scanRollover(row rowScanner) (model.PurchaseRollover, error) {
 		value.CompletedAt = &parsed
 	}
 	return value, nil
-}
-
-func strictlyAboveBPS(remaining, limit int64, threshold int) bool {
-	left := new(big.Int).Mul(big.NewInt(remaining), big.NewInt(10000))
-	right := new(big.Int).Mul(big.NewInt(limit), big.NewInt(int64(threshold)))
-	return left.Cmp(right) > 0
-}
-
-func proportionalFloor(paid, remaining, limit int64) int64 {
-	if paid <= 0 || remaining <= 0 || limit <= 0 {
-		return 0
-	}
-	value := new(big.Int).Mul(big.NewInt(paid), big.NewInt(remaining))
-	value.Quo(value, big.NewInt(limit))
-	if !value.IsInt64() {
-		return paid
-	}
-	return value.Int64()
 }

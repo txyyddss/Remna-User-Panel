@@ -32,6 +32,28 @@ func TestMigrationClearsLegacySubscriptionCache(t *testing.T) {
 	}
 }
 
+func TestMigrationRestoresCompletedMissingRemnawaveAccount(t *testing.T) {
+	t.Parallel()
+	ctx, store := context.Background(), newTestStore(t)
+	user := createTestUser(t, store, 20_099)
+	now := time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC)
+	if _, err := store.DB().ExecContext(ctx, `UPDATE users SET username='restored',onboarding_state='agreement',
+		accepted_agreement_revision=1,policy_accepted_at=NULL,recovery_reason='remnawave_user_missing',updated_at=? WHERE id=?`,
+		stamp(now), user.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.DB().ExecContext(ctx, `DELETE FROM schema_migrations WHERE version='050_restore_missing_remna_signup.sql'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := migrate(ctx, store.DB()); err != nil {
+		t.Fatal(err)
+	}
+	restored, err := store.UserByID(ctx, user.ID)
+	if err != nil || restored.OnboardingState != "complete" || restored.PolicyAcceptedAt == nil || restored.RecoveryReason != "" {
+		t.Fatalf("restored account = %+v, err %v", restored, err)
+	}
+}
+
 func TestReserveUsernameIsImmutableAndRetryable(t *testing.T) {
 	t.Parallel()
 
@@ -57,7 +79,7 @@ func TestReserveUsernameIsImmutableAndRetryable(t *testing.T) {
 	}
 }
 
-func TestBeginRemnawaveRecoveryIsIdempotentAcrossConcurrentAuthentication(t *testing.T) {
+func TestQueueRemnawaveRepairPreservesCompletedSignup(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	store := newTestStore(t)
@@ -76,30 +98,30 @@ func TestBeginRemnawaveRecoveryIsIdempotentAcrossConcurrentAuthentication(t *tes
 	for range 2 {
 		go func() {
 			<-start
-			_, err := store.BeginRemnawaveRecovery(ctx, user.ID, "remnawave_user_missing", now.Add(time.Second))
+			_, err := store.QueueRemnawaveRepair(ctx, user.ID, "remote-user", now.Add(time.Second))
 			results <- err
 		}()
 	}
 	close(start)
 	for range 2 {
 		if err := <-results; err != nil {
-			t.Fatalf("BeginRemnawaveRecovery() error = %v", err)
+			t.Fatalf("QueueRemnawaveRepair() error = %v", err)
 		}
 	}
 	recovered, err := store.UserByID(ctx, user.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if recovered.Username == nil || *recovered.Username != "river" || recovered.OnboardingState != "agreement" ||
-		recovered.RecoveryReason != "remnawave_user_missing" || recovered.RemnaUserID != nil || recovered.PolicyAcceptedAt != nil ||
+	if recovered.Username == nil || *recovered.Username != "river" || recovered.OnboardingState != "complete" ||
+		recovered.RecoveryReason != "" || recovered.RemnaUserID != nil || recovered.PolicyAcceptedAt == nil ||
 		!recovered.GroupJoined || !recovered.ChannelJoined {
 		t.Fatalf("recovered user = %+v", recovered)
 	}
 	if balance, err := store.Balance(ctx, user.ID); err != nil || balance.Minor != "500" {
 		t.Fatalf("preserved balance = (%+v, %v)", balance, err)
 	}
-	if _, err := store.BeginRemnawaveRecovery(ctx, user.ID, "different_reason", now.Add(2*time.Second)); !errors.Is(err, ErrConflict) {
-		t.Fatalf("different recovery reason error = %v, want conflict", err)
+	if _, err := store.QueueRemnawaveRepair(ctx, user.ID, "other-remote", now.Add(2*time.Second)); err != nil {
+		t.Fatalf("second repair should leave newer identity unchanged: %v", err)
 	}
 }
 

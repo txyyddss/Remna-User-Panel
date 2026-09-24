@@ -123,9 +123,9 @@ func TestFinalizeRolloverBalanceOverflowRollsBack(t *testing.T) {
 	}
 }
 
-func TestFinalizeRolloverUsageAcceptsCadenceVersions(t *testing.T) {
+func TestFinalizeRolloverUsageAppliesWholeTermThresholdAcrossVersions(t *testing.T) {
 	t.Parallel()
-	for index, version := range []string{"cadence-v1", "cadence-v2", "cadence-v3"} {
+	for index, version := range []string{"cadence-v1", "cadence-v2", "cadence-v3", "cadence-v4"} {
 		index, version := index, version
 		t.Run(version, func(t *testing.T) {
 			t.Parallel()
@@ -158,8 +158,9 @@ func TestFinalizeRolloverUsageAcceptsCadenceVersions(t *testing.T) {
 			if err != nil {
 				t.Fatalf("FinalizeRolloverUsage(): %v", err)
 			}
-			if settled.CreditedTXBMinor != 500 || settled.AlgorithmVersion != version {
-				t.Fatalf("settled = %+v, want credit=500 version=%s", settled, version)
+			if settled.CreditedTXBMinor != 0 || settled.AlgorithmVersion != version ||
+				settled.EligibleUnusedBytes == nil || *settled.EligibleUnusedBytes != 0 {
+				t.Fatalf("settled = %+v, want zero credit and eligible traffic for %s", settled, version)
 			}
 		})
 	}

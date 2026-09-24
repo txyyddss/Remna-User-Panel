@@ -32,6 +32,11 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 
 - `billing_purchase_addon_fingerprint.go`, `billing_purchase_addon_quote.go`, and `billing_purchase_addons.go` validate, price, replay-protect, debit, record, and queue active-term squad additions in one transaction.
 - `billing_purchase_addons_test.go` covers rounding/caps, replay-safe debits, rollover and renewal totals, queued blocking, and full-squad owner selection.
+- `remna_provisioning.go` owns purchase-gated remote ID linking, confirmed-missing
+  repair, and atomic full refunds plus username restart on identity conflict.
+- `remna_provisioning_test.go` covers current and queued refund idempotency,
+  preserved account facts, and the localized conflict receipt.
+- `remna_provisioning_backlog.go` queues unlinked paid members after upgrades.
 
 - `timestamp_cursor.go` signs filter-bound timestamp/ID cursor payloads shared by administrative inventories.
 - `abuse_configuration.go`, `abuse_ingestion.go`, `abuse_event_storage.go`, and `abuse_record_queries.go` validate detector policy, resolve reported identities, persist normalized events, and expose stable incident pages.

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	rolloverpkg "github.com/txyyddss/Remna-User-Panel/internal/rollover"
 	"time"
 )
 
@@ -43,9 +44,7 @@ func (s *Store) FinalizeRollover(ctx context.Context, purchaseID string, limitBy
 		remaining = 0
 	}
 	summary := model.RolloverUsageSummary{AllocatedBytes: limitBytes, UsedBytes: usedBytes, EligibleUnusedBytes: remaining, AlgorithmVersion: "legacy-total-v1"}
-	if limitBytes <= 0 || !strictlyAboveBPS(remaining, limitBytes, 0) {
-		summary.EligibleUnusedBytes = 0
-	}
+	summary.EligibleUnusedBytes = rolloverpkg.EligibleUnused(limitBytes, usedBytes, 0)
 	return s.finalizeRolloverUsage(ctx, purchaseID, summary, exceptionCode, now)
 }
 
@@ -81,16 +80,13 @@ func (s *Store) finalizeRolloverUsage(ctx context.Context, purchaseID string, su
 	if remaining < 0 {
 		remaining = 0
 	}
-	eligible := summary.EligibleUnusedBytes
-	if !isCadenceAlgorithm(summary.AlgorithmVersion) && !strictlyAboveBPS(remaining, summary.AllocatedBytes, rollover.MinimumRemainingBPS) {
-		eligible = 0
-	}
+	eligible := rolloverEligibleForSummary(summary, rollover.MinimumRemainingBPS)
 	credit := int64(0)
 	status := "zero"
 	if exceptionCode != "" {
 		status = "exception"
 	} else if summary.AllocatedBytes > 0 && eligible > 0 {
-		credit = proportionalFloor(rollover.NetPaidTXBMinor, eligible, summary.AllocatedBytes)
+		credit = rolloverpkg.CreditMinor(rollover.NetPaidTXBMinor, eligible, summary.AllocatedBytes)
 		if credit > 0 {
 			status = "credited"
 		}
@@ -162,12 +158,3 @@ func (s *Store) finalizeRolloverUsage(ctx context.Context, purchaseID string, su
 }
 
 const rolloverSelect = `SELECT purchase_id,status,traffic_limit_bytes,allocated_traffic_bytes,used_traffic_bytes,eligible_unused_bytes,remaining_traffic_bytes,minimum_remaining_bps,net_paid_txb_minor,credited_txb_minor,exception_code,attempts,created_at,updated_at,completed_at,algorithm_version FROM purchase_rollovers`
-
-func isCadenceAlgorithm(version string) bool {
-	switch version {
-	case "cadence-v1", "cadence-v2", "cadence-v3":
-		return true
-	default:
-		return false
-	}
-}

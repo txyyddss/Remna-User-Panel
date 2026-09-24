@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/txyyddss/Remna-User-Panel/internal/accounts"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/outbox"
 )
@@ -41,12 +42,17 @@ type RemnawaveClient interface {
 type Worker struct {
 	repository Repository
 	remnawave  RemnawaveClient
+	identity   IdentityClient
 	now        func() time.Time
 }
 
 // NewWorker creates an entitlement worker.
-func NewWorker(repository Repository, remnawave RemnawaveClient) *Worker {
-	return &Worker{repository: repository, remnawave: remnawave, now: time.Now}
+func NewWorker(repository Repository, remnawave RemnawaveClient, identity ...IdentityClient) *Worker {
+	worker := &Worker{repository: repository, remnawave: remnawave, now: time.Now}
+	if len(identity) > 0 {
+		worker.identity = identity[0]
+	}
+	return worker
 }
 
 // Drain processes up to limit ready jobs and returns the first infrastructure error.
@@ -111,6 +117,13 @@ func (w *Worker) process(ctx context.Context, job model.OutboxJob) error {
 		if err != nil {
 			return err
 		}
+		user, err = w.ensureIdentity(ctx, user)
+		if errors.Is(err, accounts.ErrRemnawaveIdentityConflict) {
+			return w.resolveIdentityConflict(ctx, user)
+		}
+		if err != nil {
+			return err
+		}
 		if user.RemnaUserID == nil {
 			return errors.New("user has no Remnawave identity")
 		}
@@ -122,7 +135,7 @@ func (w *Worker) process(ctx context.Context, job model.OutboxJob) error {
 			// Removing squads before resetting makes ambiguous reset retries safe:
 			// no traffic can accrue between two reset attempts.
 			if err := w.remnawave.RemoveEntitlement(ctx, *user.RemnaUserID); err != nil {
-				return fmt.Errorf("quiesce Remnawave entitlement: %w", err)
+				return w.repairMissingIdentity(ctx, user, fmt.Errorf("quiesce Remnawave entitlement: %w", err))
 			}
 			if err := w.repository.AdvancePurchaseTrafficReset(ctx, purchase.ID, "pending", "quiesced", w.now().UTC()); err != nil {
 				return err
@@ -131,7 +144,7 @@ func (w *Worker) process(ctx context.Context, job model.OutboxJob) error {
 		}
 		if phase == "quiesced" {
 			if err := w.remnawave.ResetTraffic(ctx, *user.RemnaUserID); err != nil {
-				return fmt.Errorf("reset Remnawave traffic: %w", err)
+				return w.repairMissingIdentity(ctx, user, fmt.Errorf("reset Remnawave traffic: %w", err))
 			}
 			if err := w.repository.AdvancePurchaseTrafficReset(ctx, purchase.ID, "quiesced", "reset", w.now().UTC()); err != nil {
 				return err
@@ -142,7 +155,7 @@ func (w *Worker) process(ctx context.Context, job model.OutboxJob) error {
 			return fmt.Errorf("unknown traffic reset phase %q", phase)
 		}
 		if err := w.remnawave.ApplyEntitlement(ctx, *user.RemnaUserID, purchase.TrafficLimitBytes, purchase.ResetStrategy, purchase.SquadUUIDs, purchase.ValidUntil); err != nil {
-			return fmt.Errorf("apply Remnawave entitlement: %w", err)
+			return w.repairMissingIdentity(ctx, user, fmt.Errorf("apply Remnawave entitlement: %w", err))
 		}
 		return w.repository.MarkPurchaseSyncResult(ctx, purchase.ID, true, w.now().UTC())
 	case "remna_sync_user":
@@ -154,6 +167,24 @@ func (w *Worker) process(ctx context.Context, job model.OutboxJob) error {
 		if err != nil {
 			return err
 		}
+		if user.OnboardingState != "complete" || user.Username == nil {
+			return nil
+		}
+		if repository, ok := w.repository.(provisioningRepository); ok {
+			purchased, err := repository.HasProvisionablePurchase(ctx, userID, w.now().UTC())
+			if err != nil {
+				return err
+			}
+			if purchased {
+				user, err = w.ensureIdentity(ctx, user)
+				if errors.Is(err, accounts.ErrRemnawaveIdentityConflict) {
+					return w.resolveIdentityConflict(ctx, user)
+				}
+				if err != nil {
+					return err
+				}
+			}
+		}
 		if user.RemnaUserID == nil {
 			return w.releaseUserSyncNotifications(ctx, userID)
 		}
@@ -163,12 +194,12 @@ func (w *Worker) process(ctx context.Context, job model.OutboxJob) error {
 		}
 		if desired == nil {
 			if err := w.remnawave.RemoveEntitlement(ctx, *user.RemnaUserID); err != nil {
-				return err
+				return w.repairMissingIdentity(ctx, user, err)
 			}
 			return w.releaseUserSyncNotifications(ctx, userID)
 		}
 		if err := w.remnawave.ApplyEntitlement(ctx, *user.RemnaUserID, desired.TrafficLimitBytes, desired.ResetStrategy, desired.SquadUUIDs, desired.ValidUntil); err != nil {
-			return err
+			return w.repairMissingIdentity(ctx, user, err)
 		}
 		return w.releaseUserSyncNotifications(ctx, userID)
 	default:

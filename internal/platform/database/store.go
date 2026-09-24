@@ -194,6 +194,3 @@ func (s *Store) UpdateMembership(ctx context.Context, userID string, groupJoined
 	}
 	return s.UserByID(ctx, userID)
 }
-
-// BeginRemnawaveRecovery restarts only agreement reconciliation and
-// preserves local identity, balance, purchases, and feature history.

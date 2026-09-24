@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
-import { RouterView, useRoute } from 'vue-router'
+import { computed, onMounted, onUnmounted, watch } from 'vue'
+import { RouterView, useRoute, useRouter } from 'vue-router'
 import { en, zh_cn } from '@nuxt/ui/locale'
 
 import AppShell from '@/components/layout/AppShell.vue'
@@ -11,8 +11,10 @@ import { useSessionStore } from '@/stores/session'
 import { useDisplayCurrency } from '@/composables/useDisplayCurrency'
 import { useI18n } from '@/i18n'
 import { isTelegramWebAppDetected } from '@/utils/telegram'
+import { onboardingRequiredEvent } from '@/api/http'
 
 const route = useRoute()
+const router = useRouter()
 const sessionStore = useSessionStore()
 const displayCurrency = useDisplayCurrency()
 const immersive = computed(() => route.meta.immersive === true)
@@ -25,6 +27,27 @@ watch(() => sessionStore.user?.id, (userID) => {
   displayCurrency.hydrate(sessionStore.user?.displayCurrency)
   void displayCurrency.refresh()
 }, { immediate: true })
+
+let refreshingOnboarding = false
+async function refreshRequiredOnboarding(): Promise<void> {
+  if (refreshingOnboarding) return
+  refreshingOnboarding = true
+  try {
+    await sessionStore.bootstrap(true)
+    if (sessionStore.user && sessionStore.user.onboardingState !== 'complete') {
+      await router.replace('/onboarding')
+    }
+  } finally {
+    refreshingOnboarding = false
+  }
+}
+function onOnboardingRequired(): void {
+  void refreshRequiredOnboarding().catch(() => {
+    // The route guard will retry after the next navigation or Mini App open.
+  })
+}
+onMounted(() => globalThis.addEventListener(onboardingRequiredEvent, onOnboardingRequired))
+onUnmounted(() => globalThis.removeEventListener(onboardingRequiredEvent, onOnboardingRequired))
 </script>
 
 <template>

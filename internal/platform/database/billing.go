@@ -117,6 +117,9 @@ func (s *Store) CreatePurchase(ctx context.Context, input PurchaseInput, now tim
 		return model.Purchase{}, err
 	}
 	if status == "queued" {
+		if err := insertOutboxTx(ctx, tx, "remna_sync_user", `{"userId":"`+input.UserID+`"}`, now, now); err != nil {
+			return model.Purchase{}, err
+		}
 		if err := s.insertQueuedPurchaseNoticeTx(ctx, tx, purchaseID, input.UserID, combo, addonRows,
 			netPrice, newBalance, validFrom, validUntil, now); err != nil {
 			return model.Purchase{}, err

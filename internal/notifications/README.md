@@ -14,6 +14,10 @@
   the frozen node, squads, observation interval, applied duration, expiry change,
   review reason, and capped-calculation indicator.
 - `worker.go` delivers durable private-chat jobs through the queued Telegram sender.
+- Username-conflict refunds send one localized receipt with the total returned to
+  TXB and instructions to choose a new username. Shared Markdown truncation keeps
+  bold spans and mention links complete; migration 049 retries only known parser
+  rejections that Telegram definitively did not deliver.
 - `scanner.go` evaluates the 48-hour reminder, strict 90% notice boundary, and strict-above-95% automatic-reset handoff.
 - Automatic-reset success is provider-gated; insufficient balance disables the preference in the reset transaction, while definitive failure produces a localized refund notice.
 - Queued purchases and renewal batches acknowledge the TXB debit without claiming access is active. Add-on success waits for user sync; cancellation, manual reset, first-term refund, and automatic-renewal failure cards report final financial or access outcomes.

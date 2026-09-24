@@ -4,6 +4,7 @@ import { cachedTransport } from './cache/transport'
 import { clearResponseCache } from './cache/session'
 
 export type QueryValue = string | number | boolean | readonly string[] | undefined
+export const onboardingRequiredEvent = 'txc:onboarding-required'
 
 export interface RequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown
@@ -71,7 +72,11 @@ async function responseError(response: Response): Promise<ApiError> {
   const body = typeof payload === 'object' && payload !== null
     ? payload as ApiErrorBody
     : { code: 'HTTP_ERROR', message: String(payload || response.statusText) }
-  return new ApiError(response.status, body)
+  const error = new ApiError(response.status, body)
+  if (error.code === 'ONBOARDING_REQUIRED' && typeof globalThis.dispatchEvent === 'function') {
+    globalThis.dispatchEvent(new Event(onboardingRequiredEvent))
+  }
+  return error
 }
 
 async function responsePayload<T>(response: Response): Promise<T> {

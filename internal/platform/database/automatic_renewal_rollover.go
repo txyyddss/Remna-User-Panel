@@ -9,6 +9,7 @@ import (
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
+	rolloverpkg "github.com/txyyddss/Remna-User-Panel/internal/rollover"
 )
 
 func (s *Store) commitAutoRenewal(ctx context.Context, purchaseID string, excludedAddonIDs []string, rolloverCountsTowardBalance bool, now time.Time) (model.Purchase, error) {
@@ -93,8 +94,9 @@ func (s *Store) commitAutoRenewal(ctx context.Context, purchaseID string, exclud
 		return model.Purchase{}, err
 	}
 	if calculated {
-		result, updateErr := tx.ExecContext(ctx, `UPDATE purchase_rollovers SET status=?,credited_txb_minor=?,updated_at=?,completed_at=?
-			WHERE purchase_id=? AND status='calculated'`, rolloverStatusForCredit(credit), credit, stamp(now), stamp(now), purchaseID)
+		result, updateErr := tx.ExecContext(ctx, `UPDATE purchase_rollovers SET status=?,eligible_unused_bytes=?,credited_txb_minor=?,algorithm_version=?,updated_at=?,completed_at=?
+			WHERE purchase_id=? AND status='calculated'`, rolloverStatusForCredit(credit), normalizedRolloverEligible(rollover), credit,
+			rolloverpkg.UsageAlgorithmVersion, stamp(now), stamp(now), purchaseID)
 		if updateErr != nil {
 			return model.Purchase{}, fmt.Errorf("complete automatic rollover: %w", updateErr)
 		}

@@ -99,8 +99,8 @@ User:
       $ref: '../../openapi.yaml#/components/schemas/DisplayCurrency'
     recoveryReason:
       type: string
-      enum: ['', remnawave_user_missing]
-      description: Non-empty only while confirmed linked-user recovery onboarding is required.
+      enum: ['', remnawave_user_missing, remnawave_username_conflict]
+      description: A confirmed username conflict restarts onboarding at username entry after refunds.
     createdAt:
       $ref: '../../openapi.yaml#/components/schemas/Timestamp'
     updatedAt:

@@ -51,7 +51,7 @@ func ProjectUsage(purchase model.Purchase, threshold int, snapshot UsageSnapshot
 		LastResetPeriod:            pointerWindow(buildLastWindow(start, now, snapshot, purchase.PriceTXBMinor, threshold)),
 	}
 	if projected <= maximum && strictlyAboveBPS(full.AllocatedBytes-projected, full.AllocatedBytes, threshold) {
-		result.PredictedRollover = pointerMoney(model.TXBMoney(proportionalFloor(purchase.PriceTXBMinor, remaining, full.AllocatedBytes)))
+		result.PredictedRollover = pointerMoney(model.TXBMoney(CreditMinor(purchase.PriceTXBMinor, remaining, full.AllocatedBytes)))
 		return result
 	}
 	reduction := projected - maximum
@@ -77,7 +77,7 @@ func buildWindow(start, end time.Time, summary model.RolloverUsageSummary, paid 
 	eligible := summary.EligibleUnusedBytes
 	return model.RolloverWindow{Start: start.UTC(), End: end.UTC(), AllocatedTrafficBytes: summary.AllocatedBytes,
 		UsedTrafficBytes: summary.UsedBytes, RemainingTrafficBytes: remaining, EligibleUnusedBytes: eligible,
-		Rollover: model.TXBMoney(proportionalFloor(paid, eligible, summary.AllocatedBytes))}
+		Rollover: model.TXBMoney(CreditMinor(paid, eligible, summary.AllocatedBytes))}
 }
 
 func latestResetBounds(termStart, termEnd time.Time, snapshot UsageSnapshot) (time.Time, time.Time) {
@@ -118,18 +118,6 @@ func maximumAllowableUsage(allocated int64, threshold int) int64 {
 		return 0
 	}
 	return result
-}
-
-func proportionalFloor(paid, remaining, allocated int64) int64 {
-	if paid <= 0 || remaining <= 0 || allocated <= 0 {
-		return 0
-	}
-	value := new(big.Int).Mul(big.NewInt(paid), big.NewInt(remaining))
-	value.Quo(value, big.NewInt(allocated))
-	if !value.IsInt64() {
-		return 1<<63 - 1
-	}
-	return value.Int64()
 }
 
 func ceilDivide(numerator, denominator int64) int64 {

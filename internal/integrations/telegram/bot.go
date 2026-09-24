@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/telegramformat"
 )
 
 const telegramMessageLimit = 4096
@@ -64,7 +66,7 @@ func (c *Client) SendMessage(ctx context.Context, chatID, replyToMessageID int64
 
 // SendMarkdownV2Message sends a bounded MarkdownV2-formatted Telegram message.
 func (c *Client) SendMarkdownV2Message(ctx context.Context, chatID, replyToMessageID int64, text string) error {
-	return c.sendMessage(ctx, chatID, replyToMessageID, text, "MarkdownV2")
+	return c.sendMessage(ctx, chatID, replyToMessageID, telegramformat.Limit(text), "MarkdownV2")
 }
 
 func (c *Client) sendMessage(ctx context.Context, chatID, replyToMessageID int64, text, parseMode string) error {

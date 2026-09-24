@@ -59,14 +59,14 @@ type CommunityEligibility interface {
 	HasActiveCombo(context.Context, string, time.Time) (bool, error)
 }
 
-// RemoteUser is the minimum Remnawave identity used during onboarding.
+// RemoteUser is the minimum identity used by purchase provisioning.
 type RemoteUser struct {
 	ID         string
 	Username   string
 	TelegramID *int64
 }
 
-// RemoteCreateUser is the immutable v1 onboarding contract.
+// RemoteCreateUser is the purchase-triggered provisioning contract.
 type RemoteCreateUser struct {
 	Username             string
 	TelegramID           int64
@@ -90,7 +90,7 @@ type linkedUserVerifier interface {
 }
 
 type recoveryRepository interface {
-	BeginRemnawaveRecovery(context.Context, string, string, time.Time) (model.User, error)
+	QueueRemnawaveRepair(context.Context, string, string, time.Time) (model.User, error)
 }
 
 // Settings supplies validated runtime configuration.
@@ -108,7 +108,7 @@ type Repository interface {
 	UpdateMembership(context.Context, string, bool, bool) (model.User, error)
 	ReserveUsername(context.Context, string, string) error
 	CurrentAgreementContract(context.Context) (int, []string, error)
-	CompleteOnboardingRevision(context.Context, string, string, int, []string, time.Time) (model.User, error)
+	CompleteOnboardingRevision(context.Context, string, int, []string, time.Time) (model.User, error)
 }
 
 // Service coordinates authentication and onboarding state.
@@ -163,7 +163,7 @@ func (s *Service) Authenticate(ctx context.Context, raw string) (model.User, str
 			if verifyErr == nil && !exists {
 				repository, supported := s.repository.(recoveryRepository)
 				if supported {
-					user, err = repository.BeginRemnawaveRecovery(ctx, user.ID, "remnawave_user_missing", s.now().UTC())
+					user, err = repository.QueueRemnawaveRepair(ctx, user.ID, *user.RemnaUserID, s.now().UTC())
 					if err != nil {
 						return model.User{}, "", time.Time{}, err
 					}

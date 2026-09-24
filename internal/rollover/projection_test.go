@@ -29,6 +29,19 @@ func TestProjectUsageUsesNetPaidAndTermProjection(t *testing.T) {
 	}
 }
 
+func TestProjectUsageMatchesWholeTermRefundExample(t *testing.T) {
+	t.Parallel()
+	start := time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC)
+	end := start.AddDate(0, 0, 1)
+	projection := ProjectUsage(model.Purchase{ID: "example", PriceTXBMinor: 58_800, ValidFrom: start, ValidUntil: end},
+		8_500, UsageSnapshot{LimitBytes: 53_472, Strategy: "NO_RESET", WeightedUsedBytes: 7_518,
+			Daily: []DailyUsage{{Date: start, Bytes: 7_518}}}, end)
+	if projection.Term == nil || projection.Term.EligibleUnusedBytes != 45_954 || projection.Term.Rollover.Minor != "50533" ||
+		projection.PredictedRollover == nil || projection.PredictedRollover.Minor != "50533" {
+		t.Fatalf("whole-term projection = %+v", projection)
+	}
+}
+
 func TestProjectUsageProvidesMaximumDailyUsageBeforeForecastExceeds(t *testing.T) {
 	start := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
 	reset := start
@@ -90,7 +103,7 @@ func TestCalculateUsagePartialTermMatchesProjection(t *testing.T) {
 	}
 }
 
-func TestCalculateUsageThresholdIsStrictPerPeriod(t *testing.T) {
+func TestCalculateUsageThresholdIsStrictForWholeTerm(t *testing.T) {
 	t.Parallel()
 	start := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
 	tests := []struct {
@@ -144,8 +157,8 @@ func TestProjectUsageUsesFullAllowanceWithoutCap(t *testing.T) {
 		wantCredit    string
 		wantReduction int64
 	}{
-		{name: "daily", strategy: "DAY", days: 3, usage: map[int]int64{0: 200, 1: 800, 2: 200}, wantAllocated: 3_000, wantEligible: 1_600, wantMaximum: 1_499, wantCredit: "6000"},
-		{name: "weekly", strategy: "WEEK", days: 14, usage: map[int]int64{0: 200, 7: 800}, wantAllocated: 2_000, wantEligible: 800, wantMaximum: 999, wantReduction: 1},
+		{name: "daily", strategy: "DAY", days: 3, usage: map[int]int64{0: 200, 1: 800, 2: 200}, wantAllocated: 3_000, wantEligible: 1_800, wantMaximum: 1_499, wantCredit: "6000"},
+		{name: "weekly", strategy: "WEEK", days: 14, usage: map[int]int64{0: 200, 7: 800}, wantAllocated: 2_000, wantEligible: 0, wantMaximum: 999, wantReduction: 1},
 	}
 	for _, test := range tests {
 		test := test

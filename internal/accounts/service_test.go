@@ -121,7 +121,7 @@ func TestAuthenticateRechecksLinkedRemnawaveUser(t *testing.T) {
 			t.Parallel()
 			user := model.User{ID: "user-1", TelegramID: profile.ID, OnboardingState: "complete", RemnaUserID: &remoteID}
 			repository := &accountsRepository{user: user, recoveryUser: model.User{
-				ID: user.ID, TelegramID: user.TelegramID, OnboardingState: "agreement", RecoveryReason: "remnawave_user_missing",
+				ID: user.ID, TelegramID: user.TelegramID, OnboardingState: "complete",
 			}}
 			remote := &accountsRemnawave{linkedResponse: test.linked}
 			_, token, _, err := newAccountsServiceForTest(repository, &accountsValidator{profile: profile}, &accountsTelegram{}, remote, &accountsSettings{}, 99).Authenticate(context.Background(), "signed")
@@ -134,7 +134,7 @@ func TestAuthenticateRechecksLinkedRemnawaveUser(t *testing.T) {
 			if repository.recoveryStarted != test.wantRecovery {
 				t.Fatalf("recovery started = %t, want %t", repository.recoveryStarted, test.wantRecovery)
 			}
-			if test.wantRecovery && repository.recoveryReason != "remnawave_user_missing" {
+			if test.wantRecovery && repository.recoveryReason != remoteID {
 				t.Fatalf("recovery reason = %q", repository.recoveryReason)
 			}
 		})

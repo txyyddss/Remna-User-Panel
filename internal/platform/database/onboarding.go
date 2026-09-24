@@ -126,7 +126,7 @@ func (s *Store) CurrentAgreementContract(ctx context.Context) (int, []string, er
 	return bundle.PublishedRevision, ids, err
 }
 
-func (s *Store) CompleteOnboardingRevision(ctx context.Context, userID, remnaUserID string, revision int, agreementIDs []string, acceptedAt time.Time) (model.User, error) {
+func (s *Store) CompleteOnboardingRevision(ctx context.Context, userID string, revision int, agreementIDs []string, acceptedAt time.Time) (model.User, error) {
 	provided := append([]string(nil), agreementIDs...)
 	slices.Sort(provided)
 	s.writeMu.Lock()
@@ -148,15 +148,21 @@ func (s *Store) CompleteOnboardingRevision(ctx context.Context, userID, remnaUse
 	if revision != bundle.PublishedRevision || !slices.Equal(provided, requiredIDs) {
 		return model.User{}, ErrConflict
 	}
-	result, err := tx.ExecContext(ctx, `UPDATE users SET onboarding_state='complete',policy_accepted_at=?,accepted_agreement_revision=?,remna_user_id=?,recovery_reason='',updated_at=? WHERE id=? AND onboarding_state='agreement'`, stamp(acceptedAt), revision, remnaUserID, stamp(acceptedAt), userID)
+	result, err := tx.ExecContext(ctx, `UPDATE users SET onboarding_state='complete',policy_accepted_at=?,accepted_agreement_revision=?,recovery_reason='',updated_at=? WHERE id=? AND onboarding_state='agreement'`, stamp(acceptedAt), revision, stamp(acceptedAt), userID)
 	if err != nil {
 		return model.User{}, err
 	}
 	if affected, _ := result.RowsAffected(); affected != 1 {
 		return model.User{}, ErrConflict
 	}
-	if err := insertOutboxTx(ctx, tx, "remna_sync_user", `{"userId":"`+userID+`"}`, acceptedAt, acceptedAt); err != nil {
+	var purchased int
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM purchases WHERE user_id=? AND status IN ('active','activating','queued') AND valid_until>?)`, userID, stamp(acceptedAt)).Scan(&purchased); err != nil {
 		return model.User{}, err
+	}
+	if purchased == 1 {
+		if err := insertOutboxTx(ctx, tx, "remna_sync_user", `{"userId":"`+userID+`"}`, acceptedAt, acceptedAt); err != nil {
+			return model.User{}, err
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return model.User{}, err

@@ -121,7 +121,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	}
 	adminService := admin.NewService(store, settings, remna, backupService, paymentBridge)
 	adminUserWorkflows := admin.NewUserWorkflows(store, remna)
-	entitlementWorker := entitlements.NewWorker(store, remna)
+	entitlementWorker := entitlements.NewWorker(store, remna, remna)
 	rolloverWorker := rollover.NewService(store, remna)
 	outboxWorker := outbox.NewWorker(store)
 	paymentAnnouncementWorker := billing.NewPaymentAnnouncementWorker(settings, queuedTelegramClient)

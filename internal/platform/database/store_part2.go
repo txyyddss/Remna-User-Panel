@@ -9,33 +9,40 @@ import (
 	"time"
 )
 
-func (s *Store) BeginRemnawaveRecovery(ctx context.Context, userID, reason string, now time.Time) (model.User, error) {
-	reason = strings.TrimSpace(reason)
-	if strings.TrimSpace(userID) == "" || reason == "" {
+// QueueRemnawaveRepair clears a confirmed missing link without undoing signup.
+func (s *Store) QueueRemnawaveRepair(ctx context.Context, userID, missingID string, now time.Time) (model.User, error) {
+	if strings.TrimSpace(userID) == "" || strings.TrimSpace(missingID) == "" {
 		return model.User{}, ErrConflict
 	}
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
-
-	result, err := s.db.ExecContext(ctx, `UPDATE users SET onboarding_state='agreement',
-		policy_accepted_at=NULL,remna_user_id=NULL,remna_subscription_url=NULL,recovery_reason=?,updated_at=?
-		WHERE id=? AND onboarding_state='complete'`, reason, stamp(now), userID)
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return model.User{}, fmt.Errorf("begin Remnawave recovery: %w", err)
+		return model.User{}, fmt.Errorf("begin Remnawave repair: %w", err)
 	}
-	if affected, rowsErr := result.RowsAffected(); rowsErr != nil {
-		return model.User{}, fmt.Errorf("inspect Remnawave recovery: %w", rowsErr)
-	} else if affected != 1 {
-		// Concurrent authentication requests can both confirm the same linked 404.
-		// Once one request establishes recovery, identical retries are successful.
-		user, loadErr := s.UserByID(ctx, userID)
-		if loadErr != nil {
-			return model.User{}, loadErr
+	defer func() { _ = tx.Rollback() }()
+	result, err := tx.ExecContext(ctx, `UPDATE users SET remna_user_id=NULL,remna_subscription_url=NULL,recovery_reason='',updated_at=?
+		WHERE id=? AND onboarding_state='complete' AND remna_user_id=?`, stamp(now), userID, missingID)
+	if err != nil {
+		return model.User{}, fmt.Errorf("clear missing Remnawave link: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return model.User{}, fmt.Errorf("inspect Remnawave repair: %w", err)
+	}
+	if affected == 1 {
+		var purchased int
+		if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM purchases WHERE user_id=? AND status IN ('active','activating','queued') AND valid_until>?)`, userID, stamp(now)).Scan(&purchased); err != nil {
+			return model.User{}, err
 		}
-		if user.OnboardingState == "agreement" && user.RecoveryReason == reason && user.RemnaUserID == nil && user.PolicyAcceptedAt == nil {
-			return user, nil
+		if purchased == 1 {
+			if err := insertOutboxTx(ctx, tx, "remna_sync_user", `{"userId":"`+userID+`"}`, now, now); err != nil {
+				return model.User{}, err
+			}
 		}
-		return model.User{}, ErrConflict
+	}
+	if err := tx.Commit(); err != nil {
+		return model.User{}, fmt.Errorf("commit Remnawave repair: %w", err)
 	}
 	return s.UserByID(ctx, userID)
 }
@@ -46,7 +53,7 @@ func (s *Store) ReserveUsername(ctx context.Context, userID, username string) er
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 
-	result, err := s.db.ExecContext(ctx, `UPDATE users SET username=?,onboarding_state='agreement',updated_at=?
+	result, err := s.db.ExecContext(ctx, `UPDATE users SET username=?,onboarding_state='agreement',recovery_reason='',updated_at=?
 		WHERE id=? AND (onboarding_state IN ('intro','username') OR (onboarding_state='agreement' AND username=?))`,
 		username, stamp(time.Now().UTC()), userID, username)
 	if err != nil {

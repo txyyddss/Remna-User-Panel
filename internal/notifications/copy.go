@@ -9,6 +9,7 @@ type copySet struct {
 
 var englishCopy = copySet{
 	titles: map[string]string{
+		"remnawave_username_conflict_refund":   "↩️ Combo access refunded",
 		"automatic_traffic_reset":              "🔄 Automatic traffic reset completed",
 		"automatic_traffic_reset_insufficient": "⏸ Automatic traffic reset disabled",
 		"automatic_traffic_reset_failed":       "↩️ Automatic traffic reset refunded",
@@ -78,6 +79,7 @@ var englishCopy = copySet{
 
 var chineseCopy = copySet{
 	titles: map[string]string{
+		"remnawave_username_conflict_refund":   "↩️ 套餐费用已退还",
 		"automatic_traffic_reset":              "🔄 自动流量重置已完成",
 		"automatic_traffic_reset_insufficient": "⏸ 自动流量重置已关闭",
 		"automatic_traffic_reset_failed":       "↩️ 自动流量重置已退款",

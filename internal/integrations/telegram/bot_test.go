@@ -5,7 +5,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"unicode/utf8"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/telegramformat"
 )
 
 func TestSendMarkdownV2MessageDecodesMessageResult(t *testing.T) {
@@ -43,5 +47,33 @@ func TestSendMarkdownV2MessageDecodesMessageResult(t *testing.T) {
 	}
 	if err := client.SendMarkdownV2Message(context.Background(), -100, 9, "*paid*"); err != nil {
 		t.Fatalf("SendMarkdownV2Message() error = %v", err)
+	}
+}
+
+func TestSendMarkdownV2MessageLimitsMarkupAtTransport(t *testing.T) {
+	t.Parallel()
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		defer func() { _ = request.Body.Close() }()
+		var payload struct {
+			Text      string `json:"text"`
+			ParseMode string `json:"parse_mode"`
+		}
+		if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+			t.Error(err)
+		}
+		if payload.ParseMode != "MarkdownV2" || utf8.RuneCountInString(payload.Text) > telegramformat.MessageLimit ||
+			!strings.HasSuffix(payload.Text, `*\.\.\.`) {
+			t.Errorf("unsafe bounded payload: %q", payload.Text)
+		}
+		_, _ = writer.Write([]byte(`{"ok":true,"result":{"message_id":7}}`))
+	}))
+	defer server.Close()
+	client, err := NewClient("123:token", WithBaseURL(server.URL), WithHTTPClient(server.Client()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := client.SendMarkdownV2Message(context.Background(), 42, 0,
+		"✨ *"+strings.Repeat("a", telegramformat.MessageLimit)+"*"); err != nil {
+		t.Fatal(err)
 	}
 }

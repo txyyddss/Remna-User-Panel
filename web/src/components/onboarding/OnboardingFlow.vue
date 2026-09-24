@@ -20,6 +20,7 @@ const {
   error,
   content,
   form,
+  recoveryReason,
   usernameValid,
   usernameHint,
   allAgreementsAccepted,
@@ -70,6 +71,9 @@ const stepDirection = computed(() => step.value === 'agreement' ? 1 : -1)
           :exit="{ opacity: 0, y: reducedMotion ? 0 : -8 * stepDirection }"
           :transition="{ duration: reducedMotion ? 0.08 : motionDurations.step, ease: 'easeOut' }"
         >
+          <InlineNotice v-if="recoveryReason === 'remnawave_username_conflict'" tone="warning">
+            {{ $t('onboarding.usernameConflictRefunded') }}
+          </InlineNotice>
           <UsernamePanel
             v-model="form.username"
             :valid="usernameValid"

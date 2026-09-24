@@ -28,6 +28,8 @@ A member has at most one active combo and one effective account-wide traffic bud
 
 The read-only quote and the creation transaction both revalidate the live combo, coupon/grant, selected add-ons, active term, effective date, and upstream squad identities. Creation then atomically commits coupon use, balance debit, purchase/add-on facts, pending extension-credit consumption, ledger entry, and canonical outbox operation. Insufficient TXB returns `409 INSUFFICIENT_BALANCE`; no purchase is visible without its matching debit and synchronization job.
 
+The first purchase provisions the reserved Remnawave username through the queued worker. A future queued term creates a disabled remote account immediately; activation later applies the term. Confirmed remote deletion repairs the same username and current entitlement. A username claimed by another Telegram identity cancels and fully refunds all current and queued paid terms, including charged add-ons, then returns the member to username onboarding.
+
 Combo and internal-squad statistics accept a bounded date range, IANA timezone, and daily/weekly bucket. They report unique buyers, purchase count, charged/discount/add-on totals, series, and included-versus-add-on distribution from authoritative purchase facts plus current live combo references.
 
 When a term activates, synchronization persists three phases: remove all squads to quiesce access, reset usage while access is quiesced, then replace the complete internal-squad list, apply the account-wide limit/reset strategy, and set Remnawave `expireAt` to the term's local `validUntil`. A crash or ambiguous reset response repeats only a phase safe while no traffic can accrue; a retry after final apply never resets again. At final expiry, synchronization sets the upstream identity DISABLED, clears squads and traffic entitlement, and preserves the disabled-user far-future expiry; only a later active term restores ACTIVE. The local term remains authoritative.
@@ -46,11 +48,11 @@ Expiry first queues `rollover_finalize` and blocks renewal activation. The worke
 
 - A zero traffic limit awards zero.
 - Remaining percentage must be strictly greater than the snapshotted `rolloverMinRemainingBps` threshold.
-- An eligible award is `floor(netPaidMinor * remainingBytes / limitBytes)` with no configured TXB cap; strict minimum-remaining threshold checks still apply.
+- An eligible award is `roundHalfUp(netPaidMinor * remainingBytes / allocatedBytes)` to the nearest TXB cent, with no configured TXB cap.
 - The traffic inputs, result, old-term expiry, optional ledger credit, and next activation command commit atomically. Only then may reset/activation run.
 - Transient Remnawave failures retry without resetting traffic. A confirmed missing user records a zero-credit exception instead of assuming all traffic was unused.
 - Purchase ID is the rollover credit's unique semantic reference; replay cannot credit twice.
-- Cadence-aware settlement derives `DAY`, `WEEK`, `MONTH`, and `MONTH_ROLLING` intervals from the term and reset metadata, uses Remnawave's authoritative current-period used counter for the newest interval, uses bounded daily buckets for historical intervals, prorates partial intervals, excludes intervals below threshold from `eligibleUnusedAllowance`, and applies `netPaid * eligibleUnusedAllowance / totalAllowance` without a rollover cap. `totalAllowance` still includes every prorated interval.
+- Cadence-aware settlement derives `DAY`, `WEEK`, `MONTH`, and `MONTH_ROLLING` allowances and weighted usage from bounded per-node daily buckets, then sums both across the entire combo. Reset intervals affect those traffic totals only. The strict remaining threshold is evaluated once over the full term; when it passes, `eligibleUnusedBytes` is the full remaining allocation. Already credited historical records are unchanged, while calculated but uncredited records are normalized during renewal.
 - The live rollover projection forecasts from actual usage over elapsed term time, reports maximum allowable usage, maximum daily usage when the current total is still eligible but the forecast exceeds the limit, and total/daily reduction when needed. It calculates money from the immutable `charged_txb_minor` fact. When automatic renewal is disabled it returns a localized warning state without requesting provider usage.
 
 ## Failure behavior

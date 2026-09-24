@@ -30,7 +30,7 @@ func calculateUsageRange(threshold int, snapshot UsageSnapshot, anchor, start, e
 			usageByDay[item.Date.UTC().Format(time.DateOnly)] += item.Bytes
 		}
 	}
-	var allocated, used, eligible int64
+	var allocated, used int64
 	for _, period := range periods {
 		full := end.Sub(start)
 		if snapshot.Strategy != "NO_RESET" {
@@ -67,16 +67,13 @@ func calculateUsageRange(threshold int, snapshot UsageSnapshot, anchor, start, e
 		if periodUsed > allowance {
 			periodUsed = allowance
 		}
-		unused := allowance - periodUsed
 		if allowance <= 0 {
 			continue
 		}
 		allocated = sumBytes(allocated, allowance)
 		used = sumBytes(used, periodUsed)
-		if strictlyAboveBPS(unused, allowance, threshold) {
-			eligible = sumBytes(eligible, unused)
-		}
 	}
+	eligible := EligibleUnused(allocated, used, threshold)
 	return model.RolloverUsageSummary{AllocatedBytes: allocated, UsedBytes: used, EligibleUnusedBytes: eligible, AlgorithmVersion: UsageAlgorithmVersion}
 }
 

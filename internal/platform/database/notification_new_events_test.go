@@ -123,8 +123,8 @@ func TestManualResetReportsOnlyTerminalOutcomes(t *testing.T) {
 
 func assertEventKind(t *testing.T, store *Store, key, want string) {
 	t.Helper()
-	var kind string
-	if err := store.DB().QueryRow(`SELECT kind FROM user_notification_events WHERE event_key=?`, key).Scan(&kind); err != nil {
+	var kind, encoded string
+	if err := store.DB().QueryRow(`SELECT kind,payload_json FROM user_notification_events WHERE event_key=?`, key).Scan(&kind, &encoded); err != nil {
 		if err == sql.ErrNoRows {
 			t.Fatalf("missing notification %s", key)
 		}
@@ -132,6 +132,13 @@ func assertEventKind(t *testing.T, store *Store, key, want string) {
 	}
 	if kind != want {
 		t.Fatalf("notification %s kind = %s, want %s", key, kind, want)
+	}
+	var payload jobpayload.UserNotification
+	if err := json.Unmarshal([]byte(encoded), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := notifications.Format(payload, time.UTC); err != nil {
+		t.Fatalf("persisted notification %s cannot be sent: %v", key, err)
 	}
 }
 

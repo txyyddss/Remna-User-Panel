@@ -63,6 +63,11 @@ func TestCreatePurchaseSnapshotsAndRenewsAtCurrentTermEnd(t *testing.T) {
 	if second.Status != "queued" {
 		t.Fatalf("renewal status = %q, want queued", second.Status)
 	}
+	var provisioningJobs int
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind='remna_sync_user'
+		AND json_extract(payload,'$.userId')=?`, user.ID).Scan(&provisioningJobs); err != nil || provisioningJobs != 1 {
+		t.Fatalf("queued purchase provisioning jobs = %d, err %v", provisioningJobs, err)
+	}
 	if second.CoreGrossTXBMinor != 1_000 {
 		t.Fatalf("queued core gross = %d, want 1000", second.CoreGrossTXBMinor)
 	}

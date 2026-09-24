@@ -30,11 +30,21 @@ func Format(payload jobpayload.UserNotification, location *time.Location) (strin
 		return "", err
 	}
 	parts := strings.SplitN(title, " ", 2)
+	if len(parts) != 2 {
+		return "", errors.New("notification title has no emoji separator")
+	}
 	lines := []string{parts[0] + " *" + telegramformat.Escape(parts[1]) + "*"}
 	for _, field := range fields {
 		lines = append(lines, "*"+telegramformat.Escape(field.label)+":* "+telegramformat.Escape(field.value))
 	}
-	if guidance := copy.guidance[payload.Kind]; guidance != "" {
+	guidance := copy.guidance[payload.Kind]
+	if payload.Kind == jobpayload.UserEventProvisionConflict {
+		guidance = "Choose a new username in TX Carpool to restore access."
+		if payload.Locale == "zh-CN" {
+			guidance = "请在 TX Carpool 中选择新用户名，重新开通套餐。"
+		}
+	}
+	if guidance != "" {
 		lines = append(lines, "", telegramformat.Escape(guidance))
 	}
 	return telegramformat.Limit(strings.Join(lines, "\n")), nil
@@ -84,7 +94,7 @@ func notificationFields(payload jobpayload.UserNotification, copy copySet, locat
 		jobpayload.UserEventAddonActivated, jobpayload.UserEventQueuedCancellation,
 		jobpayload.UserEventAutoRenewalFailed, jobpayload.UserEventManualResetCompleted,
 		jobpayload.UserEventManualResetRefunded, jobpayload.UserEventMemberRefundCompleted,
-		jobpayload.UserEventMemberRefundFailed:
+		jobpayload.UserEventMemberRefundFailed, jobpayload.UserEventProvisionConflict:
 		return newEventFields(payload.Kind, copy, facts, location)
 	default:
 		return nil, errors.New("unsupported notification format")

@@ -39,4 +39,5 @@ const (
 	UserEventManualResetRefunded        = "manual_reset_refunded"
 	UserEventMemberRefundCompleted      = "member_refund_completed"
 	UserEventMemberRefundFailed         = "member_refund_failed"
+	UserEventProvisionConflict          = "remnawave_username_conflict_refund"
 )

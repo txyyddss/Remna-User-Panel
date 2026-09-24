@@ -25,7 +25,7 @@ type accountsRepository struct {
 	groupJoined          bool
 	channelJoined        bool
 	reservedUsername     string
-	completedRemoteID    string
+	completedUserID      string
 	recoveryUser         model.User
 	recoveryStarted      bool
 	recoveryReason       string
@@ -68,12 +68,12 @@ func (r *accountsRepository) ReserveUsername(_ context.Context, _ string, userna
 func (r *accountsRepository) CurrentAgreementContract(context.Context) (int, []string, error) {
 	return r.agreementRevision, append([]string(nil), r.requiredAgreementIDs...), nil
 }
-func (r *accountsRepository) CompleteOnboardingRevision(_ context.Context, _ string, remoteID string, _ int, _ []string, _ time.Time) (model.User, error) {
-	r.completedRemoteID = remoteID
+func (r *accountsRepository) CompleteOnboardingRevision(_ context.Context, userID string, _ int, _ []string, _ time.Time) (model.User, error) {
+	r.completedUserID = userID
 	return r.user, r.completeErr
 }
-func (r *accountsRepository) BeginRemnawaveRecovery(_ context.Context, _ string, reason string, _ time.Time) (model.User, error) {
-	r.recoveryStarted, r.recoveryReason = true, reason
+func (r *accountsRepository) QueueRemnawaveRepair(_ context.Context, _ string, missingID string, _ time.Time) (model.User, error) {
+	r.recoveryStarted, r.recoveryReason = true, missingID
 	return r.recoveryUser, nil
 }
 

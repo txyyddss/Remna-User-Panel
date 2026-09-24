@@ -16,3 +16,15 @@ func TestEscapeAndLimit(t *testing.T) {
 		t.Fatalf("Limit() produced unsafe output of %d runes", utf8.RuneCountInString(got))
 	}
 }
+
+func TestLimitPreservesBoldAndMentionBoundaries(t *testing.T) {
+	t.Parallel()
+	bold := Limit("✨ *" + strings.Repeat("a", MessageLimit) + "*")
+	if utf8.RuneCountInString(bold) > MessageLimit || !strings.HasSuffix(bold, "*"+ellipsis) {
+		t.Fatalf("bold message was truncated inside markup: %q", bold[len(bold)-24:])
+	}
+	mention := Limit("Welcome [" + strings.Repeat("a", MessageLimit) + "](tg://user?id=42)")
+	if utf8.RuneCountInString(mention) > MessageLimit || strings.Contains(mention, "[") || !strings.HasSuffix(mention, ellipsis) {
+		t.Fatalf("mention message was truncated inside a link: %q", mention)
+	}
+}

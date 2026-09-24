@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	rolloverpkg "github.com/txyyddss/Remna-User-Panel/internal/rollover"
 )
 
 // RolloverEligible reports whether expiry may calculate rollover for the term.
@@ -47,6 +48,8 @@ func (s *Store) RecordRolloverCalculation(ctx context.Context, purchaseID string
 	if rollover.Status != "processing" {
 		return model.PurchaseRollover{}, ErrConflict
 	}
+	summary.EligibleUnusedBytes = rolloverEligibleForSummary(summary, rollover.MinimumRemainingBPS)
+	summary.AlgorithmVersion = rolloverpkg.UsageAlgorithmVersion
 	remaining := summary.AllocatedBytes - summary.UsedBytes
 	result, err := tx.ExecContext(ctx, `UPDATE purchase_rollovers SET status='calculated',allocated_traffic_bytes=?,used_traffic_bytes=?,
 		eligible_unused_bytes=?,remaining_traffic_bytes=?,credited_txb_minor=0,exception_code='',algorithm_version=?,updated_at=?
@@ -64,6 +67,10 @@ func (s *Store) RecordRolloverCalculation(ctx context.Context, purchaseID string
 		return model.PurchaseRollover{}, fmt.Errorf("commit rollover calculation: %w", err)
 	}
 	return s.RolloverByPurchase(ctx, purchaseID)
+}
+
+func rolloverEligibleForSummary(summary model.RolloverUsageSummary, threshold int) int64 {
+	return rolloverpkg.EligibleUnused(summary.AllocatedBytes, summary.UsedBytes, threshold)
 }
 
 func validateRolloverSummary(summary model.RolloverUsageSummary) error {
