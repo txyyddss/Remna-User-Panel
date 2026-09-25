@@ -21,7 +21,8 @@ featuresApi.drawLuckyPrize = async () => {
   const reward = state.rewardKind === 'none' ? { kind: 'none' } : state.rewardKind === 'negative' ? { kind: 'txb_delta', txbDeltaMinor: '-50' } : { kind: 'txb_delta', txbDeltaMinor: '50000' }
   return { id: `result-${Date.now()}`, kind: 'draw', outcome: 'complete', message: '', drawId: 'draw-1', prizeId: prize.id, prizeName: prize.name, reward, balanceAfter: { currency: 'TXB', minor: '59900', display: '599.00 TXB' }, createdAt: new Date().toISOString() } as never
 }
-;(window as Window & { __audit?: typeof state }).__audit = state
+const auditState = Object.assign(state, { overview })
+;(window as Window & { __audit?: typeof auditState }).__audit = auditState
 const app = createApp(LuckyAudit)
 app.config.globalProperties.$t = t
 app.use(ui)

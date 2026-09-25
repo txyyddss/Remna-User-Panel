@@ -66,6 +66,9 @@ export function useDrawExperience(play: (drawId: string) => Promise<ActivityResu
     if (watchdog) clearTimeout(watchdog)
     if (value === 'settling') watchdog = setTimeout(reveal, 6000)
   })
+  watch(reducedMotion, (value) => {
+    if (value && result.value) reveal()
+  })
   onMounted(() => globalThis.document?.addEventListener('visibilitychange', handleVisibility))
   onScopeDispose(() => {
     if (watchdog) clearTimeout(watchdog)

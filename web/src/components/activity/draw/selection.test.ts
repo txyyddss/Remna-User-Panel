@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { ActivityResult, LuckyDrawPrizePreview } from '@/api/features'
-import { drawStyles, hasPositiveDrawReward, previewPrizes, resolveDrawStyle, selectedPreviewIndex } from './selection'
+import { drawStyles, hasPositiveDrawReward, previewPrizes, resolveDrawStyle, selectedPreviewIndex, settlingStepCount } from './selection'
 
 function receipt(prizeId: string, prizeName: string, reward: ActivityResult['reward'] = { kind: 'none' }): ActivityResult {
   return {
@@ -29,6 +29,18 @@ describe('draw presentation selection', () => {
     expect(preview).toHaveLength(8)
     expect(preview[7]).toEqual({ id: 'prize-199', name: 'Selected after stock changed' })
     expect(selectedPreviewIndex(preview, selected)).toBe(7)
+  })
+
+  it('settles the grid and slot on the selected prize for every preview size', () => {
+    for (let count = 1; count <= 8; count += 1) {
+      for (let start = 0; start <= 8; start += 1) {
+        for (let target = 0; target < count; target += 1) {
+          const steps = settlingStepCount(start, target, count)
+          expect(steps).toBeGreaterThanOrEqual(16)
+          expect((start + steps) % count).toBe(target)
+        }
+      }
+    }
   })
 
   it('does not celebrate no prize, zero, or negative TXB rewards', () => {

@@ -12,7 +12,7 @@ defineEmits<{ finished: [] }>()
   <div class="draw-gift" role="status">
     <Vue3Lottie v-if="result" :key="result.id" :animation-data="giftBox" :loop="1" :height="200" :width="200" @on-complete="$emit('finished')" />
     <div v-else class="draw-gift__waiting"><UIcon name="i-ph-gift" aria-hidden="true" /></div>
-    <p>{{ $t('activity.drawing') }}</p>
+    <p>{{ $t(result ? 'activity.drawRecorded' : 'activity.drawing') }}</p>
   </div>
 </template>
 

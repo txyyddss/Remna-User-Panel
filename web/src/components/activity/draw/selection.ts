@@ -41,6 +41,12 @@ export function selectedPreviewIndex(prizes: readonly LuckyDrawPrizePreview[], r
   return prizes.findIndex((prize) => prize.id === result.prizeId)
 }
 
+export function settlingStepCount(start: number, target: number, count: number): number {
+  if (count <= 0) return 0
+  const fullLaps = Math.ceil(16 / count) * count
+  return fullLaps + ((target - start % count + count) % count)
+}
+
 export function hasPositiveDrawReward(result: ActivityResult): boolean {
   if (result.kind !== 'draw') return false
   const reward = result.reward

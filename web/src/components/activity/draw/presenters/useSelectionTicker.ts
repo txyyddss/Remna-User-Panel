@@ -1,7 +1,7 @@
 import { onMounted, onScopeDispose, shallowRef, watch, type Ref } from 'vue'
 import { gsap } from 'gsap'
 
-import { selectedPreviewIndex, type DrawPresenterProps } from '../selection'
+import { selectedPreviewIndex, settlingStepCount, type DrawPresenterProps } from '../selection'
 import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { usePreview } from './usePreview'
 
@@ -26,7 +26,7 @@ export function useSelectionTicker(
     if (target < 0) { finished(); return }
     const count = visible.value.length
     const start = Math.floor(cursor.value)
-    const steps = 16 + ((target - start % count + count) % count)
+    const steps = settlingStepCount(start, target, count)
     context?.add(() => gsap.to(cursor, {
       value: start + steps, duration: 2.1, ease: 'power3.out', onUpdate: index, onComplete: finished,
     }))
