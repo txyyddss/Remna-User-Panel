@@ -33,14 +33,14 @@ func memberPurchaseFactsTx(ctx context.Context, tx *sql.Tx, purchaseID, userID s
 	var purchase model.Purchase
 	var validFrom, validUntil, created string
 	var firstTerm int
-	err := tx.QueryRowContext(ctx, `SELECT purchases.id,purchases.user_id,purchases.charged_txb_minor,
+	err := tx.QueryRowContext(ctx, `SELECT purchases.id,purchases.user_id,combos.name,purchases.charged_txb_minor,
 		purchases.core_gross_txb_minor,purchases.status,purchases.valid_from,purchases.valid_until,
 		COALESCE(purchases.entitlement_reset_strategy,combos.reset_strategy),purchases.created_at,
 		CASE WHEN purchases.renewal_batch_id IS NULL AND purchases.auto_renew_source_purchase_id IS NULL
 		AND NOT EXISTS(SELECT 1 FROM purchases successor WHERE successor.auto_renew_source_purchase_id=purchases.id)
 		AND NOT EXISTS(SELECT 1 FROM renewal_batches WHERE source_purchase_id=purchases.id) THEN 1 ELSE 0 END
 		FROM purchases JOIN combos ON combos.id=purchases.combo_id WHERE purchases.id=? AND purchases.user_id=?`, purchaseID, userID).
-		Scan(&purchase.ID, &purchase.UserID, &purchase.PriceTXBMinor, &purchase.CoreGrossTXBMinor,
+		Scan(&purchase.ID, &purchase.UserID, &purchase.ComboName, &purchase.PriceTXBMinor, &purchase.CoreGrossTXBMinor,
 			&purchase.Status, &validFrom, &validUntil, &purchase.ResetStrategy, &created, &firstTerm)
 	if errors.Is(err, sql.ErrNoRows) {
 		return purchaseops.PurchaseFacts{}, ErrNotFound

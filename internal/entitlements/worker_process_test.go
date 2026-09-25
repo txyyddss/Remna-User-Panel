@@ -83,6 +83,8 @@ func TestWorkerProcessSynchronizesDesiredOrEmptyState(t *testing.T) {
 	t.Parallel()
 
 	remoteID := "remote-1"
+	username := "member"
+	completedUser := model.User{OnboardingState: "complete", Username: &username, RemnaUserID: &remoteID}
 	desired := model.Purchase{TrafficLimitBytes: 4321, ResetStrategy: "WEEK", SquadUUIDs: []string{"squad"}, ValidUntil: time.Date(2099, 8, 7, 0, 0, 0, 0, time.UTC)}
 	testError := errors.New("test failure")
 	tests := []struct {
@@ -94,12 +96,13 @@ func TestWorkerProcessSynchronizesDesiredOrEmptyState(t *testing.T) {
 		wantRemove bool
 	}{
 		{name: "user lookup", repository: &entitlementRepository{userByIDErr: testError}, remote: &entitlementRemnawave{}, wantError: true},
-		{name: "no remote identity", repository: &entitlementRepository{user: model.User{}}, remote: &entitlementRemnawave{}},
-		{name: "desired lookup", repository: &entitlementRepository{user: model.User{RemnaUserID: &remoteID}, desiredErr: testError}, remote: &entitlementRemnawave{}, wantError: true},
-		{name: "remove empty", repository: &entitlementRepository{user: model.User{RemnaUserID: &remoteID}}, remote: &entitlementRemnawave{}, wantRemove: true},
-		{name: "remove error", repository: &entitlementRepository{user: model.User{RemnaUserID: &remoteID}}, remote: &entitlementRemnawave{removeErr: testError}, wantRemove: true, wantError: true},
-		{name: "apply desired", repository: &entitlementRepository{user: model.User{RemnaUserID: &remoteID}, desired: &desired}, remote: &entitlementRemnawave{}, wantApply: true},
-		{name: "apply desired error", repository: &entitlementRepository{user: model.User{RemnaUserID: &remoteID}, desired: &desired}, remote: &entitlementRemnawave{applyErr: testError}, wantApply: true, wantError: true},
+		{name: "incomplete onboarding", repository: &entitlementRepository{user: model.User{RemnaUserID: &remoteID}, desired: &desired}, remote: &entitlementRemnawave{}},
+		{name: "no remote identity", repository: &entitlementRepository{user: model.User{OnboardingState: "complete", Username: &username}}, remote: &entitlementRemnawave{}},
+		{name: "desired lookup", repository: &entitlementRepository{user: completedUser, desiredErr: testError}, remote: &entitlementRemnawave{}, wantError: true},
+		{name: "remove empty", repository: &entitlementRepository{user: completedUser}, remote: &entitlementRemnawave{}, wantRemove: true},
+		{name: "remove error", repository: &entitlementRepository{user: completedUser}, remote: &entitlementRemnawave{removeErr: testError}, wantRemove: true, wantError: true},
+		{name: "apply desired", repository: &entitlementRepository{user: completedUser, desired: &desired}, remote: &entitlementRemnawave{}, wantApply: true},
+		{name: "apply desired error", repository: &entitlementRepository{user: completedUser, desired: &desired}, remote: &entitlementRemnawave{applyErr: testError}, wantApply: true, wantError: true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -138,8 +141,9 @@ func TestWorkerProcessRejectsUnknownJob(t *testing.T) {
 
 func TestWorkerReleasesNotificationsOnlyAfterLaterSyncSuccess(t *testing.T) {
 	remoteID := "remote-1"
+	username := "member"
 	repository := &entitlementRepository{
-		user: model.User{RemnaUserID: &remoteID},
+		user: model.User{OnboardingState: "complete", Username: &username, RemnaUserID: &remoteID},
 		desired: &model.Purchase{TrafficLimitBytes: 1024, ResetStrategy: "DAY",
 			ValidUntil: time.Date(2099, 8, 7, 0, 0, 0, 0, time.UTC)},
 	}
