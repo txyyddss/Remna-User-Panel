@@ -67,6 +67,7 @@
   --ui-border-muted: var(--line);
   --ui-border-accented: var(--line-strong);
   --ui-text: var(--text);
+  --ui-text-highlighted: var(--text);
   --ui-text-muted: var(--text-muted);
   --ui-text-dimmed: var(--text-faint);
   --ui-primary: var(--accent);

@@ -158,7 +158,7 @@ ActivityGameList:
 LuckyDraw:
   type: object
   additionalProperties: false
-  required: [id, name, description, feeTxbMinor, enabled]
+  required: [id, name, description, feeTxbMinor, enabled, prizes]
   properties:
     id:
       $ref: '../../openapi.yaml#/components/schemas/ID'
@@ -171,6 +171,17 @@ LuckyDraw:
       pattern: '^\d+$'
     enabled:
       type: boolean
+    prizes:
+      type: array
+      items:
+        type: object
+        additionalProperties: false
+        required: [id, name]
+        properties:
+          id:
+            $ref: '../../openapi.yaml#/components/schemas/ID'
+          name:
+            type: string
 
 NoPrizeReward:
   type: object
@@ -249,6 +260,12 @@ ActivityResult:
     stakeTxbMinor:
       type: string
       pattern: '^[1-9]\d*$'
+    drawId:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    prizeId:
+      $ref: '../../openapi.yaml#/components/schemas/ID'
+    prizeName:
+      type: string
     balanceAfter:
       $ref: '../../openapi.yaml#/components/schemas/Money'
     createdAt:

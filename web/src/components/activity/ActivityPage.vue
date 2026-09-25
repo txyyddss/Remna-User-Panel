@@ -6,10 +6,17 @@ import { formatMemberMoney } from '@/utils/displayCurrency'
 import BetGamesPanel from './BetGamesPanel.vue'
 import DailyCheckInCard from './DailyCheckInCard.vue'
 import LuckyDrawPanel from './LuckyDrawPanel.vue'
+import DrawExperienceModal from './draw/DrawExperienceModal.vue'
+import { useDrawExperience } from './draw/useDrawExperience'
 import GroupMessageRewardPanel from './GroupMessageRewardPanel.vue'
 import ActivityResultDialog from './ActivityResultDialog.vue'
 
 const { overview, result, loading, busy, error, load, checkIn, placeBet, draw, clearResult } = useActivity()
+const {
+  draw: activeDraw, style: drawStyle, phase: drawPhase, result: drawResult,
+  error: drawError, resetToken, begin: beginDraw, retry: retryDraw,
+  reveal: revealDraw, close: closeDraw,
+} = useDrawExperience(draw)
 </script>
 
 <template>
@@ -37,9 +44,24 @@ const { overview, result, loading, busy, error, load, checkIn, placeBet, draw, c
         />
         <GroupMessageRewardPanel :reward="overview.groupMessageReward" />
         <BetGamesPanel :games="overview.games" :busy="busy === 'bet'" @bet="placeBet" />
-        <LuckyDrawPanel :draws="overview.draws" :busy="busy === 'draw'" @draw="draw" />
+        <LuckyDrawPanel
+          :draws="overview.draws"
+          :busy="Boolean(busy) || Boolean(activeDraw)"
+          :reset-token="resetToken"
+          @draw="beginDraw"
+        />
       </div>
       <ActivityResultDialog :result="result" @close="clearResult" />
+      <DrawExperienceModal
+        :draw="activeDraw"
+        :style="drawStyle"
+        :phase="drawPhase"
+        :result="drawResult"
+        :error="drawError"
+        @retry="retryDraw"
+        @reveal="revealDraw"
+        @close="closeDraw"
+      />
     </template>
     <div v-else class="error-state">
       <h1>{{ $t('errors.activityUnavailable') }}</h1><p>{{ error }}</p>

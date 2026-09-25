@@ -4,6 +4,8 @@
 
 Activity owns administrator-defined betting games, one daily check-in per configured local day, subscription-gated group-message rewards, weighted lucky draws, immutable outcomes, and pending subscription-extension credits. Member operations are `GET /api/v1/activity` plus the idempotent `POST /api/v1/activity/check-ins`, `/bets`, and `/draws` actions. Administrator operations manage Activity settings, games, and complete lucky-draw prize lists.
 
+Member draw previews expose only IDs and names of prizes with available stock. Draw receipts and recent results include the selected draw ID, prize ID, and prize name; presentation never selects the prize.
+
 The HTTP layer accepts TXB as decimal-string minor units and basis-point integers. The domain and database use `int64`; no Activity calculation uses binary floating point. The `Idempotency-Key` header is required for a bet or draw and is scoped to the member action.
 
 ## Financial and randomness invariants

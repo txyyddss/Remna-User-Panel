@@ -24,6 +24,12 @@ export interface LuckyDraw {
   description: string
   feeTxbMinor: string
   enabled: boolean
+  prizes: readonly LuckyDrawPrizePreview[]
+}
+
+export interface LuckyDrawPrizePreview {
+  id: string
+  name: string
 }
 
 export interface ActivitySettings {
@@ -84,6 +90,9 @@ export interface ActivityResult {
   message: string
   reward: Reward
   stakeTxbMinor?: string
+  drawId?: string
+  prizeId?: string
+  prizeName?: string
   balanceAfter: Money
   createdAt: RFC3339
 }

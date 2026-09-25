@@ -63,3 +63,4 @@ Financial and destructive operations retain text labels, busy states, explicit r
 - `package.json` and `package-lock.json` pin commands and dependencies.
 - `tsconfig.json` defines strict TypeScript/Vue compilation.
 - `vite.config.ts` configures Nuxt UI, locale parity, tests, proxying, and embedded output.
+- The draw artwork uses Lottie's local light SVG player through the Vite alias; these assets need only vector shapes.

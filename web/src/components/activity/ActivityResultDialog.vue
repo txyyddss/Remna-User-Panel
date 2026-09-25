@@ -1,41 +1,22 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { AnimatePresence, motion } from 'motion-v'
 
 import type { ActivityResult } from '@/api/features'
-import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
-import { formatMemberMoney } from '@/utils/displayCurrency'
-import BetSuccessFireworks from './BetSuccessFireworks.vue'
-import { isSuccessfulBet } from './feedback'
+import ActivityResultContent from './ActivityResultContent.vue'
 
 const props = defineProps<{ result: ActivityResult | null }>()
 defineEmits<{ close: [] }>()
-
 const { t } = useI18n()
-const showFireworks = computed(() => isSuccessfulBet(props.result))
-const { reducedMotion } = useMotionPreferences()
-
-const rewardLabel = computed(() => {
-  const result = props.result
-  const reward = result && (result.kind === 'draw' || result.kind === 'check_in') ? result.reward : null
-  if (!reward || reward.kind === 'none') return t('activity.noReward')
-  if (reward.kind === 'txb_delta') {
-    const amount = formatMemberMoney({ currency: 'TXB', minor: reward.txbDeltaMinor, display: '' })
-    return result?.kind === 'check_in' ? t('activity.checkInReward', { amount }) : t('activity.rewardTxb', { amount })
-  }
-  if (reward.kind === 'coupon_grant') return t('activity.rewardCoupon')
-  return t('activity.rewardSubscription', { days: reward.extensionDays })
-})
 
 const description = computed(() => {
   const result = props.result
   if (!result) return ''
   if (result.kind === 'check_in') {
     const state = result.reward.kind === 'none' ? 'checkInRecorded' : 'checkInRewarded'
-    return t(`activity.resultDescription.${state}`)
+    return t('activity.resultDescription.' + state)
   }
-  if (result.kind === 'bet') return t(`activity.resultDescription.bet${result.outcome === 'win' ? 'Win' : 'Loss'}`)
+  if (result.kind === 'bet') return t('activity.resultDescription.bet' + (result.outcome === 'win' ? 'Win' : 'Loss'))
   return t('activity.resultDescription.drawComplete')
 })
 </script>
@@ -43,56 +24,17 @@ const description = computed(() => {
 <template>
   <UModal
     :open="Boolean(result)"
-    :title="result ? $t(`activity.result.${result.outcome}.title`) : ''"
+    :title="result ? $t('activity.result.' + result.outcome + '.title') : ''"
     :description="description"
     :close="false"
     :ui="{ header: 'tg-overlay-header--centered', wrapper: 'tg-overlay-copy--centered' }"
     @update:open="!$event && $emit('close')"
   >
     <template v-if="result" #body>
-      <div class="result-body">
-        <BetSuccessFireworks v-if="showFireworks" :key="result.id" />
-        <AnimatePresence mode="wait" :initial="false">
-          <motion.div
-            :key="result.id"
-            :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, y: 5 }"
-            :animate="{ opacity: 1, y: 0 }"
-            :exit="{ opacity: 0 }"
-            :transition="{ duration: reducedMotion ? 0.08 : 0.22, delay: reducedMotion ? 0 : 0.05, ease: 'easeOut' }"
-          >
-            <motion.div :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.86 }" :animate="{ opacity: 1, scale: 1 }" :transition="{ duration: reducedMotion ? 0.08 : 0.2, ease: 'easeOut' }">
-              <UIcon
-                :name="result.outcome === 'loss' ? 'i-ph-warning-circle-fill' : 'i-ph-check-circle-fill'"
-                class="feature-icon"
-                :class="{ 'feature-icon--warning': result.outcome === 'loss' }"
-                aria-hidden="true"
-              />
-            </motion.div>
-            <div class="result-balance">
-              <span>{{ $t('activity.balanceAfter') }}</span>
-              <strong>{{ formatMemberMoney(result.balanceAfter) }}</strong>
-            </div>
-            <div v-if="(result.kind === 'draw' || result.kind === 'check_in') && result.reward.kind !== 'none'" class="result-reward">
-              <span>{{ $t('activity.reward') }}</span>
-              <strong>{{ rewardLabel }}</strong>
-            </div>
-          </motion.div>
-        </AnimatePresence>
-      </div>
+      <ActivityResultContent :result="result" />
     </template>
     <template #footer="{ close }">
       <UButton block :label="$t('common.close')" data-haptic="dismiss" @click="close" />
     </template>
   </UModal>
 </template>
-
-<style scoped>
-.result-body { position: relative; overflow: hidden; }
-.result-body > :not(.bet-fireworks) { position: relative; z-index: 1; }
-.result-balance { display: flex; align-items: baseline; justify-content: space-between; padding: 0.8rem; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface-raised); }
-.result-balance span { color: var(--text-muted); font-size: 0.74rem; }
-.result-balance strong { font-size: 1rem; }
-.result-reward { display: flex; align-items: baseline; justify-content: space-between; gap: 0.8rem; margin-top: 0.55rem; padding: 0.8rem; border: 1px solid #304138; border-radius: var(--radius-control); color: var(--accent); background: var(--accent-soft); }
-.result-reward span { color: var(--text-muted); font-size: 0.74rem; }
-.result-reward strong { text-align: right; }
-</style>

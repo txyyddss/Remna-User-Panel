@@ -51,6 +51,7 @@
 - `activity_member.go` serves member Activity overview, check-in, bet, draw, and configuration behavior.
 - `activity_admin.go` serves Activity settings and game administration.
 - `activity_draw_admin.go` serves lucky-draw administration and prize mapping.
+- `activity_types_test.go` checks member-safe prize previews and draw receipt identity mapping.
 - `coupons_member.go` serves wallet, soft-discard, and redemption behavior plus coupon response mapping.
 - `coupons_admin.go` serves coupon creation, updates, deactivation, and partial-input merging.
 - `questionnaire_types.go` maps questionnaire, participation, import, and settlement responses.

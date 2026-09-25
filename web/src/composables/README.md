@@ -13,6 +13,7 @@ separate. Action quotes and permission decisions still await the backend.
 - `useSquadAddition.ts` owns active-term optional-squad filtering, time-adjusted quote freshness, activation-code handoff, balance recovery, and idempotent commit feedback.
 
 - `useActivity.ts` loads games, draws, and check-in actions.
+- `useActivity.test.ts` checks that ambiguous draw failures reuse the same idempotency key and confirmed draws release it.
 - `useAffiliateCentre.ts` loads member metrics and fixed five-row referral pages.
 - `useAdminDatabase.ts` coordinates protected database review and mutation flows.
 - `useAdminSection.ts` provides latest-request-safe administrator list operations and cursor accumulation.

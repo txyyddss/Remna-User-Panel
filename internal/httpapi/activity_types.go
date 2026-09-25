@@ -22,11 +22,17 @@ type activityGameResponse struct {
 }
 
 type luckyDrawResponse struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	FeeTXBMinor string `json:"feeTxbMinor"`
-	Enabled     bool   `json:"enabled"`
+	ID          string                  `json:"id"`
+	Name        string                  `json:"name"`
+	Description string                  `json:"description"`
+	FeeTXBMinor string                  `json:"feeTxbMinor"`
+	Enabled     bool                    `json:"enabled"`
+	Prizes      []luckyDrawPrizePreview `json:"prizes"`
+}
+
+type luckyDrawPrizePreview struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 type activityRewardResponse struct {
@@ -43,6 +49,9 @@ type activityResultResponse struct {
 	Message       string                 `json:"message"`
 	Reward        activityRewardResponse `json:"reward"`
 	StakeTXBMinor string                 `json:"stakeTxbMinor,omitempty"`
+	DrawID        string                 `json:"drawId,omitempty"`
+	PrizeID       string                 `json:"prizeId,omitempty"`
+	PrizeName     string                 `json:"prizeName,omitempty"`
 	BalanceAfter  model.Money            `json:"balanceAfter"`
 	CreatedAt     time.Time              `json:"createdAt"`
 }
@@ -68,7 +77,14 @@ func mapActivityGame(game activity.Game) activityGameResponse {
 }
 
 func mapLuckyDraw(draw activity.LuckyDraw) luckyDrawResponse {
-	return luckyDrawResponse{ID: draw.ID, Name: draw.Name, Description: draw.Description, FeeTXBMinor: strconv.FormatInt(draw.FeeMinor, 10), Enabled: draw.Enabled}
+	prizes := make([]luckyDrawPrizePreview, 0, len(draw.Prizes))
+	for _, prize := range draw.Prizes {
+		if prize.StockRemaining != nil && *prize.StockRemaining == 0 {
+			continue
+		}
+		prizes = append(prizes, luckyDrawPrizePreview{ID: prize.ID, Name: prize.Name})
+	}
+	return luckyDrawResponse{ID: draw.ID, Name: draw.Name, Description: draw.Description, FeeTXBMinor: strconv.FormatInt(draw.FeeMinor, 10), Enabled: draw.Enabled, Prizes: prizes}
 }
 
 func mapActivityReward(reward activity.Reward) activityRewardResponse {
@@ -106,6 +122,7 @@ func mapBetResult(result activity.BetResult) activityResultResponse {
 
 func mapDrawResult(result activity.DrawResult) activityResultResponse {
 	return activityResultResponse{ID: result.ID, Kind: "draw", Outcome: "complete", Message: "Draw recorded: " + result.PrizeName + ".",
+		DrawID: result.DrawID, PrizeID: result.PrizeID, PrizeName: result.PrizeName,
 		Reward: mapActivityReward(result.Reward), BalanceAfter: model.TXBMoney(result.BalanceAfterMinor), CreatedAt: result.CreatedAt}
 }
 

@@ -169,6 +169,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      'lottie-web': fileURLToPath(new URL('./node_modules/lottie-web/build/player/lottie_light.js', import.meta.url)),
     },
   },
   optimizeDeps: {

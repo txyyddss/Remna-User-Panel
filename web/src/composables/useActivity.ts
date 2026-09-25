@@ -68,8 +68,24 @@ export function useActivity() {
     return run('bet', actionId, (key) => featuresApi.placeBet(payload.gameId, payload.stakeTxbMinor, key))
   }
 
-  function draw(drawId: string): Promise<void> {
-    return run('draw', `draw:${drawId}`, (key) => featuresApi.drawLuckyPrize(drawId, key))
+  async function draw(drawId: string): Promise<ActivityResult> {
+    if (busy.value) throw new Error()
+    const actionId = 'draw:' + drawId
+    busy.value = 'draw'
+    error.value = null
+    try {
+      const drawResult = await featuresApi.drawLuckyPrize(drawId, idempotencyKey(actionId))
+      actionKeys.delete(actionId)
+      notifyHaptic(activityNotification(drawResult))
+      await load({ quiet: true })
+      return drawResult
+    } catch (caught) {
+      error.value = localizedError(caught, 'errors.activityFailed')
+      notifyHaptic('error')
+      throw caught
+    } finally {
+      busy.value = null
+    }
   }
 
   function clearResult(): void {
