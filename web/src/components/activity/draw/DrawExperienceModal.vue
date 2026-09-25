@@ -5,6 +5,7 @@ import type { ActivityResult, LuckyDraw } from '@/api/features'
 import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
 import { useTelegramProtection } from '@/composables/useTelegramProtection'
 import ActivityResultContent from '../ActivityResultContent.vue'
+import DrawCelebration from './DrawCelebration.vue'
 import SimplePresenter from './presenters/SimplePresenter.vue'
 import type { DrawPhase, DrawStyle } from './selection'
 
@@ -26,7 +27,6 @@ const presenters = {
   slot: defineAsyncComponent(() => import('./presenters/SlotPresenter.vue')),
   scratch: defineAsyncComponent(() => import('./presenters/ScratchPresenter.vue')),
 }
-const DrawCelebration = defineAsyncComponent(() => import('./DrawCelebration.vue'))
 const presenter = computed(() => presenters[props.style])
 const presenterFailed = shallowRef(false)
 useTelegramProtection(computed(() => Boolean(props.draw) && props.phase === 'running'))

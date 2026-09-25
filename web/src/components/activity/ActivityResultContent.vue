@@ -27,7 +27,7 @@ const rewardLabel = computed(() => {
 </script>
 
 <template>
-  <div class="result-body">
+  <div class="result-body" :class="{ 'result-body--draw': result.kind === 'draw' }">
     <BetSuccessFireworks v-if="showFireworks" :key="result.id" />
     <AnimatePresence mode="wait" :initial="false">
       <motion.div
@@ -38,6 +38,7 @@ const rewardLabel = computed(() => {
         :transition="{ duration: reducedMotion ? 0.08 : 0.22, delay: reducedMotion ? 0 : 0.05, ease: 'easeOut' }"
       >
         <motion.div
+          v-if="result.kind !== 'draw'"
           :initial="reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.86 }"
           :animate="{ opacity: 1, scale: 1 }"
           :transition="{ duration: reducedMotion ? 0.08 : 0.2, ease: 'easeOut' }"
@@ -75,4 +76,5 @@ const rewardLabel = computed(() => {
 .result-balance strong, .result-reward strong { font-size: 1rem; text-align: right; }
 .result-reward { margin-top: 0.55rem; border-color: #304138; color: var(--accent); background: var(--accent-soft); }
 .result-prize { margin-top: 0.2rem; }
+.result-body--draw .result-reward { border-color: var(--line); background: var(--surface-raised); color: var(--text); }
 </style>
