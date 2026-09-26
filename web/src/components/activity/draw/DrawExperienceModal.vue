@@ -13,10 +13,11 @@ const props = defineProps<{
   draw: LuckyDraw | null
   style: DrawStyle
   phase: DrawPhase
+  started: boolean
   result: ActivityResult | null
   error: string | null
 }>()
-const emit = defineEmits<{ retry: []; reveal: []; close: [] }>()
+const emit = defineEmits<{ retry: []; reveal: []; close: []; started: [] }>()
 
 const presenters = {
   simple: SimplePresenter,
@@ -29,9 +30,11 @@ const presenters = {
 }
 const presenter = computed(() => presenters[props.style])
 const presenterFailed = shallowRef(false)
+const revealRequested = shallowRef(0)
+const requiresStart = computed(() => props.style === 'grid' || props.style === 'wheel' || props.style === 'slot')
 useTelegramProtection(computed(() => Boolean(props.draw) && props.phase === 'running'))
 useTelegramBackButton(computed(() => Boolean(props.draw)), () => {
-  if (props.phase === 'settling') emit('reveal')
+  if (props.phase === 'settling' && (!requiresStart.value || props.started)) emit('reveal')
   else dismiss()
 })
 
@@ -47,6 +50,11 @@ onErrorCaptured(() => {
 
 function dismiss(): void {
   if (props.phase === 'receipt' || props.phase === 'error') emit('close')
+}
+
+function revealOrAnimate(): void {
+  if (props.style === 'scratch') revealRequested.value += 1
+  else emit('reveal')
 }
 </script>
 
@@ -77,6 +85,8 @@ function dismiss(): void {
           :key="draw.id + ':' + style"
           :prizes="draw.prizes ?? []"
           :result="result"
+          :reveal-requested="revealRequested"
+          @started="$emit('started')"
           @finished="$emit('reveal')"
         />
         <div v-else class="draw-experience__message" role="status">
@@ -88,7 +98,8 @@ function dismiss(): void {
     </template>
     <template #footer>
       <UButton v-if="phase === 'running'" block disabled :label="$t('activity.drawing')" />
-      <UButton v-else-if="phase === 'settling'" block :label="$t(style === 'scratch' ? 'activity.reveal' : 'activity.skipAnimation')" @click="$emit('reveal')" />
+      <UButton v-else-if="phase === 'settling' && (!requiresStart || started)" block :label="$t(style === 'scratch' ? 'activity.reveal' : 'activity.skipAnimation')" @click="revealOrAnimate" />
+      <p v-else-if="phase === 'settling'" class="draw-experience__start-hint" role="status">{{ $t(style === 'slot' ? 'activity.slotReadyHint' : 'activity.centerStartHint') }}</p>
       <div v-else-if="phase === 'error'" class="draw-experience__actions">
         <UButton :label="$t('common.tryAgain')" @click="$emit('retry')" />
         <UButton color="neutral" variant="outline" :label="$t('common.close')" @click="$emit('close')" />
@@ -102,6 +113,7 @@ function dismiss(): void {
 .draw-experience__stage { display: grid; gap: 0.6rem; align-items: center; min-height: 16rem; }
 .draw-experience__receipt { position: relative; }
 .draw-experience__note { margin: 0; color: var(--text-faint); font-size: 0.72rem; line-height: 1.45; text-align: center; }
+.draw-experience__start-hint { margin: 0; width: 100%; color: var(--text-muted); font-size: 0.78rem; text-align: center; }
 .draw-experience__message { display: grid; place-items: center; align-content: center; min-height: 13rem; gap: 0.65rem; color: var(--warning); text-align: center; }
 .draw-experience__message :deep(svg) { width: 2.5rem; height: 2.5rem; }
 .draw-experience__message p { margin: 0; color: var(--text-muted); }

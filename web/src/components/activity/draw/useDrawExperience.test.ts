@@ -75,11 +75,14 @@ describe('draw experience', () => {
     wrapper.unmount()
   })
 
-  it('shows the receipt immediately for reduced motion', async () => {
+  it('keeps the lever gate under reduced motion', async () => {
     preference.reduced = true
     const { wrapper, experience } = harness(async () => result)
     experience.begin(draw, 'slot')
     await flushPromises()
+    expect(experience.phase.value).toBe('settling')
+    experience.markStarted()
+    experience.reveal()
     expect(experience.phase.value).toBe('receipt')
     wrapper.unmount()
   })
@@ -91,6 +94,9 @@ describe('draw experience', () => {
     await Promise.resolve()
     await nextTick()
     expect(experience.phase.value).toBe('settling')
+    vi.advanceTimersByTime(6000)
+    expect(experience.phase.value).toBe('settling')
+    experience.markStarted()
     vi.advanceTimersByTime(6000)
     expect(experience.phase.value).toBe('receipt')
     wrapper.unmount()

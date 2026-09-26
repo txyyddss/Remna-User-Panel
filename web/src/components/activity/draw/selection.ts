@@ -1,6 +1,7 @@
 import type { ActivityResult, LuckyDrawPrizePreview } from '@/api/features'
 
 export const drawStyles = ['simple', 'wheel', 'grid', 'cards', 'gift', 'slot', 'scratch'] as const
+export const randomDrawStyles = drawStyles.filter((style) => style !== 'simple')
 export type DrawStyle = (typeof drawStyles)[number]
 export type DrawStyleChoice = DrawStyle | 'random'
 export type DrawPhase = 'running' | 'settling' | 'receipt' | 'error'
@@ -8,12 +9,13 @@ export type DrawPhase = 'running' | 'settling' | 'receipt' | 'error'
 export interface DrawPresenterProps {
   prizes: readonly LuckyDrawPrizePreview[]
   result: ActivityResult | null
+  revealRequested?: number
 }
 
 export function resolveDrawStyle(choice: DrawStyleChoice, random: () => number = Math.random): DrawStyle {
   if (choice !== 'random') return choice
-  const index = Math.min(drawStyles.length - 1, Math.max(0, Math.floor(random() * drawStyles.length)))
-  return drawStyles[index]
+  const index = Math.min(randomDrawStyles.length - 1, Math.max(0, Math.floor(random() * randomDrawStyles.length)))
+  return randomDrawStyles[index]!
 }
 
 export function previewPrizes(

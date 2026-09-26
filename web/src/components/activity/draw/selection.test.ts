@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { ActivityResult, LuckyDrawPrizePreview } from '@/api/features'
-import { drawStyles, hasPositiveDrawReward, previewPrizes, resolveDrawStyle, selectedPreviewIndex, settlingStepCount } from './selection'
+import { hasPositiveDrawReward, previewPrizes, randomDrawStyles, resolveDrawStyle, selectedPreviewIndex, settlingStepCount } from './selection'
 
 function receipt(prizeId: string, prizeName: string, reward: ActivityResult['reward'] = { kind: 'none' }): ActivityResult {
   return {
@@ -13,10 +13,11 @@ function receipt(prizeId: string, prizeName: string, reward: ActivityResult['rew
 }
 
 describe('draw presentation selection', () => {
-  it('can choose every style in Random mode without affecting a prize', () => {
-    for (let index = 0; index < drawStyles.length; index += 1) {
-      expect(resolveDrawStyle('random', () => (index + 0.5) / drawStyles.length)).toBe(drawStyles[index])
+  it('can choose every animated style in Random mode without choosing Simple', () => {
+    for (let index = 0; index < randomDrawStyles.length; index += 1) {
+      expect(resolveDrawStyle('random', () => (index + 0.5) / randomDrawStyles.length)).toBe(randomDrawStyles[index])
     }
+    expect(randomDrawStyles).not.toContain('simple')
     expect(resolveDrawStyle('scratch', () => 0)).toBe('scratch')
   })
 

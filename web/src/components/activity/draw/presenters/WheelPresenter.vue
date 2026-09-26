@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onScopeDispose, useTemplateRef, watch } from 'vue'
+import { computed, onScopeDispose, shallowRef, useTemplateRef, watch } from 'vue'
 import { gsap } from 'gsap'
 
 import { selectedPreviewIndex, type DrawPresenterProps } from '../selection'
@@ -7,12 +7,16 @@ import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { usePreview } from './usePreview'
 
 const props = defineProps<DrawPresenterProps>()
-const emit = defineEmits<{ finished: [] }>()
+const emit = defineEmits<{ finished: []; started: [] }>()
 const visible = usePreview(props)
 const { reducedMotion } = useMotionPreferences()
 const wheel = useTemplateRef<globalThis.SVGGElement>('wheel')
-let context: gsap.Context | undefined
 let loop: gsap.core.Tween | undefined
+let stopping: gsap.core.Tween | undefined
+let slowTimer: ReturnType<typeof globalThis.setTimeout> | undefined
+let slowRequested = false
+const started = shallowRef(false)
+const slowing = shallowRef(false)
 
 function point(angle: number, radius: number): [number, number] {
   const radians = (angle - 90) * Math.PI / 180
@@ -31,31 +35,53 @@ const sectors = computed(() => visible.value.map((prize, index) => {
 }))
 
 function settle(): void {
-  if (!wheel.value || !context) return
+  if (!wheel.value || slowing.value || !props.result) return
+  slowing.value = true
+  if (slowTimer) globalThis.clearTimeout(slowTimer)
   loop?.kill()
   const index = selectedPreviewIndex(visible.value, props.result)
   if (index < 0) { emit('finished'); return }
   const current = Number(gsap.getProperty(wheel.value, 'rotation')) || 0
-  const target = Math.ceil(current / 360) * 360 + 720 - (visible.value.length === 1 ? 0 : (index + 0.5) * 360 / visible.value.length)
-  context.add(() => gsap.to(wheel.value, {
-    rotation: target, duration: 2.4, ease: 'power4.out', onComplete: () => emit('finished'),
-  }))
-}
-onMounted(() => {
-  context = gsap.context(() => undefined, wheel.value ?? undefined)
-  if (props.result) { settle(); return }
-  if (reducedMotion.value) return
-  context.add(() => {
-    loop = gsap.to(wheel.value, { rotation: 360, duration: 2.5, repeat: -1, ease: 'none', transformOrigin: '50% 50%' })
+  const angle = visible.value.length === 1 ? 0 : (index + 0.5) * 360 / visible.value.length
+  const target = Math.ceil((current + 540 + angle) / 360) * 360 - angle
+  stopping = gsap.to(wheel.value, {
+    rotation: target, duration: 4.5, ease: 'power2.out', onComplete: () => emit('finished'),
   })
+}
+function scheduleSlowdown(): void {
+  if (!started.value || !props.result || slowing.value || slowTimer) return
+  if (slowRequested) { settle(); return }
+  slowTimer = globalThis.setTimeout(() => { slowTimer = undefined; settle() }, 2600)
+}
+function pressCenter(): void {
+  if (slowing.value || !wheel.value) return
+  if (started.value) {
+    slowRequested = true
+    if (props.result) settle()
+    else loop?.timeScale(0.7)
+    return
+  }
+  started.value = true
+  emit('started')
+  if (reducedMotion.value) { if (props.result) emit('finished'); return }
+  loop = gsap.to(wheel.value, { rotation: 360, duration: 3.5, repeat: -1, ease: 'none', transformOrigin: '50% 50%' })
+  scheduleSlowdown()
+}
+watch(() => props.result, (value) => {
+  if (!value) return
+  if (started.value && reducedMotion.value) { emit('finished'); return }
+  scheduleSlowdown()
 })
-watch(() => props.result, (value) => { if (value) settle() })
 watch(reducedMotion, (value) => { if (value) loop?.kill() })
-onScopeDispose(() => context?.revert())
+onScopeDispose(() => {
+  if (slowTimer) globalThis.clearTimeout(slowTimer)
+  loop?.kill()
+  stopping?.kill()
+})
 </script>
 
 <template>
-  <div class="draw-wheel" role="img" :aria-label="$t('activity.drawStyle.wheel')">
+  <div class="draw-wheel" role="group" :aria-label="$t('activity.drawStyle.wheel')">
     <svg viewBox="0 0 300 300" aria-hidden="true">
       <g ref="wheel">
         <circle cx="150" cy="150" r="138" fill="var(--surface-raised)" stroke="var(--line-strong)" stroke-width="2" />
@@ -67,15 +93,19 @@ onScopeDispose(() => context?.revert())
           <path :d="sector.path" :fill="index % 2 ? 'var(--surface-raised)' : 'var(--accent-soft)'" stroke="var(--line-strong)" stroke-width="1" />
           <text :x="sector.x" :y="sector.y" text-anchor="middle" dominant-baseline="middle" fill="var(--text)" font-size="10">{{ sector.label }}</text>
         </g>
-        <circle cx="150" cy="150" r="26" fill="var(--canvas)" stroke="var(--accent)" stroke-width="2" />
-        <circle cx="150" cy="150" r="6" fill="var(--accent)" />
       </g>
       <path d="M 139 4 L 161 4 L 150 32 Z" fill="var(--accent)" />
     </svg>
+    <UButton class="draw-wheel__start" color="neutral" variant="ghost" :disabled="slowing" :aria-label="$t(started ? 'activity.slowWheel' : 'activity.spinWheel')" @click="pressCenter">
+      {{ $t(started ? 'activity.slowWheel' : 'activity.spinWheel') }}
+    </UButton>
   </div>
 </template>
 
 <style scoped>
-.draw-wheel { display: grid; place-items: center; width: min(100%, 18rem); margin: 0 auto; min-height: 15rem; }
+.draw-wheel { position: relative; display: grid; place-items: center; width: min(100%, 18rem); margin: 0 auto; min-height: 15rem; }
 .draw-wheel svg { display: block; width: 100%; max-height: 18rem; }
+.draw-wheel__start { position: absolute; top: 50%; left: 50%; display: grid; place-items: center; width: 4.5rem; height: 4.5rem; padding: 0.3rem; border: 2px solid var(--accent); border-radius: 50%; background: var(--canvas); color: var(--accent); font: inherit; font-size: 0.69rem; font-weight: 700; line-height: 1.15; text-align: center; cursor: pointer; transform: translate(-50%, -50%); }
+.draw-wheel__start:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.draw-wheel__start:disabled { cursor: default; opacity: 0.7; }
 </style>

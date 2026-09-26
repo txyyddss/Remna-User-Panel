@@ -8,20 +8,26 @@ import { usePreview } from './usePreview'
 export function useSelectionTicker(
   props: DrawPresenterProps,
   scope: Readonly<Ref<HTMLElement | null>>,
+  started: () => void,
   finished: () => void,
 ) {
   const visible = usePreview(props)
   const { reducedMotion } = useMotionPreferences()
-  const active = shallowRef(0)
+  const active = shallowRef(-1)
+  const running = shallowRef(false)
   const cursor = { value: 0 }
   let context: gsap.Context | undefined
   let loop: gsap.core.Tween | undefined
+  let settling = false
 
   function index(): void {
     active.value = Math.floor(cursor.value) % Math.max(visible.value.length, 1)
   }
   function settle(): void {
+    if (settling) return
+    settling = true
     loop?.kill()
+    if (reducedMotion.value) { finished(); return }
     const target = selectedPreviewIndex(visible.value, props.result)
     if (target < 0) { finished(); return }
     const count = visible.value.length
@@ -33,14 +39,20 @@ export function useSelectionTicker(
   }
   onMounted(() => {
     context = gsap.context(() => undefined, scope.value ?? undefined)
+  })
+  function start(): void {
+    if (running.value || !context) return
+    running.value = true
+    active.value = 0
+    started()
     if (props.result) { settle(); return }
     if (reducedMotion.value) return
     context.add(() => {
       loop = gsap.to(cursor, { value: 8, duration: 1.35, repeat: -1, ease: 'none', onUpdate: index })
     })
-  })
-  watch(() => props.result, (value) => { if (value && context) settle() })
+  }
+  watch(() => props.result, (value) => { if (value && running.value) settle() })
   watch(reducedMotion, (value) => { if (value) loop?.kill() })
   onScopeDispose(() => context?.revert())
-  return { visible, active }
+  return { visible, active, running, start }
 }

@@ -12,8 +12,21 @@ export function useDrawExperience(play: (drawId: string) => Promise<ActivityResu
   const result = shallowRef<ActivityResult | null>(null)
   const error = shallowRef<string | null>(null)
   const resetToken = shallowRef(0)
+  const started = shallowRef(false)
   const { reducedMotion } = useMotionPreferences()
   let watchdog: ReturnType<typeof setTimeout> | undefined
+  const requiresStart = () => style.value === 'grid' || style.value === 'wheel' || style.value === 'slot'
+
+  function armWatchdog(): void {
+    if (watchdog) clearTimeout(watchdog)
+    if (phase.value !== 'settling' || (requiresStart() && !started.value)) return
+    watchdog = setTimeout(reveal, style.value === 'wheel' ? 11000 : 6000)
+  }
+
+  function markStarted(): void {
+    started.value = true
+    armWatchdog()
+  }
 
   function reveal(): void {
     if (!result.value) return
@@ -29,7 +42,7 @@ export function useDrawExperience(play: (drawId: string) => Promise<ActivityResu
       const received = await play(current.id)
       if (draw.value?.id !== current.id) return
       result.value = received
-      phase.value = reducedMotion.value || globalThis.document?.hidden || !received.prizeId
+      phase.value = (reducedMotion.value && !requiresStart()) || globalThis.document?.hidden || !received.prizeId
         ? 'receipt' : 'settling'
     } catch (caught) {
       if (draw.value?.id !== current.id) return
@@ -42,12 +55,16 @@ export function useDrawExperience(play: (drawId: string) => Promise<ActivityResu
     if (draw.value) return
     draw.value = selectedDraw
     style.value = resolveDrawStyle(choice)
+    started.value = false
     result.value = null
     void submit()
   }
 
   function retry(): void {
-    if (phase.value === 'error' && draw.value) void submit()
+    if (phase.value === 'error' && draw.value) {
+      started.value = false
+      void submit()
+    }
   }
 
   function close(): void {
@@ -62,12 +79,9 @@ export function useDrawExperience(play: (drawId: string) => Promise<ActivityResu
     if (globalThis.document?.hidden && result.value) reveal()
   }
 
-  watch(phase, (value) => {
-    if (watchdog) clearTimeout(watchdog)
-    if (value === 'settling') watchdog = setTimeout(reveal, 6000)
-  })
+  watch(phase, armWatchdog)
   watch(reducedMotion, (value) => {
-    if (value && result.value) reveal()
+    if (value && result.value && (!requiresStart() || started.value)) reveal()
   })
   onMounted(() => globalThis.document?.addEventListener('visibilitychange', handleVisibility))
   onScopeDispose(() => {
@@ -76,8 +90,8 @@ export function useDrawExperience(play: (drawId: string) => Promise<ActivityResu
   })
 
   return {
-    draw: readonly(draw), style: readonly(style), phase: readonly(phase),
+    draw: readonly(draw), style: readonly(style), phase: readonly(phase), started: readonly(started),
     result: readonly(result), error: readonly(error), resetToken: readonly(resetToken),
-    begin, retry, reveal, close,
+    begin, retry, reveal, close, markStarted,
   }
 }

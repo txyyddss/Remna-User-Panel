@@ -13,7 +13,11 @@ const overview = {
   games: [], draws: [{ id: 'draw-1', name: 'Weekend rewards', description: 'One draw, one recorded result.', feeTxbMinor: '100', enabled: true, prizes }], recentResults: [],
   groupMessageReward: { enabled: false, localDate: '2026-09-25', messageCount: 0, threshold: 0, rewardMinor: '0', rewarded: false },
 }
-featuresApi.getActivity = async () => overview as never
+const auditParams = new URLSearchParams(globalThis.location.search)
+featuresApi.getActivity = async () => {
+  if (auditParams.has('slow')) await new Promise((resolve) => setTimeout(resolve, 800))
+  return auditParams.has('empty') ? { ...overview, draws: [] } as never : overview as never
+}
 featuresApi.drawLuckyPrize = async () => {
   await new Promise((resolve) => setTimeout(resolve, state.delay))
   if (state.failNext) { state.failNext = false; throw new Error('Constructed network failure') }

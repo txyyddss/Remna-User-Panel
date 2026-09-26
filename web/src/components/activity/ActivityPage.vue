@@ -14,7 +14,8 @@ import ActivityResultDialog from './ActivityResultDialog.vue'
 const { overview, result, loading, busy, error, load, checkIn, placeBet, draw, clearResult } = useActivity()
 const {
   draw: activeDraw, style: drawStyle, phase: drawPhase, result: drawResult,
-  error: drawError, resetToken, begin: beginDraw, retry: retryDraw,
+  error: drawError, resetToken, started: drawStarted, begin: beginDraw, retry: retryDraw,
+  markStarted: markDrawStarted,
   reveal: revealDraw, close: closeDraw,
 } = useDrawExperience(draw)
 </script>
@@ -56,9 +57,11 @@ const {
         :draw="activeDraw"
         :style="drawStyle"
         :phase="drawPhase"
+        :started="drawStarted"
         :result="drawResult"
         :error="drawError"
         @retry="retryDraw"
+        @started="markDrawStarted"
         @reveal="revealDraw"
         @close="closeDraw"
       />
