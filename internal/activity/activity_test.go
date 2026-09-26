@@ -57,6 +57,12 @@ func TestLuckyDrawMaximumPrizeDeductionDoesNotOverflow(t *testing.T) {
 	}
 }
 
+func validInstantDraw(description string) LuckyDrawInput {
+	return LuckyDrawInput{Name: "Draw", Description: description, Kind: "instant", Status: "draft",
+		FeeMinor: 100, ExpectedParticipation: 50,
+		Prizes: []PrizeInput{{Name: "None", ProbabilityBPS: 10_000, Reward: Reward{Kind: RewardNone}}}}
+}
+
 func TestActivityDescriptionsAreBounded(t *testing.T) {
 	t.Parallel()
 
@@ -83,15 +89,13 @@ func TestActivityDescriptionsAreBounded(t *testing.T) {
 		{
 			name: "draw accepts bounded description",
 			validate: func() error {
-				return (LuckyDrawInput{Name: "Draw", Description: strings.Repeat("d", 300),
-					Prizes: []PrizeInput{{Name: "None", Weight: 1, Reward: Reward{Kind: RewardNone}}}}).Validate()
+				return validInstantDraw(strings.Repeat("d", 300)).Validate()
 			},
 		},
 		{
 			name: "draw rejects oversized description",
 			validate: func() error {
-				return (LuckyDrawInput{Name: "Draw", Description: strings.Repeat("d", 301),
-					Prizes: []PrizeInput{{Name: "None", Weight: 1, Reward: Reward{Kind: RewardNone}}}}).Validate()
+				return validInstantDraw(strings.Repeat("d", 301)).Validate()
 			},
 			wantErr: true,
 		},
