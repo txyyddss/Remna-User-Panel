@@ -120,19 +120,26 @@ func (s *Store) PlayLuckyDraw(ctx context.Context, userID, drawID, key string, r
 }
 
 func eligibleDrawParticipantTx(ctx context.Context, tx *sql.Tx, userID string, draw activity.LuckyDraw, now time.Time) error {
+	requiresPurchase := false
 	for _, prize := range draw.Prizes {
 		switch prize.Reward.Kind {
 		case activity.RewardEntitlementGrant, activity.RewardSquadAccess, activity.RewardCoreComboSwitch,
 			activity.RewardTrafficGrant, activity.RewardTrafficReset, activity.RewardSubscriptionExtension:
-			_, traffic, err := activeRewardPurchase(ctx, tx, userID, now)
-			if err != nil {
-				return err
-			}
-			if prize.Reward.Kind == activity.RewardTrafficGrant && prize.Reward.Range != nil {
-				minimum := prize.Reward.Range.Min
-				if minimum < 0 && (minimum < math.MinInt64/(1<<30) || traffic+minimum*(1<<30) <= 0) {
-					return ErrConflict
-				}
+			requiresPurchase = true
+		}
+	}
+	if !requiresPurchase {
+		return nil
+	}
+	_, traffic, err := activeRewardPurchase(ctx, tx, userID, now)
+	if err != nil {
+		return err
+	}
+	for _, prize := range draw.Prizes {
+		if prize.Reward.Kind == activity.RewardTrafficGrant && prize.Reward.Range != nil {
+			minimum := prize.Reward.Range.Min
+			if minimum < 0 && (minimum < math.MinInt64/(1<<30) || traffic+minimum*(1<<30) <= 0) {
+				return ErrConflict
 			}
 		}
 	}

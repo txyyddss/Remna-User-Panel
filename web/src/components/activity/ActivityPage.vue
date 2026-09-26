@@ -48,6 +48,7 @@ const {
         <LuckyDrawPanel
           :draws="overview.draws"
           :busy="Boolean(busy) || Boolean(activeDraw)"
+          :drawing-id="activeDraw?.id ?? null"
           :reset-token="resetToken"
           @draw="beginDraw"
         />

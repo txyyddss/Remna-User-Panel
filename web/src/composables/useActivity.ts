@@ -27,17 +27,17 @@ export function useActivity() {
   }
 
   async function load(options: { quiet?: boolean } = {}): Promise<void> {
-	const token = latestLoad.begin()
+    const token = latestLoad.begin()
     if (!options.quiet) loading.value = !restoreRef('/api/v1/activity', overview)
     error.value = null
     try {
-	  const response = await featuresApi.getActivity()
-	  if (latestLoad.isCurrent(token)) overview.value = response
+      const response = await featuresApi.getActivity()
+      if (latestLoad.isCurrent(token)) overview.value = response
     } catch (caught) {
-	  if (!latestLoad.isCurrent(token)) return
+      if (!latestLoad.isCurrent(token)) return
       error.value = localizedError(caught, 'errors.activityUnavailable')
     } finally {
-	  if (latestLoad.isCurrent(token)) loading.value = false
+      if (latestLoad.isCurrent(token)) loading.value = false
     }
   }
 
@@ -48,8 +48,8 @@ export function useActivity() {
     try {
       result.value = await action(idempotencyKey(actionId))
       actionKeys.delete(actionId)
-		if (result.value.kind === 'bet') notifyBetOutcome(result.value.outcome === 'win' ? 'win' : 'loss')
-		else notifyHaptic(activityNotification(result.value))
+      if (result.value.kind === 'bet') notifyBetOutcome(result.value.outcome === 'win' ? 'win' : 'loss')
+      else notifyHaptic(activityNotification(result.value))
       await load({ quiet: true })
     } catch (caught) {
       error.value = localizedError(caught, 'errors.activityFailed')
