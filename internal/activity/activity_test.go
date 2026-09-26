@@ -83,14 +83,14 @@ func TestActivityDescriptionsAreBounded(t *testing.T) {
 		{
 			name: "draw accepts bounded description",
 			validate: func() error {
-				return (LuckyDrawInput{Name: "Draw", Description: strings.Repeat("d", 4_000),
+				return (LuckyDrawInput{Name: "Draw", Description: strings.Repeat("d", 300),
 					Prizes: []PrizeInput{{Name: "None", Weight: 1, Reward: Reward{Kind: RewardNone}}}}).Validate()
 			},
 		},
 		{
 			name: "draw rejects oversized description",
 			validate: func() error {
-				return (LuckyDrawInput{Name: "Draw", Description: strings.Repeat("d", 4_001),
+				return (LuckyDrawInput{Name: "Draw", Description: strings.Repeat("d", 301),
 					Prizes: []PrizeInput{{Name: "None", Weight: 1, Reward: Reward{Kind: RewardNone}}}}).Validate()
 			},
 			wantErr: true,

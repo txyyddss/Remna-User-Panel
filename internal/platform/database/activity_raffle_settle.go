@@ -41,12 +41,16 @@ func (s *Store) SettleRaffle(ctx context.Context, id string, rng activity.Random
 	if len(tickets) != draw.Threshold {
 		return activity.RaffleSettlement{}, ErrConflict
 	}
-	seatsByUser:=make(map[string]int)
-	for _,ticket:=range tickets { seatsByUser[ticket.UserID]++ }
+	seatsByUser := make(map[string]int)
+	for _, ticket := range tickets {
+		seatsByUser[ticket.UserID]++
+	}
 	refunded := false
 	for _, ticket := range tickets {
-		checkErr:=eligibleDrawParticipantTx(ctx,tx,ticket.UserID,draw,now)
-		if checkErr==nil { checkErr=raffleTrafficCoverageTx(ctx,tx,ticket.UserID,draw,seatsByUser[ticket.UserID],now) }
+		checkErr := eligibleDrawParticipantTx(ctx, tx, ticket.UserID, draw, now)
+		if checkErr == nil {
+			checkErr = raffleTrafficCoverageTx(ctx, tx, ticket.UserID, draw, seatsByUser[ticket.UserID], now)
+		}
 		if checkErr != nil {
 			if !errors.Is(checkErr, ErrConflict) {
 				return activity.RaffleSettlement{}, checkErr

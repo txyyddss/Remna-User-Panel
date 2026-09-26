@@ -71,10 +71,12 @@ func (s *Store) JoinRaffle(ctx context.Context, userID string, chatID, messageID
 		return activity.RaffleEntry{}, true, err
 	}
 	var existingSeats int
-	if err=tx.QueryRowContext(ctx,`SELECT COUNT(*) FROM activity_raffle_tickets WHERE draw_id=? AND user_id=? AND status='active'`,
-		drawID,userID).Scan(&existingSeats);err!=nil { return activity.RaffleEntry{},true,err }
-	if err=raffleTrafficCoverageTx(ctx,tx,userID,draw,existingSeats+1,now);err!=nil {
-		return activity.RaffleEntry{},true,err
+	if err = tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM activity_raffle_tickets WHERE draw_id=? AND user_id=? AND status='active'`,
+		drawID, userID).Scan(&existingSeats); err != nil {
+		return activity.RaffleEntry{}, true, err
+	}
+	if err = raffleTrafficCoverageTx(ctx, tx, userID, draw, existingSeats+1, now); err != nil {
+		return activity.RaffleEntry{}, true, err
 	}
 	reserve := draw.MaximumPrizeDeduction()
 	balance, err := balanceTx(ctx, tx, userID)

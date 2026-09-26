@@ -19,8 +19,9 @@ func TestLuckyDrawRequiresWorstCaseCoverageAndReplays(t *testing.T) {
 	if _, err := store.AdjustBalance(ctx, user.ID, 349, "draw-seed", "seed", time.Now()); err != nil {
 		t.Fatalf("AdjustBalance(): %v", err)
 	}
-	draw, err := store.SaveLuckyDraw(ctx, activity.LuckyDrawInput{Name: "Exact coverage", Enabled: true, FeeMinor: 100,
-		Prizes: []activity.PrizeInput{{Name: "Minus", Weight: 1, Reward: activity.Reward{Kind: activity.RewardTXBDelta, TXBDeltaMinor: -250}}}}, time.Now())
+	draw, err := store.SaveLuckyDraw(ctx, activity.LuckyDrawInput{Name: "Exact coverage", Kind: "instant", Enabled: true,
+		FeeMinor: 100, ExpectedParticipation: 1,
+		Prizes: []activity.PrizeInput{{Name: "Minus", ProbabilityBPS: 10_000, Reward: activity.Reward{Kind: activity.RewardTXBDelta, TXBDeltaMinor: -250}}}}, time.Now())
 	if err != nil {
 		t.Fatalf("SaveLuckyDraw(): %v", err)
 	}
@@ -69,8 +70,9 @@ func TestActivityDescriptionsPersistAndEnterResultSnapshots(t *testing.T) {
 	if !strings.Contains(bet.ConfigurationSnapshot, `"description":"Clear game terms"`) {
 		t.Fatalf("game snapshot omits description: %s", bet.ConfigurationSnapshot)
 	}
-	draw, err := store.SaveLuckyDraw(ctx, activity.LuckyDrawInput{Name: "Draw", Description: "  Clear draw terms  ", Enabled: true,
-		Prizes: []activity.PrizeInput{{Name: "Nothing", Weight: 1, Reward: activity.Reward{Kind: activity.RewardNone}}}}, now)
+	draw, err := store.SaveLuckyDraw(ctx, activity.LuckyDrawInput{Name: "Draw", Description: "  Clear draw terms  ", Kind: "instant",
+		Enabled: true, FeeMinor: 100, ExpectedParticipation: 1,
+		Prizes: []activity.PrizeInput{{Name: "Nothing", ProbabilityBPS: 10_000, Reward: activity.Reward{Kind: activity.RewardNone}}}}, now)
 	if err != nil {
 		t.Fatalf("SaveLuckyDraw(): %v", err)
 	}
@@ -108,13 +110,16 @@ func TestStoredExtensionAppliesToExactNextActivationAndDelaysQueue(t *testing.T)
 	if _, err := store.DB().ExecContext(ctx, `UPDATE purchases SET status='expired' WHERE id=?`, first.ID); err != nil {
 		t.Fatal(err)
 	}
-	draw, err := store.SaveLuckyDraw(ctx, activity.LuckyDrawInput{Name: "Extension", Enabled: true, Prizes: []activity.PrizeInput{{
-		Name: "Three days", Weight: 1, Reward: activity.Reward{Kind: activity.RewardSubscriptionExtension, ExtensionDays: 3},
-	}}}, base)
+	// Draw extension rewards now require a live term, so stored credits arrive via affiliate awards.
+	creditTx, err := store.DB().BeginTx(ctx, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.PlayLuckyDraw(ctx, user.ID, draw.ID, "extension-draw", fixedActivityRandom{}, base.Add(time.Minute)); err != nil {
+	if err := applySubscriptionExtensionTx(ctx, creditTx, user.ID, 3, "affiliate_tier", "extension-credit", base.Add(time.Minute)); err != nil {
+		_ = creditTx.Rollback()
+		t.Fatal(err)
+	}
+	if err := creditTx.Commit(); err != nil {
 		t.Fatal(err)
 	}
 	third, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID, IdempotencyKey: "extension-third"}, base.Add(2*time.Minute))
@@ -167,9 +172,10 @@ func TestActiveExtensionQueuesRemnawaveSync(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	draw, err := store.SaveLuckyDraw(ctx, activity.LuckyDrawInput{Name: "Active extension", Enabled: true, Prizes: []activity.PrizeInput{{
-		Name: "Three days", Weight: 1, Reward: activity.Reward{Kind: activity.RewardSubscriptionExtension, ExtensionDays: 3},
-	}}}, base)
+	draw, err := store.SaveLuckyDraw(ctx, activity.LuckyDrawInput{Name: "Active extension", Kind: "instant", Enabled: true,
+		FeeMinor: 100, ExpectedParticipation: 1, Prizes: []activity.PrizeInput{{
+			Name: "Three days", ProbabilityBPS: 10_000, Reward: activity.Reward{Kind: activity.RewardSubscriptionExtension, ExtensionDays: 3},
+		}}}, base)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -44,7 +44,8 @@ func TestEditAdminEntitlementUsesUpdatedAtAndPreservesPricingFacts(t *testing.T)
 	if err != nil {
 		t.Fatalf("CommitAutoRenewal(): %v", err)
 	}
-	if want := updated.ValidUntil.Add(updated.ValidUntil.Sub(updated.ValidFrom)); !successor.ValidUntil.Equal(want) ||
+	// Edited hours extend only the current term; the renewal returns to the combo cadence.
+	if want := updated.ValidUntil.AddDate(0, 0, replacementCombo.ValidityDays); !successor.ValidUntil.Equal(want) ||
 		successor.TrafficLimitBytes != input.TrafficLimitBytes || successor.ResetStrategy != input.ResetStrategy {
 		t.Fatalf("renewal did not preserve edited entitlement: %+v", successor)
 	}

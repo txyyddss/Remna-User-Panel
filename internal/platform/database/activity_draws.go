@@ -67,8 +67,8 @@ func (s *Store) SaveLuckyDraw(ctx context.Context, input activity.LuckyDrawInput
 		return activity.LuckyDraw{}, err
 	}
 	if input.Kind == "raffle" && input.Status == "open" {
-		if err:=validateRaffleTrafficForEntriesTx(ctx,tx,activity.LuckyDraw{LuckyDrawInput:input},now);err!=nil {
-			return activity.LuckyDraw{},err
+		if err := validateRaffleTrafficForEntriesTx(ctx, tx, activity.LuckyDraw{LuckyDrawInput: input}, now); err != nil {
+			return activity.LuckyDraw{}, err
 		}
 		if err := reconcileRaffleReservationsTx(ctx, tx, input.ID, input.MaximumPrizeDeduction(), input.Name, now); err != nil {
 			return activity.LuckyDraw{}, err
