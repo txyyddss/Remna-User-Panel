@@ -121,7 +121,7 @@ func (s *Store) CancelPurchase(ctx context.Context, purchaseID, reason string, n
 
 const purchaseSelect = `SELECT purchases.id,purchases.user_id,purchases.combo_id,combos.name,purchases.charged_txb_minor,purchases.valid_from,purchases.valid_until,
 	purchases.status,COALESCE(purchases.entitlement_traffic_limit_bytes,combos.traffic_limit_bytes),COALESCE(purchases.entitlement_reset_strategy,combos.reset_strategy),purchases.coupon_grant_id,COALESCE(purchases.gross_price_txb_minor,purchases.charged_txb_minor),purchases.core_gross_txb_minor,purchases.coupon_discount_txb_minor,
-	combos.rollover_min_remaining_bps,purchases.auto_renew_enabled,purchases.recurring_discount_attached,purchases.created_at,purchases.updated_at FROM purchases JOIN combos ON combos.id=purchases.combo_id`
+	COALESCE(purchases.reward_rollover_min_remaining_bps,combos.rollover_min_remaining_bps),purchases.auto_renew_enabled,purchases.recurring_discount_attached,purchases.created_at,purchases.updated_at FROM purchases JOIN combos ON combos.id=purchases.combo_id`
 
 func scanPurchase(row rowScanner) (model.Purchase, error) {
 	var purchase model.Purchase
@@ -174,7 +174,8 @@ func purchaseSquadsFrom(ctx context.Context, queryer purchaseSquadQueryer, purch
 		WHERE purchase_addons.purchase_id=? AND purchases.entitlement_squad_uuids IS NULL AND purchases.entitlement_addon_squad_uuids IS NULL
 		UNION SELECT value FROM purchases,json_each(purchases.entitlement_addon_squad_uuids)
 		WHERE purchases.id=? AND purchases.entitlement_squad_uuids IS NULL AND purchases.entitlement_addon_squad_uuids IS NOT NULL
-		ORDER BY remna_squad_uuid`, purchaseID, purchaseID, purchaseID, purchaseID)
+		UNION SELECT squad_uuid FROM activity_reward_squad_access WHERE purchase_id=?
+		ORDER BY remna_squad_uuid`, purchaseID, purchaseID, purchaseID, purchaseID, purchaseID)
 	if err != nil {
 		return nil, err
 	}

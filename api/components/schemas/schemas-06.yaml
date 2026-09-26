@@ -127,46 +127,36 @@ ActivitySettingsWrite:
 LuckyDrawPrize:
   type: object
   additionalProperties: false
-  required: [id, name, weight, reward]
+  required: [id, name, reward]
   properties:
     id:
       $ref: '../../openapi.yaml#/components/schemas/ID'
     name:
       type: string
-    weight:
-      type: string
-      pattern: '^[1-9]\d*$'
-    stockRemaining:
-      type: [integer, 'null']
-      format: int64
-      minimum: 0
+    probabilityBps: { type: integer, minimum: 1, maximum: 10000 }
+    stock: { type: integer, format: int64, minimum: 1 }
     reward:
       $ref: '../../openapi.yaml#/components/schemas/Reward'
 
 LuckyDrawPrizeWrite:
   type: object
   additionalProperties: false
-  required: [name, weight, reward]
+  required: [name, reward]
   properties:
     id:
       type: string
     name:
       type: string
       minLength: 1
-    weight:
-      type: string
-      pattern: '^[1-9]\d*$'
-    stockRemaining:
-      type: [integer, 'null']
-      format: int64
-      minimum: 0
+    probabilityBps: { type: integer, minimum: 1, maximum: 10000 }
+    stock: { type: integer, format: int64, minimum: 1 }
     reward:
       $ref: '../../openapi.yaml#/components/schemas/Reward'
 
 LuckyDrawAdmin:
   type: object
   additionalProperties: false
-  required: [id, name, description, enabled, feeTxbMinor, prizes, createdAt, updatedAt]
+  required: [id, name, description, kind, status, enabled, feeTxbMinor, seats, prizes, createdAt, updatedAt]
   properties:
     id:
       $ref: '../../openapi.yaml#/components/schemas/ID'
@@ -174,11 +164,18 @@ LuckyDrawAdmin:
       type: string
     description:
       type: string
+    kind: { type: string, enum: [instant, raffle] }
+    status: { type: string, enum: [draft, publishing, open, settling, completed, cancelled] }
     enabled:
       type: boolean
     feeTxbMinor:
       type: string
       pattern: '^\d+$'
+    expectedParticipation: { type: integer, minimum: 1 }
+    threshold: { type: integer, minimum: 1 }
+    keyword: { type: string }
+    command: { type: string }
+    seats: { type: integer, minimum: 0 }
     prizes:
       type: array
       items:
@@ -191,18 +188,23 @@ LuckyDrawAdmin:
 LuckyDrawWrite:
   type: object
   additionalProperties: false
-  required: [name, description, enabled, feeTxbMinor, prizes]
+  required: [name, description, kind, enabled, feeTxbMinor, expectedParticipation, threshold, keyword, command, prizes]
   properties:
     name:
       type: string
       minLength: 1
     description:
       type: string
+    kind: { type: string, enum: [instant, raffle] }
     enabled:
       type: boolean
     feeTxbMinor:
       type: string
       pattern: '^\d+$'
+    expectedParticipation: { type: integer, minimum: 0 }
+    threshold: { type: integer, minimum: 0 }
+    keyword: { type: string }
+    command: { type: string }
     prizes:
       type: array
       minItems: 1
@@ -218,6 +220,23 @@ LuckyDrawAdminList:
       type: array
       items:
         $ref: '../../openapi.yaml#/components/schemas/LuckyDrawAdmin'
+
+LuckyDrawForecast:
+  type: object
+  additionalProperties: false
+  required: [entries, incomeMinor, expectedExpenseMinMinor, expectedExpenseMaxMinor, possibleExpenseMinMinor, possibleExpenseMaxMinor, breakEvenMinMinor, breakEvenMaxMinor, averageBalanceMinor, multiplierUnavailable, couponOneTermOnly]
+  properties:
+    entries: { type: integer, minimum: 1 }
+    incomeMinor: { type: string }
+    expectedExpenseMinMinor: { type: [string, 'null'] }
+    expectedExpenseMaxMinor: { type: [string, 'null'] }
+    possibleExpenseMinMinor: { type: [string, 'null'] }
+    possibleExpenseMaxMinor: { type: [string, 'null'] }
+    breakEvenMinMinor: { type: [string, 'null'] }
+    breakEvenMaxMinor: { type: [string, 'null'] }
+    averageBalanceMinor: { type: [string, 'null'] }
+    multiplierUnavailable: { type: boolean }
+    couponOneTermOnly: { type: boolean }
 
 CouponKind:
   type: string

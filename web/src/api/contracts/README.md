@@ -2,7 +2,7 @@
 
 - `responseSchemas.json` contains generated response shapes from OpenAPI. `responses.ts` lazily builds Zod validators for cached and refreshed reads, accepts new optional fields, and rejects malformed required data before it reaches Vue state. `responses.test.ts` covers additive changes and malformed successful responses.
 
-- `activity.ts` defines activity and reward responses.
+- `activity.ts` defines instant and raffle administration, quantized reward ranges, settled outcomes, and forecast responses.
 - `community.ts` defines coupon and questionnaire responses.
 - `commerce.ts` defines Emby and payment responses, including discovered crypto currency/network metadata and pending crypto orders.
 - `admin.ts` defines database, statistics, onboarding, and restore responses.

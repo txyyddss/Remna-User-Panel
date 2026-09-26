@@ -66,6 +66,8 @@ Member connection scans, purchase reset/refund resources, operation receipts, st
 - `api-v1-admin-lucky-draw.yaml`: `/api/v1/admin/lucky-draw`
 - `api-v1-admin-lucky-draw-id.yaml`: `/api/v1/admin/lucky-draw/{id}`
 - `api-v1-admin-lucky-draw-id-statistics.yaml`: `/api/v1/admin/lucky-draw/{id}/statistics`
+- `api-v1-admin-lucky-draw-id-publish.yaml`: `/api/v1/admin/lucky-draw/{id}/publish`
+- `api-v1-admin-lucky-draw-id-forecast.yaml`: `/api/v1/admin/lucky-draw/{id}/forecast`
 - `api-v1-admin-coupons.yaml`: `/api/v1/admin/coupons`
 - `api-v1-admin-coupons-id.yaml`: `/api/v1/admin/coupons/{id}`
 - `api-v1-admin-questionnaires.yaml`: `/api/v1/admin/questionnaires`

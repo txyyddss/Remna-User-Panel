@@ -6,6 +6,7 @@ than in Vue templates, composables, or API clients.
 - `activity.json` contains member activity, check-in, game, and draw copy.
 - `affiliates.json` contains member referral and tier administration copy.
 - `admin-activity.json` contains activity-management and lucky-draw copy.
+- `admin-draw.json` mirrors the redesigned draw editor, forecast, and reward-result copy.
 - `admin-catalog.json` contains catalog, squad, and coupon administration copy.
 - `admin-community.json` contains questionnaire administration and import copy.
 - `admin-core.json` contains admin navigation, users, and Emby copy.

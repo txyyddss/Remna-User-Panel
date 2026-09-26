@@ -1,0 +1,16 @@
+get:
+  tags: [Admin, Activity]
+  operationId: getAdminLuckyDrawForecast
+  summary: Price a draw against current catalog and eligible member balances
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+  responses:
+    '200':
+      description: Current income, expense, and break-even estimate.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/LuckyDrawForecast'
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }

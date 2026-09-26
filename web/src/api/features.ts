@@ -1,6 +1,6 @@
 import { request, requestBlob } from './http'
 import type { OperationReceipt } from './types'
-import type { ActivityOverview, ActivityResult, ActivitySettings, ActivitySettingsWrite, BetGame, LuckyDrawAdmin, LuckyDrawWrite } from './contracts/activity'
+import type { ActivityOverview, ActivityResult, ActivitySettings, ActivitySettingsWrite, BetGame, LuckyDrawAdmin, LuckyDrawWrite, LuckyDrawForecast } from './contracts/activity'
 import type { ActiveQuestionnaire, CouponDefinition, CouponGrant, CouponRedemption, QuestionnaireAdminRecord, QuestionnaireImportPreview, QuestionnaireImportState, QuestionnaireImportSummary, QuestionnaireParticipation } from './contracts/community'
 import type { EmbyAccount, EmbyOverview } from './contracts/commerce'
 import type { AdminStatistics, DatabaseMutationInput, DatabaseMutationResult, DatabaseMutationReview, DatabaseQueryInput, DatabaseRowsPage, DatabaseTable, OnboardingBundle, OnboardingLocalizedContent, PublishedOnboarding, RestoreOperation, StatisticsQuery } from './contracts/admin'
@@ -84,6 +84,8 @@ export const featuresApi = {
     { method: id ? 'PUT' : 'POST', body },
   ),
   deleteAdminLuckyDraw: (id: string) => featureRequest<void>(`/api/v1/admin/lucky-draw/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  publishAdminLuckyDraw: (id: string) => featureRequest<void>(`/api/v1/admin/lucky-draw/${encodeURIComponent(id)}/publish`, { method: 'POST' }),
+  getAdminLuckyDrawForecast: (id: string) => featureRequest<LuckyDrawForecast>(`/api/v1/admin/lucky-draw/${encodeURIComponent(id)}/forecast`),
   getAdminLuckyDrawStatistics: (id: string, query: StatisticsQuery = {}) =>
     featureRequest<AdminStatistics>(`/api/v1/admin/lucky-draw/${encodeURIComponent(id)}/statistics`, { query: { from: query.from, to: query.to, bucket: query.bucket, timeZone: query.timeZone } }),
   getAdminCoupons: () => featureRequest<{ items: CouponDefinition[] }>('/api/v1/admin/coupons'),

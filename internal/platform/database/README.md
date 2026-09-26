@@ -1,4 +1,16 @@
 # SQLite store
+
+Lucky-draw storage keeps configuration, ticket charges, reservations, and immutable outcomes local. Every Remnawave effect is enqueued after the result transaction; Telegram delivery uses recorded message IDs.
+
+- `activity_draws.go` saves and audits mode-specific configuration; `activity_draws_part2.go` settles instant results atomically.
+- `activity_draw_list.go` lists member-safe instant draws and admin definitions; `activity_draw_reservations.go` reconciles active raffle loss holds when reward ranges change.
+- `activity_reward_apply.go` applies resolved balance, coupon, purchase, traffic, and squad effects and queues provider synchronization.
+- `activity_raffle_entries.go` sells deduplicated seats; `activity_raffle_settle.go` refunds expired eligibility or assigns fixed stock atomically.
+- `activity_raffle_publish.go` keeps drafts closed until the group announcement message ID is recorded.
+- `activity_raffle_tickets.go` holds ticket scans and exact fee-plus-reservation refunds shared by cancellation and settlement.
+- `activity_raffle_eligibility.go` checks cumulative negative-traffic exposure against the smallest entitlement available after configured combo rewards.
+- `activity_raffle_queries.go` supplies routing, progress, outcome, and delivery lookups; `activity_forecast.go` prices draws from current catalog and eligible balances.
+- `activity_forecast_prices.go` derives reward expense bounds from current combo and squad prices plus eligible member balances.
 - `catalog_geocheck.go` reads the per-squad Geocheck display setting, defaulting to enabled without creating rows. `catalog_geocheck_test.go` covers default-on, omission-preserving writes, and sparse override cleanup when re-enabled.
 - `activation_codes.go` validates selected combo/add-on activation-code maps in the purchase transaction while keeping only bcrypt hashes in local overrides.
 - `activation_codes_test.go` covers missing, invalid, extra, and bcrypt-validated purchase codes.

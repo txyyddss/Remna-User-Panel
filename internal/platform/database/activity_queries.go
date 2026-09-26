@@ -90,27 +90,44 @@ func scanDailyCheckIn(row rowScanner) (activity.DailyCheckIn, error) {
 	return result, err
 }
 
+const luckyDrawSelect = `SELECT id,name,description,kind,status,fee_minor,expected_participation,threshold,
+ keyword,command,group_chat_id,announcement_message_id,revision,created_at,updated_at FROM activity_lucky_draws`
+
 func luckyDrawByID(ctx context.Context, queryer interface {
 	QueryRowContext(context.Context, string, ...any) *sql.Row
 }, drawID string, enabledOnly bool) (activity.LuckyDraw, error) {
-	query := `SELECT id,name,description,enabled,fee_minor,created_at,updated_at FROM activity_lucky_draws WHERE id=?`
+	query := luckyDrawSelect + ` WHERE id=?`
 	if enabledOnly {
-		query += ` AND enabled=1`
+		query += ` AND kind='instant' AND status='open'`
 	}
 	return scanLuckyDraw(queryer.QueryRowContext(ctx, query, drawID))
 }
 
 func scanLuckyDraw(row rowScanner) (activity.LuckyDraw, error) {
 	var draw activity.LuckyDraw
-	var enabled int
+	var expected, threshold sql.NullInt64
+	var groupID, announcementID sql.NullInt64
 	var created, updated string
-	if err := row.Scan(&draw.ID, &draw.Name, &draw.Description, &enabled, &draw.FeeMinor, &created, &updated); err != nil {
+	if err := row.Scan(&draw.ID, &draw.Name, &draw.Description, &draw.Kind, &draw.Status, &draw.FeeMinor,
+		&expected, &threshold, &draw.Keyword, &draw.Command, &groupID, &announcementID, &draw.Revision, &created, &updated); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return activity.LuckyDraw{}, ErrNotFound
 		}
 		return activity.LuckyDraw{}, err
 	}
-	draw.Enabled = enabled == 1
+	draw.Enabled = draw.Status == "open"
+	if expected.Valid {
+		draw.ExpectedParticipation = int(expected.Int64)
+	}
+	if threshold.Valid {
+		draw.Threshold = int(threshold.Int64)
+	}
+	if groupID.Valid {
+		draw.GroupChatID = groupID.Int64
+	}
+	if announcementID.Valid {
+		draw.AnnouncementMessageID = announcementID.Int64
+	}
 	var err error
 	if draw.CreatedAt, err = parseStamp(created); err != nil {
 		return activity.LuckyDraw{}, err
@@ -122,10 +139,7 @@ func scanLuckyDraw(row rowScanner) (activity.LuckyDraw, error) {
 func luckyPrizes(ctx context.Context, queryer interface {
 	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
 }, drawID string, availableOnly bool) ([]activity.PrizeInput, error) {
-	query := `SELECT id,name,weight,stock_remaining,reward_payload FROM activity_lucky_prizes WHERE draw_id=?`
-	if availableOnly {
-		query += ` AND (stock_remaining IS NULL OR stock_remaining>0)`
-	}
+	query := `SELECT id,name,probability_bps,stock,reward_payload FROM activity_lucky_prizes WHERE draw_id=?`
 	query += ` ORDER BY position`
 	rows, err := queryer.QueryContext(ctx, query, drawID)
 	if err != nil {
@@ -135,12 +149,17 @@ func luckyPrizes(ctx context.Context, queryer interface {
 	result := make([]activity.PrizeInput, 0)
 	for rows.Next() {
 		var prize activity.PrizeInput
-		var stock sql.NullInt64
+		var stock, probability sql.NullInt64
 		var payload string
-		if err := rows.Scan(&prize.ID, &prize.Name, &prize.Weight, &stock, &payload); err != nil {
+		if err := rows.Scan(&prize.ID, &prize.Name, &probability, &stock, &payload); err != nil {
 			return nil, err
 		}
-		prize.StockRemaining = int64Pointer(stock)
+		if stock.Valid {
+			prize.Stock = stock.Int64
+		}
+		if probability.Valid {
+			prize.ProbabilityBPS = int(probability.Int64)
+		}
 		if err := json.Unmarshal([]byte(payload), &prize.Reward); err != nil {
 			return nil, fmt.Errorf("decode lucky-draw reward: %w", err)
 		}

@@ -15,6 +15,9 @@ type Store interface {
 	SaveLuckyDraw(context.Context, LuckyDrawInput, time.Time) (LuckyDraw, error)
 	ListLuckyDraws(context.Context, bool) ([]LuckyDraw, error)
 	PlayLuckyDraw(context.Context, string, string, string, RandomSource, time.Time) (DrawResult, error)
+	PublishRaffle(context.Context, string, int64, time.Time) error
+	JoinRaffle(context.Context, string, int64, int64, string, time.Time) (RaffleEntry, bool, error)
+	SettleRaffle(context.Context, string, RandomSource, time.Time) (RaffleSettlement, error)
 	ListActivityHistory(context.Context, string, int) (History, error)
 	GroupMessageRewardStatus(context.Context, string, string, int, int64) (GroupMessageRewardStatus, error)
 	RecordGroupMessage(context.Context, string, int64, int64, string, string, int, int64, time.Time) (GroupMessageRewardResult, error)
@@ -63,9 +66,6 @@ func (service *Service) CheckIn(ctx context.Context, userID string, config Check
 	return service.store.ClaimDailyActivityRange(ctx, userID, now.In(location).Format(time.DateOnly), location.String(), config.RewardMinMinor, config.RewardMaxMinor, service.rng, now.UTC())
 }
 func (service *Service) SaveDraw(ctx context.Context, input LuckyDrawInput) (LuckyDraw, error) {
-	if err := input.Validate(); err != nil {
-		return LuckyDraw{}, err
-	}
 	input.Name, input.Description = strings.TrimSpace(input.Name), strings.TrimSpace(input.Description)
 	for index := range input.Prizes {
 		input.Prizes[index].Name = strings.TrimSpace(input.Prizes[index].Name)
@@ -81,6 +81,15 @@ func (service *Service) Draw(ctx context.Context, userID, drawID, key string) (D
 		return DrawResult{}, fmt.Errorf("%w: incomplete lucky-draw request", ErrInvalidInput)
 	}
 	return service.store.PlayLuckyDraw(ctx, userID, drawID, key, service.rng, service.now().UTC())
+}
+func (service *Service) PublishRaffle(ctx context.Context, id string, groupID int64) error {
+	return service.store.PublishRaffle(ctx, id, groupID, service.now().UTC())
+}
+func (service *Service) JoinRaffle(ctx context.Context, userID string, chatID, messageID int64, text string) (RaffleEntry, bool, error) {
+	return service.store.JoinRaffle(ctx, userID, chatID, messageID, text, service.now().UTC())
+}
+func (service *Service) SettleRaffle(ctx context.Context, id string) (RaffleSettlement, error) {
+	return service.store.SettleRaffle(ctx, id, service.rng, service.now().UTC())
 }
 func (service *Service) History(ctx context.Context, userID string, limit int) (History, error) {
 	if strings.TrimSpace(userID) == "" {

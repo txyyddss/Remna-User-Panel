@@ -25,11 +25,11 @@ put:
 delete:
   tags: [Admin, Activity]
   operationId: deleteAdminLuckyDraw
-  summary: Hard-delete a lucky draw and feature-linked records
+  summary: Delete an instant definition or cancel and refund a raffle
   parameters:
     - $ref: '../openapi.yaml#/components/parameters/ResourceID'
   responses:
-    '204': { description: Draw data removed; settled prizes and balances are unchanged. }
+    '204': { description: Draw removed or cancelled; settled history is preserved. }
     '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
     '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
     '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }

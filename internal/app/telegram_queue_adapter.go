@@ -21,6 +21,24 @@ func (a *queuedTelegram) SendMarkdownV2Message(ctx context.Context, chatID, repl
 		return a.client.SendMarkdownV2Message(callCtx, chatID, replyID, body)
 	})
 }
+func (a *queuedTelegram) PublishMarkdownV2Message(ctx context.Context, chatID int64, body string) (int64, error) {
+	return upstreamqueue.Do(ctx, a.queue, func(callCtx context.Context) (int64, error) {
+		return a.client.PublishMarkdownV2Message(callCtx, chatID, body)
+	})
+}
+func (a *queuedTelegram) ReplyMarkdownV2Message(ctx context.Context, chatID, replyID int64, body string) (int64, error) {
+	return upstreamqueue.Do(ctx, a.queue, func(callCtx context.Context) (int64, error) {
+		return a.client.ReplyMarkdownV2Message(callCtx, chatID, replyID, body)
+	})
+}
+func (a *queuedTelegram) EditMarkdownV2Message(ctx context.Context, chatID, messageID int64, body string) error {
+	return upstreamqueue.Execute(ctx, a.queue, func(callCtx context.Context) error {
+		return a.client.EditMarkdownV2Message(callCtx, chatID, messageID, body)
+	})
+}
+func (a *queuedTelegram) DeleteMessage(ctx context.Context, chatID, messageID int64) error {
+	return upstreamqueue.Execute(ctx, a.queue, func(callCtx context.Context) error { return a.client.DeleteMessage(callCtx, chatID, messageID) })
+}
 func (a *queuedTelegram) CreateJoinRequestInvite(ctx context.Context, chatID, name string, expires time.Time) (*telegram.ChatInviteLink, error) {
 	return upstreamqueue.Do(ctx, a.queue, func(callCtx context.Context) (*telegram.ChatInviteLink, error) {
 		return a.client.CreateJoinRequestInvite(callCtx, chatID, name, expires)

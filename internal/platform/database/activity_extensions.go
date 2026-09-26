@@ -14,6 +14,13 @@ func applySubscriptionExtensionTx(ctx context.Context, tx *sql.Tx, userID string
 	if days < 1 || days > 3650 {
 		return activity.ErrInvalidInput
 	}
+	return applySubscriptionExtensionHoursTx(ctx, tx, userID, days*24, sourceType, sourceID, now)
+}
+
+func applySubscriptionExtensionHoursTx(ctx context.Context, tx *sql.Tx, userID string, hours int, sourceType, sourceID string, now time.Time) error {
+	if hours < 1 || hours > 3650*24 {
+		return activity.ErrInvalidInput
+	}
 	var purchaseID, validUntilRaw string
 	err := tx.QueryRowContext(ctx, `SELECT id,valid_until FROM purchases WHERE user_id=? AND status IN ('activating','active') AND valid_from<=? AND valid_until>?
 		ORDER BY valid_from DESC LIMIT 1`, userID, stamp(now), stamp(now)).Scan(&purchaseID, &validUntilRaw)
@@ -22,8 +29,8 @@ func applySubscriptionExtensionTx(ctx context.Context, tx *sql.Tx, userID string
 		if idErr != nil {
 			return idErr
 		}
-		_, insertErr := tx.ExecContext(ctx, `INSERT INTO activity_extension_credits(id,user_id,days,source_type,source_id,created_at) VALUES(?,?,?,?,?,?)`,
-			creditID, userID, days, sourceType, sourceID, stamp(now))
+		_, insertErr := tx.ExecContext(ctx, `INSERT INTO activity_extension_credits(id,user_id,days,hours,source_type,source_id,created_at) VALUES(?,?,?,?,?,?,?)`,
+			creditID, userID, (hours+23)/24, hours, sourceType, sourceID, stamp(now))
 		return insertErr
 	}
 	if err != nil {
@@ -33,7 +40,7 @@ func applySubscriptionExtensionTx(ctx context.Context, tx *sql.Tx, userID string
 	if err != nil {
 		return err
 	}
-	shiftedUntil, err := addSubscriptionDays(validUntil, days)
+	shiftedUntil, err := addSubscriptionHours(validUntil, hours)
 	if err != nil {
 		return err
 	}
@@ -68,11 +75,11 @@ func applySubscriptionExtensionTx(ctx context.Context, tx *sql.Tx, userID string
 		if parseErr != nil {
 			return parseErr
 		}
-		shiftedFrom, shiftErr := addSubscriptionDays(from, days)
+		shiftedFrom, shiftErr := addSubscriptionHours(from, hours)
 		if shiftErr != nil {
 			return shiftErr
 		}
-		shiftedUntil, shiftErr := addSubscriptionDays(until, days)
+		shiftedUntil, shiftErr := addSubscriptionHours(until, hours)
 		if shiftErr != nil {
 			return shiftErr
 		}
@@ -88,7 +95,7 @@ func applySubscriptionExtensionTx(ctx context.Context, tx *sql.Tx, userID string
 // early because an older queued term remains the member's next activation.
 
 func consumePendingExtensionsTx(ctx context.Context, tx *sql.Tx, userID, purchaseID string, now time.Time) (int, error) {
-	rows, err := tx.QueryContext(ctx, `SELECT id,days FROM activity_extension_credits WHERE user_id=? AND consumed_at IS NULL ORDER BY created_at,id`, userID)
+	rows, err := tx.QueryContext(ctx, `SELECT id,COALESCE(hours,days*24) FROM activity_extension_credits WHERE user_id=? AND consumed_at IS NULL ORDER BY created_at,id`, userID)
 	if err != nil {
 		return 0, err
 	}

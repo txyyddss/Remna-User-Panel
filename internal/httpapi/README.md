@@ -50,7 +50,7 @@
 - `activity_types.go` maps Activity domain games, draws, rewards, and history to responses.
 - `activity_member.go` serves member Activity overview, check-in, bet, draw, and configuration behavior.
 - `activity_admin.go` serves Activity settings and game administration.
-- `activity_draw_admin.go` serves lucky-draw administration and prize mapping.
+- `activity_draw_admin.go` saves validated instant and raffle configurations, publishes drafts, checks live catalog prize references through queued integrations, and exposes current-cost forecasts.
 - `activity_types_test.go` checks member-safe prize previews and draw receipt identity mapping.
 - `coupons_member.go` serves wallet, soft-discard, and redemption behavior plus coupon response mapping.
 - `coupons_admin.go` serves coupon creation, updates, deactivation, and partial-input merging.
@@ -89,7 +89,7 @@
 - `operations.go` serves liveness and readiness probes.
 - `operations_shared.go` contains bounded-context and request-ID helpers.
 - `telegram_webhook.go` validates and dispatches Telegram membership and Stars payment updates.
-- `telegram_commands.go` dispatches localized slash commands before group-message rewards and preserves the unadvertised administrator deduction command.
+- `telegram_commands.go` checks configured-group raffle keywords and commands before ordinary commands and group-message rewards; failed entries get localized replies.
 - `display_currency.go` exposes the owner-scoped display preference and the configured fixed TXB-per-CNY/USD rates without changing authoritative prices.
 - `telegram_command_replies.go` composes subscription/combo replies from
   existing catalog services and reads the cached statistics average for check-in copy.

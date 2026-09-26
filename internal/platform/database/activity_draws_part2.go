@@ -2,18 +2,21 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/txyyddss/Remna-User-Panel/internal/activity"
-	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 	"math"
 	"strings"
 	"time"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/activity"
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 )
 
-func (s *Store) PlayLuckyDraw(ctx context.Context, userID, drawID, idempotencyKey string, rng activity.RandomSource, now time.Time) (activity.DrawResult, error) {
-	if strings.TrimSpace(userID) == "" || strings.TrimSpace(drawID) == "" || strings.TrimSpace(idempotencyKey) == "" || len(idempotencyKey) > 128 || rng == nil {
+// PlayLuckyDraw charges and settles an instant draw in one transaction.
+func (s *Store) PlayLuckyDraw(ctx context.Context, userID, drawID, key string, rng activity.RandomSource, now time.Time) (activity.DrawResult, error) {
+	if strings.TrimSpace(userID) == "" || strings.TrimSpace(drawID) == "" || strings.TrimSpace(key) == "" || len(key) > 128 || rng == nil {
 		return activity.DrawResult{}, activity.ErrInvalidInput
 	}
 	s.writeMu.Lock()
@@ -24,7 +27,7 @@ func (s *Store) PlayLuckyDraw(ctx context.Context, userID, drawID, idempotencyKe
 		return activity.DrawResult{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	if existing, loadErr := drawResultByKeyTx(ctx, tx, userID, idempotencyKey); loadErr == nil {
+	if existing, loadErr := drawResultByKeyTx(ctx, tx, userID, key); loadErr == nil {
 		existing.Replayed = true
 		return existing, nil
 	} else if !errors.Is(loadErr, ErrNotFound) {
@@ -34,117 +37,104 @@ func (s *Store) PlayLuckyDraw(ctx context.Context, userID, drawID, idempotencyKe
 	if err != nil {
 		return activity.DrawResult{}, err
 	}
-	draw.Prizes, err = luckyPrizes(ctx, tx, draw.ID, true)
+	draw.Prizes, err = luckyPrizes(ctx, tx, drawID, false)
 	if err != nil {
 		return activity.DrawResult{}, err
 	}
 	if len(draw.Prizes) == 0 {
 		return activity.DrawResult{}, ErrConflict
 	}
-	maximumDeduction := draw.MaximumPrizeDeduction()
-	if maximumDeduction > math.MaxInt64-draw.FeeMinor {
+	maxLoss := draw.MaximumPrizeDeduction()
+	if maxLoss > math.MaxInt64-draw.FeeMinor {
 		return activity.DrawResult{}, activity.ErrInvalidInput
 	}
-	currentBalance, err := balanceTx(ctx, tx, userID)
+	balance, err := balanceTx(ctx, tx, userID)
 	if err != nil {
 		return activity.DrawResult{}, err
 	}
-	if currentBalance < draw.FeeMinor+maximumDeduction {
+	if balance < draw.FeeMinor+maxLoss {
 		return activity.DrawResult{}, ErrInsufficientBalance
+	}
+	if err = eligibleDrawParticipantTx(ctx, tx, userID, draw, now); err != nil {
+		return activity.DrawResult{}, err
+	}
+	roll, err := rng.Int63n(10000)
+	if err != nil {
+		return activity.DrawResult{}, err
+	}
+	selected := draw.Prizes[len(draw.Prizes)-1]
+	for _, prize := range draw.Prizes {
+		if roll < int64(prize.ProbabilityBPS) {
+			selected = prize
+			break
+		}
+		roll -= int64(prize.ProbabilityBPS)
+	}
+	resolved, err := resolveDrawReward(selected.Reward, rng)
+	if err != nil {
+		return activity.DrawResult{}, err
 	}
 	resultID, err := ids.New()
 	if err != nil {
 		return activity.DrawResult{}, err
 	}
-	balance, err := changeBalanceTx(ctx, tx, userID, -draw.FeeMinor, now)
+	balance, err = changeBalanceTx(ctx, tx, userID, -draw.FeeMinor, now)
 	if err != nil {
 		return activity.DrawResult{}, err
-	}
-	var totalWeight int64
-	for _, prize := range draw.Prizes {
-		if totalWeight > math.MaxInt64-prize.Weight {
-			return activity.DrawResult{}, activity.ErrInvalidInput
-		}
-		totalWeight += prize.Weight
-	}
-	roll, err := rng.Int63n(totalWeight)
-	if err != nil {
-		return activity.DrawResult{}, fmt.Errorf("select lucky-draw prize: %w", err)
-	}
-	selected := draw.Prizes[len(draw.Prizes)-1]
-	for _, prize := range draw.Prizes {
-		if roll < prize.Weight {
-			selected = prize
-			break
-		}
-		roll -= prize.Weight
-	}
-	if selected.StockRemaining != nil {
-		result, updateErr := tx.ExecContext(ctx, `UPDATE activity_lucky_prizes SET stock_remaining=stock_remaining-1 WHERE id=? AND stock_remaining>0`, selected.ID)
-		if updateErr != nil {
-			return activity.DrawResult{}, updateErr
-		}
-		if affected, rowsErr := result.RowsAffected(); rowsErr != nil || affected != 1 {
-			if rowsErr != nil {
-				return activity.DrawResult{}, rowsErr
-			}
-			return activity.DrawResult{}, ErrConflict
-		}
-	}
-	switch selected.Reward.Kind {
-	case activity.RewardNone:
-	case activity.RewardTXBDelta:
-		balance, err = changeBalanceTx(ctx, tx, userID, selected.Reward.TXBDeltaMinor, now)
-		if err != nil {
-			return activity.DrawResult{}, err
-		}
-	case activity.RewardCouponGrant:
-		coupon, loadErr := couponByID(ctx, tx, selected.Reward.CouponID)
-		if loadErr != nil {
-			return activity.DrawResult{}, loadErr
-		}
-		if err := couponAvailable(coupon, now); err != nil {
-			return activity.DrawResult{}, err
-		}
-		if _, err := grantCouponTx(ctx, tx, userID, coupon, "activity_draw", resultID, now); err != nil {
-			return activity.DrawResult{}, err
-		}
-	case activity.RewardSubscriptionExtension:
-		if err := applySubscriptionExtensionTx(ctx, tx, userID, selected.Reward.ExtensionDays, "activity_draw", resultID, now); err != nil {
-			return activity.DrawResult{}, err
-		}
-	default:
-		return activity.DrawResult{}, activity.ErrInvalidInput
 	}
 	snapshot, err := json.Marshal(draw)
 	if err != nil {
 		return activity.DrawResult{}, err
 	}
-	rewardPayload, err := json.Marshal(selected.Reward)
+	rewardPayload, err := json.Marshal(resolved)
 	if err != nil {
 		return activity.DrawResult{}, err
 	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO activity_draw_results(id,user_id,draw_id,prize_id,prize_name,fee_minor,reward_kind,reward_payload,balance_after_minor,configuration_snapshot,idempotency_key,created_at)
-		VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`, resultID, userID, draw.ID, selected.ID, selected.Name, draw.FeeMinor, selected.Reward.Kind, string(rewardPayload), balance, string(snapshot), idempotencyKey, stamp(now))
+	_, err = tx.ExecContext(ctx, `INSERT INTO activity_draw_results
+  (id,user_id,draw_id,prize_id,prize_name,fee_minor,reward_kind,reward_payload,balance_after_minor,
+  configuration_snapshot,idempotency_key,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
+		resultID, userID, drawID, selected.ID, selected.Name, draw.FeeMinor, resolved.Kind, string(rewardPayload), balance, string(snapshot), key, stamp(now))
 	if err != nil {
-		return activity.DrawResult{}, fmt.Errorf("record lucky-draw result: %w", err)
+		return activity.DrawResult{}, fmt.Errorf("record instant draw: %w", err)
 	}
-	if draw.FeeMinor != 0 {
-		feeBalance := balance
-		if selected.Reward.Kind == activity.RewardTXBDelta {
-			feeBalance -= selected.Reward.TXBDeltaMinor
-		}
-		if _, err := insertLedgerTx(ctx, tx, userID, -draw.FeeMinor, feeBalance, "activity_draw_fee", resultID, draw.Name, now); err != nil {
+	if _, err = insertLedgerTx(ctx, tx, userID, -draw.FeeMinor, balance, "activity_draw_fee", resultID, draw.Name, now); err != nil {
+		return activity.DrawResult{}, err
+	}
+	balance, err = applyDrawRewardTx(ctx, tx, userID, resultID, selected.Name, resolved, balance, now)
+	if err != nil {
+		return activity.DrawResult{}, err
+	}
+	if _, err = tx.ExecContext(ctx, `UPDATE activity_draw_results SET balance_after_minor=? WHERE id=?`, balance, resultID); err != nil {
+		return activity.DrawResult{}, err
+	}
+	if resolved.Kind != activity.RewardNone {
+		payload, _ := json.Marshal(map[string]any{"resultId": resultID})
+		if err = insertOutboxTx(ctx, tx, "draw_instant_announcement", string(payload), now, now); err != nil {
 			return activity.DrawResult{}, err
 		}
 	}
-	if selected.Reward.Kind == activity.RewardTXBDelta {
-		if _, err := insertLedgerTx(ctx, tx, userID, selected.Reward.TXBDeltaMinor, balance, "activity_draw_reward", resultID, selected.Name, now); err != nil {
-			return activity.DrawResult{}, err
-		}
-	}
-	if err := tx.Commit(); err != nil {
+	if err = tx.Commit(); err != nil {
 		return activity.DrawResult{}, err
 	}
 	return s.drawResultByID(ctx, resultID)
+}
+
+func eligibleDrawParticipantTx(ctx context.Context, tx *sql.Tx, userID string, draw activity.LuckyDraw, now time.Time) error {
+	for _, prize := range draw.Prizes {
+		switch prize.Reward.Kind {
+		case activity.RewardEntitlementGrant, activity.RewardSquadAccess, activity.RewardCoreComboSwitch,
+			activity.RewardTrafficGrant, activity.RewardTrafficReset, activity.RewardSubscriptionExtension:
+			_, traffic, err := activeRewardPurchase(ctx, tx, userID, now)
+			if err != nil {
+				return err
+			}
+			if prize.Reward.Kind == activity.RewardTrafficGrant && prize.Reward.Range != nil {
+				minimum := prize.Reward.Range.Min
+				if minimum < 0 && (minimum < math.MinInt64/(1<<30) || traffic+minimum*(1<<30) <= 0) {
+					return ErrConflict
+				}
+			}
+		}
+	}
+	return nil
 }

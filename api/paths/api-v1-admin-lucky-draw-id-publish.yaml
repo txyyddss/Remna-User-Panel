@@ -1,0 +1,13 @@
+post:
+  tags: [Admin, Activity]
+  operationId: publishAdminLuckyDraw
+  summary: Queue a raffle announcement and open entries after its message ID is recorded
+  parameters:
+    - $ref: '../openapi.yaml#/components/parameters/ResourceID'
+  responses:
+    '202': { description: Raffle publication queued. }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }
+    '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }

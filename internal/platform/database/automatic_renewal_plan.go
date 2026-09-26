@@ -36,6 +36,9 @@ type AutoRenewalPlan struct {
 	trafficLimitOverride  *int64
 	resetStrategyOverride *string
 	squadUUIDsOverride    *string
+	rewardRenewalPrice    *int64
+	rewardRolloverBPS     *int64
+	rewardTrafficRenewal  bool
 }
 
 // AutoRenewalPlan returns current local pricing and availability for an owned term.
@@ -69,12 +72,19 @@ func automaticRenewalPlanTx(ctx context.Context, tx *sql.Tx, userID, purchaseID 
 	} else {
 		plan.NextCycleEndsAt = plan.ScheduledAt
 	}
-	var trafficLimit sql.NullInt64
+	var trafficLimit, renewalPrice, rolloverBPS, renewalTraffic sql.NullInt64
 	var resetStrategy, squadUUIDs sql.NullString
-	if err = tx.QueryRowContext(ctx, `SELECT entitlement_traffic_limit_bytes,entitlement_reset_strategy,entitlement_squad_uuids FROM purchases WHERE id=?`, purchaseID).Scan(
-		&trafficLimit, &resetStrategy, &squadUUIDs); err != nil {
+	var trafficRenewal int
+	if err = tx.QueryRowContext(ctx, `SELECT entitlement_traffic_limit_bytes,entitlement_reset_strategy,entitlement_squad_uuids,
+		reward_renewal_price_minor,reward_rollover_min_remaining_bps,reward_traffic_renewal,
+		reward_renewal_traffic_limit_bytes FROM purchases WHERE id=?`, purchaseID).Scan(
+		&trafficLimit, &resetStrategy, &squadUUIDs, &renewalPrice, &rolloverBPS, &trafficRenewal, &renewalTraffic); err != nil {
 		return AutoRenewalPlan{}, fmt.Errorf("load renewal entitlement overrides: %w", err)
 	}
+	if trafficRenewal == 0 {
+		trafficLimit = renewalTraffic
+	}
+	plan.rewardTrafficRenewal = true
 	if trafficLimit.Valid {
 		value := trafficLimit.Int64
 		plan.trafficLimitOverride = &value
@@ -86,6 +96,14 @@ func automaticRenewalPlanTx(ctx context.Context, tx *sql.Tx, userID, purchaseID 
 	if squadUUIDs.Valid {
 		value := squadUUIDs.String
 		plan.squadUUIDsOverride = &value
+	}
+	if renewalPrice.Valid {
+		value := renewalPrice.Int64
+		plan.rewardRenewalPrice = &value
+	}
+	if rolloverBPS.Valid {
+		value := rolloverBPS.Int64
+		plan.rewardRolloverBPS = &value
 	}
 	if purchase.Status != "active" && purchase.Status != "activating" {
 		if purchase.Status != "expired" {
@@ -117,10 +135,18 @@ func automaticRenewalPlanTx(ctx context.Context, tx *sql.Tx, userID, purchaseID 
 		return AutoRenewalPlan{}, err
 	}
 	plan.Combo = combo
+	// Awarded hours extend only the current term; renewals use the selected core combo's cadence.
+	plan.NextCycleEndsAt = plan.ScheduledAt.AddDate(0, 0, combo.ValidityDays)
 	plan.GrossMinor, plan.DiscountMinor, plan.NetMinor = combo.PriceTXBMinor, 0, combo.PriceTXBMinor
+	if plan.rewardRenewalPrice != nil {
+		plan.GrossMinor, plan.NetMinor = *plan.rewardRenewalPrice, *plan.rewardRenewalPrice
+	}
 	addons, err := renewalAddonsTx(ctx, tx, purchase.ID, excludedAddonIDs)
 	if err != nil {
 		return AutoRenewalPlan{}, err
+	}
+	if plan.rewardRenewalPrice != nil {
+		addons = nil
 	}
 	plan.Addons = addons
 	addonIDs := make([]string, 0, len(addons))

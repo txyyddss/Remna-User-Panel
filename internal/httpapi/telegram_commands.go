@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/botcommands"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 )
 
 func (s *Server) processTelegramGroupMessage(ctx context.Context, message *telegram.Message) {
@@ -21,6 +23,23 @@ func (s *Server) processTelegramGroupMessage(ctx context.Context, message *teleg
 	}
 	command, isCommand := botcommands.Parse(message.Text)
 	groupID, configuredGroup := s.telegramGroupID(ctx)
+	if configuredGroup && message.Chat.ID == groupID {
+		user, lookupErr := s.deps.Store.UserByTelegramID(ctx, message.From.ID)
+		if lookupErr == nil {
+			_, matched, joinErr := s.deps.Activity.JoinRaffle(ctx, user.ID, message.Chat.ID, message.MessageID, message.Text)
+			if matched {
+				if joinErr != nil {
+					if errors.Is(joinErr, database.ErrInsufficientBalance) {
+						s.sendTelegramReply(ctx, message, telegramDrawInsufficient(message.From.LanguageCode))
+					} else {
+						s.sendTelegramReply(ctx, message, telegramDrawUnavailable(message.From.LanguageCode))
+						s.deps.Logger.Warn("raffle entry rejected", "chat_id", message.Chat.ID, "message_id", message.MessageID, "error", joinErr)
+					}
+				}
+				return
+			}
+		}
+	}
 	allowedChat := message.Chat.Type == "private" || configuredGroup && message.Chat.ID == groupID
 	if isCommand {
 		if allowedChat {
@@ -50,6 +69,18 @@ func (s *Server) processTelegramGroupMessage(ctx context.Context, message *teleg
 	}); err != nil {
 		s.deps.Logger.Warn("process Telegram group message reward", "telegram_id", message.From.ID, "message_id", message.MessageID, "error", err)
 	}
+}
+func telegramDrawInsufficient(language string) string {
+	if strings.HasPrefix(strings.ToLower(language), "zh") {
+		return "余额不足，无法参与本次抽奖。"
+	}
+	return "Insufficient TXB balance to enter this raffle\\."
+}
+func telegramDrawUnavailable(language string) string {
+	if strings.HasPrefix(strings.ToLower(language), "zh") {
+		return "当前无法参与本次抽奖，请稍后再试。"
+	}
+	return "This raffle entry is unavailable right now\\."
 }
 
 func telegramGroupMessageDate(configuredZone string, configErr error, now time.Time) string {

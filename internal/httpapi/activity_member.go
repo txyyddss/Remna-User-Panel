@@ -49,7 +49,15 @@ func (s *Server) activityOverview(w http.ResponseWriter, r *http.Request) {
 		gameResponses = append(gameResponses, mapActivityGame(game))
 	}
 	drawResponses := make([]luckyDrawResponse, 0, len(draws))
+	activePurchase, err := s.deps.Store.DesiredEntitlement(r.Context(), user.ID, time.Now().UTC())
+	if err != nil {
+		s.communityFailure(w, r, err)
+		return
+	}
 	for _, draw := range draws {
+		if activePurchase == nil && draw.RequiresActiveCombo() {
+			continue
+		}
 		drawResponses = append(drawResponses, mapLuckyDraw(draw))
 	}
 	checkedIn := false

@@ -6,6 +6,7 @@ selection and pending feedback remain short and haptic-aware.
 
 - `ActivityPage.vue` composes community activity states in one phone column and a balanced two-column desktop grid.
 - `DailyCheckInCard.vue`, `GroupMessageRewardPanel.vue`, `BetGamesPanel.vue`, and `LuckyDrawPanel.vue` implement member activities with selection, confirmation, and authoritative outcome haptics; `GroupMessageRewardPanel.vue` presents message count, reward amount, progress, and claimed/available state in one card.
+- Member lucky-draw listing and playback remain instant-only; `ActivityResultContent.vue` presents resolved random reward content returned by the server.
 - `ActivityResultDialog.vue` hosts check-in and bet receipts; `ActivityResultContent.vue` renders shared authoritative reward and balance details, including the selected lucky-draw prize.
 - `draw/README.md` specifies the seven result-only presentation modes, focused draw modal, local artwork, and retry/reduced-motion behavior.
 - `BetSuccessFireworks.vue` renders a bounded, non-interactive success burst and honors reduced motion.

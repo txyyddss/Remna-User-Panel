@@ -2,20 +2,17 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/txyyddss/Remna-User-Panel/internal/activity"
-	"github.com/txyyddss/Remna-User-Panel/internal/coupons"
-	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 	"strings"
 	"time"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/activity"
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
 )
 
+// SaveLuckyDraw persists a validated configuration and audits every revision.
 func (s *Store) SaveLuckyDraw(ctx context.Context, input activity.LuckyDrawInput, now time.Time) (activity.LuckyDraw, error) {
-	if err := input.Validate(); err != nil {
-		return activity.LuckyDraw{}, err
-	}
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 	now = now.UTC()
@@ -24,41 +21,90 @@ func (s *Store) SaveLuckyDraw(ctx context.Context, input activity.LuckyDrawInput
 		return activity.LuckyDraw{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	input.Name = strings.TrimSpace(input.Name)
-	input.Description = strings.TrimSpace(input.Description)
+	input.Name, input.Description = strings.TrimSpace(input.Name), strings.TrimSpace(input.Description)
+	input.Keyword, input.Command = strings.TrimSpace(input.Keyword), strings.TrimSpace(input.Command)
+	activeSeats := 0
+	previousFee := int64(0)
 	if input.ID == "" {
+		input.Status = "draft"
+		if input.Kind == "instant" && input.Enabled {
+			input.Status = "open"
+		}
+		input.Revision = 1
 		input.ID, err = ids.New()
 		if err != nil {
 			return activity.LuckyDraw{}, err
 		}
-		_, err = tx.ExecContext(ctx, `INSERT INTO activity_lucky_draws(id,name,description,enabled,fee_minor,created_at,updated_at) VALUES(?,?,?,?,?,?,?)`, input.ID, input.Name, input.Description, boolInt(input.Enabled), input.FeeMinor, stamp(now), stamp(now))
 	} else {
-		var result sql.Result
-		result, err = tx.ExecContext(ctx, `UPDATE activity_lucky_draws SET name=?,description=?,enabled=?,fee_minor=?,updated_at=? WHERE id=?`, input.Name, input.Description, boolInt(input.Enabled), input.FeeMinor, stamp(now), input.ID)
+		previous, loadErr := luckyDrawByID(ctx, tx, input.ID, false)
+		if loadErr != nil {
+			return activity.LuckyDraw{}, loadErr
+		}
+		if previous.Kind != input.Kind || previous.Status == "completed" || previous.Status == "cancelled" ||
+			(input.Kind == "raffle" && previous.Status != "draft" && previous.Status != "publishing" && previous.Status != "open") {
+			return activity.LuckyDraw{}, ErrConflict
+		}
+		input.Status = previous.Status
+		previousFee = previous.FeeMinor
+		if input.Kind == "instant" {
+			input.Status = "draft"
+			if input.Enabled {
+				input.Status = "open"
+			}
+		}
+		input.GroupChatID, input.AnnouncementMessageID = previous.GroupChatID, previous.AnnouncementMessageID
+		input.Revision = previous.Revision + 1
+		if input.Kind == "raffle" {
+			if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM activity_raffle_tickets WHERE draw_id=? AND status='active'`, input.ID).Scan(&activeSeats); err != nil {
+				return activity.LuckyDraw{}, err
+			}
+			if input.Threshold < activeSeats {
+				return activity.LuckyDraw{}, ErrConflict
+			}
+		}
+	}
+	if err := input.Validate(); err != nil {
+		return activity.LuckyDraw{}, err
+	}
+	if input.Kind == "raffle" && input.Status == "open" {
+		if err:=validateRaffleTrafficForEntriesTx(ctx,tx,activity.LuckyDraw{LuckyDrawInput:input},now);err!=nil {
+			return activity.LuckyDraw{},err
+		}
+		if err := reconcileRaffleReservationsTx(ctx, tx, input.ID, input.MaximumPrizeDeduction(), input.Name, now); err != nil {
+			return activity.LuckyDraw{}, err
+		}
+	}
+	if input.Revision == 1 {
+		_, err = tx.ExecContext(ctx, `INSERT INTO activity_lucky_draws
+   (id,name,description,kind,status,fee_minor,expected_participation,threshold,keyword,command,revision,created_at,updated_at)
+   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`, input.ID, input.Name, input.Description, input.Kind, input.Status, input.FeeMinor,
+			nullablePositiveInt(input.ExpectedParticipation), nullablePositiveInt(input.Threshold), input.Keyword, input.Command, input.Revision, stamp(now), stamp(now))
+	} else {
+		result, updateErr := tx.ExecContext(ctx, `UPDATE activity_lucky_draws SET name=?,description=?,status=?,fee_minor=?,
+   expected_participation=?,threshold=?,keyword=?,command=?,revision=?,updated_at=? WHERE id=?`,
+			input.Name, input.Description, input.Status, input.FeeMinor, nullablePositiveInt(input.ExpectedParticipation),
+			nullablePositiveInt(input.Threshold), input.Keyword, input.Command, input.Revision, stamp(now), input.ID)
+		err = updateErr
 		if err == nil {
-			if affected, rowsErr := result.RowsAffected(); rowsErr != nil {
+			affected, rowsErr := result.RowsAffected()
+			if rowsErr != nil {
 				return activity.LuckyDraw{}, rowsErr
-			} else if affected == 0 {
+			}
+			if affected != 1 {
 				return activity.LuckyDraw{}, ErrNotFound
 			}
 		}
 	}
 	if err != nil {
+		if isUniqueConstraint(err) {
+			return activity.LuckyDraw{}, ErrConflict
+		}
 		return activity.LuckyDraw{}, fmt.Errorf("save lucky draw: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM activity_lucky_prizes WHERE draw_id=?`, input.ID); err != nil {
-		return activity.LuckyDraw{}, fmt.Errorf("replace lucky-draw prizes: %w", err)
+		return activity.LuckyDraw{}, err
 	}
 	for position, prize := range input.Prizes {
-		if prize.Reward.Kind == activity.RewardCouponGrant {
-			coupon, loadErr := couponByID(ctx, tx, prize.Reward.CouponID)
-			if loadErr != nil {
-				return activity.LuckyDraw{}, loadErr
-			}
-			if loadErr = couponAvailable(coupon, now); loadErr != nil || (coupon.Kind != coupons.KindPurchaseRecurring && coupon.Kind != coupons.KindPurchaseOnce) {
-				return activity.LuckyDraw{}, ErrConflict
-			}
-		}
 		prizeID := prize.ID
 		if prizeID == "" {
 			prizeID, err = ids.New()
@@ -70,10 +116,51 @@ func (s *Store) SaveLuckyDraw(ctx context.Context, input activity.LuckyDrawInput
 		if marshalErr != nil {
 			return activity.LuckyDraw{}, marshalErr
 		}
-		_, err = tx.ExecContext(ctx, `INSERT INTO activity_lucky_prizes(id,draw_id,name,position,weight,stock_remaining,reward_kind,reward_payload) VALUES(?,?,?,?,?,?,?,?)`,
-			prizeID, input.ID, strings.TrimSpace(prize.Name), position, prize.Weight, nullableInt64(prize.StockRemaining), prize.Reward.Kind, string(payload))
-		if err != nil {
+		var probability, stock any
+		if input.Kind == "instant" {
+			probability = prize.ProbabilityBPS
+		} else {
+			stock = prize.Stock
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO activity_lucky_prizes(id,draw_id,name,position,probability_bps,stock,reward_payload)
+			VALUES(?,?,?,?,?,?,?)`, prizeID, input.ID, strings.TrimSpace(prize.Name), position, probability, stock, string(payload)); err != nil {
+			if isUniqueConstraint(err) {
+				return activity.LuckyDraw{}, ErrConflict
+			}
 			return activity.LuckyDraw{}, fmt.Errorf("save lucky-draw prize: %w", err)
+		}
+	}
+	snapshot, err := json.Marshal(input)
+	if err != nil {
+		return activity.LuckyDraw{}, err
+	}
+	revisionID, err := ids.New()
+	if err != nil {
+		return activity.LuckyDraw{}, err
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO activity_draw_revisions(id,draw_id,revision,snapshot_json,created_at) VALUES(?,?,?,?,?)`,
+		revisionID, input.ID, input.Revision, string(snapshot), stamp(now)); err != nil {
+		return activity.LuckyDraw{}, err
+	}
+	if input.Kind == "raffle" && input.Status == "open" {
+		payload, _ := json.Marshal(map[string]any{"drawId": input.ID, "revision": input.Revision})
+		if err := insertOutboxTx(ctx, tx, "draw_telegram_update", string(payload), now, now); err != nil {
+			return activity.LuckyDraw{}, err
+		}
+		if previousFee > 0 && previousFee != input.FeeMinor {
+			notice, _ := json.Marshal(map[string]any{"drawId": input.ID, "revision": input.Revision,
+				"previousFeeMinor": previousFee, "newFeeMinor": input.FeeMinor})
+			if err := insertOutboxTx(ctx, tx, "draw_raffle_price_notice", string(notice), now, now); err != nil {
+				return activity.LuckyDraw{}, err
+			}
+		}
+		if activeSeats == input.Threshold {
+			if _, err := tx.ExecContext(ctx, `UPDATE activity_lucky_draws SET status='settling',updated_at=? WHERE id=?`, stamp(now), input.ID); err != nil {
+				return activity.LuckyDraw{}, err
+			}
+			if err := insertOutboxTx(ctx, tx, "draw_raffle_settle", string(payload), now, now); err != nil {
+				return activity.LuckyDraw{}, err
+			}
 		}
 	}
 	if err := tx.Commit(); err != nil {
@@ -84,40 +171,8 @@ func (s *Store) SaveLuckyDraw(ctx context.Context, input activity.LuckyDrawInput
 		return activity.LuckyDraw{}, err
 	}
 	draw.Prizes, err = luckyPrizes(ctx, s.db, input.ID, false)
+	if err == nil && draw.Kind == "raffle" {
+		draw.Seats, err = s.RaffleProgress(ctx, draw.ID)
+	}
 	return draw, err
 }
-
-// ListLuckyDraws returns enabled member draws or all administrator draws.
-
-func (s *Store) ListLuckyDraws(ctx context.Context, enabledOnly bool) ([]activity.LuckyDraw, error) {
-	query := `SELECT id,name,description,enabled,fee_minor,created_at,updated_at FROM activity_lucky_draws`
-	if enabledOnly {
-		query += ` WHERE enabled=1`
-	}
-	query += ` ORDER BY name,id`
-	rows, err := s.db.QueryContext(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-	draws := make([]activity.LuckyDraw, 0)
-	for rows.Next() {
-		draw, scanErr := scanLuckyDraw(rows)
-		if scanErr != nil {
-			return nil, scanErr
-		}
-		draws = append(draws, draw)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	for index := range draws {
-		draws[index].Prizes, err = luckyPrizes(ctx, s.db, draws[index].ID, false)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return draws, nil
-}
-
-// PlayLuckyDraw atomically verifies worst-case coverage, charges, selects, and rewards.

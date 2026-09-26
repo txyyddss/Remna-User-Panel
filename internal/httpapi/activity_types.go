@@ -36,10 +36,18 @@ type luckyDrawPrizePreview struct {
 }
 
 type activityRewardResponse struct {
-	Kind          activity.RewardKind `json:"kind"`
-	TXBDeltaMinor string              `json:"txbDeltaMinor,omitempty"`
-	CouponID      string              `json:"couponId,omitempty"`
-	ExtensionDays int                 `json:"extensionDays,omitempty"`
+	Kind                    activity.RewardKind `json:"kind"`
+	TXBDeltaMinor           string              `json:"txbDeltaMinor,omitempty"`
+	CouponID                string              `json:"couponId,omitempty"`
+	ExtensionDays           int                 `json:"extensionDays,omitempty"`
+	ResolvedValue           *int64              `json:"resolvedValue,omitempty"`
+	ComboID                 string              `json:"comboId,omitempty"`
+	SquadUUIDs              []string            `json:"squadUuids,omitempty"`
+	RenewalPriceMinor       int64               `json:"renewalPriceMinor,omitempty"`
+	TrafficLimitBytes       int64               `json:"trafficLimitBytes,omitempty"`
+	RolloverMinRemainingBPS int                 `json:"rolloverMinRemainingBps,omitempty"`
+	IncludeInRenewal        bool                `json:"includeInRenewal,omitempty"`
+	DiscountMode            string              `json:"discountMode,omitempty"`
 }
 
 type activityResultResponse struct {
@@ -79,18 +87,22 @@ func mapActivityGame(game activity.Game) activityGameResponse {
 func mapLuckyDraw(draw activity.LuckyDraw) luckyDrawResponse {
 	prizes := make([]luckyDrawPrizePreview, 0, len(draw.Prizes))
 	for _, prize := range draw.Prizes {
-		if prize.StockRemaining != nil && *prize.StockRemaining == 0 {
-			continue
-		}
 		prizes = append(prizes, luckyDrawPrizePreview{ID: prize.ID, Name: prize.Name})
 	}
 	return luckyDrawResponse{ID: draw.ID, Name: draw.Name, Description: draw.Description, FeeTXBMinor: strconv.FormatInt(draw.FeeMinor, 10), Enabled: draw.Enabled, Prizes: prizes}
 }
 
 func mapActivityReward(reward activity.Reward) activityRewardResponse {
-	result := activityRewardResponse{Kind: reward.Kind, CouponID: reward.CouponID, ExtensionDays: reward.ExtensionDays}
+	result := activityRewardResponse{Kind: reward.Kind, CouponID: reward.CouponID, ExtensionDays: reward.ExtensionDays,
+		ResolvedValue: reward.ResolvedValue, ComboID: reward.ComboID, SquadUUIDs: reward.SquadUUIDs,
+		RenewalPriceMinor: reward.RenewalPriceMinor, TrafficLimitBytes: reward.TrafficLimitBytes,
+		RolloverMinRemainingBPS: reward.RolloverMinRemainingBPS, IncludeInRenewal: reward.IncludeInRenewal, DiscountMode: reward.DiscountMode}
 	if reward.Kind == activity.RewardTXBDelta {
-		result.TXBDeltaMinor = strconv.FormatInt(reward.TXBDeltaMinor, 10)
+		value := reward.TXBDeltaMinor
+		if reward.ResolvedValue != nil {
+			value = *reward.ResolvedValue
+		}
+		result.TXBDeltaMinor = strconv.FormatInt(value, 10)
 	}
 	return result
 }

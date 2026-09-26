@@ -61,6 +61,13 @@ func renewalQuoteTx(ctx context.Context, tx *sql.Tx, userID, purchaseID string, 
 	if err != nil {
 		return model.RenewalQuote{}, model.Combo{}, nil, err
 	}
+	var customPrice sql.NullInt64
+	if err = tx.QueryRowContext(ctx, `SELECT reward_renewal_price_minor FROM purchases WHERE id=?`, purchaseID).Scan(&customPrice); err != nil {
+		return model.RenewalQuote{}, model.Combo{}, nil, err
+	}
+	if customPrice.Valid {
+		addons = nil
+	}
 	// Included squads reserve capacity only on the initial purchase. A renewal
 	// rechecks its paid add-ons without displacing the current member.
 	selected := make([]string, 0, len(addons))
@@ -75,6 +82,9 @@ func renewalQuoteTx(ctx context.Context, tx *sql.Tx, userID, purchaseID string, 
 		return model.RenewalQuote{}, model.Combo{}, nil, err
 	}
 	grossPerTerm := combo.PriceTXBMinor
+	if customPrice.Valid {
+		grossPerTerm = customPrice.Int64
+	}
 	addonIDs := make([]string, 0, len(addons))
 	for _, addon := range addons {
 		grossPerTerm += addon.PriceTXBMinor
@@ -138,6 +148,19 @@ func (s *Store) renew(ctx context.Context, input RenewalInput, excludedAddonIDs 
 	if err != nil {
 		return model.RenewalBatch{}, err
 	}
+	var traffic sql.NullInt64
+	var reset, squads sql.NullString
+	var customPrice, rollover, renewalTraffic sql.NullInt64
+	var trafficRenewal int
+	if err = tx.QueryRowContext(ctx, `SELECT entitlement_traffic_limit_bytes,entitlement_reset_strategy,entitlement_squad_uuids,
+		reward_renewal_price_minor,reward_rollover_min_remaining_bps,reward_traffic_renewal,
+		reward_renewal_traffic_limit_bytes FROM purchases WHERE id=?`,
+		input.PurchaseID).Scan(&traffic, &reset, &squads, &customPrice, &rollover, &trafficRenewal, &renewalTraffic); err != nil {
+		return model.RenewalBatch{}, err
+	}
+	if trafficRenewal == 0 {
+		traffic = renewalTraffic
+	}
 	batchID, err := ids.New()
 	if err != nil {
 		return model.RenewalBatch{}, err
@@ -166,7 +189,12 @@ func (s *Store) renew(ctx context.Context, input RenewalInput, excludedAddonIDs 
 		if index == 0 {
 			requestKey = input.IdempotencyKey
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO purchases(id,user_id,combo_id,charged_txb_minor,valid_from,valid_until,status,coupon_grant_id,gross_price_txb_minor,core_gross_txb_minor,coupon_discount_txb_minor,recurring_discount_attached,idempotency_key,request_fingerprint,renewal_batch_id,renewal_index,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, purchaseID, input.UserID, combo.ID, quote.PricePerTerm.MinorInt64(), stamp(from), stamp(until), status, quote.CouponGrantID, quote.GrossPrice.MinorInt64(), combo.PriceTXBMinor, quote.Discount.MinorInt64(), boolInt(quote.CouponGrantID != nil), requestKey, fingerprint, batchID, index, stamp(now), stamp(now)); err != nil {
+		coreGross := combo.PriceTXBMinor
+		if customPrice.Valid {
+			coreGross = customPrice.Int64
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO purchases(id,user_id,combo_id,charged_txb_minor,valid_from,valid_until,status,coupon_grant_id,gross_price_txb_minor,core_gross_txb_minor,coupon_discount_txb_minor,recurring_discount_attached,idempotency_key,request_fingerprint,renewal_batch_id,renewal_index,entitlement_traffic_limit_bytes,entitlement_reset_strategy,entitlement_squad_uuids,reward_renewal_price_minor,reward_rollover_min_remaining_bps,reward_traffic_renewal,reward_renewal_traffic_limit_bytes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, purchaseID, input.UserID, combo.ID, quote.PricePerTerm.MinorInt64(), stamp(from), stamp(until), status, quote.CouponGrantID, quote.GrossPrice.MinorInt64(), coreGross, quote.Discount.MinorInt64(), boolInt(quote.CouponGrantID != nil), requestKey, fingerprint, batchID, index,
+			traffic, reset, squads, customPrice, rollover, 1, traffic, stamp(now), stamp(now)); err != nil {
 			return model.RenewalBatch{}, err
 		}
 		for _, addon := range addons {

@@ -62,6 +62,8 @@ paths:
   /api/v1/admin/lucky-draw: { $ref: './paths/api-v1-admin-lucky-draw.yaml' }
   /api/v1/admin/lucky-draw/{id}: { $ref: './paths/api-v1-admin-lucky-draw-id.yaml' }
   /api/v1/admin/lucky-draw/{id}/statistics: { $ref: './paths/api-v1-admin-lucky-draw-id-statistics.yaml' }
+  /api/v1/admin/lucky-draw/{id}/publish: { $ref: './paths/api-v1-admin-lucky-draw-id-publish.yaml' }
+  /api/v1/admin/lucky-draw/{id}/forecast: { $ref: './paths/api-v1-admin-lucky-draw-id-forecast.yaml' }
   /api/v1/admin/coupons: { $ref: './paths/api-v1-admin-coupons.yaml' }
   /api/v1/admin/coupons/{id}: { $ref: './paths/api-v1-admin-coupons-id.yaml' }
   /api/v1/admin/questionnaires: { $ref: './paths/api-v1-admin-questionnaires.yaml' }
@@ -251,10 +253,6 @@ components:
     ActivityGameWrite: { $ref: './components/schemas/schemas-05.yaml#/ActivityGameWrite' }
     ActivityGameList: { $ref: './components/schemas/schemas-05.yaml#/ActivityGameList' }
     LuckyDraw: { $ref: './components/schemas/schemas-05.yaml#/LuckyDraw' }
-    NoPrizeReward: { $ref: './components/schemas/schemas-05.yaml#/NoPrizeReward' }
-    TXBDeltaReward: { $ref: './components/schemas/schemas-05.yaml#/TXBDeltaReward' }
-    CouponGrantReward: { $ref: './components/schemas/schemas-05.yaml#/CouponGrantReward' }
-    SubscriptionExtensionReward: { $ref: './components/schemas/schemas-05.yaml#/SubscriptionExtensionReward' }
     Reward: { $ref: './components/schemas/schemas-05.yaml#/Reward' }
     ActivityResult: { $ref: './components/schemas/schemas-05.yaml#/ActivityResult' }
     GroupMessageRewardStatus: { $ref: './components/schemas/schemas-06.yaml#/GroupMessageRewardStatus' }
@@ -268,6 +266,7 @@ components:
     LuckyDrawAdmin: { $ref: './components/schemas/schemas-06.yaml#/LuckyDrawAdmin' }
     LuckyDrawWrite: { $ref: './components/schemas/schemas-06.yaml#/LuckyDrawWrite' }
     LuckyDrawAdminList: { $ref: './components/schemas/schemas-06.yaml#/LuckyDrawAdminList' }
+    LuckyDrawForecast: { $ref: './components/schemas/schemas-06.yaml#/LuckyDrawForecast' }
     CouponKind: { $ref: './components/schemas/schemas-06.yaml#/CouponKind' }
     CouponDiscountMode: { $ref: './components/schemas/schemas-06.yaml#/CouponDiscountMode' }
     Coupon: { $ref: './components/schemas/schemas-07.yaml#/Coupon' }

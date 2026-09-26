@@ -18,11 +18,22 @@ const rewardLabel = computed(() => {
   const reward = props.result.reward
   if (reward.kind === 'none') return t('activity.noReward')
   if (reward.kind === 'txb_delta') {
-    const amount = formatMemberMoney({ currency: 'TXB', minor: reward.txbDeltaMinor, display: '' })
+    const amount = formatMemberMoney({ currency: 'TXB', minor: reward.txbDeltaMinor ?? String(reward.resolvedValue ?? 0), display: '' })
     return props.result.kind === 'check_in' ? t('activity.checkInReward', { amount }) : amount
   }
   if (reward.kind === 'coupon_grant') return t('activity.rewardCoupon')
-  return t('activity.rewardSubscription', { days: reward.extensionDays })
+  if (reward.kind === 'subscription_extension') return t('activityDrawReward.hours', { value: reward.resolvedValue ?? (reward.extensionDays ?? 0) * 24 })
+  if (reward.kind === 'traffic_grant') return t('activityDrawReward.traffic', { value: reward.resolvedValue ?? 0 })
+  if (reward.kind === 'balance_multiplier') return t('activityDrawReward.multiplier', { value: ((reward.resolvedValue ?? 10000) / 10000).toFixed(4) })
+  if (reward.kind === 'coupon_recurring' || reward.kind === 'coupon_once') {
+    return reward.discountMode === 'percent'
+      ? t('activityDrawReward.couponPercent', { value: ((reward.resolvedValue ?? 0) / 100).toFixed(2) })
+      : t('activityDrawReward.couponFixed', { value: ((reward.resolvedValue ?? 0) / 100).toFixed(2) })
+  }
+  if (reward.kind === 'entitlement_grant') return t('activityDrawReward.customCombo')
+  if (reward.kind === 'squad_access') return t('activityDrawReward.squads')
+  if (reward.kind === 'core_combo_switch') return t('activityDrawReward.comboSwitch')
+  return t('activityDrawReward.reset')
 })
 </script>
 

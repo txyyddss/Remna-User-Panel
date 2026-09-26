@@ -52,7 +52,12 @@ export function settlingStepCount(start: number, target: number, count: number):
 export function hasPositiveDrawReward(result: ActivityResult): boolean {
   if (result.kind !== 'draw') return false
   const reward = result.reward
-  if (reward.kind === 'coupon_grant' || reward.kind === 'subscription_extension') return true
+  if (reward.kind === 'coupon_grant' || reward.kind === 'subscription_extension' ||
+    reward.kind === 'coupon_recurring' || reward.kind === 'coupon_once' ||
+    reward.kind === 'entitlement_grant' || reward.kind === 'squad_access' ||
+    reward.kind === 'core_combo_switch' || reward.kind === 'traffic_reset') return true
+  if (reward.kind === 'traffic_grant') return (reward.resolvedValue ?? 0) > 0
+  if (reward.kind === 'balance_multiplier') return (reward.resolvedValue ?? 0) > 10000
   if (reward.kind !== 'txb_delta') return false
-  try { return BigInt(reward.txbDeltaMinor) > 0n } catch { return false }
+  try { return BigInt(reward.txbDeltaMinor ?? '0') > 0n } catch { return false }
 }

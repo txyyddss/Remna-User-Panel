@@ -6,6 +6,7 @@ in parity with the matching `zh-CN` file and preserve `{placeholder}` names.
 - `activity.json` contains member activity, check-in, game, and draw copy.
 - `affiliates.json` contains member referral and tier administration copy.
 - `admin-activity.json` contains activity-management and lucky-draw copy.
+- `admin-draw.json` contains the redesigned draw editor, forecast, and reward-result copy.
 - `admin-catalog.json` contains catalog, squad, and coupon administration copy.
 - `admin-compensation.json` contains reviewed node-outage compensation copy.
 - `abuse.json` contains member detector record copy.

@@ -4,7 +4,6 @@ package activity
 import (
 	"errors"
 	"fmt"
-	"math"
 	"strings"
 	"time"
 )
@@ -15,53 +14,6 @@ var ErrInvalidInput = errors.New("invalid activity input")
 // RandomSource provides an unbiased integer in [0, upperBound).
 type RandomSource interface {
 	Int63n(upperBound int64) (int64, error)
-}
-
-// RewardKind identifies the effect of a lucky-draw prize.
-type RewardKind string
-
-const (
-	// RewardNone records a draw without an additional reward.
-	RewardNone RewardKind = "none"
-	// RewardTXBDelta changes the member's TXB balance by a signed amount.
-	RewardTXBDelta RewardKind = "txb_delta"
-	// RewardCouponGrant adds a coupon grant to the member's wallet.
-	RewardCouponGrant RewardKind = "coupon_grant"
-	// RewardSubscriptionExtension extends the current or next subscription.
-	RewardSubscriptionExtension RewardKind = "subscription_extension"
-)
-
-// Reward is the typed payload applied by a lucky-draw prize.
-type Reward struct {
-	Kind          RewardKind `json:"kind"`
-	TXBDeltaMinor int64      `json:"txbDeltaMinor,omitempty"`
-	CouponID      string     `json:"couponId,omitempty"`
-	ExtensionDays int        `json:"extensionDays,omitempty"`
-}
-
-// Validate rejects ambiguous or unsafe reward payloads.
-func (reward Reward) Validate() error {
-	switch reward.Kind {
-	case RewardNone:
-		if reward.TXBDeltaMinor != 0 || reward.CouponID != "" || reward.ExtensionDays != 0 {
-			return fmt.Errorf("%w: no-prize reward has a payload", ErrInvalidInput)
-		}
-	case RewardTXBDelta:
-		if reward.TXBDeltaMinor == 0 || reward.TXBDeltaMinor == math.MinInt64 || reward.CouponID != "" || reward.ExtensionDays != 0 {
-			return fmt.Errorf("%w: TXB reward must contain only a non-zero delta", ErrInvalidInput)
-		}
-	case RewardCouponGrant:
-		if strings.TrimSpace(reward.CouponID) == "" || reward.TXBDeltaMinor != 0 || reward.ExtensionDays != 0 {
-			return fmt.Errorf("%w: coupon reward must contain only a coupon ID", ErrInvalidInput)
-		}
-	case RewardSubscriptionExtension:
-		if reward.ExtensionDays < 1 || reward.ExtensionDays > 3650 || reward.TXBDeltaMinor != 0 || reward.CouponID != "" {
-			return fmt.Errorf("%w: extension reward must contain 1 to 3650 days", ErrInvalidInput)
-		}
-	default:
-		return fmt.Errorf("%w: unsupported reward kind %q", ErrInvalidInput, reward.Kind)
-	}
-	return nil
 }
 
 // GameInput is the administrator-authored game configuration.

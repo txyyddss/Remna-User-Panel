@@ -98,7 +98,10 @@ func (s *Store) EditAdminEntitlement(ctx context.Context, input AdminEntitlement
 }
 
 func refreshPendingRolloverTx(ctx context.Context, tx *sql.Tx, purchaseID string, trafficLimit int64, comboID string, now time.Time) error {
-	_, err := tx.ExecContext(ctx, `UPDATE purchase_rollovers SET traffic_limit_bytes=?,minimum_remaining_bps=(SELECT rollover_min_remaining_bps FROM combos WHERE id=?),updated_at=? WHERE purchase_id=? AND status='pending'`, trafficLimit, comboID, stamp(now), purchaseID)
+	_, err := tx.ExecContext(ctx, `UPDATE purchase_rollovers SET traffic_limit_bytes=?,
+		minimum_remaining_bps=COALESCE((SELECT reward_rollover_min_remaining_bps FROM purchases WHERE id=?),
+			(SELECT rollover_min_remaining_bps FROM combos WHERE id=?)),updated_at=?
+		WHERE purchase_id=? AND status='pending'`, trafficLimit, purchaseID, comboID, stamp(now), purchaseID)
 	return err
 }
 

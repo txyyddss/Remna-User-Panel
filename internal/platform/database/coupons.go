@@ -74,8 +74,10 @@ func (s *Store) ListCoupons(ctx context.Context, activeOnly bool) ([]coupons.Cou
 	query := couponSelect
 	args := make([]any, 0, 1)
 	if activeOnly {
-		query += ` WHERE active=1 AND (expires_at IS NULL OR expires_at>?)`
+		query += ` WHERE admin_visible=1 AND active=1 AND (expires_at IS NULL OR expires_at>?)`
 		args = append(args, stamp(time.Now().UTC()))
+	} else {
+		query += ` WHERE admin_visible=1`
 	}
 	query += ` ORDER BY created_at DESC,id DESC`
 	rows, err := s.db.QueryContext(ctx, query, args...)

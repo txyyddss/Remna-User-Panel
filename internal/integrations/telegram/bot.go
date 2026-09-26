@@ -61,18 +61,30 @@ func (c *Client) SetMyCommands(ctx context.Context, commands []BotCommand, scope
 
 // SendMessage sends a bounded plain-text reply to a Telegram message.
 func (c *Client) SendMessage(ctx context.Context, chatID, replyToMessageID int64, text string) error {
-	return c.sendMessage(ctx, chatID, replyToMessageID, text, "")
+	_, err := c.sendMessage(ctx, chatID, replyToMessageID, text, "")
+	return err
 }
 
 // SendMarkdownV2Message sends a bounded MarkdownV2-formatted Telegram message.
 func (c *Client) SendMarkdownV2Message(ctx context.Context, chatID, replyToMessageID int64, text string) error {
-	return c.sendMessage(ctx, chatID, replyToMessageID, telegramformat.Limit(text), "MarkdownV2")
+	_, err := c.sendMessage(ctx, chatID, replyToMessageID, telegramformat.Limit(text), "MarkdownV2")
+	return err
 }
 
-func (c *Client) sendMessage(ctx context.Context, chatID, replyToMessageID int64, text, parseMode string) error {
+// PublishMarkdownV2Message returns the Telegram message ID for subsequent edits.
+func (c *Client) PublishMarkdownV2Message(ctx context.Context, chatID int64, text string) (int64, error) {
+	return c.sendMessage(ctx, chatID, 0, telegramformat.Limit(text), "MarkdownV2")
+}
+
+// ReplyMarkdownV2Message returns the new reply's message ID.
+func (c *Client) ReplyMarkdownV2Message(ctx context.Context, chatID, replyID int64, text string) (int64, error) {
+	return c.sendMessage(ctx, chatID, replyID, telegramformat.Limit(text), "MarkdownV2")
+}
+
+func (c *Client) sendMessage(ctx context.Context, chatID, replyToMessageID int64, text, parseMode string) (int64, error) {
 	text = strings.TrimSpace(text)
 	if chatID == 0 || text == "" || utf8.RuneCountInString(text) > telegramMessageLimit {
-		return errors.New("telegram reply requires a chat id and 1-4096 characters")
+		return 0, errors.New("telegram reply requires a chat id and 1-4096 characters")
 	}
 	payload := struct {
 		ChatID          int64  `json:"chat_id"`
@@ -93,12 +105,40 @@ func (c *Client) sendMessage(ctx context.Context, chatID, replyToMessageID int64
 		MessageID int64 `json:"message_id"`
 	}
 	if err := c.call(ctx, "sendMessage", payload, &result); err != nil {
-		return err
+		return 0, err
 	}
 	if result.MessageID <= 0 {
-		return errors.New("telegram sendMessage returned an invalid message")
+		return 0, errors.New("telegram sendMessage returned an invalid message")
 	}
-	return nil
+	return result.MessageID, nil
+}
+
+// EditMarkdownV2Message updates an outgoing bot message in place.
+func (c *Client) EditMarkdownV2Message(ctx context.Context, chatID, messageID int64, text string) error {
+	if chatID == 0 || messageID <= 0 || strings.TrimSpace(text) == "" {
+		return errors.New("invalid Telegram edit target")
+	}
+	payload := struct {
+		ChatID    int64  `json:"chat_id"`
+		MessageID int64  `json:"message_id"`
+		Text      string `json:"text"`
+		ParseMode string `json:"parse_mode"`
+	}{
+		chatID, messageID, telegramformat.Limit(text), "MarkdownV2",
+	}
+	var result Message
+	return c.call(ctx, "editMessageText", payload, &result)
+}
+
+// DeleteMessage removes an outgoing message while Telegram permits deletion.
+func (c *Client) DeleteMessage(ctx context.Context, chatID, messageID int64) error {
+	if chatID == 0 || messageID <= 0 {
+		return errors.New("invalid Telegram delete target")
+	}
+	return c.booleanCall(ctx, "deleteMessage", struct {
+		ChatID    int64 `json:"chat_id"`
+		MessageID int64 `json:"message_id"`
+	}{chatID, messageID})
 }
 
 func validCommand(value string) bool {

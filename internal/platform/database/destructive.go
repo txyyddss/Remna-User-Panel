@@ -28,21 +28,44 @@ func (s *Store) DeleteActivityGame(ctx context.Context, actorID, gameID string, 
 	})
 }
 
-// DeleteLuckyDraw preserves coupon grants and extension credits but removes the
-// draw configuration, outcomes, prizes, snapshots, and feature ledger rows.
+// DeleteLuckyDraw preserves settled results and financial evidence. Raffles
+// refund every active seat and retain a cancelled tombstone for delivery cleanup.
 func (s *Store) DeleteLuckyDraw(ctx context.Context, actorID, drawID string, now time.Time) error {
 	return s.deleteFeature(ctx, actorID, "lucky_draw.delete", "lucky_draw", drawID, now, func(tx *sql.Tx) error {
-		if err := requireRowTx(ctx, tx, `SELECT 1 FROM activity_lucky_draws WHERE id=?`, drawID); err != nil {
+		draw, err := luckyDrawByID(ctx, tx, drawID, false)
+		if err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `DELETE FROM ledger_entries WHERE kind IN ('activity_draw_fee','activity_draw_reward') AND reference_id IN (SELECT id FROM activity_draw_results WHERE draw_id=?)`, drawID); err != nil {
+		if draw.Kind == "instant" {
+			_, err = tx.ExecContext(ctx, `DELETE FROM activity_lucky_draws WHERE id=?`, drawID)
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `DELETE FROM activity_draw_results WHERE draw_id=?`, drawID); err != nil {
+		if draw.Status == "cancelled" {
+			return ErrConflict
+		}
+		if draw.Status == "completed" {
+			var pending int
+			if err = tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox_jobs WHERE kind='draw_raffle_complete'
+				AND json_extract(payload,'$.drawId')=?`, drawID).Scan(&pending); err != nil {
+				return err
+			}
+			if pending > 0 {
+				return ErrConflict
+			}
+		}
+		tickets, err := activeRaffleTicketsTx(ctx, tx, drawID)
+		if err != nil {
 			return err
 		}
-		_, err := tx.ExecContext(ctx, `DELETE FROM activity_lucky_draws WHERE id=?`, drawID)
-		return err
+		for _, ticket := range tickets {
+			if err = refundRaffleTicketTx(ctx, tx, ticket, draw.Name, now); err != nil {
+				return err
+			}
+		}
+		if _, err = tx.ExecContext(ctx, `UPDATE activity_lucky_draws SET status='cancelled',updated_at=? WHERE id=?`, stamp(now), drawID); err != nil {
+			return err
+		}
+		return insertOutboxTx(ctx, tx, "draw_telegram_delete", `{"drawId":"`+drawID+`"}`, now, now)
 	})
 }
 

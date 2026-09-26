@@ -3,8 +3,9 @@ import { restoreItems } from '@/api/cache/restore'
 import { computed, onMounted, reactive, shallowRef } from 'vue'
 import { AnimatePresence, motion } from 'motion-v'
 
-import type { AdminStatistics, BetGame, CouponDefinition, LuckyDrawAdmin, LuckyDrawWrite, StatisticsQuery } from '@/api/features'
+import type { AdminStatistics, BetGame, LuckyDrawAdmin, LuckyDrawWrite, StatisticsQuery } from '@/api/features'
 import { featuresApi } from '@/api/features'
+import { adminOperationsApi, type AdminCatalogOptions } from '@/api/adminOperations'
 import AdminLuckyDrawEditor from '@/components/admin/activity/AdminLuckyDrawEditor.vue'
 import SwitchField from '@/components/common/SwitchField.vue'
 import TxbAmountField from '@/components/common/TxbAmountField.vue'
@@ -16,7 +17,7 @@ import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 
 const games = shallowRef<BetGame[]>([])
 const draws = shallowRef<LuckyDrawAdmin[]>([])
-const coupons = shallowRef<CouponDefinition[]>([])
+const catalogOptions = shallowRef<AdminCatalogOptions>({ combos: [], squads: [] })
 const editingGameId = shallowRef<string | null | undefined>(undefined)
 const editingDraw = shallowRef<LuckyDrawAdmin | null | undefined>(undefined)
 const loading = shallowRef(true)
@@ -28,6 +29,8 @@ const deleting = shallowRef<{ kind: 'game' | 'draw'; id: string; name: string } 
 const { t } = useI18n()
 const { reducedMotion, offset } = useMotionPreferences()
 const iconItems = computed(() => ['dice', 'coin', 'cards', 'target', 'trophy', 'lightning', 'sparkle'].map((value) => ({ value, label: t(`adminActivityManagement.icons.${value}`) })))
+const comboItems = computed(() => catalogOptions.value.combos.map((combo) => ({ value: combo.id, label: combo.name })))
+const squadItems = computed(() => catalogOptions.value.squads.map((squad) => ({ value: squad.remnaSquadUuid, label: squad.name })))
 
 function loadStatistics(query: StatisticsQuery): Promise<AdminStatistics> {
   if (!statisticsTarget.value) return Promise.reject(new Error(t('adminActivityManagement.chooseActivity')))
@@ -56,18 +59,19 @@ async function load(): Promise<void> {
   loading.value = ![
     restoreItems('/api/v1/admin/activity-games', games),
     restoreItems('/api/v1/admin/lucky-draw', draws),
-    restoreItems('/api/v1/admin/coupons', coupons),
   ].every(Boolean)
   error.value = null
   try {
-    const [gameResponse, drawResponse, couponResponse] = await Promise.all([
+    const optionsPromise = adminOperationsApi.getCatalogOptions().catch(() => null)
+    const [gameResponse, drawResponse] = await Promise.all([
       featuresApi.getAdminActivityGames(),
       featuresApi.getAdminLuckyDraws(),
-      featuresApi.getAdminCoupons(),
     ])
     games.value = gameResponse.items
     draws.value = drawResponse.items
-    coupons.value = couponResponse.items
+    const options = await optionsPromise
+    catalogOptions.value = options ?? { combos: [], squads: [] }
+    if (!options) error.value = t('adminDrawRedesign.catalogUnavailable')
   } catch (caught) {
     error.value = localizedError(caught, 'adminActivityManagement.loadFailed')
   } finally {
@@ -119,11 +123,24 @@ async function saveDraw(value: LuckyDrawWrite): Promise<void> {
   busy.value = true
   error.value = null
   try {
-    await featuresApi.saveAdminLuckyDraw(editingDraw.value?.id ?? null, value)
-    editingDraw.value = undefined
+    const saved = await featuresApi.saveAdminLuckyDraw(editingDraw.value?.id ?? null, value)
     draws.value = (await featuresApi.getAdminLuckyDraws()).items
+    editingDraw.value = draws.value.find((draw) => draw.id === saved.id) ?? saved
   } catch (caught) {
     error.value = localizedError(caught, 'adminActivityManagement.drawSaveFailed')
+  } finally {
+    busy.value = false
+  }
+}
+async function publishDraw(id: string): Promise<void> {
+  if (busy.value) return
+  busy.value = true
+  error.value = null
+  try {
+    await featuresApi.publishAdminLuckyDraw(id)
+    draws.value = (await featuresApi.getAdminLuckyDraws()).items
+  } catch (caught) {
+    error.value = localizedError(caught, 'adminDrawRedesign.publishError')
   } finally {
     busy.value = false
   }
@@ -163,11 +180,11 @@ onMounted(() => void load())
     </section>
 
     <section class="activity-admin-section">
-      <div class="activity-admin-section__heading"><div><h3>{{ t('adminActivityManagement.draws') }}</h3><p>{{ t('adminActivityManagement.drawsHint') }}</p></div><UButton icon="i-ph-plus" :label="t('adminActivityManagement.newDraw')" @click="editingDraw = null" /></div>
-      <AdminLuckyDrawEditor v-if="editingDraw !== undefined" :draw="editingDraw" :coupons="coupons" :busy="busy" @save="saveDraw" @cancel="editingDraw = undefined" />
+      <div class="activity-admin-section__heading"><div><h3>{{ t('adminActivityManagement.draws') }}</h3><p>{{ t('adminDrawRedesign.drawsHint') }}</p></div><UButton icon="i-ph-plus" :label="t('adminActivityManagement.newDraw')" @click="editingDraw = null" /></div>
+      <AdminLuckyDrawEditor v-if="editingDraw !== undefined" :draw="editingDraw" :combo-items="comboItems" :squad-items="squadItems" :busy="busy" @save="saveDraw" @cancel="editingDraw = undefined" />
       <motion.div layout class="admin-list">
         <AnimatePresence :initial="false" mode="popLayout">
-          <motion.article v-for="draw in draws" :key="draw.id" layout class="admin-list-row admin-list-row--activity-draw" :initial="reducedMotion ? false : { opacity: 0, y: offset(6) }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.16, ease: 'easeOut' }"><div class="admin-list-row__icon"><UIcon name="i-ph-gift" /></div><div><strong>{{ draw.name }}</strong><small>{{ t('adminActivityManagement.drawSummary', { fee: txbInputFromMinor(draw.feeTxbMinor), prizes: draw.prizes.length, status: draw.enabled ? t('adminActivityManagement.availableStatus') : t('adminActivityManagement.disabledStatus') }) }}</small></div><div class="row-actions"><UButton color="neutral" variant="ghost" square icon="i-ph-chart-bar" :aria-label="t('adminActivityManagement.statisticsFor', { name: draw.name })" @click="statisticsTarget = { kind: 'draw', id: draw.id, title: t('adminActivityManagement.statisticsTitle', { name: draw.name }) }" /><UButton color="neutral" variant="ghost" square icon="i-ph-pencil-simple" :aria-label="t('adminActivityManagement.editNamed', { name: draw.name })" @click="editingDraw = draw" /><UButton color="error" variant="ghost" square icon="i-ph-trash" :aria-label="t('adminActivityManagement.deleteNamed', { name: draw.name })" data-haptic="destructive" @click="deleting = { kind: 'draw', id: draw.id, name: draw.name }" /></div></motion.article>
+          <motion.article v-for="draw in draws" :key="draw.id" layout class="admin-list-row admin-list-row--activity-draw" :initial="reducedMotion ? false : { opacity: 0, y: offset(6) }" :animate="{ opacity: 1, y: 0 }" :exit="{ opacity: 0 }" :transition="{ duration: reducedMotion ? 0.08 : 0.16, ease: 'easeOut' }"><div class="admin-list-row__icon"><UIcon name="i-ph-gift" /></div><div><strong>{{ draw.name }}</strong><small>{{ t('adminDrawRedesign.drawSummary', { kind: t('adminDrawRedesign.' + draw.kind), price: txbInputFromMinor(draw.feeTxbMinor) + ' TXB', status: t('adminDrawRedesign.' + draw.status) }) }}</small><small v-if="draw.kind === 'raffle'">{{ t('adminDrawRedesign.currentSeats', { seats: draw.seats, threshold: draw.threshold ?? 0 }) }}</small></div><div class="row-actions"><UButton v-if="draw.kind === 'raffle' && draw.status === 'draft'" color="primary" variant="ghost" square icon="i-ph-paper-plane-tilt" :aria-label="t('adminDrawRedesign.publish')" :disabled="busy" @click="publishDraw(draw.id)" /><UButton color="neutral" variant="ghost" square icon="i-ph-chart-bar" :aria-label="t('adminActivityManagement.statisticsFor', { name: draw.name })" @click="statisticsTarget = { kind: 'draw', id: draw.id, title: t('adminActivityManagement.statisticsTitle', { name: draw.name }) }" /><UButton color="neutral" variant="ghost" square icon="i-ph-pencil-simple" :aria-label="t('adminActivityManagement.editNamed', { name: draw.name })" @click="editingDraw = draw" /><UButton color="error" variant="ghost" square icon="i-ph-trash" :aria-label="t('adminActivityManagement.deleteNamed', { name: draw.name })" data-haptic="destructive" @click="deleting = { kind: 'draw', id: draw.id, name: draw.name }" /></div></motion.article>
           <motion.div v-if="!loading && !draws.length" key="empty-draws" class="empty-inline" :initial="{ opacity: 0 }" :animate="{ opacity: 1 }"><div><h3>{{ t('adminActivityManagement.noDraws') }}</h3><p>{{ t('adminActivityManagement.noDrawsHint') }}</p></div></motion.div>
         </AnimatePresence>
       </motion.div>
@@ -175,7 +192,7 @@ onMounted(() => void load())
     </section>
 
     <UAlert v-if="error" class="admin-error" color="warning" variant="soft" icon="i-ph-warning" :description="error" />
-    <ConfirmDialog :open="Boolean(deleting)" :title="t('adminActivityManagement.deleteTitle', { name: deleting?.name ?? t('adminActivityManagement.activity') })" :description="t('adminActivityManagement.deleteDescription')" :confirm-label="t('adminActivityManagement.deletePermanently')" :busy="busy" danger @update:open="!$event && (deleting = null)" @confirm="removeActivity" />
+    <ConfirmDialog :open="Boolean(deleting)" :title="t('adminActivityManagement.deleteTitle', { name: deleting?.name ?? t('adminActivityManagement.activity') })" :description="deleting?.kind === 'draw' ? t('adminDrawRedesign.deleteHint') : t('adminActivityManagement.deleteDescription')" :confirm-label="t('adminActivityManagement.deletePermanently')" :busy="busy" danger @update:open="!$event && (deleting = null)" @confirm="removeActivity" />
   </section>
 </template>
 

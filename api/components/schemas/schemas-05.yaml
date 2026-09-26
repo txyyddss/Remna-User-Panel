@@ -183,62 +183,32 @@ LuckyDraw:
           name:
             type: string
 
-NoPrizeReward:
+Reward:
   type: object
   additionalProperties: false
   required: [kind]
   properties:
-    kind:
-      type: string
-      const: none
-
-TXBDeltaReward:
-  type: object
-  additionalProperties: false
-  required: [kind, txbDeltaMinor]
-  properties:
-    kind:
-      type: string
-      const: txb_delta
-    txbDeltaMinor:
-      $ref: '../../openapi.yaml#/components/schemas/DecimalInteger'
-
-CouponGrantReward:
-  type: object
-  additionalProperties: false
-  required: [kind, couponId]
-  properties:
-    kind:
-      type: string
-      const: coupon_grant
-    couponId:
-      $ref: '../../openapi.yaml#/components/schemas/ID'
-
-SubscriptionExtensionReward:
-  type: object
-  additionalProperties: false
-  required: [kind, extensionDays]
-  properties:
-    kind:
-      type: string
-      const: subscription_extension
-    extensionDays:
-      type: integer
-      minimum: 1
-
-Reward:
-  oneOf:
-    - $ref: '../../openapi.yaml#/components/schemas/NoPrizeReward'
-    - $ref: '../../openapi.yaml#/components/schemas/TXBDeltaReward'
-    - $ref: '../../openapi.yaml#/components/schemas/CouponGrantReward'
-    - $ref: '../../openapi.yaml#/components/schemas/SubscriptionExtensionReward'
-  discriminator:
-    propertyName: kind
-    mapping:
-      none: '../../openapi.yaml#/components/schemas/NoPrizeReward'
-      txb_delta: '../../openapi.yaml#/components/schemas/TXBDeltaReward'
-      coupon_grant: '../../openapi.yaml#/components/schemas/CouponGrantReward'
-      subscription_extension: '../../openapi.yaml#/components/schemas/SubscriptionExtensionReward'
+    kind: { type: string, enum: [none, txb_delta, coupon_grant, subscription_extension, entitlement_grant, squad_access, core_combo_switch, traffic_grant, traffic_reset, balance_multiplier, coupon_recurring, coupon_once] }
+    txbDeltaMinor: { $ref: '../../openapi.yaml#/components/schemas/DecimalInteger' }
+    couponId: { type: string }
+    extensionDays: { type: integer, minimum: 1 }
+    range:
+      type: object
+      additionalProperties: false
+      required: [min, max, distribution]
+      properties:
+        min: { type: integer, format: int64 }
+        max: { type: integer, format: int64 }
+        distribution: { type: string, enum: [uniform, gaussian, power_law] }
+        positiveChanceBps: { type: integer, minimum: 0, maximum: 10000 }
+    resolvedValue: { type: integer, format: int64 }
+    comboId: { type: string }
+    squadUuids: { type: array, items: { type: string } }
+    renewalPriceMinor: { type: integer, format: int64, minimum: 0 }
+    trafficLimitBytes: { type: integer, format: int64, minimum: 1 }
+    rolloverMinRemainingBps: { type: integer, minimum: 0, maximum: 10000 }
+    includeInRenewal: { type: boolean }
+    discountMode: { type: string, enum: [fixed, percent] }
 
 ActivityResult:
   type: object

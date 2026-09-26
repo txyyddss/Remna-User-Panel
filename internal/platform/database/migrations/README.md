@@ -11,6 +11,8 @@ Migration files are embedded and applied in lexical order by `database.go`.
 Never edit a migration that may already have been deployed; add the next numbered
 file instead.
 
+- `051_lucky_draw_redesign.sql` removes legacy configurations while preserving outcomes and ledger evidence; it adds raffle tickets, revisions, delivery IDs, private coupons, and purchase reward overrides.
+
 - `001_initial.sql` — core users, sessions, catalog, purchases, ledger, settings,
   outbox, audit, backup, and onboarding schema.
 - `002_activity_coupons_questionnaires.sql` — community activity, coupon, and

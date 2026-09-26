@@ -17,15 +17,15 @@ func applyPendingExtensionsToActivationTx(ctx context.Context, tx *sql.Tx, purch
 		}
 		return err
 	}
-	days, err := consumePendingExtensionsTx(ctx, tx, userID, purchaseID, now)
-	if err != nil || days == 0 {
+	hours, err := consumePendingExtensionsTx(ctx, tx, userID, purchaseID, now)
+	if err != nil || hours == 0 {
 		return err
 	}
 	validUntil, err := parseStamp(validUntilRaw)
 	if err != nil {
 		return err
 	}
-	shiftedUntil, err := addSubscriptionDays(validUntil, days)
+	shiftedUntil, err := addSubscriptionHours(validUntil, hours)
 	if err != nil {
 		return err
 	}
@@ -67,11 +67,11 @@ func applyPendingExtensionsToActivationTx(ctx context.Context, tx *sql.Tx, purch
 		if parseErr != nil {
 			return parseErr
 		}
-		shiftedFrom, shiftErr := addSubscriptionDays(from, days)
+		shiftedFrom, shiftErr := addSubscriptionHours(from, hours)
 		if shiftErr != nil {
 			return shiftErr
 		}
-		shiftedUntil, shiftErr := addSubscriptionDays(until, days)
+		shiftedUntil, shiftErr := addSubscriptionHours(until, hours)
 		if shiftErr != nil {
 			return shiftErr
 		}
@@ -88,8 +88,8 @@ func applyPendingExtensionsToActivationTx(ctx context.Context, tx *sql.Tx, purch
 	return nil
 }
 
-func addSubscriptionDays(value time.Time, days int) (time.Time, error) {
-	shifted := value.AddDate(0, 0, days)
+func addSubscriptionHours(value time.Time, hours int) (time.Time, error) {
+	shifted := value.Add(time.Duration(hours) * time.Hour)
 	if shifted.Year() < 1 || shifted.Year() > 9999 || !shifted.After(value) {
 		return time.Time{}, activity.ErrInvalidInput
 	}
