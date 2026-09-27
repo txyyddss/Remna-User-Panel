@@ -27,6 +27,11 @@ func (s *Store) SettleRaffle(ctx context.Context, id string, rng activity.Random
 	if draw.Status == "completed" {
 		return activity.RaffleSettlement{Draw: draw}, nil
 	}
+	// A retry can arrive after an earlier attempt refunded an ineligible seat
+	// and reopened the raffle, but before its outbox completion was recorded.
+	if draw.Kind == "raffle" && draw.Status == "open" {
+		return activity.RaffleSettlement{Draw: draw, Reopened: true}, nil
+	}
 	if draw.Kind != "raffle" || draw.Status != "settling" {
 		return activity.RaffleSettlement{}, ErrConflict
 	}

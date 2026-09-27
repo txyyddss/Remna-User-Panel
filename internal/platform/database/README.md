@@ -5,7 +5,8 @@ Lucky-draw storage keeps configuration, ticket charges, reservations, and immuta
 - `activity_draws.go` saves and audits mode-specific configuration; `activity_draws_part2.go` settles instant results atomically.
 - `activity_draw_list.go` lists member-safe instant draws and admin definitions; `activity_draw_reservations.go` reconciles active raffle loss holds when reward ranges change.
 - `activity_reward_apply.go` applies resolved balance, coupon, purchase, traffic, and squad effects and queues provider synchronization.
-- `activity_raffle_entries.go` sells deduplicated seats; `activity_raffle_settle.go` refunds expired eligibility or assigns fixed stock atomically.
+- `activity_raffle_entries.go` sells deduplicated seats; `activity_raffle_settle.go` refunds expired eligibility or assigns fixed stock atomically and accepts retries after a refund reopened the raffle.
+- `activity_raffle_settle_retry_test.go` covers a recovered settlement job arriving after the raffle has reopened.
 - `activity_raffle_publish.go` keeps drafts closed until the group announcement message ID is recorded.
 - `activity_raffle_tickets.go` holds ticket scans and exact fee-plus-reservation refunds shared by cancellation and settlement.
 - `activity_raffle_eligibility.go` checks cumulative negative-traffic exposure against the smallest entitlement available after configured combo rewards.

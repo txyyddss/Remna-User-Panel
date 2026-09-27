@@ -18,7 +18,8 @@ stopped.
 - `app.go` composes configuration, persistence, domain services, adapters, workers, and HTTP delivery.
 - `lucky_draw_outbox.go` registers durable publish, edit, delete, entry reply, and settlement jobs; only the queued Telegram adapter calls the Bot API.
 - `lucky_draw_outbox_results.go` sends private and group outcomes and records delivery IDs.
-- `lucky_draw_format.go` and `lucky_draw_result_format.go` build escaped MarkdownV2 announcements, mentions, progress, and paginated outcomes.
+- `lucky_draw_format.go` keeps raffle entry and progress details ahead of a bounded prize list; `lucky_draw_result_format.go` builds escaped mentions and paginated outcomes.
+- `lucky_draw_format_test.go` covers long announcements retaining the seat count and join command within Telegram's limit.
 - `application.go` defines the process-owned application resource container.
 - `member_workflows.go` composes member connection/reset/refund services and registers legacy drop plus block/unblock operation workers on one dispatcher.
 - `outbox_composition.go` registers core jobs, user/payment/affiliate Telegram notifications, the scheduled IP-unblock backstop, and the shared provider-operation dispatcher.

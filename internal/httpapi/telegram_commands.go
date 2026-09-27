@@ -21,12 +21,16 @@ func (s *Server) processTelegramGroupMessage(ctx context.Context, message *teleg
 	if message == nil || message.From == nil || message.From.IsBot || message.Chat.ID == 0 {
 		return
 	}
-	command, isCommand := botcommands.Parse(message.Text)
+	commandText, addressed := normalizeTelegramCommand(message.Text, s.deps.Affiliates.BotUsername())
+	if !addressed {
+		return
+	}
+	command, isCommand := botcommands.Parse(commandText)
 	groupID, configuredGroup := s.telegramGroupID(ctx)
 	if configuredGroup && message.Chat.ID == groupID {
 		user, lookupErr := s.deps.Store.UserByTelegramID(ctx, message.From.ID)
 		if lookupErr == nil {
-			_, matched, joinErr := s.deps.Activity.JoinRaffle(ctx, user.ID, message.Chat.ID, message.MessageID, message.Text)
+			_, matched, joinErr := s.deps.Activity.JoinRaffle(ctx, user.ID, message.Chat.ID, message.MessageID, commandText)
 			if matched {
 				if joinErr != nil {
 					if errors.Is(joinErr, database.ErrInsufficientBalance) {

@@ -87,3 +87,4 @@ file instead.
 - `050_restore_missing_remna_signup.sql` returns members stranded by the former
   missing-user agreement flow to completed local onboarding; startup queues paid
   unlinked accounts for reconciliation.
+- `052_retry_safe_telegram_draw_jobs.sql` requeues transactional raffle settlement, definitively rejected Telegram parse jobs, and safe raffle edit errors after the recovery fixes; ambiguous sends remain failed.

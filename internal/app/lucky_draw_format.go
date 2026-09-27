@@ -36,15 +36,15 @@ func drawAnnouncement(draw activity.LuckyDraw, seats int) string {
 	if draw.Description != "" {
 		b.WriteString(drawEscape(draw.Description) + "\n")
 	}
+	b.WriteString("\n💰 *Entry*  " + drawEscape(model.TXBMoney(draw.FeeMinor).Display) + "\n")
+	b.WriteString("👥 *Seats*  " + drawEscape(fmt.Sprintf("%d / %d", seats, draw.Threshold)) + "\n")
+	b.WriteString(drawProgress(seats, draw.Threshold) + "\n")
+	b.WriteString("✉️ *Join*  " + drawEscape(draw.Keyword) + "  or  /" + drawEscape(draw.Command) + "\n")
 	b.WriteString("\n🎁 *Prizes*\n")
 	for index, prize := range draw.Prizes {
 		b.WriteString("• " + drawEscape(prize.Name) + "  " + drawEscape(fmt.Sprintf("%.2f%%", float64(probabilities[index])/100)) + "\n")
 	}
-	b.WriteString("\n💰 *Entry*  " + drawEscape(model.TXBMoney(draw.FeeMinor).Display) + "\n")
-	b.WriteString("👥 *Seats*  " + drawEscape(fmt.Sprintf("%d / %d", seats, draw.Threshold)) + "\n")
-	b.WriteString(drawProgress(seats, draw.Threshold) + "\n")
-	b.WriteString("✉️ *Join*  " + drawEscape(draw.Keyword) + "  or  /" + drawEscape(draw.Command))
-	return b.String()
+	return telegramformat.Limit(b.String())
 }
 func drawRaffleProbabilities(draw activity.LuckyDraw) []int {
 	result := make([]int, len(draw.Prizes))

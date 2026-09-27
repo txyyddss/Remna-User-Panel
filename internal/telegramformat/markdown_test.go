@@ -17,6 +17,14 @@ func TestEscapeAndLimit(t *testing.T) {
 	}
 }
 
+func TestPlainTextPreservesEscapedContentAndMentionLabel(t *testing.T) {
+	t.Parallel()
+	input := `🎁 *Entry:* Prize\_A \*bonus\* [Ada\_B](tg://user?id=42)\!`
+	if got, want := PlainText(input), "🎁 Entry: Prize_A *bonus* Ada_B!"; got != want {
+		t.Fatalf("PlainText() = %q, want %q", got, want)
+	}
+}
+
 func TestLimitPreservesBoldAndMentionBoundaries(t *testing.T) {
 	t.Parallel()
 	bold := Limit("✨ *" + strings.Repeat("a", MessageLimit) + "*")

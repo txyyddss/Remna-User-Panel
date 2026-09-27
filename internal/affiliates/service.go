@@ -59,3 +59,8 @@ func (s *Service) Save(ctx context.Context, actorID string, input ConfigInput) (
 func (s *Service) RefreshBotIdentity(ctx context.Context) error {
 	return s.identity.Refresh(ctx, time.Now().UTC())
 }
+
+// BotUsername returns the last verified Telegram bot username, if available.
+func (s *Service) BotUsername() string {
+	return s.identity.Snapshot().Username
+}

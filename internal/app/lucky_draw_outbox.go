@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/activity"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
@@ -129,9 +128,6 @@ func (w *luckyDrawOutbox) publish(ctx context.Context, id string) error {
 		return w.store.ConfirmRafflePublished(ctx, id, messageID, time.Now().UTC())
 	}
 	body := drawAnnouncement(draw, 0)
-	if utf8.RuneCountInString(body) > 4096 {
-		return fmt.Errorf("raffle announcement exceeds Telegram limit")
-	}
 	messageID, err := w.telegram.PublishMarkdownV2Message(ctx, draw.GroupChatID, body)
 	if err != nil {
 		var apiErr *telegram.APIError
@@ -169,11 +165,9 @@ func (w *luckyDrawOutbox) update(ctx context.Context, id string) error {
 		return err
 	}
 	body := drawAnnouncement(draw, seats)
-	if utf8.RuneCountInString(body) > 4096 {
-		return fmt.Errorf("raffle announcement exceeds Telegram limit")
-	}
 	err = w.telegram.EditMarkdownV2Message(ctx, draw.GroupChatID, draw.AnnouncementMessageID, body)
-	if err != nil && strings.Contains(err.Error(), "message is not modified") {
+	var apiErr *telegram.APIError
+	if errors.As(err, &apiErr) && strings.Contains(strings.ToLower(apiErr.Description), "message is not modified") {
 		return nil
 	}
 	return err

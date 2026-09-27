@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"unicode/utf8"
 
@@ -75,5 +76,74 @@ func TestSendMarkdownV2MessageLimitsMarkupAtTransport(t *testing.T) {
 	if err := client.SendMarkdownV2Message(context.Background(), 42, 0,
 		"✨ *"+strings.Repeat("a", telegramformat.MessageLimit)+"*"); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestMarkdownEntityRejectionRetriesAsPlainText(t *testing.T) {
+	t.Parallel()
+	const token = "123:token"
+	for _, method := range []string{"sendMessage", "editMessageText"} {
+		t.Run(method, func(t *testing.T) {
+			var calls atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+				defer func() { _ = request.Body.Close() }()
+				attempt := calls.Add(1)
+				if request.URL.Path != "/bot"+token+"/"+method {
+					t.Errorf("path = %s", request.URL.Path)
+				}
+				var payload struct {
+					Text      string `json:"text"`
+					ParseMode string `json:"parse_mode"`
+				}
+				if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+					t.Errorf("decode request: %v", err)
+				}
+				if attempt == 1 {
+					if payload.ParseMode != "MarkdownV2" {
+						t.Errorf("first parse mode = %q", payload.ParseMode)
+					}
+					writer.WriteHeader(http.StatusBadRequest)
+					_, _ = writer.Write([]byte(`{"ok":false,"error_code":400,"description":"Bad Request: can't parse entities"}`))
+					return
+				}
+				if payload.ParseMode != "" || payload.Text != "Prize_A!" {
+					t.Errorf("fallback payload = %+v", payload)
+				}
+				_, _ = writer.Write([]byte(`{"ok":true,"result":{"message_id":7}}`))
+			}))
+			defer server.Close()
+			client, err := NewClient(token, WithBaseURL(server.URL), WithHTTPClient(server.Client()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if method == "sendMessage" {
+				_, err = client.PublishMarkdownV2Message(context.Background(), 42, `*Prize\_A\!*`)
+			} else {
+				err = client.EditMarkdownV2Message(context.Background(), 42, 7, `*Prize\_A\!*`)
+			}
+			if err != nil || calls.Load() != 2 {
+				t.Fatalf("fallback = %v after %d calls", err, calls.Load())
+			}
+		})
+	}
+}
+
+func TestMarkdownSendDoesNotRetryOtherTelegramErrors(t *testing.T) {
+	t.Parallel()
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		defer func() { _ = request.Body.Close() }()
+		calls.Add(1)
+		writer.WriteHeader(http.StatusForbidden)
+		_, _ = writer.Write([]byte(`{"ok":false,"error_code":403,"description":"Forbidden: bot was blocked by the user"}`))
+	}))
+	defer server.Close()
+	client, err := NewClient("123:token", WithBaseURL(server.URL), WithHTTPClient(server.Client()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = client.PublishMarkdownV2Message(context.Background(), 42, "*notice*")
+	if err == nil || calls.Load() != 1 {
+		t.Fatalf("blocked delivery = %v after %d calls", err, calls.Load())
 	}
 }

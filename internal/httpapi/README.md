@@ -90,6 +90,8 @@
 - `operations_shared.go` contains bounded-context and request-ID helpers.
 - `telegram_webhook.go` validates and dispatches Telegram membership and Stars payment updates.
 - `telegram_commands.go` checks configured-group raffle keywords and commands before ordinary commands and group-message rewards; failed entries get localized replies.
+- `telegram_command_target.go` strips Telegram's optional `@botname` suffix only when it matches the cached bot identity, so commands addressed to other bots are ignored.
+- `telegram_command_target_test.go` covers addressed raffle and built-in commands, other-bot rejection, and plain keywords.
 - `display_currency.go` exposes the owner-scoped display preference and the configured fixed TXB-per-CNY/USD rates without changing authoritative prices.
 - `telegram_command_replies.go` composes subscription/combo replies from
   existing catalog services and reads the cached statistics average for check-in copy.

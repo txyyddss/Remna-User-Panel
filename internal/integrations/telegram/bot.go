@@ -105,7 +105,14 @@ func (c *Client) sendMessage(ctx context.Context, chatID, replyToMessageID int64
 		MessageID int64 `json:"message_id"`
 	}
 	if err := c.call(ctx, "sendMessage", payload, &result); err != nil {
-		return 0, err
+		if parseMode != "MarkdownV2" || !isEntityParseError(err) {
+			return 0, err
+		}
+		payload.Text = telegramformat.PlainText(text)
+		payload.ParseMode = ""
+		if err = c.call(ctx, "sendMessage", payload, &result); err != nil {
+			return 0, err
+		}
 	}
 	if result.MessageID <= 0 {
 		return 0, errors.New("telegram sendMessage returned an invalid message")
@@ -127,7 +134,26 @@ func (c *Client) EditMarkdownV2Message(ctx context.Context, chatID, messageID in
 		chatID, messageID, telegramformat.Limit(text), "MarkdownV2",
 	}
 	var result Message
-	return c.call(ctx, "editMessageText", payload, &result)
+	if err := c.call(ctx, "editMessageText", payload, &result); err != nil {
+		if !isEntityParseError(err) {
+			return err
+		}
+		payload.Text = telegramformat.PlainText(payload.Text)
+		payload.ParseMode = ""
+		return c.call(ctx, "editMessageText", payload, &result)
+	}
+	return nil
+}
+
+func isEntityParseError(err error) bool {
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) || apiErr.ErrorCode != 400 {
+		return false
+	}
+	description := strings.ToLower(apiErr.Description)
+	return strings.Contains(description, "can't parse entities") ||
+		strings.Contains(description, "reserved and must be escaped") ||
+		strings.Contains(description, "can't find end of the entity")
 }
 
 // DeleteMessage removes an outgoing message while Telegram permits deletion.

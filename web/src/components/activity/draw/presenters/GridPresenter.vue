@@ -12,7 +12,7 @@ const positions = [
 ] as const
 const tiles = computed(() => visible.value.map((prize, index) => {
   const characters = Array.from(prize.name)
-  return { ...prize, x: positions[index]![0] * 91 + 8, y: positions[index]![1] * 91 + 8, label: characters.slice(0, 8).join('') + (characters.length > 8 ? '…' : '') }
+  return { ...prize, x: positions[index]![0] * 91 + 12, y: positions[index]![1] * 91 + 12, label: characters.slice(0, 8).join('') + (characters.length > 8 ? '…' : '') }
 }))
 </script>
 

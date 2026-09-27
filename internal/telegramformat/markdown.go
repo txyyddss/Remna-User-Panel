@@ -22,6 +22,34 @@ func Escape(value string) string {
 	return escaper.Replace(value)
 }
 
+// PlainText removes the project's MarkdownV2 escapes, bold markers, and
+// mention-link syntax for a safe fallback after Telegram rejects parsing.
+func PlainText(value string) string {
+	var plain strings.Builder
+	for index := 0; index < len(value); index++ {
+		switch value[index] {
+		case '\\':
+			if index+1 < len(value) {
+				index++
+				plain.WriteByte(value[index])
+			} else {
+				plain.WriteByte('\\')
+			}
+		case '*', '[':
+			// These delimiters are used only for bold spans and mention labels.
+		case ']':
+			if strings.HasPrefix(value[index+1:], "(tg://user?id=") {
+				if end := strings.IndexByte(value[index+1:], ')'); end >= 0 {
+					index += end + 1
+				}
+			}
+		default:
+			plain.WriteByte(value[index])
+		}
+	}
+	return plain.String()
+}
+
 // Limit truncates at a complete MarkdownV2 token and closes an open bold span.
 // Project messages use escaped text, bold labels, and Telegram mention links.
 func Limit(value string) string {

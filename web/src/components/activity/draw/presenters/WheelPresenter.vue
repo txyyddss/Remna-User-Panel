@@ -64,7 +64,7 @@ function pressCenter(): void {
   started.value = true
   emit('started')
   if (reducedMotion.value) { if (props.result) emit('finished'); return }
-  loop = gsap.to(wheel.value, { rotation: 360, duration: 3.5, repeat: -1, ease: 'none', transformOrigin: '50% 50%' })
+  loop = gsap.to(wheel.value, { rotation: 360, duration: 0.75, repeat: -1, ease: 'none', transformOrigin: '50% 50%' })
   scheduleSlowdown()
 }
 watch(() => props.result, (value) => {

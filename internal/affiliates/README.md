@@ -12,7 +12,7 @@ queries; this package owns portable validation and locale normalization.
 - `bot_identity.go` caches validated queued `getMe` results with stale fallback.
 - `notifications.go` formats and sends localized durable MarkdownV2 jobs using
   the shared dynamic-value escaper and Telegram message bound.
-- `service.go` coordinates member, administrator, referral, and discovery operations.
+- `service.go` coordinates member, administrator, referral, and discovery operations and exposes the cached bot username for webhook command routing.
 - `validation_test.go` covers locale normalization and tier invariants without provider calls.
 - `bot_identity_test.go` covers 24-hour caching and stale-on-transient-failure behavior.
 - `notifications_test.go` covers dynamic MarkdownV2 escaping and fixed-point amount copy.
