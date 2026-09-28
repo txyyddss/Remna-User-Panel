@@ -4,7 +4,11 @@
   successful-payment announcement snapshots. The optional `providerName`
   field preserves the administrator label while legacy queued payloads retain
   the provider fallback.
-- `payload_test.go` covers new and legacy payment-announcement JSON payloads.
+  `TargetID` validates only the requested string identifier; numeric revisions,
+  booleans, and nested metadata keep their original JSON types. Invalid or
+  missing target identifiers still fail before a handler performs work.
+- `payload_test.go` covers mixed-type draw job payloads, invalid identifiers,
+  and new and legacy payment-announcement JSON payloads.
 - `kinds.go` owns shared job-kind constants used by persistence and handlers,
   including durable payment announcements, scheduled purchase receipts,
   terminal reset and refund outcomes, and provider-gated node compensation.

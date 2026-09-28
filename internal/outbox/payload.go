@@ -41,13 +41,21 @@ type AffiliateTierUpgrade struct {
 	AwardedAt         string `json:"awardedAt"`
 }
 
-// TargetID extracts one required identifier from a canonical typed job payload.
+// TargetID extracts one required string identifier without constraining other fields.
 func TargetID(job model.OutboxJob, field string) (string, error) {
-	var payload map[string]string
+	var payload map[string]json.RawMessage
 	if err := json.Unmarshal([]byte(job.Payload), &payload); err != nil {
 		return "", fmt.Errorf("decode %s job payload: %w", job.Kind, err)
 	}
-	value := strings.TrimSpace(payload[field])
+	raw, exists := payload[field]
+	if !exists {
+		return "", errors.New("outbox payload is missing " + field)
+	}
+	var value string
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return "", fmt.Errorf("decode %s job target %s: %w", job.Kind, field, err)
+	}
+	value = strings.TrimSpace(value)
 	if value == "" {
 		return "", errors.New("outbox payload is missing " + field)
 	}

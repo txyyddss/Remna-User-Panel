@@ -88,3 +88,4 @@ file instead.
   missing-user agreement flow to completed local onboarding; startup queues paid
   unlinked accounts for reconciliation.
 - `052_retry_safe_telegram_draw_jobs.sql` requeues transactional raffle settlement, definitively rejected Telegram parse jobs, and safe raffle edit errors after the recovery fixes; ambiguous sends remain failed.
+- `053_retry_draw_payload_decode.sql` resets failed or delayed raffle-update and settlement jobs rejected by the former string-only payload decoder. It requires the matching decode error, a string draw ID, and an integer revision, and keeps at most one active job per payload. Duplicate failed rows, other failures, and processing jobs retain their state.
