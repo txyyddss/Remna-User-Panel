@@ -15,7 +15,7 @@ func TestInstantDrawReplayIsBoundToDrawAndMember(t *testing.T) {
 	firstUser := createTestUser(t, store, 31821)
 	secondUser := createTestUser(t, store, 31822)
 	for _, userID := range []string{firstUser.ID, secondUser.ID} {
-		if _, err := store.AdjustBalance(ctx, userID, 1000, "seed", "seed", now); err != nil {
+		if _, err := store.AdjustBalance(ctx, userID, 1000, "seed:"+userID, "seed", now); err != nil {
 			t.Fatal(err)
 		}
 	}
