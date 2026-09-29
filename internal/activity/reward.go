@@ -2,7 +2,6 @@ package activity
 
 import (
 	"fmt"
-	"math"
 	"strings"
 )
 
@@ -47,6 +46,9 @@ type Reward struct {
 
 // Validate rejects ambiguous or unsafe reward payloads.
 func (reward Reward) Validate() error {
+	if err := reward.validatePayload(); err != nil {
+		return err
+	}
 	if reward.ResolvedValue != nil {
 		return fmt.Errorf("%w: resolved values cannot be configured", ErrInvalidInput)
 	}
@@ -60,7 +62,7 @@ func (reward Reward) Validate() error {
 		if reward.Range != nil {
 			return reward.Range.Validate(-10000000000, 10000000000, true)
 		}
-		if reward.TXBDeltaMinor == 0 || reward.TXBDeltaMinor == math.MinInt64 || reward.CouponID != "" || reward.ExtensionDays != 0 {
+		if reward.TXBDeltaMinor == 0 || reward.TXBDeltaMinor < -10000000000 || reward.TXBDeltaMinor > 10000000000 || reward.CouponID != "" || reward.ExtensionDays != 0 {
 			return fmt.Errorf("%w: TXB reward must contain only a non-zero delta", ErrInvalidInput)
 		}
 	case RewardCouponGrant:

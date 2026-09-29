@@ -24,7 +24,7 @@ func (s *Store) SettleRaffle(ctx context.Context, id string, rng activity.Random
 	if err != nil {
 		return activity.RaffleSettlement{}, err
 	}
-	if draw.Status == "completed" {
+	if draw.Kind == "raffle" && (draw.Status == "completed" || draw.Status == "cancelled") {
 		return activity.RaffleSettlement{Draw: draw}, nil
 	}
 	// A retry can arrive after an earlier attempt refunded an ineligible seat

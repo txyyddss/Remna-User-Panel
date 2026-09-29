@@ -16,15 +16,23 @@ func raffleTrafficCoverageTx(ctx context.Context, tx *sql.Tx, userID string, dra
 		return nil
 	}
 	maxDeductionGiB := int64(0)
+	maxRenewalDeductionGiB := int64(0)
 	for _, prize := range draw.Prizes {
 		if prize.Reward.Kind == activity.RewardTrafficGrant && prize.Reward.Range != nil && prize.Reward.Range.Min < 0 {
 			maxDeductionGiB = max(maxDeductionGiB, -prize.Reward.Range.Min)
+			if prize.Reward.IncludeInRenewal {
+				maxRenewalDeductionGiB = max(maxRenewalDeductionGiB, -prize.Reward.Range.Min)
+			}
 		}
 	}
 	if maxDeductionGiB == 0 {
 		return nil
 	}
-	_, minimumTraffic, err := activeRewardPurchase(ctx, tx, userID, now)
+	purchaseID, minimumTraffic, err := activeRewardPurchase(ctx, tx, userID, now)
+	if err != nil {
+		return err
+	}
+	_, minimumRenewalTraffic, err := drawRenewalTrafficTx(ctx, tx, purchaseID)
 	if err != nil {
 		return err
 	}
@@ -32,6 +40,7 @@ func raffleTrafficCoverageTx(ctx context.Context, tx *sql.Tx, userID string, dra
 		switch prize.Reward.Kind {
 		case activity.RewardEntitlementGrant:
 			minimumTraffic = min(minimumTraffic, prize.Reward.TrafficLimitBytes)
+			minimumRenewalTraffic = min(minimumRenewalTraffic, prize.Reward.TrafficLimitBytes)
 		case activity.RewardCoreComboSwitch:
 			var targetTraffic int64
 			if err = tx.QueryRowContext(ctx, `SELECT traffic_limit_bytes FROM combos WHERE id=?`, prize.Reward.ComboID).Scan(&targetTraffic); err != nil {
@@ -41,6 +50,7 @@ func raffleTrafficCoverageTx(ctx context.Context, tx *sql.Tx, userID string, dra
 				return err
 			}
 			minimumTraffic = min(minimumTraffic, targetTraffic)
+			minimumRenewalTraffic = min(minimumRenewalTraffic, targetTraffic)
 		}
 	}
 	if maxDeductionGiB > math.MaxInt64/(1<<30) {
@@ -49,6 +59,12 @@ func raffleTrafficCoverageTx(ctx context.Context, tx *sql.Tx, userID string, dra
 	perSeat := maxDeductionGiB * (1 << 30)
 	if int64(seats) > math.MaxInt64/perSeat || minimumTraffic <= int64(seats)*perSeat {
 		return ErrConflict
+	}
+	if maxRenewalDeductionGiB > 0 {
+		perSeat = maxRenewalDeductionGiB * (1 << 30)
+		if int64(seats) > math.MaxInt64/perSeat || minimumRenewalTraffic <= int64(seats)*perSeat {
+			return ErrConflict
+		}
 	}
 	return nil
 }

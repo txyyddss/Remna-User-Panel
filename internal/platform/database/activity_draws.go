@@ -41,7 +41,7 @@ func (s *Store) SaveLuckyDraw(ctx context.Context, input activity.LuckyDrawInput
 			return activity.LuckyDraw{}, loadErr
 		}
 		if previous.Kind != input.Kind || previous.Status == "completed" || previous.Status == "cancelled" ||
-			(input.Kind == "raffle" && previous.Status != "draft" && previous.Status != "publishing" && previous.Status != "open") {
+			(input.Kind == "raffle" && previous.Status != "draft" && previous.Status != "open") {
 			return activity.LuckyDraw{}, ErrConflict
 		}
 		input.Status = previous.Status
@@ -67,6 +67,9 @@ func (s *Store) SaveLuckyDraw(ctx context.Context, input activity.LuckyDrawInput
 		return activity.LuckyDraw{}, err
 	}
 	if input.Kind == "raffle" && input.Status == "open" {
+		if err := requireRaffleTriggersAvailableTx(ctx, tx, input); err != nil {
+			return activity.LuckyDraw{}, err
+		}
 		if err := validateRaffleTrafficForEntriesTx(ctx, tx, activity.LuckyDraw{LuckyDrawInput: input}, now); err != nil {
 			return activity.LuckyDraw{}, err
 		}

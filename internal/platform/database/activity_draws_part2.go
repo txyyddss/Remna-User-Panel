@@ -19,6 +19,9 @@ func (s *Store) PlayLuckyDraw(ctx context.Context, userID, drawID, key string, r
 	if strings.TrimSpace(userID) == "" || strings.TrimSpace(drawID) == "" || strings.TrimSpace(key) == "" || len(key) > 128 || rng == nil {
 		return activity.DrawResult{}, activity.ErrInvalidInput
 	}
+	if strings.HasPrefix(key, "raffle:") {
+		return activity.DrawResult{}, activity.ErrInvalidInput
+	}
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 	now = now.UTC()
@@ -28,6 +31,9 @@ func (s *Store) PlayLuckyDraw(ctx context.Context, userID, drawID, key string, r
 	}
 	defer func() { _ = tx.Rollback() }()
 	if existing, loadErr := drawResultByKeyTx(ctx, tx, userID, key); loadErr == nil {
+		if existing.DrawID != drawID {
+			return activity.DrawResult{}, ErrConflict
+		}
 		existing.Replayed = true
 		return existing, nil
 	} else if !errors.Is(loadErr, ErrNotFound) {
@@ -131,7 +137,7 @@ func eligibleDrawParticipantTx(ctx context.Context, tx *sql.Tx, userID string, d
 	if !requiresPurchase {
 		return nil
 	}
-	_, traffic, err := activeRewardPurchase(ctx, tx, userID, now)
+	purchaseID, traffic, err := activeRewardPurchase(ctx, tx, userID, now)
 	if err != nil {
 		return err
 	}
@@ -140,6 +146,15 @@ func eligibleDrawParticipantTx(ctx context.Context, tx *sql.Tx, userID string, d
 			minimum := prize.Reward.Range.Min
 			if minimum < 0 && (minimum < math.MinInt64/(1<<30) || traffic+minimum*(1<<30) <= 0) {
 				return ErrConflict
+			}
+			if minimum < 0 && prize.Reward.IncludeInRenewal {
+				_, renewalTraffic, loadErr := drawRenewalTrafficTx(ctx, tx, purchaseID)
+				if loadErr != nil {
+					return loadErr
+				}
+				if renewalTraffic+minimum*(1<<30) <= 0 {
+					return ErrConflict
+				}
 			}
 		}
 	}

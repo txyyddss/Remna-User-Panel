@@ -2,13 +2,19 @@
 
 Lucky-draw storage keeps configuration, ticket charges, reservations, and immutable outcomes local. Every Remnawave effect is enqueued after the result transaction; Telegram delivery uses recorded message IDs.
 
-- `activity_draws.go` saves and audits mode-specific configuration; `activity_draws_part2.go` settles instant results atomically.
+Private draw coupons (`admin_visible=0`) can only be used through awarded wallet grants. Code lookup excludes them, and the shared grant lookup and wallet listing reject historical `source_type='code'` copies. Checkout and automatic renewal therefore cannot use copied grants; existing financial records remain intact. `activity_draw_coupon_security_test.go` covers these boundaries and normal public-code redemption.
+
+- `activity_draws.go` saves and audits mode-specific configuration; `activity_draws_part2.go` settles instant results atomically, binds replays to the same member and draw, and reserves `raffle:` keys for internal settlements.
+- `activity_draw_replay_security_test.go` covers cross-draw conflicts, member isolation, reserved keys, and unchanged balances/randomness on replay.
 - `activity_draw_list.go` lists member-safe instant draws and admin definitions; `activity_draw_reservations.go` reconciles active raffle loss holds when reward ranges change.
 - `activity_reward_apply.go` applies resolved balance, coupon, purchase, traffic, and squad effects and queues provider synchronization.
+- `activity_reward_traffic.go` tracks current-term and renewal traffic separately so recurring rewards cannot preserve temporary gains or losses. Eligibility and settlement reject deductions that would exhaust either allowance. `activity_reward_traffic_test.go` covers mixed reward ordering and renewal coverage.
 - `activity_raffle_entries.go` sells deduplicated seats; `activity_raffle_settle.go` refunds expired eligibility or assigns fixed stock atomically and accepts retries after a refund reopened the raffle.
 - `activity_raffle_settle_retry_test.go` covers a recovered settlement job arriving after the raffle has reopened.
 - `activity_draw_payload_migration_test.go` covers recovery of numeric-revision decode failures while preserving the unique active-job constraint and unrelated errors.
-- `activity_raffle_publish.go` keeps drafts closed until the group announcement message ID is recorded.
+- `activity_raffle_publish.go` keeps drafts closed until the group announcement message ID is recorded, reserves triggers through settlement, and queues late-message cleanup after cancellation. Publishing terms are frozen until confirmation so the charged price matches the announcement.
+- `activity_raffle_lifecycle_test.go` covers publishing edits, late cancellation cleanup, stale settlement jobs, and trigger collisions during settlement.
+- `activity_raffle_accounting_test.go` covers concurrent message replay, reserved balances, rollback on randomness failure, exact stock distribution, ledger reconciliation, and settlement replay.
 - `activity_raffle_tickets.go` holds ticket scans and exact fee-plus-reservation refunds shared by cancellation and settlement.
 - `activity_raffle_eligibility.go` checks cumulative negative-traffic exposure against the smallest entitlement available after configured combo rewards.
 - `activity_raffle_queries.go` supplies routing, progress, outcome, and delivery lookups; `activity_forecast.go` prices draws from current catalog and eligible balances.

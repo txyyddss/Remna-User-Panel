@@ -170,5 +170,6 @@ func couponByID(ctx context.Context, queryer interface {
 }
 
 func couponByCodeTx(ctx context.Context, tx *sql.Tx, code string) (coupons.Coupon, error) {
-	return scanCoupon(tx.QueryRowContext(ctx, couponSelect+` WHERE code=?`, code))
+	// Draw rewards are private wallet grants, never shareable redemption codes.
+	return scanCoupon(tx.QueryRowContext(ctx, couponSelect+` WHERE code=? AND admin_visible=1`, code))
 }

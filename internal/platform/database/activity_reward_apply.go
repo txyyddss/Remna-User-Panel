@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
@@ -14,6 +13,10 @@ import (
 )
 
 func resolveDrawReward(spec activity.Reward, rng activity.RandomSource) (activity.Reward, error) {
+	// Recheck stored specifications too: older definitions may predate validation.
+	if err := spec.Validate(); err != nil {
+		return activity.Reward{}, err
+	}
 	if spec.Range == nil {
 		return spec, nil
 	}
@@ -142,28 +145,7 @@ func applyDrawEntitlementTx(ctx context.Context, tx *sql.Tx, userID, resultID st
    entitlement_squad_uuids=NULL,entitlement_addon_squad_uuids=NULL,reward_renewal_price_minor=NULL,reward_rollover_min_remaining_bps=NULL,
    reward_traffic_renewal=1,reward_renewal_traffic_limit_bytes=NULL,updated_at=? WHERE id=?`, reward.ComboID, stamp(now), purchaseID)
 	case activity.RewardTrafficGrant:
-		var priorRenewalTraffic sql.NullInt64
-		if err = tx.QueryRowContext(ctx, `SELECT CASE WHEN reward_traffic_renewal=0 THEN reward_renewal_traffic_limit_bytes
-			ELSE entitlement_traffic_limit_bytes END FROM purchases WHERE id=?`, purchaseID).Scan(&priorRenewalTraffic); err != nil {
-			return err
-		}
-		if value > math.MaxInt64/(1<<30) || value < math.MinInt64/(1<<30) {
-			return activity.ErrInvalidInput
-		}
-		delta := value * (1 << 30)
-		if delta < 0 && traffic < 1-delta || delta > 0 && traffic > math.MaxInt64-delta {
-			return ErrConflict
-		}
-		var renewalTraffic any = priorRenewalTraffic
-		if reward.IncludeInRenewal {
-			renewalTraffic = traffic + delta
-		}
-		_, err = tx.ExecContext(ctx, `UPDATE purchases SET entitlement_traffic_limit_bytes=?,reward_traffic_renewal=?,
-			reward_renewal_traffic_limit_bytes=?,updated_at=? WHERE id=?`,
-			traffic+delta, boolInt(reward.IncludeInRenewal), renewalTraffic, stamp(now), purchaseID)
-		if err == nil {
-			_, err = tx.ExecContext(ctx, `UPDATE purchase_rollovers SET traffic_limit_bytes=?,updated_at=? WHERE purchase_id=? AND status='pending'`, traffic+delta, stamp(now), purchaseID)
-		}
+		err = applyDrawTrafficTx(ctx, tx, purchaseID, traffic, value, reward.IncludeInRenewal, now)
 	case activity.RewardTrafficReset:
 		_, err = tx.ExecContext(ctx, `UPDATE purchases SET status='activating',traffic_reset_phase='pending',updated_at=? WHERE id=?`, stamp(now), purchaseID)
 		if err == nil {

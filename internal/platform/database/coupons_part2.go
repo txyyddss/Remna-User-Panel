@@ -134,7 +134,7 @@ func (s *Store) ListCouponGrants(ctx context.Context, userID string, now time.Ti
 	rows, err := s.db.QueryContext(ctx, grantSelect+` WHERE coupon_grants.user_id=? AND coupon_grants.status='active'
 		AND coupon_definitions.active=1 AND (coupon_definitions.expires_at IS NULL OR coupon_definitions.expires_at>?)
 		AND NOT EXISTS (SELECT 1 FROM coupon_grant_discards WHERE coupon_grant_discards.grant_id=coupon_grants.id)
-		ORDER BY coupon_grants.created_at DESC`, userID, stamp(now))
+		AND `+authorizedCouponGrant+` ORDER BY coupon_grants.created_at DESC`, userID, stamp(now))
 	if err != nil {
 		return nil, fmt.Errorf("list coupon grants: %w", err)
 	}

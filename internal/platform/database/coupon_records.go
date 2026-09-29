@@ -17,8 +17,12 @@ const grantSelect = `SELECT coupon_grants.id,coupon_grants.user_id,coupon_grants
 	coupon_definitions.per_user_use_limit,coupon_definitions.active,coupon_definitions.created_at,coupon_definitions.updated_at
 	FROM coupon_grants JOIN coupon_definitions ON coupon_definitions.id=coupon_grants.coupon_id`
 
+// Reject copies redeemed before private draw codes were blocked. Preserve their
+// historical records, but never use them for checkout or attached renewal pricing.
+const authorizedCouponGrant = `(coupon_definitions.admin_visible=1 OR coupon_grants.source_type<>'code')`
+
 func grantByIDTx(ctx context.Context, tx *sql.Tx, grantID string) (coupons.Grant, error) {
-	return scanGrant(tx.QueryRowContext(ctx, grantSelect+` WHERE coupon_grants.id=?`, grantID))
+	return scanGrant(tx.QueryRowContext(ctx, grantSelect+` WHERE coupon_grants.id=? AND `+authorizedCouponGrant, grantID))
 }
 
 func grantBySourceTx(ctx context.Context, tx *sql.Tx, userID, couponID, sourceType, sourceID string) (coupons.Grant, error) {

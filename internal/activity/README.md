@@ -1,7 +1,11 @@
 # Activity domain
 
+- `AUDIT.md` records the lucky-draw security review, fixed failure paths, regression coverage and operational limits.
+
 - `activity.go` defines games, betting, and daily check-in types and validation.
 - `reward.go` defines typed draw effects, validation, and persistence-facing payloads.
+- `reward_payload.go` enforces one reward kind and one value source per configuration; fixed TXB values share the random-range limits. Stored configurations are revalidated before settlement sampling.
+- `reward_payload_test.go` covers incompatible fields, malformed ranges, monetary bounds, and valid payloads for every supported reward kind.
 - `draws.go` defines instant probabilities, raffle stock, outcomes, and group rewards.
 - `draw_random.go` validates quantized ranges and samples uniform, truncated Gaussian, and power-law distributions with the injected secure integer source.
 - `raffles.go` defines group-entry receipts and settlement summaries; `service.go` exposes publication, entry, and settlement to HTTP and the durable worker.
