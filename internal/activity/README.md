@@ -8,6 +8,8 @@
 - `reward_payload_test.go` covers incompatible fields, malformed ranges, monetary bounds, and valid payloads for every supported reward kind.
 - `draws.go` defines instant probabilities, raffle stock, outcomes, and group rewards.
 - `draw_random.go` validates quantized ranges and samples uniform, truncated Gaussian, and power-law distributions with the injected secure integer source.
+- `draw_random_test.go` covers power-law coupon quantiles, endpoint reachability, distribution shape across reward precisions, signed/multiplier splits, fixed ranges and random-source failures.
+- `RANDOM_DISTRIBUTIONS.md` defines distribution semantics, quantization and the correction to minimum-heavy power-law rewards. Changes affect future unresolved rewards; saved outcomes and awarded coupons retain their values.
 - `raffles.go` defines group-entry receipts and settlement summaries; `service.go` exposes publication, entry, and settlement to HTTP and the durable worker.
 - `service.go` validates and coordinates member and administrator activity workflows.
 - `random.go` provides the cryptographically secure random source.

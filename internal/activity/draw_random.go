@@ -93,15 +93,23 @@ func drawCostRank(rng RandomSource, span int64, distribution string) (int64, err
 	if distribution == "uniform" {
 		return rng.Int63n(span)
 	}
+	if distribution == "power_law" {
+		// Bounded power distribution with shape 1/2: CDF(x)=sqrt(x),
+		// inverse CDF(u)=u² on [0,1). Scale before quantizing so the
+		// lower-cost bias is independent of the reward's tick precision.
+		const resolution = int64(1 << 53)
+		roll, err := rng.Int63n(resolution)
+		if err != nil {
+			return 0, err
+		}
+		u := float64(roll) / float64(resolution)
+		return min(int64(u*u*float64(span)), span-1), nil
+	}
 	roll, err := rng.Int63n(math.MaxInt64)
 	if err != nil {
 		return 0, err
 	}
 	u := (float64(roll) + 0.5) / float64(math.MaxInt64)
-	if distribution == "power_law" {
-		value := 1/(1-u*(1-1/float64(span))) - 1
-		return min(int64(value), span-1), nil
-	}
 	// Half-normal, truncated to the configured range, with mean at its cheapest tick.
 	for attempt := 0; attempt < 32; attempt++ {
 		raw, sampleErr := rng.Int63n(math.MaxInt64)
