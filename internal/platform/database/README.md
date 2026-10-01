@@ -81,6 +81,7 @@ The persistence implementation is split by domain operation. The `_part2.go` fil
 - `renewal_stock_price_test.go` covers current recurring-discount quotes and debits while an existing member retains a seat in a squad closed to new sales.
 - `squad_stock_retention_test.go` covers held reservations after stock-limit reductions, new-member rejection, and seat release after expiry or cancellation.
 - `automatic_renewal_plan.go`, `automatic_renewal_coupon.go`, `automatic_renewal_state.go`, and `automatic_renewal_commit.go` — automatic-renewal current pricing, attached-coupon policy, owner state/failure records, and atomic one-successor debits.
+- Renewal plans project persisted full-squad overrides into `Combo.IncludedSquads` for live validation. Custom reward prices, traffic and rollover settings remain on the purchase and carry into successors; the base combo supplies renewal cadence. Existing awards need no data migration.
 - `automatic_renewal_rollover.go` settles a calculated rollover and automatic renewal in one transaction, including a caller-supplied policy for whether rollover counts toward sufficient funds, insufficient-funds expiry, and explicit later re-enable handling.
 - `automatic_renewal_rollover_test.go` covers atomic rollover-funded renewal and the policy path that excludes rollover from the required balance.
 - `billing_purchase_helpers.go` — distinct-member stock checks that retain existing seats, purchase fingerprints, catalog row loaders, and balance debit helpers.

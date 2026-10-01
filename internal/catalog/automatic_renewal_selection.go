@@ -38,7 +38,7 @@ func (s *Service) automaticRenewalSelectionAt(ctx context.Context, user model.Us
 		return result, nil, nil
 	}
 	addonIDs := renewalAddonIDs(plan.Addons)
-	catalog, unavailable, reason, err := s.renewalCatalog(ctx, plan.Combo.ID, addonIDs)
+	catalog, unavailable, reason, err := s.hydrateRenewalCatalog(ctx, []model.Combo{plan.Combo}, addonIDs)
 	if err != nil {
 		return model.AutoRenewal{}, nil, err
 	}

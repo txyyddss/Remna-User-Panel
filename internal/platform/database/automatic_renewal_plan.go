@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -135,6 +136,17 @@ func automaticRenewalPlanTx(ctx context.Context, tx *sql.Tx, userID, purchaseID 
 		return AutoRenewalPlan{}, err
 	}
 	plan.Combo = combo
+	// Full entitlement overrides replace the base combo's squads at renewal too.
+	if squadUUIDs.Valid {
+		var ids []string
+		if err := json.Unmarshal([]byte(squadUUIDs.String), &ids); err != nil {
+			return AutoRenewalPlan{}, fmt.Errorf("decode renewal squad overrides: %w", err)
+		}
+		plan.Combo.IncludedSquads = make([]model.SquadProduct, 0, len(ids))
+		for _, id := range uniqueSorted(ids) {
+			plan.Combo.IncludedSquads = append(plan.Combo.IncludedSquads, model.SquadProduct{ID: id, RemnaSquadUUID: id})
+		}
+	}
 	// Awarded hours extend only the current term; renewals use the selected core combo's cadence.
 	plan.NextCycleEndsAt = plan.ScheduledAt.AddDate(0, 0, combo.ValidityDays)
 	plan.GrossMinor, plan.DiscountMinor, plan.NetMinor = combo.PriceTXBMinor, 0, combo.PriceTXBMinor

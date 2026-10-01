@@ -22,11 +22,17 @@ func (s *Service) renewalCatalog(ctx context.Context, comboID string, addonIDs [
 			break
 		}
 	}
+	return s.hydrateRenewalCatalog(ctx, selectedCombos, addonIDs)
+}
+
+// hydrateRenewalCatalog validates the selected entitlement, including persisted
+// custom squads, through the same queued provider used by the storefront.
+func (s *Service) hydrateRenewalCatalog(ctx context.Context, combos []model.Combo, addonIDs []string) (model.Catalog, []string, string, error) {
 	addons := make([]model.SquadProduct, 0, len(addonIDs))
 	for _, id := range addonIDs {
 		addons = append(addons, model.SquadProduct{ID: id, RemnaSquadUUID: id, Visible: true})
 	}
-	catalog, err := s.hydrateLiveCatalog(ctx, selectedCombos, addons)
+	catalog, err := s.hydrateLiveCatalog(ctx, combos, addons)
 	if err != nil {
 		return model.Catalog{}, nil, "", err
 	}
