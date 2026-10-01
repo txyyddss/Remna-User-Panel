@@ -18,10 +18,12 @@ func TestAutomaticRenewalUsesAwardedCustomCombo(t *testing.T) {
 		name, baseSquad, reason string
 		price, trafficGiB       int64
 		missing, disabled       bool
+		switchCore              bool
 	}{
 		{name: "lite without base squads", price: 36_000, trafficGiB: 300},
 		{name: "standard with stale base squad", baseSquad: "stale", price: 54_000, trafficGiB: 500},
 		{name: "max with different base squad", baseSquad: "core-squad", price: 63_000, trafficGiB: 800},
+		{name: "custom then core change without included squads", price: 54_000, trafficGiB: 500, switchCore: true},
 		{name: "missing awarded squad", price: 54_000, trafficGiB: 500, missing: true, reason: database.AutoRenewalReasonComboUnavailable},
 		{name: "disabled awarded node", price: 54_000, trafficGiB: 500, disabled: true, reason: database.AutoRenewalReasonNoAccessibleNodes},
 	} {
@@ -75,6 +77,24 @@ func TestAutomaticRenewalUsesAwardedCustomCombo(t *testing.T) {
 			if _, err := store.PlayLuckyDraw(ctx, user.ID, draw.ID, "award", activity.CryptoRandom{}, now); err != nil {
 				t.Fatal(err)
 			}
+			cycleDays, fees := 30, int64(1)
+			if test.switchCore {
+				target, err := store.SaveCombo(ctx, database.ComboInput{Name: "New core", PriceTXBMinor: 80_000,
+					ValidityDays: 45, TrafficLimitBytes: 800 << 30, ResetStrategy: "MONTH_ROLLING", Active: true})
+				if err != nil {
+					t.Fatal(err)
+				}
+				change, err := store.SaveLuckyDraw(ctx, activity.LuckyDrawInput{Name: "Core change", Kind: "instant", Enabled: true,
+					FeeMinor: 1, ExpectedParticipation: 1, Prizes: []activity.PrizeInput{{Name: "Core change", ProbabilityBPS: 10_000,
+						Reward: activity.Reward{Kind: activity.RewardCoreComboSwitch, ComboID: target.ID}}}}, now)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err := store.PlayLuckyDraw(ctx, user.ID, change.ID, "core-change", activity.CryptoRandom{}, now); err != nil {
+					t.Fatal(err)
+				}
+				cycleDays, fees = 45, 2
+			}
 			if !test.missing {
 				remote.squads = append(remote.squads, RemoteSquad{UUID: "awarded", Name: "Awarded"})
 			}
@@ -90,7 +110,7 @@ func TestAutomaticRenewalUsesAwardedCustomCombo(t *testing.T) {
 			if err != nil || !status.Enabled || !status.CanEnable || status.NetPrice.MinorInt64() != test.price {
 				t.Fatalf("enable custom renewal = (%+v, %v)", status, err)
 			}
-			if !status.NextCycleEndsAt.Equal(source.ValidUntil.Add(30 * 24 * time.Hour)) {
+			if !status.NextCycleEndsAt.Equal(source.ValidUntil.Add(time.Duration(cycleDays) * 24 * time.Hour)) {
 				t.Fatalf("next cycle ends at %s", status.NextCycleEndsAt)
 			}
 			base, err := store.ComboByID(ctx, combo.ID, true)
@@ -127,7 +147,7 @@ func TestAutomaticRenewalUsesAwardedCustomCombo(t *testing.T) {
 			if err != nil || !status.CanEnable || !status.Enabled || status.NetPrice.MinorInt64() != test.price {
 				t.Fatalf("successor renewal = (%+v, %v)", status, err)
 			}
-			if balance, err := store.Balance(ctx, user.ID); err != nil || balance.MinorInt64() != 200_000-31_900-1-test.price {
+			if balance, err := store.Balance(ctx, user.ID); err != nil || balance.MinorInt64() != 200_000-31_900-fees-test.price {
 				t.Fatalf("renewed balance = (%+v, %v)", balance, err)
 			}
 			var debits int

@@ -138,12 +138,7 @@ func applyDrawEntitlementTx(ctx context.Context, tx *sql.Tx, userID, resultID st
 			}
 		}
 	case activity.RewardCoreComboSwitch:
-		if err = requireRowTx(ctx, tx, `SELECT 1 FROM combos WHERE id=? AND active=1`, reward.ComboID); err != nil {
-			return err
-		}
-		_, err = tx.ExecContext(ctx, `UPDATE purchases SET combo_id=?,entitlement_traffic_limit_bytes=NULL,
-   entitlement_squad_uuids=NULL,entitlement_addon_squad_uuids=NULL,reward_renewal_price_minor=NULL,reward_rollover_min_remaining_bps=NULL,
-   reward_traffic_renewal=1,reward_renewal_traffic_limit_bytes=NULL,updated_at=? WHERE id=?`, reward.ComboID, stamp(now), purchaseID)
+		err = applyDrawCoreComboTx(ctx, tx, purchaseID, reward.ComboID, now)
 	case activity.RewardTrafficGrant:
 		err = applyDrawTrafficTx(ctx, tx, purchaseID, traffic, value, reward.IncludeInRenewal, now)
 	case activity.RewardTrafficReset:

@@ -2,6 +2,8 @@
 
 Migration files are embedded and applied in lexical order by `database.go`.
 
+- `054_restore_custom_combo_after_core_reward.sql` restores erased custom terms on current purchases when immutable reward history proves a custom award followed by a core-change prize. It skips ambiguous or subsequently edited histories, records an audit event and queues provider sync without changing balances or renewal enablement. See [recovery boundaries](../CUSTOM_COMBO_RECOVERY.md).
+
 - `030_affiliates.sql` adds referral eligibility, immutable tier versions, settlements, and awards.
 - `031_user_notifications.sql` adds durable semantic notification deduplication
   and provider-success release gates.
