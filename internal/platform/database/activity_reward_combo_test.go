@@ -33,6 +33,7 @@ func TestCoreChangePreservesCustomTermsAndTrafficRewardLifetimes(t *testing.T) {
 			core := saveTestCombo(t, store, "Original core", 100, 30)
 			target := saveTestCombo(t, store, "New core", 200, 45)
 			user, purchase := createAdminWorkflowPurchase(t, store, 31901, core, now)
+			seedPendingRewardRollover(t, store, purchase.ID, now)
 			playComboReward(t, store, user.ID, "custom", activity.Reward{Kind: activity.RewardEntitlementGrant,
 				ComboID: core.ID, SquadUUIDs: []string{"awarded"}, RenewalPriceMinor: price,
 				TrafficLimitBytes: 500 << 30, RolloverMinRemainingBPS: 9999}, now)
@@ -57,6 +58,23 @@ func TestCoreChangePreservesCustomTermsAndTrafficRewardLifetimes(t *testing.T) {
 				t.Fatalf("rollover metadata = (%d, %d, %v)", traffic, threshold, err)
 			}
 		})
+	}
+}
+
+// A pending rollover snapshot can survive a term extension. Create it explicitly:
+// the normal purchase constructor does not create rollovers before expiry.
+func seedPendingRewardRollover(t *testing.T, store *Store, purchaseID string, now time.Time) {
+	t.Helper()
+	result, err := store.DB().ExecContext(context.Background(), `INSERT INTO purchase_rollovers
+		(purchase_id,status,traffic_limit_bytes,minimum_remaining_bps,net_paid_txb_minor,created_at,updated_at)
+		SELECT p.id,'pending',COALESCE(p.entitlement_traffic_limit_bytes,c.traffic_limit_bytes),
+		COALESCE(p.reward_rollover_min_remaining_bps,c.rollover_min_remaining_bps),p.charged_txb_minor,?,?
+		FROM purchases p JOIN combos c ON c.id=p.combo_id WHERE p.id=?`, stamp(now), stamp(now), purchaseID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count, err := result.RowsAffected(); err != nil || count != 1 {
+		t.Fatalf("create pending rollover fixture: rows=%d err=%v", count, err)
 	}
 }
 

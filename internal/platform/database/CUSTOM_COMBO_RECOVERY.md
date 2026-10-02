@@ -46,6 +46,19 @@ charges, balance, ledger, coupons, historical draw outcomes and auto-renewal
 switch. It neither repeats a draw nor automatically authorizes recurring charges.
 Both the schema migration record and restored-field signature prevent reapplication.
 
+## Core change followed by a custom combo
+
+A later custom award writes its own squad, price, traffic and rollover overrides.
+Those populated fields exclude the purchase from migration 054, including a
+zero renewal price and awards sharing a settlement timestamp. If another custom
+award existed before the core change, the latest-award guard also excludes that
+older award. For separately timed rewards, a core change before the latest custom
+award cannot authorize recovery even if the newer overrides are missing.
+
+`activity_reward_combo_order_test.go` exercises these sequences through actual
+reward settlement and compares all mutable entitlement fields before and after
+the migration, alongside balances, recovery audit events and outbox job counts.
+
 ## Validation and deployment
 
 `activity_reward_combo_test.go` checks both reward orders, zero-price custom
@@ -54,6 +67,13 @@ terms, ordinary core behavior, and separate temporary/recurring traffic values.
 enablement, charging and successor renewal. The migration tests check eligible
 restoration, exclusions, unchanged balances/switches and safe reapplication.
 Tests run in hosted CI; local automated tests are prohibited by `AGENTS.md`.
+
+Rollover fixtures must create their row explicitly. Normal active purchases have
+no rollover row until expiry is enqueued. The fixtures assert that snapshot
+creation affects one row and use `MarkRolloverProcessing` for the processing
+state, so a missing row cannot silently turn a protection test into an eligible
+recovery case. Pending metadata refresh and processing-state preservation are
+checked separately.
 
 Deploy/restart the new image to apply migration 054. Review
 `activity.custom_combo_recovered` audit entries and the corresponding

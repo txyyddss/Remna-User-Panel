@@ -28,6 +28,7 @@ func TestCustomComboRecoveryRequiresUnambiguousRewardEvidence(t *testing.T) {
 		{name: "erased custom terms", recover: true, price: 54000},
 		{name: "same settlement timestamp", recover: true, price: 54000},
 		{name: "zero price and existing sync", recover: true},
+		{name: "pending rollover metadata", recover: true, price: 54000},
 		{name: "no core reward", price: 54000},
 		{name: "ambiguous custom prizes", price: 54000},
 		{name: "traffic reward", price: 54000},
@@ -74,6 +75,8 @@ func TestCustomComboRecoveryRequiresUnambiguousRewardEvidence(t *testing.T) {
 			t.Fatal(err)
 		}
 		switch test.name {
+		case "pending rollover metadata":
+			seedPendingRewardRollover(t, store, purchase.ID, changeAt)
 		case "zero price and existing sync":
 			if _, err := store.DB().ExecContext(ctx, `INSERT INTO outbox_jobs(id,kind,payload,status,available_at,created_at,updated_at)
 				VALUES(?,'remna_sync_user',?,'pending',?,?,?)`, "existing-sync", fmt.Sprintf(`{"userId":%q}`, user.ID), stamp(now), stamp(now), stamp(now)); err != nil {
@@ -96,7 +99,8 @@ func TestCustomComboRecoveryRequiresUnambiguousRewardEvidence(t *testing.T) {
 				t.Fatal(err)
 			}
 		case "rollover in progress":
-			if _, err := store.DB().ExecContext(ctx, `UPDATE purchase_rollovers SET status='processing' WHERE purchase_id=?`, purchase.ID); err != nil {
+			seedPendingRewardRollover(t, store, purchase.ID, changeAt)
+			if err := store.MarkRolloverProcessing(ctx, purchase.ID, changeAt); err != nil {
 				t.Fatal(err)
 			}
 		case "malformed historical reward":
@@ -141,6 +145,19 @@ func TestCustomComboRecoveryRequiresUnambiguousRewardEvidence(t *testing.T) {
 				}
 				if adminWorkflowBalance(t, store, test.userID) != test.balance {
 					t.Fatal("recovery changed the member balance")
+				}
+				if test.name == "pending rollover metadata" || test.name == "rollover in progress" {
+					var state string
+					var limit, minimum int64
+					if err := store.DB().QueryRowContext(ctx, `SELECT status,traffic_limit_bytes,minimum_remaining_bps FROM purchase_rollovers WHERE purchase_id=?`, test.purchaseID).Scan(&state, &limit, &minimum); err != nil {
+						t.Fatal(err)
+					}
+					if test.recover && (state != "pending" || limit != 500<<30 || minimum != 9999) {
+						t.Fatalf("recovered pending rollover = (%s, %d, %d)", state, limit, minimum)
+					}
+					if !test.recover && (state != "processing" || limit != target.TrafficLimitBytes || minimum != int64(target.RolloverMinRemainingBPS)) {
+						t.Fatalf("processing rollover was modified = (%s, %d, %d)", state, limit, minimum)
+					}
 				}
 				if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_events WHERE target_id=? AND action='activity.custom_combo_recovered'`, test.purchaseID).Scan(&auditCount); err != nil {
 					t.Fatal(err)
