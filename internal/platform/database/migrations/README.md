@@ -2,6 +2,8 @@
 
 Migration files are embedded and applied in lexical order by `database.go`.
 
+- `055_restore_ordered_custom_combo_rewards.sql` follows up 054 using settled raffle ticket order to distinguish same-time prizes and reconstruct recorded temporary/recurring traffic. It verifies surviving fields against the old core-reset behavior and preserves later custom awards, administrator changes and financial records.
+
 - `054_restore_custom_combo_after_core_reward.sql` restores erased custom terms on current purchases when immutable reward history proves a custom award followed by a core-change prize. It skips ambiguous or subsequently edited histories, records an audit event and queues provider sync without changing balances or renewal enablement. See [recovery boundaries](../CUSTOM_COMBO_RECOVERY.md).
 
 - `030_affiliates.sql` adds referral eligibility, immutable tier versions, settlements, and awards.
