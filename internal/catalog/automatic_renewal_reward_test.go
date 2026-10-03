@@ -55,7 +55,7 @@ func TestAutomaticRenewalUsesAwardedCustomCombo(t *testing.T) {
 				baseSquads = append(baseSquads, test.baseSquad)
 			}
 			combo, err := store.SaveCombo(ctx, database.ComboInput{Name: "Core", PriceTXBMinor: 31_900,
-				ValidityDays: 30, TrafficLimitBytes: 100 << 30, ResetStrategy: "MONTH_ROLLING", Active: true, SquadProductIDs: baseSquads})
+				ValidityDays: 30, TrafficLimitBytes: 100 << 30, ResetStrategy: "WEEK", Active: true, SquadProductIDs: baseSquads})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -133,15 +133,18 @@ func TestAutomaticRenewalUsesAwardedCustomCombo(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			var successorID, squads string
+			var successorID, squads, resetStrategy string
 			var price, traffic, threshold int64
 			if err := db.QueryRowContext(ctx, `SELECT id,entitlement_squad_uuids,reward_renewal_price_minor,
-				entitlement_traffic_limit_bytes,reward_rollover_min_remaining_bps FROM purchases WHERE auto_renew_source_purchase_id=?`,
-				source.ID).Scan(&successorID, &squads, &price, &traffic, &threshold); err != nil {
+				entitlement_traffic_limit_bytes,reward_rollover_min_remaining_bps,entitlement_reset_strategy FROM purchases WHERE auto_renew_source_purchase_id=?`,
+				source.ID).Scan(&successorID, &squads, &price, &traffic, &threshold, &resetStrategy); err != nil {
 				t.Fatal(err)
 			}
 			if squads != `["awarded"]` || price != test.price || traffic != test.trafficGiB<<30 || threshold != 9_999 {
 				t.Fatalf("successor reward = (%s, %d, %d, %d)", squads, price, traffic, threshold)
+			}
+			if resetStrategy != "WEEK" {
+				t.Fatalf("successor reset strategy = %q, want the awarded weekly cadence", resetStrategy)
 			}
 			status, err = service.AutomaticRenewal(ctx, user, successorID)
 			if err != nil || !status.CanEnable || !status.Enabled || status.NetPrice.MinorInt64() != test.price {

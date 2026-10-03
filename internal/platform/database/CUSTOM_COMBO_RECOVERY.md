@@ -9,11 +9,15 @@ Provider updates continue through `remna_sync_user` in the existing outbox.
 No new external API or persistent tables are introduced.
 
 A purchase with non-null `reward_renewal_price_minor` has custom terms, including
-when that price is zero. A core-change prize updates only its base combo ID.
-Custom squads, price, traffic, rollover and traffic reward lifetimes remain
+when that price is zero. Custom awards snapshot their selected core's reset
+strategy into the existing `entitlement_reset_strategy` override. A core-change
+prize preserves that override, materializing the current effective cadence first
+for legacy custom purchases that still inherit it. Custom squads, price, traffic,
+reset cadence, rollover and traffic reward lifetimes remain
 intact. The current expiry is unchanged; subsequent renewals use the new base
 combo's cadence. A later full custom prize replaces the custom terms normally.
 An ordinary core change still adopts the target combo's default terms.
+It clears a previous reset override so the target cadence actually takes effect.
 
 ## Existing affected purchases
 
@@ -93,6 +97,31 @@ reproduces the former core-reset writes, and checks restoration and exclusions.
 It checks current versus renewal traffic, newer-award protection, zero prices,
 pending rollover metadata, unchanged balances and safe repeated execution.
 
+## Reset cadence recovery in migration 056
+
+The previous custom grant did not set `entitlement_reset_strategy`; core changes
+therefore changed the effective cadence when that column was NULL. Migrations
+054 and 055 restored other terms but did not fill this missing override.
+
+Migration 056 finds the latest unambiguous custom award in settled ticket order,
+matches its squads, renewal price and rollover threshold to a current custom
+purchase, and fills only a NULL reset override. Automatic-renewal predecessor
+references allow the current successor to retain the award's cadence without
+rewriting expired terms. Explicit reset overrides, mismatched custom terms,
+audited entitlement edits and rollovers already being processed remain untouched.
+Recovery audit entries from 054/055 do not block this follow-up repair.
+
+Legacy result payloads contain the selected core combo ID but no historical
+cadence snapshot. The backfill therefore uses that original core's current
+`reset_strategy`, including hidden cores; it cannot reconstruct an older setting
+if the original core itself was edited. Future awards capture cadence at grant
+time and subsequent core/catalog changes cannot silently replace it.
+
+Each repair records `activity.custom_combo_cadence_recovered` with the source
+award/core IDs and chosen strategy, and reuses or queues `remna_sync_user`.
+Traffic amounts, prices, balances, expiry, renewal switches and draw results do
+not change. Provider sync applies the cadence without issuing a traffic reset.
+
 ## Validation and deployment
 
 `activity_reward_combo_test.go` checks both reward orders, zero-price custom
@@ -109,7 +138,8 @@ state, so a missing row cannot silently turn a protection test into an eligible
 recovery case. Pending metadata refresh and processing-state preservation are
 checked separately.
 
-Deploy/restart the new image to apply migrations 054 and 055. Review
+Deploy/restart the new image to apply migrations 054 through 056. Review
 `activity.custom_combo_recovered` audit entries and the corresponding
-`remna_sync_user` jobs, then reopen the renewal dialog. CI success confirms the
+`activity.custom_combo_cadence_recovered` entries and `remna_sync_user` jobs,
+then reopen the renewal dialog. CI success confirms the
 constructed cases, not that a particular production purchase was repaired.

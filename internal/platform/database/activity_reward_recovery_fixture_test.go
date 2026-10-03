@@ -67,6 +67,10 @@ func reproduceLegacyCoreRewards(t *testing.T, store *Store, purchaseID string, r
 				value = *result.Reward.ResolvedValue
 			}
 			err = applyDrawEntitlementTx(ctx, tx, result.UserID, result.ID, result.Reward, value, result.CreatedAt)
+			if err == nil && result.Reward.Kind == activity.RewardEntitlementGrant {
+				// Legacy custom awards inherited cadence rather than snapshotting it.
+				_, err = tx.ExecContext(ctx, `UPDATE purchases SET entitlement_reset_strategy=NULL WHERE id=?`, purchaseID)
+			}
 		}
 		if err != nil {
 			t.Fatal(err)

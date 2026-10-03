@@ -11,7 +11,7 @@ This package builds the live catalog, validates purchase selections against curr
 - `renewals.go` retains the internal legacy batch implementation only; manual renewal is no longer a public member flow.
 - `renewal_catalog.go` hydrates owned renewal selections independently of storefront visibility while verifying every retained squad against the queued live provider.
 - Automatic renewal hydrates the store plan's effective combo, including persisted full-squad overrides from draw rewards, instead of reloading the base combo's default squads. Missing awarded squads and disabled nodes still block renewal; the base combo must remain active.
-- `automatic_renewal_reward_test.go` exercises draw awards, custom-then-core-change ordering, enablement, one-time charging, successor entitlement preservation, and unavailable awarded squads against SQLite with a mock provider.
+- `automatic_renewal_reward_test.go` exercises draw awards, custom-then-core-change ordering, enablement, one-time charging, successor entitlement/cadence preservation, and unavailable awarded squads against SQLite with a mock provider.
 - `renewal_catalog_test.go` covers repriced hidden-squad enablement and processing, current-price balance checks, missing-upstream exclusion, and storefront isolation.
 - `renewal_stock_integration_test.go` exercises status, enablement, and due renewal against the real SQLite store for a repriced owned squad with zero new-sale capacity, including one successor and one debit.
 - `cancellation.go` exposes the authenticated member operation for cancelling a queued purchase through the transactional store refund path.

@@ -16,17 +16,19 @@ func applyDrawCoreComboTx(ctx context.Context, tx *sql.Tx, purchaseID, comboID s
 	}
 	var customPrice sql.NullInt64
 	var traffic int64
+	var resetStrategy string
 	if err := tx.QueryRowContext(ctx, `SELECT p.reward_renewal_price_minor,
-		COALESCE(p.entitlement_traffic_limit_bytes,c.traffic_limit_bytes)
-		FROM purchases p JOIN combos c ON c.id=p.combo_id WHERE p.id=?`, purchaseID).Scan(&customPrice, &traffic); err != nil {
+		COALESCE(p.entitlement_traffic_limit_bytes,c.traffic_limit_bytes),COALESCE(p.entitlement_reset_strategy,c.reset_strategy)
+		FROM purchases p JOIN combos c ON c.id=p.combo_id WHERE p.id=?`, purchaseID).Scan(&customPrice, &traffic, &resetStrategy); err != nil {
 		return fmt.Errorf("load core-change reward terms: %w", err)
 	}
 	if customPrice.Valid {
-		_, err = tx.ExecContext(ctx, `UPDATE purchases SET combo_id=?,updated_at=? WHERE id=?`, comboID, stamp(now), purchaseID)
+		// Materialize legacy inherited cadence before changing its base combo.
+		_, err = tx.ExecContext(ctx, `UPDATE purchases SET combo_id=?,entitlement_reset_strategy=?,updated_at=? WHERE id=?`, comboID, resetStrategy, stamp(now), purchaseID)
 	} else {
 		traffic = combo.TrafficLimitBytes
 		_, err = tx.ExecContext(ctx, `UPDATE purchases SET combo_id=?,entitlement_traffic_limit_bytes=NULL,
-			entitlement_squad_uuids=NULL,entitlement_addon_squad_uuids=NULL,reward_rollover_min_remaining_bps=NULL,
+			entitlement_reset_strategy=NULL,entitlement_squad_uuids=NULL,entitlement_addon_squad_uuids=NULL,reward_rollover_min_remaining_bps=NULL,
 			reward_traffic_renewal=1,reward_renewal_traffic_limit_bytes=NULL,updated_at=? WHERE id=?`, comboID, stamp(now), purchaseID)
 	}
 	if err != nil {
