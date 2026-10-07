@@ -2,7 +2,7 @@
 
 - `types.go` defines the safe persisted and transport-facing detector values,
   including the action-specific duration rule used by administration.
-- `parser.go` accepts only Xray domain connection accepts for the administrator-selected outbound-tag list and fingerprints lines without retaining them.
+- `parser.go` accepts only Xray domain connection accepts for the administrator-selected outbound-tag list, including bracketed `[inbound -> outbound]` access-log routes and legacy outbound fields, and fingerprints lines without retaining them.
 - `outbound_tags.go` normalizes the bounded tag list and rejects malformed or duplicate entries before persistence.
 - `ingestion.go` bounds report parsing, resolves only reported remote identities, and persists normalized events without applying policy.
 - `service.go` owns service construction plus compiled RE2 and token helpers.

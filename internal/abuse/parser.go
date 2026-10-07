@@ -11,10 +11,11 @@ import (
 )
 
 var (
-	emailPattern    = regexp.MustCompile(`(?i)email:\s*([^\s,]+)`)
-	targetPattern   = regexp.MustCompile(`(?i)(?:tcp|udp):(?://)?([^\s:\[]+)(?::\d+)?`)
-	outboundPattern = regexp.MustCompile(`(?i)(?:>>\s*|outbound:\s*)([a-z0-9._-]+)(?:\s|$)`)
-	timePattern     = regexp.MustCompile(`\d{4}/\d{2}/\d{2}\s+\d{2}:\d{2}:\d{2}`)
+	emailPattern         = regexp.MustCompile(`(?i)email:\s*([^\s,]+)`)
+	targetPattern        = regexp.MustCompile(`(?i)(?:tcp|udp):(?://)?([^\s:\[]+)(?::\d+)?`)
+	outboundPattern      = regexp.MustCompile(`(?i)(?:>>\s*|outbound:\s*)([a-z0-9._-]+)(?:\s|$)`)
+	routeOutboundPattern = regexp.MustCompile(`(?i)\[[^\]\r\n]*->\s*([a-z0-9._-]+)\s*\]`)
+	timePattern          = regexp.MustCompile(`\d{4}/\d{2}/\d{2}\s+\d{2}:\d{2}:\d{2}`)
 )
 
 type parsedLine struct {
@@ -46,6 +47,9 @@ func parseReport(raw string, fallback time.Time, limit int, outboundTags []strin
 func parseLine(line string, fallback time.Time, outboundTags []string) (parsedLine, bool) {
 	lower := strings.ToLower(line)
 	outbound := outboundPattern.FindStringSubmatch(line)
+	if len(outbound) != 2 {
+		outbound = routeOutboundPattern.FindStringSubmatch(line)
+	}
 	if len(outbound) != 2 || !matchesOutboundTag(outbound[1], outboundTags) || !strings.Contains(lower, "accepted") || strings.Contains(lower, "error") {
 		return parsedLine{}, false
 	}
