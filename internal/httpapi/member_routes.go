@@ -13,8 +13,6 @@ func (s *Server) mountMemberOperations(router chi.Router) {
 	router.Put("/api/v1/me/internal-squads/{uuid}", s.memberSwitchSquad)
 	router.Get("/api/v1/purchases/{id}/early-activation", s.memberEarlyActivationQuote)
 	router.Post("/api/v1/purchases/{id}/activate", s.memberActivateEarly)
-	router.Get("/api/v1/purchases/{id}/traffic-reset", s.trafficResetQuote)
-	router.Post("/api/v1/purchases/{id}/traffic-reset", s.trafficReset)
 	router.Get("/api/v1/purchases/{id}/refund", s.memberRefundQuote)
 	router.Post("/api/v1/purchases/{id}/refund", s.memberRefund)
 	router.Post("/api/v1/subscription/connections", s.requestConnections)

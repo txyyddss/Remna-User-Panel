@@ -85,6 +85,9 @@ preferencesApi.getTag = async () => tag
 preferencesApi.updateTag = async value => { tag = { ...tag, tag: value }; return tag }
 memberOperationsApi.getTrafficResetAutomation = async () => ({ enabled: state.automation, updatedAt: at(0) })
 memberOperationsApi.updateTrafficResetAutomation = async enabled => { state.automation = enabled; return { enabled, updatedAt: at(0) } }
+memberOperationsApi.getPurchaseRefundQuote = async () => ({ purchaseId: active.id, eligible: true, reasonCode: null, refund: active.price, quotedAt: at(0), eligibilityExpiresAt: at(day) })
+memberOperationsApi.refundPurchase = async () => receipt('purchase_member_refund')
+api.getAutoRenewal = async () => ({ enabled: false, canEnable: true, ineligibleReason: null, purchaseId: active.id, quotedAt: at(0) }) as never
 const optionalSquads = [
   { id: 'optional-jp', remnaSquadUuid: 'optional-jp', name: 'Japan transit', country: 'JP', multiplier: 1 },
   { id: 'optional-nl', remnaSquadUuid: 'optional-nl', name: 'Netherlands transit', country: 'NL', multiplier: 0.5 },
@@ -102,7 +105,7 @@ api.addPurchaseAddons = async (_purchaseId, ids) => {
   return updated
 }
 Object.assign(window, { __controlsAudit: state, __controlsAuditLocale: setLocale, __controlsSnapshot: () => controls })
-const app = createApp(SettingsAudit)
+const app = createApp(SettingsAudit, { purchase: active })
 app.config.globalProperties.$t = t
 app.use(createPinia())
 usePreferencesStore().bind('audit-user')

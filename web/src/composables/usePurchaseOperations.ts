@@ -2,16 +2,15 @@ import { computed, readonly, shallowRef } from 'vue'
 
 import { ApiError } from '@/api/client'
 import { memberOperationsApi } from '@/api/memberOperations'
-import type { MemberRefundQuote, TrafficResetQuote } from '@/api/types'
+import type { MemberRefundQuote } from '@/api/types'
 import { localizedError, t } from '@/i18n'
 import { createUuid } from '@/utils/browserCompatibility'
 import { notifyHaptic } from '@/utils/telegram'
 import { operationIsActive, useOperationReceipt } from './useOperationReceipt'
 
-export type PurchaseOperationKind = 'reset' | 'refund'
+export type PurchaseOperationKind = 'refund'
 
 export function usePurchaseOperations(purchaseId: () => string) {
-  const resetQuote = shallowRef<TrafficResetQuote | null>(null)
   const refundQuote = shallowRef<MemberRefundQuote | null>(null)
   const refundEligibilityLoading = shallowRef(true)
   const quoteLoading = shallowRef(false)
@@ -38,16 +37,12 @@ export function usePurchaseOperations(purchaseId: () => string) {
     }
   }
 
-  async function loadQuote(kind: PurchaseOperationKind): Promise<void> {
+  async function loadQuote(): Promise<void> {
     quoteLoading.value = true
     mutationError.value = null
-    if (kind === 'reset') {
-      resetQuote.value = null
-    } else refundQuote.value = null
+    refundQuote.value = null
     try {
-      if (kind === 'reset') {
-        resetQuote.value = await memberOperationsApi.getTrafficResetQuote(purchaseId())
-      } else refundQuote.value = await memberOperationsApi.getPurchaseRefundQuote(purchaseId())
+      refundQuote.value = await memberOperationsApi.getPurchaseRefundQuote(purchaseId())
     } catch (caught) {
       mutationError.value = localizedError(caught, 'purchaseOperations.errors.quoteUnavailable')
     } finally {
@@ -55,12 +50,10 @@ export function usePurchaseOperations(purchaseId: () => string) {
     }
   }
 
-  async function refreshAfterConflict(kind: PurchaseOperationKind): Promise<void> {
-    if (kind === 'reset') resetQuote.value = null
-    else refundQuote.value = null
+  async function refreshAfterConflict(): Promise<void> {
+    refundQuote.value = null
     try {
-      if (kind === 'reset') resetQuote.value = await memberOperationsApi.getTrafficResetQuote(purchaseId())
-      else refundQuote.value = await memberOperationsApi.getPurchaseRefundQuote(purchaseId())
+      refundQuote.value = await memberOperationsApi.getPurchaseRefundQuote(purchaseId())
     } catch {
       // Preserve the mutation error; the member can explicitly request a new quote.
     }
@@ -74,9 +67,7 @@ export function usePurchaseOperations(purchaseId: () => string) {
     try {
       const key = keys.get(actionId) ?? createUuid()
       keys.set(actionId, key)
-      const receipt = kind === 'reset'
-        ? await memberOperationsApi.resetPurchaseTraffic(purchaseId(), key)
-        : await memberOperationsApi.refundPurchase(purchaseId(), key)
+      const receipt = await memberOperationsApi.refundPurchase(purchaseId(), key)
       keys.delete(actionId)
       activeKind.value = kind
       operation.track(receipt)
@@ -85,7 +76,7 @@ export function usePurchaseOperations(purchaseId: () => string) {
     } catch (caught) {
       if (caught instanceof ApiError && (caught.status === 409 || caught.status === 422)) {
         keys.delete(actionId)
-        await refreshAfterConflict(kind)
+        await refreshAfterConflict()
       }
       mutationError.value = caught instanceof ApiError && ['OPERATION_CONFLICT', 'PURCHASE_OPERATION_INELIGIBLE'].includes(caught.code)
         ? t('purchaseOperations.quoteChanged')
@@ -105,7 +96,6 @@ export function usePurchaseOperations(purchaseId: () => string) {
   }
 
   function reset(): void {
-    resetQuote.value = null
     refundQuote.value = null
     mutationError.value = null
     activeKind.value = null
@@ -114,7 +104,6 @@ export function usePurchaseOperations(purchaseId: () => string) {
   }
 
   return {
-    resetQuote: readonly(resetQuote),
     refundQuote: readonly(refundQuote),
     refundEligibilityLoading: readonly(refundEligibilityLoading),
     quoteLoading: readonly(quoteLoading),

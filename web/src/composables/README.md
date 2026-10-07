@@ -56,7 +56,7 @@ separate. Action quotes and permission decisions still await the backend.
 - `usePaymentReturn.test.ts` covers durable payment-return confirmation and pending polling.
 - `useOperationReceipt.ts` performs bounded, read-only polling for durable member operation receipts and stops on every terminal or review state.
 - `useDurableCommand.ts` retains stable UUID keys for ambiguous command retries, invalidates disposed submissions, and delegates accepted receipt polling to `useOperationReceipt.ts`.
-- `usePurchaseOperations.ts` owns authoritative paid-reset/refund quotes, the account-wide reset automation load/save state, semantic feedback for actual preference changes and outcomes, conflict refresh, mutation idempotency, and receipt state for an active purchase.
+- `usePurchaseOperations.ts` owns authoritative first-term refund quotes, conflict refresh, mutation idempotency and receipt state. Automatic resets remain an account setting; no member manual-reset command is exposed.
 - `usePurchaseOperations.test.ts` covers quote conflict refresh, idempotency reuse, server-owned refund eligibility, and immediate automation persistence.
 - `useQuestionnaireImport.ts` previews and settles questionnaire imports with reset-safe mutation and polling generations.
 - `useQuestionnaireImport.test.ts` covers import analysis and settlement.

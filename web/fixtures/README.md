@@ -8,6 +8,8 @@ loading, empty and recovery states. `window.__controlsAudit` records mutations;
 The Settings fixture also supplies two optional squads with one node each and
 different popularity shares for Add squads geometry, sorting and checkout audits.
 `addonempty`, `addonslow` and `addonerror` exercise popup state handling.
+`refund` mounts retained purchase/refund actions and verifies the manual reset
+control and dialog are absent while server-quoted refunds remain available.
 `CommunityAudit.vue`, `community-audit.ts` and `community-audit.html` exercise the
 full-width community layout with `locked`, `joined`, `slow` and `error` states.
 

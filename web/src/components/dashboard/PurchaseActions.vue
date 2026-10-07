@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, shallowRef, watch } from 'vue'
 
-import type { MemberRefundQuote, OperationStatus, Purchase, TrafficResetQuote } from '@/api/types'
+import type { MemberRefundQuote, OperationStatus, Purchase } from '@/api/types'
 import InlineNotice from '@/components/common/InlineNotice.vue'
 import { type PurchaseOperationKind, usePurchaseOperations } from '@/composables/usePurchaseOperations'
 import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
@@ -21,16 +21,14 @@ const dialogOpen = computed({
   set: (open) => { if (!open && !operation.mutating.value) dialogKind.value = null },
 })
 const ownsBack = computed(() => dialogOpen.value)
-const currentQuote = computed<TrafficResetQuote | MemberRefundQuote | null>(() => (
-  dialogKind.value === 'reset' ? operation.resetQuote.value : operation.refundQuote.value
-))
+const currentQuote = computed<MemberRefundQuote | null>(() => operation.refundQuote.value)
 const quoteEligible = computed(() => currentQuote.value?.eligible === true)
 const refundEligible = computed(() => operation.refundQuote.value?.eligible === true)
 const operationTone = computed(() => operation.receipt.value?.status === 'succeeded' ? 'success' : 'warning')
-const operationMessage = computed(() => t(`purchaseOperations.operation.${operation.activeKind.value ?? 'reset'}.${operation.receipt.value?.status ?? 'queued'}`))
+const operationMessage = computed(() => t(`purchaseOperations.operation.refund.${operation.receipt.value?.status ?? 'queued'}`))
 
-function quoteAmount(quote: TrafficResetQuote | MemberRefundQuote): string {
-  return formatMemberMoney('price' in quote ? quote.price : quote.refund)
+function quoteAmount(quote: MemberRefundQuote): string {
+  return formatMemberMoney(quote.refund)
 }
 
 function reasonMessage(reason: string | null | undefined): string {
@@ -51,7 +49,7 @@ async function openQuote(kind: PurchaseOperationKind): Promise<void> {
   }
   operation.dismissOperation()
   dialogKind.value = kind
-  await operation.loadQuote(kind)
+  await operation.loadQuote()
 }
 
 function closeDialog(): void {
@@ -89,20 +87,6 @@ useTelegramBackButton(ownsBack, closeDialog)
         data-haptic="open"
         @click="openQuote('refund')"
       />
-      <UTooltip :text="$t('purchaseOperations.resetAction')">
-        <UButton
-          class="purchase-actions__reset"
-          color="neutral"
-          variant="outline"
-          square
-          icon="i-ph-arrows-clockwise"
-          :disabled="operation.blocksMutations.value"
-          :aria-label="$t('purchaseOperations.resetAction')"
-          :title="$t('purchaseOperations.resetAction')"
-          data-haptic="open"
-          @click="openQuote('reset')"
-        />
-      </UTooltip>
     </div>
 
     <InlineNotice v-if="operation.receipt.value && !dialogOpen" :tone="operationTone" :title="statusLabel(operation.receipt.value.status)">
@@ -121,8 +105,8 @@ useTelegramBackButton(ownsBack, closeDialog)
 
     <UModal
       v-model:open="dialogOpen"
-      :title="$t(`purchaseOperations.${dialogKind ?? 'reset'}.title`)"
-      :description="$t(`purchaseOperations.${dialogKind ?? 'reset'}.description`)"
+      :title="$t('purchaseOperations.refund.title')"
+      :description="$t('purchaseOperations.refund.description')"
       :dismissible="!operation.mutating.value"
       :close="false"
       :ui="{ header: 'tg-overlay-header--centered', wrapper: 'tg-overlay-copy--centered', footer: 'justify-end' }"
@@ -133,7 +117,6 @@ useTelegramBackButton(ownsBack, closeDialog)
           <template v-else-if="currentQuote">
             <dl class="purchase-operation-quote">
               <div><dt>{{ $t('purchaseOperations.amount') }}</dt><dd>{{ quoteAmount(currentQuote) }}</dd></div>
-              <div v-if="'resetStrategy' in currentQuote"><dt>{{ $t('purchaseOperations.cadence') }}</dt><dd>{{ $t(`home.reset.${currentQuote.resetStrategy}`) }}</dd></div>
               <div v-if="'eligibilityExpiresAt' in currentQuote && currentQuote.eligibilityExpiresAt"><dt>{{ $t('purchaseOperations.eligibleUntil') }}</dt><dd>{{ formatDateTime(currentQuote.eligibilityExpiresAt) }}</dd></div>
             </dl>
             <InlineNotice v-if="!currentQuote.eligible" tone="warning">{{ reasonMessage(currentQuote.reasonCode) }}</InlineNotice>
@@ -158,12 +141,12 @@ useTelegramBackButton(ownsBack, closeDialog)
         <UButton color="neutral" variant="outline" :disabled="operation.mutating.value" :label="$t('common.close')" data-haptic="dismiss" @click="closeDialog" />
         <UButton
           v-if="!operation.receipt.value"
-          :color="dialogKind === 'refund' ? 'warning' : 'primary'"
-          :icon="dialogKind === 'refund' ? 'i-ph-arrow-u-up-left' : 'i-ph-arrows-clockwise'"
+          color="warning"
+          icon="i-ph-arrow-u-up-left"
           :loading="operation.mutating.value"
           :disabled="operation.quoteLoading.value || !quoteEligible"
-          :label="$t(`purchaseOperations.${dialogKind ?? 'reset'}.confirm`)"
-          :data-haptic="dialogKind === 'refund' ? 'destructive' : 'confirm'"
+          :label="$t('purchaseOperations.refund.confirm')"
+          data-haptic="destructive"
           @click="dialogKind && operation.start(dialogKind)"
         />
       </template>
@@ -176,7 +159,6 @@ useTelegramBackButton(ownsBack, closeDialog)
 .purchase-actions__row { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.55rem; }
 .purchase-actions__primary { min-width: 0; flex: 1 1 auto; }
 .purchase-actions__refund { min-width: 0; flex: 1 1 8rem; }
-.purchase-actions__reset { width: 44px; min-width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
 .purchase-operation-quote { display: grid; gap: 0.5rem; margin: 0; }
 .purchase-operation-quote > div { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--line); }
 .purchase-operation-quote dt { color: var(--text-faint); font-size: 0.72rem; }

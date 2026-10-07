@@ -1,7 +1,7 @@
 {
   "dashboard": {
-    "usedTraffic": "\u5df2\u4f7f\u7528",
-    "remainingTraffic": "\u5269\u4f59",
+    "usedTraffic": "已使用",
+    "remainingTraffic": "剩余",
     "yourRide": "你的套餐",
     "squadsIncluded": "包含 {count} 个区域",
     "traffic": "流量",
@@ -49,23 +49,16 @@
     }
   },
   "purchaseOperations": {
-    "resetAction": "重置流量",
     "refundAction": "申请退款",
     "amount": "金额",
-    "cadence": "重置周期",
     "eligibleUntil": "可申请至",
     "ineligible": "当前购买不符合此操作条件。",
     "quoteChanged": "资格或价格已变化，请检查刷新后的报价再确认。",
     "automation": {
       "label": "自动重置流量",
-      "description": "用量超过 99% 后自动重置，按重置价格扣款。",
+      "description": "用量严格超过 95% 后，符合条件的套餐可自动重置。约每五分钟检查一次，余额充足时按正常重置价格扣款。",
       "loadFailed": "暂时无法获取自动重置设置。",
       "saveFailed": "无法保存自动重置设置。"
-    },
-    "reset": {
-      "title": "立即重置流量？",
-      "description": "开始服务商重置前，将扣除服务器计算的价格。",
-      "confirm": "支付并重置"
     },
     "refund": {
       "title": "退款此购买？",
@@ -74,8 +67,6 @@
     },
     "reason": {
       "PURCHASE_NOT_ACTIVE": "只有当前生效的购买可以执行此操作。",
-      "RESET_STRATEGY_UNSUPPORTED": "此购买的流量重置周期暂不受支持。",
-      "RESET_PRICE_INVALID": "无法获取重置价格。",
       "REFUND_NOT_FIRST_TERM": "只有此购买链路的首个周期可以退款。",
       "REFUND_WINDOW_EXPIRED": "严格的 24 小时退款期限已结束。",
       "REFUND_TRAFFIC_USED": "此购买已经产生流量用量。",
@@ -83,15 +74,6 @@
       "OPERATION_ALREADY_OPEN": "此购买已有另一项服务商操作正在进行。"
     },
     "operation": {
-      "reset": {
-        "queued": "付费流量重置已排队。",
-        "processing": "服务商正在重置流量。",
-        "succeeded": "流量已成功重置。",
-        "failed": "流量重置未能完成。",
-        "compensated": "流量重置失败，已原额退回本次扣款。",
-        "pending_review": "服务商结果不明确，审核期间请勿重试。",
-        "partial": "流量重置仅部分完成，审核期间请勿重试。"
-      },
       "refund": {
         "queued": "退款请求已排队。",
         "processing": "正在暂停访问并再次确认零用量。",

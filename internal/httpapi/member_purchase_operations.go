@@ -8,36 +8,6 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/purchaseops"
 )
 
-func (s *Server) trafficResetQuote(w http.ResponseWriter, r *http.Request) {
-	user := currentUser(r)
-	if !s.requireOnboarded(w, r, user) {
-		return
-	}
-	quote, err := s.deps.PurchaseOperations.TrafficResetQuote(r.Context(), user.ID, chiURLParam(r, "id"))
-	if err != nil {
-		s.writeMemberOperationError(w, r, err, false)
-		return
-	}
-	writeJSON(w, http.StatusOK, quote)
-}
-
-func (s *Server) trafficReset(w http.ResponseWriter, r *http.Request) {
-	user := currentUser(r)
-	if !s.requireOnboarded(w, r, user) {
-		return
-	}
-	key, ok := s.requireIdempotencyKey(w, r)
-	if !ok {
-		return
-	}
-	receipt, err := s.deps.PurchaseOperations.ResetTraffic(r.Context(), user.ID, chiURLParam(r, "id"), key)
-	if err != nil {
-		s.writeMemberOperationError(w, r, err, true)
-		return
-	}
-	writeJSON(w, http.StatusAccepted, receipt)
-}
-
 func (s *Server) memberRefundQuote(w http.ResponseWriter, r *http.Request) {
 	user := currentUser(r)
 	if !s.requireOnboarded(w, r, user) {

@@ -83,18 +83,6 @@ IPBlock:
     createdAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
     expiresAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
 
-TrafficResetQuote:
-  type: object
-  additionalProperties: false
-  required: [purchaseId, eligible, price, resetStrategy, quotedAt]
-  properties:
-    purchaseId: { $ref: '../../openapi.yaml#/components/schemas/ID' }
-    eligible: { type: boolean }
-    reasonCode: { type: [string, 'null'] }
-    price: { $ref: '../../openapi.yaml#/components/schemas/Money' }
-    resetStrategy: { $ref: '../../openapi.yaml#/components/schemas/ResetStrategy' }
-    quotedAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
-
 TrafficResetAutomation:
   type: object
   additionalProperties: false

@@ -1,4 +1,4 @@
-// Package purchaseops owns member-paid traffic resets and first-term refunds.
+// Package purchaseops owns member combo controls, automatic reset settlement and first-term refunds.
 package purchaseops
 
 import (
