@@ -30,7 +30,7 @@ const { reducedMotion, offset } = useMotionPreferences()
 
 <template>
   <motion.div v-if="receipt || error" layout class="operation-status">
-    <AnimatePresence mode="wait" :initial="false">
+    <AnimatePresence :initial="false">
       <motion.div
         v-if="receipt"
         :key="`receipt:${receiptKey}`"
