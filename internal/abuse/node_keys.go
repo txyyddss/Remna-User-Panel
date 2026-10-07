@@ -15,9 +15,14 @@ func (s *Service) SyncNodes(ctx context.Context, vault *secret.Vault, now time.T
 	if s.nodes == nil || vault == nil {
 		return nil, ErrInvalid
 	}
-	nodes, err := s.nodes.AbuseNodes(ctx)
+	nodes, err := s.liveNodes(ctx)
 	if err != nil {
 		return nil, err
+	}
+	if repository, ok := s.repo.(nodeCredentialReconciler); ok {
+		if err := repository.ReconcileNodeCredentials(ctx, nodes); err != nil {
+			return nil, err
+		}
 	}
 	existing, err := s.repo.NodeCredentials(ctx)
 	if err != nil {
@@ -47,12 +52,29 @@ func (s *Service) SyncNodes(ctx context.Context, vault *secret.Vault, now time.T
 			return nil, err
 		}
 	}
-	return s.repo.NodeCredentials(ctx)
+	credentials, err := s.repo.NodeCredentials(ctx)
+	if err != nil {
+		return nil, err
+	}
+	live := make(map[string]bool, len(nodes))
+	for _, node := range nodes {
+		live[node.UUID] = true
+	}
+	result := make([]NodeCredential, 0, len(nodes))
+	for _, credential := range credentials {
+		if live[credential.UUID] {
+			result = append(result, credential)
+		}
+	}
+	return result, nil
 }
 func (s *Service) CopyNodeKey(ctx context.Context, vault *secret.Vault, nodeID string) (string, error) {
 	nodeID = strings.TrimSpace(nodeID)
 	if vault == nil || nodeID == "" {
 		return "", ErrInvalid
+	}
+	if err := s.requireLiveNode(ctx, nodeID); err != nil {
+		return "", err
 	}
 	sealed, err := s.repo.CopyNodeCredential(ctx, nodeID)
 	if err != nil {
@@ -64,6 +86,9 @@ func (s *Service) RotateNodeKey(ctx context.Context, vault *secret.Vault, nodeID
 	nodeID = strings.TrimSpace(nodeID)
 	if vault == nil || nodeID == "" {
 		return "", ErrInvalid
+	}
+	if err := s.requireLiveNode(ctx, nodeID); err != nil {
+		return "", err
 	}
 	if _, err := s.repo.CopyNodeCredential(ctx, nodeID); err != nil {
 		return "", err

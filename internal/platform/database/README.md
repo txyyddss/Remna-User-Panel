@@ -1,5 +1,9 @@
 # SQLite store
 
+`abuse_node_retention.go` reconciles key records against a successful complete
+upstream list without deleting historical incidents. `abuse_node_retention_test.go`
+covers deleted-key rejection and preserving credentials during provider outages.
+
 `member_squad_preferences.go` stores disabled references and validates the last
 enabled squad atomically. `member_combo_control_helpers.go` checks ownership,
 queued order, pending mutations and bans. `member_early_activation.go` forfeits

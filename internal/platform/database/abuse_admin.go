@@ -43,6 +43,22 @@ func (s *Store) SaveNodeCredential(ctx context.Context, node abuse.Node, digest,
 	if node.UUID == "" || digest == "" || sealed == "" {
 		return abuse.ErrInvalid
 	}
+	// Rotation must update an existing row; it cannot resurrect a key removed
+	// concurrently by a complete upstream inventory reconciliation.
+	if node.Name == "" {
+		result, err := s.db.ExecContext(ctx, `UPDATE abuse_node_credentials SET key_digest=?,sealed_key=?,rotated_at=?,updated_at=? WHERE node_uuid=?`, digest, sealed, stamp(now), stamp(now), node.UUID)
+		if err != nil {
+			return err
+		}
+		changed, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if changed != 1 {
+			return ErrNotFound
+		}
+		return nil
+	}
 	_, err := s.db.ExecContext(ctx, `INSERT INTO abuse_node_credentials(node_uuid,node_name,key_digest,sealed_key,rotated_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?) ON CONFLICT(node_uuid) DO UPDATE SET node_name=CASE WHEN excluded.node_name='' THEN abuse_node_credentials.node_name ELSE excluded.node_name END,key_digest=excluded.key_digest,sealed_key=excluded.sealed_key,rotated_at=excluded.rotated_at,updated_at=excluded.updated_at`, node.UUID, node.Name, digest, sealed, stamp(now), stamp(now), stamp(now))
 	return err
 }

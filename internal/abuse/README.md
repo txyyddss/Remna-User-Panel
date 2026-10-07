@@ -1,5 +1,9 @@
 # Abuse detector
 
+`node_inventory.go` validates complete upstream node inventories before secrets
+are reconciled. Copy/rotation also require live presence, so deleted nodes cannot
+retain actionable keys; an upstream outage preserves stored credentials.
+
 - `types.go` defines the safe persisted and transport-facing detector values,
   including the action-specific duration rule used by administration.
 - `parser.go` accepts only Xray domain connection accepts for the administrator-selected outbound-tag list, including bracketed `[inbound -> outbound]` access-log routes and legacy outbound fields, and fingerprints lines without retaining them.
