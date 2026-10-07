@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { AnimatePresence, motion } from 'motion-v'
-
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { useI18n } from '@/i18n'
@@ -16,41 +14,35 @@ const { reducedMotion } = useMotionPreferences()
 </script>
 
 <template>
-  <AnimatePresence mode="wait" :initial="false">
-    <motion.div
+  <Transition name="admin-state" mode="out-in" :css="!reducedMotion">
+    <div
       v-if="loading"
       key="loading"
       class="admin-loading"
-      :initial="{ opacity: 0 }"
-      :animate="{ opacity: 1 }"
-      :exit="{ opacity: 0 }"
-      :transition="{ duration: reducedMotion ? 0.08 : 0.16, ease: 'easeOut' }"
     >
       <SkeletonBlock height="5rem" />
       <SkeletonBlock height="5rem" />
       <SkeletonBlock height="5rem" />
-    </motion.div>
-    <motion.div
+    </div>
+    <div
       v-else-if="error"
       :key="`error:${error}`"
       class="error-state error-state--compact"
-      :initial="{ opacity: 0 }"
-      :animate="{ opacity: 1 }"
-      :exit="{ opacity: 0 }"
-      :transition="{ duration: reducedMotion ? 0.08 : 0.16, ease: 'easeOut' }"
     >
       <h2>{{ t('adminSection.unavailable') }}</h2>
       <p>{{ error }}</p>
       <UButton color="neutral" variant="outline" icon="i-ph-arrow-clockwise" :label="t('adminSection.retry')" @click="$emit('retry')" />
-    </motion.div>
-    <motion.div
+    </div>
+    <div
       v-else
       key="content"
-      :initial="{ opacity: 0 }"
-      :animate="{ opacity: 1 }"
-      :transition="{ duration: reducedMotion ? 0.08 : 0.16, ease: 'easeOut' }"
     >
       <slot />
-    </motion.div>
-  </AnimatePresence>
+    </div>
+  </Transition>
 </template>
+
+<style scoped>
+.admin-state-enter-active, .admin-state-leave-active { transition: opacity 160ms ease-out; }
+.admin-state-enter-from, .admin-state-leave-to { opacity: 0; }
+</style>

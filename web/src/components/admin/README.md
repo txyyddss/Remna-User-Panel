@@ -11,6 +11,8 @@ payment profiles, activity configuration, and onboarding/affiliate drafts preser
 edits made while refreshed data is pending. See `../../api/cache/README.md`.
 
 Admin section labels are locale-owned, use Nuxt UI controls, and avoid visual separator literals in component code.
+`AdminSectionState.vue` uses Vue's native sequential fade for loading, errors and
+content, avoiding external presence bookkeeping during immediate reloads.
 Admin controls inherit guarded action feedback, modal dismissal stays soft, audited confirmation uses rigid feedback, and destructive entry or confirmation uses heavy feedback.
 
 - `AdminActivityPanel.vue` manages games and lucky draws; calendar and reward settings are in `AdminSettingsPanel.vue`.
@@ -21,7 +23,7 @@ Admin controls inherit guarded action feedback, modal dismissal stays soft, audi
 - `AdminCatalogEditor.vue` edits combo terms.
 - `AdminCatalogPanel.vue` manages combos and squads.
 - `AdminCompensationPanel.vue` composes the revisioned outage policy and recipient-safe event review flow, with a left-aligned localized heading and a shrinkable single-column grid for narrow phones.
-- `AdminAbusePanel.vue` lazy-loads the premium-dark detector policy, node-key, rule, statistics, and record surfaces.
+- `AdminAbusePanel.vue` lazy-loads the premium-dark detector policy, node-key, rule, statistics, and record surfaces. Typed script handlers own API mutations so template callbacks do not depend on compiler-specific imported-value unwrapping.
 - `abuse/` contains focused detector administration cards.
 - `AdminCouponsPanel.vue` manages coupon definitions.
 - `AdminDatabasePanel.vue` browses protected database tables.

@@ -1,5 +1,9 @@
 # SQLite store
 
+The store uses `modernc.org/sqlite` 1.60.1 and its compatible libc dependency.
+Go module upgrades preserve the existing Go 1.26 toolchain and database contracts;
+full migration/race validation runs in hosted CI rather than local test suites.
+
 Lucky-draw storage keeps configuration, ticket charges, reservations, and immutable outcomes local. Every Remnawave effect is enqueued after the result transaction; Telegram delivery uses recorded message IDs.
 
 Private draw coupons (`admin_visible=0`) can only be used through awarded wallet grants. Code lookup excludes them, and the shared grant lookup and wallet listing reject historical `source_type='code'` copies. Checkout and automatic renewal therefore cannot use copied grants; existing financial records remain intact. `activity_draw_coupon_security_test.go` covers these boundaries and normal public-code redemption.

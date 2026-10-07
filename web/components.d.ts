@@ -132,6 +132,7 @@ declare module 'vue' {
     EntitlementSummary: typeof import('./src/components/dashboard/EntitlementSummary.vue')['default']
     GiftPresenter: typeof import('./src/components/activity/draw/presenters/GiftPresenter.vue')['default']
     GridPresenter: typeof import('./src/components/activity/draw/presenters/GridPresenter.vue')['default']
+    GroupBoostPanel: typeof import('./src/components/activity/GroupBoostPanel.vue')['default']
     GroupMemberTagEditor: typeof import('./src/components/settings/GroupMemberTagEditor.vue')['default']
     GroupMessageRewardPanel: typeof import('./src/components/activity/GroupMessageRewardPanel.vue')['default']
     InlineNotice: typeof import('./src/components/common/InlineNotice.vue')['default']

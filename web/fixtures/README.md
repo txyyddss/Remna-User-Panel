@@ -8,3 +8,4 @@
 These files are for local visual audits. The production Vite build starts from the root `index.html` and does not include this page.
 
 - `activity-boost-audit.ts` mounts the real activity page with controllable constructed boost, loading, error, reward and check-in states for Chrome DevTools MCP validation. Exposes `window.__boostAudit` and a locale switch for manual inspection.
+- `AbuseAudit.vue`, `abuse-audit.ts`, and `abuse-audit.html` mount the detector admin panel with isolated constructed API responses. Query parameters `slow`, `empty`, and `error` exercise loading, empty and failure states; `window.__abuseAudit` records form saves and rule actions for manual Chrome DevTools MCP inspection.

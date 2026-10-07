@@ -196,6 +196,8 @@ export default defineConfig({
     },
   },
   test: {
+    // Vitest 5 changed the default; retain the existing mock lifecycle.
+    clearMocks: false,
     environment: 'happy-dom',
     setupFiles: ['./src/test/storage-setup.ts', './src/test/setup.ts'],
     coverage: {

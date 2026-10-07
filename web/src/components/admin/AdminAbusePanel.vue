@@ -28,6 +28,22 @@ function rotate(id: string): void {
     await clipboard.copy(value.key)
   }, { errorKey: 'adminAbuse.rotateFailed' })
 }
+
+function savePolicy(value: Parameters<typeof abuseApi.savePolicy>[0]): void {
+  void state.execute(async () => { await abuseApi.savePolicy(value) })
+}
+
+function savePunishment(value: Parameters<typeof abuseApi.savePunishment>[0]): void {
+  void state.execute(async () => { await abuseApi.savePunishment(value) })
+}
+
+function deleteRule(id: string, revision: number): void {
+  void state.execute(async () => { await abuseApi.deleteRule(id, revision) })
+}
+
+function setWhitelist(id: string, enabled: boolean): void {
+  void state.execute(async () => { await abuseApi.setWhitelist(id, enabled) })
+}
 </script>
 
 <template>
@@ -56,20 +72,20 @@ function rotate(id: string): void {
         <AbusePolicyCard
           :policy="state.policy.value"
           :busy="state.busy.value"
-          @save="value => state.execute(async () => { await abuseApi.savePolicy(value) })"
+          @save="savePolicy"
         />
         <AbusePunishmentLadder
           :punishments="state.punishments.value"
           :busy="state.busy.value"
-          @save="value => state.execute(async () => { await abuseApi.savePunishment(value) })"
+          @save="savePunishment"
         />
         <AbuseRulesCard
           :rules="state.rules.value"
           :whitelist="state.whitelist.value"
           :busy="state.busy.value"
           @save-rule="state.saveRule"
-          @delete-rule="(id, revision) => state.execute(async () => { await abuseApi.deleteRule(id, revision) })"
-          @whitelist="(id, enabled) => state.execute(async () => { await abuseApi.setWhitelist(id, enabled) })"
+          @delete-rule="deleteRule"
+          @whitelist="setWhitelist"
         />
         <AbuseNodesCard :nodes="state.nodes.value" :statistics="state.statistics.value" :busy="state.busy.value" @copy="copy" @rotate="rotate" />
         <AbuseRecordsCard

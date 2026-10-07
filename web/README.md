@@ -4,17 +4,27 @@ TX Carpool is a bilingual, mobile-first Telegram Mini App built with Vue 3.5, Vi
 
 `vite.config.ts` prebundles the Nuxt editor's TipTap and ProseMirror imports together so development mode uses a single selection/plugin registry.
 
+Nuxt UI uses stable 4.11.3 rather than a PR preview. Vitest and its V8 coverage
+adapter are pinned together at 5.0.3; `clearMocks: false` preserves the previous
+mock lifecycle. TypeScript stays at 5.9 because `openapi-typescript` requires
+TypeScript 5, although newer TypeScript majors are available. Other dependencies
+are upgraded within their supported peer and runtime constraints.
+
 ## Commands
 
 ```sh
 npm ci
 npm run generate:api
 npm run audit:structure
-npm run check
+npm run lint
+npm run typecheck
+npm run build
 npm run dev
 ```
 
-`npm run check` enforces structure/localization policy, lints, type-checks, runs Vitest, and builds the production bundle. The build output goes to `../internal/webui/dist` for Go embedding.
+`npm run check` and all Vitest suites are hosted-CI-only under `AGENTS.md`.
+Local validation uses the separate static commands above and Chrome DevTools
+MCP browser inspection. The build output goes to `../internal/webui/dist` for Go embedding.
 
 ## Application boundaries
 
