@@ -19,6 +19,13 @@ func (a remnaAdapter) ApplyEntitlement(ctx context.Context, remoteID string, tra
 	expires := expiresAt.UTC()
 	squads := append([]string(nil), squadUUIDs...)
 	return remnaExecute(ctx, a, func(callCtx context.Context, client remnaClient) error {
+		if a.squadPreferences != nil {
+			effective, err := a.squadPreferences.EnabledSquadsForRemote(callCtx, remoteID, squads)
+			if err != nil {
+				return err
+			}
+			squads = effective
+		}
 		_, callErr := client.UpdateUser(callCtx, remnawave.UpdateUserRequest{
 			ID: userID, Status: &status, TrafficLimitBytes: &trafficLimitBytes,
 			TrafficLimitStrategy: &strategy, ExpireAt: &expires,

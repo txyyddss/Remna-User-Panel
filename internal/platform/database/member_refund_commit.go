@@ -110,7 +110,7 @@ func activateRefundSuccessorTx(ctx context.Context, tx *sql.Tx, userID string, n
 
 func shiftRefundQueueTx(ctx context.Context, tx *sql.Tx, userID string, firstFrom time.Time, shift time.Duration, now time.Time) error {
 	rows, err := tx.QueryContext(ctx, `SELECT id,valid_from,valid_until FROM purchases
-		WHERE user_id=? AND status='queued' AND valid_from>=? ORDER BY valid_from,created_at`, userID, stamp(firstFrom))
+  WHERE user_id=? AND status='queued' AND valid_from>=? ORDER BY valid_from,created_at,id`, userID, stamp(firstFrom))
 	if err != nil {
 		return err
 	}

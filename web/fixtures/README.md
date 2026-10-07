@@ -1,5 +1,11 @@
 # Constructed browser fixtures
 
+`SettingsAudit.vue`, `settings-audit.ts` and `settings-audit.html` mount the actual
+settings page with isolated squad/activation receipts and existing preferences.
+`single`, `inactive`, `noqueued`, `slow`, `error`, and `pollerror` exercise eligible,
+loading, empty and recovery states. `window.__controlsAudit` records mutations;
+`window.__controlsSnapshot()` exposes resulting term dates for inspection.
+
 - `LuckyAudit.vue` mounts the member Activity page in Nuxt UI without authentication.
 - `lucky-audit.ts` supplies a local Activity overview and controllable draw response through `window.__audit`.
 - `lucky-audit.html` opens the fixture at `/fixtures/lucky-audit.html` while the Vite development server runs.

@@ -16,11 +16,11 @@ func (s *Store) ActiveAndQueuedPurchases(ctx context.Context, userID string, now
 	var active, queued *model.Purchase
 	for index := range purchases {
 		purchase := purchases[index]
-		if (purchase.Status == "active" || purchase.Status == "activating") && !purchase.ValidUntil.Before(now) && active == nil {
+		if (purchase.Status == "active" || purchase.Status == "activating") && !now.Before(purchase.ValidFrom) && now.Before(purchase.ValidUntil) && active == nil {
 			copy := purchase
 			active = &copy
 		}
-		if purchase.Status == "queued" && queued == nil {
+		if purchase.Status == "queued" && now.Before(purchase.ValidUntil) && (queued == nil || purchase.ValidFrom.Before(queued.ValidFrom) || (purchase.ValidFrom.Equal(queued.ValidFrom) && (purchase.CreatedAt.Before(queued.CreatedAt) || purchase.CreatedAt.Equal(queued.CreatedAt) && purchase.ID < queued.ID))) {
 			copy := purchase
 			queued = &copy
 		}

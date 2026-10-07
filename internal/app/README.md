@@ -1,4 +1,8 @@
 # Application composition
+
+`remna_member_squads.go` reads live names through the existing request queue.
+The entitlement adapter intersects applied squads with account preferences at
+execution; member receipts reuse the entitlement executor and invalidate usage.
 - `adapters_part2.go` continues the focused implementation from its original package module.
 
 The `app` package is the process composition root. It opens SQLite, constructs

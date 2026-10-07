@@ -88,6 +88,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		return cleanup(err)
 	}
 	remna := newRemnaAdapter(settings, upstreams.remnawave)
+	remna.squadPreferences = store
 	queuedTelegramClient := &queuedTelegram{client: telegramClient, queue: upstreams.telegram}
 	affiliateService := affiliates.NewService(store, queuedTelegramClient)
 	telegramBridge := telegramAdapter{client: queuedTelegramClient}
@@ -132,6 +133,9 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		return cleanup(err)
 	}
 	if err := registerPaymentOperationHandlers(operationDispatcher, billingService); err != nil {
+		return cleanup(err)
+	}
+	if err := registerComboControlHandlers(operationDispatcher, store, entitlementWorker, catalogService.InvalidateDashboard); err != nil {
 		return cleanup(err)
 	}
 	if err := registerMutationOperationHandlers(operationDispatcher, catalogService, embyOperations, questionnaireService, adminService); err != nil {

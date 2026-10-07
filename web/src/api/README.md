@@ -1,5 +1,9 @@
 # Frontend API
 
+`comboControls.ts` reads active ownership and enabled squads, obtains early
+activation eligibility, and submits owner-scoped idempotent switch/activation
+commands. Its mutable state and quotes always bypass response snapshots.
+
 - `purchaseAddons.ts` owns protected active-ride squad-addition quote and idempotent commit requests.
 - `community.ts` owns canonical community membership checks and one-space Telegram invite requests.
 - `displayCurrency.ts` owns the member display-currency preference and server-managed CNY/USD conversion-rate requests.

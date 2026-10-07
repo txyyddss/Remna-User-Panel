@@ -1,0 +1,13 @@
+get:
+  tags: [Purchases]
+  operationId: quoteEarlyComboActivation
+  parameters:
+    - { name: id, in: path, required: true, schema: { $ref: '../openapi.yaml#/components/schemas/ID' } }
+  responses:
+    '200':
+      description: Eligibility and full-duration dates for the earliest queued purchase.
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/EarlyActivationQuote' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }

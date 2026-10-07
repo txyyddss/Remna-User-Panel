@@ -69,3 +69,13 @@ func registerAdminOperationHandlers(dispatcher *providerops.Dispatcher, store *d
 func registerProviderDispatcher(worker *platformoutbox.Worker, dispatcher *providerops.Dispatcher) error {
 	return worker.Register(providerops.OutboxKind, dispatcher)
 }
+
+func registerComboControlHandlers(dispatcher *providerops.Dispatcher, store *database.Store, synchronizer purchaseops.EntitlementSynchronizer, onSynced func(string)) error {
+	handler := purchaseops.NewComboControlWorker(store, synchronizer, onSynced)
+	for _, kind := range []string{purchaseops.OperationSquadSwitch, purchaseops.OperationEarlyActivation} {
+		if err := dispatcher.Register(kind, handler); err != nil {
+			return err
+		}
+	}
+	return nil
+}

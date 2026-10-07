@@ -1,0 +1,34 @@
+SquadControl:
+  type: object
+  additionalProperties: false
+  required: [uuid, name, enabled, canDisable]
+  properties:
+    uuid: { type: string }
+    name: { type: string }
+    enabled: { type: boolean }
+    canDisable: { type: boolean }
+
+ComboControls:
+  type: object
+  additionalProperties: false
+  required: [activePurchase, queuedPurchase, squads, mutable, operation]
+  properties:
+    activePurchase: { oneOf: [{ $ref: '../../openapi.yaml#/components/schemas/Purchase' }, { type: 'null' }] }
+    queuedPurchase: { oneOf: [{ $ref: '../../openapi.yaml#/components/schemas/Purchase' }, { type: 'null' }] }
+    squads:
+      type: array
+      items: { $ref: '#/SquadControl' }
+    mutable: { type: boolean }
+    operation: { oneOf: [{ $ref: '../../openapi.yaml#/components/schemas/OperationReceipt' }, { type: 'null' }] }
+
+EarlyActivationQuote:
+  type: object
+  additionalProperties: false
+  required: [currentPurchaseId, queuedPurchaseId, eligible, currentValidUntil, newValidFrom, newValidUntil]
+  properties:
+    currentPurchaseId: { $ref: '../../openapi.yaml#/components/schemas/ID' }
+    queuedPurchaseId: { $ref: '../../openapi.yaml#/components/schemas/ID' }
+    eligible: { type: boolean }
+    currentValidUntil: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+    newValidFrom: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+    newValidUntil: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }

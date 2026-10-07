@@ -1,5 +1,10 @@
 # User settings
 
+`SettingsComboControls.vue` composes owned-squad switches, recoverable operation
+feedback and the eligible early-start action. `useComboControls.ts` owns loading,
+receipt resumption and cache invalidation; `EarlyActivationDialog.vue` owns typed
+confirmation and date preview. Ownership remains separate from enabled access.
+
 `SettingsPage.vue` composes existing language, currency and traffic-reset controls.
 `NotificationSettings.vue` renders the five delivery categories.
 `SettingsSwitchRow.vue` is a controlled, accessible row: changes are confirmed by

@@ -8,6 +8,7 @@ import { usePreferencesStore } from '@/stores/preferences'
 import NotificationSettings from './NotificationSettings.vue'
 import SettingsSwitchRow from './SettingsSwitchRow.vue'
 import GroupMemberTagEditor from './GroupMemberTagEditor.vue'
+import SettingsComboControls from './SettingsComboControls.vue'
 import { useSettings } from './useSettings'
 
 const preferences = usePreferencesStore()
@@ -25,6 +26,7 @@ onMounted(() => void preferences.refresh())
       <h2>{{ $t('settings.subscription') }}</h2>
       <TrafficResetAutomationControl :enabled="settings.automation.value?.enabled ?? null" :loading="settings.automationLoading.value" :saving="settings.automationSaving.value" :error="settings.automationError.value" @update="settings.setAutomation" />
       <UButton v-if="settings.automationError.value" variant="link" :label="$t('common.tryAgain')" @click="settings.loadAutomation()" />
+      <SettingsComboControls />
     </section>
     <section class="settings-section">
       <h2>{{ $t('settings.display') }}</h2>

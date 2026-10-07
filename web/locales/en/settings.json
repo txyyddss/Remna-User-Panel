@@ -1,5 +1,22 @@
 {
   "settings": {
+    "combo": {
+      "squads": "Internal squads",
+      "keepOne": "Keep at least one squad enabled.",
+      "activateTitle": "Activate queued combo early",
+      "activate": "Activate",
+      "activateHint": "Start your next combo and give up the remaining current access.",
+      "forfeitWarning": "Remaining time and traffic will be lost. No refund or rollover credit will be issued.",
+      "forfeitUntil": "Current access ends early instead of {date}.",
+      "newPeriod": "New period: {start} to {end}.",
+      "confirmation": "ACTIVATE NEXT COMBO",
+      "confirmPrompt": "Type {text} to confirm",
+      "loadFailed": "Combo controls could not be loaded.",
+      "operationFailed": "The change could not be queued. Refresh and try again.",
+      "syncPending": "Your access change is being applied.",
+      "updated": "Your access is updated.",
+      "syncFailed": "Access synchronization needs recovery. Check its status or contact an administrator."
+    },
     "title": "Settings",
     "loadFailed": "Settings could not be loaded.",
     "saveFailed": "Your change could not be confirmed. Showing the last confirmed setting.",

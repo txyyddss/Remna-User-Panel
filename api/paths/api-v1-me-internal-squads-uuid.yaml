@@ -1,0 +1,26 @@
+put:
+  tags: [Accounts]
+  operationId: switchMemberInternalSquad
+  parameters:
+    - { name: uuid, in: path, required: true, schema: { type: string } }
+    - { $ref: '../openapi.yaml#/components/parameters/IdempotencyKey' }
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: false
+          required: [purchaseId, enabled]
+          properties:
+            purchaseId: { $ref: '../openapi.yaml#/components/schemas/ID' }
+            enabled: { type: boolean }
+  responses:
+    '202':
+      description: Durable owner-scoped squad synchronization receipt.
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/OperationReceipt' }
+    '400': { $ref: '../openapi.yaml#/components/responses/BadRequest' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }

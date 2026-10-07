@@ -1,5 +1,10 @@
 # Path item shards
 
+`api-v1-me-internal-squads.yaml` reads owner-scoped active controls;
+`api-v1-me-internal-squads-uuid.yaml` queues validated access changes.
+`api-v1-purchases-id-early-activation.yaml` quotes earliest-queued eligibility;
+`api-v1-purchases-id-activate.yaml` requires typed confirmation before forfeiture.
+
 Each YAML file is one complete OpenAPI Path Item Object. `../openapi.yaml` registers these files under their canonical URL paths.
 
 - `api-v1-abuse.yaml` groups member history, node-agent upload, and administrator abuse-detector path items.

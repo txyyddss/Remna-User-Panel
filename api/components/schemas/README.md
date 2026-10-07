@@ -1,5 +1,8 @@
 # Schema shards
 
+`schemas-24.yaml` defines owned squad controls, recoverable combo state and the
+full-duration early-activation quote.
+
 Schema definitions are grouped into bounded sequential shards. The root component registry references each definition by JSON Pointer.
 
 - `schemas-01.yaml`: `ID`, `Timestamp`, `DecimalInteger`, `ApiError`, `TelegramAuthRequest`, `OnboardingStep`, `User`, `AuthState`, `JoinInvite`, `CommunityMembership`, `UsernameRequest`, `AgreementRequest`, `WelcomeMessage`, `OnboardingAgreement`, `LocalizedOnboardingContent`, `PublishedOnboarding`, `OnboardingBundle`

@@ -1,5 +1,8 @@
 # Database migrations
 
+`059_member_squad_preferences.sql` stores only disabled squad references per
+account; purchase ownership and upstream names are not duplicated.
+
 Migration files are embedded and applied in lexical order by `database.go`.
 
 - `056_restore_custom_combo_reset_cadence.sql` fills missing custom reset-strategy overrides from the latest matching award's original core combo, including live automatic-renewal successors. Explicit cadence overrides and audited entitlement edits remain untouched; repairs are audited and synchronized through the existing outbox.

@@ -1,0 +1,27 @@
+post:
+  tags: [Purchases]
+  operationId: activateQueuedComboEarly
+  parameters:
+    - { name: id, in: path, required: true, schema: { $ref: '../openapi.yaml#/components/schemas/ID' } }
+    - { $ref: '../openapi.yaml#/components/parameters/IdempotencyKey' }
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: false
+          required: [currentPurchaseId, confirmation]
+          properties:
+            currentPurchaseId: { $ref: '../openapi.yaml#/components/schemas/ID' }
+            confirmation: { type: string, enum: ['ACTIVATE NEXT COMBO', '启用下一套餐'] }
+  responses:
+    '202':
+      description: Durable activation receipt; no refund or new rollover credit is issued.
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/OperationReceipt' }
+    '400': { $ref: '../openapi.yaml#/components/responses/BadRequest' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }
+    '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }

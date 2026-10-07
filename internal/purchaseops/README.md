@@ -1,5 +1,13 @@
 # Member purchase operations
 
+`combo_control_types.go`, `combo_controls.go` and `combo_control_commands.go`
+serve active-term squad access and confirmed early activation. Ownership and
+last-enabled validation are transactional; disabled account references carry
+between terms. `combo_control_worker.go` bridges receipts to the existing
+entitlement identity/reset executor, then invalidates cached dashboard usage.
+Early activation forfeits remaining access without creating financial credits,
+preserves the successor duration and shifts later terms and continuity jobs.
+
 - `types.go` owns reset/refund contracts and stable reason codes.
 - `eligibility.go` applies immutable reset pricing and refund eligibility rules.
 - `service.go` creates idempotent durable operations without provider calls in transactions.

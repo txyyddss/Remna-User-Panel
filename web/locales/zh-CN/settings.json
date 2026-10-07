@@ -1,5 +1,22 @@
 {
   "settings": {
+    "combo": {
+      "squads": "内部节点组",
+      "keepOne": "请至少保留一个启用的节点组。",
+      "activateTitle": "提前启用排队套餐",
+      "activate": "启用",
+      "activateHint": "开始下一套餐并放弃当前套餐的剩余权益。",
+      "forfeitWarning": "剩余时间和流量将作废，不退款，也不产生流量结转抵扣。",
+      "forfeitUntil": "当前权益将提前结束，原到期时间为 {date}。",
+      "newPeriod": "新套餐周期：{start} 至 {end}。",
+      "confirmation": "启用下一套餐",
+      "confirmPrompt": "输入 {text} 以确认",
+      "loadFailed": "暂时无法加载套餐设置。",
+      "operationFailed": "未能提交变更，请刷新后重试。",
+      "syncPending": "正在应用权益变更。",
+      "updated": "权益已更新。",
+      "syncFailed": "权益同步需要恢复，请查看状态或联系管理员。"
+    },
     "title": "设置",
     "loadFailed": "暂时无法加载设置。",
     "saveFailed": "未能确认更改，当前显示上次已确认的设置。",

@@ -75,6 +75,13 @@ export function useDurableCommand(options: DurableCommandOptions) {
     tracker.reset()
   }
 
+  function resume(receipt: OperationReceipt, commandId: string): void {
+    if (submitting.value || tracker.receipt.value?.id === receipt.id) return
+    activeCommandId.value = commandId
+    commandByOperation.set(receipt.id, commandId)
+    tracker.track(receipt)
+  }
+
   onScopeDispose(latestExecution.dispose)
 
   return {
@@ -90,5 +97,6 @@ export function useDurableCommand(options: DurableCommandOptions) {
     execute,
     refresh: tracker.refresh,
     reset,
+    resume,
   }
 }

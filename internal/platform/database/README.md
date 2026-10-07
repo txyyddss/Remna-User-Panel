@@ -1,5 +1,12 @@
 # SQLite store
 
+`member_squad_preferences.go` stores disabled references and validates the last
+enabled squad atomically. `member_combo_control_helpers.go` checks ownership,
+queued order, pending mutations and bans. `member_early_activation.go` forfeits
+and rebases terms without financial credits. `member_squad_controls_test.go`
+and `member_early_activation_test.go` cover races, carried preferences, ownership,
+custom durations, automatic successors and durable reset-phase resumption in CI.
+
 The store uses `modernc.org/sqlite` 1.60.1 and its compatible libc dependency.
 Go module upgrades preserve the existing Go 1.26 toolchain and database contracts;
 full migration/race validation runs in hosted CI rather than local test suites.

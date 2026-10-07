@@ -74,3 +74,10 @@ func (s *Service) RevokeSubscription(ctx context.Context, user model.User) (stri
 	s.cacheMu.Unlock()
 	return url, nil
 }
+
+// InvalidateDashboard drops usage cached before an entitlement reset or change.
+func (s *Service) InvalidateDashboard(userID string) {
+	s.cacheMu.Lock()
+	delete(s.cache, userID)
+	s.cacheMu.Unlock()
+}

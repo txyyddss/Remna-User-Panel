@@ -1,4 +1,8 @@
 # HTTP API transport
+
+`member_combo_controls.go` serves owner-scoped squad state and switch commands,
+plus earliest-queued eligibility and typed-confirmation activation. It uses
+onboarding, signed requests and the existing idempotent operation protections.
 - `activity_member_part2.go` continues the focused implementation from its original package module.
 - `database_admin_part2.go` continues the focused implementation from its original package module.
 - `handlers_part2.go` continues the focused implementation from its original package module.

@@ -42,11 +42,16 @@ type remnaClient interface {
 
 type remnaClientFactory func(context.Context) (remnaClient, error)
 
+type squadPreferenceSource interface {
+	EnabledSquadsForRemote(context.Context, string, []string) ([]string, error)
+}
+
 type remnaAdapter struct {
-	settings      *admin.SettingsService
-	queue         *upstreamqueue.Queue
-	clientFactory remnaClientFactory
-	multipliers   *nodeMultiplierCache
+	settings         *admin.SettingsService
+	queue            *upstreamqueue.Queue
+	clientFactory    remnaClientFactory
+	multipliers      *nodeMultiplierCache
+	squadPreferences squadPreferenceSource
 }
 
 func newRemnaAdapter(settings *admin.SettingsService, queue *upstreamqueue.Queue) remnaAdapter {
