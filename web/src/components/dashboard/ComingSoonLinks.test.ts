@@ -1,4 +1,6 @@
 import { mount } from '@vue/test-utils'
+import { createPinia } from 'pinia'
+import { usePreferencesStore } from '@/stores/preferences'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { describe, expect, it } from 'vitest'
 
@@ -12,7 +14,9 @@ describe('ComingSoonLinks navigation', () => {
     })
     await router.push('/home')
     await router.isReady()
-    const wrapper = mount(ComingSoonLinks, { props: { hasValidCombo: true }, global: { plugins: [router] } })
+    const pinia = createPinia()
+    usePreferencesStore(pinia).value = { activeCombo: true, showAroundTx: true, showActivity: false, includeNodePrices: true, showReferralUsername: true, notifications: { combos: true, traffic: true, money: true, activity: true, account: true } }
+    const wrapper = mount(ComingSoonLinks, { props: { hasValidCombo: true }, global: { plugins: [pinia, router] } })
     const launchURL = window.location.href
     const actions = wrapper.findAll('.home-around__link')
     const destinations = ['/affiliates', '/questionnaire', '/community', '/emby', '/statistics', '/abuse-records']
@@ -33,7 +37,7 @@ describe('ComingSoonLinks navigation', () => {
       history: createMemoryHistory(),
       routes: [{ path: '/:pathMatch(.*)*', component: { template: '<div />' } }],
     })
-    const wrapper = mount(ComingSoonLinks, { props: { hasValidCombo: false }, global: { plugins: [router] } })
+    const wrapper = mount(ComingSoonLinks, { props: { hasValidCombo: false }, global: { plugins: [createPinia(), router] } })
 
     expect(wrapper.find('.home-around').exists()).toBe(false)
     wrapper.unmount()

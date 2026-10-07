@@ -1,4 +1,10 @@
 {
+  "adminRefundQuote": {
+    "paid": "实际支付",
+    "traffic": "已用流量 / 整期额度",
+    "hint": "默认金额按整个套餐的未用流量比例计算，可手动修改。",
+    "unavailable": "暂时无法核实流量，请重试或手动输入退款金额。"
+  },
   "adminUserProfile": {
     "open": "打开资料",
     "actionsAndContext": "成员操作和账户背景",
@@ -44,7 +50,7 @@
     "editorWarning": "这是可审计的覆盖操作。",
     "editorWarningHint": "账本事实、时间戳、ID 和不可变的重置价格依据不能修改。",
     "refundTitle": "退款此权益？",
-    "refundHint": "上游状态安全静默后，将退回原始净扣款。",
+    "refundHint": "所选退款金额将退回 TXB 余额，此套餐权益将被取消。",
     "issueRefund": "发起退款",
     "records": "历史与操作",
     "recordsHint": "支付、退款、Emby 账号和开放的上游操作。",

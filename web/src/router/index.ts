@@ -19,6 +19,7 @@ const router = createRouter({
       meta: { immersive: true },
     },
     { path: '/home', name: 'home', component: () => import('@/views/HomeView.vue') },
+    { path: '/settings', name: 'settings', component: () => import('@/views/SettingsView.vue') },
     { path: '/connections', name: 'connections', component: () => import('@/views/ConnectionsView.vue') },
     { path: '/catalog', name: 'catalog', component: () => import('@/views/CatalogView.vue') },
     { path: '/payment-result', name: 'payment-result', component: () => import('@/views/PaymentResultView.vue'), meta: { immersive: true, browserPublic: true } },

@@ -8,6 +8,7 @@ import AuthGate from '@/components/session/AuthGate.vue'
 import SessionEntrance from '@/components/session/SessionEntrance.vue'
 import AppErrorBoundary from '@/components/session/AppErrorBoundary.vue'
 import { useSessionStore } from '@/stores/session'
+import { usePreferencesStore } from '@/stores/preferences'
 import { useDisplayCurrency } from '@/composables/useDisplayCurrency'
 import { useI18n } from '@/i18n'
 import { isTelegramWebAppDetected } from '@/utils/telegram'
@@ -16,11 +17,13 @@ import { onboardingRequiredEvent } from '@/api/http'
 const route = useRoute()
 const router = useRouter()
 const sessionStore = useSessionStore()
+const preferences = usePreferencesStore()
 const displayCurrency = useDisplayCurrency()
 const immersive = computed(() => route.meta.immersive === true)
 const browserPublic = computed(() => route.meta.browserPublic === true && !isTelegramWebAppDetected())
 const { locale } = useI18n()
 const uiLocale = computed(() => locale.value === 'zh-CN' ? zh_cn : en)
+watch(() => sessionStore.onboardingComplete ? sessionStore.user?.id ?? null : null, id => preferences.bind(id), { immediate: true })
 
 watch(() => sessionStore.user?.id, (userID) => {
   if (!userID) return

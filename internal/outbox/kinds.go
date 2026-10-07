@@ -14,6 +14,9 @@ const AffiliateTierUpgradeKind = "telegram_affiliate_tier_upgrade"
 // UserNotificationKind delivers one immutable private-chat user event.
 const UserNotificationKind = "telegram_user_notification"
 
+// UserAbuseNotificationKind delivers a personal security notice or an operator alert.
+const UserAbuseNotificationKind = "abuse_notification"
+
 const (
 	UserEventExpiration                 = "expiration"
 	UserEventExpiryReminder             = "expiry_reminder"

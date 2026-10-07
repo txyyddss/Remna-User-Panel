@@ -6,6 +6,7 @@ export type AdminEntitlement = components['schemas']['AdminEntitlement']
 export type OperationReceipt = components['schemas']['OperationReceipt']
 export type EntitlementEditRequest = components['schemas']['EntitlementEditRequest']
 export type AdminEntitlementRefundRequest = components['schemas']['AdminEntitlementRefundRequest']
+export type AdminEntitlementRefundQuote = components['schemas']['AdminEntitlementRefundQuote']
 export type ComboReplacementRequest = components['schemas']['ComboReplacementRequest']
 export type BulkExtensionRequest = components['schemas']['BulkExtensionRequest']
 export type BulkExtensionPreview = components['schemas']['BulkExtensionPreview']
@@ -24,6 +25,7 @@ const keyHeader = (key: string) => ({ 'Idempotency-Key': key })
 
 export const adminOperationsApi = {
   getUser: (userId: string) => request<AdminUserDetail>(`/api/v1/admin/users/${encodeURIComponent(userId)}`),
+  getEntitlementRefundQuote: (userId: string, entitlementId: string) => request<AdminEntitlementRefundQuote>(`/api/v1/admin/users/${encodeURIComponent(userId)}/entitlements/${encodeURIComponent(entitlementId)}/refund`, { cache: 'no-store' }),
   unblockIP: (userId: string, blockId: string, key: string) =>
     request<OperationReceipt>(`/api/v1/admin/users/${encodeURIComponent(userId)}/ip-blocks/${encodeURIComponent(blockId)}/unblock`, {
       method: 'POST', headers: keyHeader(key),

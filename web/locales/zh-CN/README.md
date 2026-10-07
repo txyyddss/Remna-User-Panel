@@ -27,3 +27,5 @@ than in Vue templates, composables, or API clients.
 - `recovery.json` contains pre-mount and render-boundary recovery copy.
 - `statistics.json` contains product statistics, chart, node, and freshness copy.
 - `squad-profile.json` contains localized typed squad profile labels and validation copy.
+
+`settings.json` owns translated user preference and Telegram member-tag copy.

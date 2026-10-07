@@ -41,6 +41,7 @@ func (s *Server) mountAdmin(router chi.Router) {
 	router.Post("/users/{id}/balance-adjustments", s.adminBalanceAdjustment)
 	router.Put("/users/{userId}/entitlements/{entitlementId}", s.adminEditEntitlement)
 	router.Post("/users/{userId}/entitlements/{entitlementId}/refund", s.adminRefundEntitlement)
+	router.Get("/users/{userId}/entitlements/{entitlementId}/refund", s.adminEntitlementRefundQuote)
 	router.Post("/users/{userId}/combo-replacement", s.adminReplaceCombo)
 	router.Post("/operations/{operationId}/resolve", s.adminResolveOperation)
 	router.Post("/bulk-extensions/preview", s.adminPreviewBulkExtension)

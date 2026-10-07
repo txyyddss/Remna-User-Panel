@@ -120,3 +120,7 @@
 
 - `activity_boost_test.go` covers `GROUP_BOOST_REQUIRED` (403) and `GROUP_BOOST_UNAVAILABLE` (503). Activity overview exposes live `groupBoost` state and effective amounts while preserving unrelated activities during verification failures.
 - `telegram_deduction.go` contains the unchanged administrator deduction command handling split out to keep the affected command module below 200 lines.
+
+`user_preferences.go` exposes authenticated partial preference updates. `group_member_tag.go` serves owner-scoped live Telegram tag operations.
+`user_preferences_test.go` verifies authenticated-principal updates, unknown identity rejection and onboarding gating.
+`admin_user_refund_quote.go` serves administrator-only live suggestions with a retryable unavailable-usage error.

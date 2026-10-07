@@ -1,0 +1,59 @@
+NotificationPreferences:
+  type: object
+  additionalProperties: false
+  required: [combos, traffic, money, activity, account]
+  properties:
+    combos: { type: boolean, default: true }
+    traffic: { type: boolean, default: true }
+    money: { type: boolean, default: true }
+    activity: { type: boolean, default: true }
+    account: { type: boolean, default: true }
+UserPreferences:
+  type: object
+  required: [notifications, showReferralUsername, showAroundTx, showActivity, includeNodePrices, activeCombo]
+  properties:
+    notifications: { $ref: '#/NotificationPreferences' }
+    showReferralUsername: { type: boolean, default: true }
+    showAroundTx: { type: boolean, default: false }
+    showActivity: { type: boolean, default: false }
+    includeNodePrices: { type: boolean, default: true }
+    activeCombo: { type: boolean, readOnly: true }
+UserPreferencesPatch:
+  type: object
+  additionalProperties: false
+  properties:
+    notifications:
+      type: object
+      additionalProperties: false
+      properties:
+        combos: { type: boolean }
+        traffic: { type: boolean }
+        money: { type: boolean }
+        activity: { type: boolean }
+        account: { type: boolean }
+    showReferralUsername: { type: boolean }
+    showAroundTx: { type: boolean }
+    showActivity: { type: boolean }
+    includeNodePrices: { type: boolean }
+GroupMemberTag:
+  type: object
+  required: [groupJoined, editable, tag, reasonCode]
+  properties:
+    groupJoined: { type: boolean }
+    editable: { type: boolean }
+    tag: { type: string, maxLength: 16 }
+    reasonCode: { type: string }
+AdminEntitlementRefundQuote:
+  type: object
+  required: [purchaseId, paid, allocatedTrafficBytes, usedTrafficBytes, suggestedRefund, quotedAt, reasonCode]
+  properties:
+    purchaseId: { type: string }
+    paid: { $ref: '../../openapi.yaml#/components/schemas/Money' }
+    allocatedTrafficBytes: { type: [string, 'null'], pattern: '^[0-9]+$' }
+    usedTrafficBytes: { type: [string, 'null'], pattern: '^[0-9]+$' }
+    suggestedRefund:
+      anyOf:
+        - { $ref: '../../openapi.yaml#/components/schemas/Money' }
+        - { type: 'null' }
+    quotedAt: { type: string, format: date-time }
+    reasonCode: { type: [string, 'null'] }

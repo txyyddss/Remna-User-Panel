@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { usePreferencesStore } from '@/stores/preferences'
 
 defineProps<{ hasValidCombo: boolean }>()
 
@@ -13,6 +14,7 @@ const items = [
 ]
 
 const router = useRouter()
+const preferences = usePreferencesStore()
 
 function goTo(to: string): void {
   void router.push(to).catch(() => undefined)
@@ -20,7 +22,7 @@ function goTo(to: string): void {
 </script>
 
 <template>
-  <section v-if="hasValidCombo" class="section-block home-around">
+  <section v-if="hasValidCombo && preferences.showAroundTX" class="section-block home-around">
     <div class="section-heading">
       <h2>{{ $t('dashboard.aroundTx') }}</h2>
       <span class="section-heading__meta">{{ $t('dashboard.memberTools') }}</span>

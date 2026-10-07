@@ -6,7 +6,7 @@
 
 - `AppShell.vue` owns the fullscreen safe-area shell, route-change scroll reset, content focus, Telegram back navigation, and the resizable Nuxt UI `UDashboardSidebar` desktop shell. Phones keep their centered fixed bottom navigation, while desktop exposes the complete member and administrator route hierarchy without a fold control or product wordmark; its Home parent is a real route link while its quick actions remain expanded children.
 - Route focus restoration and Telegram BackButton callbacks are guarded against WebView teardown and rejected promises. The native BackButton uses a shared owner stack so an open payment sheet closes before route history changes.
-- `LanguageControl.vue` provides the compact `ULocaleSelect` language control. `CurrencyControl.vue` owns the member-only TXB, CNY, and USD popover. Home exposes language left and currency right on mobile, while the desktop rail stacks currency above language.
+- `LanguageControl.vue` provides the compact `ULocaleSelect` language control. `CurrencyControl.vue` owns the member-only TXB, CNY, and USD popover. Both selectors now appear on the user Settings page.
 - `MobileNavigation.vue` maps the exact primary routes to a floating Nuxt UI tab strip with localized labels, native keyboard navigation, safe-area spacing, and the administrator-only entry. Secondary member routes intentionally leave every primary tab unselected rather than falsely selecting Home.
 - `SidebarMember.vue` displays the current Telegram user's photo with `UAvatar`, a localized greeting, and a truncated Telegram username. Photos are display-only SDK data, matched to the authenticated Telegram ID, and are never persisted. Missing/private photos use the avatar's initials fallback. Desktop omits the duplicate fullscreen greeting; the resizable sidebar starts at its compact 13rem minimum.
 - `navigation.ts` owns the localized mobile and hierarchical desktop sidebar item definitions, including the administrator-only section list.
@@ -14,3 +14,5 @@
 - `AppShell.test.ts` verifies focus restoration, Telegram BackButton behavior, and the admin mobile navigation entry.
 
 Route and native Back actions use soft navigation feedback; locale feedback is emitted only after the locale actually changes.
+
+Settings replaces sidebar language/currency controls and stays accessible in desktop and mobile navigation. Activity and Around TX require opted-in preferences plus current combo access.

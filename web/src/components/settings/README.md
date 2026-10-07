@@ -1,0 +1,12 @@
+# User settings
+
+`SettingsPage.vue` composes existing language, currency and traffic-reset controls.
+`NotificationSettings.vue` renders the five delivery categories.
+`SettingsSwitchRow.vue` is a controlled, accessible row: changes are confirmed by
+the preferences store before the displayed value changes.
+`GroupMemberTagEditor.vue` edits live Telegram data, including clearing a tag.
+`useSettings.ts` isolates reset automation and canonical tag load/save/error states.
+The page uses the account-scoped preferences store, typed HTTP clients and queued
+Telegram APIs. Optional entrances require current server-confirmed eligibility.
+
+`useSettings.test.ts` covers immediate reset persistence and failed-save state retention.

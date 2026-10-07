@@ -15,3 +15,5 @@
 - `StatisticsView.vue` delegates to the cached product and live-node statistics dashboard.
 - `AffiliatesView.vue` mounts the member Affiliate Centre page.
 - `AbuseRecordsView.vue` mounts the member privacy-safe detector history.
+
+`SettingsView.vue` is the thin route entry for user notification, display, subscription and community preferences.

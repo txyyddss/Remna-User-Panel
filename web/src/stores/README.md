@@ -5,3 +5,6 @@ onboarding state. A new identity starts the bounded member/admin preload queue;
 clearing or failing authentication cancels preload and discards cached responses.
 
 - `session.ts` owns authenticated session bootstrap and derived user state.
+
+`preferences.ts` scopes preferences to the authenticated account, serializes partial saves and rejects stale load/save responses.
+`preferences.test.ts` covers failed saves and stale responses after account changes.

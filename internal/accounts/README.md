@@ -16,3 +16,5 @@ Trusted Telegram authentication and resumable account onboarding live here. Netw
 - `onboarding_test.go` covers username reservation and provider-free agreement completion.
 - `service_test_helpers_test.go` contains package-wide repository and upstream test doubles.
 - `README.md` documents the package layout.
+
+`member_tag.go` exposes canonical group-tag reads and validated writes without persisting Telegram data.

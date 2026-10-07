@@ -299,3 +299,6 @@ attached-coupon policy and a unique source-successor link.
 
 - `activity_boost_test.go` covers sampled-before-scaled check-in settlement, replay and concurrency, zero-boost refusal, overflow rollback, boosted-only progress and immutable paid amounts.
 - `activity_boost_migration_test.go` proves unpaid-progress reset preserves paid windows, ledger and notification rows, and event deduplication identities.
+
+`user_preferences.go` merges nine persisted preference flags atomically, projects active-combo eligibility and resolves legacy referral delivery recipients.
+`user_preferences_test.go` covers defaults, partial merges, account isolation, eligibility loss and referral attribution.

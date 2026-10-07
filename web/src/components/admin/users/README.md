@@ -20,3 +20,4 @@
 - `adminUserFormat.ts` owns profile-specific status tones and date conversion helpers.
 - `useAdminUserProfile.ts` loads the aggregate and serializes idempotent profile mutations with conflict handling.
 - Search-filter geometry, entitlement and block row mutations, timeline layout, and review workflows use local Motion without moving the profile route.
+`useAdminRefundQuote.ts` loads server refund suggestions without overwriting manual edits or changed entitlement contexts. `useAdminRefundQuote.test.ts` covers defaults, failed loads, retries and stale responses.

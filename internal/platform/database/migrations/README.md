@@ -97,3 +97,5 @@ file instead.
 - `053_retry_draw_payload_decode.sql` resets failed or delayed raffle-update and settlement jobs rejected by the former string-only payload decoder. It requires the matching decode error, a string draw ID, and an integer revision, and keeps at most one active job per payload. Duplicate failed rows, other failures, and processing jobs retain their state.
 
 - `058_require_boosted_group_messages.sql` resets unfinished message progress and its counted flags once; paid rewards and retained message identities are preserved. Version 057 is reserved for the concurrent preferences change.
+
+`057_user_preferences.sql` adds per-user choices and clears optional entrances on purchase eligibility transitions and later purchases.

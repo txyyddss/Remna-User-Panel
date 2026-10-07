@@ -9,7 +9,6 @@ import { t } from '@/i18n'
 import { formatDateTime } from '@/utils/format'
 import { formatMemberMoney } from '@/utils/displayCurrency'
 import AutoRenewalControl from './AutoRenewalControl.vue'
-import TrafficResetAutomationControl from './TrafficResetAutomationControl.vue'
 
 const props = defineProps<{ purchase: Purchase }>()
 const emit = defineEmits<{ changed: [] }>()
@@ -130,14 +129,6 @@ useTelegramBackButton(ownsBack, closeDialog)
     >
       <template #body>
         <div class="purchase-operation-dialog">
-          <TrafficResetAutomationControl
-            v-if="dialogKind === 'reset'"
-            :enabled="operation.resetAutomation.value?.enabled ?? null"
-            :loading="operation.resetAutomationLoading.value"
-            :saving="operation.resetAutomationSaving.value"
-            :error="operation.resetAutomationError.value"
-            @update="operation.setResetAutomation"
-          />
           <USkeleton v-if="operation.quoteLoading.value" class="h-28" />
           <template v-else-if="currentQuote">
             <dl class="purchase-operation-quote">

@@ -18,6 +18,7 @@ const mobileNavigation: readonly MobileNavigationItem[] = [
   { labelKey: 'nav.home', to: '/home', icon: 'i-ph-house' },
   { labelKey: 'nav.explore', to: '/catalog', icon: 'i-ph-compass' },
   { labelKey: 'nav.activity', to: '/activity', icon: 'i-ph-game-controller' },
+  { labelKey: 'settings.title', to: '/settings', icon: 'i-ph-gear' },
 ]
 
 const adminNavigation: readonly AdminNavigationItem[] = [
@@ -36,13 +37,14 @@ const adminNavigation: readonly AdminNavigationItem[] = [
   { labelKey: 'adminNav.audit', to: '/admin/audit', icon: 'i-ph-shield-check' },
 ]
 
-export function mobileNavigationItems(isAdmin: boolean): MobileNavigationItem[] {
+export function mobileNavigationItems(isAdmin: boolean, showActivity = false): MobileNavigationItem[] {
+  const visible = mobileNavigation.filter(item => item.to !== '/activity' || showActivity)
   return isAdmin
-    ? [...mobileNavigation, { labelKey: 'nav.admin', to: '/admin/settings', icon: 'i-ph-shield-check' }]
-    : [...mobileNavigation]
+    ? [...visible, { labelKey: 'nav.admin', to: '/admin/settings', icon: 'i-ph-shield-check' }]
+    : [...visible]
 }
 
-export function desktopNavigationItems(t: Translate, isAdmin: boolean, hasValidCombo = false): NavigationMenuItem[] {
+export function desktopNavigationItems(t: Translate, isAdmin: boolean, showAroundTX = false, showActivity = false): NavigationMenuItem[] {
   const items: NavigationMenuItem[] = [
     {
       label: t('nav.home'), to: '/home', icon: 'i-ph-house', defaultOpen: true, exactQuery: true,
@@ -53,9 +55,10 @@ export function desktopNavigationItems(t: Translate, isAdmin: boolean, hasValidC
       ],
     },
     { label: t('nav.explore'), to: '/catalog', icon: 'i-ph-compass' },
-    { label: t('nav.activity'), to: '/activity', icon: 'i-ph-game-controller' },
+    ...(showActivity ? [{ label: t('nav.activity'), to: '/activity', icon: 'i-ph-game-controller' }] : []),
+    { label: t('settings.title'), to: '/settings', icon: 'i-ph-gear' },
   ]
-  if (hasValidCombo) {
+  if (showAroundTX) {
     items.splice(1, 0, {
       label: t('nav.aroundTx'), icon: 'i-ph-sparkle', type: 'trigger', defaultOpen: true, popover: true,
       children: [

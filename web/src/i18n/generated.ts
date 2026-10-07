@@ -22,6 +22,7 @@ import enPaymentCrypto from '../../locales/en/payment-crypto.json'
 import enRecovery from '../../locales/en/recovery.json'
 import enSquadProfile from '../../locales/en/squad-profile.json'
 import enStatistics from '../../locales/en/statistics.json'
+import enSettings from '../../locales/en/settings.json'
 import zhAdminActivity from '../../locales/zh-CN/admin-activity.json'
 import zhAdminDraw from '../../locales/zh-CN/admin-draw.json'
 import zhAdminCatalog from '../../locales/zh-CN/admin-catalog.json'
@@ -46,12 +47,15 @@ import zhPaymentCrypto from '../../locales/zh-CN/payment-crypto.json'
 import zhRecovery from '../../locales/zh-CN/recovery.json'
 import zhSquadProfile from '../../locales/zh-CN/squad-profile.json'
 import zhStatistics from '../../locales/zh-CN/statistics.json'
+import zhSettings from '../../locales/zh-CN/settings.json'
 
 const en = {
+  ...enSettings,
   ...enCore, ...enRecovery, ...enAffiliates, ...enActivity, ...enCommerce, ...enPaymentCrypto, ...enCommunity, ...enMember, ...enConnections, ...enHome, ...enAdminCore, ...enAdminOnboarding, ...enAdminData,
   ...enAdminActivity, ...enAdminDraw, ...enAdminCommunity, ...enAdminCatalog, ...enAdminOperations, ...enAdminWorkflows, ...enAdminCompensation, ...enAdminAbuse, ...enAbuse, ...enSquadProfile, ...enStatistics,
 }
 const zhCN: typeof en = {
+  ...zhSettings,
   ...zhCore, ...zhRecovery, ...zhAffiliates, ...zhActivity, ...zhCommerce, ...zhPaymentCrypto, ...zhCommunity, ...zhMember, ...zhConnections, ...zhHome, ...zhAdminCore, ...zhAdminOnboarding, ...zhAdminData,
   ...zhAdminActivity, ...zhAdminDraw, ...zhAdminCommunity, ...zhAdminCatalog, ...zhAdminOperations, ...zhAdminWorkflows, ...zhAdminCompensation, ...zhAdminAbuse, ...zhAbuse, ...zhSquadProfile, ...zhStatistics,
 }

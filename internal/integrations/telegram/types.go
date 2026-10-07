@@ -48,11 +48,14 @@ type ChatJoinRequest struct {
 
 // ChatMember is the common portion of Telegram's chat-member variants.
 type ChatMember struct {
-	Status      string `json:"status"`
-	User        User   `json:"user"`
-	IsMember    bool   `json:"is_member,omitempty"`
-	CustomTitle string `json:"custom_title,omitempty"`
-	UntilDate   int64  `json:"until_date,omitempty"`
+	Status        string `json:"status"`
+	User          User   `json:"user"`
+	IsMember      bool   `json:"is_member,omitempty"`
+	CustomTitle   string `json:"custom_title,omitempty"`
+	Tag           string `json:"tag,omitempty"`
+	CanManageTags bool   `json:"can_manage_tags,omitempty"`
+	CanEditTag    bool   `json:"can_edit_tag,omitempty"`
+	UntilDate     int64  `json:"until_date,omitempty"`
 }
 
 // Present reports whether a chat-member response represents current membership.

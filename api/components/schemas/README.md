@@ -27,3 +27,6 @@ Schema definitions are grouped into bounded sequential shards. The root componen
 `schemas-02.yaml` includes the optional per-squad `geocheckEnabled` display setting. Existing squads default on; omitted writes preserve their stored setting.
 
 - `schemas-06.yaml` adds the live group boost status and effective activity reward amounts; counts and links are nullable when verification is unavailable.
+
+`schemas-23.yaml` defines notification preferences, typed partial updates and live group-member tags.
+`schemas-23.yaml` also defines the administrator refund suggestion and nullable usage details.

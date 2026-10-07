@@ -116,7 +116,11 @@ func (s *Server) processTelegramCommand(ctx context.Context, message *telegram.M
 					s.deps.Logger.Warn("accept Telegram referral", "telegram_id", message.From.ID, "error", acceptErr)
 				}
 				if accepted {
-					s.sendTelegramReply(ctx, message, affiliates.FormatReferralWelcome(affiliates.NormalizeLocale(message.From.LanguageCode), name)+"\n\n"+botcommands.FormatStart(copy))
+					welcome := botcommands.FormatStart(copy)
+					if name != "" {
+						welcome = affiliates.FormatReferralWelcome(affiliates.NormalizeLocale(message.From.LanguageCode), name) + "\n\n" + welcome
+					}
+					s.sendTelegramReply(ctx, message, welcome)
 					return
 				}
 			}

@@ -26,7 +26,7 @@ func registerAbuseOutboxHandlers(worker *outbox.Worker, store *database.Store, r
 	})); err != nil {
 		return err
 	}
-	return worker.Register("abuse_notification", outbox.HandlerFunc(func(ctx context.Context, job model.OutboxJob) error {
+	return worker.Register(jobpayload.UserAbuseNotificationKind, outbox.HandlerFunc(func(ctx context.Context, job model.OutboxJob) error {
 		return handleAbuseNotification(ctx, job, store, telegram)
 	}))
 }
@@ -92,6 +92,19 @@ func handleAbuseNotification(ctx context.Context, job model.OutboxJob, store *da
 	}
 	if delivery.Delivered {
 		return nil
+	}
+	user, err := store.UserByID(ctx, delivery.UserID)
+	if err != nil {
+		return err
+	}
+	if user.TelegramID == telegramID {
+		allowed, err := store.TelegramNotificationAllowed(ctx, telegramID, jobpayload.UserAbuseNotificationKind)
+		if err != nil {
+			return err
+		}
+		if !allowed {
+			return nil
+		}
 	}
 	message := abuseMessage(delivery)
 	if err = telegram.SendMarkdownV2Message(ctx, telegramID, 0, message); err != nil {

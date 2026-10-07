@@ -67,14 +67,19 @@ type UserDetail struct {
 
 // UserWorkflows owns aggregate reads and durable administrator commands.
 type UserWorkflows struct {
-	repository UserWorkflowRepository
-	importer   SquadImporter
-	now        func() time.Time
+	repository  UserWorkflowRepository
+	importer    SquadImporter
+	refundUsage refundUsageSource
+	now         func() time.Time
 }
 
 // NewUserWorkflows constructs the focused administrator workflow service.
 func NewUserWorkflows(repository UserWorkflowRepository, importer SquadImporter) *UserWorkflows {
-	return &UserWorkflows{repository: repository, importer: importer, now: time.Now}
+	s := &UserWorkflows{repository: repository, importer: importer, now: time.Now}
+	if source, ok := importer.(refundUsageSource); ok {
+		s.refundUsage = source
+	}
+	return s
 }
 
 // UserDetail loads one aggregate profile without copying facts onto users.

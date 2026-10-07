@@ -1,4 +1,5 @@
 import { mount } from '@vue/test-utils'
+import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { nextTick, shallowRef } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -77,7 +78,7 @@ async function mountPage(purchase: object | null, step = 4, confirmPurchase = vi
   await router.isReady()
   const wrapper = mount(CatalogPage, {
     global: {
-      plugins: [router],
+      plugins: [createPinia(), router],
       stubs: {
         CatalogConfirmation: { template: '<div data-test="catalog-confirmation" />' },
         CatalogComboPricingTable: { template: '<div data-test="combo-step" />' },

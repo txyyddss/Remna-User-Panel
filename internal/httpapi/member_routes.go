@@ -3,6 +3,10 @@ package httpapi
 import "github.com/go-chi/chi/v5"
 
 func (s *Server) mountMemberOperations(router chi.Router) {
+	router.Get("/api/v1/me/preferences", s.userPreferences)
+	router.Patch("/api/v1/me/preferences", s.updateUserPreferences)
+	router.Get("/api/v1/me/group-member-tag", s.groupMemberTag)
+	router.Put("/api/v1/me/group-member-tag", s.updateGroupMemberTag)
 	router.Get("/api/v1/me/traffic-reset-automation", s.trafficResetAutomation)
 	router.Put("/api/v1/me/traffic-reset-automation", s.updateTrafficResetAutomation)
 	router.Get("/api/v1/purchases/{id}/traffic-reset", s.trafficResetQuote)

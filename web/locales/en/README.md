@@ -27,3 +27,5 @@ in parity with the matching `zh-CN` file and preserve `{placeholder}` names.
 - `recovery.json` contains pre-mount and render-boundary recovery copy.
 - `statistics.json` contains product statistics, chart, node, and freshness copy.
 - `squad-profile.json` contains localized typed squad profile labels and validation copy.
+
+`settings.json` owns user preference and Telegram member-tag copy.

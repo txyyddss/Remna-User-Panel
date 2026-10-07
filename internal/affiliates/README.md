@@ -16,3 +16,6 @@ queries; this package owns portable validation and locale normalization.
 - `validation_test.go` covers locale normalization and tier invariants without provider calls.
 - `bot_identity_test.go` covers 24-hour caching and stale-on-transient-failure behavior.
 - `notifications_test.go` covers dynamic MarkdownV2 escaping and fixed-point amount copy.
+
+Private referral delivery checks the same category preferences. Welcome attribution follows the inviter username-visibility choice without changing referral tracking.
+`notification_preferences_test.go` covers suppressed delivery, preference lookup retries and re-enabled referral notifications.

@@ -28,3 +28,6 @@ Squad node actions retain the selected squad UUID and its Geocheck display setti
 Coupon purchase discounts are described as price reductions, including recurring
 discounts, rather than as balance additions.
 Combo, squad, and coupon feedback is emitted only when the selection changes; step navigation is soft and purchase confirmation is rigid.
+
+`comboDisplayPrice.ts` adds selected paid squads while excluding included squads, using integer minor units and the account price-display preference.
+`comboDisplayPrice.test.ts` covers included/free/duplicate squads and integer precision.

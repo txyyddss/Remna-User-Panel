@@ -124,8 +124,8 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	rolloverWorker := rollover.NewService(store, remna)
 	outboxWorker := outbox.NewWorker(store)
 	paymentAnnouncementWorker := billing.NewPaymentAnnouncementWorker(settings, queuedTelegramClient)
-	affiliateNotificationWorker := affiliates.NewNotificationWorker(queuedTelegramClient)
-	userNotificationWorker := notifications.NewWorker(queuedTelegramClient, logger, cfg.Timezone)
+	affiliateNotificationWorker := affiliates.NewNotificationWorker(queuedTelegramClient, store)
+	userNotificationWorker := notifications.NewWorker(queuedTelegramClient, logger, cfg.Timezone, store)
 	userNotificationScanner := notifications.NewScanner(store, remna, logger)
 	memberServices, scanWorker, blockExpiryWorker, operationDispatcher, err := newMemberWorkflows(store, remna, vault, cfg.MasterKey)
 	if err != nil {

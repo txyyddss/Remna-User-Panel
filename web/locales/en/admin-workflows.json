@@ -1,4 +1,10 @@
 {
+  "adminRefundQuote": {
+    "paid": "Net paid",
+    "traffic": "Used / whole-term traffic",
+    "hint": "Based on unused traffic across the whole combo. You can edit the amount.",
+    "unavailable": "Traffic could not be verified. Retry or enter a refund amount manually."
+  },
   "adminUserProfile": {
     "open": "Open profile",
     "actionsAndContext": "Member actions and account context",
@@ -44,7 +50,7 @@
     "editorWarning": "This is an audited overwrite.",
     "editorWarningHint": "Ledger facts, timestamps, IDs, and the immutable reset-price basis cannot be changed.",
     "refundTitle": "Refund this entitlement?",
-    "refundHint": "The original net debit will be credited after the provider state is safely quiesced.",
+    "refundHint": "The selected refund amount will be credited to TXB and this entitlement will be cancelled.",
     "issueRefund": "Issue refund",
     "records": "History and operations",
     "recordsHint": "Payments, refunds, Emby accounts, and open provider operations.",

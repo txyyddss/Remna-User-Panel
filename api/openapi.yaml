@@ -4,6 +4,8 @@ security: [{ cookieSession: [], requestTimestamp: [], requestNonce: [], requestS
 paths:
   /api/v1/auth/telegram: { $ref: './paths/api-v1-auth-telegram.yaml' }
   /api/v1/me: { $ref: './paths/api-v1-me.yaml' }
+  /api/v1/me/preferences: { $ref: './paths/api-v1-me-preferences.yaml' }
+  /api/v1/me/group-member-tag: { $ref: './paths/api-v1-me-group-member-tag.yaml' }
   /api/v1/me/display-currency: { $ref: './paths/api-v1-me-display-currency.yaml' }
   /api/v1/me/traffic-reset-automation: { $ref: './paths/api-v1-me-traffic-reset-automation.yaml' }
   /api/v1/community/membership/check: { $ref: './paths/api-v1-community-membership-check.yaml' }
@@ -137,29 +139,25 @@ paths:
   /readyz: { $ref: './paths/readyz.yaml' }
 components:
   securitySchemes: { cookieSession: { $ref: './components/security-schemes.yaml#/cookieSession' }, requestTimestamp: { $ref: './components/security-schemes.yaml#/requestTimestamp' }, requestNonce: { $ref: './components/security-schemes.yaml#/requestNonce' }, requestSignature: { $ref: './components/security-schemes.yaml#/requestSignature' } }
-  parameters:
-    ResourceID: { $ref: './components/parameters.yaml#/ResourceID' }
-    UserID: { $ref: './components/parameters.yaml#/UserID' }
-    EntitlementID: { $ref: './components/parameters.yaml#/EntitlementID' }
-    OperationID: { $ref: './components/parameters.yaml#/OperationID' }
-    ConnectionScanID: { $ref: './components/parameters.yaml#/ConnectionScanID' }
-    ImportID: { $ref: './components/parameters.yaml#/ImportID' }
-    DatabaseTableName: { $ref: './components/parameters.yaml#/DatabaseTableName' }
-    IdempotencyKey: { $ref: './components/parameters.yaml#/IdempotencyKey' }
-    OptionalIdempotencyKey: { $ref: './components/parameters.yaml#/OptionalIdempotencyKey' }
-    SettingKey: { $ref: './components/parameters.yaml#/SettingKey' }
-    Cursor: { $ref: './components/parameters.yaml#/Cursor' }
-    AdminPageLimit: { $ref: './components/parameters.yaml#/AdminPageLimit' }
-    Search: { $ref: './components/parameters.yaml#/Search' }
-    PageSize: { $ref: './components/parameters.yaml#/PageSize' }
-    DatabasePageLimit: { $ref: './components/parameters.yaml#/DatabasePageLimit' }
-    OnboardingContentKind: { $ref: './components/parameters.yaml#/OnboardingContentKind' }
-    StatisticsFrom: { $ref: './components/parameters.yaml#/StatisticsFrom' }
-    StatisticsTo: { $ref: './components/parameters.yaml#/StatisticsTo' }
-    StatisticsBucket: { $ref: './components/parameters.yaml#/StatisticsBucket' }
-    StatisticsTimeZone: { $ref: './components/parameters.yaml#/StatisticsTimeZone' }
+  parameters: {
+    ResourceID: { $ref: './components/parameters.yaml#/ResourceID' }, UserID: { $ref: './components/parameters.yaml#/UserID' },
+    EntitlementID: { $ref: './components/parameters.yaml#/EntitlementID' }, OperationID: { $ref: './components/parameters.yaml#/OperationID' },
+    ConnectionScanID: { $ref: './components/parameters.yaml#/ConnectionScanID' }, ImportID: { $ref: './components/parameters.yaml#/ImportID' },
+    DatabaseTableName: { $ref: './components/parameters.yaml#/DatabaseTableName' }, IdempotencyKey: { $ref: './components/parameters.yaml#/IdempotencyKey' },
+    OptionalIdempotencyKey: { $ref: './components/parameters.yaml#/OptionalIdempotencyKey' }, SettingKey: { $ref: './components/parameters.yaml#/SettingKey' },
+    Cursor: { $ref: './components/parameters.yaml#/Cursor' }, AdminPageLimit: { $ref: './components/parameters.yaml#/AdminPageLimit' },
+    Search: { $ref: './components/parameters.yaml#/Search' }, PageSize: { $ref: './components/parameters.yaml#/PageSize' },
+    DatabasePageLimit: { $ref: './components/parameters.yaml#/DatabasePageLimit' }, OnboardingContentKind: { $ref: './components/parameters.yaml#/OnboardingContentKind' },
+    StatisticsFrom: { $ref: './components/parameters.yaml#/StatisticsFrom' }, StatisticsTo: { $ref: './components/parameters.yaml#/StatisticsTo' },
+    StatisticsBucket: { $ref: './components/parameters.yaml#/StatisticsBucket' }, StatisticsTimeZone: { $ref: './components/parameters.yaml#/StatisticsTimeZone' }
+  }
   responses: { BadRequest: { $ref: './components/responses.yaml#/BadRequest' }, Unauthorized: { $ref: './components/responses.yaml#/Unauthorized' }, Forbidden: { $ref: './components/responses.yaml#/Forbidden' }, NotFound: { $ref: './components/responses.yaml#/NotFound' }, Conflict: { $ref: './components/responses.yaml#/Conflict' }, Unprocessable: { $ref: './components/responses.yaml#/Unprocessable' }, PayloadTooLarge: { $ref: './components/responses.yaml#/PayloadTooLarge' }, TooManyRequests: { $ref: './components/responses.yaml#/TooManyRequests' }, InternalFailure: { $ref: './components/responses.yaml#/InternalFailure' }, UpstreamFailure: { $ref: './components/responses.yaml#/UpstreamFailure' }, ServiceUnavailable: { $ref: './components/responses.yaml#/ServiceUnavailable' } }
   schemas:
+    NotificationPreferences: { $ref: './components/schemas/schemas-23.yaml#/NotificationPreferences' }
+    UserPreferences: { $ref: './components/schemas/schemas-23.yaml#/UserPreferences' }
+    UserPreferencesPatch: { $ref: './components/schemas/schemas-23.yaml#/UserPreferencesPatch' }
+    GroupMemberTag: { $ref: './components/schemas/schemas-23.yaml#/GroupMemberTag' }
+    AdminEntitlementRefundQuote: { $ref: './components/schemas/schemas-23.yaml#/AdminEntitlementRefundQuote' }
     ID: { $ref: './components/schemas/schemas-01.yaml#/ID' }
     Timestamp: { $ref: './components/schemas/schemas-01.yaml#/Timestamp' }
     DecimalInteger: { $ref: './components/schemas/schemas-01.yaml#/DecimalInteger' }

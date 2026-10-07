@@ -15,10 +15,21 @@ type NotificationSender interface {
 	SendMarkdownV2Message(context.Context, int64, int64, string) error
 }
 
-type NotificationWorker struct{ sender NotificationSender }
+type notificationPreferences interface {
+	TelegramNotificationAllowed(context.Context, int64, string) (bool, error)
+}
 
-func NewNotificationWorker(sender NotificationSender) *NotificationWorker {
-	return &NotificationWorker{sender: sender}
+type NotificationWorker struct {
+	sender      NotificationSender
+	preferences notificationPreferences
+}
+
+func NewNotificationWorker(sender NotificationSender, readers ...notificationPreferences) *NotificationWorker {
+	w := &NotificationWorker{sender: sender}
+	if len(readers) > 0 {
+		w.preferences = readers[0]
+	}
+	return w
 }
 
 func (w *NotificationWorker) HandleOutbox(ctx context.Context, job model.OutboxJob) error {
@@ -28,16 +39,29 @@ func (w *NotificationWorker) HandleOutbox(ctx context.Context, job model.OutboxJ
 		if err != nil {
 			return err
 		}
-		return w.sender.SendMarkdownV2Message(ctx, payload.ChatID, 0, telegramformat.Limit(formatSuccess(payload)))
+		return w.deliver(ctx, payload.ChatID, job.Kind, formatSuccess(payload))
 	case jobpayload.AffiliateTierUpgradeKind:
 		payload, err := jobpayload.DecodeAffiliateTierUpgrade(job)
 		if err != nil {
 			return err
 		}
-		return w.sender.SendMarkdownV2Message(ctx, payload.ChatID, 0, telegramformat.Limit(formatUpgrade(payload)))
+		return w.deliver(ctx, payload.ChatID, job.Kind, formatUpgrade(payload))
 	default:
 		return fmt.Errorf("unsupported affiliate notification kind: %s", job.Kind)
 	}
+}
+
+func (w *NotificationWorker) deliver(ctx context.Context, chatID int64, kind, body string) error {
+	if w.preferences != nil {
+		allowed, err := w.preferences.TelegramNotificationAllowed(ctx, chatID, kind)
+		if err != nil {
+			return fmt.Errorf("load referral notification preferences: %w", err)
+		}
+		if !allowed {
+			return nil
+		}
+	}
+	return w.sender.SendMarkdownV2Message(ctx, chatID, 0, telegramformat.Limit(body))
 }
 
 func formatSuccess(payload jobpayload.AffiliateSuccess) string {

@@ -1,0 +1,42 @@
+{
+  "settings": {
+    "title": "Settings",
+    "loadFailed": "Settings could not be loaded.",
+    "saveFailed": "Your change could not be confirmed. Showing the last confirmed setting.",
+    "subscription": "Subscription",
+    "display": "Display and language",
+    "community": "Community and referrals",
+    "showAroundTx": "Show Around TX",
+    "showActivity": "Show Activity",
+    "includeNodePrices": "Include selected nodes in combo prices",
+    "includeNodePricesHint": "Show core combo prices with your selected paid nodes. Checkout always shows the complete price.",
+    "showReferralUsername": "Show my username to invited users",
+    "showReferralUsernameHint": "Include your username in the welcome message sent to new users you invite.",
+    "notifications": {
+      "title": "Notifications",
+      "combos": "Combos and renewal",
+      "combosHint": "Activation, expiry, renewal and node changes.",
+      "traffic": "Traffic and resets",
+      "trafficHint": "Usage warnings and automatic or manual reset results.",
+      "money": "Money and refunds",
+      "moneyHint": "Top-ups, payment refunds and combo refund results.",
+      "activity": "Activity and referrals",
+      "activityHint": "Group rewards, referral commissions and tier rewards.",
+      "account": "Account and admin updates",
+      "accountHint": "Administrator changes, compensation, security notices and account recovery."
+    },
+    "tag": {
+      "label": "Group member tag",
+      "hint": "Up to 16 characters without emoji. Leave empty to remove your tag.",
+      "tooLong": "Use at most 16 characters.",
+      "loadFailed": "Your group membership and tag could not be checked.",
+      "saveFailed": "Telegram could not confirm your tag. Use at most 16 characters without emoji, then retry.",
+      "reasons": {
+        "GROUP_NOT_JOINED": "Join the group before setting a member tag.",
+        "GROUP_TAG_ROLE_UNSUPPORTED": "Telegram member tags are available to regular group members.",
+        "GROUP_TAG_EDIT_RESTRICTED": "The group has restricted your permission to edit a member tag.",
+        "GROUP_TAG_PERMISSION_REQUIRED": "The group bot needs permission to manage member tags."
+      }
+    }
+  }
+}

@@ -26,3 +26,6 @@
   localized reset details, threshold behavior, and retryable delivery failures.
 - `format_compensation_test.go` covers localized compensation details and MarkdownV2 escaping.
 - `format_receipts_test.go` covers both locales for new receipts and reset failures.
+
+Delivery reads current user preferences immediately before sending; suppressed jobs finish without removing financial or event audit records.
+`preferences_test.go` covers pending-delivery suppression, lookup retry and re-enablement.

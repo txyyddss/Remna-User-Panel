@@ -1,0 +1,26 @@
+get:
+  tags: [Accounts]
+  operationId: getUserPreferences
+  responses:
+    '200':
+      description: Current choices and active combo eligibility.
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/UserPreferences' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+patch:
+  tags: [Accounts]
+  operationId: updateUserPreferences
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema: { $ref: '../openapi.yaml#/components/schemas/UserPreferencesPatch' }
+  responses:
+    '200':
+      description: Merged choices with current eligibility enforced.
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/UserPreferences' }
+    '400': { $ref: '../openapi.yaml#/components/responses/BadRequest' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }

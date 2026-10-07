@@ -11,8 +11,8 @@ import { motionDurations } from '@/composables/motionPresets'
 import { useMotionPreferences } from '@/composables/useMotionPreferences'
 import { focusWithoutScrolling } from '@/utils/dom'
 import { isTelegramWebAppDetected, telegramFullscreenState } from '@/utils/telegram'
-import LanguageControl from './LanguageControl.vue'
-import CurrencyControl from './CurrencyControl.vue'
+import { usePreferencesStore } from '@/stores/preferences'
+import { useTelegramSettingsButton } from '@/composables/useTelegramSettingsButton'
 import MobileNavigation from './MobileNavigation.vue'
 import SidebarMember from './SidebarMember.vue'
 import { desktopNavigationItems } from './navigation'
@@ -21,10 +21,12 @@ import { usePageTransition } from './usePageTransition'
 const route = useRoute()
 const router = useRouter()
 const sessionStore = useSessionStore()
+const preferences = usePreferencesStore()
+useTelegramSettingsButton(() => { void router.push('/settings') })
 const { t } = useI18n()
 const { activeCombo: hasValidCombo, refresh: refreshCommunityAccess } = useCommunityAccess()
 
-const desktopItems = computed(() => desktopNavigationItems(t, sessionStore.isAdmin, hasValidCombo.value))
+const desktopItems = computed(() => desktopNavigationItems(t, sessionStore.isAdmin, hasValidCombo.value && preferences.showAroundTX, hasValidCombo.value && preferences.showActivity))
 const transition = usePageTransition(router, () => desktopItems.value)
 const { reducedMotion, offset } = useMotionPreferences()
 const showBackButton = computed(() => !['/', '/home'].includes(route.path))
@@ -49,7 +51,7 @@ const pageMotion = computed(() => {
   }
 })
 
-function resolveDashboardStorage(): 'localStorage' | false {
+function resolveDashboardPersistence(): boolean {
   if (isTelegramWebAppDetected()) return false
 
   try {
@@ -57,13 +59,13 @@ function resolveDashboardStorage(): 'localStorage' | false {
     const probeKey = '__txc_dashboard_storage_probe__'
     storage.setItem(probeKey, '1')
     storage.removeItem(probeKey)
-    return 'localStorage'
+    return true
   } catch {
     return false
   }
 }
 
-const dashboardStorage = resolveDashboardStorage()
+const dashboardPersistent = resolveDashboardPersistence()
 
 function goBack(): void {
   try {
@@ -78,6 +80,7 @@ useTelegramBackButton(showBackButton, goBack)
 watch(() => route.path, (_next, previous) => {
   if (!previous) return
   void refreshCommunityAccess()
+  void preferences.refresh()
   void nextTick()
     .then(() => {
       if (appContent.value) {
@@ -92,7 +95,7 @@ watch(() => route.path, (_next, previous) => {
 
 <template>
   <div class="app-frame" :class="{ 'app-frame--fullscreen': isFullscreen }">
-    <UDashboardGroup class="app-dashboard" :storage="dashboardStorage" storage-key="tx-carpool-shell" unit="rem">
+    <UDashboardGroup class="app-dashboard" storage="local" :persistent="dashboardPersistent" storage-key="tx-carpool-shell" unit="rem">
       <UDashboardSidebar id="navigation-compact" class="side-rail app-dashboard__sidebar" :default-size="13" :min-size="13" :max-size="20" :ui="{ body: 'px-0', footer: 'px-0' }" resizable>
         <template #default>
           <nav class="side-rail__nav" :aria-label="$t('nav.primary')">
@@ -102,8 +105,6 @@ watch(() => route.path, (_next, previous) => {
         <template #footer>
           <footer class="side-rail__footer">
             <SidebarMember />
-            <CurrencyControl show-label />
-            <LanguageControl show-label />
           </footer>
         </template>
       </UDashboardSidebar>

@@ -1,0 +1,42 @@
+{
+  "settings": {
+    "title": "设置",
+    "loadFailed": "暂时无法加载设置。",
+    "saveFailed": "未能确认更改，当前显示上次已确认的设置。",
+    "subscription": "订阅",
+    "display": "显示与语言",
+    "community": "社群与邀请",
+    "showAroundTx": "显示 TX 周边入口",
+    "showActivity": "显示活动入口",
+    "includeNodePrices": "套餐价格包含已选节点",
+    "includeNodePricesHint": "核心套餐价格计入已选付费节点，结算时始终显示完整价格。",
+    "showReferralUsername": "向受邀用户显示我的用户名",
+    "showReferralUsernameHint": "在新受邀用户收到的欢迎消息中显示你的用户名。",
+    "notifications": {
+      "title": "通知",
+      "combos": "套餐与续费",
+      "combosHint": "开通、到期、续费与节点变更。",
+      "traffic": "流量与重置",
+      "trafficHint": "流量提醒，以及自动或手动重置结果。",
+      "money": "资金与退款",
+      "moneyHint": "充值、支付退款与套餐退款结果。",
+      "activity": "活动与邀请",
+      "activityHint": "群组奖励、邀请佣金与等级奖励。",
+      "account": "账号与管理变更",
+      "accountHint": "管理员变更、补偿、安全提醒与账号恢复。"
+    },
+    "tag": {
+      "label": "群成员标签",
+      "hint": "最多 16 个字符，不支持表情符号。留空即可移除标签。",
+      "tooLong": "最多输入 16 个字符。",
+      "loadFailed": "暂时无法确认你的群成员状态与标签。",
+      "saveFailed": "Telegram 未能确认标签。请使用不超过 16 个字符且不含表情的标签后重试。",
+      "reasons": {
+        "GROUP_NOT_JOINED": "加入群组后即可设置成员标签。",
+        "GROUP_TAG_ROLE_UNSUPPORTED": "Telegram 成员标签适用于普通群成员。",
+        "GROUP_TAG_EDIT_RESTRICTED": "群组已限制你修改成员标签的权限。",
+        "GROUP_TAG_PERMISSION_REQUIRED": "群组机器人需要管理成员标签的权限。"
+      }
+    }
+  }
+}

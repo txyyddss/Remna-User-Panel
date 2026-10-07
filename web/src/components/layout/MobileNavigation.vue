@@ -4,12 +4,14 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from '@/i18n'
 import { haptic } from '@/utils/telegram'
 import { mobileNavigationItems } from './navigation'
+import { usePreferencesStore } from '@/stores/preferences'
 
 const props = defineProps<{ isAdmin: boolean }>()
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
-const items = computed(() => mobileNavigationItems(props.isAdmin).map(item => ({
+const preferences = usePreferencesStore()
+const items = computed(() => mobileNavigationItems(props.isAdmin, preferences.showActivity).map(item => ({
   label: t(item.labelKey), icon: item.icon, value: item.to,
 })))
 const active = computed(() => {

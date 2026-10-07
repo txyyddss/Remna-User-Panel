@@ -1,0 +1,32 @@
+get:
+  tags: [Accounts]
+  operationId: getGroupMemberTag
+  responses:
+    '200':
+      description: Live group membership, tag and edit permissions.
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/GroupMemberTag' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+put:
+  tags: [Accounts]
+  operationId: updateGroupMemberTag
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: false
+          required: [tag]
+          properties:
+            tag: { type: string, maxLength: 16, description: 'Empty clears the tag. Emoji are rejected by Telegram.' }
+  responses:
+    '200':
+      description: Confirmed Telegram tag and current membership.
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/GroupMemberTag' }
+    '400': { $ref: '../openapi.yaml#/components/responses/BadRequest' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }

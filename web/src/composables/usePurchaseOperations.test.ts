@@ -85,22 +85,5 @@ describe('usePurchaseOperations', () => {
     scope.stop()
   })
 
-  it('loads and immediately persists the account-wide reset preference', async () => {
-    apiMocks.getTrafficResetQuote.mockResolvedValue(quote)
-    apiMocks.getTrafficResetAutomation.mockResolvedValue({ enabled: true, updatedAt: '2026-08-18T00:00:00Z' })
-    apiMocks.updateTrafficResetAutomation.mockResolvedValue({ enabled: false, updatedAt: '2026-08-18T00:01:00Z' })
-    const scope = effectScope()
-    const state = scope.run(() => usePurchaseOperations(() => 'purchase-1'))!
 
-    await state.loadQuote('reset')
-    expect(state.resetAutomation.value?.enabled).toBe(true)
-    await state.setResetAutomation(false)
-    await state.setResetAutomation(false)
-
-    expect(apiMocks.updateTrafficResetAutomation).toHaveBeenCalledWith(false)
-    expect(apiMocks.updateTrafficResetAutomation).toHaveBeenCalledTimes(1)
-    expect(hapticMocks.selectionHaptic).toHaveBeenCalledOnce()
-    expect(state.resetAutomation.value?.enabled).toBe(false)
-    scope.stop()
-  })
 })

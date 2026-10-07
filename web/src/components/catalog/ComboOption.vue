@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { AnimatePresence, motion } from 'motion-v'
 
-import type { Combo } from '@/api/types'
+import type { Combo, Money } from '@/api/types'
 import MarkdownContent from '@/components/common/MarkdownContent.vue'
 import { useI18n } from '@/i18n'
 import { formatBytes } from '@/utils/format'
@@ -12,6 +12,7 @@ import { useMotionPreferences } from '@/composables/useMotionPreferences'
 const props = defineProps<{
   combo: Combo
   selected: boolean
+  displayPrice?: Money
 }>()
 
 const emit = defineEmits<{ select: [id: string] }>()
@@ -55,7 +56,7 @@ function selectCombo(): void {
       <span><UIcon name="i-ph-chart-line-up" />{{ $t('catalog.rolloverThreshold', { threshold: (combo.rolloverMinRemainingBps / 100).toFixed(2) }) }}</span>
     </span>
     <span class="combo-option__price">
-      <strong>{{ formatMemberMoney(combo.price) }}</strong>
+      <strong>{{ formatMemberMoney(displayPrice ?? combo.price) }}</strong>
       <small>{{ $t('catalog.perDays', { count: combo.validityDays }) }}</small>
     </span>
   </UButton>

@@ -84,3 +84,7 @@ stopped.
 
 - `activity_boost_adapter.go` resolves the configured supergroup and member, obtains boosts through `queuedTelegram`, filters expired and duplicate identities, and derives the Telegram boost link without local persistence.
 - `activity_boost_adapter_test.go` covers personal identity and configured-group targeting, active boost filtering, missing configuration and provider failures.
+
+`telegram_member_tag_adapter.go` checks live member role and bot tag permissions inside the existing upstream queue before a tag change.
+`telegram_member_tag_adapter_test.go` verifies queue entry, tag clearing and execution-time membership checks.
+Personal security notices in `abuse_outbox.go` follow account preferences; operator copies retain operational delivery. Skipped personal messages do not acquire a false delivered timestamp.
