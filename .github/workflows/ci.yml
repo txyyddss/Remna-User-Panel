@@ -18,7 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       frontend: ${{ steps.filter.outputs.frontend }}
-      backend: ${{ steps.filter.outputs.backend }}
+      # A follow-up frontend repair can supersede an unfinished backend run.
+      # Main pushes must still validate the complete backend before publication.
+      backend: ${{ steps.filter.outputs.backend == 'true' || github.event_name == 'push' }}
     steps:
       - name: Check out source
         uses: actions/checkout@v7

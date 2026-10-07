@@ -15,3 +15,7 @@ existing two-open migration semaphore and isolated temporary databases. Shards
 have independent processes and CPU allocations, so migration concurrency does
 not multiply on one machine. Do not invoke these scripts locally: repository
 instructions permit automated suites only in hosted CI.
+
+Main pushes always run the backend gates. A frontend-only repair must not cancel
+an unfinished backend run and publish without validating the upgraded Go tree.
+Pull requests retain changed-area filtering.
