@@ -47,7 +47,7 @@ describe('catalogSquadPresentation', () => {
     expect(catalogSquadPresentation(squads, ['included'], distributions, 'combo-1'))
       .toEqual({
         featuredIds: ['featured-a', 'featured-b'],
-        orderedIds: ['featured-a', 'featured-b', 'other', 'included', 'full'],
+        orderedIds: ['other', 'featured-a', 'featured-b', 'included', 'full'],
       })
   })
 
@@ -76,7 +76,7 @@ describe('catalogSquadPresentation', () => {
 
     expect(catalogSquadPresentation(typed, [], global, null)).toEqual({
       featuredIds: [typed[1]!.id, typed[2]!.id],
-      orderedIds: [typed[1]!.id, typed[0]!.id, typed[2]!.id],
+      orderedIds: [typed[0]!.id, typed[1]!.id, typed[2]!.id],
     })
   })
 })

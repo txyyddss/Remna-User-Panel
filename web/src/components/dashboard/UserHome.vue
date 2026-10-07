@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, shallowRef } from 'vue'
+import { computed, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import InlineNotice from '@/components/common/InlineNotice.vue'
@@ -23,7 +23,7 @@ const { t } = useI18n()
 const reissueOrderId = computed(() => typeof route.query.reissue === 'string' && route.query.reissue ? route.query.reissue : undefined)
 const topUpRequested = computed(() => route.query.topUp === '1' && !reissueOrderId.value)
 const revokeRequested = computed(() => route.query.revoke === '1')
-const squadAdditionRequested = computed(() => route.query.addSquads === '1')
+watch(() => route.query.addSquads, value => { if (value === '1') void router.replace({ path: '/settings', query: { addSquads: '1' } }) }, { immediate: true })
 const catalogBlocked = computed(() => route.query.autoRenewBlocked === '1')
 const autoRenewalFailureMessage = computed(() => {
   const reason = dashboard.value?.autoRenewalFailure?.reason
@@ -51,9 +51,6 @@ async function handleAutoRenewalChanged(): Promise<void> {
   await load({ quiet: true })
 }
 
-async function handleSquadsChanged(): Promise<void> {
-  await load({ quiet: true })
-}
 
 function consumeTopUpRequest(): void {
   if (!topUpRequested.value) return
@@ -69,7 +66,7 @@ function consumeReissueRequest(): void {
   void router.replace({ name: 'home', query })
 }
 
-function consumeHomeRequest(name: 'revoke' | 'addSquads'): void {
+function consumeHomeRequest(name: 'revoke'): void {
   const query = { ...route.query }
   delete query[name]
   void router.replace({ name: 'home', query })
@@ -129,11 +126,8 @@ function consumeHomeRequest(name: 'revoke' | 'addSquads'): void {
             :active="dashboard.activePurchase"
             :queued="dashboard.queuedPurchase"
             :squad-names="activeSquadNames"
-            :open-squad-addition="squadAdditionRequested"
             @queued-cancelled="handleQueuedCancelled"
             @auto-renewal-changed="handleAutoRenewalChanged"
-            @squads-changed="handleSquadsChanged"
-            @squad-addition-request-consumed="consumeHomeRequest('addSquads')"
           />
           <ComingSoonLinks :has-valid-combo="hasValidCombo" />
         </div>

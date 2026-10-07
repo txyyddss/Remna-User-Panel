@@ -1,5 +1,9 @@
 # Dashboard components
 
+Add squads lives in Settings. The ride faces display ownership and rollover
+facts without purchase entrances; legacy Home add-on query links redirect to
+Settings. This keeps dashboard actions separate from subscription settings.
+
 - `EntitlementSummary.vue` relays the active ride's visible 44px Add squad action to the mobile-safe two-step `squad-addition` dialog and accepts the desktop sidebar's Home query action. `RideSummaryFace.vue` keeps its bold, filled green treatment beside the combo name while `RolloverFlipCard.vue` retains the independent rollover action.
 
 - `UserHome.vue` composes the ordered Home experience and its request states in one balance-first flow that remains visually identical on phones and desktop. It resolves active squad UUIDs against the current catalog without persisting duplicated squad data.

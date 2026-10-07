@@ -74,7 +74,7 @@ function goToBalance(): void {
 .squad-addition-checkout__summary { display: grid; gap: 0.7rem; }
 .squad-addition-checkout__summary-heading { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; color: var(--text-muted); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
 .squad-addition-checkout__summary-heading > :last-child { color: var(--accent); font-size: 1rem; }
-.squad-addition-checkout__summary > div { display: grid; gap: 0.25rem; padding-bottom: 0.65rem; border-bottom: 1px solid var(--line); }
+.squad-addition-checkout__summary > div:not(.squad-addition-checkout__summary-heading) { display: grid; gap: 0.25rem; padding-bottom: 0.65rem; border-bottom: 1px solid var(--line); }
 .squad-addition-checkout__summary > div:last-child { padding-bottom: 0; border-bottom: 0; }
 .squad-addition-checkout__summary span { color: var(--text-faint); font-size: 0.68rem; }
 .squad-addition-checkout__summary strong { overflow-wrap: anywhere; font-size: 0.8rem; }

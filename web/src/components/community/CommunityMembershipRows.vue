@@ -78,4 +78,10 @@ function state(space: CommunitySpace): 'joined' | 'unavailable' | 'ready' {
 @media (min-width: 640px) {
   .community-row { padding: 1.15rem 1.25rem; }
 }
+@media (min-width: 900px) {
+  .community-rows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .community-row { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
+  .community-row + .community-row { border-top: 0; border-left: 1px solid var(--line); }
+  .community-row__action { grid-column: 2; justify-self: start; }
+}
 </style>

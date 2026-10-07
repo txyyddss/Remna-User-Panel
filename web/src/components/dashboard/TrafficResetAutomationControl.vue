@@ -42,11 +42,11 @@ function update(enabled: boolean): void {
 </template>
 
 <style scoped>
-.reset-automation { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0.65rem; padding: 0.7rem; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface-raised); }
+.reset-automation { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 1rem; min-height: 60px; padding: 0.75rem 0; }
 .reset-automation :deep([role="switch"]) { position: relative; }
 .reset-automation :deep([role="switch"])::before { content: ''; position: absolute; width: 44px; height: 44px; top: 50%; left: 50%; transform: translate(-50%, -50%); }
 .reset-automation__copy { min-width: 0; display: grid; gap: 0.2rem; }
-.reset-automation__copy strong { font-size: 0.76rem; }
-.reset-automation__copy p { margin: 0; color: var(--text-faint); font-size: 0.68rem; line-height: 1.45; }
+.reset-automation__copy strong { font-size: 0.875rem; font-weight: 600; }
+.reset-automation__copy p { margin: 0.25rem 0 0; color: var(--text-muted); font-size: 0.8rem; line-height: 1.45; }
 .reset-automation__error { grid-column: 1 / -1; }
 </style>

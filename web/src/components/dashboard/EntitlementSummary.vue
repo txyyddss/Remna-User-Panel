@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { shallowRef, watch } from 'vue'
+import { shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
 
 import type { Purchase } from '@/api/types'
@@ -9,7 +9,6 @@ import InlineNotice from '@/components/common/InlineNotice.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import RolloverFlipCard from './RolloverFlipCard.vue'
 import PurchaseActions from './PurchaseActions.vue'
-import SquadAdditionDialog from '@/components/squad-addition/SquadAdditionDialog.vue'
 import { formatDate } from '@/utils/format'
 import { localizedError } from '@/i18n'
 import { notifyHaptic } from '@/utils/telegram'
@@ -18,15 +17,13 @@ const props = defineProps<{
   active?: Purchase | null
   queued?: Purchase | null
   squadNames?: readonly string[]
-  openSquadAddition?: boolean
 }>()
-const emit = defineEmits<{ queuedCancelled: []; autoRenewalChanged: []; squadsChanged: []; squadAdditionRequestConsumed: [] }>()
+const emit = defineEmits<{ queuedCancelled: []; autoRenewalChanged: [] }>()
 
 const router = useRouter()
 const queuedCancelOpen = shallowRef(false)
 const queuedCancelBusy = shallowRef(false)
 const queuedCancelError = shallowRef<string | null>(null)
-const squadAdditionOpen = shallowRef(false)
 
 function openQueuedCancellation(): void {
   queuedCancelError.value = null
@@ -53,22 +50,6 @@ function goToCatalog(): void {
   void router.push('/catalog')
 }
 
-function openSquadAdditionDialog(): void {
-  if (!props.active || props.queued) return
-  squadAdditionOpen.value = true
-}
-
-watch(() => props.openSquadAddition, (requested) => {
-  if (!requested) return
-  if (!props.active || props.queued) {
-    emit('squadAdditionRequestConsumed')
-    return
-  }
-  openSquadAdditionDialog()
-}, { immediate: true })
-watch(squadAdditionOpen, (open, wasOpen) => {
-  if (!open && wasOpen && props.openSquadAddition) emit('squadAdditionRequestConsumed')
-})
 </script>
 
 <template>
@@ -79,7 +60,7 @@ watch(squadAdditionOpen, (open, wasOpen) => {
     </div>
 
     <div v-if="active || queued" class="home-ride__content">
-      <RolloverFlipCard v-if="active" :active="active" :squad-names="squadNames" :add-squad-disabled="Boolean(queued)" @add-squad="openSquadAdditionDialog" />
+      <RolloverFlipCard v-if="active" :active="active" :squad-names="squadNames" />
       <div v-if="queued" class="home-ride__queued">
         <div class="home-ride__queued-content">
           <span>
@@ -126,7 +107,6 @@ watch(squadAdditionOpen, (open, wasOpen) => {
     danger
     @confirm="cancelQueued"
   />
-  <SquadAdditionDialog v-if="active" v-model:open="squadAdditionOpen" :active="active" @changed="emit('squadsChanged')" />
 </template>
 
 <style scoped>

@@ -13,9 +13,7 @@ import { useRolloverDetail } from '@/composables/useRolloverDetail'
 const props = defineProps<{
   active: Purchase
   squadNames?: readonly string[]
-  addSquadDisabled?: boolean
 }>()
-const emit = defineEmits<{ addSquad: [] }>()
 
 const flipped = shallowRef(false)
 const cardHeight = shallowRef<string | null>(null)
@@ -143,8 +141,6 @@ onUnmounted(() => {
           class="home-ride__summary-content"
           :active="active"
           :squad-names="squadNames"
-          :add-squad-disabled="addSquadDisabled"
-          @add-squad="emit('addSquad')"
           @open-rollover="showDetail"
         />
       </div>

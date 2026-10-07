@@ -1,5 +1,9 @@
 # Catalog components
 
+Optional squads sort by ascending popularity within their existing type groups;
+included and sold-out entries remain last. Node controls show name, country and
+consumption multiplier in full-width compact rows, including single-node squads.
+
 Squad node actions retain the selected squad UUID and its Geocheck display setting through `SquadPricingCard.vue`, `SquadPricingTable.vue`, and `SquadSelector.vue`. Disabling Geocheck changes only the popup result; node flags, multipliers, stock, and selection remain visible.
 
 - `CatalogPage.vue` owns the four-step squads, combo, coupon, and review journey, its versioned user-scoped step restoration, authoritative quote refresh after core-combo selection, and squad-composition preload. Its keyed Motion presence communicates forward/backward step changes without a viewport slide. `CatalogSquadStep.vue` presents the prepared ordering and owns the shared node Geocheck flow.

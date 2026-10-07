@@ -8,9 +8,8 @@ import { formatBytes, formatDate } from '@/utils/format'
 const props = defineProps<{
   active: Purchase
   squadNames?: readonly string[]
-  addSquadDisabled?: boolean
 }>()
-const emit = defineEmits<{ addSquad: []; openRollover: [] }>()
+const emit = defineEmits<{ openRollover: [] }>()
 
 const { t } = useI18n()
 const resetLabel = computed(() => t(`home.reset.${props.active.resetStrategy}`))
@@ -23,18 +22,6 @@ const resetLabel = computed(() => t(`home.reset.${props.active.resetStrategy}`))
       <div class="home-ride__name-block">
         <div class="home-ride__name-row">
           <h3>{{ active.comboName }}</h3>
-          <UTooltip v-if="!addSquadDisabled" :text="$t('home.squadAddition.open')">
-            <UButton
-              class="home-ride__add-squad"
-              color="success"
-              variant="solid"
-              size="sm"
-              icon="i-ph-plus"
-              :aria-label="$t('home.squadAddition.open')"
-              data-haptic="open"
-              @click.stop="emit('addSquad')"
-            />
-          </UTooltip>
         </div>
         <p>{{ squadNames?.length ? squadNames.join(t('home.squadSeparator')) : $t('dashboard.squadsIncluded', { count: active.squadUuids.length }) }}</p>
       </div>
@@ -70,16 +57,4 @@ const resetLabel = computed(() => t(`home.reset.${props.active.resetStrategy}`))
 .home-ride__name-block { min-width: 0; }
 .home-ride__name-row { display: flex; align-items: center; gap: 0.55rem; min-width: 0; }
 .home-ride__name-row h3 { min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.home-ride__add-squad {
-  position: relative;
-  z-index: 2;
-  flex: 0 0 auto;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
-  padding-inline: 0.75rem;
-  pointer-events: auto;
-  transition: background-color 180ms var(--ease-out), transform 120ms var(--ease-out);
-}
-.home-ride__add-squad:active { transform: translateY(1px); }
-@media (min-width: 900px) { .home-ride__add-squad { display: none; } }
 </style>

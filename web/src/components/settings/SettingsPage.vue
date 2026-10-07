@@ -52,5 +52,5 @@ onMounted(() => void preferences.refresh())
 .settings-section { padding-block: 1.25rem; }
 .settings-section + .settings-section { border-top: 1px solid var(--line); }
 .settings-section h2 { margin: 0 0 0.75rem; color: var(--text-muted); font-size: 0.875rem; font-weight: 600; }
-.settings-selectors { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem 2rem; padding-top: 1rem; }
+.settings-selectors { display: grid; gap: 0; }
 </style>

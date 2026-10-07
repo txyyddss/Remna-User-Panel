@@ -1,5 +1,9 @@
 # Layout components
 
+Language and currency controls use the flat settings-row variant when labelled.
+Add squads is available in Settings; the desktop Home submenu omits its former
+direct action. Existing Home query links redirect to the Settings action.
+
 - `AppShell.vue` is the single route-motion entrance. It uses keyed `AnimatePresence` with 14px local offsets, no initial hydration animation, and a reduced-motion opacity-only path.
 - `MobileNavigation.vue` and `AdminSectionNavigation.vue` own shared `layoutId` active markers and short icon/selection feedback. Nuxt UI remains the control system for desktop navigation and buttons.
 - `usePageTransition.ts` computes forward/backward direction from navigation order and tracks the wide viewport axis without blocking router resolution on animation callbacks.

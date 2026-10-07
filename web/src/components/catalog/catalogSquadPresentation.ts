@@ -29,7 +29,7 @@ export function catalogSquadPresentation(
   const types = [...new Set(rows.map(row => row.type))]
   const ordered = types.flatMap((type) => {
     const group = rows.filter(row => row.type === type)
-    const selectable = group.filter(row => !row.bottom).sort((left, right) => right.share - left.share || left.index - right.index)
+    const selectable = group.filter(row => !row.bottom).sort((left, right) => left.share - right.share || left.index - right.index)
     return [...selectable, ...group.filter(row => row.bottom)]
   })
   const featuredIds = types.flatMap((type) => {

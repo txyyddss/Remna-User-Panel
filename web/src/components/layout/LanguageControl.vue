@@ -24,17 +24,22 @@ function selectLocale(value: string): void {
 </script>
 
 <template>
-  <div class="language-control">
+  <div class="language-control" :class="{ 'language-control--settings': props.showLabel }">
     <span v-if="props.showLabel" class="language-control__label">{{ $t('app.language') }}</span>
     <ULocaleSelect
       :model-value="locale"
       :locales="uiLocales"
       color="neutral"
       variant="ghost"
-      size="sm"
+      :size="props.showLabel ? 'md' : 'sm'"
       :search-input="false"
       :aria-label="$t('app.language')"
       @update:model-value="selectLocale"
     />
   </div>
 </template>
+
+<style scoped>
+.language-control--settings { display: flex; justify-content: space-between; align-items: center; gap: 1rem; min-height: 60px; width: 100%; padding: 0.75rem 0; }
+.language-control--settings .language-control__label { color: var(--text); font-size: 0.875rem; font-weight: 600; }
+</style>

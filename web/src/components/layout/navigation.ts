@@ -51,7 +51,6 @@ export function desktopNavigationItems(t: Translate, isAdmin: boolean, showAroun
       children: [
         { label: t('nav.connections'), to: '/connections', icon: 'i-ph-devices' },
         { label: t('nav.revoke'), to: { path: '/home', query: { revoke: '1' } }, icon: 'i-ph-trash', exactQuery: true },
-        { label: t('nav.addSquads'), to: { path: '/home', query: { addSquads: '1' } }, icon: 'i-ph-plus', exactQuery: true },
       ],
     },
     { label: t('nav.explore'), to: '/catalog', icon: 'i-ph-compass' },

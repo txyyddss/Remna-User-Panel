@@ -78,6 +78,7 @@ const {
 </template>
 
 <style scoped>
+.page--activity { display: grid; gap: 1rem; }
 .activity-layout { display: grid; gap: 0.9rem; }
 @media (min-width: 1180px) { .activity-layout { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } }
 </style>

@@ -7,11 +7,13 @@ import CatalogSquadStep from '@/components/catalog/CatalogSquadStep.vue'
 import SquadActivationDialog from '@/components/catalog/SquadActivationDialog.vue'
 import { useCatalogSquadPresentation } from '@/components/catalog/useCatalogSquadPresentation'
 import { useSquadAddition } from '@/composables/useSquadAddition'
+import { useMotionPreferences } from '@/composables/useMotionPreferences'
 
 const open = defineModel<boolean>('open', { required: true })
 const props = defineProps<{ active: Purchase }>()
 const emit = defineEmits<{ changed: [] }>()
 const router = useRouter()
+const { reducedMotion } = useMotionPreferences()
 const step = shallowRef(1)
 const stepperIndex = computed(() => step.value - 1)
 const activationOpen = shallowRef(false)
@@ -83,13 +85,17 @@ function goHome(): void {
 </script>
 
 <template>
-  <UModal v-model:open="open" :title="$t('home.squadAddition.title')" :description="$t('home.squadAddition.description')" :close="false" :ui="{ content: 'tg-glass-modal tg-glass-surface squad-addition-dialog__modal', header: 'tg-overlay-header--centered', wrapper: 'tg-overlay-copy--centered', footer: 'justify-end flex-wrap' }" scrollable>
+  <UModal v-model:open="open" :title="$t('home.squadAddition.title')" :description="$t('home.squadAddition.description')" :close="false" :ui="{ content: 'tg-glass-modal tg-glass-surface squad-addition-dialog__modal' + (reducedMotion ? ' squad-addition-dialog__modal--reduced' : ''), header: 'tg-overlay-header--centered', wrapper: 'tg-overlay-copy--centered', footer: 'justify-end flex-wrap' }" scrollable>
     <template #body>
       <div class="squad-addition-dialog">
         <UStepper :model-value="stepperIndex" :items="[{ title: $t('home.squadAddition.steps.choose') }, { title: $t('home.squadAddition.steps.checkout') }]" :linear="true" disabled size="sm" />
-        <USkeleton v-if="loading" class="h-48" />
-        <CatalogSquadStep v-else-if="step === 1" :squads="visibleSquads" :selected-ids="selectedSquadIds" :included-ids="emptyIncludedIds" :featured-ids="featuredIds" :ordered-ids="orderedIds" @toggle="toggleSquad" />
-        <SquadAdditionCheckout v-else :squads="selectedSquads" :quote="quote" :purchase="purchase" :quoting="quoting" :purchasing="purchasing || activationPrompting" :needs-balance="needsBalance" :error="error" @back="step = 1" @confirm="confirm" @home="goHome" />
+        <Transition name="squad-addition-step" :mode="reducedMotion ? undefined : 'out-in'" :css="!reducedMotion">
+          <div :key="loading ? 'loading' : step">
+            <USkeleton v-if="loading" class="h-48" />
+            <CatalogSquadStep v-else-if="step === 1" :squads="visibleSquads" :selected-ids="selectedSquadIds" :included-ids="emptyIncludedIds" :featured-ids="featuredIds" :ordered-ids="orderedIds" @toggle="toggleSquad" />
+            <SquadAdditionCheckout v-else :squads="selectedSquads" :quote="quote" :purchase="purchase" :quoting="quoting" :purchasing="purchasing || activationPrompting" :needs-balance="needsBalance" :error="error" @back="step = 1" @confirm="confirm" @home="goHome" />
+          </div>
+        </Transition>
         <UAlert v-if="step === 1 && error" color="warning" variant="soft" icon="i-ph-warning-circle" :description="error" />
       </div>
     </template>
@@ -104,6 +110,14 @@ function goHome(): void {
 <style scoped>
 .squad-addition-dialog { display: grid; gap: 1rem; min-width: 0; padding-bottom: max(0.25rem, env(safe-area-inset-bottom)); }
 :global(.squad-addition-dialog__modal) { width: min(52rem, 100%); }
+.squad-addition-step-enter-active, .squad-addition-step-leave-active { transition: opacity 160ms ease-out, transform 160ms ease-out; }
+.squad-addition-step-enter-from, .squad-addition-step-leave-to { opacity: 0; transform: translateY(4px); }
+:global(.squad-addition-dialog__modal[data-state='open']) { animation: squad-addition-open 160ms ease-out; }
+:global(.squad-addition-dialog__modal[data-state='closed']) { animation: squad-addition-close 160ms ease-out; }
+@keyframes squad-addition-open { from { opacity: 0; } to { opacity: 1; } }
+@keyframes squad-addition-close { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { :global(.squad-addition-dialog__modal) { animation: none; } }
+:global(.squad-addition-dialog__modal--reduced[data-state]) { animation: none; }
 
 @media (max-width: 639px) {
   :global(.squad-addition-dialog__modal) { width: 100%; }

@@ -4,6 +4,7 @@ import { createPinia } from 'pinia'
 import { createRouter, createWebHistory } from 'vue-router'
 import ui from '@nuxt/ui/vue-plugin'
 import { comboControlsApi } from '@/api/comboControls'
+import { api } from '@/api/client'
 import { preferencesApi, type GroupMemberTag, type UserPreferences } from '@/api/preferences'
 import { memberOperationsApi } from '@/api/memberOperations'
 import { ApiError } from '@/api/http'
@@ -13,6 +14,14 @@ import { setLocale, t } from '@/i18n'
 import SettingsAudit from './SettingsAudit.vue'
 
 const params = new URLSearchParams(location.search)
+if (params.has('reduced')) {
+  const nativeMatchMedia = window.matchMedia.bind(window)
+  window.matchMedia = query => {
+    const media = nativeMatchMedia(query)
+    if (query === '(prefers-reduced-motion: reduce)') Object.defineProperty(media, 'matches', { value: true })
+    return media
+  }
+}
 const now = Date.now()
 const at = (offset: number) => new Date(now + offset).toISOString()
 const day = 86400000
@@ -76,6 +85,22 @@ preferencesApi.getTag = async () => tag
 preferencesApi.updateTag = async value => { tag = { ...tag, tag: value }; return tag }
 memberOperationsApi.getTrafficResetAutomation = async () => ({ enabled: state.automation, updatedAt: at(0) })
 memberOperationsApi.updateTrafficResetAutomation = async enabled => { state.automation = enabled; return { enabled, updatedAt: at(0) } }
+const optionalSquads = [
+  { id: 'optional-jp', remnaSquadUuid: 'optional-jp', name: 'Japan transit', country: 'JP', multiplier: 1 },
+  { id: 'optional-nl', remnaSquadUuid: 'optional-nl', name: 'Netherlands transit', country: 'NL', multiplier: 0.5 },
+].map((squad, index) => ({ ...squad, description: '', profile: { type: 'international_network', countryCode: squad.country, portMbps: null, upstreamCarriers: [] }, price: { currency: 'TXB', minor: String(100 + index * 100), display: '' }, visible: true, upstreamPresent: true, activationRequired: false, stockHeldByCurrentUser: false, stockLimit: null, stockRemaining: null, createdAt: at(0), updatedAt: at(0), accessibleNodes: [{ uuid: 'node-' + squad.id, name: squad.name + ' edge', countryCode: squad.country, consumptionMultiplier: squad.multiplier }], geocheckEnabled: false }))
+api.getCatalog = async () => {
+  if (params.has('addonslow')) await new Promise(resolve => setTimeout(resolve, 10000))
+  if (params.has('addonerror')) throw new Error('Constructed catalog load failure')
+  return { combos: [], addons: params.has('addonempty') ? [] : optionalSquads, nodes: [] } as never
+}
+api.getStatistics = async () => ({ database: { squadByCombo: [{ id: 'current', label: 'Standard', segments: optionalSquads.map((squad, index) => ({ id: squad.id, label: squad.name, value: index ? 20 : 70 })) }] } }) as never
+api.quotePurchaseAddons = async (purchaseId, ids) => ({ purchaseId, addonSquadUuids: ids, price: { currency: 'TXB', minor: '250', display: '2.50 TXB' }, effectiveAt: at(0), expiresAt: active.validUntil }) as never
+api.addPurchaseAddons = async (_purchaseId, ids) => {
+  const updated = { ...active, squadUuids: [...active.squadUuids, ...ids] }
+  controls = { ...controls, activePurchase: updated }
+  return updated
+}
 Object.assign(window, { __controlsAudit: state, __controlsAuditLocale: setLocale, __controlsSnapshot: () => controls })
 const app = createApp(SettingsAudit)
 app.config.globalProperties.$t = t

@@ -55,7 +55,7 @@ featuresApi.checkIn = async (): Promise<ActivityResult> => {
 }
 Object.assign(window, { __boostAudit: state, __boostAuditLocale: setLocale })
 const app = createApp(LuckyAudit)
-const router = createRouter({ history: createWebHistory(), routes: [{ path: '/boost-audit.html', component: LuckyAudit }] })
+const router = createRouter({ history: createWebHistory(), routes: [{ path: '/fixtures/activity-boost-audit.html', component: LuckyAudit }] })
 app.config.globalProperties.$t = t
 app.use(router)
 app.use(ui)

@@ -24,12 +24,13 @@ function formatMultiplier(value: number): string {
             color="neutral"
             variant="ghost"
             class="squad-node-list__node"
-            :aria-label="$t('catalog.openNodeGeocheck', { current: index + 1, total: nodes.length, multiplier: $t('catalog.nodeMultiplier', { multiplier: formatMultiplier(node.consumptionMultiplier) }) })"
+            :aria-label="$t('catalog.openNodeGeocheck', { name: node.name, current: index + 1, total: nodes.length, multiplier: $t('catalog.nodeMultiplier', { multiplier: formatMultiplier(node.consumptionMultiplier) }) })"
             data-haptic="open"
             @click.stop="emit('openGeocheck', node)"
             @keydown.stop
           >
             <CountryFlag :code="node.countryCode" />
+            <span class="squad-node-list__name">{{ node.name }}</span>
             <span class="squad-node-list__multiplier">{{ $t('catalog.nodeMultiplier', { multiplier: formatMultiplier(node.consumptionMultiplier) }) }}</span>
           </UButton>
         </motion.div>
@@ -40,9 +41,10 @@ function formatMultiplier(value: number): string {
 
 <style scoped>
 .squad-node-list { min-width: 0; display: grid; gap: 0.45rem; }
-.squad-node-list__grid { min-width: 0; display: flex; flex-wrap: wrap; align-items: start; gap: 0.45rem; }
+.squad-node-list__grid { min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: 0.45rem; }
 .squad-node-list__grid > * { min-width: 0; }
-.squad-node-list__node { min-width: 0; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.45rem 0.55rem; border: 1px solid var(--line); border-radius: var(--radius-control); color: var(--text); background: var(--surface); cursor: pointer; }
+.squad-node-list__node { width: 100%; min-width: 0; min-height: 44px; display: flex; align-items: center; gap: 0.5rem; padding: 0.45rem 0.55rem; border: 1px solid var(--line); border-radius: var(--radius-control); color: var(--text); background: var(--surface); cursor: pointer; }
+.squad-node-list__name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; font-size: 0.75rem; }
 .squad-node-list__node:hover { border-color: var(--line-strong); }
 .squad-node-list__node:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .squad-node-list__node :deep(.country-flag) { width: 1.7rem; height: 1.2rem; flex: 0 0 auto; }

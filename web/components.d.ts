@@ -95,7 +95,6 @@ declare module 'vue' {
     ChinaOptimizedProfileFields: typeof import('./src/components/admin/squad-profile/ChinaOptimizedProfileFields.vue')['default']
     ComboOption: typeof import('./src/components/catalog/ComboOption.vue')['default']
     ComingSoonLinks: typeof import('./src/components/dashboard/ComingSoonLinks.vue')['default']
-    CommunityAccessGuide: typeof import('./src/components/community/CommunityAccessGuide.vue')['default']
     CommunityMembershipRows: typeof import('./src/components/community/CommunityMembershipRows.vue')['default']
     CommunityPage: typeof import('./src/components/community/CommunityPage.vue')['default']
     CompensationConfigCard: typeof import('./src/components/admin/compensation/CompensationConfigCard.vue')['default']
