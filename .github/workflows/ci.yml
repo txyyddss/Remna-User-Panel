@@ -155,7 +155,7 @@ jobs:
   go-race-coverage:
     name: Go race and coverage
     needs: [changes, go-race-shards]
-    if: always() && needs.changes.outputs.backend == 'true'
+    if: always() && needs.go-race-shards.result != 'skipped'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

@@ -19,3 +19,5 @@ instructions permit automated suites only in hosted CI.
 Main pushes always run the backend gates. A frontend-only repair must not cancel
 an unfinished backend run and publish without validating the upgraded Go tree.
 Pull requests retain changed-area filtering.
+The aggregate gate follows the actual shard result, including failures, rather
+than reevaluating changed-area output after the matrix has completed.
