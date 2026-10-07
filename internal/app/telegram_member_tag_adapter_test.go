@@ -31,7 +31,7 @@ func TestGroupMemberTagQueueAndExecutionTimeChecks(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case strings.HasSuffix(r.URL.Path, "/getMe"):
-			_, _ = w.Write([]byte(`{"ok":true,"result":{"id":99,"is_bot":true,"first_name":"bot"}}`))
+			_, _ = w.Write([]byte(`{"ok":true,"result":{"id":99,"is_bot":true,"first_name":"bot","username":"tag_test_bot"}}`))
 		case strings.HasSuffix(r.URL.Path, "/getChatMember"):
 			result := map[string]any{"status": "member", "tag": "old"}
 			if !joined.Load() {
