@@ -38,9 +38,9 @@ func TestGroupMemberTagQueueAndExecutionTimeChecks(t *testing.T) {
 				result["status"] = "left"
 			}
 			if joined.Load() && restricted.Load() {
-				result["status"]="restricted"
-				result["is_member"]=true
-				result["can_edit_tag"]=false
+				result["status"] = "restricted"
+				result["is_member"] = true
+				result["can_edit_tag"] = false
 			}
 			if body.UserID == 99 {
 				result = map[string]any{"status": "administrator", "can_manage_tags": true}
@@ -85,5 +85,7 @@ func TestGroupMemberTagQueueAndExecutionTimeChecks(t *testing.T) {
 	}
 	joined.Store(true)
 	restricted.Store(true)
-	if err:=a.SetGroupMemberTag(ctx,"-100",42,"new");!errors.Is(err,accounts.ErrGroupTagUnavailable) || mutations.Load()!=1 { t.Fatalf("restricted member: %v mutations=%d",err,mutations.Load()) }
+	if err := a.SetGroupMemberTag(ctx, "-100", 42, "new"); !errors.Is(err, accounts.ErrGroupTagUnavailable) || mutations.Load() != 1 {
+		t.Fatalf("restricted member: %v mutations=%d", err, mutations.Load())
+	}
 }

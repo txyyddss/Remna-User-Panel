@@ -6,6 +6,14 @@ vi.mock('@/api/memberOperations', () => ({ memberOperationsApi: mocks }))
 vi.mock('@/api/preferences', () => ({ preferencesApi: mocks }))
 import { useSettings } from './useSettings'
 
+let settingsState!: ReturnType<typeof useSettings>
+const SettingsHarness = defineComponent({
+  setup() {
+    settingsState = useSettings()
+    return () => null
+  },
+})
+
 describe('Settings reset automation', () => {
   beforeEach(() => {
     vi.resetAllMocks()
@@ -13,20 +21,18 @@ describe('Settings reset automation', () => {
     mocks.getTag.mockResolvedValue({ groupJoined: false, editable: false, tag: '', reasonCode: 'GROUP_NOT_JOINED' })
   })
   it('moves account loading and immediate persistence into Settings', async () => {
-    let state!: ReturnType<typeof useSettings>
-    const wrapper = mount(defineComponent({ setup() { state = useSettings(); return () => null } }))
-    await flushPromises(); expect(state.automation.value?.enabled).toBe(true)
+    const wrapper = mount(SettingsHarness)
+    await flushPromises(); expect(settingsState.automation.value?.enabled).toBe(true)
     mocks.updateTrafficResetAutomation.mockResolvedValue({ enabled: false, updatedAt: '2026-10-07T00:01:00Z' })
-    await state.setAutomation(false); await state.setAutomation(false)
+    await settingsState.setAutomation(false); await settingsState.setAutomation(false)
     expect(mocks.updateTrafficResetAutomation).toHaveBeenCalledExactlyOnceWith(false)
-    expect(state.automation.value?.enabled).toBe(false); wrapper.unmount()
+    expect(settingsState.automation.value?.enabled).toBe(false); wrapper.unmount()
   })
   it('preserves the confirmed reset preference when a save fails', async () => {
-    let state!: ReturnType<typeof useSettings>
-    const wrapper = mount(defineComponent({ setup() { state = useSettings(); return () => null } }))
+    const wrapper = mount(SettingsHarness)
     await flushPromises(); mocks.updateTrafficResetAutomation.mockRejectedValue(new Error('offline'))
-    await state.setAutomation(false)
-    expect(state.automation.value?.enabled).toBe(true)
-    expect(state.automationError.value).toBeTruthy(); wrapper.unmount()
+    await settingsState.setAutomation(false)
+    expect(settingsState.automation.value?.enabled).toBe(true)
+    expect(settingsState.automationError.value).toBeTruthy(); wrapper.unmount()
   })
 })
