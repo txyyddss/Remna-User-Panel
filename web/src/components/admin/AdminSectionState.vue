@@ -14,7 +14,7 @@ const { reducedMotion } = useMotionPreferences()
 </script>
 
 <template>
-  <Transition name="admin-state" mode="out-in" :css="!reducedMotion">
+  <Transition name="admin-state" :mode="reducedMotion ? undefined : 'out-in'" :css="!reducedMotion">
     <div
       v-if="loading"
       key="loading"
