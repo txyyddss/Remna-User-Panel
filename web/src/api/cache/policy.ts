@@ -15,7 +15,7 @@ export function responseCacheKey(url: string, options: RequestOptions = {}): str
   const method = (options.method ?? 'GET').toUpperCase()
   if (!path.startsWith('/api/v1/') || !isReadRequest(path, method) || method === 'HEAD') return null
   // Authentication, capabilities, quotes and operation polling always require live responses.
-  if (path === '/api/v1/me' || /\/(auth|operations|restores|connections)(\/|$)/.test(path) ||
+  if (path === '/api/v1/me' || path === '/api/v1/activity' || /\/(auth|operations|restores|connections)(\/|$)/.test(path) ||
       /\/(key|refund|traffic-reset|quote)$/.test(path) ||
       path.startsWith('/api/v1/payments/')) return null
   parsed.searchParams.sort()

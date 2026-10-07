@@ -9,9 +9,10 @@ import LuckyDrawPanel from './LuckyDrawPanel.vue'
 import DrawExperienceModal from './draw/DrawExperienceModal.vue'
 import { useDrawExperience } from './draw/useDrawExperience'
 import GroupMessageRewardPanel from './GroupMessageRewardPanel.vue'
+import GroupBoostPanel from './GroupBoostPanel.vue'
 import ActivityResultDialog from './ActivityResultDialog.vue'
 
-const { overview, result, loading, busy, error, load, checkIn, placeBet, draw, clearResult } = useActivity()
+const { overview, result, loading, refreshing, busy, error, load, checkIn, placeBet, draw, clearResult } = useActivity()
 const {
   draw: activeDraw, style: drawStyle, phase: drawPhase, result: drawResult,
   error: drawError, resetToken, started: drawStarted, begin: beginDraw, retry: retryDraw,
@@ -34,8 +35,10 @@ const {
         <p>{{ $t('activity.balance', { amount: formatMemberMoney(overview.balance) }) }}</p>
       </div>
       <InlineNotice v-if="error" tone="warning">{{ error }}</InlineNotice>
+      <GroupBoostPanel :boost="overview.groupBoost" :refreshing="refreshing" @refresh="load({ quiet: true })" />
       <div class="activity-layout">
         <DailyCheckInCard
+          v-if="overview.groupBoost.state === 'boosted'"
           :checked-in="overview.checkedInToday"
           :reward-min-txb-minor="overview.dailyRewardMinTxbMinor"
           :reward-max-txb-minor="overview.dailyRewardMaxTxbMinor"
@@ -43,7 +46,7 @@ const {
           :busy="busy === 'check-in'"
           @check-in="checkIn"
         />
-        <GroupMessageRewardPanel :reward="overview.groupMessageReward" />
+        <GroupMessageRewardPanel v-if="overview.groupBoost.state === 'boosted'" :reward="overview.groupMessageReward" />
         <BetGamesPanel :games="overview.games" :busy="busy === 'bet'" @bet="placeBet" />
         <LuckyDrawPanel
           :draws="overview.draws"

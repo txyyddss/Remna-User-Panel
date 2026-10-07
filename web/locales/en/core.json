@@ -148,6 +148,8 @@
       "AGREEMENT_OUTDATED": "The rules changed while you were reviewing them. Review the current rules and continue.",
       "REMNAWAVE_IDENTITY_CONFLICT": "This username is linked to another account. Contact support before continuing.",
       "INSUFFICIENT_BALANCE": "Your balance is too low for this action.",
+      "GROUP_BOOST_REQUIRED": "Boost the group at least once to receive activity rewards.",
+      "GROUP_BOOST_UNAVAILABLE": "Group boost verification is temporarily unavailable. Please try again.",
       "NO_ACCESSIBLE_NODES": "No accessible nodes are available for this selection.",
       "SQUAD_STOCK_UNAVAILABLE": "A selected squad is currently full.",
       "RENEWAL_CONFLICT": "This renewal is no longer available. Refresh and try again.",

@@ -178,34 +178,3 @@ type History struct {
 	CheckIns []DailyCheckIn `json:"checkIns"`
 	Draws    []DrawResult   `json:"draws"`
 }
-
-type GroupMessageRewardConfig struct {
-	Timezone    string
-	Threshold   int
-	RewardMinor int64
-}
-
-func (config GroupMessageRewardConfig) Validate() error {
-	if strings.TrimSpace(config.Timezone) == "" || config.Threshold < 0 || config.RewardMinor < 0 {
-		return fmt.Errorf("%w: invalid group-message reward configuration", ErrInvalidInput)
-	}
-	if _, err := time.LoadLocation(config.Timezone); err != nil {
-		return fmt.Errorf("%w: unknown group-message reward timezone", ErrInvalidInput)
-	}
-	return nil
-}
-
-type GroupMessageRewardStatus struct {
-	Enabled      bool       `json:"enabled"`
-	LocalDate    string     `json:"localDate"`
-	MessageCount int        `json:"messageCount"`
-	Threshold    int        `json:"threshold"`
-	RewardMinor  int64      `json:"rewardMinor,string"`
-	Rewarded     bool       `json:"rewarded"`
-	RewardedAt   *time.Time `json:"rewardedAt,omitempty"`
-}
-type GroupMessageRewardResult struct {
-	Status   GroupMessageRewardStatus
-	Counted  bool
-	Replayed bool
-}

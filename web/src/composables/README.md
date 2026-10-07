@@ -72,3 +72,5 @@ separate. Action quotes and permission decisions still await the backend.
 - `useTelegramBackButton.ts` coordinates one native Telegram BackButton across route and overlay owners, adds soft navigation feedback, and removes every handler on teardown.
 - `useTelegramProtection.ts` reference-counts active destructive, busy, or dirty workflows and enables native closing confirmation plus vertical-swipe suppression only while needed.
 `useNodeGeocheck.ts` preserves squad context, skips disabled requests, and checks live squad settings before displaying images from enabled contexts.
+
+- `useActivity.ts` reads eligibility live, tracks refresh state and hides reward controls when verification refresh fails; a rejected check-in refreshes boost state while retaining its localized refusal.

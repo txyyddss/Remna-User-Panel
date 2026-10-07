@@ -81,3 +81,6 @@ stopped.
 - `remna_entitlements_rollover_test.go` verifies that rollover usage keeps Remnawave's inclusive final date.
 - `provider_queues_test.go` verifies provider queue configuration and independent worker operation.
 - `adapters_part2.go` contains the remaining payment-provider verification and callback mapping helpers.
+
+- `activity_boost_adapter.go` resolves the configured supergroup and member, obtains boosts through `queuedTelegram`, filters expired and duplicate identities, and derives the Telegram boost link without local persistence.
+- `activity_boost_adapter_test.go` covers personal identity and configured-group targeting, active boost filtering, missing configuration and provider failures.

@@ -155,6 +155,8 @@
       "INVALID_TELEGRAM_DATA": "无法验证 Telegram 身份。",
       "REMNAWAVE_UNAVAILABLE": "账号验证暂时不可用，请重试。",
       "INSUFFICIENT_BALANCE": "余额不足以完成此操作。",
+      "GROUP_BOOST_REQUIRED": "至少为群组保持一次有效助力后才能获得活动奖励。",
+      "GROUP_BOOST_UNAVAILABLE": "暂时无法验证群组助力，请稍后再试。",
       "REQUEST_SIGNATURE_REQUIRED": "安全会话需要刷新。",
       "REQUEST_SIGNATURE_INVALID": "无法验证安全会话。",
       "REQUEST_SIGNATURE_STALE": "请刷新应用后重试。",

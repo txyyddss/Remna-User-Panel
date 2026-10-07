@@ -117,3 +117,6 @@
 - `handlers_part2.go` contains the remaining route handler implementations.
 - `server_part2.go` contains authenticated request-context, static asset, and transport helper implementations.
 `statistics.go` checks the optional squad context before returning a cached Geocheck image; disabled squads return `SQUAD_GEOCHECK_DISABLED`. General node statistics and shared background image collection keep their existing behavior.
+
+- `activity_boost_test.go` covers `GROUP_BOOST_REQUIRED` (403) and `GROUP_BOOST_UNAVAILABLE` (503). Activity overview exposes live `groupBoost` state and effective amounts while preserving unrelated activities during verification failures.
+- `telegram_deduction.go` contains the unchanged administrator deduction command handling split out to keep the affected command module below 200 lines.

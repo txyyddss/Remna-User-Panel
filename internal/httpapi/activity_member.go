@@ -8,11 +8,30 @@ import (
 )
 
 func (s *Server) activityOverview(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
 	user := currentUser(r)
 	if !s.requireOnboarded(w, r, user) {
 		return
 	}
 	config, err := s.activityConfig(r.Context())
+	if err != nil {
+		s.communityFailure(w, r, err)
+		return
+	}
+	boost, boostErr := s.deps.Activity.GroupBoost(r.Context(), user.ID)
+	if boostErr != nil {
+		s.deps.Logger.Warn("verify activity group boosts", "user_id", user.ID, "error", boostErr)
+	}
+	boostCount := 0
+	if boost.Count != nil {
+		boostCount = *boost.Count
+	}
+	minimum, err := activity.BoostRewardMinor(config.RewardMinMinor, boostCount)
+	if err != nil {
+		s.communityFailure(w, r, err)
+		return
+	}
+	maximum, err := activity.BoostRewardMinor(config.RewardMaxMinor, boostCount)
 	if err != nil {
 		s.communityFailure(w, r, err)
 		return
@@ -38,7 +57,7 @@ func (s *Server) activityOverview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	groupMessageReward, err := s.deps.Activity.GroupMessageStatus(r.Context(), user.ID, activity.GroupMessageRewardConfig{
-		Timezone: config.Timezone, Threshold: config.GroupMessageThreshold, RewardMinor: config.GroupMessageRewardMinor,
+		Timezone: config.Timezone, Threshold: config.GroupMessageThreshold, RewardMinor: config.GroupMessageRewardMinor, BoostCount: boostCount,
 	})
 	if err != nil {
 		s.communityFailure(w, r, err)
@@ -70,7 +89,7 @@ func (s *Server) activityOverview(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, http.StatusOK, activityOverviewResponse{Balance: balance, TimeZone: config.Timezone, CheckedInToday: checkedIn,
-		DailyRewardMinTXBMinor: strconv.FormatInt(config.RewardMinMinor, 10), DailyRewardMaxTXBMinor: strconv.FormatInt(config.RewardMaxMinor, 10), Games: gameResponses, Draws: drawResponses,
+		GroupBoost: boost, DailyRewardMinTXBMinor: strconv.FormatInt(minimum, 10), DailyRewardMaxTXBMinor: strconv.FormatInt(maximum, 10), Games: gameResponses, Draws: drawResponses,
 		RecentResults: mapActivityHistory(history, 30), GroupMessageReward: groupMessageReward})
 }
 

@@ -22,3 +22,6 @@ the package never calls persistence or providers directly.
 - `display_currency_test.go` verifies CNY/USD group-command money output for balance, check-in, rollover, and deductions.
 - `traffic_test.go` covers byte parsing/formatting, clamping, bar allocation,
   displayed-node totals, empty distributions, and the 4096-character limit.
+
+- Group reward commands use localized, MarkdownV2-safe boost-required and verification-unavailable copy from `locale.go`; `format.go` renders the refusal without replying to ordinary group messages.
+- `group_boost_test.go` verifies both refusal reasons have localized, escaped English and Chinese copy.

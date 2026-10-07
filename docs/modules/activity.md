@@ -38,3 +38,12 @@ Administrators may hard-delete games and draws when no protected processing work
 - SQLite tests cover insufficient funds, fee-plus-deduction coverage, stock races, idempotent replays, ledger atomicity, and extension application.
 - Calendar tests cover the configured timezone at UTC/local day boundaries.
 - Vue tests cover human-major TXB conversion, loading/error/empty states, visible cost and odds, bet feedback boundaries, reduced motion, keyboard use, and narrow layouts.
+
+- Daily check-in requires queued live verification of active personal boosts to the configured supergroup. Group message progress additionally requires positive authenticated `sender_boost_count` metadata and the existing active subscription. Rewards scale the sampled base by boost count / 2, half up to a TXB hundredth; ledger results and duplicate protection remain authoritative. Removal pauses progress without invalidating previously eligible messages. The activity page replaces both reward blocks with one boost-information panel when ineligible or unavailable; other activities retain their behavior.
+
+## Boost reward validation (2026-10-07)
+
+- Chrome DevTools MCP 1.10.1 exercised the real activity components using `web/fixtures/activity-boost-audit.ts`, constructed API responses, and an isolated headless Chrome context. Mobile used a 390 × 844 touch viewport; desktop used 1440 × 1000. Both layouts had document width equal to viewport width, with a two-column activity grid on desktop and 44 px action buttons on mobile.
+- Browser inspection covered initial loading, empty games/draws, zero boosts, unavailable verification, counts 1–4, active message progress, disabled and already-paid message rewards, check-in busy/claimed states, boost-link navigation, refresh disabling/recovery, refusal after boost removal, and English/Chinese copy. A three-boost constructed receipt displayed 1.88 TXB from a 1.25 TXB base; refusal retained the balance and hid both reward controls.
+- Final console inspection found no warnings or errors. Network inspection covered 890 requests with no failed or HTTP 4xx/5xx responses. Screenshots are local evidence under `D:/Remna-User-Panel/.tmp/group-boost-browser/`; the MCP transcript is under the isolated task worktree's `.tmp/` directory.
+- Local validation uses structure/i18n review, ESLint, Vue type-checking, API generation, Go vet and formatting inspection. Automated regression suites run only in hosted CI. These browser checks use constructed data and do not establish live Telegram permissions or credit production balances.

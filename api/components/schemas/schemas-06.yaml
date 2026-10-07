@@ -15,6 +15,7 @@ GroupMessageRewardStatus:
       type: integer
       minimum: 0
     rewardMinor:
+      description: Effective boosted reward before settlement; the immutable ledger amount after settlement.
       type: string
       pattern: '^\\d+$'
     rewarded:
@@ -22,11 +23,28 @@ GroupMessageRewardStatus:
     rewardedAt:
       $ref: '../../openapi.yaml#/components/schemas/Timestamp'
 
+GroupBoostStatus:
+  type: object
+  additionalProperties: false
+  required: [state, count, boostUrl]
+  properties:
+    state:
+      type: string
+      enum: [required, boosted, unavailable]
+    count:
+      type: [integer, 'null']
+      minimum: 0
+    boostUrl:
+      type: [string, 'null']
+      format: uri
+
 ActivityOverview:
   type: object
   additionalProperties: false
-  required: [balance, timeZone, checkedInToday, dailyRewardMinTxbMinor, dailyRewardMaxTxbMinor, games, draws, recentResults, groupMessageReward]
+  required: [balance, timeZone, checkedInToday, dailyRewardMinTxbMinor, dailyRewardMaxTxbMinor, games, draws, recentResults, groupMessageReward, groupBoost]
   properties:
+    groupBoost:
+      $ref: '../../openapi.yaml#/components/schemas/GroupBoostStatus'
     balance:
       $ref: '../../openapi.yaml#/components/schemas/Money'
     timeZone:
@@ -35,9 +53,11 @@ ActivityOverview:
     checkedInToday:
       type: boolean
     dailyRewardMinTxbMinor:
+      description: Effective boosted minimum, or zero while eligibility is unverified or missing.
       type: string
       pattern: '^\d+$'
     dailyRewardMaxTxbMinor:
+      description: Effective boosted maximum, or zero while eligibility is unverified or missing.
       type: string
       pattern: '^\d+$'
     games:

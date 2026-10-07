@@ -18,44 +18,46 @@ type Description struct {
 
 // Copy owns every user-visible bot string.
 type Copy struct {
-	Descriptions        []Description
-	Start               string
-	WelcomePrefix       string
-	WelcomeSuffix       string
-	MemberLabel         string
-	UnknownTitle        string
-	Unknown             string
-	UnavailableTitle    string
-	Unavailable         string
-	NoSubscriptionTitle string
-	NoSubscription      string
-	SubscriptionTitle   string
-	ComboTitle          string
-	DeductTitle         string
-	StatusLabel         string
-	AmountLabel         string
-	BalanceLabel        string
-	ComboLabel          string
-	SquadsLabel         string
-	TrafficLabel        string
-	ResetLabel          string
-	ResetDaily          string
-	ResetWeekly         string
-	ResetMonthly        string
-	RolloverLabel       string
-	RolloverWill        string
-	RolloverWillNot     string
-	RolloverCannot      string
-	RolloverUnavailable string
-	SignInReward        string
-	SignInAbove         string
-	SignInBelow         string
-	SignInEqual         string
-	SignInNeutral       string
-	SignInAlready       string
-	DeductUsage         string
-	DeductRejected      string
-	DeductSucceeded     string
+	Descriptions          []Description
+	Start                 string
+	WelcomePrefix         string
+	WelcomeSuffix         string
+	MemberLabel           string
+	UnknownTitle          string
+	Unknown               string
+	UnavailableTitle      string
+	Unavailable           string
+	NoSubscriptionTitle   string
+	NoSubscription        string
+	SubscriptionTitle     string
+	ComboTitle            string
+	DeductTitle           string
+	StatusLabel           string
+	AmountLabel           string
+	BalanceLabel          string
+	ComboLabel            string
+	SquadsLabel           string
+	TrafficLabel          string
+	ResetLabel            string
+	ResetDaily            string
+	ResetWeekly           string
+	ResetMonthly          string
+	RolloverLabel         string
+	RolloverWill          string
+	RolloverWillNot       string
+	RolloverCannot        string
+	RolloverUnavailable   string
+	SignInReward          string
+	SignInAbove           string
+	SignInBelow           string
+	SignInEqual           string
+	SignInNeutral         string
+	SignInAlready         string
+	GroupBoostRequired    string
+	GroupBoostUnavailable string
+	DeductUsage           string
+	DeductRejected        string
+	DeductSucceeded       string
 }
 
 // LanguageFor maps all Telegram Chinese variants to Simplified Chinese.
@@ -88,7 +90,9 @@ func englishCopy() Copy {
 		SignInReward: "Check-in reward", SignInAbove: "🎉 Congratulations! Your reward is above the average check-in reward.",
 		SignInBelow: "🌱 Your reward is below the average check-in reward. Better luck tomorrow!", SignInEqual: "✨ Your reward matches the average check-in reward.",
 		SignInNeutral: "✨ Check-in successful!", SignInAlready: "✅ You have already checked in today.",
-		DeductUsage: "Reply to a member with /deduct <amount>.", DeductRejected: "The deduction could not be completed.", DeductSucceeded: "The balance was deducted.",
+		GroupBoostRequired:    "Check-in refused: you have not boosted the group yet. Add at least one active boost to receive activity rewards.",
+		GroupBoostUnavailable: "Group boost verification is temporarily unavailable. Please try again.",
+		DeductUsage:           "Reply to a member with /deduct <amount>.", DeductRejected: "The deduction could not be completed.", DeductSucceeded: "The balance was deducted.",
 	}
 }
 
@@ -105,6 +109,8 @@ func chineseCopy() Copy {
 		RolloverWill: "预计", RolloverWillNot: "预计无法获得", RolloverCannot: "未启用自动续费，无法获得", RolloverUnavailable: "暂不可用",
 		SignInReward: "签到奖励", SignInAbove: "🎉 恭喜！本次奖励高于平均签到奖励。", SignInBelow: "🌱 本次奖励低于平均签到奖励，明天继续加油。",
 		SignInEqual: "✨ 本次奖励正好达到平均签到奖励。", SignInNeutral: "✨ 签到成功！", SignInAlready: "✅ 今日已签到。",
-		DeductUsage: "请回复一位成员的消息后使用 /deduct <金额>。", DeductRejected: "扣减未能完成。", DeductSucceeded: "余额已扣减。",
+		GroupBoostRequired:    "签到被拒绝：你尚未为群组助力。至少保持一次有效助力后才能获得活动奖励。",
+		GroupBoostUnavailable: "暂时无法验证群组助力，请稍后再试。",
+		DeductUsage:           "请回复一位成员的消息后使用 /deduct <金额>。", DeductRejected: "扣减未能完成。", DeductSucceeded: "余额已扣减。",
 	}
 }

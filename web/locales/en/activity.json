@@ -1,5 +1,14 @@
 {
   "activity": {
+    "boostRequired": "Boost the group to unlock rewards",
+    "boostRequiredHint": "Daily check-in and group message rewards require at least one active boost from you to this group.",
+    "boostUnavailable": "Boost verification unavailable",
+    "boostUnavailableHint": "We could not verify your group boosts. Check again before claiming rewards.",
+    "boostMultiplierHint": "Rewards are multiplied by your active boost count ÷ 2 and rounded to 0.01 TXB. One boost gives 0.5×; two give 1×; three give 1.5×.",
+    "boostGroup": "Boost group",
+    "boostCheckAgain": "Check again",
+    "boostActive": "Group boost active",
+    "boostCount": "Active boosts: {count} · {multiplier}× rewards",
     "groupRewardCount": "Messages",
     "groupRewardAmount": "Reward",
     "groupRewardProgressLabel": "Group-message reward progress",
@@ -12,7 +21,7 @@
     "groupRewardDisabled": "Group message rewards are not active right now.",
     "groupRewardProgress": "{count} of {threshold} messages",
     "groupRewardClaimed": "Today's group-message reward is claimed.",
-    "groupRewardHint": "Send messages in the group while your subscription is active.",
+    "groupRewardHint": "Only messages sent while your subscription and group boost are active count.",
     "dailyCheckIn": "Daily check-in",
     "todayComplete": "Today is complete.",
     "claimToday": "Claim {amount} once today.",

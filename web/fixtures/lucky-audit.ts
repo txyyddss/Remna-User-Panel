@@ -11,6 +11,7 @@ const drawPrizes = prizes.map((prize) => ({ ...prize }))
 const overview = {
   balance: { currency: 'TXB', minor: '10000', display: '100.00 TXB' },
   timeZone: 'Asia/Shanghai', checkedInToday: true, dailyRewardMinTxbMinor: '50', dailyRewardMaxTxbMinor: '100',
+  groupBoost: { state: 'boosted', count: 2, boostUrl: 'https://t.me/boost?c=1234567890' },
   games: [], draws: [
     { id: 'draw-1', name: 'Weekend rewards', description: 'One draw, one recorded result.', feeTxbMinor: '100', enabled: true, prizes },
     { id: 'draw-2', name: 'Midnight bonus', description: 'A second draw to audit parallel button states.', feeTxbMinor: '250', enabled: true, prizes: drawPrizes },

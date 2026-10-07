@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func (s *Store) claimDailyActivity(ctx context.Context, userID, localDate, timezone string, minimumMinor, maximumMinor int64, rng activity.RandomSource, now time.Time) (activity.DailyCheckIn, error) {
+func (s *Store) claimDailyActivity(ctx context.Context, userID, localDate, timezone string, minimumMinor, maximumMinor int64, boostCount int, rng activity.RandomSource, now time.Time) (activity.DailyCheckIn, error) {
 	location, err := time.LoadLocation(timezone)
 	if err != nil || minimumMinor < 0 || maximumMinor < minimumMinor || maximumMinor-minimumMinor == math.MaxInt64 || strings.TrimSpace(userID) == "" {
 		return activity.DailyCheckIn{}, activity.ErrInvalidInput
@@ -43,6 +43,10 @@ func (s *Store) claimDailyActivity(ctx context.Context, userID, localDate, timez
 			return activity.DailyCheckIn{}, randomErr
 		}
 		rewardMinor += offset
+	}
+	rewardMinor, err = activity.BoostRewardMinor(rewardMinor, boostCount)
+	if err != nil {
+		return activity.DailyCheckIn{}, err
 	}
 	checkInID, err := ids.New()
 	if err != nil {

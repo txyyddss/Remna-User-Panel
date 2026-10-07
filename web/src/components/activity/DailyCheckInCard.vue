@@ -34,6 +34,7 @@ function displayMinor(minor: string): string {
       <small>{{ $t('activity.resetsAt', { timezone: timeZone }) }}</small>
     </div>
     <UButton
+      color="neutral"
       icon="i-ph-check-circle-fill"
       :disabled="checkedIn || busy"
       :loading="busy"

@@ -13,7 +13,6 @@ import (
 
 	"github.com/txyyddss/Remna-User-Panel/internal/abuse"
 	"github.com/txyyddss/Remna-User-Panel/internal/accounts"
-	"github.com/txyyddss/Remna-User-Panel/internal/activity"
 	"github.com/txyyddss/Remna-User-Panel/internal/admin"
 	"github.com/txyyddss/Remna-User-Panel/internal/affiliates"
 	"github.com/txyyddss/Remna-User-Panel/internal/billing"
@@ -109,7 +108,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	catalogService := catalog.NewService(store, remna, 2*time.Minute)
 	catalogService.SetAutomaticRenewalSettings(settings)
 	billingService := billing.NewService(store, settings, paymentBridge, cfg.PublicBaseURL)
-	activityService := activity.NewService(store, activity.CryptoRandom{}, nil)
+	activityService := newActivityService(store, settings, queuedTelegramClient)
 	couponService := coupons.NewService(store, nil)
 	questionnaireService := questionnaires.NewService(store, questionnaires.CryptoCodeGenerator{}, nil)
 	embyPrice := embySetupPrice(settings)

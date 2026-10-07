@@ -12,3 +12,5 @@
 
 Endpoint methods live in `../features.ts`; generated core schemas live in
 `../generated.ts` and are regenerated from the application OpenAPI document.
+
+- `activity.ts` defines `GroupBoostStatus` (verified state, nullable personal count and boost link); effective reward values come from the server.

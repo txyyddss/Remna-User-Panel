@@ -23,6 +23,16 @@ func FormatUnavailable(copy Copy) string {
 	return formatCard(copy.UnavailableTitle, cardField{copy.StatusLabel, copy.Unavailable})
 }
 
+// FormatGroupBoostRequired explains why an unboosted member cannot check in.
+func FormatGroupBoostRequired(copy Copy) string {
+	return formatCard(copy.SignInReward, cardField{copy.StatusLabel, copy.GroupBoostRequired})
+}
+
+// FormatGroupBoostUnavailable distinguishes provider failures from ineligibility.
+func FormatGroupBoostUnavailable(copy Copy) string {
+	return formatCard(copy.UnavailableTitle, cardField{copy.StatusLabel, copy.GroupBoostUnavailable})
+}
+
 // FormatNoSubscription renders an empty subscription state.
 func FormatNoSubscription(copy Copy) string {
 	return formatCard(copy.NoSubscriptionTitle, cardField{copy.StatusLabel, copy.NoSubscription})

@@ -38,3 +38,6 @@ and polling flows remain responsible for fresh authority and durable operations.
 No data is persisted in localStorage, sessionStorage, Telegram storage, or a database.
 Document reload, logout, account/role/onboarding changes discard all snapshots.
 Existing locale, layout, haptics, route guards and backend queue contracts are retained.
+
+- `policy.ts` excludes activity responses from persistent snapshots because boost eligibility must be obtained live.
+- `policy.test.ts` verifies live activity responses are excluded while ordinary reads retain snapshots.

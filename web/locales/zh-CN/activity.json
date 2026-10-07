@@ -1,5 +1,14 @@
 {
   "activity": {
+    "boostRequired": "为群组助力以解锁奖励",
+    "boostRequiredHint": "每日签到和群消息奖励要求你至少为本群保持一次有效助力。",
+    "boostUnavailable": "暂时无法验证助力",
+    "boostUnavailableHint": "无法验证你的群组助力，请重新检查后再领取奖励。",
+    "boostMultiplierHint": "奖励乘以你的有效助力次数 ÷ 2，并四舍五入至 0.01 TXB。一次助力为 0.5 倍，两次为 1 倍，三次为 1.5 倍。",
+    "boostGroup": "为群组助力",
+    "boostCheckAgain": "重新检查",
+    "boostActive": "群组助力已生效",
+    "boostCount": "{count} 次有效助力 · {multiplier} 倍奖励",
     "groupRewardCount": "消息数",
     "groupRewardAmount": "奖励",
     "groupRewardProgressLabel": "水群奖励进度",
@@ -12,7 +21,7 @@
     "groupRewardDisabled": "群消息奖励当前未启用。",
     "groupRewardProgress": "{count} / {threshold} 条消息",
     "groupRewardClaimed": "今天的群消息奖励已领取。",
-    "groupRewardHint": "在订阅有效期间于群组中发送消息。",
+    "groupRewardHint": "仅在订阅和群组助力均有效时发送的消息计入进度。",
     "dailyCheckIn": "每日签到",
     "todayComplete": "今天已完成。",
     "claimToday": "今天可领取 {amount}。",

@@ -18,7 +18,7 @@ func TestGroupMessageRewardCountsEligibleMessagesAndReplaysAtomically(t *testing
 	now := time.Date(2026, 8, 8, 16, 30, 0, 0, time.UTC)
 	config := activity.GroupMessageRewardConfig{Timezone: "Asia/Shanghai", Threshold: 2, RewardMinor: 125}
 
-	withoutSubscription, err := store.RecordGroupMessage(ctx, user.ID, -100, 1, "2026-08-09", "Asia/Shanghai", config.Threshold, config.RewardMinor, now)
+	withoutSubscription, err := store.RecordGroupMessage(ctx, user.ID, -100, 1, "2026-08-09", "Asia/Shanghai", config.Threshold, config.RewardMinor, 2, now)
 	if err != nil || withoutSubscription.Counted || withoutSubscription.Status.MessageCount != 0 {
 		t.Fatalf("message without subscription = (%+v, %v)", withoutSubscription, err)
 	}
@@ -32,15 +32,15 @@ func TestGroupMessageRewardCountsEligibleMessagesAndReplaysAtomically(t *testing
 		t.Fatalf("activate test purchase: %v", err)
 	}
 
-	first, err := store.RecordGroupMessage(ctx, user.ID, -100, 2, "2026-08-09", "Asia/Shanghai", config.Threshold, config.RewardMinor, now)
+	first, err := store.RecordGroupMessage(ctx, user.ID, -100, 2, "2026-08-09", "Asia/Shanghai", config.Threshold, config.RewardMinor, 2, now)
 	if err != nil || !first.Counted || first.Status.MessageCount != 1 || first.Status.Rewarded {
 		t.Fatalf("first message = (%+v, %v)", first, err)
 	}
-	second, err := store.RecordGroupMessage(ctx, user.ID, -100, 3, "2026-08-09", "Asia/Shanghai", config.Threshold, config.RewardMinor, now)
+	second, err := store.RecordGroupMessage(ctx, user.ID, -100, 3, "2026-08-09", "Asia/Shanghai", config.Threshold, config.RewardMinor, 2, now)
 	if err != nil || !second.Counted || second.Status.MessageCount != 2 || !second.Status.Rewarded {
 		t.Fatalf("threshold message = (%+v, %v)", second, err)
 	}
-	replay, err := store.RecordGroupMessage(ctx, user.ID, -100, 3, "2026-08-09", "Asia/Shanghai", config.Threshold, config.RewardMinor, now.Add(time.Minute))
+	replay, err := store.RecordGroupMessage(ctx, user.ID, -100, 3, "2026-08-09", "Asia/Shanghai", config.Threshold, config.RewardMinor, 2, now.Add(time.Minute))
 	if err != nil || !replay.Replayed || replay.Status.MessageCount != 2 {
 		t.Fatalf("duplicate message = (%+v, %v)", replay, err)
 	}

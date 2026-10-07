@@ -101,6 +101,7 @@ type RefundedPayment struct {
 // Message is the subset of a Telegram message needed for payments and group activity.
 type Message struct {
 	MessageID         int64              `json:"message_id"`
+	SenderBoostCount  int                `json:"sender_boost_count,omitempty"`
 	From              *User              `json:"from,omitempty"`
 	Chat              Chat               `json:"chat"`
 	Date              int64              `json:"date"`

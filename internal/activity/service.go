@@ -11,7 +11,7 @@ type Store interface {
 	SaveActivityGame(context.Context, GameInput, time.Time) (Game, error)
 	ListActivityGames(context.Context, bool) ([]Game, error)
 	PlaceActivityBet(context.Context, string, string, int64, string, RandomSource, time.Time) (BetResult, error)
-	ClaimDailyActivityRange(context.Context, string, string, string, int64, int64, RandomSource, time.Time) (DailyCheckIn, error)
+	ClaimBoostedDailyActivityRange(context.Context, string, string, string, int64, int64, int, RandomSource, time.Time) (DailyCheckIn, error)
 	SaveLuckyDraw(context.Context, LuckyDrawInput, time.Time) (LuckyDraw, error)
 	ListLuckyDraws(context.Context, bool) ([]LuckyDraw, error)
 	PlayLuckyDraw(context.Context, string, string, string, RandomSource, time.Time) (DrawResult, error)
@@ -20,13 +20,14 @@ type Store interface {
 	SettleRaffle(context.Context, string, RandomSource, time.Time) (RaffleSettlement, error)
 	ListActivityHistory(context.Context, string, int) (History, error)
 	GroupMessageRewardStatus(context.Context, string, string, int, int64) (GroupMessageRewardStatus, error)
-	RecordGroupMessage(context.Context, string, int64, int64, string, string, int, int64, time.Time) (GroupMessageRewardResult, error)
+	RecordGroupMessage(context.Context, string, int64, int64, string, string, int, int64, int, time.Time) (GroupMessageRewardResult, error)
 }
 
 type Service struct {
-	store Store
-	rng   RandomSource
-	now   func() time.Time
+	store  Store
+	rng    RandomSource
+	now    func() time.Time
+	boosts GroupBoostSource
 }
 
 func NewService(store Store, rng RandomSource, now func() time.Time) *Service {
@@ -62,8 +63,15 @@ func (service *Service) CheckIn(ctx context.Context, userID string, config Check
 	if err != nil {
 		return DailyCheckIn{}, fmt.Errorf("%w: unknown timezone", ErrInvalidInput)
 	}
+	boost, err := service.GroupBoost(ctx, userID)
+	if err != nil {
+		return DailyCheckIn{}, err
+	}
+	if *boost.Count == 0 {
+		return DailyCheckIn{}, ErrGroupBoostRequired
+	}
 	now := service.now()
-	return service.store.ClaimDailyActivityRange(ctx, userID, now.In(location).Format(time.DateOnly), location.String(), config.RewardMinMinor, config.RewardMaxMinor, service.rng, now.UTC())
+	return service.store.ClaimBoostedDailyActivityRange(ctx, userID, now.In(location).Format(time.DateOnly), location.String(), config.RewardMinMinor, config.RewardMaxMinor, *boost.Count, service.rng, now.UTC())
 }
 func (service *Service) SaveDraw(ctx context.Context, input LuckyDrawInput) (LuckyDraw, error) {
 	input.Name, input.Description = strings.TrimSpace(input.Name), strings.TrimSpace(input.Description)
@@ -108,7 +116,12 @@ func (service *Service) GroupMessageStatus(ctx context.Context, userID string, c
 		return GroupMessageRewardStatus{}, err
 	}
 	location, _ := time.LoadLocation(config.Timezone)
-	return service.store.GroupMessageRewardStatus(ctx, userID, service.now().In(location).Format(time.DateOnly), config.Threshold, config.RewardMinor)
+	status, err := service.store.GroupMessageRewardStatus(ctx, userID, service.now().In(location).Format(time.DateOnly), config.Threshold, config.RewardMinor)
+	if err != nil || status.Rewarded {
+		return status, err
+	}
+	status.RewardMinor, err = BoostRewardMinor(config.RewardMinor, config.BoostCount)
+	return status, err
 }
 func (service *Service) RecordGroupMessage(ctx context.Context, userID string, chatID, messageID int64, config GroupMessageRewardConfig) (GroupMessageRewardResult, error) {
 	if strings.TrimSpace(userID) == "" || chatID == 0 || messageID <= 0 {
@@ -119,7 +132,7 @@ func (service *Service) RecordGroupMessage(ctx context.Context, userID string, c
 	}
 	location, _ := time.LoadLocation(config.Timezone)
 	now := service.now().UTC()
-	return service.store.RecordGroupMessage(ctx, userID, chatID, messageID, now.In(location).Format(time.DateOnly), location.String(), config.Threshold, config.RewardMinor, now)
+	return service.store.RecordGroupMessage(ctx, userID, chatID, messageID, now.In(location).Format(time.DateOnly), location.String(), config.Threshold, config.RewardMinor, config.BoostCount, now)
 }
 func validIdempotencyKey(value string) bool {
 	value = strings.TrimSpace(value)

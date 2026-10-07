@@ -296,3 +296,6 @@ renewal batches and their purchase records. Automatic renewal uses its own
 attached-coupon policy and a unique source-successor link.
 
 `abuse_policy_test.go`, `abuse_processing_test.go`, `abuse_record_cooldown_test.go`, and `abuse_records_test.go` cover streak bounds and revisions, cross-task/replay evaluation, compact rollups, all-action cooldown and escalation boundaries, and completion-gated detail pruning.
+
+- `activity_boost_test.go` covers sampled-before-scaled check-in settlement, replay and concurrency, zero-boost refusal, overflow rollback, boosted-only progress and immutable paid amounts.
+- `activity_boost_migration_test.go` proves unpaid-progress reset preserves paid windows, ledger and notification rows, and event deduplication identities.

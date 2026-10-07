@@ -65,6 +65,7 @@ type activityResultResponse struct {
 }
 
 type activityOverviewResponse struct {
+	GroupBoost             activity.GroupBoostStatus         `json:"groupBoost"`
 	Balance                model.Money                       `json:"balance"`
 	TimeZone               string                            `json:"timeZone"`
 	CheckedInToday         bool                              `json:"checkedInToday"`

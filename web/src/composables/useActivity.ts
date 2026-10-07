@@ -1,7 +1,6 @@
 import { onMounted, onScopeDispose, readonly, shallowRef } from 'vue'
 
 import { featuresApi } from '@/api/features'
-import { restoreRef } from '@/api/cache/restore'
 import type { ActivityOverview, ActivityResult } from '@/api/features'
 import { activityNotification } from '@/components/activity/feedback'
 import { localizedError } from '@/i18n'
@@ -13,6 +12,7 @@ export function useActivity() {
   const overview = shallowRef<ActivityOverview | null>(null)
   const result = shallowRef<ActivityResult | null>(null)
   const loading = shallowRef(true)
+  const refreshing = shallowRef(false)
   const busy = shallowRef<'check-in' | 'bet' | 'draw' | null>(null)
   const error = shallowRef<string | null>(null)
   const actionKeys = new Map<string, string>()
@@ -28,7 +28,8 @@ export function useActivity() {
 
   async function load(options: { quiet?: boolean } = {}): Promise<void> {
     const token = latestLoad.begin()
-    if (!options.quiet) loading.value = !restoreRef('/api/v1/activity', overview)
+    if (!options.quiet) loading.value = true
+    refreshing.value = true
     error.value = null
     try {
       const response = await featuresApi.getActivity()
@@ -36,8 +37,15 @@ export function useActivity() {
     } catch (caught) {
       if (!latestLoad.isCurrent(token)) return
       error.value = localizedError(caught, 'errors.activityUnavailable')
+      if (overview.value) overview.value = {
+        ...overview.value,
+        groupBoost: { state: 'unavailable', count: null, boostUrl: overview.value.groupBoost.boostUrl },
+      }
     } finally {
-      if (latestLoad.isCurrent(token)) loading.value = false
+      if (latestLoad.isCurrent(token)) {
+        loading.value = false
+        refreshing.value = false
+      }
     }
   }
 
@@ -53,6 +61,11 @@ export function useActivity() {
       await load({ quiet: true })
     } catch (caught) {
       error.value = localizedError(caught, 'errors.activityFailed')
+      if (kind === 'check-in') {
+        const failure = error.value
+        await load({ quiet: true })
+        error.value = failure
+      }
       notifyHaptic('error')
     } finally {
       busy.value = null
@@ -99,6 +112,7 @@ export function useActivity() {
     overview: readonly(overview),
     result: readonly(result),
     loading: readonly(loading),
+    refreshing: readonly(refreshing),
     busy: readonly(busy),
     error: readonly(error),
     load,

@@ -256,6 +256,7 @@ components:
     Reward: { $ref: './components/schemas/schemas-05.yaml#/Reward' }
     ActivityResult: { $ref: './components/schemas/schemas-05.yaml#/ActivityResult' }
     GroupMessageRewardStatus: { $ref: './components/schemas/schemas-06.yaml#/GroupMessageRewardStatus' }
+    GroupBoostStatus: { $ref: './components/schemas/schemas-06.yaml#/GroupBoostStatus' }
     ActivityOverview: { $ref: './components/schemas/schemas-06.yaml#/ActivityOverview' }
     ActivityBetRequest: { $ref: './components/schemas/schemas-06.yaml#/ActivityBetRequest' }
     ActivityDrawRequest: { $ref: './components/schemas/schemas-06.yaml#/ActivityDrawRequest' }

@@ -18,3 +18,6 @@ This package contains the Telegram Bot API and Mini App authentication surface u
 - `redirect_test.go` verifies provider redirects cannot receive the bot token or request body.
 - `initdata_test.go` covers init-data signatures, time bounds, token validation, and optional Telegram signature fields.
 - `README.md` documents the package layout and security boundary.
+
+- `boosts.go` implements the documented administrator-only `getUserChatBoosts` method and typed response subset; `types.go` includes authenticated group-message `sender_boost_count` metadata.
+- `boosts_test.go` checks request identity, response decoding, validation and sender boost metadata.

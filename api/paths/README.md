@@ -146,3 +146,5 @@ Member connection scans, purchase reset/refund resources, operation receipts, st
 - `healthz.yaml`: `/healthz`
 - `readyz.yaml`: `/readyz`
 `api-v1-statistics-nodes-nodeuuid-geocheck.yaml` accepts a squad context and documents disabled (403) and settings-unavailable (503) responses.
+
+- `api-v1-activity-check-ins.yaml` documents personal-boost eligibility, half-up reward scaling, and distinct 403 and 503 refusal codes.

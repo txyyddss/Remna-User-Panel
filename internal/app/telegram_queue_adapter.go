@@ -16,6 +16,11 @@ type queuedTelegram struct {
 func (a *queuedTelegram) GetMe(ctx context.Context) (telegram.User, error) {
 	return upstreamqueue.Do(ctx, a.queue, a.client.GetMe)
 }
+func (a *queuedTelegram) GetUserChatBoosts(ctx context.Context, chatID string, userID int64) (telegram.UserChatBoosts, error) {
+	return upstreamqueue.Do(ctx, a.queue, func(callCtx context.Context) (telegram.UserChatBoosts, error) {
+		return a.client.GetUserChatBoosts(callCtx, chatID, userID)
+	})
+}
 func (a *queuedTelegram) SendMarkdownV2Message(ctx context.Context, chatID, replyID int64, body string) error {
 	return upstreamqueue.Execute(ctx, a.queue, func(callCtx context.Context) error {
 		return a.client.SendMarkdownV2Message(callCtx, chatID, replyID, body)

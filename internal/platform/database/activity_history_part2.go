@@ -14,8 +14,8 @@ import (
 	"time"
 )
 
-func (s *Store) RecordGroupMessage(ctx context.Context, userID string, chatID, messageID int64, localDate, timezone string, threshold int, rewardMinor int64, now time.Time) (activity.GroupMessageRewardResult, error) {
-	if strings.TrimSpace(userID) == "" || chatID == 0 || messageID <= 0 || threshold < 0 || rewardMinor < 0 {
+func (s *Store) RecordGroupMessage(ctx context.Context, userID string, chatID, messageID int64, localDate, timezone string, threshold int, rewardMinor int64, boostCount int, now time.Time) (activity.GroupMessageRewardResult, error) {
+	if strings.TrimSpace(userID) == "" || chatID == 0 || messageID <= 0 || threshold < 0 || rewardMinor < 0 || boostCount < 0 {
 		return activity.GroupMessageRewardResult{}, activity.ErrInvalidInput
 	}
 	s.writeMu.Lock()
@@ -55,7 +55,7 @@ func (s *Store) RecordGroupMessage(ctx context.Context, userID string, chatID, m
 	)`, userID, stamp(now), stamp(now)).Scan(&subscribed); err != nil {
 		return activity.GroupMessageRewardResult{}, fmt.Errorf("check group-message subscription: %w", err)
 	}
-	counted := subscribed == 1
+	counted := subscribed == 1 && boostCount > 0
 	if _, err := tx.ExecContext(ctx, `INSERT INTO activity_group_message_events(chat_id,message_id,user_id,local_date,counted,created_at) VALUES(?,?,?,?,?,?)`,
 		chatID, messageID, userID, localDate, boolInt(counted), stamp(now)); err != nil {
 		return activity.GroupMessageRewardResult{}, fmt.Errorf("record group-message event: %w", err)
@@ -89,11 +89,15 @@ func (s *Store) RecordGroupMessage(ctx context.Context, userID string, chatID, m
 		return activity.GroupMessageRewardResult{}, fmt.Errorf("update group-message window: %w", err)
 	}
 	if messageCount >= threshold && !rewardedAt.Valid {
+		settledMinor, scaleErr := activity.BoostRewardMinor(rewardMinor, boostCount)
+		if scaleErr != nil {
+			return activity.GroupMessageRewardResult{}, scaleErr
+		}
 		rewardID, idErr := ids.New()
 		if idErr != nil {
 			return activity.GroupMessageRewardResult{}, idErr
 		}
-		balance, balanceErr := changeBalanceTx(ctx, tx, userID, rewardMinor, now)
+		balance, balanceErr := changeBalanceTx(ctx, tx, userID, settledMinor, now)
 		if balanceErr != nil {
 			return activity.GroupMessageRewardResult{}, balanceErr
 		}
@@ -101,12 +105,12 @@ func (s *Store) RecordGroupMessage(ctx context.Context, userID string, chatID, m
 			stamp(now), stamp(now), userID, localDate); err != nil {
 			return activity.GroupMessageRewardResult{}, fmt.Errorf("mark group-message reward: %w", err)
 		}
-		if _, err := insertLedgerTx(ctx, tx, userID, rewardMinor, balance, "activity_group_message_reward", rewardID, localDate, now); err != nil {
+		if _, err := insertLedgerTx(ctx, tx, userID, settledMinor, balance, "activity_group_message_reward", rewardID, localDate, now); err != nil {
 			return activity.GroupMessageRewardResult{}, err
 		}
 		if _, err := s.insertUserNotificationTx(ctx, tx, "group-reward:"+rewardID, userID, jobpayload.UserEventGroupReward, "",
 			map[string]string{
-				notifications.FactMessages: strconv.Itoa(messageCount), notifications.FactReward: strconv.FormatInt(rewardMinor, 10),
+				notifications.FactMessages: strconv.Itoa(messageCount), notifications.FactReward: strconv.FormatInt(settledMinor, 10),
 				notifications.FactBalance: strconv.FormatInt(balance, 10), notifications.FactTime: now.Format(time.RFC3339Nano),
 			}, now); err != nil {
 			return activity.GroupMessageRewardResult{}, err
@@ -144,6 +148,11 @@ func groupMessageRewardStatusQuery(ctx context.Context, queryer interface {
 		}
 		status.Rewarded = true
 		status.RewardedAt = &value
+		if err := queryer.QueryRowContext(ctx, `SELECT delta_txb_minor FROM ledger_entries
+			WHERE user_id=? AND kind='activity_group_message_reward' AND note=? AND created_at=?
+			ORDER BY id DESC LIMIT 1`, userID, localDate, rewardedAt.String).Scan(&status.RewardMinor); err != nil {
+			return activity.GroupMessageRewardStatus{}, fmt.Errorf("load settled group-message amount: %w", err)
+		}
 	}
 	return status, nil
 }

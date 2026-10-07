@@ -145,6 +145,7 @@ export interface ActivityResult {
 }
 
 export interface ActivityOverview {
+  groupBoost: GroupBoostStatus
   balance: Money
   timeZone: string
   checkedInToday: boolean
@@ -154,4 +155,10 @@ export interface ActivityOverview {
   draws: LuckyDraw[]
   recentResults: ActivityResult[]
   groupMessageReward: GroupMessageRewardStatus
+}
+
+export interface GroupBoostStatus {
+  state: 'required' | 'boosted' | 'unavailable'
+  count: number | null
+  boostUrl: string | null
 }

@@ -141,6 +141,10 @@ func nonNilStrings(values []string) []string {
 func (s *Server) communityFailure(w http.ResponseWriter, r *http.Request, err error) {
 	status, code, message := http.StatusInternalServerError, "COMMUNITY_OPERATION_FAILED", "The request could not be completed."
 	switch {
+	case errors.Is(err, activity.ErrGroupBoostRequired):
+		status, code, message = http.StatusForbidden, "GROUP_BOOST_REQUIRED", "Boost the group at least once to receive activity rewards."
+	case errors.Is(err, activity.ErrGroupBoostUnavailable):
+		status, code, message = http.StatusServiceUnavailable, "GROUP_BOOST_UNAVAILABLE", "Group boost verification is temporarily unavailable. Please try again."
 	case errors.Is(err, database.ErrNotFound):
 		status, code, message = http.StatusNotFound, "NOT_FOUND", "The requested record was not found."
 	case errors.Is(err, database.ErrInsufficientBalance):

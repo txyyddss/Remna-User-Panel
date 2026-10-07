@@ -3,14 +3,12 @@ package httpapi
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/activity"
 	"github.com/txyyddss/Remna-User-Panel/internal/affiliates"
-	"github.com/txyyddss/Remna-User-Panel/internal/billing"
 	"github.com/txyyddss/Remna-User-Panel/internal/botcommands"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
@@ -69,7 +67,7 @@ func (s *Server) processTelegramGroupMessage(ctx context.Context, message *teleg
 		return
 	}
 	if _, err := s.deps.Activity.RecordGroupMessage(ctx, user.ID, message.Chat.ID, message.MessageID, activity.GroupMessageRewardConfig{
-		Timezone: config.Timezone, Threshold: config.GroupMessageThreshold, RewardMinor: config.GroupMessageRewardMinor,
+		Timezone: config.Timezone, Threshold: config.GroupMessageThreshold, RewardMinor: config.GroupMessageRewardMinor, BoostCount: message.SenderBoostCount,
 	}); err != nil {
 		s.deps.Logger.Warn("process Telegram group message reward", "telegram_id", message.From.ID, "message_id", message.MessageID, "error", err)
 	}
@@ -149,6 +147,10 @@ func (s *Server) processTelegramCommand(ctx context.Context, message *telegram.M
 			result, checkInErr := s.deps.Activity.CheckIn(ctx, user.ID, config)
 			if checkInErr == nil {
 				reply = botcommands.FormatCheckInWithMoney(copy, result, s.telegramCheckInAverage(ctx), formatMoney(model.TXBMoney(result.RewardMinor)), formatMoney(model.TXBMoney(result.BalanceAfterMinor)))
+			} else if errors.Is(checkInErr, activity.ErrGroupBoostRequired) {
+				reply = botcommands.FormatGroupBoostRequired(copy)
+			} else if errors.Is(checkInErr, activity.ErrGroupBoostUnavailable) {
+				reply = botcommands.FormatGroupBoostUnavailable(copy)
 			}
 		}
 	case botcommands.Sub:
@@ -176,47 +178,4 @@ func (s *Server) telegramGroupID(ctx context.Context) (int64, bool) {
 	}
 	groupID, err := strconv.ParseInt(strings.TrimSpace(value), 10, 64)
 	return groupID, err == nil && groupID != 0
-}
-
-func (s *Server) processTelegramDeduction(ctx context.Context, message *telegram.Message, command botcommands.Command, copy botcommands.Copy) {
-	if len(command.Args) != 1 {
-		s.sendTelegramReply(ctx, message, botcommands.FormatDeductUsage(copy))
-		return
-	}
-	amount, err := billing.ParseTXBMajor(command.Args[0])
-	if err != nil || amount <= 0 {
-		s.sendTelegramReply(ctx, message, botcommands.FormatDeductUsage(copy))
-		return
-	}
-	if message.From == nil || !s.isAdminTelegramID(message.From.ID) || message.ReplyToMessage == nil || message.ReplyToMessage.From == nil || message.ReplyToMessage.From.IsBot {
-		s.sendTelegramReply(ctx, message, botcommands.FormatDeductRejected(copy))
-		return
-	}
-	actor, err := s.deps.Store.UserByTelegramID(ctx, message.From.ID)
-	if err != nil {
-		s.deps.Logger.Warn("load Telegram administrator for deduction", "error", err)
-		s.sendTelegramReply(ctx, message, botcommands.FormatDeductRejected(copy))
-		return
-	}
-	target, err := s.deps.Store.UserByTelegramID(ctx, message.ReplyToMessage.From.ID)
-	if err != nil {
-		s.sendTelegramReply(ctx, message, botcommands.FormatDeductRejected(copy))
-		return
-	}
-	reason := fmt.Sprintf("Telegram /deduct in chat %d on message %d", message.Chat.ID, message.ReplyToMessage.MessageID)
-	if _, err := s.deps.Admin.DeductBalance(ctx, actor.ID, target.ID, amount, reason); err != nil {
-		s.deps.Logger.Warn("Telegram TXB deduction rejected", "actor_id", actor.ID, "target_id", target.ID, "amount_minor", amount, "error", err)
-		s.sendTelegramReply(ctx, message, botcommands.FormatDeductRejected(copy))
-		return
-	}
-	s.sendTelegramReply(ctx, message, botcommands.FormatDeductSucceeded(copy, s.telegramDisplayFormatter(ctx, target)(model.TXBMoney(amount))))
-}
-
-func telegramDeductCommand(text string) (string, bool) {
-	command, ok := botcommands.Parse(text)
-	if !ok || command.Name != botcommands.Deduct || len(command.Args) != 1 {
-		return "", false
-	}
-	amount, err := billing.ParseTXBMajor(command.Args[0])
-	return command.Args[0], err == nil && amount > 0
 }

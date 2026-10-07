@@ -1,7 +1,8 @@
 post:
   tags: [Activity]
   operationId: checkInActivity
-  summary: Claim the configured reward once per local calendar day
+  summary: Claim a boost-scaled reward once per local calendar day
+  description: Requires at least one active personal boost to the configured group. The sampled base reward is multiplied by personal boost count / 2 and rounded half up to 0.01 TXB.
   parameters:
     - $ref: '../openapi.yaml#/components/parameters/IdempotencyKey'
   responses:
@@ -17,3 +18,15 @@ post:
       $ref: '../openapi.yaml#/components/responses/Unauthorized'
     '409':
       $ref: '../openapi.yaml#/components/responses/Conflict'
+    '403':
+      description: GROUP_BOOST_REQUIRED when the user has no active boost to the configured group.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/ApiError'
+    '503':
+      description: GROUP_BOOST_UNAVAILABLE when Telegram boosts cannot be verified.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/ApiError'

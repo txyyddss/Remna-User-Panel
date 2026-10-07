@@ -14,3 +14,6 @@ selection and pending feedback remain short and haptic-aware.
 - `ActivityResultDialog.test.ts`, `BetSuccessFireworks.test.ts`, and `feedback.test.ts` cover result feedback boundaries and daily check-in reward rendering.
 - `gameIcons.ts` maps server-owned icon keys to external Iconify names.
 - `ActivityResultDialog.vue`, `DailyCheckInCard.vue`, `GroupMessageRewardPanel.vue`, and `BetSuccessFireworks.vue` own completion-only Motion feedback; particle trajectories remain CSS and reduced motion uses a single success marker.
+
+- `GroupBoostPanel.vue` presents active personal count and multiplier, or replaces the check-in and group reward blocks with localized boost guidance and a live refresh. Props own verified state; its refresh event is handled by `ActivityPage.vue` through `useActivity`.
+- `GroupBoostPanel.test.ts` covers required, unavailable, boosted and refreshing states plus link and refresh actions.
