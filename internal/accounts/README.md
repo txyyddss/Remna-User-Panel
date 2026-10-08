@@ -20,3 +20,4 @@ Trusted Telegram authentication and resumable account onboarding live here. Netw
 `member_tag.go` exposes canonical group-tag reads and validated writes without persisting Telegram data.
 
 `first_entry.go` exposes authenticated bootstrap state and verification. Agreement acceptance remains the permanent trust evidence; first-entry rows only qualify never-onboarded users. Admins remain able to configure the challenge.
+`first_entry_test.go` covers enabled/disabled bootstrap, provider identity, idempotent verified retries, configuration/provider failure refusal and configured-admin exemptions in hosted domain coverage.
