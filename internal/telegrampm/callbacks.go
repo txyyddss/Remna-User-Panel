@@ -2,14 +2,12 @@ package telegrampm
 
 import (
 	"context"
-	"errors"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
-	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 )
 
 func (s *Service) HandleCallback(ctx context.Context, updateID int64, query *telegram.CallbackQuery) (bool, error) {
@@ -28,16 +26,6 @@ func (s *Service) HandleCallback(ctx context.Context, updateID int64, query *tel
 	parts := strings.Split(query.Data, ":")
 	if len(parts) != 3 {
 		return true, answer("denied", true)
-	}
-	if parts[1] == "read" {
-		_, err := s.Repository.MarkPMDeliveryRead(ctx, parts[2], query.From.ID, query.Message.Chat.ID, query.Message.MessageID, updateID, time.Now().UTC())
-		if err != nil {
-			if errors.Is(err, database.ErrNotFound) || errors.Is(err, database.ErrConflict) {
-				return true, answer("denied", true)
-			}
-			return true, err
-		}
-		return true, answer("read", false)
 	}
 	if !s.AdminIDs[query.From.ID] {
 		return true, answer("denied", true)

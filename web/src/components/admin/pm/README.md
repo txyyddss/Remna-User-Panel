@@ -4,9 +4,9 @@ Per-user PM controls now live in `components/admin/users/AdminUserPM.vue`.
 This directory retains the delivery and repair dialogs shared by that profile.
 Data and all user copy come from typed API contracts and English/Chinese localization.
 
-`PMDeliveryDialog.vue` loads recent reference-only receipts on demand, shows explicit
-or reply-inferred read evidence, cancels stale reads and surfaces ambiguous delivery
-without offering an unsafe resend.
+`PMDeliveryDialog.vue` loads recent reference-only receipts on demand, shows read
+evidence from member replies and any historical explicit records, cancels stale reads
+and surfaces ambiguous delivery without offering an unsafe resend.
 `PMTopicRepairDialog.vue` validates decimal Telegram references with Zod and queues
 an explicit probe of an existing topic/card. `links.ts` constructs documented forum
 and message links; Telegram handles private-group membership at link opening.

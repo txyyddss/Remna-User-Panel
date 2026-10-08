@@ -9,7 +9,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 )
 
-func TestPMReadStatusSupportsExplicitAckAndReplyInference(t *testing.T) {
+func TestPMReadStatusUsesReplyInference(t *testing.T) {
 	t.Parallel()
 	ctx, store := context.Background(), newTestStore(t)
 	user := pmMember(t, store, 31980)
@@ -23,18 +23,6 @@ func TestPMReadStatusSupportsExplicitAckAndReplyInference(t *testing.T) {
 		t.Fatal(err)
 	}
 	first := queueSuccessfulPMOutbound(t, ctx, store, user, admin, 502, 10, 900, now.Add(time.Second))
-	marked, err := store.MarkPMDeliveryRead(ctx, first.ID, user.TelegramID, user.TelegramID, 900, 503, now.Add(2*time.Second))
-	if err != nil || !marked {
-		t.Fatalf("explicit read = %v, %v", marked, err)
-	}
-	marked, err = store.MarkPMDeliveryRead(ctx, first.ID, user.TelegramID, user.TelegramID, 900, 503, now.Add(3*time.Second))
-	if err != nil || marked {
-		t.Fatalf("callback replay = %v, %v", marked, err)
-	}
-	if _, err := store.MarkPMDeliveryRead(ctx, first.ID, user.TelegramID+1, user.TelegramID+1, 900, 504, now.Add(3*time.Second)); err == nil {
-		t.Fatal("different Telegram user acknowledged delivery")
-	}
-
 	second := queueSuccessfulPMOutbound(t, ctx, store, user, admin, 505, 11, 901, now.Add(4*time.Second))
 	if _, err := store.QueuePMRelay(ctx, model.PMRelayInput{ActorUserID: user.ID, UserID: user.ID, UpdateID: 506, ChatID: -100123,
 		SourceChatID: user.TelegramID, SourceMessageID: 2, ReplyToMessageID: 901, MessageAt: now.Add(5 * time.Second), Inbound: true}, now.Add(5*time.Second)); err != nil {
@@ -54,7 +42,7 @@ func TestPMReadStatusSupportsExplicitAckAndReplyInference(t *testing.T) {
 			reads[item.OperationID] = item.ReadSource
 		}
 	}
-	if reads[first.ID] != "explicit" || reads[second.ID] != "reply" {
+	if _, read := reads[first.ID]; read || reads[second.ID] != "reply" {
 		t.Fatalf("read evidence = %+v", reads)
 	}
 }

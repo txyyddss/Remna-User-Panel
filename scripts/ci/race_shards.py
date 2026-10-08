@@ -1,4 +1,4 @@
-"""Run one hosted race shard, or verify artifacts from all four shards."""
+"""Run one hosted race shard, or verify artifacts from all eight shards."""
 
 import argparse
 import json
@@ -56,7 +56,7 @@ def main():
         manifests = [json.loads(path.read_text(encoding="utf-8"))
                      for path in arguments.directory.glob("race-inventory-*.json")]
         verify(manifests)
-        print("All Go packages and database checks completed exactly once across four shards.")
+        print(f"All Go packages and database checks completed exactly once across {SHARD_COUNT} shards.")
     elif arguments.shard is not None:
         run_shard(arguments.shard, arguments.directory)
     else:

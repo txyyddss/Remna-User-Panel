@@ -57,13 +57,6 @@ func (w *Worker) relay(ctx context.Context, run execution, item providerops.Item
 				return request, ErrBlocked
 			}
 			request.ChatID = conversation.TelegramID
-			readLabel := "Mark as read"
-			if chinese(conversation.Locale) {
-				readLabel = "\u6807\u8bb0\u4e3a\u5df2\u8bfb"
-			}
-			request.ReplyMarkup = &telegram.InlineKeyboardMarkup{InlineKeyboard: [][]telegram.InlineKeyboardButton{{
-				{Text: readLabel, CallbackData: "pm:read:" + run.operation.Receipt.ID},
-			}}}
 		}
 		topicID.Store(conversation.TopicID)
 		started.Store(true)

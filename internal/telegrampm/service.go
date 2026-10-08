@@ -28,7 +28,6 @@ type ServiceRepository interface {
 	QueuePMRelay(context.Context, model.PMRelayInput, time.Time) (*model.OperationReceipt, error)
 	QueuePMModeration(context.Context, string, string, model.PMModerationInput, int64, time.Time) (model.OperationReceipt, error)
 	QueuePMProfileRefresh(context.Context, string, string, string, int64, time.Time) (model.OperationReceipt, error)
-	MarkPMDeliveryRead(context.Context, string, int64, int64, int64, int64, time.Time) (bool, error)
 }
 
 type Settings interface {

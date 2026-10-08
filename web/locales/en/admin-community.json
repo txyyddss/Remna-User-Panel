@@ -108,7 +108,6 @@
     "confirm": "Confirm settlement"
   },
   "pm": {
-    "nav": "Private messages",
     "title": "Private messages",
     "description": "Manage conversations relayed through the Telegram forum. Only panel admins can reply.",
     "search": "Search name, username or Telegram ID",

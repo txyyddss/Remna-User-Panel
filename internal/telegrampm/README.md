@@ -43,10 +43,10 @@ https://github.com/moistrr/TGbot-D1/blob/main/TGbot-D1%E5%88%9B%E6%96%B0%E7%89%8
 
 Wire contracts: https://core.telegram.org/bots/api
 
-Read state is reference-only: a member can acknowledge one delivered copy explicitly,
-or an inbound PM infers earlier successful copies as read. The admin user profile
-shows the source and timestamp. Neither path stores message content or claims a
-Telegram-native read receipt. Admin `/refund`, `/addtxb`, and `/deducttxb` commands
+Read state is reference-only: an inbound PM reply can infer that a delivered copy was
+read. There is no per-message acknowledgment button. The admin user profile shows the
+source and timestamp. This does not store message content or claim a Telegram-native
+read receipt. Admin `/refund`, `/addtxb`, and `/deducttxb` commands
 are accepted only inside that member's PM topic and use existing refund, ledger,
 audit, and provider-operation services.
 

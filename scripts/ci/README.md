@@ -1,13 +1,13 @@
 # Hosted Go race checks
 
-`race_shards.py` is called only by GitHub Actions. Four independent runners split
+`race_shards.py` is called only by GitHub Actions. Eight independent runners split
 the database package's top-level tests, executable examples and fuzz seed tests,
 and partition every other Go package. New packages and checks are discovered
 from Go itself; no handwritten allowlist can silently omit them.
 
 `race_inventory.py` owns discovery and exact-once partition validation. Each
 runner uploads its complete inventory, assigned checks, completion marker and
-JSON diagnostics. The existing Go race and coverage gate validates all four
+JSON diagnostics. The existing Go race and coverage gate validates all eight
 manifests before running the unchanged domain coverage packages and 70% gate.
 
 Per-runner Go parallelism follows available CPUs. Database tests retain their

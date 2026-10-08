@@ -22,7 +22,6 @@ const mobileNavigation: readonly MobileNavigationItem[] = [
 ]
 
 const adminNavigation: readonly AdminNavigationItem[] = [
-  { labelKey: 'pm.nav', to: '/admin/pm', icon: 'i-ph-chats' },
   { labelKey: 'adminNav.catalog', to: '/admin/catalog', icon: 'i-ph-package' },
   { labelKey: 'adminNav.coupons', to: '/admin/coupons', icon: 'i-ph-ticket' },
   { labelKey: 'adminNav.activity', to: '/admin/activity', icon: 'i-ph-game-controller' },

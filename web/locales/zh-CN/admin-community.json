@@ -108,7 +108,6 @@
     "confirm": "确认结算"
   },
   "pm": {
-    "nav": "私信",
     "title": "私信",
     "description": "管理通过 Telegram 话题群转发的对话，仅面板管理员可以回复。",
     "search": "搜索姓名、用户名或 Telegram ID",

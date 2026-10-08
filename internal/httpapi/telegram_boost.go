@@ -21,7 +21,10 @@ func (s *Server) processTelegramBoost(ctx context.Context, update *telegram.Chat
 	}
 	now := time.Now().UTC()
 	boost := update.Boost
-	if boost.BoostID == "" || boost.AddDate <= 0 || boost.AddDate > now.Unix() || boost.ExpirationDate <= now.Unix() {
+	// The authenticated update is authoritative for when the boost was added.
+	// Comparing its second-resolution timestamp with the local clock can drop
+	// a new boost when the server clock is slightly behind Telegram's.
+	if boost.BoostID == "" || boost.AddDate <= 0 || boost.ExpirationDate <= now.Unix() {
 		return nil
 	}
 	item := model.TelegramBoostAppreciation{ChatID: chatID, BoostID: boost.BoostID}

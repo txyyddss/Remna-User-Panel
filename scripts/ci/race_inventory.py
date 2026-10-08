@@ -4,7 +4,7 @@ import re
 import subprocess
 
 DATABASE_PACKAGE = "github.com/txyyddss/Remna-User-Panel/internal/platform/database"
-SHARD_COUNT = 4
+SHARD_COUNT = 8
 
 
 def discover():
@@ -32,7 +32,7 @@ def discover():
 
 def verify(manifests):
     if len(manifests) != SHARD_COUNT or sorted(item["shard"] for item in manifests) != list(range(SHARD_COUNT)):
-        raise RuntimeError("expected four distinct completed race shards")
+        raise RuntimeError(f"expected {SHARD_COUNT} distinct completed race shards")
     reference = manifests[0]
     for manifest in manifests:
         if manifest["allTests"] != reference["allTests"] or manifest["allPackages"] != reference["allPackages"]:

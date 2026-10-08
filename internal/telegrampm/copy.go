@@ -40,8 +40,6 @@ func callbackText(locale, reason string) string {
 		switch reason {
 		case "updated":
 			return "\u79c1\u4fe1\u8bbe\u7f6e\u5df2\u66f4\u65b0\u3002"
-		case "read":
-			return "\u5df2\u5c06\u6d88\u606f\u6807\u8bb0\u4e3a\u5df2\u8bfb\u3002"
 		case "refresh":
 			return "\u8d44\u6599\u5361\u66f4\u65b0\u5df2\u52a0\u5165\u961f\u5217\u3002"
 		default:
@@ -51,8 +49,6 @@ func callbackText(locale, reason string) string {
 	switch reason {
 	case "updated":
 		return "Private messaging settings updated."
-	case "read":
-		return "Message marked as read."
 	case "refresh":
 		return "Profile refresh queued."
 	default:
