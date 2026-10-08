@@ -10,7 +10,7 @@ const nodes = [
 const manyNodes = [...nodes, ...[3, 4, 5].map((id) => ({ uuid: `00000000-0000-4000-8000-${String(id).padStart(12, '0')}`, name: `Relay ${id}`, countryCode: 'JP', consumptionMultiplier: 1, providerName: null }))]
 
 describe('SquadNodeBlocks', () => {
-  it('shows every node by default as an anonymous clickable node', async () => {
+  it('shows each named node with its multiplier and geocheck action', async () => {
     const wrapper = mount(SquadNodeBlocks, {
       props: { nodes },
       global: { stubs: {
@@ -21,10 +21,11 @@ describe('SquadNodeBlocks', () => {
     expect(wrapper.findAll('.squad-node-list__node')).toHaveLength(2)
     expect(wrapper.text()).toContain('1.5x')
     expect(wrapper.text()).toContain('0.75x')
-    expect(wrapper.text()).not.toContain('Tokyo relay')
+    expect(wrapper.text()).toContain('Tokyo relay')
+    expect(wrapper.text()).toContain('Osaka relay')
     expect(wrapper.text()).not.toContain('Transit provider')
     expect(wrapper.text()).not.toContain('1/2')
-    expect(wrapper.get('.squad-node-list__node').attributes('aria-label')).toBe('1.5x · View Geocheck result for node 1 of 2')
+    expect(wrapper.get('.squad-node-list__node').attributes('aria-label')).toBe('Tokyo relay · 1.5x · View Geocheck result for node 1 of 2')
 
     await wrapper.get('.squad-node-list__node').trigger('click')
     expect(wrapper.emitted('openGeocheck')).toEqual([[nodes[0]]])

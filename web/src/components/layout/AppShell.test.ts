@@ -131,7 +131,8 @@ describe('AppShell accessibility', () => {
     expect(home?.to).toBe('/home')
     expect(home?.type).not.toBe('trigger')
     expect(home?.defaultOpen).toBe(true)
-    expect(home?.children).toHaveLength(3)
+    expect(home?.children).toHaveLength(2)
+    expect(home?.children?.some(item => item.label === 'nav.addSquads')).toBe(false)
   })
 
   it('only includes the Around TX desktop entry for a valid combo', () => {
