@@ -11,12 +11,12 @@
     "simplifiedChinese": "简体中文"
   },
   "nav": {
-    "connections": "\u8fde\u63a5",
-    "revoke": "\u64a4\u9500",
-    "addSquads": "\u6dfb\u52a0\u5206\u7ec4",
-    "aroundTx": "TX \u5468\u8fb9",
-    "collapseSidebar": "\u6536\u8d77\u4fa7\u8fb9\u680f",
-    "expandSidebar": "\u5c55\u5f00\u4fa7\u8fb9\u680f",
+    "connections": "连接",
+    "revoke": "撤销",
+    "addSquads": "添加分组",
+    "aroundTx": "TX 周边",
+    "collapseSidebar": "收起侧边栏",
+    "expandSidebar": "展开侧边栏",
     "primary": "主导航",
     "home": "首页",
     "explore": "探索",
@@ -98,7 +98,7 @@
     "rangeSeparator": "至"
   },
   "errors": {
-      "rolloverFailed": "无法加载实时结转详情。",
+    "rolloverFailed": "无法加载实时结转详情。",
     "activityUnavailable": "活动暂时不可用。",
     "activityFailed": "活动未能完成。",
     "adminLoad": "管理数据无法加载。",
@@ -131,11 +131,11 @@
     "questionnaireOpen": "无法打开问卷。",
     "api": {
       "API_RESPONSE_INCOMPATIBLE": "暂时无法刷新此数据，请重试。",
-      "ACTIVE_COMBO_REQUIRED": "\u52a0\u5165\u793e\u533a\u9700\u8981\u5f53\u524d\u6b63\u5728\u751f\u6548\u7684\u5957\u9910\u3002",
-      "COMMUNITY_ALREADY_JOINED": "Telegram \u5df2\u786e\u8ba4\u4f60\u662f\u6210\u5458\u3002",
-      "ONBOARDING_REQUIRED": "\u8bf7\u5148\u5b8c\u6210\u8d26\u6237\u8bbe\u7f6e\uff0c\u518d\u6253\u5f00\u793e\u533a\u8bbf\u95ee\u3002",
-      "MEMBERSHIP_CHECK_FAILED": "\u65e0\u6cd5\u68c0\u67e5 Telegram \u6210\u5458\u8eab\u4efd\u3002",
-      "INVITES_UNAVAILABLE": "\u793e\u533a\u52a0\u5165\u94fe\u63a5\u6682\u4e0d\u53ef\u7528\u3002",
+      "ACTIVE_COMBO_REQUIRED": "加入社区需要当前正在生效的套餐。",
+      "COMMUNITY_ALREADY_JOINED": "Telegram 已确认你是成员。",
+      "ONBOARDING_REQUIRED": "请先完成账户设置，再打开社区访问。",
+      "MEMBERSHIP_CHECK_FAILED": "无法检查 Telegram 成员身份。",
+      "INVITES_UNAVAILABLE": "社区加入链接暂不可用。",
       "SQUAD_ADDITION_FAILED": "无法添加分组，请刷新后重试。",
       "PURCHASE_OR_SQUAD_NOT_FOUND": "当前套餐或所选分组不存在。",
       "PURCHASE_NOT_ACTIVE": "只有当前生效的套餐可以添加分组。",
@@ -175,8 +175,22 @@
       "SQUAD_STOCK_UNAVAILABLE": "所选线路暂时已满。",
       "RENEWAL_CONFLICT": "续费状态已变化，请刷新后重试。",
       "PURCHASE_NOT_FOUND": "找不到当前套餐。",
-      "PURCHASE_CANCEL_CONFLICT": "此排队套餐已无法取消，请刷新后重试。"
+      "PURCHASE_CANCEL_CONFLICT": "此排队套餐已无法取消，请刷新后重试。",
+      "CAPTCHA_REQUIRED": "完成这项一次性验证后，即可设置账户。",
+      "CAPTCHA_REJECTED": "验证失败，请重新完成验证。",
+      "CAPTCHA_UNAVAILABLE": "暂时无法验证，请重试。"
     },
     "autoRenewalFailed": "无法更新自动续费。"
+  },
+  "captcha": {
+    "eyebrow": "首次访问",
+    "title": "验证面板访问",
+    "description": "完成这项一次性验证后，即可设置账户。",
+    "loading": "正在加载验证…",
+    "verifying": "正在验证…",
+    "failed": "验证失败，请重新完成验证。",
+    "unavailable": "暂时无法验证，请重试。",
+    "expired": "验证已过期，请重新完成。",
+    "retry": "重新加载验证"
   }
 }

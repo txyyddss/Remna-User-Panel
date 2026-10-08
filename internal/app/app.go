@@ -23,6 +23,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/entitlements"
 	"github.com/txyyddss/Remna-User-Panel/internal/httpapi"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
+	"github.com/txyyddss/Remna-User-Panel/internal/integrations/turnstile"
 	"github.com/txyyddss/Remna-User-Panel/internal/maintenance"
 	"github.com/txyyddss/Remna-User-Panel/internal/notifications"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/backup"
@@ -178,7 +179,8 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		return cleanup(fmt.Errorf("preload embedded frontend: %w", err))
 	}
 	api, err := httpapi.New(httpapi.Dependencies{
-		Accounts: accountsService, Catalog: catalogService, Connections: memberServices.connections,
+		FirstEntry: &accounts.FirstEntry{Repository: store, Settings: settings, Verifier: turnstile.New(upstreams.turnstile), Hostname: cfg.PublicBaseURL.Hostname(), AdminTelegramIDs: cfg.AdminTelegramIDs},
+		Accounts:   accountsService, Catalog: catalogService, Connections: memberServices.connections,
 		ConnectionDrops: memberServices.drops, PurchaseOperations: memberServices.purchases, Statistics: statisticsService,
 		Billing: billingService, Activity: activityService,
 		Coupons: couponService, Questionnaires: questionnaireService, Emby: embyService,

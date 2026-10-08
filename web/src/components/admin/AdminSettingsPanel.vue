@@ -33,7 +33,7 @@ const activitySettingKeys = new Set([
   'activity.timezone', 'activity.daily_reward_min_txb', 'activity.daily_reward_max_txb',
   'activity.group_message_threshold', 'activity.group_message_reward_txb',
 ])
-const clearableSettingKeys = new Set(['telegram.payment_announcement_chat_id'])
+const clearableSettingKeys = new Set(['telegram.payment_announcement_chat_id', 'captcha.turnstile.site_key'])
 const legacyPaymentSetting = (key: string): boolean => key.startsWith('billing.ezpay.') || key.startsWith('billing.bepusdt.')
 
 const grouped = computed(() => items.value.filter((item) => !activitySettingKeys.has(item.key) && !legacyPaymentSetting(item.key)).reduce<Record<string, AdminSetting[]>>((groups, item) => {
@@ -98,7 +98,18 @@ async function saveSettings(): Promise<void> {
       && (value !== '' || (configured && clearableSettingKeys.has(key)))
   })
   const { api } = await import('@/api/client')
-  saved.visible = await perform(() => Promise.all(values.map(([key, value]) => api.updateAdminSetting(key, value))))
+  saved.visible = await perform(async () => {
+    // Configuration dependencies must be written before enabling a challenge.
+    const captchaToggle = values.find(([key]) => key === 'captcha.turnstile.enabled')
+    if (captchaToggle?.[1] === 'false') await api.updateAdminSetting(captchaToggle[0]!, captchaToggle[1])
+    await Promise.all(values.filter(([key]) => key !== 'captcha.turnstile.enabled').map(([key, value]) => api.updateAdminSetting(key, value)))
+    if (captchaToggle?.[1] === 'true') await api.updateAdminSetting(captchaToggle[0]!, captchaToggle[1])
+  })
+  if (saved.visible) {
+    for (const [key, value] of values) {
+      if (items.value.some(item => item.key === key && item.encrypted) && draft[key] === value) draft[key] = ''
+    }
+  }
 }
 
 async function saveAll(): Promise<void> {
@@ -179,12 +190,13 @@ onMounted(() => void loadActivitySettings())
             <UInput
               v-if="!isBoolean(setting)"
               v-model="draft[setting.key]"
+              :aria-label="settingLabel(setting)"
               :icon="isSensitive(setting) ? 'i-ph-key' : undefined"
               :type="isSensitive(setting) ? 'password' : 'text'"
               :placeholder="isSensitive(setting) && setting.configured ? t('adminSettings.keepSecret') : ''"
               :autocomplete="isSensitive(setting) ? 'new-password' : 'off'"
             />
-            <small v-if="!isBoolean(setting)">{{ isSensitive(setting) ? t('adminSettings.secretHint') : t('adminSettings.validated') }}</small>
+            <small v-if="!isBoolean(setting)">{{ isSensitive(setting) ? t('adminSettings.secretHint') : settingHelp(setting) }}</small>
           </div>
         </fieldset>
       </form>

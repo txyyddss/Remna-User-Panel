@@ -48,6 +48,7 @@ type telegramProvider interface {
 }
 
 type Dependencies struct {
+	FirstEntry         *accounts.FirstEntry
 	Accounts           *accounts.Service
 	Catalog            *catalog.Service
 	Connections        *connections.Service
@@ -108,6 +109,9 @@ func New(deps Dependencies) (*Server, error) {
 		return nil, err
 	}
 	server := &Server{deps: deps, requests: requestVerifier, authLimiter: newAuthLimiter(), adminTelegramIDs: adminTelegramIDs}
+	if server.deps.FirstEntry == nil {
+		server.deps.FirstEntry = &accounts.FirstEntry{Repository: deps.Store, Settings: deps.Settings, Hostname: deps.PublicURL.Hostname(), AdminTelegramIDs: deps.AdminTelegramIDs}
+	}
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP)
 	router.Use(middleware.RequestID)
@@ -132,7 +136,9 @@ func New(deps Dependencies) (*Server, error) {
 	router.Group(func(authenticated chi.Router) {
 		authenticated.Use(server.requireSignedRequest)
 		authenticated.Use(server.requireSession)
+		authenticated.Use(server.requireCaptcha)
 		authenticated.Get("/api/v1/me", server.me)
+		authenticated.Post("/api/v1/me/captcha", server.verifyCaptcha)
 		authenticated.Get("/api/v1/me/display-currency", server.displayCurrency)
 		authenticated.Put("/api/v1/me/display-currency", server.updateDisplayCurrency)
 		authenticated.Get("/api/v1/me/abuse-records", server.memberAbuseRecords)

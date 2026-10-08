@@ -320,3 +320,6 @@ attached-coupon policy and a unique source-successor link.
 `user_preferences_test.go` covers defaults, partial merges, account isolation, eligibility loss and referral attribution.
 
 `telegram_boost_receipts.go` and `telegram_boost_receipts_test.go` atomically deduplicate group/boost IDs with their outbox work, including concurrent and changed updates. No boost count is mirrored.
+
+`panel_entry_verification.go` and `panel_entry_verification_test.go` persist only Telegram ID and a boolean. Panel visits initialize the row, verification or a disabled challenge qualifies it, and onboarding removes it in the same transaction as agreement acceptance.
+Retained agreement revisions also qualify returning accounts. `remna_provisioning.go` preserves a completed account's verification before username-conflict recovery clears agreement fields; `remna_provisioning_test.go` checks that recovery does not request another challenge.

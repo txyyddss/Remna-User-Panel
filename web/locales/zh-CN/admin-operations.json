@@ -33,7 +33,8 @@
       "emby": "Emby",
       "activity": "活动",
       "renewal": "续费",
-      "application": "应用"
+      "application": "应用",
+      "captcha": "首次访问验证"
     },
     "settingLabels": {
       "telegram_group_chat_id": "Telegram 群组聊天 ID",
@@ -64,10 +65,16 @@
       "activity_daily_reward_max_txb": "每日奖励最大值",
       "activity_group_message_threshold": "群消息阈值",
       "activity_group_message_reward_txb": "群消息奖励",
-      "renewal_rollover_before_auto_renewal_enabled": "在自动续费前结转余额"
+      "renewal_rollover_before_auto_renewal_enabled": "在自动续费前结转余额",
+      "captcha_turnstile_enabled": "启用 Cloudflare 验证",
+      "captcha_turnstile_site_key": "Turnstile 站点密钥",
+      "captcha_turnstile_secret_key": "Turnstile 私密密钥"
     },
     "settingHints": {
-      "renewal_rollover_before_auto_renewal_enabled": "启用后，已计算的结转金额会计入自动续费所需余额。关闭后，续费价格必须在结转余额入账前由现有余额覆盖。"
+      "renewal_rollover_before_auto_renewal_enabled": "启用后，已计算的结转金额会计入自动续费所需余额。关闭后，续费价格必须在结转余额入账前由现有余额覆盖。",
+      "captcha_turnstile_enabled": "仅验证首次访问的新用户。必须填写两个密钥后才能启用；管理员仍可管理配置。",
+      "captcha_turnstile_site_key": "允许此面板域名的 Cloudflare Turnstile 站点密钥。",
+      "captcha_turnstile_secret_key": "仅服务器可用，保存时加密。留空保留当前密钥。"
     }
   },
   "adminPaymentProfiles": {

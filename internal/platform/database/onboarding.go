@@ -155,6 +155,9 @@ func (s *Store) CompleteOnboardingRevision(ctx context.Context, userID string, r
 	if affected, _ := result.RowsAffected(); affected != 1 {
 		return model.User{}, ErrConflict
 	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM panel_entry_verification WHERE telegram_id=(SELECT telegram_id FROM users WHERE id=?)`, userID); err != nil {
+		return model.User{}, err
+	}
 	var purchased int
 	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM purchases WHERE user_id=? AND status IN ('active','activating','queued') AND valid_until>?)`, userID, stamp(acceptedAt)).Scan(&purchased); err != nil {
 		return model.User{}, err

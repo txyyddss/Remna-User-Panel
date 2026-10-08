@@ -23,3 +23,5 @@
 - `validation.test.ts` covers validation boundaries.
 - `latestRequest.ts` supplies generation guards so disposed or superseded async
   work cannot overwrite current Vue state or restart timers.
+
+`turnstile.ts` loads the official explicit-render script once, exposes only documented render/reset/remove contracts, bounds loading time and allows a fresh retry after provider failure.

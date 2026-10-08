@@ -10,6 +10,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/secret"
 	"strings"
+	"sync"
 )
 
 type SettingDefinition struct {
@@ -20,6 +21,9 @@ type SettingDefinition struct {
 }
 
 var settingDefinitions = map[string]SettingDefinition{
+	"captcha.turnstile.enabled":              {Default: "false", Validate: validateBoolean},
+	"captcha.turnstile.site_key":             {Validate: validateTurnstileKey},
+	"captcha.turnstile.secret_key":           {Secret: true, Validate: nonempty},
 	"telegram.group_chat_id":                 {Required: true, Validate: validateInteger},
 	"telegram.channel_chat_id":               {Required: true, Validate: validateInteger},
 	billing.PaymentAnnouncementChatIDSetting: {Validate: validateOptionalInteger},
@@ -62,6 +66,7 @@ type SettingsRepository interface {
 // SettingsService validates the fixed registry and protects secret values.
 
 type SettingsService struct {
+	mu         sync.Mutex
 	repository SettingsRepository
 	vault      *secret.Vault
 	profiles   PaymentProfileRepository
@@ -100,6 +105,8 @@ func (s *SettingsService) Optional(ctx context.Context, key string) (string, err
 // Put stores one known setting. An empty secret keeps its existing value.
 
 func (s *SettingsService) Put(ctx context.Context, actorID, key, value string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	definition, ok := settingDefinitions[key]
 	if !ok {
 		return fmt.Errorf("unknown setting %q", key)
@@ -119,6 +126,9 @@ func (s *SettingsService) Put(ctx context.Context, actorID, key, value string) e
 		if err := s.validateActivityRewardRange(ctx, key, value); err != nil {
 			return err
 		}
+	}
+	if err := s.validateTurnstileSettings(ctx, key, value); err != nil {
+		return err
 	}
 	stored := value
 	// A non-blank secret is an explicit replacement. Encrypt it freshly so

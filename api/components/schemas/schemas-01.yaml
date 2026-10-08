@@ -116,6 +116,8 @@ AuthState:
       const: true
     user:
       $ref: '../../openapi.yaml#/components/schemas/User'
+    captcha:
+      $ref: '../../openapi.yaml#/components/schemas/CaptchaState'
 
 JoinInvite:
   type: object

@@ -14,6 +14,7 @@ export function stopSessionPreload(): void {
 
 export function preloadSession(session: Session): void {
   stopSessionPreload()
+  if (session.captcha?.required) return
   const controller = new AbortController()
   active = controller
   const queue = memberResources(session, getLocale())

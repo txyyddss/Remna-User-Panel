@@ -56,7 +56,7 @@ router.afterEach((to, _from, failure) => {
   if (failure) return
   const version = ++catalogCheckVersion
   const store = useSessionStore()
-  if (to.name !== 'catalog' || !store.user || store.user.role === 'admin') return
+  if (to.name !== 'catalog' || !store.user || store.user.role === 'admin' || store.session?.captcha?.required) return
   const userId = store.user.id
   // Render the page snapshot while retaining the live, server-enforced renewal gate.
   void api.getDashboard().then(dashboard => {

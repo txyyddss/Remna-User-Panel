@@ -128,6 +128,13 @@ func (s *Store) ResolveProvisioningConflict(ctx context.Context, userID, usernam
 			return err
 		}
 	}
+	// A previously onboarded identity must not repeat first-entry verification
+	// when a confirmed username collision restarts account setup.
+	if _, err := tx.ExecContext(ctx, `INSERT INTO panel_entry_verification(telegram_id,checked)
+		SELECT telegram_id,1 FROM users WHERE id=? AND policy_accepted_at IS NOT NULL
+		ON CONFLICT(telegram_id) DO UPDATE SET checked=1`, userID); err != nil {
+		return err
+	}
 	result, err := tx.ExecContext(ctx, `UPDATE users SET username=NULL,onboarding_state='username',policy_accepted_at=NULL,
 		accepted_agreement_revision=0,remna_user_id=NULL,remna_subscription_url=NULL,
 		recovery_reason='remnawave_username_conflict',updated_at=? WHERE id=? AND username=? AND onboarding_state='complete'`,

@@ -33,3 +33,5 @@ Schema definitions are grouped into bounded sequential shards. The root componen
 
 `schemas-23.yaml` defines notification preferences, typed partial updates and live group-member tags.
 `schemas-23.yaml` also defines the administrator refund suggestion and nullable usage details.
+
+`schemas-25.yaml` defines first-entry CAPTCHA state and the bounded single-use verification token request.

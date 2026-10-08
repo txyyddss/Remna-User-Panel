@@ -1,5 +1,13 @@
 # Constructed browser fixtures
 
+`CaptchaAudit.vue`, `captcha-audit.ts` and `captcha-audit.html` mount the actual
+entry gate with Cloudflare's public always-pass test site key and a mocked signed
+verification response. `mock`, `rejected`, `unavailable`, `missing`, `loaderror`
+and `delay` provide repeatable failure, expiry, loading and success states;
+`__captchaAudit`, `__captchaExpire` and `__captchaProviderError` expose state.
+`admin` mounts the real settings panel with write-only secret data; its recorded
+`__captchaSettingsAudit.writes` verifies key saves precede enabling.
+
 `SettingsAudit.vue`, `settings-audit.ts` and `settings-audit.html` mount the actual
 settings page with isolated squad/activation receipts and existing preferences.
 `single`, `inactive`, `noqueued`, `slow`, `error`, and `pollerror` exercise eligible,

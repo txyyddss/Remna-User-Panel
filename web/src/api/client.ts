@@ -84,6 +84,9 @@ export const api = {
     body: { initData } satisfies TelegramAuthRequest,
   }),
   getMe: () => request<Session>('/api/v1/me'),
+  verifyCaptcha: (token: string) => request<Session>('/api/v1/me/captcha', {
+    method: 'POST', body: { token } satisfies components['schemas']['CaptchaVerifyRequest'],
+  }),
   setUsername: (username: string) => request<Session>('/api/v1/onboarding/username', {
     method: 'PUT',
     body: { username },

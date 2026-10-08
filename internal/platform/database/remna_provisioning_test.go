@@ -64,6 +64,9 @@ func TestProvisioningConflictRefundsCurrentAndQueuedPurchasesOnce(t *testing.T) 
 	if cancelled != 2 || refunds != 2 || notices != 1 {
 		t.Fatalf("cancelled/refunds/notices = %d/%d/%d", cancelled, refunds, notices)
 	}
+	if qualified, err := store.PanelEntryQualified(ctx, user.TelegramID); err != nil || !qualified {
+		t.Fatalf("recovered entry trust = %v, %v", qualified, err)
+	}
 }
 
 func TestUnlinkedPaidBacklogQueuesOneRepair(t *testing.T) {

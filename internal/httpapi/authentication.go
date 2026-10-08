@@ -32,8 +32,9 @@ type userResponse struct {
 }
 
 type authState struct {
-	Authenticated bool         `json:"authenticated"`
-	User          userResponse `json:"user"`
+	Authenticated bool                   `json:"authenticated"`
+	User          userResponse           `json:"user"`
+	Captcha       *accounts.CaptchaState `json:"captcha,omitempty"`
 }
 
 func mapUser(user model.User) userResponse {
@@ -80,8 +81,13 @@ func (s *Server) authenticate(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, http.StatusInternalServerError, "SESSION_CREATE_FAILED", "The secure session could not be created.")
 		return
 	}
+	state, err := s.panelAuthState(r, user, true)
+	if err != nil {
+		s.captchaFailure(w, r, err)
+		return
+	}
 	s.setSessionCookies(w, token, clientKey, expiresAt)
-	writeJSON(w, http.StatusOK, authState{Authenticated: true, User: mapUser(user)})
+	writeJSON(w, http.StatusOK, state)
 }
 
 func (s *Server) setSessionCookies(w http.ResponseWriter, token, clientKey string, expiresAt time.Time) {
@@ -96,5 +102,10 @@ func (s *Server) setSessionCookies(w http.ResponseWriter, token, clientKey strin
 }
 
 func (s *Server) me(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, authState{Authenticated: true, User: mapUser(currentUser(r))})
+	state, err := s.panelAuthState(r, currentUser(r), true)
+	if err != nil {
+		s.captchaFailure(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, state)
 }

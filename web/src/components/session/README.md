@@ -9,3 +9,5 @@
   localized full-app reload path with retry feedback and without exposing exception details.
 
 The responsive wordmark, letter timing, reduced-motion fallback, and continuous loader keyframes live in `../../styles/session-01.css`. `SessionEntrance.vue` is the single Motion presence boundary for loading-to-application handoff. At widths below 768px the prefix sits above the changing word; larger viewports use one baseline. Brand strings live under `auth.loading*` in both core locale files, preserving the requested bilingual sequence in either UI language.
+
+`CaptchaGate.vue` renders the first-entry challenge before route content, with loading, expired, provider failure and retry states. Only the server verification response updates the session. `LanguageControl` remains accessible before solving.

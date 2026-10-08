@@ -130,3 +130,6 @@ onboarding, signed requests and the existing idempotent operation protections.
 `admin_user_refund_quote.go` serves administrator-only live suggestions with a retryable unavailable-usage error.
 
 `telegram_boost.go` accepts authenticated active boost updates only for the configured group, then atomically queues appreciation; storage failures keep the webhook retryable.
+
+`captcha.go` gates authenticated protected routes before business handlers. Only bootstrap, verification and display currency controls bypass the entry gate. Server construction supplies a fail-closed fallback; app composition injects the queued verifier. CAPTCHA_REQUIRED triggers a fresh browser bootstrap.
+`captcha_test.go` covers protected reads, onboarding mutations, allowed bootstrap controls, admin access and rejected/unavailable token failures.

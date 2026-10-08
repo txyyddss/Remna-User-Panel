@@ -40,6 +40,8 @@ func (s *SettingsService) SafeList(ctx context.Context) ([]model.Setting, error)
 
 func settingCategory(key string) string {
 	switch {
+	case strings.HasPrefix(key, "captcha."):
+		return "captcha"
 	case strings.HasPrefix(key, "telegram."):
 		return "telegram"
 	case strings.HasPrefix(key, "remnawave."):

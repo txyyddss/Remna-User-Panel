@@ -47,11 +47,12 @@ export const useSessionStore = defineStore('session', () => {
   }
 
   function updateSession(next: Session): void {
-    const changed = setCacheSession(`${next.user.id}:${next.user.role}:${next.user.onboardingState}`)
+    const changed = setCacheSession(`${next.user.id}:${next.user.role}:${next.user.onboardingState}:${next.captcha?.required === true}`)
     session.value = next
     status.value = 'ready'
     error.value = null
-    if (changed) preloadSession(next)
+    if (next.captcha?.required) stopSessionPreload()
+    else if (changed) preloadSession(next)
   }
 
   function clear(): void {

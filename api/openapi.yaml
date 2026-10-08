@@ -4,6 +4,7 @@ security: [{ cookieSession: [], requestTimestamp: [], requestNonce: [], requestS
 paths:
   /api/v1/auth/telegram: { $ref: './paths/api-v1-auth-telegram.yaml' }
   /api/v1/me: { $ref: './paths/api-v1-me.yaml' }
+  /api/v1/me/captcha: { $ref: './paths/api-v1-me-captcha.yaml' }
   /api/v1/me/preferences: { $ref: './paths/api-v1-me-preferences.yaml' }
   /api/v1/me/group-member-tag: { $ref: './paths/api-v1-me-group-member-tag.yaml' }
   /api/v1/me/display-currency: { $ref: './paths/api-v1-me-display-currency.yaml' }
@@ -156,6 +157,7 @@ components:
   }
   responses: { BadRequest: { $ref: './components/responses.yaml#/BadRequest' }, Unauthorized: { $ref: './components/responses.yaml#/Unauthorized' }, Forbidden: { $ref: './components/responses.yaml#/Forbidden' }, NotFound: { $ref: './components/responses.yaml#/NotFound' }, Conflict: { $ref: './components/responses.yaml#/Conflict' }, Unprocessable: { $ref: './components/responses.yaml#/Unprocessable' }, PayloadTooLarge: { $ref: './components/responses.yaml#/PayloadTooLarge' }, TooManyRequests: { $ref: './components/responses.yaml#/TooManyRequests' }, InternalFailure: { $ref: './components/responses.yaml#/InternalFailure' }, UpstreamFailure: { $ref: './components/responses.yaml#/UpstreamFailure' }, ServiceUnavailable: { $ref: './components/responses.yaml#/ServiceUnavailable' } }
   schemas: {
+    CaptchaState: { "$ref": "./components/schemas/schemas-25.yaml#/CaptchaState" }, CaptchaVerifyRequest: { "$ref": "./components/schemas/schemas-25.yaml#/CaptchaVerifyRequest" },
     NotificationPreferences: {"$ref":"./components/schemas/schemas-23.yaml#/NotificationPreferences"}, UserPreferences: {"$ref":"./components/schemas/schemas-23.yaml#/UserPreferences"}, UserPreferencesPatch: {"$ref":"./components/schemas/schemas-23.yaml#/UserPreferencesPatch"},
     GroupMemberTag: {"$ref":"./components/schemas/schemas-23.yaml#/GroupMemberTag"}, AdminEntitlementRefundQuote: {"$ref":"./components/schemas/schemas-23.yaml#/AdminEntitlementRefundQuote"}, ID: {"$ref":"./components/schemas/schemas-01.yaml#/ID"},
     Timestamp: {"$ref":"./components/schemas/schemas-01.yaml#/Timestamp"}, DecimalInteger: {"$ref":"./components/schemas/schemas-01.yaml#/DecimalInteger"}, ApiError: {"$ref":"./components/schemas/schemas-01.yaml#/ApiError"},

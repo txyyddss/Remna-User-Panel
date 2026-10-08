@@ -176,7 +176,21 @@
       "INVALID_REWARD": "Daily reward must be a non-negative TXB amount with at most two decimals.",
       "INVALID_GROUP_MESSAGE_THRESHOLD": "Message threshold must be a non-negative integer.",
       "INVALID_GROUP_MESSAGE_REWARD": "Group-message reward must be a non-negative TXB amount.",
-      "HTTP_ERROR": "The request could not be completed."
+      "HTTP_ERROR": "The request could not be completed.",
+      "CAPTCHA_REQUIRED": "Complete this one-time check before setting up your account.",
+      "CAPTCHA_REJECTED": "Verification failed. Solve a fresh challenge.",
+      "CAPTCHA_UNAVAILABLE": "Verification is temporarily unavailable. Please retry."
     }
+  },
+  "captcha": {
+    "eyebrow": "First visit",
+    "title": "Verify your panel entry",
+    "description": "Complete this one-time check before setting up your account.",
+    "loading": "Loading verification…",
+    "verifying": "Verifying…",
+    "failed": "Verification failed. Solve a fresh challenge.",
+    "unavailable": "Verification is temporarily unavailable. Please retry.",
+    "expired": "Your challenge expired. Please solve it again.",
+    "retry": "Reload verification"
   }
 }

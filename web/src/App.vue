@@ -5,6 +5,7 @@ import { en, zh_cn } from '@nuxt/ui/locale'
 
 import AppShell from '@/components/layout/AppShell.vue'
 import AuthGate from '@/components/session/AuthGate.vue'
+import CaptchaGate from '@/components/session/CaptchaGate.vue'
 import SessionEntrance from '@/components/session/SessionEntrance.vue'
 import AppErrorBoundary from '@/components/session/AppErrorBoundary.vue'
 import { useSessionStore } from '@/stores/session'
@@ -65,6 +66,7 @@ onUnmounted(() => globalThis.removeEventListener(onboardingRequiredEvent, onOnbo
           :message="sessionStore.error ?? $t('auth.authenticationFailed')"
           @retry="sessionStore.bootstrap(true)"
         />
+        <CaptchaGate v-else-if="sessionStore.session?.captcha?.required" :challenge="sessionStore.session.captcha" @verified="sessionStore.updateSession" />
         <template v-else>
           <RouterView v-if="immersive" v-slot="{ Component, route: currentRoute }">
             <component :is="Component" :key="currentRoute.fullPath" />

@@ -29,3 +29,5 @@ commands. Its mutable state and quotes always bypass response snapshots.
 - `catalog-normalization.test.ts` verifies recursive catalog and quote normalization for nullable or omitted nested collections, ensuring null API fields are converted into safe empty arrays.
 
 `preferences.ts` provides typed account preference and live group-tag clients.
+
+`client.ts` verifies first-entry tokens via the signed /me/captcha endpoint. AuthState carries optional server-owned CAPTCHA state; caches and background preload suspend protected reads until verification.

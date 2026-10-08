@@ -81,6 +81,7 @@ declare module 'vue' {
     BetSuccessFireworks: typeof import('./src/components/activity/BetSuccessFireworks.vue')['default']
     BroadbandProfileFields: typeof import('./src/components/admin/squad-profile/BroadbandProfileFields.vue')['default']
     BrowserCapabilityGate: typeof import('./src/components/session/BrowserCapabilityGate.vue')['default']
+    CaptchaGate: typeof import('./src/components/session/CaptchaGate.vue')['default']
     CardsPresenter: typeof import('./src/components/activity/draw/presenters/CardsPresenter.vue')['default']
     CarrierLogo: typeof import('./src/components/squad-profile/CarrierLogo.vue')['default']
     CatalogCheckout: typeof import('./src/components/catalog/CatalogCheckout.vue')['default']

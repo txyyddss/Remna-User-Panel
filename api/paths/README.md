@@ -154,3 +154,5 @@ Member connection scans, purchase refund resources, operation receipts, statisti
 - `api-v1-activity-check-ins.yaml` documents personal-boost eligibility, half-up reward scaling, and distinct 403 and 503 refusal codes.
 
 `api-v1-me-preferences.yaml` defines preference reads and partial updates; `api-v1-me-group-member-tag.yaml` defines canonical Telegram tag reads and writes.
+
+`api-v1-me-captcha.yaml` defines authenticated first-entry verification and its fail-closed provider errors.

@@ -73,7 +73,7 @@ async function responseError(response: Response): Promise<ApiError> {
     ? payload as ApiErrorBody
     : { code: 'HTTP_ERROR', message: String(payload || response.statusText) }
   const error = new ApiError(response.status, body)
-  if (error.code === 'ONBOARDING_REQUIRED' && typeof globalThis.dispatchEvent === 'function') {
+  if ((error.code === 'ONBOARDING_REQUIRED' || error.code === 'CAPTCHA_REQUIRED') && typeof globalThis.dispatchEvent === 'function') {
     globalThis.dispatchEvent(new Event(onboardingRequiredEvent))
   }
   return error

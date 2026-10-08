@@ -1,0 +1,14 @@
+CaptchaState:
+  type: object
+  additionalProperties: false
+  required: [required, siteKey, action]
+  properties:
+    required: { type: boolean }
+    siteKey: { type: string }
+    action: { type: string, const: txc_first_entry }
+CaptchaVerifyRequest:
+  type: object
+  additionalProperties: false
+  required: [token]
+  properties:
+    token: { type: string, minLength: 1, maxLength: 2048 }

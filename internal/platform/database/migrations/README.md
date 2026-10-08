@@ -104,3 +104,5 @@ file instead.
 `057_user_preferences.sql` adds per-user choices and clears optional entrances on purchase eligibility transitions and later purchases.
 
 `060_telegram_boost_receipts.sql` keeps only group/boost identity and receipt time to prevent repeat appreciation.
+
+`061_panel_entry_verification.sql` creates the two-column temporary verification table; previously accepted agreements need no migrated row.

@@ -1,0 +1,18 @@
+post:
+  operationId: verifyPanelEntryCaptcha
+  tags: [Identity]
+  summary: Verify first authenticated panel entry with a single-use Turnstile token
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema: { $ref: '../openapi.yaml#/components/schemas/CaptchaVerifyRequest' }
+  responses:
+    '200':
+      description: Session with entry challenge satisfied
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/AuthState' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }
+    '503': { $ref: '../openapi.yaml#/components/responses/ServiceUnavailable' }
