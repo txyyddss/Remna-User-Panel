@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"strconv"
@@ -44,6 +45,20 @@ func (s *Store) adminBalanceChange(ctx context.Context, actorID, userID string, 
 		return model.LedgerEntry{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
+	var existingID, existingUserID, existingNote string
+	var existingDelta int64
+	if err := tx.QueryRowContext(ctx, `SELECT id,user_id,delta_txb_minor,note FROM ledger_entries WHERE kind=? AND reference_id=?`, ledgerKind, referenceID).
+		Scan(&existingID, &existingUserID, &existingDelta, &existingNote); err == nil {
+		if existingUserID != userID || existingDelta != delta || existingNote != reason {
+			return model.LedgerEntry{}, ErrConflict
+		}
+		if err := tx.Commit(); err != nil {
+			return model.LedgerEntry{}, err
+		}
+		return s.LedgerEntryByID(ctx, existingID)
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		return model.LedgerEntry{}, err
+	}
 	var balance int64
 	if ledgerKind == "telegram_deduct" {
 		balance, err = changeBalanceTx(ctx, tx, userID, delta, now)

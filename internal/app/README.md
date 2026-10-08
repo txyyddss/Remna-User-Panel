@@ -78,7 +78,7 @@ stopped.
 - `telegram_scheduler.go` configures Telegram delivery and reconciles Telegram Stars transactions.
 - `telegram_queue_adapter.go` queues bot identity, membership, invite approval, decline, revocation, setup, and message operations.
 - `telegram_queue_payments.go` queues Telegram Stars invoice, query, history, and refund operations.
-- `telegram_command_registration.go` installs localized private-chat and configured-group command menus.
+- `telegram_command_registration.go` installs localized private-chat, configured-group, and PM-topic admin command menus.
 - `app_test.go` verifies normalized Telegram Stars transaction directions.
 - `adapter_queue_test.go` verifies Remnawave and Emby adapter calls enter their queue before client construction.
 - `remna_entitlements_adapter_test.go` verifies active expiry propagation and the disabled-user far-future expiry.
@@ -97,4 +97,4 @@ Personal security notices in `abuse_outbox.go` follow account preferences; opera
 
 Turnstile uses an independent bounded provider queue in `provider_queues.go`, with the same lifecycle and executor as other providers. Composition injects the panel public hostname into accounts.FirstEntry and the verifier.
 
-`pm_forum_validation.go` performs bounded, queued getChat/getMe/getChatMember preflight. `telegram_queue_pm.go` exposes factory callbacks so PM rechecks eligibility and flags after queue waits. `pm_workflows.go` registers relay/profile/repair provider kinds and localized refusal notices through the existing outbox.
+`pm_forum_validation.go` performs bounded, queued getChat/getMe/getChatMember preflight. `telegram_queue_pm.go` exposes factory callbacks so PM rechecks eligibility and flags after queue waits. `pm_profile.go` builds ephemeral card facts from admin profiles and queued refund/rollover projections. `pm_workflows.go` registers relay/profile/repair provider kinds and localized refusal notices through the existing outbox.

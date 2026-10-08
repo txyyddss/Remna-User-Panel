@@ -5,9 +5,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
-	"github.com/txyyddss/Remna-User-Panel/internal/telegramformat"
 )
 
 func chinese(locale string) bool { return strings.HasPrefix(strings.ToLower(locale), "zh") }
@@ -16,13 +14,13 @@ func NoticeText(item model.PMNotice) string {
 	if chinese(item.Locale) {
 		switch item.Reason {
 		case "unsupported":
-			return "Telegram 无法转发这类消息，请改用文字或常规媒体。"
+			return "Telegram \u65e0\u6cd5\u8f6c\u53d1\u8fd9\u7c7b\u6d88\u606f\uff0c\u8bf7\u6539\u7528\u6587\u5b57\u6216\u5e38\u89c4\u5a92\u4f53\u3002"
 		case "entry":
-			return "请先打开 TX Carpool 面板并完成首次访问验证，再直接发送消息。"
+			return "\u8bf7\u5148\u6253\u5f00 TX Carpool \u9762\u677f\u5e76\u5b8c\u6210\u9996\u6b21\u8bbf\u95ee\u9a8c\u8bc1\uff0c\u518d\u76f4\u63a5\u53d1\u9001\u6d88\u606f\u3002"
 		case "blocked":
-			return "你的私信已被管理员暂停。"
+			return "\u4f60\u7684\u79c1\u4fe1\u5df2\u88ab\u7ba1\u7406\u5458\u6682\u505c\u3002"
 		default:
-			return "私信功能暂未开放，请稍后再试。"
+			return "\u79c1\u4fe1\u529f\u80fd\u6682\u672a\u5f00\u653e\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5\u3002"
 		}
 	}
 	switch item.Reason {
@@ -39,15 +37,27 @@ func NoticeText(item model.PMNotice) string {
 
 func callbackText(locale, reason string) string {
 	if chinese(locale) {
-		if reason == "updated" {
-			return "私信设置已更新。"
+		switch reason {
+		case "updated":
+			return "\u79c1\u4fe1\u8bbe\u7f6e\u5df2\u66f4\u65b0\u3002"
+		case "read":
+			return "\u5df2\u5c06\u6d88\u606f\u6807\u8bb0\u4e3a\u5df2\u8bfb\u3002"
+		case "refresh":
+			return "\u8d44\u6599\u5361\u66f4\u65b0\u5df2\u52a0\u5165\u961f\u5217\u3002"
+		default:
+			return "\u4ec5\u9762\u677f\u7ba1\u7406\u5458\u53ef\u4f7f\u7528\u5f53\u524d\u8bdd\u9898\u7684\u8d44\u6599\u5361\u3002"
 		}
-		return "仅面板管理员可使用当前话题的资料卡。"
 	}
-	if reason == "updated" {
+	switch reason {
+	case "updated":
 		return "Private messaging settings updated."
+	case "read":
+		return "Message marked as read."
+	case "refresh":
+		return "Profile refresh queued."
+	default:
+		return "Only panel admins can use the current topic profile card."
 	}
-	return "Only panel admins can use the current topic profile card."
 }
 
 func TopicName(item model.PMConversation) string {
@@ -55,38 +65,9 @@ func TopicName(item model.PMConversation) string {
 	if item.Username != "" {
 		name = "@" + item.Username
 	}
-	name += " · " + strconv.FormatInt(item.TelegramID, 10)
+	name += " \u00b7 " + strconv.FormatInt(item.TelegramID, 10)
 	if utf8.RuneCountInString(name) > 128 {
 		name = string([]rune(name)[:128])
 	}
 	return name
-}
-
-func Profile(item model.PMConversation) telegram.TopicProfileRequest {
-	name := strings.TrimSpace(item.FirstName + " " + item.LastName)
-	if item.Username != "" {
-		name += " (@" + item.Username + ")"
-	}
-	blockAction, muteAction, blockLabel, muteLabel := "block", "mute", "Block", "Mute"
-	state := "Messages enabled"
-	if item.Blocked {
-		blockAction, blockLabel, state = "unblock", "Unblock", "Messages blocked"
-	}
-	if item.Muted {
-		muteAction, muteLabel = "unmute", "Unmute"
-		state += " · Silent relay"
-	}
-	if chinese(item.Locale) {
-		blockLabel, muteLabel, state = "屏蔽", "静音", "允许私信"
-		if item.Blocked {
-			blockLabel, state = "取消屏蔽", "已屏蔽私信"
-		}
-		if item.Muted {
-			muteLabel = "取消静音"
-			state += " · 静默转发"
-		}
-	}
-	body := telegramformat.Escape(name) + "\n" + telegramformat.Escape("Telegram ID: "+strconv.FormatInt(item.TelegramID, 10)) + "\n" + telegramformat.Escape(state)
-	return telegram.TopicProfileRequest{ChatID: item.ChatID, MessageThreadID: item.TopicID, MessageID: item.ProfileMessageID, Text: body,
-		ReplyMarkup: telegram.InlineKeyboardMarkup{InlineKeyboard: [][]telegram.InlineKeyboardButton{{{Text: blockLabel, CallbackData: "pm:" + blockAction + ":" + item.ID}, {Text: muteLabel, CallbackData: "pm:" + muteAction + ":" + item.ID}}}}}
 }

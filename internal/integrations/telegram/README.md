@@ -26,5 +26,5 @@ This package contains the Telegram Bot API and Mini App authentication surface u
 
 `boosts.go` also models documented chat_boost/source identities. Webhooks subscribe to boost additions and changes; anonymous giveaway sources remain optional.
 
-`messages.go` holds minimal command/payment/thread/media-presence contracts without persistence. `forum.go` implements documented getChat/createForumTopic/copyMessage. `topic_profiles.go` implements thread-addressed profile creation, idempotent edits with returned thread identity, inline moderation buttons and callback answers. New methods execute only through the app queue adapters.
+`messages.go` holds minimal command/payment/thread/media-presence contracts without persistence. `forum.go` implements documented getChat/createForumTopic/copyMessage and optional acknowledgment markup on copied messages. `topic_profiles.go` implements thread-addressed profile creation, idempotent edits with returned thread identity, callback/URL buttons and callback answers. New methods execute only through the app queue adapters.
 `forum_test.go` covers documented forum, copy, profile and callback wire methods, retained-caption behavior and returned thread identity in hosted CI.

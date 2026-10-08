@@ -70,10 +70,14 @@ func LanguageFor(code string) Language {
 
 // Text returns the immutable copy set for a language.
 func Text(language Language) Copy {
+	var copy Copy
 	if language == Chinese {
-		return chineseCopy()
+		copy = chineseCopy()
+	} else {
+		copy = englishCopy()
 	}
-	return englishCopy()
+	copy.Descriptions = append(copy.Descriptions, PMAdminDescriptions(language)...)
+	return copy
 }
 
 func englishCopy() Copy {

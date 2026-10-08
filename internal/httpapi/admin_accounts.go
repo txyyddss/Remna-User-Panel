@@ -76,6 +76,15 @@ func (s *Server) adminUser(w http.ResponseWriter, r *http.Request) {
 	}
 	response := mapAdminUserDetail(detail)
 	response.IPBlocks = blocks
+	conversation, found, err := s.deps.Store.PMConversationByUser(r.Context(), userID)
+	if err != nil {
+		s.adminFailure(w, r, err)
+		return
+	}
+	if found {
+		mapped := mapPMConversation(conversation)
+		response.PMConversation = &mapped
+	}
 	writeJSON(w, http.StatusOK, response)
 }
 

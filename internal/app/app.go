@@ -171,7 +171,8 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	if err := registerAbuseOutboxHandlers(outboxWorker, store, remna, queuedTelegramClient); err != nil {
 		return cleanup(err)
 	}
-	pmService, err := newPMWorkflows(store, settings, queuedTelegramClient, cfg.AdminTelegramIDs, operationDispatcher, outboxWorker)
+	pmService, err := newApplicationPMWorkflows(store, settings, queuedTelegramClient, cfg.AdminTelegramIDs,
+		operationDispatcher, outboxWorker, adminUserWorkflows, catalogService, affiliateService.BotUsername, cfg.Timezone)
 	if err != nil {
 		return cleanup(err)
 	}

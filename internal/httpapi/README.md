@@ -93,7 +93,7 @@ onboarding, signed requests and the existing idempotent operation protections.
 - `operations.go` serves liveness and readiness probes.
 - `operations_shared.go` contains bounded-context and request-ID helpers.
 - `telegram_webhook.go` validates and dispatches Telegram membership and Stars payment updates.
-- `telegram_commands.go` checks configured-group raffle keywords and commands before ordinary commands and group-message rewards; failed entries get localized replies.
+- `telegram_commands.go` checks configured-group raffle keywords and commands before ordinary commands and group-message rewards; PM topic administrator commands resolve the target from the topic. Failed entries get localized replies.
 - `telegram_command_target.go` strips Telegram's optional `@botname` suffix only when it matches the cached bot identity, so commands addressed to other bots are ignored.
 - `telegram_command_target_test.go` covers addressed raffle and built-in commands, other-bot rejection, and plain keywords.
 - `display_currency.go` exposes the owner-scoped display preference and the configured fixed TXB-per-CNY/USD rates without changing authoritative prices.
@@ -110,6 +110,7 @@ onboarding, signed requests and the existing idempotent operation protections.
 - `community_membership_test.go` covers stable onboarding, membership-check, active-combo, already-joined, and invite-provider transport errors.
 - `admin_catalog_test.go` covers strict decoding of typed squad profile writes.
 - `operations_commands_test.go` covers Telegram deduction command parsing.
+- `telegram_pm_commands_test.go` covers topic-owner targeting and refusal to infer refunds without a positive traffic quote.
 - `payment_callbacks_test.go` verifies that navigation returns accept only the documented payment providers.
 - `admin_user_detail_test.go` covers owner-ID restoration in nested aggregate records.
 - `member_ip_blocks_test.go` covers member isolation, administrator actor attribution, and open-operation conflicts.
@@ -134,4 +135,4 @@ onboarding, signed requests and the existing idempotent operation protections.
 `captcha.go` gates authenticated protected routes before business handlers. Only bootstrap, verification and display currency controls bypass the entry gate. Server construction supplies a fail-closed fallback; app composition injects the queued verifier. CAPTCHA_REQUIRED triggers a fresh browser bootstrap.
 `captcha_test.go` covers protected reads, onboarding mutations, allowed bootstrap controls, admin access and rejected/unavailable token failures.
 
-`telegram_pm.go` delegates authenticated ordinary message/callback updates to PM; payment/command paths retain their routing. `admin_pm.go` exposes paged conversations, idempotent moderation and topic repair. `admin_pm_deliveries.go` exposes bounded reference-only results to panel admins, including ambiguous sends.
+`telegram_pm.go` delegates authenticated ordinary message/callback updates to PM; payment/command paths retain their routing. `telegram_pm_commands.go` applies `/refund`, `/addtxb`, and `/deducttxb` only to the authorized topic owner. `admin_pm.go` retains PM conversation inventory, idempotent moderation and topic repair APIs for the per-user profile controls. `admin_pm_deliveries.go` exposes bounded delivery references and read evidence, including ambiguous sends.

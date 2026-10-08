@@ -110,3 +110,33 @@ func TestPMModerationIsIdempotentAndCarriesAcrossDestinationGroups(t *testing.T)
 		t.Fatal("blocked sender queued")
 	}
 }
+
+func TestPMProfileRefreshQueuesOneScopedOperation(t *testing.T) {
+	t.Parallel()
+	ctx, store := context.Background(), newTestStore(t)
+	user := pmMember(t, store, 31984)
+	admin := createTestUser(t, store, 31985)
+	if _, err := store.DB().ExecContext(ctx, `UPDATE users SET role='admin' WHERE id=?`, admin.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.QueuePMRelay(ctx, model.PMRelayInput{ActorUserID: user.ID, UserID: user.ID, UpdateID: 701, ChatID: -100123,
+		SourceChatID: user.TelegramID, SourceMessageID: 9, Inbound: true}, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	conversation, found, err := store.PMConversationByUser(ctx, user.ID)
+	if err != nil || !found {
+		t.Fatalf("conversation found=%v err=%v", found, err)
+	}
+	now := time.Now().UTC()
+	first, err := store.QueuePMProfileRefresh(ctx, admin.ID, "refresh-701", conversation.ID, 702, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replay, err := store.QueuePMProfileRefresh(ctx, admin.ID, "refresh-701", conversation.ID, 702, now.Add(time.Second))
+	if err != nil || replay.ID != first.ID {
+		t.Fatalf("refresh replay = %+v, %v", replay, err)
+	}
+	if _, err := store.QueuePMProfileRefresh(ctx, user.ID, "refresh-user", conversation.ID, 703, now); err == nil {
+		t.Fatal("member queued an administrator profile refresh")
+	}
+}

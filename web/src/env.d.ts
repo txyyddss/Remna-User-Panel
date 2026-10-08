@@ -24,7 +24,7 @@ interface TelegramWebApp {
   version?: string
   platform?: string
   initData: string
-  initDataUnsafe: { user?: TelegramWebAppUser }
+  initDataUnsafe: { user?: TelegramWebAppUser; start_param?: string }
   colorScheme: 'light' | 'dark'
   themeParams?: Record<string, string | undefined>
   safeAreaInset?: TelegramInsets

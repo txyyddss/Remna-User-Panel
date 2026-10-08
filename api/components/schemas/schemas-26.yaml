@@ -34,7 +34,7 @@ PMTopicRepair:
 PMDelivery:
   type: object
   additionalProperties: false
-  required: [operationId, status, direction, errorCode, sourceChatId, sourceMessageId, resultMessageId, topicId, createdAt]
+  required: [operationId, status, direction, errorCode, sourceChatId, sourceMessageId, resultMessageId, topicId, createdAt, readAt, readSource]
   properties:
     operationId: { $ref: '../../openapi.yaml#/components/schemas/ID' }
     status: { type: string, enum: [queued, processing, succeeded, failed, compensated, pending_review, partial] }
@@ -45,6 +45,8 @@ PMDelivery:
     resultMessageId: { type: [string, 'null'], pattern: '^\d+$' }
     topicId: { type: [string, 'null'], pattern: '^\d+$' }
     createdAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+    readAt: { anyOf: [{ $ref: '../../openapi.yaml#/components/schemas/Timestamp' }, { type: 'null' }] }
+    readSource: { type: string, enum: ['', explicit, reply] }
 PMDeliveryList:
   type: object
   additionalProperties: false

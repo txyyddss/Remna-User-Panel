@@ -17,6 +17,7 @@ import AdminUserCouponActions from './AdminUserCouponActions.vue'
 import AdminUserHistory from './AdminUserHistory.vue'
 import AdminUserIPBlocks from './AdminUserIPBlocks.vue'
 import AdminUserOverview from './AdminUserOverview.vue'
+import AdminUserPM from './AdminUserPM.vue'
 import AdminUserProviderActions from './AdminUserProviderActions.vue'
 import { useAdminUserProfile } from './useAdminUserProfile'
 
@@ -164,6 +165,7 @@ watch(() => unblockOperation.receipt.value, (receipt) => {
           <AdminUserProviderActions :user-id="userId" :detail="profile.detail.value" @changed="refresh" @queued="queueOperation" />
           <AdminUserCouponActions :user-id="userId" :grants="profile.detail.value.couponWallet" @changed="refresh" />
           <AdminUserAccountContext :user-id="userId" :detail="profile.detail.value" @changed="refresh" />
+          <AdminUserPM :conversation="profile.detail.value.pmConversation" @changed="refresh" />
           <AdminUserIPBlocks :items="profile.detail.value.ipBlocks" :busy="busy" @unblock="openIPUnblock" />
         </aside>
         <div class="admin-profile__main">

@@ -50,6 +50,12 @@ func (r *serviceRepo) QueuePMModeration(_ context.Context, _, _ string, item mod
 	r.moderation = append(r.moderation, item)
 	return model.OperationReceipt{}, nil
 }
+func (*serviceRepo) QueuePMProfileRefresh(context.Context, string, string, string, int64, time.Time) (model.OperationReceipt, error) {
+	return model.OperationReceipt{}, nil
+}
+func (*serviceRepo) MarkPMDeliveryRead(context.Context, string, int64, int64, int64, int64, time.Time) (bool, error) {
+	return true, nil
+}
 
 type pmSettings struct {
 	enabled bool

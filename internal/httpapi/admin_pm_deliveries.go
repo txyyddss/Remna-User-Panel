@@ -7,15 +7,17 @@ import (
 )
 
 type pmDeliveryResponse struct {
-	OperationID     string    `json:"operationId"`
-	Status          string    `json:"status"`
-	Direction       string    `json:"direction"`
-	ErrorCode       string    `json:"errorCode"`
-	SourceChatID    string    `json:"sourceChatId"`
-	SourceMessageID string    `json:"sourceMessageId"`
-	ResultMessageID *string   `json:"resultMessageId"`
-	TopicID         *string   `json:"topicId"`
-	CreatedAt       time.Time `json:"createdAt"`
+	OperationID     string     `json:"operationId"`
+	Status          string     `json:"status"`
+	Direction       string     `json:"direction"`
+	ErrorCode       string     `json:"errorCode"`
+	SourceChatID    string     `json:"sourceChatId"`
+	SourceMessageID string     `json:"sourceMessageId"`
+	ResultMessageID *string    `json:"resultMessageId"`
+	TopicID         *string    `json:"topicId"`
+	CreatedAt       time.Time  `json:"createdAt"`
+	ReadAt          *time.Time `json:"readAt"`
+	ReadSource      string     `json:"readSource"`
 }
 
 func (s *Server) adminPMDeliveries(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +34,7 @@ func (s *Server) adminPMDeliveries(w http.ResponseWriter, r *http.Request) {
 	response := make([]pmDeliveryResponse, len(items))
 	for index, item := range items {
 		response[index] = pmDeliveryResponse{OperationID: item.OperationID, Status: item.Status, Direction: item.Direction, ErrorCode: item.ErrorCode,
-			SourceChatID: strconv.FormatInt(item.SourceChatID, 10), SourceMessageID: strconv.FormatInt(item.SourceMessageID, 10), ResultMessageID: optionalPMID(item.ResultMessageID), TopicID: optionalPMID(item.TopicID), CreatedAt: item.CreatedAt}
+			SourceChatID: strconv.FormatInt(item.SourceChatID, 10), SourceMessageID: strconv.FormatInt(item.SourceMessageID, 10), ResultMessageID: optionalPMID(item.ResultMessageID), TopicID: optionalPMID(item.TopicID), CreatedAt: item.CreatedAt, ReadAt: item.ReadAt, ReadSource: item.ReadSource}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": response})
 }

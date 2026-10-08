@@ -10,6 +10,7 @@
 - `AdminUserHistory.vue` presents Emby accounts, payments, refunds, and open provider operations, with refund and courtesy-credit actions only for that profile's eligible payment records.
 - `AdminUserIPBlocks.vue` presents active member-created blocks and exposes only the administrator unblock action.
 - `AdminUserOverview.vue` presents identity, balance, synchronization, and the active combo.
+- `AdminUserPM.vue` moves PM controls, topic navigation, repair, delivery history, and read status into the selected profile.
 - `AdminUserCouponActions.vue` grants or historically discards active purchase-discount wallet coupons.
 - `AdminUserProviderActions.vue` queues temporary restrictions and relinks, and displays read-only transient active-IP scan results.
 - `AdminUserSearchFilters.vue` supplies responsive state, combo, and squad facets with AND/OR composition.

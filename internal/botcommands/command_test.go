@@ -25,6 +25,16 @@ func TestParseKeepsMyComboAsOnlyComboCommand(t *testing.T) {
 	}
 }
 
+func TestParseRecognizesPMAdminCommands(t *testing.T) {
+	t.Parallel()
+	for _, name := range []Name{Refund, AddTXB, DeductTXB} {
+		command, slash := Parse("/" + string(name) + "@txcarpool_bot 25.50")
+		if !slash || !command.Known || command.Name != name || len(command.Args) != 1 || command.Args[0] != "25.50" {
+			t.Fatalf("Parse(/%s) = (%+v, %t)", name, command, slash)
+		}
+	}
+}
+
 func TestLanguageForChineseVariants(t *testing.T) {
 	t.Parallel()
 	for _, code := range []string{"zh", "zh-CN", "zh-hans"} {

@@ -11,6 +11,17 @@ export function getTelegramWebApp(): TelegramWebApp | undefined {
   return window.Telegram?.WebApp
 }
 
+export function getTelegramStartParam(): string | undefined {
+  const direct = getTelegramWebApp()?.initDataUnsafe?.start_param?.trim()
+    || window.Telegram?.WebView?.initParams?.tgWebAppStartParam?.trim()
+  if (direct) return direct
+  for (const source of [window.location.search, window.location.hash]) {
+    const value = new URLSearchParams(source.replace(/^#/, '').replace(/^\?/, '')).get('tgWebAppStartParam')?.trim()
+    if (value) return value
+  }
+  return undefined
+}
+
 function versionParts(value: string | undefined): number[] | undefined {
   if (!value || !/^\d+(?:\.\d+)*$/.test(value)) return undefined
   return value.split('.').map(Number)

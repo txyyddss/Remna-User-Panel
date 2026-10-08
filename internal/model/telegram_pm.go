@@ -16,6 +16,8 @@ type PMConversation struct {
 type PMRelayInput struct {
 	ActorUserID, UserID                             string
 	UpdateID, ChatID, SourceChatID, SourceMessageID int64
+	ReplyToMessageID                                int64
+	MessageAt                                       time.Time
 	Inbound                                         bool
 }
 
@@ -42,4 +44,6 @@ type PMDelivery struct {
 	OperationID, Status, Direction, ErrorCode               string
 	SourceChatID, SourceMessageID, ResultMessageID, TopicID int64
 	CreatedAt                                               time.Time
+	ReadAt                                                  *time.Time
+	ReadSource                                              string
 }

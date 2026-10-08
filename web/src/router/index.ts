@@ -2,7 +2,7 @@ import { createRouter } from 'vue-router'
 
 import { api } from '@/api/client'
 import { useSessionStore } from '@/stores/session'
-import { isTelegramWebAppDetected } from '@/utils/telegram'
+import { getTelegramStartParam, isTelegramWebAppDetected } from '@/utils/telegram'
 import { resolveProtectedRoute } from './guards'
 import { createAppHistory } from './history'
 import { beginRouteRecovery, completeRouteRecovery, isRouteChunkError } from './recovery'
@@ -35,6 +35,7 @@ const router = createRouter({
     { path: '/admin', redirect: '/admin/settings' },
     { path: '/admin/emby', redirect: '/admin/users' },
     { path: '/admin/entitlements', redirect: '/admin/users' },
+    { path: '/admin/pm', redirect: '/admin/users' },
     {
       path: '/admin/users/:userId',
       name: 'admin-user',
@@ -42,7 +43,7 @@ const router = createRouter({
       meta: { adminSection: 'users' },
     },
     {
-      path: '/admin/:section(settings|pm|catalog|activity|affiliates|coupons|questionnaires|onboarding|users|compensation|abuse|backups|database|audit)',
+      path: '/admin/:section(settings|catalog|activity|affiliates|coupons|questionnaires|onboarding|users|compensation|abuse|backups|database|audit)',
       name: 'admin',
       component: () => import('@/views/AdminView.vue'),
     },
@@ -51,6 +52,7 @@ const router = createRouter({
 })
 
 let catalogCheckVersion = 0
+let telegramStartParamConsumed = false
 router.afterEach((to, _from, failure) => {
   completeRouteRecovery(to.fullPath)
   if (failure) return
@@ -85,6 +87,11 @@ router.beforeEach(async (to) => {
   if (to.meta.browserPublic === true && !isTelegramWebAppDetected()) return true
   await store.bootstrap()
   if (store.status === 'error') return true
+  if (!telegramStartParamConsumed && to.name === 'root' && store.user) {
+    telegramStartParamConsumed = true
+    const match = /^admin_user_([A-Za-z0-9_-]{1,64})$/.exec(getTelegramStartParam() ?? '')
+    if (match) return { name: 'admin-user', params: { userId: match[1] } }
+  }
   const protectedRedirect = resolveProtectedRoute(to, store.user)
   if (protectedRedirect) return protectedRedirect
   return true

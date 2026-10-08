@@ -139,6 +139,13 @@
     "sourceMessage": "来源消息 {id}",
     "viewInTelegram": "在 Telegram 中查看",
     "deliveryFailed": "投递失败，请检查 Telegram 目标和机器人权限。",
+    "userProfileHint": "管理此用户的私信转发，并查看投递和已读状态。",
+    "noConversationForUser": "该用户尚未发起私信对话。",
+    "unread": "未读",
+    "readState": {
+      "explicit": "用户标记为已读",
+      "reply": "根据用户回复推断已读"
+    },
     "direction": {
       "inbound": "用户发来",
       "outbound": "发给用户"

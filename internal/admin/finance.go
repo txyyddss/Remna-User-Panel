@@ -27,13 +27,18 @@ type atomicCancellationRepository interface {
 
 // AdjustBalance appends an audited immutable ledger entry.
 func (s *Service) AdjustBalance(ctx context.Context, actorID, userID string, delta int64, reason string) (model.LedgerEntry, error) {
-	reason = strings.TrimSpace(reason)
-	if delta == 0 || delta < -1_000_000_000_000 || delta > 1_000_000_000_000 || reason == "" || len(reason) > 500 {
-		return model.LedgerEntry{}, errors.New("non-zero delta and reason are required")
-	}
 	referenceID, err := ids.New()
 	if err != nil {
 		return model.LedgerEntry{}, err
+	}
+	return s.AdjustBalanceWithReference(ctx, actorID, userID, delta, referenceID, reason)
+}
+
+// AdjustBalanceWithReference appends an audited adjustment with a caller-owned idempotency reference.
+func (s *Service) AdjustBalanceWithReference(ctx context.Context, actorID, userID string, delta int64, referenceID, reason string) (model.LedgerEntry, error) {
+	reason = strings.TrimSpace(reason)
+	if delta == 0 || delta < -1_000_000_000_000 || delta > 1_000_000_000_000 || reason == "" || len(reason) > 500 || strings.TrimSpace(referenceID) == "" {
+		return model.LedgerEntry{}, errors.New("non-zero delta and reason are required")
 	}
 	if repository, ok := s.repository.(atomicBalanceRepository); ok {
 		return repository.AdjustAdminBalance(ctx, actorID, userID, delta, referenceID, reason, s.now().UTC())
@@ -50,13 +55,18 @@ func (s *Service) AdjustBalance(ctx context.Context, actorID, userID string, del
 
 // DeductBalance appends an audited exact debit that cannot create debt.
 func (s *Service) DeductBalance(ctx context.Context, actorID, userID string, amount int64, reason string) (model.LedgerEntry, error) {
-	reason = strings.TrimSpace(reason)
-	if amount <= 0 || amount > 1_000_000_000_000 || reason == "" || len(reason) > 500 {
-		return model.LedgerEntry{}, errors.New("positive amount and reason are required")
-	}
 	referenceID, err := ids.New()
 	if err != nil {
 		return model.LedgerEntry{}, err
+	}
+	return s.DeductBalanceWithReference(ctx, actorID, userID, amount, referenceID, reason)
+}
+
+// DeductBalanceWithReference appends an audited no-debt deduction with a stable idempotency reference.
+func (s *Service) DeductBalanceWithReference(ctx context.Context, actorID, userID string, amount int64, referenceID, reason string) (model.LedgerEntry, error) {
+	reason = strings.TrimSpace(reason)
+	if amount <= 0 || amount > 1_000_000_000_000 || reason == "" || len(reason) > 500 || strings.TrimSpace(referenceID) == "" {
+		return model.LedgerEntry{}, errors.New("positive amount and reason are required")
 	}
 	if repository, ok := s.repository.(atomicBalanceRepository); ok {
 		return repository.DeductAdminBalance(ctx, actorID, userID, amount, referenceID, reason, s.now().UTC())

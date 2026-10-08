@@ -108,7 +108,7 @@ func (s *Server) telegramWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if update.Message != nil && !pmHandled {
-		s.processTelegramGroupMessage(r.Context(), update.Message)
+		s.processTelegramGroupMessageUpdate(r.Context(), update.UpdateID, update.Message)
 	}
 	if update.ChatBoost != nil {
 		if err := s.processTelegramBoost(r.Context(), update.ChatBoost); err != nil {

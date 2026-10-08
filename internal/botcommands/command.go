@@ -7,12 +7,15 @@ import "strings"
 type Name string
 
 const (
-	Sub     Name = "sub"
-	Balance Name = "balance"
-	SignIn  Name = "signin"
-	Start   Name = "start"
-	MyCombo Name = "mycombo"
-	Deduct  Name = "deduct"
+	Sub       Name = "sub"
+	Balance   Name = "balance"
+	SignIn    Name = "signin"
+	Start     Name = "start"
+	MyCombo   Name = "mycombo"
+	Deduct    Name = "deduct"
+	Refund    Name = "refund"
+	AddTXB    Name = "addtxb"
+	DeductTXB Name = "deducttxb"
 )
 
 // Command is a parsed slash command. Known is false for commands which must be
@@ -35,7 +38,7 @@ func Parse(text string) (Command, bool) {
 	}
 	command := Command{Name: Name(name), Args: append([]string(nil), fields[1:]...)}
 	switch command.Name {
-	case Sub, Balance, SignIn, Start, MyCombo, Deduct:
+	case Sub, Balance, SignIn, Start, MyCombo, Deduct, Refund, AddTXB, DeductTXB:
 		command.Known = true
 	}
 	return command, true

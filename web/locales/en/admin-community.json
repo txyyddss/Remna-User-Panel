@@ -139,6 +139,13 @@
     "sourceMessage": "Source message {id}",
     "viewInTelegram": "View in Telegram",
     "deliveryFailed": "Delivery failed. Check the Telegram destination and bot permissions.",
+    "userProfileHint": "Manage this member's PM routing and review delivery and read status.",
+    "noConversationForUser": "This member has not started a PM conversation.",
+    "unread": "Unread",
+    "readState": {
+      "explicit": "Marked as read",
+      "reply": "Read inferred from reply"
+    },
     "direction": {
       "inbound": "From member",
       "outbound": "To member"

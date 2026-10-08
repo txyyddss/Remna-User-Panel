@@ -6,6 +6,8 @@ Administration is available only to a valid Telegram session whose Telegram ID a
 
 All operations live below `/api/v1/admin`. The Vue router lazy-groups existing URLs into commerce, community, accounts, and system navigation without breaking bookmarks. Domain-specific endpoints remain preferred for settings, catalog, users, balances, entitlements, payments/refunds, Activity, coupons, questionnaires, Emby, backups, outbox jobs, and audits. A separate schema-aware editor exists for exceptional recovery work; it exposes no raw SQL.
 
+Private-message administration is part of each user profile. Actual replies remain in the configured Telegram forum topic; the profile owns moderation, delivery history, read evidence, and repair navigation. The legacy `/admin/pm` URL redirects to the user directory.
+
 ## Settings and secrets
 
 The fixed registry defines each known key's validator, sensitivity, display category, and readiness impact. Unknown keys are rejected. Sensitive values are encrypted with AES-256-GCM using a random nonce and the setting key as authenticated context. Reads expose an empty value plus configured/encrypted metadata; plaintext and ciphertext are never returned. An empty secret update preserves the existing value.
@@ -34,6 +36,7 @@ Readiness checks required settings, enabled-provider completeness, and at least 
 - Squad merchandising is a sparse override over the live Remnawave list; default values remove the override. Node assignments are revalidated and re-fetched upstream and are never persisted locally.
 - Balance adjustment requires a bounded nonzero signed amount and reason and appends one ledger entry plus audit event.
 - Telegram `/deduct <amount>` is accepted only from a configured administrator in the configured group as a reply to a known human sender. Amounts are positive human-major TXB values; the atomic debit rejects insufficient balance, uses a deterministic quoted-message reference for replay safety, and appends `telegram.balance_deduct` audit metadata for the sending administrator.
+- PM-topic `/refund`, `/addtxb <value>`, and `/deducttxb <value>` target only that topic's user. Refunds use the live verified remaining-traffic quote; balance adjustments use Telegram update references, immutable ledger entries, and administrator audit metadata.
 - Entitlement cancellation and payment refund append durable compensating commands; they never mutate provider state first and hope persistence follows.
 - A terminal failed/expired payment may receive one locally funded courtesy credit only with a 3-500 byte reason. Its ledger entry, dedicated idempotency record, and audit event commit together; it never changes the original order to provider-paid or calls a provider.
 - Activity games/draws, coupons, questionnaires/imports, and Emby retries use their module services so validation, transactions, and idempotency remain centralized.

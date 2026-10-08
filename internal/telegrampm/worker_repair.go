@@ -35,6 +35,17 @@ func (w *Worker) repair(ctx context.Context, run execution, item providerops.Ite
 	if interrupted && profileID == 0 {
 		return phaseResult{status: providerops.StatusPendingReview, code: "PM_PROFILE_UNCERTAIN"}, nil
 	}
+	facts := ProfileFacts{OnboardingState: "complete"}
+	if w.Profiles != nil {
+		facts, err = w.Profiles.PMProfileFacts(ctx, conversation.UserID)
+		if err != nil {
+			return phaseResult{}, err
+		}
+	}
+	botUsername := ""
+	if w.BotUsername != nil {
+		botUsername = w.BotUsername()
+	}
 	var started atomic.Bool
 	guard := func(callCtx context.Context) (telegram.TopicProfileRequest, error) {
 		current, err := w.current(callCtx, run)
@@ -46,7 +57,7 @@ func (w *Worker) repair(ctx context.Context, run execution, item providerops.Ite
 		}
 		current.TopicID, current.ProfileMessageID = topicID, profileID
 		started.Store(true)
-		profile := Profile(current)
+		profile := Profile(current, facts, botUsername, w.Timezone)
 		if profileID > 0 {
 			label := "Profile checked at "
 			if chinese(current.Locale) {

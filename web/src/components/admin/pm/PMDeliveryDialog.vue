@@ -4,6 +4,7 @@ import { onScopeDispose, shallowRef, watch } from 'vue'
 import type { PMConversation, PMDelivery } from '@/api/types'
 import { pmApi } from '@/api/pm'
 import InlineNotice from '@/components/common/InlineNotice.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
 import { localizedError, useI18n } from '@/i18n'
 import { formatDateTime } from '@/utils/format'
 import { createLatestRequest } from '@/utils/latestRequest'
@@ -39,6 +40,7 @@ function view(item: PMDelivery): void {
 <template>
   <UModal v-model:open="open" :title="t('pm.deliveries')" :description="t('pm.reviewHint')" :ui="{ content: reducedMotion ? 'pm-modal--reduced' : '', overlay: reducedMotion ? 'pm-modal--reduced' : '' }">
     <template #body>
+      <div class="pm-deliveries__toolbar"><UButton color="neutral" variant="ghost" icon="i-ph-arrow-clockwise" :label="t('pm.refresh')" :loading="loading" :disabled="loading" @click="load" /></div>
       <USkeleton v-if="loading" class="h-24" />
       <div v-else-if="error"><InlineNotice tone="warning">{{ error }}</InlineNotice><UButton color="neutral" variant="ghost" :label="t('pm.retry')" @click="load" /></div>
       <p v-else-if="!items.length" class="pm-deliveries__empty">{{ t('pm.noDeliveries') }}</p>
@@ -46,6 +48,10 @@ function view(item: PMDelivery): void {
         <article v-for="item in items" :key="item.operationId" class="pm-delivery">
           <div><strong>{{ t(`pm.direction.${item.direction}`) }}</strong><small>{{ formatDateTime(item.createdAt) }} · {{ t('pm.sourceMessage', { id: item.sourceMessageId }) }}</small></div>
           <p>{{ t(`operations.status.${item.status}`) }}</p>
+          <div v-if="item.direction === 'outbound' && item.status === 'succeeded'" class="pm-delivery__read">
+            <StatusBadge :tone="item.readAt ? 'success' : 'neutral'" :label="item.readAt ? t(`pm.readState.${item.readSource}`) : t('pm.unread')" />
+            <small v-if="item.readAt">{{ formatDateTime(item.readAt) }}</small>
+          </div>
           <InlineNotice v-if="item.errorCode" tone="warning">{{ t(`pm.errors.${item.errorCode}`) === `pm.errors.${item.errorCode}` ? t('pm.deliveryFailed') : t(`pm.errors.${item.errorCode}`) }}</InlineNotice>
           <UButton v-if="item.topicId && (item.direction === 'outbound' || item.resultMessageId)" color="neutral" variant="ghost" icon="i-ph-arrow-square-out" :label="t('pm.viewInTelegram')" @click="view(item)" />
         </article>
@@ -56,8 +62,10 @@ function view(item: PMDelivery): void {
 
 <style scoped>
 .pm-deliveries { display: grid; gap: 1rem; }
+.pm-deliveries__toolbar { display: flex; justify-content: end; }
 .pm-delivery { display: grid; gap: 0.6rem; padding-block: 0.8rem; border-bottom: 1px solid var(--line); min-width: 0; }
 .pm-delivery small { display: block; color: var(--text-muted); margin-top: 0.35rem; overflow-wrap: anywhere; }
 .pm-delivery p { margin: 0; font-size: 0.8rem; color: var(--text-muted); }
+.pm-delivery__read { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
 .pm-deliveries__empty { color: var(--text-muted); }
 </style>

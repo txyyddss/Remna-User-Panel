@@ -35,6 +35,15 @@ func (s *Store) PMConversation(ctx context.Context, id string) (model.PMConversa
 	return scanPMConversation(s.db.QueryRowContext(ctx, pmConversationSelect+` WHERE c.id=?`, id))
 }
 
+// PMConversationByUser returns the user's most recently used PM route, if any.
+func (s *Store) PMConversationByUser(ctx context.Context, userID string) (model.PMConversation, bool, error) {
+	item, err := scanPMConversation(s.db.QueryRowContext(ctx, pmConversationSelect+` WHERE c.user_id=? ORDER BY c.updated_at DESC,c.id DESC LIMIT 1`, userID))
+	if errors.Is(err, ErrNotFound) {
+		return item, false, nil
+	}
+	return item, err == nil, err
+}
+
 func (s *Store) PMConversationByTopic(ctx context.Context, chatID, topicID int64) (model.PMConversation, bool, error) {
 	item, err := scanPMConversation(s.db.QueryRowContext(ctx, pmConversationSelect+` WHERE c.chat_id=? AND c.topic_id=?`, chatID, topicID))
 	if errors.Is(err, ErrNotFound) {

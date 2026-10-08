@@ -29,6 +29,11 @@ type WorkerRepository interface {
 	CompleteProviderOperation(context.Context, string, providerops.Completion, time.Time) (providerops.Operation, error)
 }
 
+// ProfileFactsReader builds a fresh, aggregate-only view for the topic profile card.
+type ProfileFactsReader interface {
+	PMProfileFacts(context.Context, string) (ProfileFacts, error)
+}
+
 type Sender interface {
 	CreatePMTopic(context.Context, string, func(context.Context) (int64, error)) (telegram.ForumTopic, error)
 	CopyPMMessage(context.Context, func(context.Context) (telegram.CopyMessageRequest, error)) (int64, error)

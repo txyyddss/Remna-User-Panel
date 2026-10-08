@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/admin"
+	"github.com/txyyddss/Remna-User-Panel/internal/catalog"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/outbox"
@@ -14,13 +16,25 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/telegrampm"
 )
 
+func newApplicationPMWorkflows(store *database.Store, settings *admin.SettingsService, sender *queuedTelegram, admins []int64,
+	dispatcher *providerops.Dispatcher, worker *outbox.Worker, users *admin.UserWorkflows, catalogService *catalog.Service,
+	botUsername func() string, timezone *time.Location) (*telegrampm.Service, error) {
+	zone := "UTC"
+	if timezone != nil {
+		zone = timezone.String()
+	}
+	profiles := pmProfileReader{users: users, catalog: catalogService, store: store}
+	return newPMWorkflows(store, settings, sender, admins, dispatcher, worker, profiles, botUsername, zone)
+}
+
 func newPMWorkflows(store *database.Store, settings *admin.SettingsService, sender *queuedTelegram, admins []int64,
-	dispatcher *providerops.Dispatcher, worker *outbox.Worker) (*telegrampm.Service, error) {
+	dispatcher *providerops.Dispatcher, worker *outbox.Worker, profiles telegrampm.ProfileFactsReader, botUsername func() string, timezone string) (*telegrampm.Service, error) {
 	identities := make(map[int64]bool, len(admins))
 	for _, id := range admins {
 		identities[id] = true
 	}
-	relay := &telegrampm.Worker{Repository: store, Settings: settings, Sender: sender, AdminIDs: identities}
+	relay := &telegrampm.Worker{Repository: store, Settings: settings, Sender: sender, AdminIDs: identities,
+		Profiles: profiles, BotUsername: botUsername, Timezone: timezone}
 	for _, kind := range []string{providerops.KindTelegramPMRelay, providerops.KindTelegramPMProfile, providerops.KindTelegramPMRepair} {
 		if err := dispatcher.Register(kind, relay); err != nil {
 			return nil, err

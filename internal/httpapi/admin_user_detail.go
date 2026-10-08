@@ -42,6 +42,7 @@ type adminUserDetailResponse struct {
 	AffiliateHistory        affiliates.ReferralPage      `json:"affiliateHistory"`
 	TemporaryBan            *database.AdminTemporaryBan  `json:"temporaryBan"`
 	AutoTrafficResetEnabled bool                         `json:"autoTrafficResetEnabled"`
+	PMConversation          *pmConversationResponse      `json:"pmConversation"`
 }
 
 func mapAdminUserDetail(detail admin.UserDetail) adminUserDetailResponse {

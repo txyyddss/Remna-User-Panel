@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { getTelegramInitData, initializeTelegram, installHapticClickFeedback, isTelegramUserAgent, isTelegramWebAppDetected, markTelegramReady, openExternalLink, selectionHaptic, supportsTelegramVersion, telegramFullscreenState, waitForTelegramContext } from './telegram'
+import { getTelegramInitData, getTelegramStartParam, initializeTelegram, installHapticClickFeedback, isTelegramUserAgent, isTelegramWebAppDetected, markTelegramReady, openExternalLink, selectionHaptic, supportsTelegramVersion, telegramFullscreenState, waitForTelegramContext } from './telegram'
 
 const defaultUserAgent = navigator.userAgent
 
@@ -19,6 +19,16 @@ describe('Telegram bootstrap', () => {
     window.history.replaceState({}, '', '/#tgWebAppData=query_id%3Ddelayed')
     await expect(getTelegramInitData(100)).resolves.toBe('query_id=delayed')
     expect(isTelegramWebAppDetected()).toBe(true)
+  })
+
+  it('reads an admin-profile deep link from validated Mini App launch context', () => {
+    window.Telegram = { WebApp: { version: '9.0', initData: '', initDataUnsafe: { start_param: 'admin_user_member-123' }, colorScheme: 'dark', ready: vi.fn(), expand: vi.fn(), close: vi.fn(), openLink: vi.fn(), openTelegramLink: vi.fn(), openInvoice: vi.fn() } }
+    expect(getTelegramStartParam()).toBe('admin_user_member-123')
+  })
+
+  it('reads the Mini App start parameter from the launch URL when needed', () => {
+    window.history.replaceState({}, '', '/?tgWebAppStartParam=admin_user_member-123')
+    expect(getTelegramStartParam()).toBe('admin_user_member-123')
   })
 
   it('preserves an unencoded nested launch query', async () => {

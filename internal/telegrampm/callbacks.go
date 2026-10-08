@@ -2,12 +2,14 @@ package telegrampm
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 )
 
 func (s *Service) HandleCallback(ctx context.Context, updateID int64, query *telegram.CallbackQuery) (bool, error) {
@@ -20,11 +22,24 @@ func (s *Service) HandleCallback(ctx context.Context, updateID int64, query *tel
 	answer := func(reason string, alert bool) error {
 		return s.Callbacks.AnswerCallbackQuery(ctx, query.ID, callbackText(query.From.LanguageCode, reason), alert)
 	}
-	if !s.AdminIDs[query.From.ID] || query.From.IsBot || query.Message == nil {
+	if query.Message == nil || query.From.IsBot {
 		return true, answer("denied", true)
 	}
 	parts := strings.Split(query.Data, ":")
 	if len(parts) != 3 {
+		return true, answer("denied", true)
+	}
+	if parts[1] == "read" {
+		_, err := s.Repository.MarkPMDeliveryRead(ctx, parts[2], query.From.ID, query.Message.Chat.ID, query.Message.MessageID, updateID, time.Now().UTC())
+		if err != nil {
+			if errors.Is(err, database.ErrNotFound) || errors.Is(err, database.ErrConflict) {
+				return true, answer("denied", true)
+			}
+			return true, err
+		}
+		return true, answer("read", false)
+	}
+	if !s.AdminIDs[query.From.ID] {
 		return true, answer("denied", true)
 	}
 	enabled, group, err := Configuration(ctx, s.Settings)
@@ -41,6 +56,17 @@ func (s *Service) HandleCallback(ctx context.Context, updateID int64, query *tel
 	if !found || conversation.ID != parts[2] || conversation.ProfileMessageID != query.Message.MessageID {
 		return true, answer("denied", true)
 	}
+	admin, err := s.adminIdentity(ctx, query.From)
+	if err != nil {
+		return true, err
+	}
+	if parts[1] == "refresh" {
+		_, err := s.Repository.QueuePMProfileRefresh(ctx, admin.ID, "callback:"+strconv.FormatInt(updateID, 10), conversation.ID, updateID, time.Now().UTC())
+		if err != nil {
+			return true, err
+		}
+		return true, answer("refresh", false)
+	}
 	input := model.PMModerationInput{ConversationID: conversation.ID}
 	value := parts[1] == "block" || parts[1] == "mute"
 	switch parts[1] {
@@ -50,10 +76,6 @@ func (s *Service) HandleCallback(ctx context.Context, updateID int64, query *tel
 		input.Muted = &value
 	default:
 		return true, answer("denied", true)
-	}
-	admin, err := s.adminIdentity(ctx, query.From)
-	if err != nil {
-		return true, err
 	}
 	if _, err := s.Repository.QueuePMModeration(ctx, admin.ID, "callback:"+strconv.FormatInt(updateID, 10), input, updateID, time.Now().UTC()); err != nil {
 		return true, err

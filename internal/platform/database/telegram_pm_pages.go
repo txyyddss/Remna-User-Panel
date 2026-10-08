@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strconv"
 	"strings"
@@ -56,9 +57,11 @@ func (s *Store) ListPMConversations(ctx context.Context, cursor, search string, 
 }
 
 func (s *Store) ListPMDeliveries(ctx context.Context, id string) ([]model.PMDelivery, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT o.id,o.status,o.error_code,o.created_at,r.target_type,r.target_id,r.provider_reference,p.provider_reference
+	rows, err := s.db.QueryContext(ctx, `SELECT o.id,o.status,o.error_code,o.created_at,r.target_type,r.target_id,r.provider_reference,p.provider_reference,
+		read_state.read_at,COALESCE(read_state.source,'')
 		FROM provider_operations o JOIN provider_operation_items p ON p.operation_id=o.id AND p.item_key='topic' AND p.target_id=?
-		JOIN provider_operation_items r ON r.operation_id=o.id AND r.item_key='relay' WHERE o.kind='telegram_pm_relay'
+		JOIN provider_operation_items r ON r.operation_id=o.id AND r.item_key='relay'
+		LEFT JOIN telegram_pm_read_status read_state ON read_state.operation_id=o.id WHERE o.kind='telegram_pm_relay'
 		ORDER BY o.created_at DESC,o.id DESC LIMIT 50`, id)
 	if err != nil {
 		return nil, err
@@ -68,7 +71,8 @@ func (s *Store) ListPMDeliveries(ctx context.Context, id string) ([]model.PMDeli
 	for rows.Next() {
 		var item model.PMDelivery
 		var created, targetType, targetID, reference, topic string
-		if err := rows.Scan(&item.OperationID, &item.Status, &item.ErrorCode, &created, &targetType, &targetID, &reference, &topic); err != nil {
+		var readAt sql.NullString
+		if err := rows.Scan(&item.OperationID, &item.Status, &item.ErrorCode, &created, &targetType, &targetID, &reference, &topic, &readAt, &item.ReadSource); err != nil {
 			return nil, err
 		}
 		item.CreatedAt, err = parseStamp(created)
@@ -102,6 +106,13 @@ func (s *Store) ListPMDeliveries(ctx context.Context, id string) ([]model.PMDeli
 			if err != nil {
 				return nil, err
 			}
+		}
+		if readAt.Valid {
+			read, parseErr := parseStamp(readAt.String)
+			if parseErr != nil {
+				return nil, parseErr
+			}
+			item.ReadAt = &read
 		}
 		items = append(items, item)
 	}

@@ -13,9 +13,14 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
+	"github.com/txyyddss/Remna-User-Panel/internal/telegrampm"
 )
 
 func (s *Server) processTelegramGroupMessage(ctx context.Context, message *telegram.Message) {
+	s.processTelegramGroupMessageUpdate(ctx, 0, message)
+}
+
+func (s *Server) processTelegramGroupMessageUpdate(ctx context.Context, updateID int64, message *telegram.Message) {
 	if message == nil || message.From == nil || message.From.IsBot || message.Chat.ID == 0 {
 		return
 	}
@@ -24,6 +29,19 @@ func (s *Server) processTelegramGroupMessage(ctx context.Context, message *teleg
 		return
 	}
 	command, isCommand := botcommands.Parse(commandText)
+	if isCommand && message.Chat.Type == "supergroup" && message.MessageThreadID > 1 {
+		enabled, pmGroup, pmErr := telegrampm.Configuration(ctx, s.deps.Settings)
+		if pmErr != nil {
+			s.deps.Logger.Warn("load PM command destination", "error", pmErr)
+			return
+		}
+		if enabled && message.Chat.Type == "supergroup" && message.Chat.ID == pmGroup {
+			if message.MessageThreadID > 1 && isPMAdminCommand(command.Name) {
+				s.processTelegramPMAdminCommand(ctx, updateID, message, command)
+			}
+			return
+		}
+	}
 	groupID, configuredGroup := s.telegramGroupID(ctx)
 	if configuredGroup && message.Chat.ID == groupID {
 		user, lookupErr := s.deps.Store.UserByTelegramID(ctx, message.From.ID)

@@ -1,0 +1,47 @@
+package telegrampm
+
+import (
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/model"
+)
+
+func TestProfileHidesAccountFactsBeforeOnboardingCompletes(t *testing.T) {
+	item := model.PMConversation{ID: "conversation", UserID: "user-1", TelegramID: 42, ChatID: -100123, TopicID: 55, Locale: "en"}
+	active := &model.Purchase{ComboName: "Core", Price: model.TXBMoney(10000)}
+	card := Profile(item, ProfileFacts{OnboardingState: "agreement", Balance: model.TXBMoney(5000), ActiveCombo: active}, "txcarpool_bot", "UTC")
+	if !strings.Contains(card.Text, "Not yet onboarded") || strings.Contains(card.Text, "Balance") || strings.Contains(card.Text, "Core") {
+		t.Fatalf("incomplete profile card leaked account facts: %s", card.Text)
+	}
+	if len(card.ReplyMarkup.InlineKeyboard) != 3 || card.ReplyMarkup.InlineKeyboard[2][0].URL == "" {
+		t.Fatalf("profile controls missing: %+v", card.ReplyMarkup)
+	}
+}
+
+func TestProfileShowsApplicableFactsAndOmittedCoupon(t *testing.T) {
+	item := model.PMConversation{ID: "conversation", UserID: "user-1", TelegramID: 42, ChatID: -100123, TopicID: 55, Locale: "en"}
+	used, allocated := int64(1<<30), int64(8<<30)
+	purchase := &model.Purchase{ComboName: "Core", ValidFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), ValidUntil: time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC), AutoRenewEnabled: true, CouponDiscount: model.TXBMoney(2500)}
+	prediction := model.TXBMoney(1250)
+	card := Profile(item, ProfileFacts{OnboardingState: "complete", Balance: model.TXBMoney(10000), RemnaUsername: "remna_user", ActiveCombo: purchase,
+		SquadNames: []string{"Optional squad"}, Rollover: &model.RolloverProjection{PredictedRollover: &prediction}, UsedBytes: &used, AllocatedBytes: &allocated}, "txcarpool_bot", "UTC")
+	for _, want := range []string{"Balance", "remna_user", "Core", "Optional squad", "2026-10-01", "Auto renew", "Rollover prediction", "1.00 GiB / 8.00 GiB"} {
+		if !strings.Contains(card.Text, want) {
+			t.Fatalf("profile card missing %q: %s", want, card.Text)
+		}
+	}
+	if strings.Contains(card.Text, "Coupon discount") {
+		t.Fatalf("unused coupon discount was shown: %s", card.Text)
+	}
+	grantID := "coupon-grant"
+	purchase.CouponGrantID = &grantID
+	withCoupon := Profile(item, ProfileFacts{OnboardingState: "complete", Balance: model.TXBMoney(10000), ActiveCombo: purchase}, "txcarpool_bot", "UTC")
+	if !strings.Contains(withCoupon.Text, "Coupon discount") {
+		t.Fatalf("used coupon discount was omitted: %s", withCoupon.Text)
+	}
+	if card.ReplyMarkup.InlineKeyboard[2][0].URL != "https://t.me/txcarpool_bot?startapp=admin_user_user-1" {
+		t.Fatalf("Mini App link = %q", card.ReplyMarkup.InlineKeyboard[2][0].URL)
+	}
+}

@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
@@ -68,6 +69,55 @@ func (s *Store) QueuePMModeration(ctx context.Context, actorID, key string, inpu
 		}
 		if err := insertAuditTx(ctx, tx, auditID, &actorID, "telegram_pm.moderation", "user", conversation.UserID, `{"blocked":`+strconv.FormatBool(blocked)+`,"muted":`+strconv.FormatBool(muted)+`}`, now); err != nil {
 			return model.OperationReceipt{}, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return model.OperationReceipt{}, err
+	}
+	return operation.Receipt, nil
+}
+
+// QueuePMProfileRefresh records an authorized profile-card refresh request.
+func (s *Store) QueuePMProfileRefresh(ctx context.Context, actorID, key, conversationID string, updateID int64, now time.Time) (model.OperationReceipt, error) {
+	if strings.TrimSpace(key) == "" || strings.TrimSpace(conversationID) == "" {
+		return model.OperationReceipt{}, ErrConflict
+	}
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return model.OperationReceipt{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := requirePMAdminTx(ctx, tx, actorID); err != nil {
+		return model.OperationReceipt{}, err
+	}
+	conversation, err := scanPMConversation(tx.QueryRowContext(ctx, pmConversationSelect+` WHERE c.id=?`, conversationID))
+	if err != nil {
+		return model.OperationReceipt{}, err
+	}
+	fingerprint, err := pmFingerprint(struct {
+		ConversationID string
+		Action         string
+	}{conversationID, "refresh"})
+	if err != nil {
+		return model.OperationReceipt{}, err
+	}
+	operation, replayed, err := createProviderOperationTx(ctx, tx, providerops.CreateInput{
+		ActorUserID: actorID, OwnerUserID: conversation.UserID, Kind: providerops.KindTelegramPMProfile,
+		IdempotencyKey: key, RequestFingerprint: fingerprint,
+		Items: []providerops.ItemInput{{Key: "topic", TargetType: "pm_conversation", TargetID: conversation.ID}, {Key: "profile", TargetType: "pm_conversation", TargetID: conversation.ID}},
+	}, now)
+	if err != nil {
+		return model.OperationReceipt{}, err
+	}
+	if !replayed && updateID > 0 {
+		added, err := recordPMUpdateTx(ctx, tx, updateID, now)
+		if err != nil {
+			return model.OperationReceipt{}, err
+		}
+		if !added {
+			return model.OperationReceipt{}, ErrConflict
 		}
 	}
 	if err := tx.Commit(); err != nil {

@@ -27,6 +27,8 @@ type ServiceRepository interface {
 	QueuePMNotice(context.Context, int64, model.PMNotice, time.Time) error
 	QueuePMRelay(context.Context, model.PMRelayInput, time.Time) (*model.OperationReceipt, error)
 	QueuePMModeration(context.Context, string, string, model.PMModerationInput, int64, time.Time) (model.OperationReceipt, error)
+	QueuePMProfileRefresh(context.Context, string, string, string, int64, time.Time) (model.OperationReceipt, error)
+	MarkPMDeliveryRead(context.Context, string, int64, int64, int64, int64, time.Time) (bool, error)
 }
 
 type Settings interface {
@@ -146,8 +148,23 @@ func (s *Service) receivePrivate(ctx context.Context, updateID int64, message *t
 		return s.notice(ctx, updateID, message, "blocked")
 	}
 	_, err = s.Repository.QueuePMRelay(ctx, model.PMRelayInput{ActorUserID: user.ID, UserID: user.ID, UpdateID: updateID,
-		ChatID: group, SourceChatID: message.Chat.ID, SourceMessageID: message.MessageID, Inbound: true}, time.Now().UTC())
+		ChatID: group, SourceChatID: message.Chat.ID, SourceMessageID: message.MessageID, Inbound: true,
+		ReplyToMessageID: replyMessageID(message), MessageAt: pmMessageAt(message)}, time.Now().UTC())
 	return err
+}
+
+func replyMessageID(message *telegram.Message) int64 {
+	if message != nil && message.ReplyToMessage != nil {
+		return message.ReplyToMessage.MessageID
+	}
+	return 0
+}
+
+func pmMessageAt(message *telegram.Message) time.Time {
+	if message != nil && message.Date > 0 {
+		return time.Unix(message.Date, 0).UTC()
+	}
+	return time.Time{}
 }
 
 func (s *Service) notice(ctx context.Context, id int64, message *telegram.Message, reason string) error {

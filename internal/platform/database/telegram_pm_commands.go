@@ -100,6 +100,15 @@ func (s *Store) QueuePMRelay(ctx context.Context, input model.PMRelayInput, now 
 	if input.Inbound && input.SourceChatID != conversation.TelegramID || !input.Inbound && input.SourceChatID != conversation.ChatID {
 		return nil, ErrConflict
 	}
+	if input.Inbound {
+		occurredAt := input.MessageAt.UTC()
+		if input.MessageAt.IsZero() {
+			occurredAt = now.UTC()
+		}
+		if err := markPriorPMDeliveriesReadTx(ctx, tx, conversation.ID, input.ReplyToMessageID, occurredAt); err != nil {
+			return nil, err
+		}
+	}
 	targetType := "pm_outbound_message"
 	if input.Inbound {
 		targetType = "pm_inbound_message"
