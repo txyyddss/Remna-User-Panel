@@ -48,6 +48,7 @@ RUN apk add --no-cache ca-certificates tzdata \
     && install -d -o txcarpool -g txcarpool /data
 
 COPY --from=go-build --chown=10001:10001 /out/tx-carpool /usr/local/bin/tx-carpool
+COPY docs/licenses /usr/share/licenses/tx-carpool
 
 ENV PORT=8080 \
     DATA_DIR=/data \

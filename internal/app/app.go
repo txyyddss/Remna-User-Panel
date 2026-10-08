@@ -18,6 +18,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/billing"
 	"github.com/txyyddss/Remna-User-Panel/internal/catalog"
 	"github.com/txyyddss/Remna-User-Panel/internal/compensation"
+	"github.com/txyyddss/Remna-User-Panel/internal/connectivity"
 	"github.com/txyyddss/Remna-User-Panel/internal/coupons"
 	"github.com/txyyddss/Remna-User-Panel/internal/emby"
 	"github.com/txyyddss/Remna-User-Panel/internal/entitlements"
@@ -90,6 +91,8 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	}
 	remna := newRemnaAdapter(settings, upstreams.remnawave)
 	remna.squadPreferences = store
+	connectivityService := connectivity.NewService(settings, connectivitySource{adapter: remna}, connectivity.NewXrayProbe(), store, upstreams.connectivity)
+	settings.SetConnectivityValidation(connectivityService.ValidateConfig, connectivityService.Invalidate)
 	queuedTelegramClient := &queuedTelegram{client: telegramClient, queue: upstreams.telegram}
 	settings.SetPMForumValidator(validatePMForum(queuedTelegramClient))
 	affiliateService := affiliates.NewService(store, queuedTelegramClient)
@@ -186,6 +189,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	}
 	api, err := httpapi.New(httpapi.Dependencies{
 		PM:         pmService,
+		Connectivity: connectivityService,
 		FirstEntry: &accounts.FirstEntry{Repository: store, Settings: settings, Verifier: turnstile.New(upstreams.turnstile), Hostname: cfg.PublicBaseURL.Hostname(), AdminTelegramIDs: cfg.AdminTelegramIDs},
 		Accounts:   accountsService, Catalog: catalogService, Connections: memberServices.connections,
 		ConnectionDrops: memberServices.drops, PurchaseOperations: memberServices.purchases, Statistics: statisticsService,
@@ -211,5 +215,6 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		backups: backupService, maintenance: maintenanceService, telegram: queuedTelegramClient, settings: settings,
 		catalog: catalogService, billing: billingService, statistics: statisticsService, compensation: compensationService, affiliates: affiliateService, abuse: abuseService,
 		notifications: userNotificationScanner, upstreams: upstreams, paymentProfiles: paymentProfiles,
+		connectivity: connectivityService,
 	}, nil
 }

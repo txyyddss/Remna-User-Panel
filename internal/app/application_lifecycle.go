@@ -45,6 +45,8 @@ func (a *Application) Run(ctx context.Context) error {
 		a.runScheduler(runCtx, schedulerStarted)
 	}()
 	<-schedulerStarted
+	connectivityDone := make(chan error, 1)
+	go func() { connectivityDone <- a.connectivity.Run(runCtx) }()
 	statisticsDone := make(chan struct{})
 	go func() {
 		defer close(statisticsDone)
@@ -64,6 +66,10 @@ func (a *Application) Run(ctx context.Context) error {
 	var runErr error
 	select {
 	case <-ctx.Done():
+	case err := <-connectivityDone:
+		if err != nil && !errors.Is(err, context.Canceled) { runErr = fmt.Errorf("run connectivity checker: %w", err) }
+		// Keep one completion available for the shutdown join.
+		connectivityDone <- err
 	case <-a.backups.RestartRequested():
 		a.logger.Info("verified database restore staged; shutting down for pre-open swap")
 	case err := <-listenerDone:
@@ -71,7 +77,10 @@ func (a *Application) Run(ctx context.Context) error {
 			runErr = fmt.Errorf("serve HTTP: %w", err)
 		}
 	}
-	return errors.Join(runErr, a.shutdownRuntime(cancelRun, schedulerDone, statisticsDone, abuseDone, notificationsDone))
+	shutdownErr := a.shutdownRuntime(cancelRun, schedulerDone, statisticsDone, abuseDone, notificationsDone)
+	connectivityErr := <-connectivityDone
+	if errors.Is(connectivityErr, context.Canceled) { connectivityErr = nil }
+	return errors.Join(runErr, shutdownErr, connectivityErr)
 }
 
 func (a *Application) shutdownRuntime(cancelRun context.CancelFunc, schedulerDone, statisticsDone, abuseDone, notificationsDone <-chan struct{}) error {

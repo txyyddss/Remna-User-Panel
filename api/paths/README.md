@@ -158,3 +158,5 @@ Member connection scans, purchase refund resources, operation receipts, statisti
 `api-v1-me-captcha.yaml` defines authenticated first-entry verification and its fail-closed provider errors.
 
 `api-v1-admin-pm.yaml`, `api-v1-admin-pm-id.yaml`, `api-v1-admin-pm-id-deliveries.yaml` and `api-v1-admin-pm-id-topic.yaml` define panel-admin conversation, idempotent controls, review and recovery routes.
+
+`api-v1-admin-host-connectivity.yaml` exposes administrator-only progress and current results. `api-v1-admin-host-connectivity-checks.yaml` accepts or returns an active manual run. `api-v1-admin-host-connectivity-test-user-resolve.yaml` resolves an exact test username, and `api-v1-admin-host-connectivity-history.yaml` exposes host-filtered 24-hour cursor history with a default page of 50 and maximum of 200.

@@ -14,6 +14,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/billing"
 	"github.com/txyyddss/Remna-User-Panel/internal/catalog"
 	"github.com/txyyddss/Remna-User-Panel/internal/compensation"
+	"github.com/txyyddss/Remna-User-Panel/internal/connectivity"
 	"github.com/txyyddss/Remna-User-Panel/internal/connections"
 	"github.com/txyyddss/Remna-User-Panel/internal/coupons"
 	"github.com/txyyddss/Remna-User-Panel/internal/emby"
@@ -49,6 +50,7 @@ type telegramProvider interface {
 }
 
 type Dependencies struct {
+	Connectivity *connectivity.Service
 	PM                 *telegrampm.Service
 	FirstEntry         *accounts.FirstEntry
 	Accounts           *accounts.Service

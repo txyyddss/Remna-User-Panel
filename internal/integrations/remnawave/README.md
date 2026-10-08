@@ -1,4 +1,5 @@
 # Remnawave integration
+- `subscriptions_raw.go` implements protected raw subscription retrieval with documented enabled/hidden-host behavior; `subscriptions_raw_test.go` verifies bearer authentication, identity, empty collections, and HWID restriction decoding. Resolved client configurations contain credentials and must not be logged, persisted, or exposed through HTTP responses.
 - `types_part2.go` continues the focused implementation from its original package module.
 - `users_part2.go` continues the focused implementation from its original package module.
 

@@ -26,6 +26,7 @@ type providerQueues struct {
 	telegram  *upstreamqueue.Queue
 	payment   *upstreamqueue.Queue
 	turnstile *upstreamqueue.Queue
+	connectivity *upstreamqueue.Queue
 }
 
 func newProviderQueues() (*providerQueues, error) {
@@ -53,11 +54,15 @@ func newProviderQueues() (*providerQueues, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create Turnstile queue: %w", err)
 	}
-	return &providerQueues{remnawave: remnawaveQueue, emby: embyQueue, telegram: telegramQueue, payment: paymentQueue, turnstile: turnstileQueue}, nil
+	connectivityQueue, err := upstreamqueue.New(upstreamqueue.Config{Name: "connectivity", Capacity: 8})
+	if err != nil {
+		return nil, fmt.Errorf("create connectivity queue: %w", err)
+	}
+	return &providerQueues{remnawave: remnawaveQueue, emby: embyQueue, telegram: telegramQueue, payment: paymentQueue, turnstile: turnstileQueue, connectivity: connectivityQueue}, nil
 }
 
 func (q *providerQueues) start(ctx context.Context) error {
-	if q == nil || q.remnawave == nil || q.emby == nil || q.telegram == nil || q.payment == nil || q.turnstile == nil {
+	if q == nil || q.remnawave == nil || q.emby == nil || q.telegram == nil || q.payment == nil || q.turnstile == nil || q.connectivity == nil {
 		return errors.New("provider queues are incomplete")
 	}
 	if err := q.remnawave.Start(ctx); err != nil {
@@ -85,6 +90,10 @@ func (q *providerQueues) start(ctx context.Context) error {
 		_ = q.remnawave.Shutdown(context.Background())
 		return fmt.Errorf("start Turnstile queue: %w", err)
 	}
+	if err := q.connectivity.Start(ctx); err != nil {
+		_ = q.shutdown(context.Background())
+		return fmt.Errorf("start connectivity queue: %w", err)
+	}
 	return nil
 }
 
@@ -92,11 +101,12 @@ func (q *providerQueues) shutdown(ctx context.Context) error {
 	if q == nil {
 		return nil
 	}
-	errorsByProvider := make(chan error, 5)
+	errorsByProvider := make(chan error, 6)
 	go func() { errorsByProvider <- q.remnawave.Shutdown(ctx) }()
 	go func() { errorsByProvider <- q.emby.Shutdown(ctx) }()
 	go func() { errorsByProvider <- q.telegram.Shutdown(ctx) }()
 	go func() { errorsByProvider <- q.payment.Shutdown(ctx) }()
 	go func() { errorsByProvider <- q.turnstile.Shutdown(ctx) }()
-	return errors.Join(<-errorsByProvider, <-errorsByProvider, <-errorsByProvider, <-errorsByProvider, <-errorsByProvider)
+	go func() { errorsByProvider <- q.connectivity.Shutdown(ctx) }()
+	return errors.Join(<-errorsByProvider, <-errorsByProvider, <-errorsByProvider, <-errorsByProvider, <-errorsByProvider, <-errorsByProvider)
 }

@@ -52,3 +52,5 @@ and mobile-safe backup controls. Balance adjustments use the shared audited
 admin endpoint for both credits and deductions.
 `AdminSquadEditor.vue` edits the default-on per-squad Geocheck switch alongside existing merchandising fields.
 - `AdminSectionState.vue` is the shared loading/error/content presence boundary. Panel roots stay still; focused child workflows own their local Motion state.
+
+`connectivity/` composes exact-account configuration, progress, latest results and 24-hour cursor history. Its exposed save/loading state joins `AdminSettingsPanel.vue`; the raw `connectivity.config` registry entry is excluded from generic settings fields and writes.

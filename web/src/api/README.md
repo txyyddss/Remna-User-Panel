@@ -33,3 +33,5 @@ commands. Its mutable state and quotes always bypass response snapshots.
 `client.ts` verifies first-entry tokens via the signed /me/captcha endpoint. AuthState carries optional server-owned CAPTCHA state; caches and background preload suspend protected reads until verification.
 
 `pm.ts` exposes typed admin moderation, topic repair and reference-only delivery reads, using existing signed requests and idempotency headers.
+
+`connectivity.ts` uses generated OpenAPI types for administrator-only snapshots, exact-account resolution, asynchronous manual checks and cursor history. Read requests bypass browser caching; configuration writes serialize one credential-free `connectivity.config` value through the existing settings endpoint.

@@ -1,0 +1,141 @@
+package connectivity
+
+import (
+	"context"
+	"errors"
+	"math"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/upstreamqueue"
+)
+
+func (s *Service) process(item *work) {
+	status, code := "completed", ""
+	defer func() { s.finishRun(item, status, code) }()
+	if item.ctx.Err() != nil {
+		status, code = "interrupted", "CONNECTIVITY_INTERRUPTED"
+		return
+	}
+	_, targets, err := s.loadTargets(item.ctx, item.config, item.hash, true)
+	if err != nil {
+		status, code = "error", ErrorCode(err)
+		if item.ctx.Err() != nil {
+			status, code = "interrupted", "CONNECTIVITY_INTERRUPTED"
+		}
+		if saveErr := s.recordSetupFailure(item, status, code); saveErr != nil {
+			status, code = "error", "CONNECTIVITY_STORAGE_UNAVAILABLE"
+		}
+		return
+	}
+	if len(targets) == 0 {
+		status, code = "error", "CONNECTIVITY_NO_ACCESSIBLE_HOSTS"
+		if err := s.recordSetupFailure(item, status, code); err != nil {
+			code = "CONNECTIVITY_STORAGE_UNAVAILABLE"
+		}
+		return
+	}
+	s.mu.Lock()
+	item.run.Total = len(targets)
+	s.mu.Unlock()
+	for _, target := range targets {
+		if item.ctx.Err() != nil {
+			status, code = "interrupted", "CONNECTIVITY_INTERRUPTED"
+			return
+		}
+		if err := s.checkTarget(item, target); err != nil {
+			status, code = "error", "CONNECTIVITY_STORAGE_UNAVAILABLE"
+			if errors.Is(err, context.Canceled) && item.ctx.Err() != nil {
+				status, code = "interrupted", "CONNECTIVITY_INTERRUPTED"
+			}
+			return
+		}
+		s.mu.Lock()
+		item.run.Completed++
+		s.mu.Unlock()
+	}
+	if item.ctx.Err() != nil {
+		status, code = "interrupted", "CONNECTIVITY_INTERRUPTED"
+	}
+}
+
+func (s *Service) newAttempt(item *work, hostUUID string) Attempt {
+	return Attempt{ID: uuid.NewString(), RunID: item.run.ID, HostUUID: hostUUID, ConfigHash: item.hash,
+		RemnawaveUserID: item.config.RemnawaveUserID, Trigger: item.run.Trigger, StartedAt: s.now().UTC(),
+		Outcome: Outcome{Status: "running"}}
+}
+
+func (s *Service) checkTarget(item *work, target Target) error {
+	attempt := s.newAttempt(item, target.HostUUID)
+	if err := s.repository.BeginConnectivityAttempt(item.ctx, attempt); err != nil {
+		return err
+	}
+	probeCtx, cancel := context.WithTimeout(item.ctx, time.Duration(item.config.TimeoutSeconds)*time.Second)
+	outcome, err := upstreamqueue.Do(probeCtx, s.queue, func(callCtx context.Context) (Outcome, error) {
+		return s.probe.Check(callCtx, target, item.config), nil
+	})
+	probeErr := probeCtx.Err()
+	cancel()
+	if err != nil {
+		outcome = Outcome{Status: "error", ErrorCode: ErrorCode(err)}
+		if item.ctx.Err() != nil {
+			outcome = Outcome{Status: "interrupted", ErrorCode: "CONNECTIVITY_INTERRUPTED"}
+		} else if outcome.ErrorCode == "CONNECTIVITY_PROBE_TIMEOUT" {
+			outcome.Status = "failed"
+		}
+	}
+	if item.ctx.Err() != nil {
+		outcome = Outcome{Status: "interrupted", ErrorCode: "CONNECTIVITY_INTERRUPTED"}
+	} else if errors.Is(probeErr, context.DeadlineExceeded) {
+		outcome = Outcome{Status: "failed", ErrorCode: "CONNECTIVITY_PROBE_TIMEOUT"}
+	}
+	return s.finishAttempt(item.ctx, attempt.ID, sanitizedOutcome(outcome))
+}
+
+func (s *Service) finishAttempt(ctx context.Context, id string, outcome Outcome) error {
+	finishCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), storageTimeout)
+	defer cancel()
+	return s.repository.FinishConnectivityAttempt(finishCtx, id, outcome, s.now().UTC())
+}
+
+func (s *Service) recordSetupFailure(item *work, status, code string) error {
+	attempt := s.newAttempt(item, "")
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(item.ctx), storageTimeout)
+	defer cancel()
+	if err := s.repository.BeginConnectivityAttempt(ctx, attempt); err != nil {
+		return err
+	}
+	return s.repository.FinishConnectivityAttempt(ctx, attempt.ID, Outcome{Status: status, ErrorCode: code}, s.now().UTC())
+}
+
+func (s *Service) finishRun(item *work, status, code string) {
+	finished := s.now().UTC()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	item.run.Status, item.run.ErrorCode, item.run.FinishedAt = status, code, &finished
+	if s.active == item {
+		s.active = nil
+	}
+	if item.generation == s.generation {
+		copy := cloneRun(item.run)
+		s.last, s.lastHash, s.completed = &copy, item.hash, finished
+	}
+}
+
+func sanitizedOutcome(outcome Outcome) Outcome {
+	switch outcome.Status {
+	case "connected", "failed", "unsupported", "error", "interrupted":
+	default:
+		return Outcome{Status: "error", ErrorCode: "CONNECTIVITY_INVALID_OUTCOME"}
+	}
+	if outcome.ErrorCode != "" && !safeErrorCode.MatchString(outcome.ErrorCode) {
+		outcome.ErrorCode = "CONNECTIVITY_UNAVAILABLE"
+	}
+	if outcome.LatencyMS != nil && (*outcome.LatencyMS < 0 || math.IsNaN(*outcome.LatencyMS) || math.IsInf(*outcome.LatencyMS, 0)) {
+		outcome.LatencyMS = nil
+	}
+	if outcome.HTTPStatus != nil && (*outcome.HTTPStatus < 100 || *outcome.HTTPStatus > 599) {
+		outcome.HTTPStatus = nil
+	}
+	return outcome
+}

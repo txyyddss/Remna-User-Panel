@@ -6,7 +6,9 @@
 .env.*
 !.env.example
 reference
-docs
+docs/*
+!docs/licenses
+!docs/licenses/**
 Goal.md
 README.md
 bin

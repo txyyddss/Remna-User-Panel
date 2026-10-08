@@ -1,5 +1,13 @@
 # TX Carpool
 
+Administrators can configure built-in host connectivity checks in **Settings**.
+Resolve an existing Remnawave monitoring username, save the configuration, then
+run a manual check or enable scheduling. Checks use that account's accessible
+enabled hosts, including hidden hosts; every attempt is retained for 24 hours.
+The engine tests authenticated HTTPS traffic and reports status, TTFB, and safe
+diagnostics. [Module details](internal/connectivity/README.md) describe supported
+configurations, lifecycle, retention, and extension points.
+
 TX Carpool is a Telegram Mini App for onboarding members, funding a TXB balance, buying shared Remnawave access, and administering the service from one premium-dark web interface. A Vue 3 single-page app is built into a Go binary; the binary owns the API, background work, SQLite database, and static assets. Production therefore needs one container, one persistent volume, and one HTTP port.
 
 ## What is included

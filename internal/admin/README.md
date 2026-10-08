@@ -1,4 +1,5 @@
 # Admin package
+- `connectivity_settings.go` validates atomic connectivity settings through the queued account adapter and cancels obsolete runs after successful writes; `connectivity_settings_test.go` covers generic writes and disabling during upstream outages.
 - `settings_part2.go` continues the focused implementation from its original package module.
 
 Audited administrative operations for catalog data, settings, balances, refunds, purchases, backups, and durable jobs live here.

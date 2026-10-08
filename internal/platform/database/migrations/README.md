@@ -112,3 +112,5 @@ file instead.
 `063_retention_scan_indexes.sql` indexes event creation and final failed-job timestamps for bounded maintenance scans without additional retained data.
 
 `064_telegram_pm_read_status.sql` adds reference-only explicit and reply-inferred read evidence for successful PM deliveries; deleting a delivery cascades its read state.
+
+`065_host_connectivity_attempts.sql` adds one indexed, credential-free connectivity attempt table. Starts define a rolling 24-hour diagnostic window; latest results are derived without a second table or mirrored host data. A nullable host reference records setup failures, and terminal transitions retain the original start timestamp.

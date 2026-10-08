@@ -29,3 +29,5 @@ than in Vue templates, composables, or API clients.
 - `squad-profile.json` contains localized typed squad profile labels and validation copy.
 
 `settings.json` owns translated user preference and Telegram member-tag copy.
+
+`host-connectivity.json` owns translated host-check configuration, progress, retained history, status and sanitized diagnostic copy.

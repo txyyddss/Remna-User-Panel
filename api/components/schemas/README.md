@@ -37,3 +37,5 @@ Schema definitions are grouped into bounded sequential shards. The root componen
 `schemas-25.yaml` defines first-entry CAPTCHA state and the bounded single-use verification token request.
 
 `schemas-26.yaml` defines private-message conversations, moderation/repair requests, paged inventory and bounded delivery references. Telegram numeric IDs remain decimal strings.
+
+`connectivity.yaml` defines the seven credential-free connectivity configuration, account, attempt, batch, host-result, snapshot and cursor-history contracts. Nullable fields remain present; Remnawave account references are canonical numeric IDs.

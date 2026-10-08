@@ -29,3 +29,5 @@ in parity with the matching `zh-CN` file and preserve `{placeholder}` names.
 - `squad-profile.json` contains localized typed squad profile labels and validation copy.
 
 `settings.json` owns user preference and Telegram member-tag copy.
+
+`host-connectivity.json` owns host-check configuration, progress, retained history, status and sanitized diagnostic translations.

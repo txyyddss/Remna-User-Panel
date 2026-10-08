@@ -1,5 +1,7 @@
 # Application composition
 
+`connectivity_source.go` reads the monitoring account and protected raw subscription inside the Remnawave queue, preserving exact host UUIDs and keeping credentials server-side. `connectivity_source_test.go` covers accessible hidden hosts, disabled filtering, credential exclusion, and ambiguous identities. The application owns the dedicated connectivity lane and joins its checker before closing SQLite.
+
 `remna_member_squads.go` reads live names through the existing request queue.
 The entitlement adapter intersects applied squads with account preferences at
 execution; member receipts reuse the entitlement executor and invalidate usage.

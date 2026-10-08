@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { restoreRef } from '@/api/cache/restore'
 import { computed, onMounted, reactive, shallowRef, useTemplateRef, watch } from 'vue'
-
 import type { AdminSetting } from '@/api/types'
 import type { ActivitySettings, ActivitySettingsWrite } from '@/api/features'
 import { featuresApi } from '@/api/features'
 import AdminActivitySettings from '@/components/admin/activity/AdminActivitySettings.vue'
+import AdminConnectivitySettings from '@/components/admin/connectivity/AdminConnectivitySettings.vue'
 import AdminBillingAmountLimits from '@/components/admin/AdminBillingAmountLimits.vue'
 import AdminPaymentProfiles from '@/components/admin/AdminPaymentProfiles.vue'
 import InlineNotice from '@/components/common/InlineNotice.vue'
@@ -15,7 +15,6 @@ import { localizedError, useI18n } from '@/i18n'
 import { notifyHaptic } from '@/utils/telegram'
 import { writeAdminSettings } from '@/utils/adminSettingWrites'
 import AdminSectionState from './AdminSectionState.vue'
-
 const { items, loading, busy, error, load, perform } = useAdminSection<AdminSetting>('settings')
 const draft = reactive<Record<string, string>>({})
 const saved = reactive({ visible: false })
@@ -28,6 +27,7 @@ type Saveable = { save: () => Promise<void>; loading: boolean }
 type PaymentProfilesSaveable = { saveAll: () => Promise<void>; loading: boolean }
 const activitySettingsRef = useTemplateRef<Saveable>('activitySettings')
 const billingLimitsRef = useTemplateRef<Saveable>('billingLimits')
+const connectivityRef = useTemplateRef<{ save: () => Promise<boolean>; loading: boolean }>('connectivitySettings')
 const paymentProfilesRef = useTemplateRef<PaymentProfilesSaveable>('paymentProfiles')
 const { t } = useI18n()
 const activitySettingKeys = new Set([
@@ -36,8 +36,7 @@ const activitySettingKeys = new Set([
 ])
 const clearableSettingKeys = new Set(['telegram.payment_announcement_chat_id', 'captcha.turnstile.site_key', 'telegram.pm.group_chat_id'])
 const legacyPaymentSetting = (key: string): boolean => key.startsWith('billing.ezpay.') || key.startsWith('billing.bepusdt.')
-
-const grouped = computed(() => items.value.filter((item) => !activitySettingKeys.has(item.key) && !legacyPaymentSetting(item.key)).reduce<Record<string, AdminSetting[]>>((groups, item) => {
+const grouped = computed(() => items.value.filter((item) => item.key !== 'connectivity.config' && !activitySettingKeys.has(item.key) && !legacyPaymentSetting(item.key)).reduce<Record<string, AdminSetting[]>>((groups, item) => {
   const category = item.category
   groups[category] ??= []
   groups[category].push(item)
@@ -46,9 +45,9 @@ const grouped = computed(() => items.value.filter((item) => !activitySettingKeys
 const sectionsLoading = computed(() => loading.value
   || activityLoading.value
   || billingLimitsRef.value?.loading === true
+  || connectivityRef.value?.loading === true
   || paymentProfilesRef.value?.loading === true)
 const saving = computed(() => savingAll.value || busy.value || activityBusy.value)
-
 watch(items, (next, previous) => {
   for (const item of next) {
     const old = previous?.find(value => value.key === item.key)
@@ -57,14 +56,12 @@ watch(items, (next, previous) => {
     }
   }
 }, { immediate: true })
-
 function settingLabel(setting: AdminSetting): string {
   const key = `adminSettings.settingLabels.${setting.key.replace(/\./g, '_')}`
   const translated = t(key)
   if (translated !== key) return translated
   return setting.key
 }
-
 function categoryLabel(category: string): string {
   const key = `adminSettings.categories.${category.toLowerCase()}`
   const translated = t(key)
@@ -75,11 +72,9 @@ function settingHelp(setting: AdminSetting): string {
   const translated = t(key)
   return translated === key ? t('adminSettings.validated') : translated
 }
-
 function isSensitive(setting: AdminSetting): boolean {
   return setting.encrypted
 }
-
 function isBoolean(setting: AdminSetting): boolean {
   return !setting.encrypted && (
     setting.value === 'true'
@@ -87,15 +82,13 @@ function isBoolean(setting: AdminSetting): boolean {
     || /(^|[._])(enabled|active|visible|allow|require|disabled)$/.test(setting.key)
   )
 }
-
 function setBoolean(key: string, value: boolean): void {
   draft[key] = value ? 'true' : 'false'
 }
-
 async function saveSettings(): Promise<void> {
   const values = Object.entries(draft).filter(([key, value]) => {
     const configured = items.value.some(item => item.key === key && item.configured)
-    return !activitySettingKeys.has(key) && !legacyPaymentSetting(key)
+    return key !== 'connectivity.config' && !activitySettingKeys.has(key) && !legacyPaymentSetting(key)
       && (value !== '' || (configured && clearableSettingKeys.has(key)))
   })
   const { api } = await import('@/api/client')
@@ -106,22 +99,22 @@ async function saveSettings(): Promise<void> {
     }
   }
 }
-
 async function saveAll(): Promise<void> {
   if (saving.value || sectionsLoading.value) return
   savingAll.value = true
   try {
-    await Promise.all([
+    const outcomes = await Promise.all([
       saveSettings(),
       activitySettings.value ? activitySettingsRef.value?.save() ?? Promise.resolve() : Promise.resolve(),
       billingLimitsRef.value?.save() ?? Promise.resolve(),
+      connectivityRef.value?.save() ?? Promise.resolve(true),
       paymentProfilesRef.value?.saveAll() ?? Promise.resolve(),
     ])
+    if (outcomes[3] === false) saved.visible = false
   } finally {
     savingAll.value = false
   }
 }
-
 async function loadActivitySettings(): Promise<void> {
   activityLoading.value = !restoreRef('/api/v1/admin/activity-settings', activitySettings)
   activityError.value = null
@@ -133,7 +126,6 @@ async function loadActivitySettings(): Promise<void> {
     activityLoading.value = false
   }
 }
-
 async function saveActivitySettings(value: ActivitySettingsWrite): Promise<void> {
   if (activityBusy.value) return
   activityBusy.value = true
@@ -148,10 +140,8 @@ async function saveActivitySettings(value: ActivitySettingsWrite): Promise<void>
     activityBusy.value = false
   }
 }
-
 onMounted(() => void loadActivitySettings())
 </script>
-
 <template>
   <section class="admin-panel">
     <div class="admin-panel__heading">
@@ -165,6 +155,7 @@ onMounted(() => void loadActivitySettings())
     </section>
     <AdminBillingAmountLimits ref="billingLimits" />
     <AdminPaymentProfiles ref="paymentProfiles" />
+    <AdminConnectivitySettings ref="connectivitySettings" />
     <AdminSectionState :loading="loading" :error="error" @retry="load()">
       <form class="settings-groups" @submit.prevent="saveAll">
         <fieldset v-for="(settings, category) in grouped" :key="category" class="settings-group">
