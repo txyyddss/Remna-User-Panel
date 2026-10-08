@@ -43,7 +43,7 @@ func TestTelegramPMCommandTargetRequiresConfiguredAdminAndUserTopic(t *testing.T
 		t.Fatal(err)
 	}
 	conversation.TopicID = 55
-	server := &Server{deps: Dependencies{Store: store, AdminTelegramIDs: []int64{adminUser.TelegramID}}}
+	server := &Server{deps: Dependencies{Store: store}, adminTelegramIDs: map[int64]struct{}{adminUser.TelegramID: {}}}
 	message := &telegram.Message{MessageThreadID: conversation.TopicID, From: &telegram.User{ID: adminUser.TelegramID}, Chat: telegram.Chat{ID: conversation.ChatID, Type: "supergroup"}}
 	gotConversation, gotAdmin, ok := server.telegramPMCommandTarget(ctx, message)
 	if !ok || gotConversation.ID != conversation.ID || gotAdmin.ID != adminUser.ID {
