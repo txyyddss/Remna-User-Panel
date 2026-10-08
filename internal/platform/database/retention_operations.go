@@ -16,6 +16,7 @@ func pruneProviderOperationsTx(ctx context.Context, tx *sql.Tx, cutoff, now time
 	}
 	_, err := tx.ExecContext(ctx, `INSERT INTO maintenance_operation_candidates(id)
 		SELECT id FROM provider_operations WHERE status IN ('queued','processing','pending_review','partial') AND created_at<?
+		AND kind<>'node_compensation'
 		AND (kind NOT LIKE 'telegram_pm_%' OR created_at<=?)`, stamp(cutoff), stamp(now.Add(-pmReceiptRetention)))
 	if err != nil {
 		return fmt.Errorf("select stale operations: %w", err)

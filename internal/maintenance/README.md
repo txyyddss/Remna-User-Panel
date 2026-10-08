@@ -19,3 +19,5 @@ history. Stale locally debited operations are compensated before removal.
 - `service.go` coordinates the locked backup, verification, warning separation, compaction, and purge sequence; scheduled calls keep the once-per-date guard while manual calls explicitly force a new run.
 - `service_test.go` covers backup-gated cleanup, verified-backup retention warnings, and same-date locking.
 - `README.md` documents the package ownership boundary.
+
+The shared backup-gated compact-and-prune transaction reports `node_compensation_events` and `failed_synchronization_jobs` counts. Event age uses creation time; terminal failed outbound jobs use final failure time, with linked state reconciled and financial settlement lanes preserved.

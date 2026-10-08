@@ -108,3 +108,5 @@ file instead.
 `061_panel_entry_verification.sql` creates the two-column temporary verification table; previously accepted agreements need no migrated row.
 
 `062_telegram_pm.sql` adds two normalized user moderation flags, per-user/per-destination routing references, durable certainty and bounded update tombstones. A partial unique index serializes profile publication and repair without duplicating message bodies.
+
+`063_retention_scan_indexes.sql` indexes event creation and final failed-job timestamps for bounded maintenance scans without additional retained data.

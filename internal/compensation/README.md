@@ -13,3 +13,5 @@ provider-operation worker.
 - `calculation.go` performs overflow-safe floor rounding and the extension cap.
 - `calculation_test.go` covers strict equality, floor rounding, no-recipient precedence, and caps.
 - `observer_test.go` covers incomplete provider snapshots, inbound intersection, and squad deduplication.
+
+Scheduled maintenance removes event details seven days after creation, including open/reviewed events. The next complete observation starts a new window for an ongoing outage. Approval applies extensions locally and stores exact-state user targets in durable operations; those targets and approved purchase dates remain valid after event detail retention.
