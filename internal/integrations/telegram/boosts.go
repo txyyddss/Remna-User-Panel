@@ -4,9 +4,23 @@ import "context"
 
 // ChatBoost is the identity and expiration portion of a Telegram chat boost.
 type ChatBoost struct {
-	BoostID        string `json:"boost_id"`
-	AddDate        int64  `json:"add_date"`
-	ExpirationDate int64  `json:"expiration_date"`
+	BoostID        string          `json:"boost_id"`
+	AddDate        int64           `json:"add_date"`
+	ExpirationDate int64           `json:"expiration_date"`
+	Source         ChatBoostSource `json:"source"`
+}
+
+// ChatBoostSource identifies the booster when Telegram supplies their identity.
+// Giveaway boosts may omit User; no upstream identity is guessed in that case.
+type ChatBoostSource struct {
+	Source string `json:"source"`
+	User   *User  `json:"user,omitempty"`
+}
+
+// ChatBoostUpdated is an added or changed boost in an administrator-owned chat.
+type ChatBoostUpdated struct {
+	Chat  Chat      `json:"chat"`
+	Boost ChatBoost `json:"boost"`
 }
 
 // UserChatBoosts contains boosts added to the requested chat by one user.

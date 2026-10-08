@@ -98,5 +98,12 @@ func (s *Server) telegramWebhook(w http.ResponseWriter, r *http.Request) {
 	if update.Message != nil {
 		s.processTelegramGroupMessage(r.Context(), update.Message)
 	}
+	if update.ChatBoost != nil {
+		if err := s.processTelegramBoost(r.Context(), update.ChatBoost); err != nil {
+			s.deps.Logger.Error("queue boost appreciation", "request_id", middlewareRequestID(r), "error", err)
+			s.writeError(w, r, http.StatusServiceUnavailable, "BOOST_APPRECIATION_PENDING", "Boost appreciation could not be queued.")
+			return
+		}
+	}
 	w.WriteHeader(http.StatusNoContent)
 }

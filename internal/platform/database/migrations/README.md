@@ -102,3 +102,5 @@ file instead.
 - `058_require_boosted_group_messages.sql` resets unfinished message progress and its counted flags once; paid rewards and retained message identities are preserved. Version 057 is reserved for the concurrent preferences change.
 
 `057_user_preferences.sql` adds per-user choices and clears optional entrances on purchase eligibility transitions and later purchases.
+
+`060_telegram_boost_receipts.sql` keeps only group/boost identity and receipt time to prevent repeat appreciation.

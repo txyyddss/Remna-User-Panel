@@ -132,6 +132,7 @@ type Update struct {
 	MyChatMember     *ChatMemberUpdated `json:"my_chat_member,omitempty"`
 	ChatJoinRequest  *ChatJoinRequest   `json:"chat_join_request,omitempty"`
 	PreCheckoutQuery *PreCheckoutQuery  `json:"pre_checkout_query,omitempty"`
+	ChatBoost        *ChatBoostUpdated  `json:"chat_boost,omitempty"`
 }
 
 // LabeledPrice is a Telegram invoice line item. Stars invoices must contain one.

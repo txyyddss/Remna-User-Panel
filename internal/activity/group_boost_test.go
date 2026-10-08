@@ -18,13 +18,13 @@ func TestBoostRewardMinor(t *testing.T) {
 		invalid bool
 	}{
 		{"zero boosts", 125, 0, 0, false},
-		{"one boost half cent", 125, 1, 63, false},
+		{"one boost minimum", 125, 1, 125, false},
 		{"two boosts", 125, 2, 125, false},
 		{"three boosts half cent", 125, 3, 188, false},
 		{"four boosts", 125, 4, 250, false},
 		{"zero base", 0, 3, 0, false},
 		{"exact maximum", math.MaxInt64, 2, math.MaxInt64, false},
-		{"large base halved", math.MaxInt64, 1, math.MaxInt64/2 + 1, false},
+		{"large base minimum", math.MaxInt64, 1, math.MaxInt64, false},
 		{"overflow", math.MaxInt64, 3, 0, true},
 		{"negative base", -1, 2, 0, true},
 		{"negative count", 1, -1, 0, true},

@@ -163,6 +163,9 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	if err := registerAdminUserOutboxHandlers(outboxWorker, store); err != nil {
 		return cleanup(err)
 	}
+	if err := registerBoostAppreciationHandler(outboxWorker, settings, queuedTelegramClient); err != nil {
+		return cleanup(err)
+	}
 	if err := registerAbuseOutboxHandlers(outboxWorker, store, remna, queuedTelegramClient); err != nil {
 		return cleanup(err)
 	}

@@ -21,11 +21,15 @@ function panel(boost: GroupBoostStatus, refreshing = false) {
 }
 
 describe('Group boost information', () => {
+  it('shows the minimum multiplier for one active boost', () => {
+    const wrapper = panel({ state: 'boosted', count: 1, boostUrl: null })
+    expect(wrapper.text()).toContain('Active boosts: 1 · 1× rewards')
+  })
   it('explains the requirement and opens the authoritative group link', async () => {
     const url = 'https://t.me/boost?c=123456'
     const wrapper = panel({ state: 'required', count: 0, boostUrl: url })
     expect(wrapper.text()).toContain('at least one active boost')
-    expect(wrapper.text()).toContain('One boost gives 0.5×')
+    expect(wrapper.text()).toContain('One or two boosts give 1×')
     await wrapper.findAll('[role="button"]')[0].trigger('click')
     expect(openExternalLink).toHaveBeenCalledWith(url)
     await wrapper.findAll('[role="button"]')[1].trigger('click')

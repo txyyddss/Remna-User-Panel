@@ -23,8 +23,8 @@ featuresApi.getActivity = async (): Promise<ActivityOverview> => {
   return {
     balance: { currency: 'TXB', minor: String(state.balanceMinor), display: '' },
     timeZone: 'Asia/Shanghai', checkedInToday: state.checkedIn,
-    dailyRewardMinTxbMinor: String(Math.floor((125 * state.count + 1) / 2)),
-    dailyRewardMaxTxbMinor: String(Math.floor((225 * state.count + 1) / 2)),
+    dailyRewardMinTxbMinor: String(Math.floor((125 * (state.count ? Math.max(2, state.count) : 0) + 1) / 2)),
+    dailyRewardMaxTxbMinor: String(Math.floor((225 * (state.count ? Math.max(2, state.count) : 0) + 1) / 2)),
     groupBoost: {
       state: state.unavailable ? 'unavailable' : state.count ? 'boosted' : 'required',
       count: state.unavailable ? null : state.count, boostUrl: link,
@@ -33,7 +33,7 @@ featuresApi.getActivity = async (): Promise<ActivityOverview> => {
     groupMessageReward: {
       enabled: state.enabled, localDate: '2026-10-07', threshold: state.enabled ? 5 : 0,
       messageCount: state.messageCount, rewarded: state.rewarded,
-      rewardMinor: String(Math.floor((125 * state.count + 1) / 2)),
+      rewardMinor: String(Math.floor((125 * (state.count ? Math.max(2, state.count) : 0) + 1) / 2)),
     },
   }
 }
@@ -43,7 +43,7 @@ featuresApi.checkIn = async (): Promise<ActivityResult> => {
   if (!state.count || state.unavailable) throw new ApiError(state.unavailable ? 503 : 403, {
     code: state.unavailable ? 'GROUP_BOOST_UNAVAILABLE' : 'GROUP_BOOST_REQUIRED', message: '', requestId: 'audit',
   })
-  const reward = Math.floor((125 * state.count + 1) / 2)
+  const reward = Math.floor((125 * (state.count ? Math.max(2, state.count) : 0) + 1) / 2)
   state.checkedIn = true
   state.balanceMinor += reward
   return {

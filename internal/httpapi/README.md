@@ -128,3 +128,5 @@ onboarding, signed requests and the existing idempotent operation protections.
 `user_preferences.go` exposes authenticated partial preference updates. `group_member_tag.go` serves owner-scoped live Telegram tag operations.
 `user_preferences_test.go` verifies authenticated-principal updates, unknown identity rejection and onboarding gating.
 `admin_user_refund_quote.go` serves administrator-only live suggestions with a retryable unavailable-usage error.
+
+`telegram_boost.go` accepts authenticated active boost updates only for the configured group, then atomically queues appreciation; storage failures keep the webhook retryable.

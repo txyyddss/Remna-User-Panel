@@ -39,7 +39,7 @@ Administrators may hard-delete games and draws when no protected processing work
 - Calendar tests cover the configured timezone at UTC/local day boundaries.
 - Vue tests cover human-major TXB conversion, loading/error/empty states, visible cost and odds, bet feedback boundaries, reduced motion, keyboard use, and narrow layouts.
 
-- Daily check-in requires queued live verification of active personal boosts to the configured supergroup. Group message progress additionally requires positive authenticated `sender_boost_count` metadata and the existing active subscription. Rewards scale the sampled base by boost count / 2, half up to a TXB hundredth; ledger results and duplicate protection remain authoritative. Removal pauses progress without invalidating previously eligible messages. The activity page replaces both reward blocks with one boost-information panel when ineligible or unavailable; other activities retain their behavior.
+- Daily check-in requires queued live verification of active personal boosts to the configured supergroup. Group message progress additionally requires positive authenticated `sender_boost_count` metadata and the existing active subscription. Rewards scale the sampled base by max(1, boost count / 2) for positive counts, half up to a TXB hundredth; ledger results and duplicate protection remain authoritative. Removal pauses progress without invalidating previously eligible messages. The activity page replaces both reward blocks with one boost-information panel when ineligible or unavailable; other activities retain their behavior.
 
 ## Boost reward validation (2026-10-07)
 

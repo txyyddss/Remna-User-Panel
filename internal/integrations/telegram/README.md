@@ -23,3 +23,5 @@ This package contains the Telegram Bot API and Mini App authentication surface u
 - `boosts_test.go` checks request identity, response decoding, validation and sender boost metadata.
 
 `member_tag.go` implements documented `setChatMemberTag`, including empty-tag removal and Unicode length validation.
+
+`boosts.go` also models documented chat_boost/source identities. Webhooks subscribe to boost additions and changes; anonymous giveaway sources remain optional.

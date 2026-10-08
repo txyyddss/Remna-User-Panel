@@ -14,3 +14,5 @@
 - `provider_operations.go` defines durable provider-operation receipts and item states shared across workflows.
 - `statistics_dashboard.go` defines the persisted member-facing statistics dashboard projections.
 - `traffic_reset_automation.go` defines the public account-wide automatic-reset preference projection.
+
+`telegram_boost.go` defines the transient identity payload used by queued boost appreciation.

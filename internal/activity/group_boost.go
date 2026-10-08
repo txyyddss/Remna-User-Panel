@@ -46,12 +46,16 @@ func (service *Service) GroupBoost(ctx context.Context, userID string) (GroupBoo
 	return status, nil
 }
 
-// BoostRewardMinor multiplies a nonnegative base amount by count/2, half up.
+// BoostRewardMinor uses max(1, count/2) for positive counts, rounded half up.
 // Exact arithmetic avoids both floating-point cent loss and intermediate overflow.
 func BoostRewardMinor(baseMinor int64, count int) (int64, error) {
 	if baseMinor < 0 || count < 0 {
 		return 0, ErrInvalidInput
 	}
+	if count == 0 {
+		return 0, nil
+	}
+	count = max(count, 2)
 	value := new(big.Int).Mul(big.NewInt(baseMinor), big.NewInt(int64(count)))
 	value.Add(value, big.NewInt(1)).Quo(value, big.NewInt(2))
 	if !value.IsInt64() {

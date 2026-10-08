@@ -4,7 +4,7 @@
     "boostRequiredHint": "Daily check-in and group message rewards require at least one active boost from you to this group.",
     "boostUnavailable": "Boost verification unavailable",
     "boostUnavailableHint": "We could not verify your group boosts. Check again before claiming rewards.",
-    "boostMultiplierHint": "Rewards are multiplied by your active boost count ÷ 2 and rounded to 0.01 TXB. One boost gives 0.5×; two give 1×; three give 1.5×.",
+    "boostMultiplierHint": "Active boosts multiply rewards by at least 1×, using your boost count ÷ 2 and rounding to 0.01 TXB. One or two boosts give 1×; three give 1.5×.",
     "boostGroup": "Boost group",
     "boostCheckAgain": "Check again",
     "boostActive": "Group boost active",

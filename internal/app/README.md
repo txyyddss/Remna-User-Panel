@@ -92,3 +92,5 @@ stopped.
 `telegram_member_tag_adapter.go` checks live member role and bot tag permissions inside the existing upstream queue before a tag change.
 `telegram_member_tag_adapter_test.go` verifies queue entry, tag clearing and execution-time membership checks.
 Personal security notices in `abuse_outbox.go` follow account preferences; operator copies retain operational delivery. Skipped personal messages do not acquire a false delivered timestamp.
+
+`telegram_boost_appreciation.go` registers the durable appreciation handler. It rechecks the configured group and sends localized, escaped identities through queuedTelegram; `telegram_boost_appreciation_test.go` covers username, name and anonymous sources.

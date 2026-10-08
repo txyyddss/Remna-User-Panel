@@ -8,7 +8,7 @@ const props = defineProps<{ boost: GroupBoostStatus; refreshing: boolean }>()
 defineEmits<{ refresh: [] }>()
 const boosted = computed(() => props.boost.state === 'boosted')
 const unavailable = computed(() => props.boost.state === 'unavailable')
-const multiplier = computed(() => (props.boost.count ?? 0) / 2)
+const multiplier = computed(() => props.boost.count ? Math.max(1, props.boost.count / 2) : 0)
 
 function openBoost(): void {
   if (props.boost.boostUrl) openExternalLink(props.boost.boostUrl)

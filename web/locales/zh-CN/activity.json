@@ -4,7 +4,7 @@
     "boostRequiredHint": "每日签到和群消息奖励要求你至少为本群保持一次有效助力。",
     "boostUnavailable": "暂时无法验证助力",
     "boostUnavailableHint": "无法验证你的群组助力，请重新检查后再领取奖励。",
-    "boostMultiplierHint": "奖励乘以你的有效助力次数 ÷ 2，并四舍五入至 0.01 TXB。一次助力为 0.5 倍，两次为 1 倍，三次为 1.5 倍。",
+    "boostMultiplierHint": "有效助力的奖励倍率至少为 1 倍，按助力次数 ÷ 2 计算并四舍五入至 0.01 TXB。一至两次助力为 1 倍，三次为 1.5 倍。",
     "boostGroup": "为群组助力",
     "boostCheckAgain": "重新检查",
     "boostActive": "群组助力已生效",
