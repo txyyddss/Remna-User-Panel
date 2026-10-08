@@ -61,3 +61,9 @@ function selectCombo(): void {
     </span>
   </UButton>
 </template>
+
+<style scoped>
+@media (min-width: 900px) {
+  .combo-option { gap: 0.6rem; padding: 0.85rem; }
+}
+</style>

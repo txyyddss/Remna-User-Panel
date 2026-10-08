@@ -26,4 +26,7 @@ const { reducedMotion } = useMotionPreferences()
 <style scoped>
 .catalog-flow-controls { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.55rem; margin-top: 1rem; padding: 0.65rem 0 0; border-top: 1px solid var(--line); }
 .catalog-flow-controls__next { width: 100%; }
+@media (min-width: 900px) {
+  .catalog-flow-controls { gap: 0.45rem; margin-top: 0.65rem; padding-top: 0.5rem; }
+}
 </style>

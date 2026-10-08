@@ -141,4 +141,13 @@ function goToBalance(): void { void router.push({ path: '/home', query: { topUp:
   .catalog-checkout__aside { position: static; }
   .catalog-checkout__details { grid-template-columns: 1fr; gap: 0.65rem; }
 }
+@media (min-width: 900px) {
+  .catalog-checkout { gap: 0.65rem; }
+  .catalog-checkout__content { gap: 0.6rem; }
+  .catalog-checkout__summary, .catalog-checkout__aside { padding: 0.7rem; }
+  .catalog-checkout__summary { gap: 0.55rem; }
+  .catalog-checkout__details { gap: 0.5rem; }
+  .catalog-checkout__line { padding-bottom: 0.45rem; }
+  .catalog-checkout__details .catalog-checkout__line { padding-bottom: 0.35rem; }
+}
 </style>

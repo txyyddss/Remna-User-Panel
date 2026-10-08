@@ -58,4 +58,7 @@ const items = computed(() => [
 @media (min-width: 480px) {
   .catalog-progress :deep([data-slot='title']) { font-size: 0.72rem; white-space: nowrap; }
 }
+@media (min-width: 900px) {
+  .catalog-progress { margin-bottom: 0.7rem; padding-bottom: 0.2rem; }
+}
 </style>

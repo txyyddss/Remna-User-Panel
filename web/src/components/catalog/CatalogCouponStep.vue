@@ -102,7 +102,8 @@ function selectCoupon(grantId: string | null): void {
 
 @media (min-width: 900px) {
   .catalog-coupon-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .catalog-coupon-list > :first-child { grid-column: 1 / -1; }
+  .catalog-coupon-step, .catalog-coupon-list { gap: 0.55rem; }
+  .catalog-coupon-choice { padding: 0.5rem; }
 }
 
 @media (max-width: 600px) {

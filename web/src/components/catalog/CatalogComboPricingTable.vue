@@ -34,4 +34,7 @@ const preferences = usePreferencesStore()
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
   align-items: start;
 }
+@media (min-width: 900px) {
+  .combo-grid { gap: 0.65rem; }
+}
 </style>

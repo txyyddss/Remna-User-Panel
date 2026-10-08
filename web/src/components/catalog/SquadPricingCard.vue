@@ -144,4 +144,9 @@ function toggle(): void {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+@media (min-width: 900px) {
+  .squad-pricing-card { gap: 0.55rem; padding: 0.65rem; }
+  .squad-card__header { gap: 0.45rem; }
+  .squad-card__nodes { gap: 0.3rem; padding-top: 0.5rem; }
+}
 </style>

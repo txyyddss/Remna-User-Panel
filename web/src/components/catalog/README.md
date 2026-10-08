@@ -2,7 +2,11 @@
 
 Optional squads sort by ascending popularity within their existing type groups;
 included and sold-out entries remain last. Node controls show name, country and
-consumption multiplier in full-width compact rows, including single-node squads.
+consumption multiplier, including for single-node squads.
+At desktop widths, squad cards use content-sized masonry columns within each
+type group, preserving the prepared order down each column and reducing gaps
+between squads with different node counts. Node controls can form a compact
+two-column grid when their card width allows; mobile keeps the existing layout.
 
 Squad node actions retain the selected squad UUID and its Geocheck display setting through `SquadPricingCard.vue`, `SquadPricingTable.vue`, and `SquadSelector.vue`. Disabling Geocheck changes only the popup result; node flags, multipliers, stock, and selection remain visible.
 

@@ -300,5 +300,11 @@ async function handleCouponRedeemed(grantId: string | null): Promise<void> {
 <style scoped>
 .catalog-flow-step { min-height: 14rem; }
 .combo-section { display: grid; gap: 0.8rem; }
-
+@media (min-width: 900px) {
+  .page--catalog .page-header { margin-bottom: 1.2rem; }
+  .catalog-flow-step { min-height: 0; }
+  .combo-section { gap: 0.55rem; }
+  .combo-section,
+  .squad-selector { padding: 0.8rem; margin-bottom: 0.55rem; }
+}
 </style>

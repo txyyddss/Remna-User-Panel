@@ -67,4 +67,7 @@ function squadsFor(type: SquadType): readonly SquadProduct[] {
 
 <style scoped>
 .squad-pricing-groups { display: grid; gap: 1.25rem; }
+@media (min-width: 900px) {
+  .squad-pricing-groups { gap: 0.85rem; }
+}
 </style>

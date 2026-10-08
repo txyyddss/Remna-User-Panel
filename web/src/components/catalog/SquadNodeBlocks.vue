@@ -49,4 +49,9 @@ function formatMultiplier(value: number): string {
 .squad-node-list__node:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .squad-node-list__node :deep(.country-flag) { width: 1.7rem; height: 1.2rem; flex: 0 0 auto; }
 .squad-node-list__multiplier { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.68rem; }
+@media (min-width: 900px) {
+  .squad-node-list__grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr)); gap: 0.35rem; }
+  .squad-node-list__node { gap: 0.35rem; padding-inline: 0.4rem; }
+  .squad-node-list__node :deep(.country-flag) { width: 1.5rem; height: 1.05rem; }
+}
 </style>

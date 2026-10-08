@@ -57,6 +57,14 @@ const { reducedMotion } = useMotionPreferences()
   gap: 0.65rem;
 }
 @media (min-width: 900px) {
-  .squad-pricing-grid { grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
+  .squad-pricing-grid {
+    display: block;
+    column-width: 21rem;
+    column-gap: 0.65rem;
+  }
+  .squad-pricing-grid > * {
+    break-inside: avoid;
+    margin-bottom: 0.65rem;
+  }
 }
 </style>
