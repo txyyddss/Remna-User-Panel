@@ -35,3 +35,5 @@ Schema definitions are grouped into bounded sequential shards. The root componen
 `schemas-23.yaml` also defines the administrator refund suggestion and nullable usage details.
 
 `schemas-25.yaml` defines first-entry CAPTCHA state and the bounded single-use verification token request.
+
+`schemas-26.yaml` defines private-message conversations, moderation/repair requests, paged inventory and bounded delivery references. Telegram numeric IDs remain decimal strings.

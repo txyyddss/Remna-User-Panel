@@ -91,6 +91,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	remna := newRemnaAdapter(settings, upstreams.remnawave)
 	remna.squadPreferences = store
 	queuedTelegramClient := &queuedTelegram{client: telegramClient, queue: upstreams.telegram}
+	settings.SetPMForumValidator(validatePMForum(queuedTelegramClient))
 	affiliateService := affiliates.NewService(store, queuedTelegramClient)
 	telegramBridge := telegramAdapter{client: queuedTelegramClient}
 	paymentBridge := paymentAdapter{settings: settings, telegram: queuedTelegramClient, queue: upstreams.payment, users: store}
@@ -170,6 +171,10 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	if err := registerAbuseOutboxHandlers(outboxWorker, store, remna, queuedTelegramClient); err != nil {
 		return cleanup(err)
 	}
+	pmService, err := newPMWorkflows(store, settings, queuedTelegramClient, cfg.AdminTelegramIDs, operationDispatcher, outboxWorker)
+	if err != nil {
+		return cleanup(err)
+	}
 	static, err := fs.Sub(webui.Dist, "dist")
 	if err != nil {
 		return cleanup(fmt.Errorf("open embedded frontend: %w", err))
@@ -179,6 +184,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		return cleanup(fmt.Errorf("preload embedded frontend: %w", err))
 	}
 	api, err := httpapi.New(httpapi.Dependencies{
+		PM:         pmService,
 		FirstEntry: &accounts.FirstEntry{Repository: store, Settings: settings, Verifier: turnstile.New(upstreams.turnstile), Hostname: cfg.PublicBaseURL.Hostname(), AdminTelegramIDs: cfg.AdminTelegramIDs},
 		Accounts:   accountsService, Catalog: catalogService, Connections: memberServices.connections,
 		ConnectionDrops: memberServices.drops, PurchaseOperations: memberServices.purchases, Statistics: statisticsService,

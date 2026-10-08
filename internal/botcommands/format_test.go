@@ -17,8 +17,8 @@ func TestFormatStartAndBalanceExactOutput(t *testing.T) {
 		start    string
 		balance  string
 	}{
-		{name: "English", language: English, start: `Press Open TX Carpool to use the app\.`, balance: "Balance: 12\\.50 TXB"},
-		{name: "Chinese", language: Chinese, start: "请按“打开 TX Carpool”使用应用。", balance: "余额: 12\\.50 TXB"},
+		{name: "English", language: English, start: `Press Open TX Carpool to use the app\. For help, send a message directly here after opening the panel and completing entry verification\.`, balance: "Balance: 12\\.50 TXB"},
+		{name: "Chinese", language: Chinese, start: "请按“打开 TX Carpool”使用应用。如需帮助，请先打开面板并完成首次访问验证，再直接在这里发送消息。", balance: "余额: 12\\.50 TXB"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

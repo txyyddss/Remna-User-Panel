@@ -16,3 +16,5 @@
 - `traffic_reset_automation.go` defines the public account-wide automatic-reset preference projection.
 
 `telegram_boost.go` defines the transient identity payload used by queued boost appreciation.
+
+`telegram_pm.go` defines reference-only PM conversation, delivery, relay, moderation, repair and generated-guidance payloads. Routing joins canonical user metadata rather than persisting another profile dataset.

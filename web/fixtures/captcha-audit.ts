@@ -45,6 +45,7 @@ if (params.has('mock')) {
 Object.assign(window, { __captchaAudit: state, __captchaLocale: setLocale })
 if (params.has('admin')) {
   const settings = ['enabled', 'site_key', 'secret_key'].map(suffix => ({ key: `captcha.turnstile.${suffix}`, value: suffix === 'enabled' ? 'false' : '', encrypted: suffix === 'secret_key', configured: false, category: 'captcha', updatedAt: new Date().toISOString() }))
+  settings.push(...['enabled', 'group_chat_id'].map(suffix => ({ key: `telegram.pm.${suffix}`, value: suffix === 'enabled' ? 'false' : '', encrypted: false, configured: false, category: 'telegram', updatedAt: new Date().toISOString() })))
   const writes: string[] = []
   api.getAdminResource = async () => {
     if (params.has('slow')) await new Promise(resolve => setTimeout(resolve, 10_000))
@@ -53,7 +54,8 @@ if (params.has('admin')) {
   }
   api.updateAdminSetting = async (key, value) => {
     const item = settings.find(setting => setting.key === key)!
-    if (key.endsWith('.enabled') && value === 'true' && !settings.filter(s => !s.key.endsWith('.enabled')).every(s => s.configured)) throw new ApiError(422, { code: 'INVALID_SETTING', message: '' })
+    if (key === 'captcha.turnstile.enabled' && value === 'true' && !settings.filter(s => s.key.startsWith('captcha.') && !s.key.endsWith('.enabled')).every(s => s.configured)) throw new ApiError(422, { code: 'INVALID_SETTING', message: '' })
+    if (key === 'telegram.pm.enabled' && value === 'true' && !settings.find(s => s.key === 'telegram.pm.group_chat_id')?.configured) throw new ApiError(422, { code: 'INVALID_SETTING', message: '' })
     writes.push(key); item.configured = true
     if (!item.encrypted) item.value = value
     return undefined as never

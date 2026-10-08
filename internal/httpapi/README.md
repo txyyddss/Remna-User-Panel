@@ -133,3 +133,5 @@ onboarding, signed requests and the existing idempotent operation protections.
 
 `captcha.go` gates authenticated protected routes before business handlers. Only bootstrap, verification and display currency controls bypass the entry gate. Server construction supplies a fail-closed fallback; app composition injects the queued verifier. CAPTCHA_REQUIRED triggers a fresh browser bootstrap.
 `captcha_test.go` covers protected reads, onboarding mutations, allowed bootstrap controls, admin access and rejected/unavailable token failures.
+
+`telegram_pm.go` delegates authenticated ordinary message/callback updates to PM; payment/command paths retain their routing. `admin_pm.go` exposes paged conversations, idempotent moderation and topic repair. `admin_pm_deliveries.go` exposes bounded reference-only results to panel admins, including ambiguous sends.

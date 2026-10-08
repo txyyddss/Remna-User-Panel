@@ -23,6 +23,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/questionnaires"
 	"github.com/txyyddss/Remna-User-Panel/internal/requestauth"
 	productstats "github.com/txyyddss/Remna-User-Panel/internal/statistics"
+	"github.com/txyyddss/Remna-User-Panel/internal/telegrampm"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -48,6 +49,7 @@ type telegramProvider interface {
 }
 
 type Dependencies struct {
+	PM                 *telegrampm.Service
 	FirstEntry         *accounts.FirstEntry
 	Accounts           *accounts.Service
 	Catalog            *catalog.Service

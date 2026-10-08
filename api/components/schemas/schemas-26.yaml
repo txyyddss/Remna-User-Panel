@@ -1,0 +1,60 @@
+PMConversation:
+  type: object
+  additionalProperties: false
+  required: [id, userId, telegramId, name, username, chatId, topicId, profileMessageId, topicState, profileState, blocked, muted, createdAt, updatedAt]
+  properties:
+    id: { $ref: '../../openapi.yaml#/components/schemas/ID' }
+    userId: { $ref: '../../openapi.yaml#/components/schemas/ID' }
+    telegramId: { type: string, pattern: '^\d+$' }
+    name: { type: string }
+    username: { type: string }
+    chatId: { type: string, pattern: '^-\d+$' }
+    topicId: { type: [string, 'null'], pattern: '^\d+$' }
+    profileMessageId: { type: [string, 'null'], pattern: '^\d+$' }
+    topicState: { type: string, enum: [new, creating, ready, pending_review] }
+    profileState: { type: string, enum: [missing, ready, pending_review] }
+    blocked: { type: boolean }
+    muted: { type: boolean }
+    createdAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+    updatedAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+PMModerationUpdate:
+  type: object
+  additionalProperties: false
+  anyOf: [{ required: [blocked] }, { required: [muted] }]
+  properties:
+    blocked: { type: boolean }
+    muted: { type: boolean }
+PMTopicRepair:
+  type: object
+  additionalProperties: false
+  required: [topicId]
+  properties:
+    topicId: { type: string, pattern: '^[1-9][0-9]{0,18}$' }
+    profileMessageId: { type: string, pattern: '^[0-9]{0,19}$' }
+PMDelivery:
+  type: object
+  additionalProperties: false
+  required: [operationId, status, direction, errorCode, sourceChatId, sourceMessageId, resultMessageId, topicId, createdAt]
+  properties:
+    operationId: { $ref: '../../openapi.yaml#/components/schemas/ID' }
+    status: { type: string, enum: [queued, processing, succeeded, failed, compensated, pending_review, partial] }
+    direction: { type: string, enum: [inbound, outbound] }
+    errorCode: { type: string }
+    sourceChatId: { $ref: '../../openapi.yaml#/components/schemas/DecimalInteger' }
+    sourceMessageId: { type: string, pattern: '^\d+$' }
+    resultMessageId: { type: [string, 'null'], pattern: '^\d+$' }
+    topicId: { type: [string, 'null'], pattern: '^\d+$' }
+    createdAt: { $ref: '../../openapi.yaml#/components/schemas/Timestamp' }
+PMDeliveryList:
+  type: object
+  additionalProperties: false
+  required: [items]
+  properties:
+    items: { type: array, items: { $ref: '../../openapi.yaml#/components/schemas/PMDelivery' } }
+PMConversationPage:
+  type: object
+  additionalProperties: false
+  required: [items, page]
+  properties:
+    items: { type: array, items: { $ref: '../../openapi.yaml#/components/schemas/PMConversation' } }
+    page: { $ref: '../../openapi.yaml#/components/schemas/PageInfo' }

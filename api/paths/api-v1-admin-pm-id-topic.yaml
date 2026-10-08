@@ -1,0 +1,22 @@
+parameters:
+  - { name: id, in: path, required: true, schema: { $ref: '../openapi.yaml#/components/schemas/ID' } }
+post:
+  tags: [Administration]
+  operationId: repairAdminPMTopic
+  summary: Probe and attach an existing topic or profile after reviewing uncertain creation
+  parameters:
+    - { $ref: '../openapi.yaml#/components/parameters/IdempotencyKey' }
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema: { $ref: '../openapi.yaml#/components/schemas/PMTopicRepair' }
+  responses:
+    '202':
+      description: Queued topic probe; only definitely unsent waiters resume after success
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/OperationReceipt' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }
+    '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }

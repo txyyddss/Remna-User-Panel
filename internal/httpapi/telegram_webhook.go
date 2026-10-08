@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strconv"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/txyyddss/Remna-User-Panel/internal/billing"
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
+	"github.com/txyyddss/Remna-User-Panel/internal/telegrampm"
 )
 
 func (s *Server) telegramWebhook(w http.ResponseWriter, r *http.Request) {
@@ -95,7 +97,17 @@ func (s *Server) telegramWebhook(w http.ResponseWriter, r *http.Request) {
 			s.deps.Logger.Error("resolve Stars refund operation", "request_id", middlewareRequestID(r), "error", err)
 		}
 	}
-	if update.Message != nil {
+	pmHandled, pmErr := s.processTelegramPM(r.Context(), update)
+	if pmErr != nil {
+		if errors.Is(pmErr, telegrampm.ErrInvalidUpdate) {
+			s.writeError(w, r, http.StatusBadRequest, "INVALID_PM_UPDATE", "Private message update is invalid.")
+			return
+		}
+		s.deps.Logger.Warn("queue Telegram private message", "update_id", update.UpdateID, "error", pmErr)
+		s.writeError(w, r, http.StatusServiceUnavailable, "PM_QUEUE_UNAVAILABLE", "Private messaging is temporarily unavailable.")
+		return
+	}
+	if update.Message != nil && !pmHandled {
 		s.processTelegramGroupMessage(r.Context(), update.Message)
 	}
 	if update.ChatBoost != nil {

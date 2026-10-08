@@ -21,6 +21,8 @@ type SettingDefinition struct {
 }
 
 var settingDefinitions = map[string]SettingDefinition{
+	"telegram.pm.enabled":                    {Default: "false", Validate: validateBoolean},
+	"telegram.pm.group_chat_id":              {Validate: validatePMGroup},
 	"captcha.turnstile.enabled":              {Default: "false", Validate: validateBoolean},
 	"captcha.turnstile.site_key":             {Validate: validateTurnstileKey},
 	"captcha.turnstile.secret_key":           {Secret: true, Validate: nonempty},
@@ -66,11 +68,12 @@ type SettingsRepository interface {
 // SettingsService validates the fixed registry and protects secret values.
 
 type SettingsService struct {
-	mu         sync.Mutex
-	repository SettingsRepository
-	vault      *secret.Vault
-	profiles   PaymentProfileRepository
-	channels   paymentProfileChannelReader
+	pmForumValidator func(context.Context, int64) error
+	mu               sync.Mutex
+	repository       SettingsRepository
+	vault            *secret.Vault
+	profiles         PaymentProfileRepository
+	channels         paymentProfileChannelReader
 }
 
 // NewSettingsService creates the runtime settings facade.
@@ -128,6 +131,9 @@ func (s *SettingsService) Put(ctx context.Context, actorID, key, value string) e
 		}
 	}
 	if err := s.validateTurnstileSettings(ctx, key, value); err != nil {
+		return err
+	}
+	if err := s.validatePMSettings(ctx, key, value); err != nil {
 		return err
 	}
 	stored := value

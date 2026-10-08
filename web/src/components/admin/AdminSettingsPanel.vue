@@ -13,6 +13,7 @@ import SwitchField from '@/components/common/SwitchField.vue'
 import { useAdminSection } from '@/composables/useAdminSection'
 import { localizedError, useI18n } from '@/i18n'
 import { notifyHaptic } from '@/utils/telegram'
+import { writeAdminSettings } from '@/utils/adminSettingWrites'
 import AdminSectionState from './AdminSectionState.vue'
 
 const { items, loading, busy, error, load, perform } = useAdminSection<AdminSetting>('settings')
@@ -33,7 +34,7 @@ const activitySettingKeys = new Set([
   'activity.timezone', 'activity.daily_reward_min_txb', 'activity.daily_reward_max_txb',
   'activity.group_message_threshold', 'activity.group_message_reward_txb',
 ])
-const clearableSettingKeys = new Set(['telegram.payment_announcement_chat_id', 'captcha.turnstile.site_key'])
+const clearableSettingKeys = new Set(['telegram.payment_announcement_chat_id', 'captcha.turnstile.site_key', 'telegram.pm.group_chat_id'])
 const legacyPaymentSetting = (key: string): boolean => key.startsWith('billing.ezpay.') || key.startsWith('billing.bepusdt.')
 
 const grouped = computed(() => items.value.filter((item) => !activitySettingKeys.has(item.key) && !legacyPaymentSetting(item.key)).reduce<Record<string, AdminSetting[]>>((groups, item) => {
@@ -98,13 +99,7 @@ async function saveSettings(): Promise<void> {
       && (value !== '' || (configured && clearableSettingKeys.has(key)))
   })
   const { api } = await import('@/api/client')
-  saved.visible = await perform(async () => {
-    // Configuration dependencies must be written before enabling a challenge.
-    const captchaToggle = values.find(([key]) => key === 'captcha.turnstile.enabled')
-    if (captchaToggle?.[1] === 'false') await api.updateAdminSetting(captchaToggle[0]!, captchaToggle[1])
-    await Promise.all(values.filter(([key]) => key !== 'captcha.turnstile.enabled').map(([key, value]) => api.updateAdminSetting(key, value)))
-    if (captchaToggle?.[1] === 'true') await api.updateAdminSetting(captchaToggle[0]!, captchaToggle[1])
-  })
+  saved.visible = await perform(() => writeAdminSettings(values, api.updateAdminSetting))
   if (saved.visible) {
     for (const [key, value] of values) {
       if (items.value.some(item => item.key === key && item.encrypted) && draft[key] === value) draft[key] = ''
@@ -190,6 +185,8 @@ onMounted(() => void loadActivitySettings())
             <UInput
               v-if="!isBoolean(setting)"
               v-model="draft[setting.key]"
+              :id="`setting-${setting.key}-input`"
+              :name="setting.key"
               :aria-label="settingLabel(setting)"
               :icon="isSensitive(setting) ? 'i-ph-key' : undefined"
               :type="isSensitive(setting) ? 'password' : 'text'"

@@ -68,13 +68,17 @@
       "renewal_rollover_before_auto_renewal_enabled": "在自动续费前结转余额",
       "captcha_turnstile_enabled": "启用 Cloudflare 验证",
       "captcha_turnstile_site_key": "Turnstile 站点密钥",
-      "captcha_turnstile_secret_key": "Turnstile 私密密钥"
+      "captcha_turnstile_secret_key": "Turnstile 私密密钥",
+      "telegram_pm_enabled": "启用私信转发",
+      "telegram_pm_group_chat_id": "私信话题群 ID"
     },
     "settingHints": {
       "renewal_rollover_before_auto_renewal_enabled": "启用后，已计算的结转金额会计入自动续费所需余额。关闭后，续费价格必须在结转余额入账前由现有余额覆盖。",
       "captcha_turnstile_enabled": "仅验证首次访问的新用户。必须填写两个密钥后才能启用；管理员仍可管理配置。",
       "captcha_turnstile_site_key": "允许此面板域名的 Cloudflare Turnstile 站点密钥。",
-      "captcha_turnstile_secret_key": "仅服务器可用，保存时加密。留空保留当前密钥。"
+      "captcha_turnstile_secret_key": "仅服务器可用，保存时加密。留空保留当前密钥。",
+      "telegram_pm_enabled": "仅接受已访问面板并完成验证的用户消息，回复权限由面板管理员身份决定。",
+      "telegram_pm_group_chat_id": "启用话题的超级群 ID。机器人须为管理员并具有管理话题权限。"
     }
   },
   "adminPaymentProfiles": {

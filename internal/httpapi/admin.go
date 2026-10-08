@@ -5,6 +5,10 @@ import (
 )
 
 func (s *Server) mountAdmin(router chi.Router) {
+	router.Get("/pm", s.adminPMConversations)
+	router.Put("/pm/{id}", s.adminPMModeration)
+	router.Get("/pm/{id}/deliveries", s.adminPMDeliveries)
+	router.Post("/pm/{id}/topic", s.adminPMRepairTopic)
 	s.mountCommunityAdmin(router)
 	router.Get("/affiliates", s.adminAffiliates)
 	router.Put("/affiliates", s.adminUpdateAffiliates)

@@ -1,0 +1,16 @@
+get:
+  tags: [Administration]
+  operationId: listAdminPMConversations
+  summary: List private-message conversations for panel administrators
+  parameters:
+    - { name: cursor, in: query, schema: { type: string } }
+    - { name: search, in: query, schema: { type: string, maxLength: 100 } }
+    - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
+  responses:
+    '200':
+      description: Stable conversation page with normalized user moderation flags
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/PMConversationPage' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }

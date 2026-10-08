@@ -37,6 +37,9 @@ type FirstEntry struct {
 func (f *FirstEntry) State(ctx context.Context, user model.User, entered bool) (CaptchaState, error) {
 	state := CaptchaState{Action: turnstile.Action}
 	if user.Role == "admin" && slices.Contains(f.AdminTelegramIDs, user.TelegramID) {
+		if entered {
+			return state, f.Repository.RegisterPanelEntry(ctx, user.TelegramID, false)
+		}
 		return state, nil
 	}
 	enabled, err := f.Settings.Optional(ctx, "captcha.turnstile.enabled")

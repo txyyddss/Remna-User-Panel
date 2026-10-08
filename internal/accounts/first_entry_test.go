@@ -161,4 +161,11 @@ func TestFirstEntryAdminExemptionRequiresConfiguredIdentity(t *testing.T) {
 			t.Fatalf("id=%d role=%s state=%+v,%v", test.id, test.role, state, err)
 		}
 	}
+	if state, err := entry.State(context.Background(), model.User{TelegramID: 42, Role: "admin"}, true); err != nil || state.Required {
+		t.Fatalf("admin visit=%+v,%v", state, err)
+	}
+	qualified, err := entry.Repository.PanelEntryQualified(context.Background(), 42)
+	if err != nil || !qualified {
+		t.Fatal("panel admin visit did not qualify PM")
+	}
 }

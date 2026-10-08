@@ -17,6 +17,7 @@ const groups = [
     { value: 'coupons', labelKey: 'adminNav.coupons', icon: 'i-ph-ticket' },
   ] },
   { labelKey: 'adminNav.community', sections: [
+    { value: 'pm', labelKey: 'pm.nav', icon: 'i-ph-chats' },
     { value: 'activity', labelKey: 'adminNav.activity', icon: 'i-ph-game-controller' },
     { value: 'affiliates', labelKey: 'adminNav.affiliates', icon: 'i-ph-users-three' },
     { value: 'questionnaires', labelKey: 'adminNav.questionnaires', icon: 'i-ph-file-csv' },

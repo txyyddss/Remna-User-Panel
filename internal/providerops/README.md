@@ -12,3 +12,5 @@ handles remain short-lived service data and are never stored in these records.
 - `admin_kinds.go` defines administrator command kind names shared at composition, including reviewed node compensation, temporary restrictions, identity relinks, and manual maintenance.
 - `command_kinds.go` defines subscription, Emby, questionnaire, retry, and payment-refund command names.
 - `dispatcher_test.go` covers kind routing without provider calls.
+
+`telegram_pm.go` reserves relay/profile/repair kinds in the existing durable lane. Targets store conversation and Telegram message references; no message body is part of an operation.

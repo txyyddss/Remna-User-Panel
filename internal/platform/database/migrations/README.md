@@ -106,3 +106,5 @@ file instead.
 `060_telegram_boost_receipts.sql` keeps only group/boost identity and receipt time to prevent repeat appreciation.
 
 `061_panel_entry_verification.sql` creates the two-column temporary verification table; previously accepted agreements need no migrated row.
+
+`062_telegram_pm.sql` adds two normalized user moderation flags, per-user/per-destination routing references, durable certainty and bounded update tombstones. A partial unique index serializes profile publication and repair without duplicating message bodies.

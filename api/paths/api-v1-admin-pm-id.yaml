@@ -1,0 +1,22 @@
+parameters:
+  - { name: id, in: path, required: true, schema: { $ref: '../openapi.yaml#/components/schemas/ID' } }
+put:
+  tags: [Administration]
+  operationId: updateAdminPMModeration
+  summary: Set block or silent-relay preferences and queue the profile card update
+  parameters:
+    - { $ref: '../openapi.yaml#/components/parameters/IdempotencyKey' }
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema: { $ref: '../openapi.yaml#/components/schemas/PMModerationUpdate' }
+  responses:
+    '202':
+      description: Durable profile update receipt; local flags are already committed
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/OperationReceipt' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }
+    '422': { $ref: '../openapi.yaml#/components/responses/Unprocessable' }

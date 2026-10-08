@@ -106,5 +106,57 @@
     "analyze": "Analyze codes",
     "queueing": "Queueing",
     "confirm": "Confirm settlement"
+  },
+  "pm": {
+    "nav": "Private messages",
+    "title": "Private messages",
+    "description": "Manage conversations relayed through the Telegram forum. Only panel admins can reply.",
+    "search": "Search name, username or Telegram ID",
+    "searchButton": "Search",
+    "empty": "No conversations yet",
+    "emptyHint": "Qualified users appear here after sending a direct message to the bot.",
+    "loadMore": "Load more conversations",
+    "refresh": "Refresh",
+    "retry": "Try again",
+    "blocked": "Block messages",
+    "muted": "Mute notifications",
+    "muteHint": "Keep relaying silently.",
+    "deliveries": "Review deliveries",
+    "openTopic": "Open topic",
+    "repair": "Repair topic",
+    "repairHint": "Inspect Telegram first, then attach the existing topic. A new profile card is created when its message ID is blank.",
+    "topicId": "Existing topic ID",
+    "topicIdHint": "Use the topic ID from its Telegram link. The General topic cannot be used.",
+    "profileId": "Profile card message ID (optional)",
+    "profileIdHint": "Use an existing bot profile card to avoid creating another one.",
+    "verifyTopic": "Verify and attach",
+    "updated": "Conversation settings updated.",
+    "pending": "The profile card update is queued.",
+    "reviewHint": "Delivery is uncertain after an interrupted request. Check Telegram before resending; uncertain messages are never replayed automatically.",
+    "loadFailed": "Private messages could not be loaded.",
+    "actionFailed": "The profile or topic update failed. Local moderation preferences remain saved.",
+    "noDeliveries": "No recent deliveries.",
+    "sourceMessage": "Source message {id}",
+    "viewInTelegram": "View in Telegram",
+    "deliveryFailed": "Delivery failed. Check the Telegram destination and bot permissions.",
+    "direction": {
+      "inbound": "From member",
+      "outbound": "To member"
+    },
+    "topicState": {
+      "new": "Waiting for topic creation",
+      "creating": "Creating topic",
+      "ready": "Topic ready",
+      "pending_review": "Topic needs review"
+    },
+    "errors": {
+      "PM_TOPIC_UNCERTAIN": "Topic creation needs review. Attach its existing ID after checking Telegram.",
+      "PM_PROFILE_UNCERTAIN": "The profile card delivery needs review. Attach its message ID or confirm a new card.",
+      "PM_DELIVERY_UNCERTAIN": "Delivery may have succeeded. Check Telegram before sending this message again.",
+      "PM_DISABLED": "Messaging was disabled or the destination changed before delivery.",
+      "PM_BLOCKED": "Delivery was stopped by moderation or administrator permissions.",
+      "PM_ENTRY_REQUIRED": "The member must open and verify the panel before messages can be relayed.",
+      "PM_TELEGRAM_REJECTED": "Telegram rejected this delivery. Check the source message, topic and bot permissions."
+    }
   }
 }

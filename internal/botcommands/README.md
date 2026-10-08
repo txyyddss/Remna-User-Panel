@@ -25,3 +25,5 @@ the package never calls persistence or providers directly.
 
 - Group reward commands use localized, MarkdownV2-safe boost-required and verification-unavailable copy from `locale.go`; `format.go` renders the refusal without replying to ordinary group messages.
 - `group_boost_test.go` verifies both refusal reasons have localized, escaped English and Chinese copy.
+
+The localized /start reply explains direct messaging after panel entry verification; command menus and payment paths remain unchanged.

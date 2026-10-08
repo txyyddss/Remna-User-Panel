@@ -48,14 +48,15 @@ type ChatJoinRequest struct {
 
 // ChatMember is the common portion of Telegram's chat-member variants.
 type ChatMember struct {
-	Status        string `json:"status"`
-	User          User   `json:"user"`
-	IsMember      bool   `json:"is_member,omitempty"`
-	CustomTitle   string `json:"custom_title,omitempty"`
-	Tag           string `json:"tag,omitempty"`
-	CanManageTags bool   `json:"can_manage_tags,omitempty"`
-	CanEditTag    bool   `json:"can_edit_tag,omitempty"`
-	UntilDate     int64  `json:"until_date,omitempty"`
+	Status          string `json:"status"`
+	User            User   `json:"user"`
+	IsMember        bool   `json:"is_member,omitempty"`
+	CustomTitle     string `json:"custom_title,omitempty"`
+	Tag             string `json:"tag,omitempty"`
+	CanManageTags   bool   `json:"can_manage_tags,omitempty"`
+	CanEditTag      bool   `json:"can_edit_tag,omitempty"`
+	CanManageTopics bool   `json:"can_manage_topics,omitempty"`
+	UntilDate       int64  `json:"until_date,omitempty"`
 }
 
 // Present reports whether a chat-member response represents current membership.
@@ -101,19 +102,6 @@ type RefundedPayment struct {
 	ProviderPaymentChargeID string `json:"provider_payment_charge_id,omitempty"`
 }
 
-// Message is the subset of a Telegram message needed for payments and group activity.
-type Message struct {
-	MessageID         int64              `json:"message_id"`
-	SenderBoostCount  int                `json:"sender_boost_count,omitempty"`
-	From              *User              `json:"from,omitempty"`
-	Chat              Chat               `json:"chat"`
-	Date              int64              `json:"date"`
-	Text              string             `json:"text,omitempty"`
-	ReplyToMessage    *Message           `json:"reply_to_message,omitempty"`
-	SuccessfulPayment *SuccessfulPayment `json:"successful_payment,omitempty"`
-	RefundedPayment   *RefundedPayment   `json:"refunded_payment,omitempty"`
-}
-
 // PreCheckoutQuery is sent before Telegram completes a payment.
 type PreCheckoutQuery struct {
 	ID             string `json:"id"`
@@ -133,6 +121,7 @@ type Update struct {
 	ChatJoinRequest  *ChatJoinRequest   `json:"chat_join_request,omitempty"`
 	PreCheckoutQuery *PreCheckoutQuery  `json:"pre_checkout_query,omitempty"`
 	ChatBoost        *ChatBoostUpdated  `json:"chat_boost,omitempty"`
+	CallbackQuery    *CallbackQuery     `json:"callback_query,omitempty"`
 }
 
 // LabeledPrice is a Telegram invoice line item. Stars invoices must contain one.

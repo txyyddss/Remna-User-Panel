@@ -31,3 +31,5 @@ commands. Its mutable state and quotes always bypass response snapshots.
 `preferences.ts` provides typed account preference and live group-tag clients.
 
 `client.ts` verifies first-entry tokens via the signed /me/captcha endpoint. AuthState carries optional server-owned CAPTCHA state; caches and background preload suspend protected reads until verification.
+
+`pm.ts` exposes typed admin moderation, topic repair and reference-only delivery reads, using existing signed requests and idempotency headers.

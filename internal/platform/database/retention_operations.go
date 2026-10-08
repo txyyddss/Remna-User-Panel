@@ -15,9 +15,13 @@ func pruneProviderOperationsTx(ctx context.Context, tx *sql.Tx, cutoff, now time
 		return fmt.Errorf("create stale operation set: %w", err)
 	}
 	_, err := tx.ExecContext(ctx, `INSERT INTO maintenance_operation_candidates(id)
-		SELECT id FROM provider_operations WHERE status IN ('queued','processing','pending_review','partial') AND created_at<?`, stamp(cutoff))
+		SELECT id FROM provider_operations WHERE status IN ('queued','processing','pending_review','partial') AND created_at<?
+		AND (kind NOT LIKE 'telegram_pm_%' OR created_at<=?)`, stamp(cutoff), stamp(now.Add(-pmReceiptRetention)))
 	if err != nil {
 		return fmt.Errorf("select stale operations: %w", err)
+	}
+	if err := reconcileExpiredPMOperationsTx(ctx, tx, now, counts); err != nil {
+		return err
 	}
 	if err := compensateStaleOperationDebitsTx(ctx, tx, now); err != nil {
 		return err
@@ -47,17 +51,18 @@ func pruneProviderOperationsTx(ctx context.Context, tx *sql.Tx, cutoff, now time
 	}
 	if counts["provider_operation_jobs"], err = deleteCount(ctx, tx, `DELETE FROM outbox_jobs WHERE kind='provider_operation'
 		AND json_extract(payload,'$.operationId') IN (SELECT id FROM provider_operations
-			WHERE status IN ('succeeded','failed','compensated'))`); err != nil {
+			WHERE status IN ('succeeded','failed','compensated') AND (kind NOT LIKE 'telegram_pm_%' OR created_at<=?))`, stamp(now.Add(-pmReceiptRetention))); err != nil {
 		return fmt.Errorf("prune provider operation jobs: %w", err)
 	}
 	// Keep terminal operations that durable domain records still use as their
 	// audit or state-transition link. Deleting them would violate foreign keys.
 	if counts["provider_operations"], err = deleteCount(ctx, tx, `DELETE FROM provider_operations
 		WHERE status IN ('succeeded','failed','compensated')
+		AND (kind NOT LIKE 'telegram_pm_%' OR created_at<=?)
 		AND NOT EXISTS (SELECT 1 FROM admin_temporary_bans ban
 			WHERE ban.ban_operation_id=provider_operations.id OR ban.unban_operation_id=provider_operations.id)
 		AND NOT EXISTS (SELECT 1 FROM node_compensation_events event
-			WHERE event.provider_operation_id=provider_operations.id)`); err != nil {
+			WHERE event.provider_operation_id=provider_operations.id)`, stamp(now.Add(-pmReceiptRetention))); err != nil {
 		return fmt.Errorf("prune processed provider operations: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx, `DROP TABLE maintenance_operation_candidates`); err != nil {

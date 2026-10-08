@@ -179,7 +179,10 @@
       "HTTP_ERROR": "The request could not be completed.",
       "CAPTCHA_REQUIRED": "Complete this one-time check before setting up your account.",
       "CAPTCHA_REJECTED": "Verification failed. Solve a fresh challenge.",
-      "CAPTCHA_UNAVAILABLE": "Verification is temporarily unavailable. Please retry."
+      "CAPTCHA_UNAVAILABLE": "Verification is temporarily unavailable. Please retry.",
+      "INVALID_PM_UPDATE": "Choose a valid block or mute preference.",
+      "INVALID_PM_TOPIC": "Enter valid topic and profile message IDs.",
+      "PM_QUEUE_UNAVAILABLE": "Private messaging is temporarily unavailable. Please retry."
     }
   },
   "captcha": {

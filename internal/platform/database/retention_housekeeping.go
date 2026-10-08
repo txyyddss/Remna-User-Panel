@@ -15,7 +15,8 @@ func pruneHousekeepingTx(ctx context.Context, tx *sql.Tx, cutoff7Days, cutoff24H
 		return fmt.Errorf("prune completed user notifications: %w", err)
 	}
 	if counts["sessions"], err = deleteCount(ctx, tx, `DELETE FROM sessions WHERE expires_at<=?
-		OR user_id IN (SELECT id FROM users WHERE role='user' AND onboarding_state='intro' AND created_at<?)
+		OR user_id IN (SELECT id FROM users WHERE role='user' AND onboarding_state='intro' AND created_at<?
+			AND NOT EXISTS(SELECT 1 FROM telegram_pm_conversations WHERE user_id=users.id))
 		OR EXISTS (SELECT 1 FROM sessions newer WHERE newer.user_id=sessions.user_id
 			AND (newer.created_at>sessions.created_at OR (newer.created_at=sessions.created_at AND newer.token_hash>sessions.token_hash)))`,
 		stamp(now), stamp(cutoff24Hours)); err != nil {
@@ -38,6 +39,7 @@ func pruneAbandonedUsersTx(ctx context.Context, tx *sql.Tx, cutoff time.Time, co
 	_, err := tx.ExecContext(ctx, `INSERT INTO maintenance_user_candidates(id,telegram_id)
 		SELECT user.id,user.telegram_id FROM users user
 		WHERE user.role='user' AND user.onboarding_state='intro' AND user.created_at<?
+		AND NOT EXISTS(SELECT 1 FROM telegram_pm_conversations WHERE user_id=user.id)
 		AND NOT EXISTS (SELECT 1 FROM ledger_entries WHERE user_id=user.id)
 		AND NOT EXISTS (SELECT 1 FROM purchases WHERE user_id=user.id)
 		AND NOT EXISTS (SELECT 1 FROM payment_orders WHERE user_id=user.id)

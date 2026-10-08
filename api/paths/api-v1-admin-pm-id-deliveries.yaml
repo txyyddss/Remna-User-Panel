@@ -1,0 +1,14 @@
+parameters:
+  - { name: id, in: path, required: true, schema: { $ref: '../openapi.yaml#/components/schemas/ID' } }
+get:
+  tags: [Administration]
+  operationId: listAdminPMDeliveries
+  summary: Inspect bounded delivery receipts and Telegram references without message bodies
+  responses:
+    '200':
+      description: Up to 50 recent delivery receipts, including uncertain results for review
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/PMDeliveryList' }
+    '403': { $ref: '../openapi.yaml#/components/responses/Forbidden' }
+    '404': { $ref: '../openapi.yaml#/components/responses/NotFound' }

@@ -19,6 +19,8 @@ export type OnboardingStep = components['schemas']['OnboardingStep']
 export type User = DeepReadonly<components['schemas']['User']>
 export type AuthState = DeepReadonly<components['schemas']['AuthState']>
 export type Session = AuthState
+export type PMConversation = DeepReadonly<components['schemas']['PMConversation']>
+export type PMDelivery = DeepReadonly<components['schemas']['PMDelivery']>
 export type ComboControls = DeepReadonly<components['schemas']['ComboControls']>
 export type SquadControl = DeepReadonly<components['schemas']['SquadControl']>
 export type EarlyActivationQuote = DeepReadonly<components['schemas']['EarlyActivationQuote']>
@@ -102,6 +104,7 @@ export interface Paginated<T> {
 }
 
 export type AdminResource =
+  | 'pm'
   | 'settings'
   | 'combos'
   | 'squad-products'

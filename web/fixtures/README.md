@@ -1,5 +1,11 @@
 # Constructed browser fixtures
 
+`PMAdminAudit.vue`, `pm-admin-audit.ts` and `pm-admin-audit.html` mount real
+administration rows and dialogs with isolated reference-only operations.
+`empty`, `error`, `slow`, `reviewempty`, `reviewerror`, `reviewslow`, `pending`,
+`moderationerror`, `pollerror` and `reduced` exercise browser states without
+sending Telegram messages. `__pmAudit` and `__pmConversations` expose results.
+
 `CaptchaAudit.vue`, `captcha-audit.ts` and `captcha-audit.html` mount the actual
 entry gate with Cloudflare's public always-pass test site key and a mocked signed
 verification response. `mock`, `rejected`, `unavailable`, `missing`, `loaderror`

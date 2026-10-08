@@ -25,3 +25,5 @@
   work cannot overwrite current Vue state or restart timers.
 
 `turnstile.ts` loads the official explicit-render script once, exposes only documented render/reset/remove contracts, bounds loading time and allows a fresh retry after provider failure.
+
+`adminSettingWrites.ts` saves disable toggles before clearing configuration, then keys/destinations before enabling, shared by Turnstile and PM.

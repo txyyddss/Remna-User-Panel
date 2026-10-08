@@ -56,3 +56,6 @@ ledger references so repeated reasons remain separate audited operations.
 `user_refund_quote.go` derives an editable administrator refund default from the net debit and observed whole-term weighted traffic. `user_refund_quote_test.go` covers discounts, custom limits, reset periods, cent rounding, queued terms, outages and ownership.
 
 `turnstile_settings.go` and `turnstile_settings_test.go` require both keys before enabling, reject clearing an enabled site key, and use the existing encrypted secret registry. Setting writes serialize cross-key validation.
+
+`pm_settings.go` validates the default-off PM toggle and forum destination. Composition injects a queued forum/permission validator; enabling and changing an enabled destination require a usable forum and bot manage-topics rights.
+`pm_settings_test.go` covers fail-closed enabling, destination validation and disable-before-clear behavior.

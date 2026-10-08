@@ -178,7 +178,10 @@
       "PURCHASE_CANCEL_CONFLICT": "此排队套餐已无法取消，请刷新后重试。",
       "CAPTCHA_REQUIRED": "完成这项一次性验证后，即可设置账户。",
       "CAPTCHA_REJECTED": "验证失败，请重新完成验证。",
-      "CAPTCHA_UNAVAILABLE": "暂时无法验证，请重试。"
+      "CAPTCHA_UNAVAILABLE": "暂时无法验证，请重试。",
+      "INVALID_PM_UPDATE": "请选择有效的屏蔽或静音设置。",
+      "INVALID_PM_TOPIC": "请输入有效的话题或资料卡消息 ID。",
+      "PM_QUEUE_UNAVAILABLE": "私信队列暂时不可用，请稍后重试。"
     },
     "autoRenewalFailed": "无法更新自动续费。"
   },

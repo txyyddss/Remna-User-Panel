@@ -9,6 +9,7 @@ import AdminShell from '@/components/admin/AdminShell.vue'
 const route = useRoute()
 const panels: Record<string, Component> = {
   settings: AdminSettingsPanel,
+  pm: defineAsyncComponent(() => import('@/components/admin/pm/AdminPMPanel.vue')),
   catalog: defineAsyncComponent(() => import('@/components/admin/AdminCatalogPanel.vue')),
   activity: defineAsyncComponent(() => import('@/components/admin/AdminActivityPanel.vue')),
   affiliates: defineAsyncComponent(() => import('@/components/admin/affiliates/AdminAffiliatesPanel.vue')),

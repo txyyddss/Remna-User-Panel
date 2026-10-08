@@ -106,5 +106,57 @@
     "analyze": "分析验证码",
     "queueing": "排队中",
     "confirm": "确认结算"
+  },
+  "pm": {
+    "nav": "私信",
+    "title": "私信",
+    "description": "管理通过 Telegram 话题群转发的对话，仅面板管理员可以回复。",
+    "search": "搜索姓名、用户名或 Telegram ID",
+    "searchButton": "搜索",
+    "empty": "暂无对话",
+    "emptyHint": "已完成访问验证的用户直接向机器人发送消息后，会显示在这里。",
+    "loadMore": "加载更多对话",
+    "refresh": "刷新",
+    "retry": "重试",
+    "blocked": "屏蔽私信",
+    "muted": "静音通知",
+    "muteHint": "继续转发，但不发出通知声音。",
+    "deliveries": "查看投递",
+    "openTopic": "打开话题",
+    "repair": "修复话题",
+    "repairHint": "请先检查 Telegram，再关联已有话题。留空资料卡消息 ID 时，会创建新的资料卡。",
+    "topicId": "已有话题 ID",
+    "topicIdHint": "使用 Telegram 话题链接中的 ID，不支持常规话题。",
+    "profileId": "资料卡消息 ID（选填）",
+    "profileIdHint": "填写机器人已有资料卡的 ID，以避免重复创建。",
+    "verifyTopic": "验证并关联",
+    "updated": "对话设置已更新。",
+    "pending": "资料卡更新已加入队列。",
+    "reviewHint": "请求中断后，投递结果可能不确定。重新发送前请先检查 Telegram；不确定的消息不会自动重复投递。",
+    "loadFailed": "无法加载私信对话。",
+    "actionFailed": "资料卡或话题更新失败，本地管理设置仍已保存。",
+    "noDeliveries": "暂无近期投递。",
+    "sourceMessage": "来源消息 {id}",
+    "viewInTelegram": "在 Telegram 中查看",
+    "deliveryFailed": "投递失败，请检查 Telegram 目标和机器人权限。",
+    "direction": {
+      "inbound": "用户发来",
+      "outbound": "发给用户"
+    },
+    "topicState": {
+      "new": "等待创建话题",
+      "creating": "正在创建话题",
+      "ready": "话题已就绪",
+      "pending_review": "话题需要核查"
+    },
+    "errors": {
+      "PM_TOPIC_UNCERTAIN": "话题创建结果需要核查，请检查 Telegram 后关联已有 ID。",
+      "PM_PROFILE_UNCERTAIN": "资料卡投递结果需要核查，请关联其消息 ID 或确认创建新的资料卡。",
+      "PM_DELIVERY_UNCERTAIN": "消息可能已投递成功，重新发送前请先检查 Telegram。",
+      "PM_DISABLED": "投递前，私信已被关闭或目标群已变更。",
+      "PM_BLOCKED": "投递已因管理设置或管理员权限而停止。",
+      "PM_ENTRY_REQUIRED": "用户须先打开面板并完成验证，才能转发私信。",
+      "PM_TELEGRAM_REJECTED": "Telegram 拒绝了此次投递，请检查来源消息、话题和机器人权限。"
+    }
   }
 }
