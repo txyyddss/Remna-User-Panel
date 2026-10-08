@@ -15,9 +15,9 @@ func pruneProviderOperationsTx(ctx context.Context, tx *sql.Tx, cutoff, now time
 		return fmt.Errorf("create stale operation set: %w", err)
 	}
 	_, err := tx.ExecContext(ctx, `INSERT INTO maintenance_operation_candidates(id)
-		SELECT id FROM provider_operations WHERE status IN ('queued','processing','pending_review','partial') AND created_at<?
+		SELECT id FROM provider_operations operation WHERE status IN ('queued','processing','pending_review','partial') AND created_at<?
 		AND kind<>'node_compensation'
-		AND (kind NOT LIKE 'telegram_pm_%' OR created_at<=?)`, stamp(cutoff), stamp(now.Add(-pmReceiptRetention)))
+		AND (kind NOT LIKE 'telegram_pm_%' OR created_at<=?) AND NOT (`+liveComboControlPredicate+`)`, stamp(cutoff), stamp(now.Add(-pmReceiptRetention)), stamp(now), stamp(now), stamp(now), stamp(now))
 	if err != nil {
 		return fmt.Errorf("select stale operations: %w", err)
 	}
@@ -51,19 +51,21 @@ func pruneProviderOperationsTx(ctx context.Context, tx *sql.Tx, cutoff, now time
 		return fmt.Errorf("fail stale operations: %w", err)
 	}
 	if counts["provider_operation_jobs"], err = deleteCount(ctx, tx, `DELETE FROM outbox_jobs WHERE kind='provider_operation'
-		AND json_extract(payload,'$.operationId') IN (SELECT id FROM provider_operations
-			WHERE status IN ('succeeded','failed','compensated') AND (kind NOT LIKE 'telegram_pm_%' OR created_at<=?))`, stamp(now.Add(-pmReceiptRetention))); err != nil {
+		AND json_extract(payload,'$.operationId') IN (SELECT id FROM provider_operations operation
+			WHERE status IN ('succeeded','failed','compensated') AND (kind NOT LIKE 'telegram_pm_%' OR created_at<=?)
+			AND NOT (status='failed' AND (`+liveComboControlPredicate+`)))`, stamp(now.Add(-pmReceiptRetention)), stamp(now), stamp(now), stamp(now), stamp(now)); err != nil {
 		return fmt.Errorf("prune provider operation jobs: %w", err)
 	}
 	// Keep terminal operations that durable domain records still use as their
 	// audit or state-transition link. Deleting them would violate foreign keys.
-	if counts["provider_operations"], err = deleteCount(ctx, tx, `DELETE FROM provider_operations
+	if counts["provider_operations"], err = deleteCount(ctx, tx, `DELETE FROM provider_operations AS operation
 		WHERE status IN ('succeeded','failed','compensated')
 		AND (kind NOT LIKE 'telegram_pm_%' OR created_at<=?)
+		AND NOT (status='failed' AND (`+liveComboControlPredicate+`))
 		AND NOT EXISTS (SELECT 1 FROM admin_temporary_bans ban
-			WHERE ban.ban_operation_id=provider_operations.id OR ban.unban_operation_id=provider_operations.id)
+			WHERE ban.ban_operation_id=operation.id OR ban.unban_operation_id=operation.id)
 		AND NOT EXISTS (SELECT 1 FROM node_compensation_events event
-			WHERE event.provider_operation_id=provider_operations.id)`, stamp(now.Add(-pmReceiptRetention))); err != nil {
+			WHERE event.provider_operation_id=operation.id)`, stamp(now.Add(-pmReceiptRetention)), stamp(now), stamp(now), stamp(now), stamp(now)); err != nil {
 		return fmt.Errorf("prune processed provider operations: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx, `DROP TABLE maintenance_operation_candidates`); err != nil {

@@ -40,6 +40,9 @@ func pruneFailedSynchronizationJobsTx(ctx context.Context, tx *sql.Tx, now time.
 	if err := reconcileExpiredSyncStateTx(ctx, tx, now); err != nil {
 		return err
 	}
+	if err := preserveComboControlRecoveryTx(ctx, tx, now); err != nil {
+		return err
+	}
 	count, err := deleteCount(ctx, tx, `DELETE FROM outbox_jobs WHERE id IN (SELECT id FROM maintenance_failed_sync_jobs)`)
 	if err != nil {
 		return fmt.Errorf("prune terminal failed synchronization jobs: %w", err)

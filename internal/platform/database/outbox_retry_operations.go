@@ -71,6 +71,11 @@ func (s *Store) CompleteOutboxRetryOperation(ctx context.Context, operationID, i
 }
 
 func reactivateOutboxJobTx(ctx context.Context, tx *sql.Tx, jobID, kind string, now time.Time) error {
+	if kind == "provider_operation" {
+		if err := recoverComboControlJobTx(ctx, tx, jobID, now); err != nil {
+			return err
+		}
+	}
 	if kind == "questionnaire_settlement" {
 		result, err := tx.ExecContext(ctx, `UPDATE questionnaire_imports SET status='queued',last_error='',updated_at=?
 			WHERE status='failed' AND id=(SELECT json_extract(payload,'$.importId') FROM outbox_jobs WHERE id=?)`,

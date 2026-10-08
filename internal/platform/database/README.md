@@ -11,6 +11,12 @@ and rebases terms without financial credits. `member_squad_controls_test.go`
 and `member_early_activation_test.go` cover races, carried preferences, ownership,
 custom durations, automatic successors and durable reset-phase resumption in CI.
 
+`member_combo_recovery.go` revalidates live, owned, unsuperseded targets before
+reopening a failed control receipt. Administrative job retry and failed-artifact
+retention resume the same reset phase without repeating forfeiture or money
+movement. `member_combo_recovery_test.go` covers exhausted upstream attempts,
+both recovery paths, full term dates and unchanged balances in hosted CI.
+
 The store uses `modernc.org/sqlite` 1.60.1 and its compatible libc dependency.
 Go module upgrades preserve the existing Go 1.26 toolchain and database contracts;
 full migration/race validation runs in hosted CI rather than local test suites.
