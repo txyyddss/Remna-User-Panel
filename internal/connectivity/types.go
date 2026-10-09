@@ -10,7 +10,7 @@ import (
 // Config is the atomic, credential-free runtime configuration.
 type Config struct {
 	ScheduledEnabled bool   `json:"scheduledEnabled"`
-	RemnawaveUserID   int64  `json:"remnawaveUserId"`
+	RemnawaveUserID  int64  `json:"remnawaveUserId"`
 	IntervalSeconds  int    `json:"intervalSeconds"`
 	TimeoutSeconds   int    `json:"timeoutSeconds"`
 	ProbeURL         string `json:"probeUrl"`
@@ -77,12 +77,12 @@ type HostResult struct {
 
 // Snapshot reports configuration, progress, and freshness independently of history.
 type Snapshot struct {
-	Config Config       `json:"config"`
-	User   *User        `json:"user"`
-	Run    *Run         `json:"run"`
-	Hosts  []HostResult `json:"hosts"`
-	Stale  bool         `json:"stale"`
-	ErrorCode string    `json:"errorCode"`
+	Config    Config       `json:"config"`
+	User      *User        `json:"user"`
+	Run       *Run         `json:"run"`
+	Hosts     []HostResult `json:"hosts"`
+	Stale     bool         `json:"stale"`
+	ErrorCode string       `json:"errorCode"`
 }
 
 // HistoryPage is a stable descending page of attempts within the last 24 hours.

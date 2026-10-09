@@ -67,7 +67,9 @@ func (a *Application) Run(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 	case err := <-connectivityDone:
-		if err != nil && !errors.Is(err, context.Canceled) { runErr = fmt.Errorf("run connectivity checker: %w", err) }
+		if err != nil && !errors.Is(err, context.Canceled) {
+			runErr = fmt.Errorf("run connectivity checker: %w", err)
+		}
 		// Keep one completion available for the shutdown join.
 		connectivityDone <- err
 	case <-a.backups.RestartRequested():
@@ -79,7 +81,9 @@ func (a *Application) Run(ctx context.Context) error {
 	}
 	shutdownErr := a.shutdownRuntime(cancelRun, schedulerDone, statisticsDone, abuseDone, notificationsDone)
 	connectivityErr := <-connectivityDone
-	if errors.Is(connectivityErr, context.Canceled) { connectivityErr = nil }
+	if errors.Is(connectivityErr, context.Canceled) {
+		connectivityErr = nil
+	}
 	return errors.Join(runErr, shutdownErr, connectivityErr)
 }
 

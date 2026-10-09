@@ -22,7 +22,7 @@ type SettingDefinition struct {
 }
 
 var settingDefinitions = map[string]SettingDefinition{
-	connectivity.SettingKey: {Default: `{"scheduledEnabled":false,"remnawaveUserId":0,"intervalSeconds":300,"timeoutSeconds":15,"probeUrl":"https://cp.cloudflare.com/generate_204"}`, Validate: func(value string) error { _, err := connectivity.DecodeConfig(value); return err }},
+	connectivity.SettingKey:                  {Default: `{"scheduledEnabled":false,"remnawaveUserId":0,"intervalSeconds":300,"timeoutSeconds":15,"probeUrl":"https://cp.cloudflare.com/generate_204"}`, Validate: func(value string) error { _, err := connectivity.DecodeConfig(value); return err }},
 	"telegram.pm.enabled":                    {Default: "false", Validate: validateBoolean},
 	"telegram.pm.group_chat_id":              {Validate: validatePMGroup},
 	"captcha.turnstile.enabled":              {Default: "false", Validate: validateBoolean},
@@ -71,13 +71,13 @@ type SettingsRepository interface {
 
 type SettingsService struct {
 	connectivityValidator func(context.Context, connectivity.Config) error
-	connectivityChanged func()
-	pmForumValidator func(context.Context, int64) error
-	mu               sync.Mutex
-	repository       SettingsRepository
-	vault            *secret.Vault
-	profiles         PaymentProfileRepository
-	channels         paymentProfileChannelReader
+	connectivityChanged   func()
+	pmForumValidator      func(context.Context, int64) error
+	mu                    sync.Mutex
+	repository            SettingsRepository
+	vault                 *secret.Vault
+	profiles              PaymentProfileRepository
+	channels              paymentProfileChannelReader
 }
 
 // NewSettingsService creates the runtime settings facade.
@@ -144,7 +144,9 @@ func (s *SettingsService) Put(ctx context.Context, actorID, key, value string) e
 		return err
 	}
 	changed, err := s.connectivitySettingChanged(ctx, key, value)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	stored := value
 	// A non-blank secret is an explicit replacement. Encrypt it freshly so
 	// the write-only value from the settings UI can never be persisted as-is.

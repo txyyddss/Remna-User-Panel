@@ -51,7 +51,7 @@ func (s connectivitySource) Validate(ctx context.Context, userID int64) error {
 
 func (s connectivitySource) Load(ctx context.Context, userID int64) (connectivity.User, []connectivity.Target, error) {
 	type loaded struct {
-		user connectivity.User
+		user    connectivity.User
 		targets []connectivity.Target
 	}
 	result, err := remnaCall(ctx, s.adapter, func(callCtx context.Context, client remnaClient) (loaded, error) {
@@ -88,17 +88,19 @@ func connectivityTargets(configs []json.RawMessage) ([]connectivity.Target, erro
 	for _, raw := range configs {
 		var item struct {
 			FinalRemark string `json:"finalRemark"`
-			Address string `json:"address"`
-			Port int `json:"port"`
-			Metadata struct {
-				UUID string `json:"uuid"`
-				IsDisabled bool `json:"isDisabled"`
+			Address     string `json:"address"`
+			Port        int    `json:"port"`
+			Metadata    struct {
+				UUID       string `json:"uuid"`
+				IsDisabled bool   `json:"isDisabled"`
 			} `json:"metadata"`
 		}
 		if json.Unmarshal(raw, &item) != nil {
 			return nil, connectivityFailure("INVALID_SUBSCRIPTION")
 		}
-		if item.Metadata.IsDisabled { continue }
+		if item.Metadata.IsDisabled {
+			continue
+		}
 		hostID, err := uuid.Parse(item.Metadata.UUID)
 		if err != nil || hostID == uuid.Nil || seen[hostID.String()] {
 			return nil, connectivityFailure("INVALID_SUBSCRIPTION")

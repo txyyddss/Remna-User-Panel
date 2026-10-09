@@ -14,17 +14,27 @@ func (s *SettingsService) SetConnectivityValidation(validate func(context.Contex
 }
 
 func (s *SettingsService) validateConnectivitySettings(ctx context.Context, key, value string) error {
-	if key != connectivity.SettingKey { return nil }
+	if key != connectivity.SettingKey {
+		return nil
+	}
 	config, err := connectivity.DecodeConfig(value)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	previous, readErr := s.Optional(ctx, connectivity.SettingKey)
-	if readErr != nil { return readErr }
+	if readErr != nil {
+		return readErr
+	}
 	stored, decodeErr := connectivity.DecodeConfig(previous)
-	if decodeErr == nil && stored == config { return nil }
+	if decodeErr == nil && stored == config {
+		return nil
+	}
 	// Disabling an unchanged account must remain possible during an upstream
 	// outage or after the account expires. New selections still require validation.
 	if !config.ScheduledEnabled && config.RemnawaveUserID > 0 {
-		if decodeErr == nil && stored.RemnawaveUserID == config.RemnawaveUserID { return nil }
+		if decodeErr == nil && stored.RemnawaveUserID == config.RemnawaveUserID {
+			return nil
+		}
 	}
 	if s.connectivityValidator != nil {
 		return s.connectivityValidator(ctx, config)
@@ -36,13 +46,19 @@ func (s *SettingsService) validateConnectivitySettings(ctx context.Context, key,
 }
 
 func (s *SettingsService) connectivitySettingChanged(ctx context.Context, key, value string) (bool, error) {
-	if key != connectivity.SettingKey && key != "remnawave.base_url" && key != "remnawave.api_token" { return false, nil }
+	if key != connectivity.SettingKey && key != "remnawave.base_url" && key != "remnawave.api_token" {
+		return false, nil
+	}
 	previous, err := s.Optional(ctx, key)
-	if err != nil { return false, err }
+	if err != nil {
+		return false, err
+	}
 	if key == connectivity.SettingKey {
 		before, beforeErr := connectivity.DecodeConfig(previous)
 		after, afterErr := connectivity.DecodeConfig(value)
-		if beforeErr == nil && afterErr == nil { return before != after, nil }
+		if beforeErr == nil && afterErr == nil {
+			return before != after, nil
+		}
 	}
 	return previous != value, nil
 }

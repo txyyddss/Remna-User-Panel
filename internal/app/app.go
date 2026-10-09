@@ -188,10 +188,10 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		return cleanup(fmt.Errorf("preload embedded frontend: %w", err))
 	}
 	api, err := httpapi.New(httpapi.Dependencies{
-		PM:         pmService,
+		PM:           pmService,
 		Connectivity: connectivityService,
-		FirstEntry: &accounts.FirstEntry{Repository: store, Settings: settings, Verifier: turnstile.New(upstreams.turnstile), Hostname: cfg.PublicBaseURL.Hostname(), AdminTelegramIDs: cfg.AdminTelegramIDs},
-		Accounts:   accountsService, Catalog: catalogService, Connections: memberServices.connections,
+		FirstEntry:   &accounts.FirstEntry{Repository: store, Settings: settings, Verifier: turnstile.New(upstreams.turnstile), Hostname: cfg.PublicBaseURL.Hostname(), AdminTelegramIDs: cfg.AdminTelegramIDs},
+		Accounts:     accountsService, Catalog: catalogService, Connections: memberServices.connections,
 		ConnectionDrops: memberServices.drops, PurchaseOperations: memberServices.purchases, Statistics: statisticsService,
 		Billing: billingService, Activity: activityService,
 		Coupons: couponService, Questionnaires: questionnaireService, Emby: embyService,

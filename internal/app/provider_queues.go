@@ -21,11 +21,11 @@ const (
 )
 
 type providerQueues struct {
-	remnawave *upstreamqueue.Queue
-	emby      *upstreamqueue.Queue
-	telegram  *upstreamqueue.Queue
-	payment   *upstreamqueue.Queue
-	turnstile *upstreamqueue.Queue
+	remnawave    *upstreamqueue.Queue
+	emby         *upstreamqueue.Queue
+	telegram     *upstreamqueue.Queue
+	payment      *upstreamqueue.Queue
+	turnstile    *upstreamqueue.Queue
 	connectivity *upstreamqueue.Queue
 }
 

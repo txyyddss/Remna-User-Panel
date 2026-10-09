@@ -19,9 +19,13 @@ func TestRawSubscriptionProtectedContract(t *testing.T) {
 	}))
 	defer server.Close()
 	client, err := NewClient(server.URL, "fixture-token")
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	result, err := client.GetRawSubscription(context.Background(), "monitor-key")
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if result.ResolvedProxyConfigs == nil || result.User.ID != 7 || result.ConvertedUserInfo.HWIDCheckup.SubscriptionAllowed {
 		t.Fatal("raw identity, empty collection or HWID restriction was lost")
 	}
@@ -34,7 +38,9 @@ func TestRawSubscriptionRejectsMismatchedIdentity(t *testing.T) {
 	}))
 	defer server.Close()
 	client, err := NewClient(server.URL, "fixture-token")
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if _, err := client.GetRawSubscription(context.Background(), "monitor-key"); err == nil {
 		t.Fatal("mismatched subscription identity was accepted")
 	}
