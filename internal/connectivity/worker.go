@@ -4,10 +4,8 @@ import (
 	"context"
 	"errors"
 	"math"
-	"time"
 
 	"github.com/google/uuid"
-	"github.com/txyyddss/Remna-User-Panel/internal/platform/upstreamqueue"
 )
 
 func (s *Service) process(item *work) {
@@ -70,26 +68,11 @@ func (s *Service) checkTarget(item *work, target Target) error {
 	if err := s.repository.BeginConnectivityAttempt(item.ctx, attempt); err != nil {
 		return err
 	}
-	probeCtx, cancel := context.WithTimeout(item.ctx, time.Duration(item.config.TimeoutSeconds)*time.Second)
-	outcome, err := upstreamqueue.Do(probeCtx, s.queue, func(callCtx context.Context) (Outcome, error) {
-		return s.probe.Check(callCtx, target, item.config), nil
-	})
-	probeErr := probeCtx.Err()
-	cancel()
-	if err != nil {
-		outcome = Outcome{Status: "error", ErrorCode: ErrorCode(err)}
-		if item.ctx.Err() != nil {
-			outcome = Outcome{Status: "interrupted", ErrorCode: "CONNECTIVITY_INTERRUPTED"}
-		} else if outcome.ErrorCode == "CONNECTIVITY_PROBE_TIMEOUT" {
-			outcome.Status = "failed"
-		}
-	}
+	outcome := s.checkWithRetries(item, target)
 	if item.ctx.Err() != nil {
-		outcome = Outcome{Status: "interrupted", ErrorCode: "CONNECTIVITY_INTERRUPTED"}
-	} else if errors.Is(probeErr, context.DeadlineExceeded) {
-		outcome = Outcome{Status: "failed", ErrorCode: "CONNECTIVITY_PROBE_TIMEOUT"}
+		outcome = interruptedOutcome()
 	}
-	return s.finishAttempt(item.ctx, attempt.ID, sanitizedOutcome(outcome))
+	return s.finishAttempt(item.ctx, attempt.ID, outcome)
 }
 
 func (s *Service) finishAttempt(ctx context.Context, id string, outcome Outcome) error {

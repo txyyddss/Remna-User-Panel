@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // SettingKey stores one atomic configuration in the existing settings registry.
@@ -15,7 +16,8 @@ const SettingKey = "connectivity.config"
 
 // DefaultConfig leaves scheduling disabled until an existing account is chosen.
 func DefaultConfig() Config {
-	return Config{IntervalSeconds: 300, TimeoutSeconds: 15, ProbeURL: "https://cp.cloudflare.com/generate_204"}
+	return Config{IntervalSeconds: 300, TimeoutSeconds: 15, MaxRetries: 10,
+		RetryIntervalSeconds: 1, ProbeURL: "https://cp.cloudflare.com/generate_204"}
 }
 
 // DecodeConfig applies defaults and rejects unknown or invalid configuration.
@@ -44,7 +46,8 @@ func DecodeConfig(value string) (Config, error) {
 
 func validateConfig(cfg Config) error {
 	if cfg.RemnawaveUserID < 0 || (cfg.ScheduledEnabled && cfg.RemnawaveUserID == 0) ||
-		cfg.IntervalSeconds < 60 || cfg.IntervalSeconds > 86400 || cfg.TimeoutSeconds < 1 || cfg.TimeoutSeconds > 60 {
+		cfg.IntervalSeconds < 60 || cfg.IntervalSeconds > 86400 || cfg.TimeoutSeconds < 1 || cfg.TimeoutSeconds > 60 ||
+		cfg.MaxRetries < 0 || cfg.MaxRetries > 10 || cfg.RetryIntervalSeconds < 1 || cfg.RetryIntervalSeconds > 60 {
 		return &CodeError{Code: "CONNECTIVITY_INVALID_CONFIG"}
 	}
 	parsed, err := url.Parse(cfg.ProbeURL)
@@ -56,8 +59,14 @@ func validateConfig(cfg Config) error {
 
 // ConfigHash identifies the exact settings under which retained attempts ran.
 func ConfigHash(cfg Config) string {
-	value := fmt.Sprintf("%t\n%d\n%d\n%d\n%s", cfg.ScheduledEnabled, cfg.RemnawaveUserID,
-		cfg.IntervalSeconds, cfg.TimeoutSeconds, cfg.ProbeURL)
+	value := fmt.Sprintf("%t\n%d\n%d\n%d\n%d\n%d\n%s", cfg.ScheduledEnabled, cfg.RemnawaveUserID,
+		cfg.IntervalSeconds, cfg.TimeoutSeconds, cfg.MaxRetries, cfg.RetryIntervalSeconds, cfg.ProbeURL)
 	digest := sha256.Sum256([]byte(value))
 	return hex.EncodeToString(digest[:])
+}
+
+// hostCheckBudget bounds all queued attempts and retry waits for one host.
+func (cfg Config) hostCheckBudget() time.Duration {
+	seconds := (1+cfg.MaxRetries)*cfg.TimeoutSeconds + cfg.MaxRetries*cfg.RetryIntervalSeconds
+	return time.Duration(seconds) * time.Second
 }

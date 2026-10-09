@@ -9,11 +9,13 @@ import (
 
 // Config is the atomic, credential-free runtime configuration.
 type Config struct {
-	ScheduledEnabled bool   `json:"scheduledEnabled"`
-	RemnawaveUserID  int64  `json:"remnawaveUserId"`
-	IntervalSeconds  int    `json:"intervalSeconds"`
-	TimeoutSeconds   int    `json:"timeoutSeconds"`
-	ProbeURL         string `json:"probeUrl"`
+	ScheduledEnabled     bool   `json:"scheduledEnabled"`
+	RemnawaveUserID      int64  `json:"remnawaveUserId"`
+	IntervalSeconds      int    `json:"intervalSeconds"`
+	TimeoutSeconds       int    `json:"timeoutSeconds"`
+	MaxRetries           int    `json:"maxRetries"`
+	RetryIntervalSeconds int    `json:"retryIntervalSeconds"`
+	ProbeURL             string `json:"probeUrl"`
 }
 
 // User contains only safe monitoring-account identity and availability.
@@ -41,7 +43,7 @@ type Outcome struct {
 	ErrorCode  string   `json:"errorCode"`
 }
 
-// Attempt records one probe or setup failure without upstream secrets.
+// Attempt records one host check, including retries, or a setup failure without secrets.
 type Attempt struct {
 	ID              string     `json:"id"`
 	RunID           string     `json:"runId"`

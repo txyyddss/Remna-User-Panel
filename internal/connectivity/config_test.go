@@ -23,6 +23,15 @@ func TestDecodeConfigBoundariesAndSecrets(t *testing.T) {
 		{"long_interval", `{"intervalSeconds":86401}`, false},
 		{"zero_timeout", `{"timeoutSeconds":0}`, false},
 		{"long_timeout", `{"timeoutSeconds":61}`, false},
+		{"zero_retries", `{"maxRetries":0}`, true},
+		{"maximum_retries", `{"maxRetries":10,"retryIntervalSeconds":60}`, true},
+		{"negative_retries", `{"maxRetries":-1}`, false},
+		{"excess_retries", `{"maxRetries":11}`, false},
+		{"fractional_retries", `{"maxRetries":1.5}`, false},
+		{"zero_retry_interval", `{"retryIntervalSeconds":0}`, false},
+		{"negative_retry_interval", `{"retryIntervalSeconds":-1}`, false},
+		{"long_retry_interval", `{"retryIntervalSeconds":61}`, false},
+		{"fractional_retry_interval", `{"retryIntervalSeconds":1.5}`, false},
 		{"http", `{"probeUrl":"http://example.com/"}`, false},
 		{"credentials", `{"probeUrl":"https://secret:password@example.com/"}`, false},
 		{"relative", `{"probeUrl":"/generate_204"}`, false},
@@ -43,7 +52,7 @@ func TestDecodeConfigBoundariesAndSecrets(t *testing.T) {
 	}
 	cfg := DefaultConfig()
 	if cfg.ScheduledEnabled || cfg.RemnawaveUserID != 0 || cfg.IntervalSeconds != 300 || cfg.TimeoutSeconds != 15 ||
-		cfg.ProbeURL != "https://cp.cloudflare.com/generate_204" {
+		cfg.ProbeURL != "https://cp.cloudflare.com/generate_204" || cfg.MaxRetries != 10 || cfg.RetryIntervalSeconds != 1 {
 		t.Fatalf("unexpected defaults: %+v", cfg)
 	}
 }
@@ -59,6 +68,8 @@ func TestConfigHashSeparatesChangedProbeIdentity(t *testing.T) {
 		func(c *Config) { c.RemnawaveUserID++ },
 		func(c *Config) { c.ProbeURL = "https://example.com/generate_204" },
 		func(c *Config) { c.TimeoutSeconds++ },
+		func(c *Config) { c.MaxRetries-- },
+		func(c *Config) { c.RetryIntervalSeconds++ },
 		func(c *Config) { c.IntervalSeconds++ },
 		func(c *Config) { c.ScheduledEnabled = true },
 	} {
@@ -67,6 +78,17 @@ func TestConfigHashSeparatesChangedProbeIdentity(t *testing.T) {
 		if ConfigHash(copy) == first {
 			t.Fatal("changed settings reused old latest-result identity")
 		}
+	}
+}
+
+func TestDecodeConfigPreservesLegacyDefaultsAndExplicitZero(t *testing.T) {
+	legacy, err := DecodeConfig(`{"remnawaveUserId":42,"intervalSeconds":300,"timeoutSeconds":15,"probeUrl":"https://example.com"}`)
+	if err != nil || legacy.MaxRetries != 10 || legacy.RetryIntervalSeconds != 1 {
+		t.Fatalf("legacy retry defaults: %+v %v", legacy, err)
+	}
+	disabled, err := DecodeConfig(`{"maxRetries":0}`)
+	if err != nil || disabled.MaxRetries != 0 || disabled.RetryIntervalSeconds != 1 {
+		t.Fatalf("explicit zero lost: %+v %v", disabled, err)
 	}
 }
 

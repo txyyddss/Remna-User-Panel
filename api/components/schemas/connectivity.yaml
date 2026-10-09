@@ -1,12 +1,14 @@
 ConnectivityConfig:
   type: object
   additionalProperties: false
-  required: [scheduledEnabled, remnawaveUserId, intervalSeconds, timeoutSeconds, probeUrl]
+  required: [scheduledEnabled, remnawaveUserId, intervalSeconds, timeoutSeconds, maxRetries, retryIntervalSeconds, probeUrl]
   properties:
     scheduledEnabled: { type: boolean, default: false }
     remnawaveUserId: { type: integer, format: int64, minimum: 0 }
     intervalSeconds: { type: integer, minimum: 60, maximum: 86400, default: 300 }
     timeoutSeconds: { type: integer, minimum: 1, maximum: 60, default: 15 }
+    maxRetries: { type: integer, minimum: 0, maximum: 10, default: 10, description: Additional attempts after the initial failed check. Zero disables retries. }
+    retryIntervalSeconds: { type: integer, minimum: 1, maximum: 60, default: 1, description: Delay after a failed attempt before the next retry. }
     probeUrl: { type: string, format: uri, maxLength: 2048, default: 'https://cp.cloudflare.com/generate_204' }
 ConnectivityUser:
   type: object

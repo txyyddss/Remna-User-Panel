@@ -28,6 +28,12 @@ const { t } = useI18n()
       <UFormField name="connectivity-timeout" :label="t('hostConnectivity.timeout')" :description="t('hostConnectivity.timeoutHint')">
         <UInput id="connectivity-timeout" class="w-full" type="number" inputmode="numeric" :model-value="config.timeoutSeconds" :min="1" :max="60" :step="1" :disabled="disabled" @update:model-value="emit('change', { timeoutSeconds: Number($event) })" />
       </UFormField>
+      <UFormField name="connectivity-max-retries" :label="t('hostConnectivity.maxRetries')" :description="t('hostConnectivity.maxRetriesHint')">
+        <UInput id="connectivity-max-retries" class="w-full" type="number" inputmode="numeric" :model-value="config.maxRetries" :min="0" :max="10" :step="1" :disabled="disabled" @update:model-value="emit('change', { maxRetries: Number($event) })" />
+      </UFormField>
+      <UFormField name="connectivity-retry-interval" :label="t('hostConnectivity.retryInterval')" :description="t('hostConnectivity.retryIntervalHint')">
+        <UInput id="connectivity-retry-interval" class="w-full" type="number" inputmode="numeric" :model-value="config.retryIntervalSeconds" :min="1" :max="60" :step="1" :disabled="disabled" @update:model-value="emit('change', { retryIntervalSeconds: Number($event) })" />
+      </UFormField>
     </div>
     <UFormField name="connectivity-probe-url" :label="t('hostConnectivity.probeUrl')" :description="t('hostConnectivity.probeUrlHint')">
       <UInput id="connectivity-probe-url" class="w-full" type="url" :model-value="config.probeUrl" :maxlength="2048" :disabled="disabled" @update:model-value="emit('change', { probeUrl: String($event) })" />

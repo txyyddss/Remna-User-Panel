@@ -28,16 +28,38 @@ describe('connectivity configuration state', () => {
     current.value = snapshot()
     await nextTick()
     settings.draft.intervalSeconds = 777
-    current.value = { ...snapshot(), config: { ...snapshot().config, intervalSeconds: 600, timeoutSeconds: 20 } }
+    settings.draft.maxRetries = 2
+    settings.draft.retryIntervalSeconds = 3
+    current.value = { ...snapshot(), config: { ...snapshot().config, intervalSeconds: 600, timeoutSeconds: 20, maxRetries: 5, retryIntervalSeconds: 4 } }
     await nextTick()
     expect(settings.draft.intervalSeconds).toBe(777)
     expect(settings.draft.timeoutSeconds).toBe(20)
+    expect(settings.draft.maxRetries).toBe(2)
+    expect(settings.draft.retryIntervalSeconds).toBe(3)
     expect(settings.canRun.value).toBe(false)
     vi.mocked(connectivityApi.save).mockResolvedValue(undefined)
     await settings.save()
-    expect(connectivityApi.save).toHaveBeenCalledWith({ ...snapshot().config, intervalSeconds: 777, timeoutSeconds: 20 })
+    expect(connectivityApi.save).toHaveBeenCalledWith({ ...snapshot().config, intervalSeconds: 777, timeoutSeconds: 20, maxRetries: 2, retryIntervalSeconds: 3 })
     expect(refresh).toHaveBeenCalledOnce()
     expect(settings.canRun.value).toBe(true)
+  })
+
+  it('requires saving retry edits before running and preserves zero retries', async () => {
+    const { current, settings } = harness()
+    current.value = snapshot()
+    await nextTick()
+    settings.draft.maxRetries = 0
+    expect(settings.dirty.value).toBe(true)
+    expect(settings.valid.value).toBe(true)
+    expect(settings.canRun.value).toBe(false)
+    vi.mocked(connectivityApi.save).mockResolvedValue(undefined)
+    expect(await settings.save()).toBe(true)
+    expect(connectivityApi.save).toHaveBeenCalledWith({ ...snapshot().config, maxRetries: 0 })
+    expect(settings.canRun.value).toBe(true)
+    settings.draft.retryIntervalSeconds = 0
+    expect(await settings.save()).toBe(false)
+    expect(connectivityApi.save).toHaveBeenCalledOnce()
+    expect(settings.canRun.value).toBe(false)
   })
 
   it('requires the edited exact username to resolve before saving or running', async () => {

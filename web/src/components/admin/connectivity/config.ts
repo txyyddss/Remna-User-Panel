@@ -3,7 +3,7 @@ import type { ConnectivityConfig } from '@/api/connectivity'
 
 export const defaultConnectivityConfig: ConnectivityConfig = {
   scheduledEnabled: false, remnawaveUserId: 0, intervalSeconds: 300,
-  timeoutSeconds: 15, probeUrl: 'https://cp.cloudflare.com/generate_204',
+  timeoutSeconds: 15, maxRetries: 10, retryIntervalSeconds: 1, probeUrl: 'https://cp.cloudflare.com/generate_204',
 }
 
 const configSchema = z.object({
@@ -11,6 +11,8 @@ const configSchema = z.object({
   remnawaveUserId: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
   intervalSeconds: z.number().int().min(60).max(86400),
   timeoutSeconds: z.number().int().min(1).max(60),
+  maxRetries: z.number().int().min(0).max(10),
+  retryIntervalSeconds: z.number().int().min(1).max(60),
   probeUrl: z.string().max(2048).refine(value => {
     try {
       const url = new URL(value)
@@ -25,5 +27,6 @@ export function validConnectivityConfig(config: ConnectivityConfig): boolean {
 
 export function sameConnectivityConfig(a: ConnectivityConfig, b: ConnectivityConfig): boolean {
   return a.scheduledEnabled === b.scheduledEnabled && a.remnawaveUserId === b.remnawaveUserId
-    && a.intervalSeconds === b.intervalSeconds && a.timeoutSeconds === b.timeoutSeconds && a.probeUrl === b.probeUrl
+    && a.intervalSeconds === b.intervalSeconds && a.timeoutSeconds === b.timeoutSeconds
+    && a.maxRetries === b.maxRetries && a.retryIntervalSeconds === b.retryIntervalSeconds && a.probeUrl === b.probeUrl
 }

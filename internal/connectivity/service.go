@@ -27,6 +27,7 @@ type Service struct {
 	repository   Repository
 	queue        *upstreamqueue.Queue
 	now          func() time.Time
+	retryWait    func(context.Context, time.Duration) error
 	mu           sync.RWMutex
 	sourceGate   chan struct{}
 	started      bool
@@ -55,7 +56,7 @@ type Service struct {
 // NewService composes runtime dependencies without starting any goroutines.
 func NewService(settings Settings, source Source, probe Probe, repository Repository, queue *upstreamqueue.Queue) *Service {
 	return &Service{settings: settings, source: source, probe: probe, repository: repository, queue: queue,
-		now: time.Now, sourceGate: make(chan struct{}, 1), runWake: make(chan struct{}, 1), configWake: make(chan struct{}, 1)}
+		now: time.Now, retryWait: waitForRetry, sourceGate: make(chan struct{}, 1), runWake: make(chan struct{}, 1), configWake: make(chan struct{}, 1)}
 }
 
 // Start accepts a process-owned batch, returning the active run for duplicates.

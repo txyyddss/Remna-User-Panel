@@ -14,4 +14,6 @@ This settings module configures an existing Remnawave account and presents authe
 - `useConnectivitySettings.test.ts` covers preserved drafts, exact account resolution and clearing in-flight selection. `useConnectivityMonitor.test.ts` covers stale responses and polling disposal. `useConnectivityHistory.test.ts` covers filter changes and cursor continuation. These suites run in hosted CI.
 - `ConnectivityResults.test.ts` covers restored identities without endpoint metadata and actionable subscription failures without duplicate empty-state prompts.
 
+Retry controls use `maxRetries` (0–10, default 10 additional attempts) and `retryIntervalSeconds` (1–60, default 1). The timeout applies to every attempt. Existing typed draft merging preserves retry edits across polling; either field marks the form dirty and blocks Run now until saved. Zero retries is valid. A host stays Checking through its retries and publishes one final result. `config.test.ts` and the settings tests cover bounds, independent retry edits, polling and atomic saves in hosted CI.
+
 English and Chinese strings live in `web/locales/*/host-connectivity.json`. Future UI capabilities should extend these focused components and the existing typed client; this module currently covers only connectivity configuration, checks and retained results.

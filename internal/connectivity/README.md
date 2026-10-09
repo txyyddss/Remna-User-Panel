@@ -27,7 +27,13 @@ repository's rolling 24-hour attempt history.
 `connectivity.config` is one atomic JSON setting. Its defaults are scheduling
 disabled, no account selected, a 300-second interval, a 15-second timeout, and
 `https://cp.cloudflare.com/generate_204`. Intervals must be 60–86400 seconds;
-timeouts must be 1–60 seconds. Targets must be absolute HTTPS URLs without URL
+timeouts must be 1–60 seconds per attempt. Failed checks allow 0–10 additional
+retries (default 10), delayed 1–60 seconds (default 1) after each failure. Zero
+retries preserves single-attempt behavior. Existing saved JSON settings that
+omit retry fields inherit these defaults; explicit zero remains zero. Both
+fields participate in the configuration hash, so a policy change cancels obsolete
+work and separates current results from retained earlier history.
+Targets must be absolute HTTPS URLs without URL
 credentials. Account ID zero is permitted only while scheduling is disabled.
 
 Each batch freshly resolves the selected account and protected raw subscription
@@ -44,6 +50,16 @@ batch is cancelled. It does not probe if admission cannot be persisted, and it
 stops the batch after a persistence failure. Configured setup failures receive a
 retained attempt without a host UUID; unconfigured manual requests are rejected.
 Only stable `CONNECTIVITY_` codes leave this module.
+
+One persisted running attempt represents the entire host check. `retry.go`
+dispatches every individual attempt through the same queue with a fresh timeout,
+then waits outside the queue using a cancellable timer. Only `failed` outcomes
+retry; success, unsupported configurations and checker errors stop immediately.
+Settings changes or shutdown interrupt probing and waiting. Only the final
+sanitized result is persisted, with the final probe's TTFB/HTTP diagnostics;
+intermediate failures do not publish outages or increment completed-host counts.
+The probe interface remains a single-attempt contract. The per-host worst-case
+budget is `(1 + maxRetries) * timeoutSeconds + maxRetries * retryIntervalSeconds`.
 
 ## Scheduling, recovery, and retention
 
@@ -119,6 +135,9 @@ Mapper paths, operation counts, document size and nesting are bounded.
 - `source.go` loads bounded upstream inventory and rejects obsolete generations.
 - `snapshot.go` combines safe cached metadata with current retained outcomes.
 - `worker.go` records attempts, dispatches queued probes, and finalizes runs.
+- `retry.go` owns per-attempt queue admission, deadlines and cancellable retry delays.
+- `retry_test.go` and `retry_cancellation_test.go` cover final-only results, limits, deadlines, queue failures, cancellation and duration budgets in hosted CI.
+- `retry_test_helpers_test.go` composes the existing source/repository fixtures with the production queue for hosted retry coverage.
 - `probe.go` executes isolated authenticated HTTPS checks and classifies outcomes.
 - `probe_registry.go` registers required Xray handlers/transports and suppresses raw logs.
 - `projection.go` validates exact host identity and builds an in-memory engine document.

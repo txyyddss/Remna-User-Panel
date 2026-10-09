@@ -22,7 +22,7 @@ type SettingDefinition struct {
 }
 
 var settingDefinitions = map[string]SettingDefinition{
-	connectivity.SettingKey:                  {Default: `{"scheduledEnabled":false,"remnawaveUserId":0,"intervalSeconds":300,"timeoutSeconds":15,"probeUrl":"https://cp.cloudflare.com/generate_204"}`, Validate: func(value string) error { _, err := connectivity.DecodeConfig(value); return err }},
+	connectivity.SettingKey:                  {Default: `{"scheduledEnabled":false,"remnawaveUserId":0,"intervalSeconds":300,"timeoutSeconds":15,"maxRetries":10,"retryIntervalSeconds":1,"probeUrl":"https://cp.cloudflare.com/generate_204"}`, Validate: func(value string) error { _, err := connectivity.DecodeConfig(value); return err }},
 	"telegram.pm.enabled":                    {Default: "false", Validate: validateBoolean},
 	"telegram.pm.group_chat_id":              {Validate: validatePMGroup},
 	"captcha.turnstile.enabled":              {Default: "false", Validate: validateBoolean},
