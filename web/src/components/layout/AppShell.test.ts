@@ -131,7 +131,11 @@ describe('AppShell accessibility', () => {
     expect(home?.to).toBe('/home')
     expect(home?.type).not.toBe('trigger')
     expect(home?.defaultOpen).toBe(true)
-    expect(home?.children).toHaveLength(2)
+    expect(home?.children).toHaveLength(3)
+    expect(home?.children).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: 'subscription.title', to: '/subscription' }),
+      expect.objectContaining({ label: 'nav.revoke', to: { path: '/subscription', query: { revoke: '1' } } }),
+    ]))
     expect(home?.children?.some(item => item.label === 'nav.addSquads')).toBe(false)
   })
 

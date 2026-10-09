@@ -17,10 +17,10 @@ const stubs = { UButton: buttonStub, StatusBadge: { props: ['tone', 'label'], te
 describe('uptime inspection', () => {
   it('lets keyboard users inspect earlier periods without using color alone', async () => {
     const wrapper = shallowMount(UptimeBar, { props: { timeline, label: 'Tokyo transit', host: true }, global: { stubs } })
-    const button = wrapper.get('button')
+    const button = wrapper.get('.uptime__bar')
     await button.trigger('focus')
     expect(wrapper.get('[role="status"]').text()).toContain('Complete outage')
-    await button.trigger('keydown.left')
+    await button.trigger('keydown', { key: 'ArrowLeft' })
     expect(wrapper.get('[role="status"]').text()).toContain('All operational')
     expect(button.attributes('aria-label')).toContain('Tokyo transit')
     wrapper.unmount()
