@@ -10,7 +10,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 12px;
-  color: var(--accent);
+  color: #fff;
   background: var(--accent-soft);
 }
 
