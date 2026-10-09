@@ -1,6 +1,8 @@
 # Subscription and uptime
 
 `HomeUptimePanel.vue` replaces the home subscription block only for active combos.
+Its subscription entrance stays centered on mobile and desktop; a failed read
+places Retry on a separate row so it does not shift the entrance.
 `SubscriptionPage.vue` composes the full subscription URL, existing revoke and
 connections actions, native host links, and squad history. `HostLinkRow.vue`
 owns clipboard feedback and an on-demand QR popup using the installed `qrcode`

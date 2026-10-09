@@ -8,10 +8,14 @@ import { ApiError } from '@/api/http'
 import { subscriptionApi, type MemberSubscription, type UptimeTimeline } from '@/api/subscription'
 import { connectivityApi } from '@/api/connectivity'
 import { memberOperationsApi } from '@/api/memberOperations'
+import { preferencesApi } from '@/api/preferences'
+import { displayCurrencyApi } from '@/api/displayCurrency'
+import { useSessionStore } from '@/stores/session'
 import { setLocale, t } from '@/i18n'
 import SubscriptionAudit from './SubscriptionAudit.vue'
 
 const params = new URLSearchParams(location.search)
+if (params.has('telegram')) Object.assign(window, { Telegram: { WebApp: { platform: 'ios', version: '9.0', initData: '', initDataUnsafe: {}, BackButton: { show() {}, hide() {}, onClick() {}, offClick() {} } } } })
 const state = { reads: 0, summaryReads: 0, revocations: 0, saves: 0, checks: 0, failure: params.has('error') }
 const now = Date.now()
 const at = (offset: number) => new Date(now + offset).toISOString()
@@ -52,14 +56,22 @@ connectivityApi.save = async next => { state.saves++; Object.assign(config, next
 connectivityApi.check = async () => { state.checks++; return { id: 'run', status: 'completed', trigger: 'manual', startedAt: at(0), finishedAt: at(0), total: 1, completed: 1, errorCode: '' } }
 Object.assign(window, { __subscriptionAudit: state, __subscriptionAuditLocale: setLocale, __subscriptionSnapshot: data })
 const mode = params.get('mode') ?? 'subscription'
-const app = createApp(SubscriptionAudit, { mode })
+const shell = params.has('shell')
+const app = shell ? createApp((await import('@/App.vue')).default) : createApp(SubscriptionAudit, { mode })
+app.mixin({ errorCaptured(error) { console.error(error) } })
 app.config.globalProperties.$t = t
-app.use(createPinia())
-const router = createRouter({ history: createWebHistory(), routes: [
+const pinia = createPinia()
+app.use(pinia)
+useSessionStore(pinia).session = { authenticated: true, user: { id: 'audit-member', telegramId: '42', firstName: 'Mira', role: 'user', onboardingState: 'complete' } } as never
+useSessionStore(pinia).status = 'ready'
+preferencesApi.get = async () => ({ activeCombo: true, showAroundTx: false, showActivity: false, includeNodePrices: true, notifications: {} }) as never
+displayCurrencyApi.get = async () => ({ currency: 'TXB', rates: null }) as never
+const router = shell ? (await import('@/router')).default : createRouter({ history: createWebHistory(), routes: [
   { path: '/fixtures/subscription-audit.html', component: SubscriptionAudit },
   { path: '/subscription', name: 'subscription', component: SubscriptionAudit },
   { path: '/connections', component: SubscriptionAudit },
   { path: '/catalog', component: SubscriptionAudit },
 ] })
+if (shell) await router.replace(mode === 'home' ? '/home' : '/subscription')
 app.use(router); app.use(ui)
 void router.isReady().then(() => app.mount('#app'))

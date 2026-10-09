@@ -25,7 +25,7 @@ const { t } = useI18n()
 
 <style scoped>
 .home-uptime { display: grid; gap: 0.5rem; }
-.home-uptime__entrance { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; border-top: 1px solid var(--line); padding-top: 0.45rem; }
-.home-uptime__entrance :deep(a) { padding-left: 0; min-height: 44px; }
+.home-uptime__entrance { display: grid; justify-items: center; gap: 0.5rem; border-top: 1px solid var(--line); padding-top: 0.45rem; }
+.home-uptime__entrance :deep(a) { min-height: 44px; }
 .home-uptime__hint { margin: 0; color: var(--text-muted); font-size: 0.75rem; }
 </style>
