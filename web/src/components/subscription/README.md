@@ -1,0 +1,25 @@
+# Subscription and uptime
+
+`HomeUptimePanel.vue` replaces the home subscription block only for active combos.
+`SubscriptionPage.vue` composes the full subscription URL, existing revoke and
+connections actions, native host links, and squad history. `HostLinkRow.vue`
+owns clipboard feedback and an on-demand QR popup using the installed `qrcode`
+library and Nuxt UI modal. `SquadUptime.vue` keeps host history in native,
+initially closed disclosures. `UptimeBar.vue` renders time-proportional intervals
+with pointer and arrow-key inspection and localized, accessible status labels.
+
+`useSubscriptionData.ts` owns live fetching, 60-second visible-page polling,
+superseded request cancellation and lifecycle cleanup. It never restores or
+persists bearer links. Successful revocation clears the previous snapshot before
+loading current native links; unmounting drops all member data.
+
+The typed client `web/src/api/subscription.ts` calls authenticated member routes.
+The server authorizes active local ownership and preferences, joins upstream
+host/inbound/node metadata, and derives histories from the existing monitor.
+Unknown measurements are neutral gaps. Hosts are green/red; squads and the home
+summary add yellow for partial outages, only with complete measurement coverage.
+No probe credentials, latency, or numeric HTTP results enter these interfaces.
+
+English and Chinese copy inherits the host-connectivity locale domain. Views
+reuse the existing premium-dark layout and do not add dependencies.
+`useSubscriptionData.test.ts` covers revocation clearing, obsolete response rejection, visible-page polling and disposal of private state in hosted CI. `UptimeBar.test.ts` covers keyboard inspection and neutral current status after refresh data expires.

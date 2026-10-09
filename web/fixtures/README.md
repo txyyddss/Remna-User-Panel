@@ -40,3 +40,5 @@ These files are for local visual audits. The production Vite build starts from t
 - `AbuseAudit.vue`, `abuse-audit.ts`, and `abuse-audit.html` mount the detector admin panel with isolated constructed API responses. Query parameters `slow`, `empty`, and `error` exercise loading, empty and failure states; `window.__abuseAudit` records form saves and rule actions for manual Chrome DevTools MCP inspection.
 - The same fixture's `operation` mode exercises simultaneous operation receipts,
   polling errors and retry controls; `reduced` constructs reduced-motion preference.
+
+`SubscriptionAudit.vue`, `subscription-audit.ts` and `subscription-audit.html` render real Home, Subscription & uptime, and connectivity-admin components using constructed owner-specific data. Query flags `mode=home|admin`, `slow`, `empty`, `inactive`, `unknown`, `error` and `noreset` cover loading, gaps, absent ownership, errors and timestamp absence. The audit has no production API traffic; `__subscriptionAudit` exposes read/revoke/save counts and `__subscriptionAuditLocale` switches languages for Chrome DevTools MCP checks.

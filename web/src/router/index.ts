@@ -19,6 +19,7 @@ const router = createRouter({
       meta: { immersive: true },
     },
     { path: '/home', name: 'home', component: () => import('@/views/HomeView.vue') },
+    { path: '/subscription', name: 'subscription', component: () => import('@/views/SubscriptionView.vue') },
     { path: '/settings', name: 'settings', component: () => import('@/views/SettingsView.vue') },
     { path: '/connections', name: 'connections', component: () => import('@/views/ConnectionsView.vue') },
     { path: '/catalog', name: 'catalog', component: () => import('@/views/CatalogView.vue') },
@@ -43,7 +44,7 @@ const router = createRouter({
       meta: { adminSection: 'users' },
     },
     {
-      path: '/admin/:section(settings|catalog|activity|affiliates|coupons|questionnaires|onboarding|users|compensation|abuse|backups|database|audit)',
+      path: '/admin/:section(settings|host-connectivity|catalog|activity|affiliates|coupons|questionnaires|onboarding|users|compensation|abuse|backups|database|audit)',
       name: 'admin',
       component: () => import('@/views/AdminView.vue'),
     },

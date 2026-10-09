@@ -27,6 +27,7 @@ const groups = [
   ] },
   { labelKey: 'adminNav.system', sections: [
     { value: 'settings', labelKey: 'adminNav.settings', icon: 'i-ph-key' },
+    { value: 'host-connectivity', labelKey: 'hostConnectivity.title', icon: 'i-ph-plugs-connected' },
     { value: 'compensation', labelKey: 'adminCompensation.nav', icon: 'i-ph-first-aid' },
     { value: 'abuse', labelKey: 'adminAbuse.nav', icon: 'i-ph-shield-warning' },
     { value: 'backups', labelKey: 'adminNav.backups', icon: 'i-ph-archive' },

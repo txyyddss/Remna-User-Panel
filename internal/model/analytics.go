@@ -8,6 +8,7 @@ type Statistics struct {
 	LifetimeTrafficBytes string     `json:"lifetimeTrafficBytes"`
 	TrafficLimitBytes    string     `json:"trafficLimitBytes"`
 	OnlineAt             *time.Time `json:"onlineAt"`
+	LastTrafficResetAt   *time.Time `json:"lastTrafficResetAt"`
 	Categories           []string   `json:"categories"`
 	SparklineData        []string   `json:"sparklineData"`
 	TopNodes             []TopNode  `json:"topNodes"`

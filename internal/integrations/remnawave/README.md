@@ -27,3 +27,5 @@ This package implements the Remnawave v3.3.0 operations used by TX Carpool. Endp
 - `user_identity_test.go` rejects mismatched identities from every user-returning operation.
 - `README.md` documents the package layout and upstream contract boundary.
 - `users_part2.go` contains paged user lookup, mutation payload, and action helpers.
+
+`subscription_keys.go` implements the documented protected connection-keys endpoint with typed enabled/hidden/disabled collections. Native links are bearer secrets: caller authorization, queued execution and no logging/persistence are required. Only enabled and hidden keys are considered by the member adapter.

@@ -2,8 +2,9 @@
 
 This module measures authenticated proxy connectivity for the enabled hosts
 accessible to an existing Remnawave test account, including hidden hosts. It
-does not modify upstream accounts or hosts, publish notifications, or calculate
-uptime. The administrator interface uses the service's safe snapshot and the
+does not modify upstream accounts or hosts or publish notifications.
+Member uptime is derived from retained observations, without new persistence.
+The administrator interface uses the service's safe snapshot and the
 repository's rolling 24-hour attempt history.
 
 ## Entry points and dependencies
@@ -178,3 +179,7 @@ target to cover authentication, status failures, redirect refusal, fresh
 connections, no direct fallback, certificate verification, timeout and
 cancellation. Projection tests cover loss-prone transport/security fields and
 mapper isolation. These suites are authored for hosted CI, not run locally.
+
+## Member uptime
+
+`uptime_types.go` defines credential-safe timelines and owner-specific subscription projections. `uptime.go` builds completed-observation intervals and neutral gaps. `uptime_aggregate.go` evaluates simultaneous child states for squads and the home summary. `uptime_projection.go` joins the current configuration's retained history, calculates freshness as twice the interval plus maximum serial batch duration, and rejects configuration changes during reads. `uptime_test.go` covers completion-time boundaries, exact expiry, missing/unsupported observations and nonconcurrent outages in hosted CI. Current active membership is projected over 24 hours; incomplete coverage stays unknown. No aggregate table, host mirror or browser probe is introduced.

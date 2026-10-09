@@ -3,7 +3,6 @@ import { computed, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import InlineNotice from '@/components/common/InlineNotice.vue'
-import OperationStatusNotice from '@/components/common/OperationStatusNotice.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import { useCommunityAccess } from '@/composables/useCommunityAccess'
 import { useDashboard } from '@/composables/useDashboard'
@@ -11,10 +10,10 @@ import { useI18n } from '@/i18n'
 import BalanceHero from './BalanceHero.vue'
 import ComingSoonLinks from './ComingSoonLinks.vue'
 import EntitlementSummary from './EntitlementSummary.vue'
-import SubscriptionPanel from './SubscriptionPanel.vue'
+import HomeUptimePanel from '@/components/subscription/HomeUptimePanel.vue'
 import UsagePanel from './UsagePanel.vue'
 
-const { dashboard, loading, revoking, revokeBlocked, revokeReceipt, revokeChecking, revokeError, error, usageRatio, catalogNodes, activeSquadNames, load, revokeSubscription, refreshRevoke } = useDashboard()
+const { dashboard, loading, error, usageRatio, catalogNodes, activeSquadNames, load } = useDashboard()
 const { activeCombo: hasValidCombo, refresh: refreshCommunityAccess } = useCommunityAccess()
 const queuedCancellationNotice = shallowRef(false)
 const route = useRoute()
@@ -22,7 +21,7 @@ const router = useRouter()
 const { t } = useI18n()
 const reissueOrderId = computed(() => typeof route.query.reissue === 'string' && route.query.reissue ? route.query.reissue : undefined)
 const topUpRequested = computed(() => route.query.topUp === '1' && !reissueOrderId.value)
-const revokeRequested = computed(() => route.query.revoke === '1')
+watch(() => route.query.revoke, value => { if (value === '1') void router.replace({ path: '/subscription', query: { revoke: '1' } }) }, { immediate: true })
 watch(() => route.query.addSquads, value => { if (value === '1') void router.replace({ path: '/settings', query: { addSquads: '1' } }) }, { immediate: true })
 const catalogBlocked = computed(() => route.query.autoRenewBlocked === '1')
 const autoRenewalFailureMessage = computed(() => {
@@ -36,10 +35,6 @@ const autoRenewalFailureMessage = computed(() => {
 async function handlePaid(): Promise<void> {
   await load({ quiet: true })
   await refreshCommunityAccess()
-}
-
-async function confirmRevoke(): Promise<void> {
-  await revokeSubscription()
 }
 
 async function handleQueuedCancelled(): Promise<void> {
@@ -66,11 +61,6 @@ function consumeReissueRequest(): void {
   void router.replace({ name: 'home', query })
 }
 
-function consumeHomeRequest(name: 'revoke'): void {
-  const query = { ...route.query }
-  delete query[name]
-  void router.replace({ name: 'home', query })
-}
 </script>
 
 <template>
@@ -97,19 +87,9 @@ function consumeHomeRequest(name: 'revoke'): void {
           <div class="home-alerts">
             <InlineNotice v-if="catalogBlocked" tone="warning">{{ $t('home.autoRenewalCatalogBlocked') }}</InlineNotice>
             <InlineNotice v-if="autoRenewalFailureMessage" tone="warning" :title="$t('home.autoRenewalFailureTitle')">{{ autoRenewalFailureMessage }}</InlineNotice>
-            <InlineNotice v-if="revokeReceipt?.status === 'succeeded'" tone="success" :title="$t('dashboard.linkReplaced')">{{ $t('dashboard.previousLinkInvalid') }}</InlineNotice>
-            <InlineNotice v-if="revokeReceipt?.status === 'succeeded' && error" tone="warning">{{ error }}</InlineNotice>
-            <OperationStatusNotice v-if="revokeReceipt?.status !== 'succeeded'" :receipt="revokeReceipt" :error="revokeError ?? error" :checking="revokeChecking" @refresh="refreshRevoke" />
             <InlineNotice v-if="queuedCancellationNotice" tone="success">{{ $t('home.queuedCancelled') }}</InlineNotice>
           </div>
-          <SubscriptionPanel
-            :subscription-url="dashboard.subscriptionUrl"
-            :revoking="revoking"
-            :revoke-blocked="revokeBlocked"
-            :open-revoke="revokeRequested"
-            @revoke="confirmRevoke"
-            @revoke-request-consumed="consumeHomeRequest('revoke')"
-          />
+          <HomeUptimePanel v-if="hasValidCombo" />
           <UsagePanel
             v-if="dashboard.statistics"
             class="home-layout__usage"

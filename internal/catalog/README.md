@@ -31,3 +31,6 @@ This package builds the live catalog, validates purchase selections against curr
 - `usage_quote_test.go` verifies bounded node-usage ranges, quote selection validation, and purchase-history forwarding.
 - `rollover_test.go` verifies projection ownership, active-term validation, upstream identity requirements, and queued snapshot ranges.
 - `zero_coverage_test.go` covers queued-purchase cancellation, legacy renewal quote/commit flows, due automatic-renewal processing, and failure reasons.
+
+`subscription.go` authorizes an active local term and disabled-squad preferences before upstream subscription discovery. It rechecks ownership after the queued read, then asks the shared monitor to derive host/squad/home timelines. No user-facing GET creates or changes preferences.
+`subscription_test.go` covers current-term authorization, enabled squad preferences, credential-free summaries, and ownership expiry during queued reads in hosted CI.

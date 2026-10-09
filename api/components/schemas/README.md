@@ -39,3 +39,5 @@ Schema definitions are grouped into bounded sequential shards. The root componen
 `schemas-26.yaml` defines private-message conversations, moderation/repair requests, paged inventory and bounded delivery references. Telegram numeric IDs remain decimal strings.
 
 `connectivity.yaml` defines the seven credential-free connectivity configuration, account, attempt, batch, host-result, snapshot and cursor-history contracts. Nullable fields remain present; Remnawave account references are canonical numeric IDs.
+
+`uptime.yaml` describes neutral-gap timelines, the credential-free home summary and member-only subscription host/squad projections, without diagnostic timing or HTTP status fields.

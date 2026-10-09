@@ -84,5 +84,14 @@ onUnmounted(() => {
       :catalog-nodes="catalogNodes"
       :use-multiplier="false"
     />
+    <dl class="home-usage__last-reset">
+      <dt>{{ $t('dashboard.lastTrafficReset') }}</dt>
+      <dd>{{ statistics.lastTrafficResetAt ? formatDateTime(statistics.lastTrafficResetAt) : $t('dashboard.noTrafficReset') }}</dd>
+    </dl>
   </section>
 </template>
+
+<style scoped>
+.home-usage__last-reset { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.35rem 0.75rem; margin: 0.8rem 0 0; padding-top: 0.7rem; border-top: 1px solid var(--line); color: var(--text-muted); font-size: 0.75rem; }
+.home-usage__last-reset dd { margin: 0; }
+</style>

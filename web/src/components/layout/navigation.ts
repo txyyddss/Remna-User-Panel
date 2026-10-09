@@ -30,6 +30,7 @@ const adminNavigation: readonly AdminNavigationItem[] = [
   { labelKey: 'adminNav.onboarding', to: '/admin/onboarding', icon: 'i-ph-user-plus-bold' },
   { labelKey: 'adminNav.users', to: '/admin/users', icon: 'i-ph-user-focus' },
   { labelKey: 'adminNav.settings', to: '/admin/settings', icon: 'i-ph-key' },
+  { labelKey: 'hostConnectivity.title', to: '/admin/host-connectivity', icon: 'i-ph-plugs-connected' },
   { labelKey: 'adminCompensation.nav', to: '/admin/compensation', icon: 'i-ph-first-aid' },
   { labelKey: 'adminAbuse.nav', to: '/admin/abuse', icon: 'i-ph-shield-warning' },
   { labelKey: 'adminNav.backups', to: '/admin/backups', icon: 'i-ph-archive' },
@@ -49,8 +50,9 @@ export function desktopNavigationItems(t: Translate, isAdmin: boolean, showAroun
     {
       label: t('nav.home'), to: '/home', icon: 'i-ph-house', defaultOpen: true, exactQuery: true,
       children: [
+        { label: t('subscription.title'), to: '/subscription', icon: 'i-ph-link-bold' },
         { label: t('nav.connections'), to: '/connections', icon: 'i-ph-devices' },
-        { label: t('nav.revoke'), to: { path: '/home', query: { revoke: '1' } }, icon: 'i-ph-trash', exactQuery: true },
+        { label: t('nav.revoke'), to: { path: '/subscription', query: { revoke: '1' } }, icon: 'i-ph-trash', exactQuery: true },
       ],
     },
     { label: t('nav.explore'), to: '/catalog', icon: 'i-ph-compass' },

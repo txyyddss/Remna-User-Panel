@@ -19,10 +19,10 @@
     "retryInterval": "重试间隔（秒）",
     "retryIntervalHint": "失败后等待 1–60 秒再重试，默认 1 秒。",
     "probeUrl": "HTTPS 探测地址",
-    "probeUrlHint": "收到 200–299 响应即确认连通。不跟随重定向，地址不得包含凭据。",
+    "probeUrlHint": "成功的 HTTPS 响应表示连接正常。不跟随重定向，也不接受带有凭据的 URL。",
     "runNow": "立即检查",
     "checking": "检查中",
-    "saveBeforeRun": "请先使用设置页的保存按钮保存更改，再运行检查。",
+    "saveBeforeRun": "请先保存更改，再运行检查。",
     "invalidDraft": "保存前，请解析所选用户名并检查间隔、超时、重试设置和 HTTPS 地址。",
     "invalidConfig": "请使用有效的 HTTPS 地址、60–86,400 秒的检查间隔、1–60 秒的超时、0–10 次重试和 1–60 秒的重试间隔。",
     "resolveRequired": "请先解析此准确用户名，再保存。",
@@ -47,14 +47,24 @@
     "saveFailed": "无法保存连通性配置。",
     "historyFailed": "无法加载检查历史。",
     "status": {
-      "unchecked": "未检查", "running": "检查中", "connected": "已连通",
-      "failed": "失败", "unsupported": "不支持", "error": "检查器错误", "interrupted": "已中断"
+      "unchecked": "未检查",
+      "running": "检查中",
+      "connected": "已连通",
+      "failed": "失败",
+      "unsupported": "不支持",
+      "error": "检查器错误",
+      "interrupted": "已中断"
     },
     "run": {
-      "running": "已检查 {completed}/{total}", "completed": "已完成 {completed}/{total}",
-      "error": "本批检查未能完成", "interrupted": "本批检查已中断"
+      "running": "已检查 {completed}/{total}",
+      "completed": "已完成 {completed}/{total}",
+      "error": "本批检查未能完成",
+      "interrupted": "本批检查已中断"
     },
-    "trigger": { "manual": "手动检查", "scheduled": "定时检查" },
+    "trigger": {
+      "manual": "手动检查",
+      "scheduled": "定时检查"
+    },
     "codes": {
       "CONNECTIVITY_ACCOUNT_UNAVAILABLE": "测试账户不可用、未启用或已过期。",
       "CONNECTIVITY_ALREADY_STARTED": "已有一批连通性检查正在运行。",
@@ -90,5 +100,39 @@
       "CONNECTIVITY_VALIDATION_UNAVAILABLE": "目前无法验证所选测试账户。",
       "CONNECTIVITY_XRAY_START_FAILED": "内置代理无法使用此主机配置启动。"
     }
+  },
+  "uptime": {
+    "summary": "网络状态",
+    "window": "最近 24 小时",
+    "dayAgo": "24 小时前",
+    "notAvailable": "监测数据暂不可用。未测量的时段显示为空白。",
+    "barAria": "{name}：从 {from} 到 {to} 的状态。使用方向键查看各时段。",
+    "segment": "{state} · {from} 至 {to}",
+    "state": {
+      "operational": "全部正常",
+      "partial": "部分故障",
+      "outage": "完全中断",
+      "unknown": "暂无数据"
+    }
+  },
+  "subscription": {
+    "title": "订阅与在线状态",
+    "copy": "查看导入链接及当前启用小队的状态。",
+    "hosts": "可访问的主机",
+    "squads": "启用的小队",
+    "copyHost": "复制 {name} 的链接",
+    "qrHost": "{name} 的二维码",
+    "qrHint": "使用代理客户端扫描二维码以导入此主机。",
+    "qrFailed": "二维码生成失败，请关闭后重新打开重试。",
+    "copyFailed": "链接复制失败，请重试。",
+    "noLink": "此主机暂时没有可用的独立导入链接。",
+    "ambiguousLink": "无法为此主机匹配唯一的导入链接。",
+    "hostDetails": "主机状态（{count}）",
+    "noHosts": "暂无可访问的主机。",
+    "noSquadHosts": "此小队暂无可访问的主机。",
+    "noSquads": "暂时没有启用的小队。",
+    "noCombo": "没有生效中的套餐",
+    "noComboHint": "激活套餐后即可查看订阅链接与在线状态。",
+    "loadFailed": "订阅与在线状态数据加载失败。"
   }
 }

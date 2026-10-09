@@ -41,7 +41,8 @@ func (a remnaAdapter) Dashboard(ctx context.Context, remoteID string) (catalog.R
 		UsedTrafficBytes:     strconv.FormatInt(user.UserTraffic.UsedTrafficBytes, 10),
 		LifetimeTrafficBytes: strconv.FormatInt(user.UserTraffic.LifetimeUsedTrafficBytes, 10),
 		TrafficLimitBytes:    strconv.FormatInt(user.TrafficLimitBytes, 10), OnlineAt: user.UserTraffic.OnlineAt,
-		Categories: stats.Categories, SparklineData: make([]string, 0, len(stats.SparklineData)),
+		LastTrafficResetAt: user.LastTrafficResetAt,
+		Categories:         stats.Categories, SparklineData: make([]string, 0, len(stats.SparklineData)),
 		TopNodes: make([]model.TopNode, 0, len(stats.TopNodes)),
 	}
 	for _, sample := range stats.SparklineData {

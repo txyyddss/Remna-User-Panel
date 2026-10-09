@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/txyyddss/Remna-User-Panel/internal/connectivity"
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 )
@@ -49,13 +50,14 @@ type cachedDashboard struct {
 
 // Service owns price selection and short-lived statistics caching.
 type Service struct {
-	repository Repository
-	remnawave  RemnawaveClient
-	cacheTTL   time.Duration
-	now        func() time.Time
-	cacheMu    sync.RWMutex
-	cache      map[string]cachedDashboard
-	settings   AutomaticRenewalSettings
+	repository   Repository
+	remnawave    RemnawaveClient
+	cacheTTL     time.Duration
+	now          func() time.Time
+	cacheMu      sync.RWMutex
+	cache        map[string]cachedDashboard
+	settings     AutomaticRenewalSettings
+	connectivity *connectivity.Service
 }
 
 // NewService creates a catalog service.

@@ -237,6 +237,7 @@ Statistics:
     - lifetimeTrafficBytes
     - trafficLimitBytes
     - onlineAt
+    - lastTrafficResetAt
     - categories
     - sparklineData
     - topNodes
@@ -251,6 +252,9 @@ Statistics:
       type: string
       pattern: '^\d+$'
     onlineAt:
+      type: [string, 'null']
+      format: date-time
+    lastTrafficResetAt:
       type: [string, 'null']
       format: date-time
     categories:

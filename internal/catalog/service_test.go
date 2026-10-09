@@ -88,12 +88,13 @@ func TestDashboardLocalFreshAndStale(t *testing.T) {
 	t.Parallel()
 
 	now := time.Date(2026, 8, 7, 12, 0, 0, 0, time.UTC)
+	lastReset := now.Add(-24 * time.Hour)
 	remoteID := "remote-1"
 	active := model.Purchase{ID: "active"}
 	queued := model.Purchase{ID: "queued"}
 	repository := &catalogRepository{balance: model.TXBMoney(1234), active: &active, queued: &queued}
 	remnawave := &catalogRemnawave{dashboard: RemoteDashboard{
-		Statistics:      model.Statistics{UsedTrafficBytes: "42"},
+		Statistics:      model.Statistics{UsedTrafficBytes: "42", LastTrafficResetAt: &lastReset},
 		SubscriptionURL: "https://subscription.test/token",
 	}}
 	service := NewService(repository, remnawave, time.Minute)
@@ -118,6 +119,9 @@ func TestDashboardLocalFreshAndStale(t *testing.T) {
 	if remnawave.dashboardUserID != remoteID {
 		t.Fatalf("remote dashboard user = %q, want %q", remnawave.dashboardUserID, remoteID)
 	}
+	if fresh.Statistics.LastTrafficResetAt == nil || !fresh.Statistics.LastTrafficResetAt.Equal(lastReset) {
+		t.Fatal("upstream reset timestamp lost")
+	}
 
 	remnawave.dashboardErr = errors.New("upstream unavailable")
 	service.now = func() time.Time { return now.Add(30 * time.Second) }
@@ -136,6 +140,9 @@ func TestDashboardLocalFreshAndStale(t *testing.T) {
 	}
 	if !stale.StatisticsStale || stale.Statistics == nil || stale.StatisticsWarning == "" || !stale.FetchedAt.Equal(now) {
 		t.Fatalf("stale dashboard = %+v", stale)
+	}
+	if stale.Statistics.LastTrafficResetAt == nil || !stale.Statistics.LastTrafficResetAt.Equal(lastReset) {
+		t.Fatal("cached reset timestamp lost")
 	}
 }
 

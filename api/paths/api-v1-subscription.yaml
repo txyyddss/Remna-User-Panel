@@ -1,0 +1,16 @@
+get:
+  tags: [Dashboard]
+  operationId: getMemberSubscription
+  summary: Get this member's subscription links and squad uptime
+  description: Uses active local entitlement and enabled squad preferences intersected with upstream access. Returns only the requesting member's native links, including enabled hidden hosts. No monitoring credentials or raw proxy configurations. Inactive combos return empty collections. Links must not be persisted by clients.
+  responses:
+    '200':
+      description: Member subscription and derived 24-hour timelines.
+      headers:
+        Cache-Control: { schema: { type: string, const: no-store } }
+      content:
+        application/json:
+          schema: { $ref: '../openapi.yaml#/components/schemas/MemberSubscription' }
+    '401': { $ref: '../openapi.yaml#/components/responses/Unauthorized' }
+    '409': { $ref: '../openapi.yaml#/components/responses/Conflict' }
+    '502': { $ref: '../openapi.yaml#/components/responses/UpstreamFailure' }

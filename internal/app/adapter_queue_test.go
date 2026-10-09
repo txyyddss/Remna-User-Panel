@@ -38,6 +38,10 @@ func TestRemnawaveAdapterMethodsEnterQueueBeforeClientCreation(t *testing.T) {
 		{name: "find remote id", call: func() error { _, _, err := adapter.FindUserByID(context.Background(), "1"); return err }},
 		{name: "create user", call: func() error { _, err := adapter.CreateUser(context.Background(), createInput); return err }},
 		{name: "dashboard", call: func() error { _, err := adapter.Dashboard(context.Background(), "1"); return err }},
+		{name: "member subscription", call: func() error {
+			_, err := adapter.LoadMemberSubscription(context.Background(), "1", []string{"owned"}, true)
+			return err
+		}},
 		{name: "revoke subscription", call: func() error { _, err := adapter.RevokeSubscription(context.Background(), "1"); return err }},
 		{name: "apply entitlement", call: func() error {
 			return adapter.ApplyEntitlement(context.Background(), "1", 10, "NO_RESET", []string{"squad"}, time.Now().Add(time.Hour))

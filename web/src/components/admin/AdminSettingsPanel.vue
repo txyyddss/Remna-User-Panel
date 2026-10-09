@@ -5,7 +5,6 @@ import type { AdminSetting } from '@/api/types'
 import type { ActivitySettings, ActivitySettingsWrite } from '@/api/features'
 import { featuresApi } from '@/api/features'
 import AdminActivitySettings from '@/components/admin/activity/AdminActivitySettings.vue'
-import AdminConnectivitySettings from '@/components/admin/connectivity/AdminConnectivitySettings.vue'
 import AdminBillingAmountLimits from '@/components/admin/AdminBillingAmountLimits.vue'
 import AdminPaymentProfiles from '@/components/admin/AdminPaymentProfiles.vue'
 import InlineNotice from '@/components/common/InlineNotice.vue'
@@ -27,7 +26,6 @@ type Saveable = { save: () => Promise<void>; loading: boolean }
 type PaymentProfilesSaveable = { saveAll: () => Promise<void>; loading: boolean }
 const activitySettingsRef = useTemplateRef<Saveable>('activitySettings')
 const billingLimitsRef = useTemplateRef<Saveable>('billingLimits')
-const connectivityRef = useTemplateRef<{ save: () => Promise<boolean>; loading: boolean }>('connectivitySettings')
 const paymentProfilesRef = useTemplateRef<PaymentProfilesSaveable>('paymentProfiles')
 const { t } = useI18n()
 const activitySettingKeys = new Set([
@@ -45,7 +43,6 @@ const grouped = computed(() => items.value.filter((item) => item.key !== 'connec
 const sectionsLoading = computed(() => loading.value
   || activityLoading.value
   || billingLimitsRef.value?.loading === true
-  || connectivityRef.value?.loading === true
   || paymentProfilesRef.value?.loading === true)
 const saving = computed(() => savingAll.value || busy.value || activityBusy.value)
 watch(items, (next, previous) => {
@@ -103,14 +100,12 @@ async function saveAll(): Promise<void> {
   if (saving.value || sectionsLoading.value) return
   savingAll.value = true
   try {
-    const outcomes = await Promise.all([
+    await Promise.all([
       saveSettings(),
       activitySettings.value ? activitySettingsRef.value?.save() ?? Promise.resolve() : Promise.resolve(),
       billingLimitsRef.value?.save() ?? Promise.resolve(),
-      connectivityRef.value?.save() ?? Promise.resolve(true),
       paymentProfilesRef.value?.saveAll() ?? Promise.resolve(),
     ])
-    if (outcomes[3] === false) saved.visible = false
   } finally {
     savingAll.value = false
   }
@@ -155,7 +150,6 @@ onMounted(() => void loadActivitySettings())
     </section>
     <AdminBillingAmountLimits ref="billingLimits" />
     <AdminPaymentProfiles ref="paymentProfiles" />
-    <AdminConnectivitySettings ref="connectivitySettings" />
     <AdminSectionState :loading="loading" :error="error" @retry="load()">
       <form class="settings-groups" @submit.prevent="saveAll">
         <fieldset v-for="(settings, category) in grouped" :key="category" class="settings-group">

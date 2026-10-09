@@ -13,8 +13,6 @@ const { t } = useI18n()
   <div class="attempt-summary">
     <div class="attempt-summary__status">
       <StatusBadge :tone="connectivityTone(attempt?.status)" :label="t(`hostConnectivity.status.${attempt?.status ?? 'unchecked'}`)" />
-      <span v-if="attempt?.latencyMs != null">{{ t('hostConnectivity.latency', { value: Math.round(attempt.latencyMs) }) }}</span>
-      <span v-if="attempt?.httpStatus != null">{{ t('hostConnectivity.httpStatus', { value: attempt.httpStatus }) }}</span>
     </div>
     <small v-if="attempt">{{ formatDateTime(attempt.startedAt) }}</small>
     <small v-if="attempt?.errorCode" class="attempt-summary__error">{{ connectivityError(attempt.errorCode, 'hostConnectivity.checkFailed') }}</small>

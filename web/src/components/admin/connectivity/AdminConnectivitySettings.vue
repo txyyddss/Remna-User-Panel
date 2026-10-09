@@ -12,14 +12,16 @@ const { t } = useI18n()
 const { snapshot, loading, checking, error: monitorError, active, refresh, check } = useConnectivityMonitor()
 const { draft, username, user, busy, resolving, error, saved, dirty, valid, canRun, resolve, clearUser, save } = useConnectivitySettings(snapshot, refresh)
 const controlsBusy = computed(() => busy.value || checking.value)
-defineExpose({ save, loading })
 </script>
 
 <template>
-  <section class="connectivity-settings" aria-labelledby="connectivity-settings-title">
-    <div class="admin-subsection-heading">
-      <div><h3 id="connectivity-settings-title">{{ t('hostConnectivity.title') }}</h3><p>{{ t('hostConnectivity.copy') }}</p></div>
-      <UButton icon="i-ph-play-fill" :label="active ? t('hostConnectivity.checking') : t('hostConnectivity.runNow')" :loading="checking || active" :disabled="loading || !canRun || active || checking" @click="check" />
+  <section class="admin-panel connectivity-settings" aria-labelledby="connectivity-settings-title">
+    <div class="admin-panel__heading">
+      <div><h2 id="connectivity-settings-title">{{ t('hostConnectivity.title') }}</h2><p>{{ t('hostConnectivity.copy') }}</p></div>
+      <div class="connectivity-settings__actions">
+        <UButton color="neutral" variant="outline" icon="i-ph-play-fill" :label="active ? t('hostConnectivity.checking') : t('hostConnectivity.runNow')" :loading="checking || active" :disabled="loading || !canRun || active || checking" @click="check" />
+        <UButton icon="i-ph-floppy-disk" :label="t('adminSettings.save')" :loading="busy" :disabled="loading || controlsBusy || resolving || !dirty || !valid" @click="save" />
+      </div>
     </div>
     <USkeleton v-if="loading" class="connectivity-settings__skeleton" />
     <template v-else-if="snapshot">
@@ -37,7 +39,9 @@ defineExpose({ save, loading })
 </template>
 
 <style scoped>
-.connectivity-settings { display: grid; gap: 0.85rem; padding: 1rem; border-bottom: 1px solid var(--line); }
+.connectivity-settings { display: grid; gap: 0.85rem; padding: 1rem; }
+.connectivity-settings__actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.connectivity-settings__actions :deep(button) { min-height: 44px; }
 .connectivity-settings__skeleton { height: 13rem; width: 100%; }
 .connectivity-settings__hint { color: var(--text-muted); }
 </style>

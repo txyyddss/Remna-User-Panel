@@ -17,3 +17,5 @@
 - `AbuseRecordsView.vue` mounts the member privacy-safe detector history.
 
 `SettingsView.vue` is the thin route entry for user notification, display, subscription and community preferences.
+
+`SubscriptionView.vue` is the thin route composition for Subscription & uptime, delegating fetching and display to the subscription components.

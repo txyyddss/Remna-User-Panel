@@ -11,6 +11,5 @@ export function connectivityError(caught: unknown, fallback = 'hostConnectivity.
 export function connectivityTone(status?: ConnectivityAttempt['status']): 'neutral' | 'success' | 'warning' | 'danger' {
   if (status === 'connected') return 'success'
   if (status === 'failed') return 'danger'
-  if (status === 'error' || status === 'unsupported' || status === 'interrupted') return 'warning'
   return 'neutral'
 }

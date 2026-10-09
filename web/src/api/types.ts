@@ -1,6 +1,6 @@
 import type { components } from './generated'
 
-type DeepReadonly<T> = T extends (...args: never[]) => unknown
+export type DeepReadonly<T> = T extends (...args: never[]) => unknown
   ? T
   : T extends readonly (infer Item)[]
     ? readonly DeepReadonly<Item>[]

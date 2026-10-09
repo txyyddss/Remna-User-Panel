@@ -19,10 +19,10 @@
     "retryInterval": "Retry delay (seconds)",
     "retryIntervalHint": "Wait 1–60 seconds after a failure before retrying. Default: 1.",
     "probeUrl": "HTTPS probe URL",
-    "probeUrlHint": "A 200–299 response confirms connectivity. No redirects or URL credentials.",
+    "probeUrlHint": "A successful HTTPS response confirms connectivity. Redirects and embedded URL credentials are refused.",
     "runNow": "Run now",
     "checking": "Checking",
-    "saveBeforeRun": "Save these changes with the Settings Save button before running a check.",
+    "saveBeforeRun": "Save these changes before running a check.",
     "invalidDraft": "Resolve the selected username and check the interval, timeout, retry settings, and HTTPS URL before saving.",
     "invalidConfig": "Use a valid HTTPS URL, an interval of 60–86,400 seconds, a timeout of 1–60 seconds, 0–10 retries, and a retry delay of 1–60 seconds.",
     "resolveRequired": "Resolve this exact username before saving.",
@@ -47,14 +47,24 @@
     "saveFailed": "Connectivity configuration could not be saved.",
     "historyFailed": "Check history could not be loaded.",
     "status": {
-      "unchecked": "Not checked", "running": "Checking", "connected": "Connected",
-      "failed": "Failed", "unsupported": "Unsupported", "error": "Checker error", "interrupted": "Interrupted"
+      "unchecked": "Not checked",
+      "running": "Checking",
+      "connected": "Connected",
+      "failed": "Failed",
+      "unsupported": "Unsupported",
+      "error": "Checker error",
+      "interrupted": "Interrupted"
     },
     "run": {
-      "running": "{completed}/{total} checked", "completed": "{completed}/{total} complete",
-      "error": "Batch could not complete", "interrupted": "Batch interrupted"
+      "running": "{completed}/{total} checked",
+      "completed": "{completed}/{total} complete",
+      "error": "Batch could not complete",
+      "interrupted": "Batch interrupted"
     },
-    "trigger": { "manual": "Manual check", "scheduled": "Scheduled check" },
+    "trigger": {
+      "manual": "Manual check",
+      "scheduled": "Scheduled check"
+    },
     "codes": {
       "CONNECTIVITY_ACCOUNT_UNAVAILABLE": "The test account is unavailable, inactive, or expired.",
       "CONNECTIVITY_ALREADY_STARTED": "A connectivity batch is already running.",
@@ -90,5 +100,39 @@
       "CONNECTIVITY_VALIDATION_UNAVAILABLE": "The selected test account cannot be validated right now.",
       "CONNECTIVITY_XRAY_START_FAILED": "The embedded proxy could not start with this host configuration."
     }
+  },
+  "uptime": {
+    "summary": "Network status",
+    "window": "Last 24 hours",
+    "dayAgo": "24 hours ago",
+    "notAvailable": "Monitoring data is unavailable. Unmeasured periods remain empty.",
+    "barAria": "{name}: status from {from} to {to}. Use the arrow keys to inspect periods.",
+    "segment": "{state} / {from} to {to}",
+    "state": {
+      "operational": "All operational",
+      "partial": "Partial outage",
+      "outage": "Complete outage",
+      "unknown": "No data"
+    }
+  },
+  "subscription": {
+    "title": "Subscription & uptime",
+    "copy": "Your import links and the status of your active squads.",
+    "hosts": "Accessible hosts",
+    "squads": "Active squads",
+    "copyHost": "Copy {name} link",
+    "qrHost": "QR code for {name}",
+    "qrHint": "Scan this code with your proxy client to import this host.",
+    "qrFailed": "The QR code could not be generated. Close and reopen it to retry.",
+    "copyFailed": "The link could not be copied. Try again.",
+    "noLink": "An individual import link is unavailable for this host.",
+    "ambiguousLink": "This host cannot be matched to a unique import link.",
+    "hostDetails": "Host status ({count})",
+    "noHosts": "No accessible hosts are available.",
+    "noSquadHosts": "No accessible hosts are available for this squad.",
+    "noSquads": "No active squads are available yet.",
+    "noCombo": "No active combo",
+    "noComboHint": "Activate a combo to access subscription links and uptime.",
+    "loadFailed": "Subscription and uptime data could not be loaded."
   }
 }
