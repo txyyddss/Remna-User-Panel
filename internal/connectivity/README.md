@@ -146,8 +146,14 @@ Mappings follow the checked-in Remnawave API schema and its
 [native Xray generator](https://github.com/remnawave/backend/blob/main/src/modules/subscription-template/generators/xray-json.generator.service.ts)
 and [host mapper](https://github.com/remnawave/backend/blob/main/src/modules/subscription-template/host-mapper/apply-host-mapper.util.ts).
 The probe uses context-owned construction in the pinned
-[core lifecycle](https://github.com/XTLS/Xray-core/blob/v26.6.27/core/xray.go)
-and its [stable dial API](https://github.com/XTLS/Xray-core/blob/v26.6.27/core/functions.go).
+[core lifecycle](https://github.com/XTLS/Xray-core/blob/64fada32b5b9/core/xray.go)
+and its [stable dial API](https://github.com/XTLS/Xray-core/blob/64fada32b5b9/core/functions.go).
+
+The July 10 security revision replaces the initially planned June revision to
+fix upstream certificate-pinning advisory GHSA-5wf9-h793-w73c while retaining
+Go 1.26 compatibility. CI uses Go 1.26.9 and the container uses Go 1.27.2 to
+include the October 8 standard-library security fixes; `golang.org/x/net` and
+gRPC are also pinned above the vulnerable versions identified by hosted scans.
 Hosted probe tests use a native VLESS forwarding fixture and a trusted HTTPS
 target to cover authentication, status failures, redirect refusal, fresh
 connections, no direct fallback, certificate verification, timeout and
