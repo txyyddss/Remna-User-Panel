@@ -130,6 +130,11 @@ func finishIPCheckTx(ctx context.Context, tx *sql.Tx, operationID, reportID, sta
 	if err != nil {
 		return err
 	}
-	_, err = tx.ExecContext(ctx, `UPDATE provider_operation_items SET status=?,error_code=?,result_json=?,completed_at=?,updated_at=? WHERE operation_id=? AND status IN ('queued','processing')`, status, errorCode, string(resultJSON), stamp(now), stamp(now), operationID)
+	itemStatus := status
+	// The single item is report delivery; coverage remains partial on the report/receipt.
+	if itemStatus == "partial" {
+		itemStatus = "succeeded"
+	}
+	_, err = tx.ExecContext(ctx, `UPDATE provider_operation_items SET status=?,error_code=?,result_json=?,completed_at=?,updated_at=? WHERE operation_id=? AND status IN ('queued','processing')`, itemStatus, errorCode, string(resultJSON), stamp(now), stamp(now), operationID)
 	return err
 }

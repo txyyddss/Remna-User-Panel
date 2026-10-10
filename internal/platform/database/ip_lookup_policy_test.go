@@ -75,6 +75,10 @@ func TestIPLookupAnyProviderOutageRefundsPartialOrRejectedReport(t *testing.T) {
 				if err != nil || !check.Refunded || check.Charge.Minor != "0" || check.Report == nil {
 					t.Fatalf("outage result=%+v %v", check, err)
 				}
+				var itemStatus string
+				if err := store.DB().QueryRowContext(ctx, `SELECT status FROM provider_operation_items WHERE operation_id=?`, op.ID).Scan(&itemStatus); err != nil || itemStatus != "succeeded" {
+					t.Fatalf("delivered partial/rejected report item=%s error=%v", itemStatus, err)
+				}
 				state, err := service.State(ctx, user)
 				if err != nil || state.Allowance.Remaining != quota {
 					t.Fatal("outage consumed quota")
