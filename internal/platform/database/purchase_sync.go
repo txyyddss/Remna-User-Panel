@@ -33,6 +33,10 @@ func (s *Store) MarkPurchaseSyncResult(ctx context.Context, purchaseID string, s
 		return err
 	}
 	if success && affected == 1 {
+		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO ip_lookup_allowances(purchase_id,total)
+			SELECT purchases.id,COALESCE(combos.ip_lookup_quota,0) FROM purchases JOIN combos ON combos.id=purchases.combo_id WHERE purchases.id=?`, purchaseID); err != nil {
+			return err
+		}
 		if err := s.insertActivationNotificationTx(ctx, tx, purchaseID, now); err != nil {
 			return err
 		}

@@ -149,3 +149,4 @@ snapshot/resolution, asynchronous deduplication, and history validation;
 cancellable fake probe for hosted execution without external network traffic.
 
 `member_subscription.go` serves authenticated onboarded GET `/api/v1/connectivity/summary` and `/api/v1/subscription` through the catalog authorization facade. Both return `Cache-Control: no-store`; only the subscription response contains that member's native links. Neither exposes monitoring account identity, raw configurations, latency or HTTP diagnostic numbers.
+- `ip_lookup.go` mounts signed member and admin IP Lookup routes with owner scoping and safe errors.

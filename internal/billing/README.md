@@ -39,3 +39,5 @@ Payment-method discovery, exact decimal arithmetic, checkout creation, provider 
 - `payment_profile_runtime_test.go` covers account-scoped BEPusdt callback capabilities.
 - `zero_coverage_test.go` covers provider channel ordering, channel validation, and EZPay/BEPusdt method-list validation.
 - `README.md` documents the package layout.
+
+Exact TXB parsing in `decimal.go` delegates to `model.ParseTXBMajor`; this keeps the same arithmetic available to queued IP Lookup billing without introducing a database/package dependency cycle.

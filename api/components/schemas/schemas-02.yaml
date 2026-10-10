@@ -158,6 +158,7 @@ Combo:
     - createdAt
     - updatedAt
   properties:
+    ipLookupQuota: {"anyOf":[{"type":"integer","minimum":0,"maximum":1000000},{"type":"null"}]}
     id:
       $ref: '../../openapi.yaml#/components/schemas/ID'
     name:
@@ -241,6 +242,7 @@ ComboWrite:
     - active
     - rolloverMinRemainingBps
   properties:
+    ipLookupQuota: {"anyOf":[{"type":"integer","minimum":0,"maximum":1000000},{"type":"null"}]}
     name:
       type: string
       minLength: 1

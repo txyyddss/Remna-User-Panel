@@ -1,0 +1,19 @@
+get:
+  tags:
+    - IP Lookup
+  operationId: getIPLookupState
+  responses:
+    "200":
+      description: IP Lookup result
+      content:
+        application/json:
+          schema:
+            $ref: ../openapi.yaml#/components/schemas/IPLookupState
+    "401":
+      $ref: ../openapi.yaml#/components/responses/Unauthorized
+    "409":
+      $ref: ../openapi.yaml#/components/responses/Conflict
+    "422":
+      $ref: ../openapi.yaml#/components/responses/Unprocessable
+    "502":
+      $ref: ../openapi.yaml#/components/responses/UpstreamFailure

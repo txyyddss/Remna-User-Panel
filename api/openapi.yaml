@@ -2,6 +2,11 @@ openapi: 3.1.0
 info: { title: TX Carpool API, version: 1.0.0, description: "HTTP contract for the TX Carpool Telegram Mini App. User and admin endpoints use a Secure, HttpOnly session cookie established from validated Telegram Mini App `initData`. Every authenticated browser request also carries a five-minute HMAC timestamp, unique nonce, and signature derived from a same-origin companion key. Provider callbacks use provider-specific signatures and are never authenticated by the browser session. All identifiers and timestamps are strings. TXB values use integer hundredths encoded as decimal strings. Traffic byte counts are decimal strings. The server is authoritative for prices, exchange rates, entitlement dates, and payment state.", license: { name: Proprietary } }
 security: [{ cookieSession: [], requestTimestamp: [], requestNonce: [], requestSignature: [] }]
 paths:
+  /api/v1/ip-lookup: { $ref: './paths/api-v1-ip-lookup.yaml' }
+  /api/v1/ip-lookup/quote: { $ref: './paths/api-v1-ip-lookup-quote.yaml' }
+  /api/v1/ip-lookup/checks: { $ref: './paths/api-v1-ip-lookup-checks.yaml' }
+  /api/v1/ip-lookup/checks/{id}: { $ref: './paths/api-v1-ip-lookup-checks-id.yaml' }
+  /api/v1/admin/ip-lookup: { $ref: './paths/api-v1-admin-ip-lookup.yaml' }
   /api/v1/connectivity/summary: { $ref: './paths/api-v1-connectivity-summary.yaml' }
   /api/v1/subscription: { $ref: './paths/api-v1-subscription.yaml' }
   /api/v1/auth/telegram: { $ref: './paths/api-v1-auth-telegram.yaml' }
@@ -167,6 +172,18 @@ components:
   }
   responses: { BadRequest: { $ref: './components/responses.yaml#/BadRequest' }, Unauthorized: { $ref: './components/responses.yaml#/Unauthorized' }, Forbidden: { $ref: './components/responses.yaml#/Forbidden' }, NotFound: { $ref: './components/responses.yaml#/NotFound' }, Conflict: { $ref: './components/responses.yaml#/Conflict' }, Unprocessable: { $ref: './components/responses.yaml#/Unprocessable' }, PayloadTooLarge: { $ref: './components/responses.yaml#/PayloadTooLarge' }, TooManyRequests: { $ref: './components/responses.yaml#/TooManyRequests' }, InternalFailure: { $ref: './components/responses.yaml#/InternalFailure' }, UpstreamFailure: { $ref: './components/responses.yaml#/UpstreamFailure' }, ServiceUnavailable: { $ref: './components/responses.yaml#/ServiceUnavailable' } }
   schemas: {
+    IPLookupProviderConfig: {"$ref":"./components/schemas/ip-lookup-config.yaml#/IPLookupProviderConfig"},
+    IPLookupCredentialEdit: {"$ref":"./components/schemas/ip-lookup-config.yaml#/IPLookupCredentialEdit"},
+    IPLookupAdminSettings: {"$ref":"./components/schemas/ip-lookup-config.yaml#/IPLookupAdminSettings"},
+    IPLookupAllowance: {"$ref":"./components/schemas/ip-lookup-config.yaml#/IPLookupAllowance"},
+    IPLookupState: {"$ref":"./components/schemas/ip-lookup-config.yaml#/IPLookupState"},
+    IPLookupQuote: {"$ref":"./components/schemas/ip-lookup-config.yaml#/IPLookupQuote"},
+    IPLookupQuoteRequest: {"$ref":"./components/schemas/ip-lookup-config.yaml#/IPLookupQuoteRequest"},
+    IPLookupSignals: {"$ref":"./components/schemas/ip-lookup-report.yaml#/IPLookupSignals"},
+    IPLookupFacts: {"$ref":"./components/schemas/ip-lookup-report.yaml#/IPLookupFacts"},
+    IPLookupProviderResult: {"$ref":"./components/schemas/ip-lookup-report.yaml#/IPLookupProviderResult"},
+    IPLookupReport: {"$ref":"./components/schemas/ip-lookup-report.yaml#/IPLookupReport"},
+    IPLookupCheck: {"$ref":"./components/schemas/ip-lookup-report.yaml#/IPLookupCheck"},
     UptimeState: {"$ref":"./components/schemas/uptime.yaml#/UptimeState"}, UptimeSegment: {"$ref":"./components/schemas/uptime.yaml#/UptimeSegment"},
     UptimeTimeline: {"$ref":"./components/schemas/uptime.yaml#/UptimeTimeline"}, UptimeSummary: {"$ref":"./components/schemas/uptime.yaml#/UptimeSummary"},
     SubscriptionHost: {"$ref":"./components/schemas/uptime.yaml#/SubscriptionHost"}, SubscriptionSquad: {"$ref":"./components/schemas/uptime.yaml#/SubscriptionSquad"}, MemberSubscription: {"$ref":"./components/schemas/uptime.yaml#/MemberSubscription"},

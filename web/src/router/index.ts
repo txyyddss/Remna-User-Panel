@@ -33,6 +33,8 @@ const router = createRouter({
     { path: '/community', name: 'community', component: () => import('@/views/CommunityView.vue') },
     { path: '/emby', name: 'emby', component: () => import('@/views/EmbyView.vue') },
     { path: '/abuse-records', name: 'abuse-records', component: () => import('@/views/AbuseRecordsView.vue') },
+    { path: '/ip-lookup', name: 'ip-lookup', component: () => import('@/views/IPLookupView.vue') },
+    { path: '/admin/ip-lookup', name: 'admin-ip-lookup', component: () => import('@/views/AdminIPLookupView.vue') },
     { path: '/admin', redirect: '/admin/settings' },
     { path: '/admin/emby', redirect: '/admin/users' },
     { path: '/admin/entitlements', redirect: '/admin/users' },

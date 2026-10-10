@@ -342,3 +342,9 @@ Retained agreement revisions also qualify returning accounts. `remna_provisionin
 
 `connectivity_timeline.go` reads all retained terminal host observations for exactly one configuration hash and the rolling 24-hour cutoff. The existing indexed attempt table provides history; setup failures and running checks cannot fabricate downtime, and pagination cannot truncate the derived timeline.
 `connectivity_timeline_test.go` covers configuration isolation, exact retention and complete observation retrieval beyond administrative page limits in hosted CI.
+- `ip_lookup_settings.go` atomically saves encrypted settings, combo quotas and the admin audit.
+- `ip_lookup_queries.go` reads fresh quota/pricing quotes and owner-scoped immutable report receipts.
+- `ip_lookup_commands.go` atomically debits quota/TXB and coalesces checks into shared cached or fresh reports.
+- `ip_lookup_completion.go` persists attempt progress and completes or refunds joined requests exactly once.
+- `ip_lookup_test.go` covers cache sharing, prices, replays, refunds and purchase quota lifecycle for CI.
+- `ip_lookup_migration_test.go` covers the one-check gift for live members, excluding queued and expired purchases.

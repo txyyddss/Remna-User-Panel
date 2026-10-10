@@ -1,3 +1,5 @@
+import enIPLookup from '../../locales/en/ip-lookup.json'
+import zhIPLookup from '../../locales/zh-CN/ip-lookup.json'
 import enAdminActivity from '../../locales/en/admin-activity.json'
 import enAdminDraw from '../../locales/en/admin-draw.json'
 import enAdminCatalog from '../../locales/en/admin-catalog.json'
@@ -52,12 +54,14 @@ import zhStatistics from '../../locales/zh-CN/statistics.json'
 import zhSettings from '../../locales/zh-CN/settings.json'
 
 const en = {
+ ...enIPLookup,
   ...enHostConnectivity,
   ...enSettings,
   ...enCore, ...enRecovery, ...enAffiliates, ...enActivity, ...enCommerce, ...enPaymentCrypto, ...enCommunity, ...enMember, ...enConnections, ...enHome, ...enAdminCore, ...enAdminOnboarding, ...enAdminData,
   ...enAdminActivity, ...enAdminDraw, ...enAdminCommunity, ...enAdminCatalog, ...enAdminOperations, ...enAdminWorkflows, ...enAdminCompensation, ...enAdminAbuse, ...enAbuse, ...enSquadProfile, ...enStatistics,
 }
 const zhCN: typeof en = {
+ ...zhIPLookup,
   ...zhHostConnectivity,
   ...zhSettings,
   ...zhCore, ...zhRecovery, ...zhAffiliates, ...zhActivity, ...zhCommerce, ...zhPaymentCrypto, ...zhCommunity, ...zhMember, ...zhConnections, ...zhHome, ...zhAdminCore, ...zhAdminOnboarding, ...zhAdminData,

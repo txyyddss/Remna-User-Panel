@@ -1,0 +1,137 @@
+package database
+
+import (
+	"context"
+	"crypto/sha256"
+	"database/sql"
+	"encoding/hex"
+	"encoding/json"
+	"time"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/iplookup"
+	"github.com/txyyddss/Remna-User-Panel/internal/model"
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/ids"
+	"github.com/txyyddss/Remna-User-Panel/internal/providerops"
+)
+
+// CreateIPLookupCheck atomically replays or charges, joins a report and queues its receipt.
+func (s *Store) CreateIPLookupCheck(ctx context.Context, user, key string, q iplookup.Quote, now time.Time) (model.OperationReceipt, error) {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return model.OperationReceipt{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	checkID, err := ids.New()
+	if err != nil {
+		return model.OperationReceipt{}, err
+	}
+	fingerprint := sha256.Sum256([]byte(q.IP + "\x00" + fmtBool(q.Refresh)))
+	op, replay, err := createProviderOperationTx(ctx, tx, providerops.CreateInput{ActorUserID: user, OwnerUserID: user, Kind: iplookup.OperationKind, IdempotencyKey: key, RequestFingerprint: hex.EncodeToString(fingerprint[:]), Items: []providerops.ItemInput{{Key: "check", TargetType: "ip_lookup_check", TargetID: checkID}}}, now)
+	if err != nil {
+		return model.OperationReceipt{}, err
+	}
+	if replay {
+		return op.Receipt, tx.Commit()
+	}
+	fresh, c, err := ipQuoteTx(ctx, tx, user, q.IP, q.Refresh, now)
+	if err != nil {
+		return model.OperationReceipt{}, err
+	}
+	if q.ExpiresAt <= now.Unix() || fresh.ConfigHash != q.ConfigHash || fresh.Charge.Minor != q.Charge.Minor || fresh.UseQuota != q.UseQuota || (!q.Refresh && (fresh.PurchaseID != q.PurchaseID || fresh.Remaining != q.Remaining)) {
+		return model.OperationReceipt{}, &iplookup.CodeError{Code: "IP_LOOKUP_QUOTE_CHANGED"}
+	}
+	reportID, cached, err := selectIPRunTx(ctx, tx, q, fresh, c, now)
+	if err != nil {
+		return model.OperationReceipt{}, err
+	}
+	charge := fresh.Charge.MinorInt64()
+	var allowance any
+	if fresh.UseQuota {
+		allowance = fresh.PurchaseID
+		result, err := tx.ExecContext(ctx, `UPDATE ip_lookup_allowances SET used=used+1 WHERE purchase_id=? AND used<total`, allowance)
+		if err != nil {
+			return model.OperationReceipt{}, err
+		}
+		if n, err := result.RowsAffected(); err != nil {
+			return model.OperationReceipt{}, err
+		} else if n != 1 {
+			return model.OperationReceipt{}, ErrConflict
+		}
+	} else if charge > 0 {
+		balance, err := changeBalanceTx(ctx, tx, user, -charge, now)
+		if err != nil {
+			return model.OperationReceipt{}, err
+		}
+		kind := "ip_lookup"
+		if q.Refresh {
+			kind = "ip_lookup_refresh"
+		}
+		if _, err := insertLedgerTx(ctx, tx, user, -charge, balance, kind, op.Receipt.ID, "IP reputation check", now); err != nil {
+			return model.OperationReceipt{}, err
+		}
+	}
+	_, err = tx.ExecContext(ctx, `INSERT INTO ip_lookup_checks(id,operation_id,user_id,report_id,allowance_id,charge_minor,cached) VALUES(?,?,?,?,?,?,?)`, checkID, op.Receipt.ID, user, reportID, allowance, charge, boolInt(cached))
+	if err != nil {
+		return model.OperationReceipt{}, err
+	}
+	if cached {
+		var status string
+		if err := tx.QueryRowContext(ctx, `SELECT status FROM ip_lookup_reports WHERE id=?`, reportID).Scan(&status); err != nil {
+			return model.OperationReceipt{}, err
+		}
+		if err := finishIPCheckTx(ctx, tx, op.Receipt.ID, reportID, status, now); err != nil {
+			return model.OperationReceipt{}, err
+		}
+		op, err = scanProviderOperation(tx.QueryRowContext(ctx, providerOperationSelect+` WHERE id=?`, op.Receipt.ID))
+		if err != nil {
+			return model.OperationReceipt{}, err
+		}
+	}
+	return op.Receipt, tx.Commit()
+}
+
+func fmtBool(value bool) string {
+	if value {
+		return "refresh"
+	}
+	return "lookup"
+}
+
+func selectIPRunTx(ctx context.Context, tx *sql.Tx, q, fresh iplookup.Quote, c iplookup.Config, now time.Time) (string, bool, error) {
+	// A refresh completed since this quote already fulfills the quoted refresh.
+	if fresh.CacheReportID != "" && (!q.Refresh || fresh.CacheReportID != q.CacheReportID) {
+		return fresh.CacheReportID, true, nil
+	}
+	var id, raw string
+	err := tx.QueryRowContext(ctx, `SELECT id,config_json FROM ip_lookup_reports WHERE ip=? AND status='processing'`, q.IP).Scan(&id, &raw)
+	if err == nil {
+		previous, decodeErr := iplookup.DecodeConfig(raw)
+		if decodeErr != nil {
+			return "", false, decodeErr
+		}
+		if iplookup.ConfigHash(previous) != q.ConfigHash {
+			return "", false, &iplookup.CodeError{Code: "IP_LOOKUP_BUSY"}
+		}
+		return id, false, nil
+	}
+	if err != sql.ErrNoRows {
+		return "", false, err
+	}
+	id, err = ids.New()
+	if err != nil {
+		return "", false, err
+	}
+	report := iplookup.NewReport(id, q.IP, c)
+	encoded, err := json.Marshal(report)
+	if err != nil {
+		return "", false, err
+	}
+	configJSON, err := json.Marshal(c)
+	if err != nil {
+		return "", false, err
+	}
+	_, err = tx.ExecContext(ctx, `INSERT INTO ip_lookup_reports(id,ip,status,config_json,report_json,created_at) VALUES(?,?,'processing',?,?,?)`, id, q.IP, string(configJSON), string(encoded), stamp(now))
+	return id, false, err
+}

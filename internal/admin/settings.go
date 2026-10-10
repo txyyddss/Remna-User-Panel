@@ -112,6 +112,9 @@ func (s *SettingsService) Optional(ctx context.Context, key string) (string, err
 // Put stores one known setting. An empty secret keeps its existing value.
 
 func (s *SettingsService) Put(ctx context.Context, actorID, key, value string) error {
+	if strings.HasPrefix(key, "ip_lookup.") {
+		return errors.New("IP Lookup settings require the dedicated atomic interface")
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	definition, ok := settingDefinitions[key]

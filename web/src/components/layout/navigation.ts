@@ -22,6 +22,7 @@ const mobileNavigation: readonly MobileNavigationItem[] = [
 ]
 
 const adminNavigation: readonly AdminNavigationItem[] = [
+  { labelKey: 'ipLookup.adminTitle', to: '/admin/ip-lookup', icon: 'i-ph-globe-hemisphere-west' },
   { labelKey: 'adminNav.catalog', to: '/admin/catalog', icon: 'i-ph-package' },
   { labelKey: 'adminNav.coupons', to: '/admin/coupons', icon: 'i-ph-ticket' },
   { labelKey: 'adminNav.activity', to: '/admin/activity', icon: 'i-ph-game-controller' },
@@ -45,7 +46,7 @@ export function mobileNavigationItems(isAdmin: boolean, showActivity = false): M
     : [...visible]
 }
 
-export function desktopNavigationItems(t: Translate, isAdmin: boolean, showAroundTX = false, showActivity = false): NavigationMenuItem[] {
+export function desktopNavigationItems(t: Translate, isAdmin: boolean, showAroundTX = false, showActivity = false, showIPLookup = false): NavigationMenuItem[] {
   const items: NavigationMenuItem[] = [
     {
       label: t('nav.home'), to: '/home', icon: 'i-ph-house', defaultOpen: true, exactQuery: true,
@@ -59,16 +60,19 @@ export function desktopNavigationItems(t: Translate, isAdmin: boolean, showAroun
     ...(showActivity ? [{ label: t('nav.activity'), to: '/activity', icon: 'i-ph-game-controller' }] : []),
     { label: t('settings.title'), to: '/settings', icon: 'i-ph-gear' },
   ]
-  if (showAroundTX) {
+  if (showAroundTX || showIPLookup) {
     items.splice(1, 0, {
       label: t('nav.aroundTx'), icon: 'i-ph-sparkle', type: 'trigger', defaultOpen: true, popover: true,
       children: [
+        ...(showIPLookup ? [{ label: t('ipLookup.title'), to: '/ip-lookup', icon: 'i-ph-globe-hemisphere-west' }] : []),
+        ...(showAroundTX ? [
         { label: t('affiliates.title'), to: '/affiliates', icon: 'i-ph-users-three' },
         { label: t('nav.questionnaire'), to: '/questionnaire', icon: 'i-ph-list-checks' },
         { label: t('community.title'), to: '/community', icon: 'i-ph-users-three' },
         { label: t('nav.emby'), to: '/emby', icon: 'i-ph-monitor-play' },
         { label: t('statistics.title'), to: '/statistics', icon: 'i-ph-chart-donut' },
         { label: t('abuse.title'), to: '/abuse-records', icon: 'i-ph-shield-warning' },
+        ] : []),
       ],
     })
   }

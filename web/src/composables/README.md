@@ -76,3 +76,4 @@ separate. Action quotes and permission decisions still await the backend.
 - `useActivity.ts` reads eligibility live, tracks refresh state and hides reward controls when verification refresh fails; a rejected check-in refreshes boost state while retaining its localized refusal.
 
 `useTelegramSettingsButton.ts` owns the native Settings button with SDK discovery and lifecycle cleanup. Reset automation now belongs to the Settings page instead of `usePurchaseOperations.ts`.
+- `useIPLookupAvailability.ts` shares account-scoped feature availability across shell and Around TX entrances.

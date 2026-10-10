@@ -1,0 +1,132 @@
+{
+  "ipLookup": {
+    "providers": {
+      "abuseipdb": "AbuseIPDB",
+      "ipapi": "IPAPI",
+      "maxmind": "MaxMind",
+      "ipqs": "IPQS",
+      "ip2location": "IP2Location"
+    },
+    "scores": {
+      "abuse_confidence": "Abuse confidence",
+      "fraud_score": "Fraud score",
+      "company_abuse_ratio": "Company network abuse ratio",
+      "asn_abuse_ratio": "ASN network abuse ratio",
+      "static_ip_score": "Static IP score",
+      "network_risk_snapshot": "Network risk snapshot"
+    },
+    "facts": {
+      "country": "Country",
+      "region": "Region",
+      "city": "City",
+      "isp": "ISP",
+      "asn": "ASN",
+      "networkType": "Network type"
+    },
+    "risks": {
+      "abuse": "Abuse",
+      "datacenter": "Datacenter / hosting",
+      "vpn": "VPN",
+      "proxy": "Proxy",
+      "tor": "Tor"
+    },
+    "networkTypes": {
+      "residential": "Residential",
+      "mobile": "Mobile ISP",
+      "business": "Business",
+      "datacenter": "Datacenter"
+    },
+    "verdicts": {
+      "suitable": "Suitable for AI use",
+      "unsuitable": "Not suitable for AI use",
+      "inconclusive": "Suitability is inconclusive"
+    },
+    "statuses": {
+      "disabled": "Disabled",
+      "queued": "Waiting",
+      "processing": "Checking",
+      "success": "Checked",
+      "partial": "Limited coverage",
+      "error": "Unavailable",
+      "skipped": "Skipped after risk detection"
+    },
+    "statusNotes": {
+      "disabled": "This provider was disabled when the report was created.",
+      "queued": "Waiting to check this provider.",
+      "processing": "Checking this provider.",
+      "error": "The provider could not return usable data.",
+      "skipped": "An earlier provider detected a risk; checking stopped."
+    },
+    "reasons": {
+      "abuse": "Abuse detected",
+      "datacenter": "Datacenter or hosting detected",
+      "vpn": "VPN detected",
+      "proxy": "Proxy detected",
+      "tor": "Tor detected",
+      "abuse_reports": "Abuse reports found",
+      "abuse_confidence": "Positive IP abuse score",
+      "fraud_score": "Positive IP fraud score",
+      "all_providers_failed": "All providers failed to return usable data.",
+      "incomplete_coverage": "Some required risk checks are unavailable.",
+      "residential_unknown": "Residential or mobile ISP status could not be confirmed."
+    },
+    "errors": {
+      "IP_LOOKUP_INVALID_IP": "Enter a public IPv4 or IPv6 address.",
+      "IP_LOOKUP_DISABLED": "IP Lookup is currently disabled.",
+      "IP_LOOKUP_QUOTE_CHANGED": "The price or allowance changed. Review the updated cost and try again.",
+      "IP_LOOKUP_REFRESH_UNAVAILABLE": "Check this IP before requesting a refresh.",
+      "IP_LOOKUP_CONFIGURATION_REQUIRED": "Set both fees, all core-combo quotas, and enable at least one configured provider.",
+      "IP_LOOKUP_CREDENTIAL_REQUIRED": "Add credentials for every enabled provider.",
+      "IP_LOOKUP_INVALID_CONFIG": "Check the settings. Fees must be nonnegative TXB amounts and quotas must be whole numbers.",
+      "IP_LOOKUP_ALL_PROVIDERS_FAILED": "No provider returned usable data. Your quota or TXB has been restored.",
+      "IP_LOOKUP_BUSY": "This IP is being checked with different settings. Try again shortly.",
+      "IP_LOOKUP_CONFLICT": "This request conflicts with an earlier check. Try again.",
+      "INSUFFICIENT_BALANCE": "Your TXB balance is too low for this check.",
+      "IP_LOOKUP_FAILED": "IP Lookup is temporarily unavailable. Try again."
+    },
+    "title": "IP Lookup",
+    "subtitle": "Check IP reputation for residential and mobile AI access.",
+    "adminTitle": "IP Lookup settings",
+    "adminSubtitle": "Configure providers, TXB fees, and checks included with each core combo.",
+    "disabled": "IP Lookup is not available yet.",
+    "address": "IP address",
+    "addressHint": "Public IPv4 or IPv6",
+    "placeholder": "150.249.241.62",
+    "allowance": "{remaining} of {total} included checks remaining",
+    "noAllowance": "No included checks available",
+    "until": "Current term ends {date}",
+    "checkIncluded": "Check · 1 included",
+    "checkPaid": "Check · {fee}",
+    "refreshPaid": "Refresh · {fee}",
+    "processing": "Checking providers in order…",
+    "empty": "Enter an IP address to see its reputation and network details.",
+    "billingNote": "Cached checks also use quota or TXB. Refresh always uses its separate TXB fee.",
+    "cached": "Cached report",
+    "fresh": "Fresh report",
+    "predictionNote": "This is a reputation assessment. It does not guarantee access to any AI service.",
+    "checkedAt": "Data checked {date}",
+    "usedIncluded": "1 included check used",
+    "unknown": "Unknown",
+    "detected": "Detected",
+    "notDetected": "Not detected",
+    "reports": "Abuse reports",
+    "partialNote": "Some fields require a different provider subscription or were not returned.",
+    "enable": "Enable IP Lookup",
+    "enableHelp": "Configure both fees, every core-combo quota, and provider credentials before enabling.",
+    "lookupFee": "Lookup fee (TXB)",
+    "refreshFee": "Refresh fee (TXB)",
+    "saved": "IP Lookup settings saved.",
+    "providerHeading": "Providers",
+    "providerOrder": "AbuseIPDB → IPAPI → MaxMind → IPQS → IP2Location. Checking stops at the first detected risk.",
+    "credentialConfigured": "Credential configured",
+    "credentialMissing": "Credential not configured",
+    "accountId": "MaxMind account ID",
+    "licenseKey": "License key",
+    "apiKey": "API key",
+    "credentialHint": "Leave blank to keep the current credential.",
+    "clearCredential": "Clear saved credential",
+    "quotaHeading": "Included IP checks per combo term",
+    "quotaHelp": "Applied on the next activation or renewal. Zero gives no included checks; current-term allowances stay unchanged.",
+    "unconfigured": "Not configured"
+  }
+}

@@ -31,3 +31,4 @@ than in Vue templates, composables, or API clients.
 `settings.json` owns translated user preference and Telegram member-tag copy.
 
 `host-connectivity.json` owns translated host-check configuration, progress, retained history, status and sanitized diagnostic copy.
+- `ip-lookup.json` owns Simplified Chinese IP Lookup member/admin copy and report labels.

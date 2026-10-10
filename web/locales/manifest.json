@@ -25,6 +25,7 @@
     "admin-workflows",
     "admin-compensation",
     "abuse",
-    "admin-abuse"
+    "admin-abuse",
+    "ip-lookup"
   ]
 }

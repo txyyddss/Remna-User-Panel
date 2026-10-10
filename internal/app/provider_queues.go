@@ -21,6 +21,7 @@ const (
 )
 
 type providerQueues struct {
+	iplookup     map[string]*upstreamqueue.Queue
 	remnawave    *upstreamqueue.Queue
 	emby         *upstreamqueue.Queue
 	telegram     *upstreamqueue.Queue
@@ -58,7 +59,11 @@ func newProviderQueues() (*providerQueues, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create connectivity queue: %w", err)
 	}
-	return &providerQueues{remnawave: remnawaveQueue, emby: embyQueue, telegram: telegramQueue, payment: paymentQueue, turnstile: turnstileQueue, connectivity: connectivityQueue}, nil
+	ipQueues, err := newIPLookupQueues()
+	if err != nil {
+		return nil, err
+	}
+	return &providerQueues{iplookup: ipQueues, remnawave: remnawaveQueue, emby: embyQueue, telegram: telegramQueue, payment: paymentQueue, turnstile: turnstileQueue, connectivity: connectivityQueue}, nil
 }
 
 func (q *providerQueues) start(ctx context.Context) error {
@@ -94,6 +99,10 @@ func (q *providerQueues) start(ctx context.Context) error {
 		_ = q.shutdown(context.Background())
 		return fmt.Errorf("start connectivity queue: %w", err)
 	}
+	if err := q.startIPLookup(ctx); err != nil {
+		_ = q.shutdown(context.Background())
+		return err
+	}
 	return nil
 }
 
@@ -101,12 +110,13 @@ func (q *providerQueues) shutdown(ctx context.Context) error {
 	if q == nil {
 		return nil
 	}
-	errorsByProvider := make(chan error, 6)
+	errorsByProvider := make(chan error, 7)
+	go func() { errorsByProvider <- q.shutdownIPLookup(ctx) }()
 	go func() { errorsByProvider <- q.remnawave.Shutdown(ctx) }()
 	go func() { errorsByProvider <- q.emby.Shutdown(ctx) }()
 	go func() { errorsByProvider <- q.telegram.Shutdown(ctx) }()
 	go func() { errorsByProvider <- q.payment.Shutdown(ctx) }()
 	go func() { errorsByProvider <- q.turnstile.Shutdown(ctx) }()
 	go func() { errorsByProvider <- q.connectivity.Shutdown(ctx) }()
-	return errors.Join(<-errorsByProvider, <-errorsByProvider, <-errorsByProvider, <-errorsByProvider, <-errorsByProvider, <-errorsByProvider)
+	return errors.Join(<-errorsByProvider, <-errorsByProvider, <-errorsByProvider, <-errorsByProvider, <-errorsByProvider, <-errorsByProvider, <-errorsByProvider)
 }

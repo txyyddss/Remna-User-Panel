@@ -20,3 +20,5 @@ direct action. Existing Home query links redirect to the Settings action.
 Route and native Back actions use soft navigation feedback; locale feedback is emitted only after the locale actually changes.
 
 Settings replaces sidebar language/currency controls and stays accessible in desktop and mobile navigation. Activity and Around TX require opted-in preferences plus current combo access.
+
+When IP Lookup is enabled, Around TX includes its paid-capable entrance regardless of combo access or the optional entrance preference. Other Around TX tools retain their existing gates. Availability is account-scoped and refreshed after navigation/admin saves.

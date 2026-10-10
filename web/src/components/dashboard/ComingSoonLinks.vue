@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useIPLookupAvailability } from '@/composables/useIPLookupAvailability'
 import { useRouter } from 'vue-router'
 import { usePreferencesStore } from '@/stores/preferences'
 
-defineProps<{ hasValidCombo: boolean }>()
+const props = defineProps<{ hasValidCombo: boolean }>()
 
 const items = [
   { to: '/affiliates', labelKey: 'affiliates.title', noteKey: 'affiliates.dashboardNote', icon: 'i-ph-users-three' },
@@ -13,6 +15,11 @@ const items = [
   { to: '/abuse-records', labelKey: 'abuse.title', noteKey: 'abuse.copy', icon: 'i-ph-shield-warning' },
 ]
 
+const { enabled: ipLookupEnabled } = useIPLookupAvailability()
+const visibleItems = computed(() => [
+  ...(ipLookupEnabled.value ? [{ to: '/ip-lookup', labelKey: 'ipLookup.title', noteKey: 'ipLookup.subtitle', icon: 'i-ph-globe-hemisphere-west' }] : []),
+  ...(props.hasValidCombo && preferences.showAroundTX ? items : []),
+])
 const router = useRouter()
 const preferences = usePreferencesStore()
 
@@ -22,14 +29,14 @@ function goTo(to: string): void {
 </script>
 
 <template>
-  <section v-if="hasValidCombo && preferences.showAroundTX" class="section-block home-around">
+  <section v-if="visibleItems.length" class="section-block home-around">
     <div class="section-heading">
       <h2>{{ $t('dashboard.aroundTx') }}</h2>
       <span class="section-heading__meta">{{ $t('dashboard.memberTools') }}</span>
     </div>
     <div class="home-around__links">
       <UButton
-        v-for="item in items"
+        v-for="item in visibleItems"
         :key="item.to"
         type="button"
         color="neutral"

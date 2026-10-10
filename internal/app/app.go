@@ -138,6 +138,10 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	if err != nil {
 		return cleanup(err)
 	}
+	ipLookupService, err := newIPLookupService(store, settings, upstreams, operationDispatcher, cfg.MasterKey)
+	if err != nil {
+		return cleanup(err)
+	}
 	if err := registerPaymentOperationHandlers(operationDispatcher, billingService); err != nil {
 		return cleanup(err)
 	}
@@ -189,6 +193,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		return cleanup(fmt.Errorf("preload embedded frontend: %w", err))
 	}
 	api, err := httpapi.New(httpapi.Dependencies{
+		IPLookup:     ipLookupService,
 		PM:           pmService,
 		Connectivity: connectivityService,
 		FirstEntry:   &accounts.FirstEntry{Repository: store, Settings: settings, Verifier: turnstile.New(upstreams.turnstile), Hostname: cfg.PublicBaseURL.Hostname(), AdminTelegramIDs: cfg.AdminTelegramIDs},

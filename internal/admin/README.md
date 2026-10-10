@@ -60,3 +60,5 @@ ledger references so repeated reasons remain separate audited operations.
 
 `pm_settings.go` validates the default-off PM toggle and forum destination. Composition injects a queued forum/permission validator; enabling and changing an enabled destination require a usable forum and bot manage-topics rights.
 `pm_settings_test.go` covers fail-closed enabling, destination validation and disable-before-clear behavior.
+- `ip_lookup_settings.go` validates atomic IP Lookup settings and protects write-only credentials.
+- `ip_lookup_settings_test.go` covers credential encryption, keeping, clearing and generic-route rejection for CI.

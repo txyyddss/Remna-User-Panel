@@ -114,3 +114,4 @@ file instead.
 `064_telegram_pm_read_status.sql` adds reference-only explicit and reply-inferred read evidence for successful PM deliveries; deleting a delivery cascades its read state.
 
 `065_host_connectivity_attempts.sql` adds one indexed, credential-free connectivity attempt table. Starts define a rolling 24-hour diagnostic window; latest results are derived without a second table or mirrored host data. A nullable host reference records setup failures, and terminal transitions retain the original start timestamp.
+- `066_ip_lookup.sql` adds combo quotas, activation allowances, shared reports and paid check references.

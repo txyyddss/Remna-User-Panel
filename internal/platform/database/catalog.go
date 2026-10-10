@@ -15,6 +15,7 @@ import (
 // SquadProductIDs contains Remnawave internal-squad UUIDs; the historical field
 // name remains at the service boundary for source compatibility.
 type ComboInput struct {
+	IPLookupQuota           *int
 	ID                      string
 	Name                    string
 	Description             string
@@ -75,6 +76,9 @@ func (s *Store) SaveCombo(ctx context.Context, input ComboInput) (model.Combo, e
 		return model.Combo{}, fmt.Errorf("begin save combo: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
+	if err := saveComboIPQuotaTx(ctx, tx, input, creating); err != nil {
+		return model.Combo{}, err
+	}
 	var result sql.Result
 	if creating {
 		result, err = tx.ExecContext(ctx, `INSERT INTO combos(id,name,description,price_txb_minor,validity_days,traffic_limit_bytes,reset_strategy,active,rollover_min_remaining_bps,included_squad_uuids,created_at,updated_at)
@@ -93,6 +97,11 @@ func (s *Store) SaveCombo(ctx context.Context, input ComboInput) (model.Combo, e
 		return model.Combo{}, fmt.Errorf("inspect saved combo: %w", rowsErr)
 	} else if affected != 1 {
 		return model.Combo{}, ErrNotFound
+	}
+	if creating && input.IPLookupQuota != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE combos SET ip_lookup_quota=? WHERE id=?`, *input.IPLookupQuota, input.ID); err != nil {
+			return model.Combo{}, err
+		}
 	}
 	if !creating {
 		rows, queryErr := tx.QueryContext(ctx, `SELECT DISTINCT user_id FROM purchases WHERE combo_id=? AND status IN ('activating','active','queued')`, input.ID)

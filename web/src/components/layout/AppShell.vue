@@ -3,6 +3,7 @@ import { computed, nextTick, useTemplateRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { AnimatePresence, motion } from 'motion-v'
 
+import { useIPLookupAvailability } from '@/composables/useIPLookupAvailability'
 import { useCommunityAccess } from '@/composables/useCommunityAccess'
 import { useTelegramBackButton } from '@/composables/useTelegramBackButton'
 import { useI18n } from '@/i18n'
@@ -26,7 +27,8 @@ useTelegramSettingsButton(() => { void router.push('/settings') })
 const { t } = useI18n()
 const { activeCombo: hasValidCombo, refresh: refreshCommunityAccess } = useCommunityAccess()
 
-const desktopItems = computed(() => desktopNavigationItems(t, sessionStore.isAdmin, hasValidCombo.value && preferences.showAroundTX, hasValidCombo.value && preferences.showActivity))
+const { enabled: ipLookupEnabled, refresh: refreshIPLookupAvailability } = useIPLookupAvailability()
+const desktopItems = computed(() => desktopNavigationItems(t, sessionStore.isAdmin, hasValidCombo.value && preferences.showAroundTX, hasValidCombo.value && preferences.showActivity, ipLookupEnabled.value))
 const transition = usePageTransition(router, () => desktopItems.value)
 const { reducedMotion, offset } = useMotionPreferences()
 const showBackButton = computed(() => !['/', '/home'].includes(route.path))
@@ -80,6 +82,7 @@ useTelegramBackButton(showBackButton, goBack)
 watch(() => route.path, (_next, previous) => {
   if (!previous) return
   void refreshCommunityAccess()
+  void refreshIPLookupAvailability()
   void preferences.refresh()
   void nextTick()
     .then(() => {

@@ -18,6 +18,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/connectivity"
 	"github.com/txyyddss/Remna-User-Panel/internal/coupons"
 	"github.com/txyyddss/Remna-User-Panel/internal/emby"
+	"github.com/txyyddss/Remna-User-Panel/internal/iplookup"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/secret"
 	"github.com/txyyddss/Remna-User-Panel/internal/purchaseops"
@@ -50,6 +51,7 @@ type telegramProvider interface {
 }
 
 type Dependencies struct {
+	IPLookup           *iplookup.Service
 	Connectivity       *connectivity.Service
 	PM                 *telegrampm.Service
 	FirstEntry         *accounts.FirstEntry
@@ -166,6 +168,7 @@ func New(deps Dependencies) (*Server, error) {
 		authenticated.Put("/api/v1/purchases/{id}/auto-renewal", server.updateAutomaticRenewal)
 		authenticated.Post("/api/v1/subscription/revoke", server.revokeSubscription)
 		server.mountMemberOperations(authenticated)
+		server.mountIPLookup(authenticated)
 		authenticated.Get("/api/v1/balance", server.balance)
 		authenticated.Get("/api/v1/ledger", server.ledger)
 		authenticated.Get("/api/v1/affiliates", server.affiliateOverview)

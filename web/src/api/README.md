@@ -37,3 +37,4 @@ commands. Its mutable state and quotes always bypass response snapshots.
 `connectivity.ts` uses generated OpenAPI types for administrator-only snapshots, exact-account resolution, asynchronous manual checks and cursor history. Read requests bypass browser caching; configuration writes serialize one credential-free `connectivity.config` value through the existing settings endpoint.
 
 `subscription.ts` exposes live authenticated member uptime and native import links. These endpoints are excluded from persistent rendering snapshots; neither test-account credentials nor raw resolved configurations are returned.
+- `ipLookup.ts` provides generated typed IP Lookup clients with fresh capability and receipt reads.
