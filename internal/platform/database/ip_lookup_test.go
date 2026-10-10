@@ -22,7 +22,9 @@ func ipLookupFixture(t *testing.T, quota int) (*Store, *iplookup.Service, string
 	c.Enabled = true
 	c.LookupFeeTXB = "2.50"
 	c.RefreshFeeTXB = "3.50"
-	for i := range c.Providers { c.Providers[i].Enabled = c.Providers[i].ID=="ipapi" }
+	for i := range c.Providers {
+		c.Providers[i].Enabled = c.Providers[i].ID == "ipapi"
+	}
 	if err := store.SaveIPLookupSettings(ctx, user.ID, c, map[string]string{"ipapi": "test-vault-value"}, map[string]*int{combo.ID: &quota}); err != nil {
 		t.Fatal(err)
 	}
