@@ -10,34 +10,43 @@ concurrency:
 
 permissions:
   contents: read
-  pull-requests: none
+  actions: read
+  pull-requests: read
 
 jobs:
   changes:
     name: Detect changed areas
     runs-on: ubuntu-latest
     outputs:
-      frontend: ${{ steps.filter.outputs.frontend }}
-      # A follow-up frontend repair can supersede an unfinished backend run.
-      # Main pushes must still validate the complete backend before publication.
-      backend: ${{ steps.filter.outputs.backend == 'true' || github.event_name == 'push' }}
+      frontend: ${{ steps.baseline.outputs.full == 'true' || steps.filter.outputs.frontend == 'true' }}
+      backend: ${{ steps.baseline.outputs.full == 'true' || steps.filter.outputs.backend == 'true' }}
     steps:
       - name: Check out source
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      - name: Find last successfully published baseline
+        id: baseline
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/ci/change_base.py
       - name: Detect frontend and backend changes
         id: filter
+        if: steps.baseline.outputs.full != 'true'
         uses: dorny/paths-filter@v4
         with:
-          base: ${{ github.ref }}
+          base: ${{ steps.baseline.outputs.base }}
           predicate-quantifier: some-with-excludes
           filters: |
             frontend:
+              - '.github/workflows/ci.yml'
+              - '.github/workflows/container.yml'
+              - 'scripts/ci/**'
               - 'web/**'
               - 'api/**'
             backend:
               - '.github/workflows/ci.yml'
+              - '.github/workflows/container.yml'
               - 'scripts/ci/**'
               - 'cmd/**'
               - 'internal/**'

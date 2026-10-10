@@ -16,8 +16,14 @@ have independent processes and CPU allocations, so migration concurrency does
 not multiply on one machine. Do not invoke these scripts locally: repository
 instructions permit automated suites only in hosted CI.
 
-Main pushes always run the backend gates. A frontend-only repair must not cancel
-an unfinished backend run and publish without validating the upgraded Go tree.
-Pull requests retain changed-area filtering.
+`change_base.py` selects the latest successful `Container` run on `main` whose
+commit is an ancestor of the checked-out tree. Push filters compare against that
+published commit, so frontend-only changes skip Go checks after a successful
+publication. Backend changes in canceled or failed runs remain in the next diff
+and must pass before publication. The read-only GitHub Actions API uses the
+workflow token; unavailable history or API errors run all gates. Release tags
+also run all gates. Pull requests retain filtering against their base branch.
+The workflow files and `scripts/ci` affect both quality gates; extend their path
+filters when adding another shared CI input.
 The aggregate gate follows the actual shard result, including failures, rather
 than reevaluating changed-area output after the matrix has completed.
