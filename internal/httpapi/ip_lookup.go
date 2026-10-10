@@ -11,6 +11,7 @@ import (
 
 func (s *Server) mountIPLookup(r chi.Router) {
 	r.Get("/api/v1/ip-lookup", s.ipLookupState)
+	r.Get("/api/v1/ip-lookup/details", s.ipLookupDetails)
 	r.Post("/api/v1/ip-lookup/quote", s.ipLookupQuote)
 	r.Post("/api/v1/ip-lookup/checks", s.ipLookupSubmit)
 	r.Get("/api/v1/ip-lookup/checks/{id}", s.ipLookupCheck)
@@ -128,6 +129,13 @@ func (s *Server) ipLookupError(w http.ResponseWriter, r *http.Request, err error
 	}
 	if code == "IP_LOOKUP_QUOTE_CHANGED" || code == "IP_LOOKUP_BUSY" {
 		status = http.StatusConflict
+	}
+	if code == "IP_DETAILS_BUSY" {
+		status = http.StatusConflict
+	}
+	if code == "IP_DETAILS_RATE_LIMITED" {
+		status = http.StatusTooManyRequests
+		w.Header().Set("Retry-After", "10")
 	}
 	if errors.Is(err, database.ErrInsufficientBalance) {
 		code, status = "INSUFFICIENT_BALANCE", http.StatusConflict

@@ -78,6 +78,13 @@ func (s *Store) CompleteProviderOperation(ctx context.Context, operationID strin
 			return providerops.Operation{}, err
 		}
 	}
+	if operation.Receipt.Kind == providerops.KindTelegramPMRelay {
+		// Unsent repair waiters remain resumable until the bounded payload expires.
+		if _, err := tx.ExecContext(ctx, `UPDATE telegram_pm_payloads SET encrypted_payload='' WHERE operation_id=? AND
+			(?<>'pending_review' OR NOT EXISTS(SELECT 1 FROM provider_operation_items WHERE operation_id=? AND item_key='relay' AND status='queued'))`, operationID, completion.Status, operationID); err != nil {
+			return providerops.Operation{}, err
+		}
+	}
 	if completion.Status == providerops.StatusFailed && operation.Receipt.Kind == purchaseops.OperationRefundKind {
 		if err := s.insertMemberRefundFailedNoticeTx(ctx, tx, operation, completion.ErrorCode, now); err != nil {
 			return providerops.Operation{}, err

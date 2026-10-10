@@ -180,7 +180,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		return cleanup(err)
 	}
 	pmService, err := newApplicationPMWorkflows(store, settings, queuedTelegramClient, cfg.AdminTelegramIDs,
-		operationDispatcher, outboxWorker, adminUserWorkflows, catalogService, affiliateService.BotUsername, cfg.Timezone)
+		operationDispatcher, outboxWorker, adminUserWorkflows, catalogService, affiliateService.BotUsername, cfg.Timezone, vault)
 	if err != nil {
 		return cleanup(err)
 	}

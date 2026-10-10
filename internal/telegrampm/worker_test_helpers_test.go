@@ -161,6 +161,13 @@ func (*workerSender) SendMarkdownV2Message(context.Context, int64, int64, string
 	return fmt.Errorf("unexpected notice")
 }
 
+func (s *workerSender) SendPMText(ctx context.Context, guard func(context.Context) (telegram.PMTextRequest, error)) (int64, error) {
+	if _, err := guard(ctx); err != nil {
+		return 0, err
+	}
+	return 63, s.copyErr
+}
+
 func newWorkerFixture() (*Worker, *workerRepo, *workerSender) {
 	operation := providerops.Operation{Receipt: model.OperationReceipt{ID: "operation", Kind: providerops.KindTelegramPMRelay, Status: "queued"}, ActorUserID: "member", OwnerUserID: "member"}
 	r := &workerRepo{operation: operation, qualified: true, conversation: model.PMConversation{ID: "conversation", UserID: "member", TelegramID: 42, ChatID: -100123, FirstName: "Member", TopicState: "new", ProfileState: "missing"}, items: map[string]providerops.Item{}}

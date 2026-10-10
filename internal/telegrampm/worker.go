@@ -62,7 +62,7 @@ func (w *Worker) HandleProviderOperation(ctx context.Context, operation provider
 	if run.conversationID == "" {
 		return fmt.Errorf("PM operation has no conversation reference")
 	}
-	for _, key := range []string{"topic", "profile", "relay", "repair"} {
+	for _, key := range []string{"topic", "profile", "relay", "footer", "repair"} {
 		item, exists := byKey[key]
 		if !exists || item.Status == providerops.StatusSucceeded {
 			continue
@@ -85,6 +85,8 @@ func (w *Worker) HandleProviderOperation(ctx context.Context, operation provider
 			result, err = w.profile(ctx, run, item, interrupted)
 		case "relay":
 			result, err = w.relay(ctx, run, item, interrupted)
+		case "footer":
+			result, err = w.footer(ctx, run, item, interrupted)
 		case "repair":
 			result, err = w.repair(ctx, run, item, interrupted)
 		}

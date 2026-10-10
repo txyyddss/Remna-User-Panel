@@ -44,12 +44,15 @@ func (c *Client) CreateForumTopic(ctx context.Context, chatID int64, name string
 }
 
 type CopyMessageRequest struct {
-	ChatID              int64                 `json:"chat_id"`
-	MessageThreadID     int64                 `json:"message_thread_id,omitempty"`
-	FromChatID          int64                 `json:"from_chat_id"`
-	MessageID           int64                 `json:"message_id"`
-	DisableNotification bool                  `json:"disable_notification"`
-	ReplyMarkup         *InlineKeyboardMarkup `json:"reply_markup,omitempty"`
+	Caption               *string               `json:"caption,omitempty"`
+	CaptionEntities       []MessageEntity       `json:"caption_entities,omitempty"`
+	ShowCaptionAboveMedia bool                  `json:"show_caption_above_media,omitempty"`
+	ChatID                int64                 `json:"chat_id"`
+	MessageThreadID       int64                 `json:"message_thread_id,omitempty"`
+	FromChatID            int64                 `json:"from_chat_id"`
+	MessageID             int64                 `json:"message_id"`
+	DisableNotification   bool                  `json:"disable_notification"`
+	ReplyMarkup           *InlineKeyboardMarkup `json:"reply_markup,omitempty"`
 }
 
 // CopyMessage retains original formatting and captions by sending only references.

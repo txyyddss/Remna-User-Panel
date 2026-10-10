@@ -28,3 +28,9 @@ This package contains the Telegram Bot API and Mini App authentication surface u
 
 `messages.go` holds minimal command/payment/thread/media-presence contracts without persistence. `forum.go` implements documented getChat/createForumTopic/copyMessage and optional acknowledgment markup on copied messages. `topic_profiles.go` implements thread-addressed profile creation, idempotent edits with returned thread identity, callback/URL buttons and callback answers. New methods execute only through the app queue adapters.
 `forum_test.go` covers documented forum, copy, profile and callback wire methods, retained-caption behavior and returned thread identity in hosted CI.
+
+`pm_content.go` defines Telegram message entities, UTF-16 sizing and attributed
+PM text/reply requests. SendPMText preserves entities without parse-mode
+reinterpretation or truncation and validates the returned destination identity.
+`pm_content_test.go` covers the queued adapter's wire contract in hosted CI.
+forum.go adds optional caption overrides only for new attributed outbound media.

@@ -14,3 +14,4 @@ Chinese on 2026-10-10. A constructed save retained independent reordered lists,
 2.50/3.50 TXB fees, two/zero quotas, account fields and blank credential edits.
 All ordering controls measured 44px; no overflow or console errors appeared.
 These are browser/constructed-handler results, not a production settings write.
+ProviderSettings.vue also manages the optional vaulted cloudflare_radar token with configured/keep/replace/clear behavior, independent of the risk-provider order.

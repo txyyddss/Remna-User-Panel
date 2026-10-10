@@ -1,0 +1,88 @@
+{
+  "ipLookupLive": {
+    "title": "实时网络信息",
+    "description": "实时查询此地址的信息，不额外消耗 TXB 或套餐查询次数。",
+    "refresh": "刷新",
+    "fetchedAt": "查询时间：{date}",
+    "bgpTitle": "BGP 路由",
+    "asnTitle": "自治系统",
+    "selectOrigin": "选择源 ASN",
+    "announced": "正在发布路由",
+    "notAnnounced": "未观察到源路由",
+    "scores": "网络滥用比例",
+    "blockTitle": "此网段内被举报的 IP",
+    "blockCount": "最近 {days} 天：{reported} 个被举报地址 / {capacity} 个地址",
+    "ptrTitle": "反向 DNS / PTR",
+    "cloudflareTitle": "Cloudflare Radar",
+    "cloudflareToken": "API 令牌",
+    "cloudflareHelp": "可选的 ASN 流量比例。请配置具有 Account Radar Read 权限的令牌。留空保留现有令牌。",
+    "status": {
+      "success": "可用",
+      "partial": "部分数据",
+      "empty": "暂无数据",
+      "error": "来源不可用",
+      "unconfigured": "提供商尚未配置或启用",
+      "restricted": "提供商套餐限制"
+    },
+    "errors": {
+      "IP_DETAILS_UNAVAILABLE": "实时信息暂时不可用，请尝试刷新。",
+      "IP_DETAILS_BUSY": "您的账号已有实时查询正在进行。",
+      "IP_DETAILS_RATE_LIMITED": "实时查询频率已达上限，请稍后重试。",
+      "IP_DETAILS_PLAN_RESTRICTED": "此提供商套餐无法查询完整的已发布网段。",
+      "IP_DETAILS_AUTH": "提供商凭据未被接受。",
+      "IP_DETAILS_INVALID_RESPONSE": "提供商返回了不完整或无效的数据。",
+      "IP_LOOKUP_DISABLED": "IP 查询已关闭。",
+      "IP_LOOKUP_INVALID_IP": "请输入公网 IPv4 或 IPv6 地址。",
+      "IP_LOOKUP_FAILED": "无法加载实时信息，请尝试刷新。"
+    },
+    "fields": {
+      "registeredAt": "注册日期",
+      "rir": "区域互联网注册机构",
+      "ipv4Prefixes": "IPv4 前缀数",
+      "ipv6Prefixes": "IPv6 前缀数",
+      "observedNeighbors": "观察到的邻居",
+      "peers": "推断的对等网络",
+      "upstreams": "推断的上游网络"
+    },
+    "traffic": {
+      "botHuman": "机器人 / 人类",
+      "devices": "移动端 / 桌面端",
+      "ipVersion": "IPv4 / IPv6",
+      "bot": "机器人",
+      "human": "人类",
+      "mobile": "移动端",
+      "desktop": "桌面端",
+      "other": "其他",
+      "ipv4": "IPv4",
+      "ipv6": "IPv6",
+      "range": "{start} 至 {end}",
+      "context": "所选 ASN 最近七天被 Cloudflare 观察到的 HTTP 流量。这些比例及网络滥用比例描述的是整个网络。"
+    },
+    "graph": {
+      "zoomIn": "放大",
+      "zoomOut": "缩小",
+      "reset": "重置视图",
+      "moreDirect": "更多邻居",
+      "expand": "展开路由",
+      "collapse": "折叠",
+      "unknownName": "名称不可用",
+      "routes": "观察到的路径",
+      "instructions": "拖动平移，可使用缩放按钮或键盘方向键和 + / -。",
+      "hidden": "已折叠 {count} 个 ASN。",
+      "truncated": "结果有数量上限，部分路径或源 ASN 已省略。",
+      "routeLimit": "显示 {count} 条路径中的前 60 条。",
+      "exchangeContext": "采集器环境：{name}",
+      "context": "连线来自观察到的 AS 路径。上游和对等标签来自注明日期的关系推断。交换中心名称表示采集器环境，不代表已验证的物理跳点。",
+      "relationship": {
+        "observed": "观察到的邻居",
+        "upstream": "推断的转接上游",
+        "peer": "推断的对等网络",
+        "customer": "推断的客户网络"
+      }
+    },
+    "shodanTitle": "Shodan InternetDB",
+    "shodanHostnames": "关联域名",
+    "shodanPorts": "观察到的开放端口",
+    "shodanContext": "实时查询 Shodan 每周更新的数据集，不代表即时端口扫描；来源不提供单个地址的观测时间。"
+  }
+}

@@ -50,7 +50,10 @@ const databaseIcon = (status: string) => status === 'success' ? 'i-ph-check-circ
 .verdict-suitable { color: var(--ui-success); }
 .report-note { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; margin: 0; }
 .report-refusals { display: grid; gap: 0.55rem; list-style: none; padding: 0; margin: 0; }
-.report-refusals li { display: flex; align-items: start; gap: 0.5rem; color: var(--danger); font-size: 0.85rem; }
+.report-refusals li { display: grid; grid-template-columns: 1.1rem minmax(0, 1fr); align-items: start; gap: 0.5rem; color: var(--danger); font-size: 0.85rem; line-height: 1.5; }
+.report-refusals li > :first-child { width: 1.1rem; height: 1.1rem; margin-top: 0.15rem; }
+.report-refusals li > span { min-width: 0; overflow-wrap: anywhere; }
+.report-refusals strong { margin-left: 0.25rem; white-space: normal; }
 .report-refusals small { display: block; margin-top: 0.1rem; color: var(--text-muted); font-size: 0.72rem; }
 .report-content { display: grid; gap: 1rem; min-width: 0; }
 .report-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 0.85rem 1rem; margin: 0; }

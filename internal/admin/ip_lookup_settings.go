@@ -19,6 +19,7 @@ func init() {
 	for _, id := range iplookup.IDs {
 		settingDefinitions[iplookup.CredentialKey(id)] = SettingDefinition{Secret: true}
 	}
+	settingDefinitions[iplookup.CredentialKey(iplookup.CloudflareID)] = SettingDefinition{Secret: true}
 }
 
 // IPLookupSettings exposes only safe configuration and credential presence.
@@ -32,7 +33,7 @@ func (s *SettingsService) IPLookupSettings(ctx context.Context) (iplookup.AdminS
 	if err != nil {
 		return result, err
 	}
-	for _, id := range iplookup.IDs {
+	for _, id := range append(append([]string{}, iplookup.IDs...), iplookup.CloudflareID) {
 		value, err := s.Optional(ctx, iplookup.CredentialKey(id))
 		if err != nil {
 			return result, err

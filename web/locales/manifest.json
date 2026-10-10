@@ -26,6 +26,7 @@
     "admin-compensation",
     "abuse",
     "admin-abuse",
-    "ip-lookup"
+    "ip-lookup",
+    "ip-lookup-live"
   ]
 }

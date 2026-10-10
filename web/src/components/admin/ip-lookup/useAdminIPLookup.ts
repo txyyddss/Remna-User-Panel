@@ -26,7 +26,7 @@ export function useAdminIPLookup() {
       const [value, catalog] = await Promise.all([ipLookupApi.settings(), api.getAdminResource<{ items: Combo[] }>('combos')])
       if (disposed || current !== version || owner !== session.user?.id) return
       Object.assign(settings, value)
-      settings.credentials = Object.fromEntries(value.providers.map(provider => [provider.id, { value: '', clear: false }]))
+      settings.credentials = Object.fromEntries([...value.providers.map(provider => provider.id), 'cloudflare_radar'].map(id => [id, { value: '', clear: false }]))
       combos.value = catalog.items
       errorCode.value = ''
     } catch (error) { if (!disposed && current === version) setError(error) }
@@ -43,7 +43,7 @@ export function useAdminIPLookup() {
       const value = await ipLookupApi.saveSettings(settings)
       if (disposed || current !== version) return
       Object.assign(settings, value)
-      settings.credentials = Object.fromEntries(value.providers.map(provider => [provider.id, { value: '', clear: false }]))
+      settings.credentials = Object.fromEntries([...value.providers.map(provider => provider.id), 'cloudflare_radar'].map(id => [id, { value: '', clear: false }]))
       saved.value = true
       await availability.refresh()
     } catch (error) { if (!disposed && current === version) setError(error) }

@@ -1,0 +1,28 @@
+get:
+  tags: [IP Lookup]
+  operationId: getIPLookupLiveDetails
+  parameters:
+    - in: query
+      name: ip
+      required: true
+      schema: { type: string }
+      description: Requested public IPv4 or IPv6 address, independent of any cached report address.
+  responses:
+    "200":
+      description: Fresh source-attributed details; individual sources can be unavailable.
+      headers:
+        Cache-Control: { schema: { type: string }, description: Always no-store. }
+      content:
+        application/json:
+          schema: { $ref: ../openapi.yaml#/components/schemas/IPLookupLiveDetails }
+    "401": { $ref: ../openapi.yaml#/components/responses/Unauthorized }
+    "409": { $ref: ../openapi.yaml#/components/responses/Conflict }
+    "422": { $ref: ../openapi.yaml#/components/responses/Unprocessable }
+    "429":
+      description: Six requests per minute or admission capacity exceeded.
+      headers:
+        Retry-After: { schema: { type: string } }
+      content:
+        application/json:
+          schema: { $ref: ../openapi.yaml#/components/schemas/ApiError }
+    "502": { $ref: ../openapi.yaml#/components/responses/UpstreamFailure }

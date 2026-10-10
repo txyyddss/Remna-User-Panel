@@ -116,3 +116,4 @@ file instead.
 `065_host_connectivity_attempts.sql` adds one indexed, credential-free connectivity attempt table. Starts define a rolling 24-hour diagnostic window; latest results are derived without a second table or mirrored host data. A nullable host reference records setup failures, and terminal transitions retain the original start timestamp.
 - `066_ip_lookup.sql` adds combo quotas, activation allowances, shared reports and paid check references.
 - `067_ip_lookup_compact.sql` indexes parsed cache completion times. Its transactional Go hook removes legacy per-provider snapshots, preserves minimal pending attempt markers, and leaves historical statuses and accounting unchanged.
+`068_telegram_pm_attribution.sql` adds bounded encrypted pending envelopes with content-free retry markers and attaches separately tracked footer phases to legacy unsent outbound messages.

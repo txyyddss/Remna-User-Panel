@@ -156,6 +156,8 @@
       "pending_review": "Topic needs review"
     },
     "errors": {
+      "PM_CONTENT_EXPIRED": "Pending message content expired. Send the message again from the forum.",
+      "PM_CONTENT_INVALID": "Pending message content could not be restored. Send the message again from the forum.",
       "PM_TOPIC_UNCERTAIN": "Topic creation needs review. Attach its existing ID after checking Telegram.",
       "PM_PROFILE_UNCERTAIN": "The profile card delivery needs review. Attach its message ID or confirm a new card.",
       "PM_DELIVERY_UNCERTAIN": "Delivery may have succeeded. Check Telegram before sending this message again.",

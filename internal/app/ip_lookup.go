@@ -14,7 +14,7 @@ import (
 
 func newIPLookupQueues() (map[string]*upstreamqueue.Queue, error) {
 	result := map[string]*upstreamqueue.Queue{}
-	for _, id := range iplookup.IDs {
+	for _, id := range iplookup.QueueIDs() {
 		queue, err := upstreamqueue.New(upstreamqueue.Config{Name: "ip-lookup-" + id, Capacity: 32, MinInterval: 250 * time.Millisecond})
 		if err != nil {
 			return nil, err
@@ -25,7 +25,7 @@ func newIPLookupQueues() (map[string]*upstreamqueue.Queue, error) {
 }
 
 func (q *providerQueues) startIPLookup(ctx context.Context) error {
-	for _, id := range iplookup.IDs {
+	for _, id := range iplookup.QueueIDs() {
 		if queue := q.iplookup[id]; queue != nil {
 			if err := queue.Start(ctx); err != nil {
 				_ = q.shutdownIPLookup(context.Background())
@@ -38,7 +38,7 @@ func (q *providerQueues) startIPLookup(ctx context.Context) error {
 
 func (q *providerQueues) shutdownIPLookup(ctx context.Context) error {
 	var result error
-	for _, id := range iplookup.IDs {
+	for _, id := range iplookup.QueueIDs() {
 		if queue := q.iplookup[id]; queue != nil {
 			result = errors.Join(result, queue.Shutdown(ctx))
 		}
@@ -54,5 +54,7 @@ func newIPLookupService(store *database.Store, settings *admin.SettingsService, 
 	if err := dispatcher.Register(iplookup.OperationKind, iplookup.NewWorker(store, providers)); err != nil {
 		return nil, err
 	}
-	return iplookup.NewService(store, key), nil
+	service := iplookup.NewService(store, key)
+	service.Live = iplookup.NewLiveService(settings, queues.iplookup)
+	return service, nil
 }

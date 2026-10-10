@@ -1,9 +1,12 @@
 package model
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // PMConversation joins persistent routing references with canonical account data.
-// Message bodies and media metadata are never part of the durable PM contract.
+// Conversation records contain routing references; pending outbound text is encrypted separately.
 type PMConversation struct {
 	ProfileState                                      string
 	ID, UserID, FirstName, LastName, Username, Locale string
@@ -14,6 +17,8 @@ type PMConversation struct {
 }
 
 type PMRelayInput struct {
+	Content                                         json.RawMessage `json:"-"`
+	AttributionReply                                bool            `json:"-"`
 	ActorUserID, UserID                             string
 	UpdateID, ChatID, SourceChatID, SourceMessageID int64
 	ReplyToMessageID                                int64

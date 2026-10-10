@@ -11,6 +11,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/database"
 	"github.com/txyyddss/Remna-User-Panel/internal/platform/outbox"
+	"github.com/txyyddss/Remna-User-Panel/internal/platform/secret"
 	"github.com/txyyddss/Remna-User-Panel/internal/providerops"
 	"github.com/txyyddss/Remna-User-Panel/internal/telegramformat"
 	"github.com/txyyddss/Remna-User-Panel/internal/telegrampm"
@@ -18,7 +19,8 @@ import (
 
 func newApplicationPMWorkflows(store *database.Store, settings *admin.SettingsService, sender *queuedTelegram, admins []int64,
 	dispatcher *providerops.Dispatcher, worker *outbox.Worker, users *admin.UserWorkflows, catalogService *catalog.Service,
-	botUsername func() string, timezone *time.Location) (*telegrampm.Service, error) {
+	botUsername func() string, timezone *time.Location, vault *secret.Vault) (*telegrampm.Service, error) {
+	store.ConfigurePMContentVault(vault)
 	zone := "UTC"
 	if timezone != nil {
 		zone = timezone.String()

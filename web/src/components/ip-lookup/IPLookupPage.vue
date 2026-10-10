@@ -3,6 +3,7 @@ import InlineNotice from '@/components/common/InlineNotice.vue'
 import SkeletonBlock from '@/components/common/SkeletonBlock.vue'
 import IPLookupForm from './IPLookupForm.vue'
 import IPLookupReport from './IPLookupReport.vue'
+import IPLiveDetails from './IPLiveDetails.vue'
 import { useIPLookup } from './useIPLookup'
 import { ipLookupErrorText } from './presentation'
 
@@ -22,6 +23,7 @@ const { ip, state, quote, check, report, requestedIP, cacheMatch, loading, busy,
       <p v-if="busy" role="status">{{ $t('ipLookup.processing') }}</p>
       <IPLookupReport v-if="report" :report="report" :requested-ip="requestedIP" :cache-match="cacheMatch" :check="check" />
       <p v-else-if="!busy && state?.enabled" class="ip-lookup-empty">{{ $t('ipLookup.empty') }}</p>
+      <IPLiveDetails v-if="report" :report="report" :requested-ip="requestedIP" />
       <UButton v-if="!state" color="neutral" variant="outline" :label="$t('common.tryAgain')" @click="load" />
     </template>
   </main>

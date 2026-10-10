@@ -23,6 +23,11 @@ function clearChanged(id: string, value: boolean | 'indeterminate'): void {
         <UCheckbox v-if="settings.configured?.[provider.id]" v-model="settings.credentials[provider.id]!.clear" :label="$t('ipLookup.clearCredential')" @update:model-value="clearChanged(provider.id, $event)" />
       </template>
     </div>
+    <div v-if="settings.credentials?.cloudflare_radar" class="provider-settings">
+      <h2>{{ $t('ipLookupLive.cloudflareTitle') }}</h2><p>{{ $t('ipLookupLive.cloudflareHelp') }}</p>
+      <UFormField name="cloudflare-token" :label="$t('ipLookupLive.cloudflareToken')" :hint="settings.configured?.cloudflare_radar ? $t('ipLookup.credentialConfigured') : $t('ipLookup.credentialMissing')"><UInput v-model="settings.credentials.cloudflare_radar.value" class="w-full" type="password" autocomplete="new-password" :disabled="settings.credentials.cloudflare_radar.clear" /></UFormField>
+      <UCheckbox v-if="settings.configured?.cloudflare_radar" v-model="settings.credentials.cloudflare_radar.clear" :label="$t('ipLookup.clearCredential')" @update:model-value="clearChanged('cloudflare_radar', $event)" />
+    </div>
   </section>
 </template>
 

@@ -104,8 +104,12 @@ func (s *Service) HandleMessage(ctx context.Context, updateID int64, message *te
 	if err != nil {
 		return true, err
 	}
+	content, footer, err := prepareContent(message)
+	if err != nil {
+		return true, err
+	}
 	_, err = s.Repository.QueuePMRelay(ctx, model.PMRelayInput{ActorUserID: admin.ID, UserID: conversation.UserID, UpdateID: updateID,
-		ChatID: group, SourceChatID: message.Chat.ID, SourceMessageID: message.MessageID}, time.Now().UTC())
+		ChatID: group, SourceChatID: message.Chat.ID, SourceMessageID: message.MessageID, Content: content, AttributionReply: footer}, time.Now().UTC())
 	return true, err
 }
 

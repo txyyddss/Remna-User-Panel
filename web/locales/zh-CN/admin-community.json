@@ -156,6 +156,8 @@
       "pending_review": "话题需要核查"
     },
     "errors": {
+      "PM_CONTENT_EXPIRED": "\u5f85\u53d1\u9001\u5185\u5bb9\u5df2\u8fc7\u671f\uff0c\u8bf7\u4ece\u8bba\u575b\u91cd\u65b0\u53d1\u9001\u6d88\u606f\u3002",
+      "PM_CONTENT_INVALID": "\u65e0\u6cd5\u6062\u590d\u5f85\u53d1\u9001\u5185\u5bb9\uff0c\u8bf7\u4ece\u8bba\u575b\u91cd\u65b0\u53d1\u9001\u6d88\u606f\u3002",
       "PM_TOPIC_UNCERTAIN": "话题创建结果需要核查，请检查 Telegram 后关联已有 ID。",
       "PM_PROFILE_UNCERTAIN": "资料卡投递结果需要核查，请关联其消息 ID 或确认创建新的资料卡。",
       "PM_DELIVERY_UNCERTAIN": "消息可能已投递成功，重新发送前请先检查 Telegram。",

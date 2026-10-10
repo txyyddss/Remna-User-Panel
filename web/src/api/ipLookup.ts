@@ -7,8 +7,14 @@ type IPLookupSubmission = components['schemas']['IPLookupQuote']
 export type IPLookupCheck = components['schemas']['IPLookupCheck']
 export type IPLookupReport = components['schemas']['IPLookupReport']
 export type IPLookupAdminSettings = components['schemas']['IPLookupAdminSettings']
+export type IPLookupLiveDetails = components['schemas']['IPLookupLiveDetails']
+export type IPLookupLiveMeta = components['schemas']['IPLookupLiveMeta']
+export type IPLookupBGPTopology = components['schemas']['IPLookupBGPTopology']
+export type IPLookupASNDetails = components['schemas']['IPLookupASNDetails']
+export type IPLookupTrafficSummary = components['schemas']['IPLookupTrafficSummary']
 
 export const ipLookupApi = {
+  details: (ip: string, signal?: AbortSignal) => request<IPLookupLiveDetails>('/api/v1/ip-lookup/details', { query: { ip }, cache: 'no-store', signal }),
   state: () => request<IPLookupState>('/api/v1/ip-lookup', { cache: 'no-store' }),
   quote: (ip: string, refresh: boolean) => request<IPLookupQuote>('/api/v1/ip-lookup/quote', { method: 'POST', body: { ip, refresh }, cache: 'no-store' }),
   submit: (quote: IPLookupQuote, key: string) => {

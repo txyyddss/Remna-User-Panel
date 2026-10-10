@@ -27,6 +27,16 @@ func (a *queuedTelegram) CopyPMMessage(ctx context.Context, guard func(context.C
 		return a.client.CopyMessage(callCtx, input)
 	})
 }
+
+func (a *queuedTelegram) SendPMText(ctx context.Context, guard func(context.Context) (telegram.PMTextRequest, error)) (int64, error) {
+	return upstreamqueue.Do(ctx, a.queue, func(ctx context.Context) (int64, error) {
+		input, err := guard(ctx)
+		if err != nil {
+			return 0, err
+		}
+		return a.client.SendPMText(ctx, input)
+	})
+}
 func (a *queuedTelegram) PublishPMProfile(ctx context.Context, guard func(context.Context) (telegram.TopicProfileRequest, error)) (int64, error) {
 	return upstreamqueue.Do(ctx, a.queue, func(callCtx context.Context) (int64, error) {
 		input, err := guard(callCtx)

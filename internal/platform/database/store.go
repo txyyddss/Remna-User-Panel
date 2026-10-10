@@ -26,11 +26,12 @@ var (
 
 // Store implements persistent repositories on top of SQLite.
 type Store struct {
-	db           *sql.DB
-	logger       *slog.Logger
-	writeMu      sync.Mutex
-	groupFactsMu sync.Mutex
-	groupFacts   map[groupMessageFactKey]groupMessageFact
+	pmContentCipher pmContentCipher
+	db              *sql.DB
+	logger          *slog.Logger
+	writeMu         sync.Mutex
+	groupFactsMu    sync.Mutex
+	groupFacts      map[groupMessageFactKey]groupMessageFact
 }
 
 // NewStore creates an application store.

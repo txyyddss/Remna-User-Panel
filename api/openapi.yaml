@@ -3,6 +3,7 @@ info: { title: TX Carpool API, version: 1.0.0, description: "HTTP contract for t
 security: [{ cookieSession: [], requestTimestamp: [], requestNonce: [], requestSignature: [] }]
 paths:
   /api/v1/ip-lookup: { $ref: './paths/api-v1-ip-lookup.yaml' }
+  /api/v1/ip-lookup/details: { $ref: './paths/api-v1-ip-lookup-details.yaml' }
   /api/v1/ip-lookup/quote: { $ref: './paths/api-v1-ip-lookup-quote.yaml' }
   /api/v1/ip-lookup/checks: { $ref: './paths/api-v1-ip-lookup-checks.yaml' }
   /api/v1/ip-lookup/checks/{id}: { $ref: './paths/api-v1-ip-lookup-checks-id.yaml' }
@@ -174,6 +175,20 @@ components:
   schemas: {
     IPLookupProviderConfig: {"$ref":"./components/schemas/ip-lookup-config.yaml#/IPLookupProviderConfig"},
     IPLookupCredentialEdit: {"$ref":"./components/schemas/ip-lookup-config.yaml#/IPLookupCredentialEdit"},
+    IPLookupLiveMeta: { $ref: './components/schemas/ip-lookup-live.yaml#/IPLookupLiveMeta' },
+    IPLookupBGPNode: { $ref: './components/schemas/ip-lookup-live.yaml#/IPLookupBGPNode' },
+    IPLookupBGPEdge: { $ref: './components/schemas/ip-lookup-live.yaml#/IPLookupBGPEdge' },
+    IPLookupBGPPath: { $ref: './components/schemas/ip-lookup-live.yaml#/IPLookupBGPPath' },
+    IPLookupBGPTopology: { $ref: './components/schemas/ip-lookup-live.yaml#/IPLookupBGPTopology' },
+    IPLookupTrafficSummary: { $ref: './components/schemas/ip-lookup-live.yaml#/IPLookupTrafficSummary' },
+    IPLookupASNTraffic: { $ref: './components/schemas/ip-lookup-live.yaml#/IPLookupASNTraffic' },
+    IPLookupASNDetails: { $ref: './components/schemas/ip-lookup-live.yaml#/IPLookupASNDetails' },
+    IPLookupNetworkScore: { $ref: './components/schemas/ip-lookup-live.yaml#/IPLookupNetworkScore' },
+    IPLookupNetworkScores: { $ref: './components/schemas/ip-lookup-live.yaml#/IPLookupNetworkScores' },
+    IPLookupAbuseBlock: { $ref: './components/schemas/ip-lookup-live.yaml#/IPLookupAbuseBlock' },
+    IPLookupPTRDetails: { $ref: './components/schemas/ip-lookup-live.yaml#/IPLookupPTRDetails' },
+    IPLookupLiveDetails: { $ref: './components/schemas/ip-lookup-live.yaml#/IPLookupLiveDetails' },
+    IPLookupShodanDetails: { $ref: './components/schemas/ip-lookup-live.yaml#/IPLookupShodanDetails' },
     IPLookupAdminSettings: {"$ref":"./components/schemas/ip-lookup-config.yaml#/IPLookupAdminSettings"},
     IPLookupAllowance: {"$ref":"./components/schemas/ip-lookup-config.yaml#/IPLookupAllowance"},
     IPLookupState: {"$ref":"./components/schemas/ip-lookup-config.yaml#/IPLookupState"},

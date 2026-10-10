@@ -1,0 +1,88 @@
+{
+  "ipLookupLive": {
+    "title": "Live network details",
+    "description": "Fresh source lookups for this address. No additional TXB or included lookup is used.",
+    "refresh": "Refresh",
+    "fetchedAt": "Fetched {date}",
+    "bgpTitle": "BGP routes",
+    "asnTitle": "Autonomous system",
+    "selectOrigin": "Select origin ASN",
+    "announced": "Originating routes",
+    "notAnnounced": "No originating routes observed",
+    "scores": "Network abuse ratios",
+    "blockTitle": "Reported IPs in this block",
+    "blockCount": "{reported} reported addresses / {capacity} addresses, last {days} days",
+    "ptrTitle": "Reverse DNS / PTR",
+    "cloudflareTitle": "Cloudflare Radar",
+    "cloudflareToken": "API token",
+    "cloudflareHelp": "Optional ASN traffic proportions. Configure an Account Radar Read token. Leave blank to keep the current token.",
+    "status": {
+      "success": "Available",
+      "partial": "Partial data",
+      "empty": "No data",
+      "error": "Source unavailable",
+      "unconfigured": "Provider not configured or enabled",
+      "restricted": "Provider plan restriction"
+    },
+    "errors": {
+      "IP_DETAILS_UNAVAILABLE": "Live details are temporarily unavailable. Try refreshing.",
+      "IP_DETAILS_BUSY": "A live lookup is already running for your account.",
+      "IP_DETAILS_RATE_LIMITED": "Live lookup rate limit reached. Try again shortly.",
+      "IP_DETAILS_PLAN_RESTRICTED": "This provider plan cannot check the complete announced block.",
+      "IP_DETAILS_AUTH": "Provider credentials could not be accepted.",
+      "IP_DETAILS_INVALID_RESPONSE": "The provider returned incomplete or invalid data.",
+      "IP_LOOKUP_DISABLED": "IP Lookup is disabled.",
+      "IP_LOOKUP_INVALID_IP": "Enter a public IPv4 or IPv6 address.",
+      "IP_LOOKUP_FAILED": "Live details could not be loaded. Try refreshing."
+    },
+    "fields": {
+      "registeredAt": "Registration date",
+      "rir": "RIR",
+      "ipv4Prefixes": "IPv4 prefixes",
+      "ipv6Prefixes": "IPv6 prefixes",
+      "observedNeighbors": "Observed neighbors",
+      "peers": "Inferred peers",
+      "upstreams": "Inferred upstreams"
+    },
+    "traffic": {
+      "botHuman": "Bot / human",
+      "devices": "Mobile / desktop",
+      "ipVersion": "IPv4 / IPv6",
+      "bot": "Bot",
+      "human": "Human",
+      "mobile": "Mobile",
+      "desktop": "Desktop",
+      "other": "Other",
+      "ipv4": "IPv4",
+      "ipv6": "IPv6",
+      "range": "{start} to {end}",
+      "context": "Cloudflare-observed HTTP traffic for the selected ASN over seven days. These proportions and network abuse ratios describe the wider network."
+    },
+    "graph": {
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "reset": "Reset view",
+      "moreDirect": "More neighbors",
+      "expand": "Expand routes",
+      "collapse": "Collapse",
+      "unknownName": "Name unavailable",
+      "routes": "Observed paths",
+      "instructions": "Drag to pan. Use zoom buttons or keyboard arrows and + / -.",
+      "hidden": "{count} ASNs collapsed.",
+      "truncated": "Results are bounded; some paths or origins were omitted.",
+      "routeLimit": "Showing the first 60 of {count} paths.",
+      "exchangeContext": "Collector context: {name}",
+      "context": "Edges follow observed AS paths. Transit/peer labels are dated relationship inferences. Exchange names describe collector context, not verified physical hops.",
+      "relationship": {
+        "observed": "Observed neighbor",
+        "upstream": "Inferred transit upstream",
+        "peer": "Inferred peer",
+        "customer": "Inferred customer"
+      }
+    },
+    "shodanTitle": "Shodan InternetDB",
+    "shodanHostnames": "Associated hostnames",
+    "shodanPorts": "Observed open ports",
+    "shodanContext": "Queried live from Shodan's weekly-updated dataset. This is not a fresh port scan; no per-host observation time is supplied."
+  }
+}

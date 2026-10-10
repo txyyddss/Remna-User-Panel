@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
+	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/providerops"
 )
 
@@ -37,6 +38,23 @@ func (w *Worker) relay(ctx context.Context, run execution, item providerops.Item
 	}
 	var started atomic.Bool
 	var topicID atomic.Int64
+	var content *OutboundContent
+	if !run.inbound {
+		content, err = w.content(ctx, run)
+		if err != nil {
+			return w.callResult(ctx, run, item, err, false, true, "", "PM_DELIVERY_UNCERTAIN")
+		}
+		if content != nil && content.Mode == "text" {
+			result, callErr := w.Sender.SendPMText(ctx, func(ctx context.Context) (telegram.PMTextRequest, error) {
+				request, err := w.outboundText(ctx, run, item.TargetID)
+				if err == nil {
+					started.Store(true)
+				}
+				return request, err
+			})
+			return w.callResult(ctx, run, item, callErr, started.Load(), true, strconv.FormatInt(result, 10), "PM_DELIVERY_UNCERTAIN")
+		}
+	}
 	result, callErr := w.Sender.CopyPMMessage(ctx, func(callCtx context.Context) (telegram.CopyMessageRequest, error) {
 		conversation, err := w.current(callCtx, run)
 		if err != nil {
@@ -57,6 +75,23 @@ func (w *Worker) relay(ctx context.Context, run execution, item providerops.Item
 				return request, ErrBlocked
 			}
 			request.ChatID = conversation.TelegramID
+			fresh, err := w.content(callCtx, run)
+			if err != nil {
+				return request, err
+			}
+			if content != nil && fresh == nil {
+				return request, model.ErrPMContentInvalid
+			}
+			if fresh != nil && fresh.Mode == "caption" {
+				caption := fresh.Caption
+				if caption != "" {
+					caption += "\n\n"
+				}
+				caption += fresh.Footer
+				request.Caption = &caption
+				request.CaptionEntities = fresh.CaptionEntities
+				request.ShowCaptionAboveMedia = fresh.ShowCaptionAboveMedia
+			}
 		}
 		topicID.Store(conversation.TopicID)
 		started.Store(true)

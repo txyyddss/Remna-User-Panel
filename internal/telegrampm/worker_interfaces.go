@@ -35,6 +35,7 @@ type ProfileFactsReader interface {
 }
 
 type Sender interface {
+	SendPMText(context.Context, func(context.Context) (telegram.PMTextRequest, error)) (int64, error)
 	CreatePMTopic(context.Context, string, func(context.Context) (int64, error)) (telegram.ForumTopic, error)
 	CopyPMMessage(context.Context, func(context.Context) (telegram.CopyMessageRequest, error)) (int64, error)
 	PublishPMProfile(context.Context, func(context.Context) (telegram.TopicProfileRequest, error)) (int64, error)

@@ -118,10 +118,17 @@ func (s *Store) QueuePMRelay(ctx context.Context, input model.PMRelayInput, now 
 	if err != nil {
 		return nil, err
 	}
+	items := []providerops.ItemInput{{Key: "topic", TargetType: "pm_conversation", TargetID: conversation.ID}, {Key: "profile", TargetType: "pm_conversation", TargetID: conversation.ID}, {Key: "relay", TargetType: targetType, TargetID: ref}}
+	if !input.Inbound && (input.AttributionReply || len(input.Content) == 0) {
+		items = append(items, providerops.ItemInput{Key: "footer", TargetType: "pm_outbound_footer", TargetID: ref})
+	}
 	operation, _, err := createProviderOperationTx(ctx, tx, providerops.CreateInput{ActorUserID: input.ActorUserID, OwnerUserID: input.UserID,
 		Kind: providerops.KindTelegramPMRelay, IdempotencyKey: "update:" + strconv.FormatInt(input.UpdateID, 10), RequestFingerprint: fingerprint,
-		Items: []providerops.ItemInput{{Key: "topic", TargetType: "pm_conversation", TargetID: conversation.ID}, {Key: "profile", TargetType: "pm_conversation", TargetID: conversation.ID}, {Key: "relay", TargetType: targetType, TargetID: ref}}}, now)
+		Items: items}, now)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.savePMContentTx(ctx, tx, operation.Receipt.ID, input, now); err != nil {
 		return nil, err
 	}
 	if err := tx.Commit(); err != nil {

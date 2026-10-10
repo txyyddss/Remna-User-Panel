@@ -20,3 +20,4 @@
 `telegram_pm.go` defines reference-only PM conversation, delivery, relay, moderation, repair and generated-guidance payloads. Routing joins canonical user metadata rather than persisting another profile dataset.
 The `Statistics` projection in `analytics.go` carries nullable upstream `lastTrafficResetAt` without deriving or persisting a reset timestamp.
 - `txb_parse.go` owns the shared exact TXB parser used by billing and IP Lookup without package cycles.
+`telegram_pm_content.go` defines stable expired/invalid pending-content errors; PMRelayInput carries transient JSON excluded from serialized fingerprints and outbox data.

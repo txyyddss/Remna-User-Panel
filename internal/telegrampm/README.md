@@ -2,8 +2,8 @@
 
 This module routes ordinary bot messages to a configured forum and lets configured
 panel admins reply from its per-user topic. It reuses the provider-operation
-dispatcher, durable outbox and bounded Telegram executor. Bodies, entities,
-captions and files remain in Telegram; `copyMessage` receives only references.
+dispatcher, durable outbox and bounded Telegram executor. Inbound bodies and all files remain in Telegram. New outbound text/captions use
+a bounded encrypted pending envelope for attribution; other copies use references.
 
 - `service.go` checks first panel-entry evidence, settings and user moderation,
   then queues incoming/outgoing references. Commands and payment service messages
@@ -22,7 +22,7 @@ captions and files remain in Telegram; `copyMessage` receives only references.
 - `worker_profile.go` edits known cards idempotently from current account and usage
   projections; append-only card ambiguity persists separately from delivery receipts.
 - `worker_relay.go` preserves formatting/captions via message references, applies
-  mute state at execution time, and adds a read-ack callback to outbound copies.
+  mute state at execution time, and attributes outgoing text/captions and preserves reference-only incoming copies.
   Interrupted copies are never replayed automatically.
 - `worker_repair.go` probes explicitly supplied topic/card references; returned
   Telegram chat/thread identity must match before binding. Only unsent waiters resume.
@@ -63,3 +63,30 @@ execution-time moderation, success replay and definitive topic recovery;
 wrong-thread repair rejection. `profile_card_test.go` covers onboarding hiding,
 optional coupon details, traffic, rollover, and the Mini App deep link. No local
 automated suites are required or run.
+
+## Administrator attribution and pending content
+
+`content.go` captures only required outgoing text/caption, original UTF-16 entity
+positions, caption placement and the authenticated sender footer. `content_test.go`
+checks text/media formatting, username/name/ID fallback, Unicode and overflow.
+Text uses queued sendMessage with original entities; caption-capable media uses
+copyMessage caption overrides. Non-caption media and length overflow retain the
+entire original and use a linked footer reply. Inbound copies remain reference-only.
+
+`worker_content.go` restores an operation-bound encrypted envelope and checks its
+mode/limits inside the queued callback. `worker_footer.go` owns a separate durable
+footer phase after the original relay ID is saved. `worker_attribution_test.go`
+covers attributed delivery, muted sends, footer retry without recopy, settled
+replay suppression, expiry and ambiguous responses. All settings, actor, member,
+source-chat and moderation guards remain execution-time checks. Append-only
+uncertainty is never retried automatically.
+
+The database's telegram_pm_payloads holds AES-GCM ciphertext bound to operation
+identity; text/caption never enters outbox payloads, provider results or public PM
+receipts. Settled ciphertext is erased transactionally. Unsent repair waiters
+retain it for at most 24 hours. Expiry clears ciphertext while preserving a tiny
+marker until operation pruning: a new job with erased content fails explicitly,
+including after an explicit retry, rather than reverting to an unattributed
+legacy copy. Migration 068 adds footer phases to existing unsent reference-only
+outbound operations. No Telegram files or historical message bodies are mirrored.
+The real PM delivery dialog displayed the expired/invalid-content guidance in English at 390px and Chinese at 1280px through Chrome DevTools MCP, with no overflow or console warnings. Delivery/recovery correctness is validated by hosted regressions; this browser evidence does not constitute a real Telegram delivery.

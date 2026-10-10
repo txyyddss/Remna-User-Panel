@@ -11,14 +11,16 @@ import { setLocale, t } from '@/i18n'
 import IPLookupPage from '@/components/ip-lookup/IPLookupPage.vue'
 import AdminIPLookupPage from '@/components/admin/ip-lookup/AdminIPLookupPage.vue'
 import IPLookupAudit from './IPLookupAudit.vue'
+import { installLiveIPAudit } from './ip-lookup-live-audit'
 
 const params = new URLSearchParams(location.search)
+const liveCounters = installLiveIPAudit(params)
 const mode = params.get('mode') ?? 'empty'
 const ids = ['abuseipdb', 'scamalytics', 'ipapi', 'maxmind', 'ipqs', 'ip2location'] as const
 const money = (minor: number) => ({ currency: 'TXB' as const, minor: String(minor), display: `${(minor / 100).toFixed(2)} TXB` })
 const now = () => new Date().toISOString()
 const state: IPLookupState = { enabled: mode !== 'disabled', lookupFee: money(250), refreshFee: money(350), allowance: params.has('no-combo') ? null : { purchaseId: 'term', total: 2, remaining: 2, validUntil: '2026-12-01T00:00:00Z' } }
-const settings: IPLookupAdminSettings = { enabled: false, lookupFeeTxb: '', refreshFeeTxb: '', providers: ids.map(id => ({ id, enabled: false, accountId: id === 'maxmind' ? '123456' : id === 'scamalytics' ? 'fixture-account' : '' })), geolocationOrder: ['ip2location', 'ipapi', 'maxmind', 'scamalytics', 'abuseipdb'], credentials: {}, configured: Object.fromEntries(ids.map(id => [id, true])), comboQuotas: { standard: null, weekend: 0 } }
+const settings: IPLookupAdminSettings = { enabled: false, lookupFeeTxb: '', refreshFeeTxb: '', providers: ids.map(id => ({ id, enabled: false, accountId: id === 'maxmind' ? '123456' : id === 'scamalytics' ? 'fixture-account' : '' })), geolocationOrder: ['ip2location', 'ipapi', 'maxmind', 'scamalytics', 'abuseipdb'], credentials: {}, configured: Object.fromEntries([...ids, 'cloudflare_radar'].map(id => [id, true])), comboQuotas: { standard: null, weekend: 0 } }
 let cached = params.has('cached') || mode === 'cached' || mode === 'subnet'
 let polls = 0
 let submitCount = 0
@@ -72,6 +74,7 @@ function makeReport(ip: string): IPLookupReport {
     report.sources.city = 'scamalytics:maxmind_geolite2'
     report.sources.latitude = report.sources.longitude = 'scamalytics:ipinfo'
   }
+  if (params.has('many-refusals')) { report.verdict = 'unsuitable'; report.refusals = [{ kind: 'proxy', source: 'scamalytics:ip2proxy', value: 'Residential proxy provider with a long network name and multiple services' }, { kind: 'fraud_score', source: 'scamalytics', value: 73 }, { kind: 'vpn', source: 'ipapi', value: 'Commercial VPN organization and exit infrastructure' }, { kind: 'user_count', source: 'maxmind', value: 14 }] }
   return report
 }
 async function pause() {
@@ -122,5 +125,5 @@ const router = createRouter({ history: createWebHistory(), routes: [{ path: '/:p
 app.use(router); app.use(ui)
 setLocale(params.has('zh') ? 'zh-CN' : 'en')
 document.title = t('ipLookup.title')
-;(window as unknown as { __ipAudit: object }).__ipAudit = { state, settings, counters: () => ({ submitCount, quoteCount, polls, savedBody }), setCached: (value: boolean) => { cached = value } }
+;(window as unknown as { __ipAudit: object }).__ipAudit = { state, settings, counters: () => ({ submitCount, quoteCount, polls, savedBody, live: liveCounters() }), setCached: (value: boolean) => { cached = value } }
 void router.isReady().then(() => app.mount('#app'))

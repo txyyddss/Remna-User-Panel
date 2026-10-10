@@ -34,3 +34,39 @@ The native OpenStreetMap frame loaded with its marker and attribution; final
 map sizing was inspected using ordinary viewport resizing because DevTools
 emulation temporarily mis-sized the cross-origin canvas. No map lifecycle or
 provider-request workaround was added to production code.
+
+## Live enrichment
+
+`useLiveIPDetails.ts` fetches once per requested-address/account/report identity,
+uses no-store requests, cancels obsolete work, and owns explicit refresh.
+`IPLiveDetails.vue` composes independent source sections beside the frozen
+reputation report. It never submits paid checks or changes the verdict.
+
+- `IPBGPTopology.vue` renders a native SVG with curved edges, keyboard/pointer pan, zoom/reset, twelve initial direct neighbors, expansion and route highlighting. Original AS paths and collector exchange context remain available in the path list.
+- `bgpGraph.ts` derives bounded, deterministic layered placement and source-based visibility; `useGraphViewport.ts` owns transform interaction without persistent state.
+- `IPASNDetails.vue` selects multiple origins, displays nullable registration/routing metrics and their dated provenance.
+- `IPTrafficBars.vue` preserves Cloudflare percentages, Other devices, source status, and actual seven-day windows.
+- `LiveSourceNote.vue` presents independent source availability and observation times.
+- `useLiveIPDetails.test.ts` and `bgpGraph.test.ts` cover requested-IP isolation, cancelled/late responses, refresh, multiple origins and bounded graph visibility in hosted CI.
+
+Only ASN names can be cached by the backend. Live frontend data is scope-local
+and excluded from browser response snapshots by the existing IP Lookup cache
+policy. Long refusal reasons use a fixed icon column and wrapping text.
+
+## Browser evidence for live enrichment
+
+Chrome DevTools MCP 1.10.1 with isolated Chrome 154 reviewed the real components
+at 320/390px mobile and 1280px desktop widths: initial/loading/populated/empty,
+partial/restricted/unconfigured sections, request errors, IPv6 and multiple
+origins, zero counts/ratios, long multiple refusals, English/Chinese, graph
+expansion/path highlighting/zoom/refresh, and Cloudflare replace/clear controls.
+Document widths matched viewports, and final console and network reviews were
+clear. Cached/subnet previews performed one live request for the requested IP
+and zero paid submissions; manual refresh added one live request. Provider
+outcomes in these fixtures were constructed, not paid-provider live proof.
+
+Separate read-only backend probes fetched public IPv4/IPv6 topology, actual RIR
+registration, dated CAIDA degrees, and PTR records; source timeouts remained
+explicitly unavailable. InternetDB is queried live but its observations are
+weekly and do not certify current port reachability. No Telegram messages were
+sent by the browser review or the offline PM fixtures.

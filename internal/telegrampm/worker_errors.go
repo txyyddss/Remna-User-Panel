@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/integrations/telegram"
+	"github.com/txyyddss/Remna-User-Panel/internal/model"
 	"github.com/txyyddss/Remna-User-Panel/internal/providerops"
 )
 
@@ -44,7 +45,7 @@ func (w *Worker) callResult(ctx context.Context, run execution, item providerops
 	for _, guard := range []struct {
 		err  error
 		code string
-	}{{ErrDisabled, "PM_DISABLED"}, {ErrBlocked, "PM_BLOCKED"}, {ErrUnqualified, "PM_ENTRY_REQUIRED"}, {ErrTopicUncertain, "PM_TOPIC_UNCERTAIN"}} {
+	}{{ErrDisabled, "PM_DISABLED"}, {ErrBlocked, "PM_BLOCKED"}, {ErrUnqualified, "PM_ENTRY_REQUIRED"}, {ErrTopicUncertain, "PM_TOPIC_UNCERTAIN"}, {model.ErrPMContentExpired, "PM_CONTENT_EXPIRED"}, {model.ErrPMContentInvalid, "PM_CONTENT_INVALID"}} {
 		if errors.Is(err, guard.err) {
 			return phaseResult{status: providerops.StatusFailed, code: guard.code}, nil
 		}

@@ -141,3 +141,31 @@ Static vetting is separate from hosted test and frontend browser evidence.
 `compact_report_test.go` checks strict majority, MaxMind count boundaries, and
 legacy compaction; `config_order_test.go` checks administrator order validation;
 `provider_provenance_test.go` checks enrichment lineage and refusal evidence.
+
+## Live network details
+
+`live_service.go` owns the response-only `GET /api/v1/ip-lookup/details` workflow,
+member admission (one active request, six starts/minute), cancellation, and a
+60-second total deadline. `live_types.go` defines the public projection and queue
+source identifiers; these sources are not reputation providers. No live result
+is persisted, billed, or fed into suitability policy. Requested IPs are canonical
+public addresses, even when reputation previews reuse a neighboring IP.
+
+- `live_transport.go` owns bounded, fixed-origin, redacted HTTP through existing `upstreamqueue` workers.
+- `live_bgp.go` selects the longest observed prefix, retains original paths/collector context, collapses visual prepends into edges, supports multiple origins, and bounds paths/nodes. RIPE Looking Glass falls back to RouteViews, then the explicitly dated RIPE BGP snapshot.
+- `live_relationships.go` uses exact-pair CAIDA GraphQL queries (up to 200 pairs) and optional Cloudflare relationship fallback; missing relationships remain observed adjacency, never assumed transit.
+- `live_names.go` caches only successful ASN names, with seven-day expiry and 4,096-entry LRU eviction. Keyed IPAPI bulk, BGPKIT, and bounded RIPE holder lookups fill missing names. Collector exchange scope is observation context, never an invented physical hop.
+- `live_asn.go` selects registration from RIPE RIR `lod=2`, routing totals from RIPE/RouteViews, and dated relationship degrees from CAIDA/Cloudflare.
+- `live_ip.go` supplies keyed contextual IPAPI scores, distinct AbuseIPDB reported addresses in the announced block (30 days), exact decimal address capacity, and queued PTR lookups. Missing data remains nullable; block-plan restrictions never silently narrow the subnet.
+- `live_traffic.go` requests Cloudflare Radar's BOT_CLASS, DEVICE_TYPE, and IP_VERSION summaries for the ASN over seven days; returned Other device values and actual date windows are preserved.
+- `live_test.go` and `live_http_test.go` provide hosted regressions for prefix/origin/path preservation, name-only cache bounds, admission, queue enforcement, credentials, unknown/zero values, restrictions, and Cloudflare windows.
+
+Cloudflare credentials use the existing vaulted settings map under
+`cloudflare_radar`, independent of ordered risk-provider configuration. Blank
+means keep; explicit clear removes it. No token or source payload reaches public
+reports, audit events, or errors. Public adapters can return partial/unavailable
+sections independently; external datasets retain their own observation dates.
+`live_shodan.go` fetches InternetDB associated hostnames and observed open ports through the Shodan source queue. Expected no-information responses are empty, failures stay separate, invalid/out-of-range values are excluded, and no vulnerability/tag verdict is added. InternetDB is a weekly dataset without per-host observation timestamps. See https://internetdb.shodan.io/ for API and commercial-use licensing terms.
+`live_shodan_test.go` covers sorted/deduplicated InternetDB hostnames and ports, unobserved addresses, provider outages, mismatched IPs, absent fields and invalid port ranges in hosted CI.
+`live_integration_test.go` exercises the complete queued response projection with multiple origins, original prepends, source fallback, zero/unknown fields, live neighboring-IP requests, name-only cache behavior and credential-free public JSON in hosted CI.
+Topology limits are 300 nodes, 1,500 edges and 1,000 original paths; omitted paths are disclosed. InternetDB retains at most 256 hostnames and 2,048 ports and marks larger observations partial.
