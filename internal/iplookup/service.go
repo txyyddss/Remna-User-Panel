@@ -15,6 +15,7 @@ import (
 type Repository interface {
 	IPLookupState(context.Context, string, time.Time) (State, error)
 	IPLookupQuote(context.Context, string, string, bool, time.Time) (Quote, error)
+	IPLookupQuoteResponse(context.Context, string, string, bool, time.Time) (QuoteResponse, error)
 	CreateIPLookupCheck(context.Context, string, string, Quote, time.Time) (model.OperationReceipt, error)
 	IPLookupCheck(context.Context, string, string) (Check, error)
 }
@@ -49,6 +50,21 @@ func (s *Service) Quote(ctx context.Context, user, rawIP string, refresh bool) (
 	q.ExpiresAt = s.now().Add(2 * time.Minute).Unix()
 	q.Token = s.signature(user, q)
 	return q, nil
+}
+
+// PreviewQuote reads shared evidence without billing and signs only the submission fields.
+func (s *Service) PreviewQuote(ctx context.Context, user, rawIP string, refresh bool) (QuoteResponse, error) {
+	ip, err := CanonicalIP(rawIP)
+	if err != nil {
+		return QuoteResponse{}, err
+	}
+	result, err := s.repository.IPLookupQuoteResponse(ctx, user, ip, refresh, s.now().UTC())
+	if err != nil {
+		return result, err
+	}
+	result.ExpiresAt = s.now().Add(2 * time.Minute).Unix()
+	result.Token = s.signature(user, result.Quote)
+	return result, nil
 }
 
 // Submit verifies quote integrity; replay and expiry are checked inside persistence.

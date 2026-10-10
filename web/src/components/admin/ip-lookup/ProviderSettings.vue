@@ -12,7 +12,7 @@ function clearChanged(id: string, value: boolean | 'indeterminate'): void {
 
 <template>
   <section class="lookup-providers">
-    <h2>{{ $t('ipLookup.providerHeading') }}</h2><p>{{ $t('ipLookup.providerOrder') }}</p>
+    <h2>{{ $t('ipLookup.providerHeading') }}</h2>
     <div v-for="provider in settings.providers" :key="provider.id" class="provider-settings">
       <SwitchField :id="`provider-${provider.id}`" v-model="provider.enabled" :label="providerName(provider.id)" :help="settings.configured?.[provider.id] ? $t('ipLookup.credentialConfigured') : $t('ipLookup.credentialMissing')" />
       <UFormField v-if="provider.id === 'maxmind' || provider.id === 'scamalytics'" :name="`${provider.id}-account`" :label="provider.id === 'scamalytics' ? $t('ipLookup.scamalyticsUsername') : $t('ipLookup.accountId')"><UInput v-model.trim="provider.accountId" class="w-full" :inputmode="provider.id === 'maxmind' ? 'numeric' : 'text'" /></UFormField>

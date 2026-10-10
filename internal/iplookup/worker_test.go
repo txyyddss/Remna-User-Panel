@@ -52,7 +52,7 @@ func TestWorkerStopsAndDoesNotReplayCompletedStages(t *testing.T) {
 		c.Providers[i].Enabled = true
 	}
 	r := &workerRepo{config: c, report: NewReport("report", "150.249.241.62", c)}
-	r.report.Providers[0] = ProviderResult{ID: "abuseipdb", Status: "success", Complete: true}
+	RecordProvider(&r.report, ProviderResult{ID: "abuseipdb", Status: "success", Complete: true}, c)
 	first := &fakeProvider{id: "abuseipdb"}
 	second := &fakeProvider{id: "scamalytics", result: ProviderResult{ID: "scamalytics", Status: "partial", Signals: Signals{VPN: boolean(true)}}}
 	later := &fakeProvider{id: "ipapi"}
@@ -60,7 +60,7 @@ func TestWorkerStopsAndDoesNotReplayCompletedStages(t *testing.T) {
 	if err := w.HandleProviderOperation(context.Background(), providerops.Operation{}, model.OutboxJob{}); err != nil {
 		t.Fatal(err)
 	}
-	if first.calls != 0 || second.calls != 1 || later.calls != 0 || r.report.Verdict != "unsuitable" || r.report.Providers[2].Status != "skipped" {
+	if first.calls != 0 || second.calls != 1 || later.calls != 0 || r.report.Verdict != "unsuitable" || len(r.report.Databases) != 2 || r.report.Checkpoint != nil {
 		t.Fatalf("replayed/stopped incorrectly: %+v", r.report)
 	}
 	if err := w.HandleProviderOperation(context.Background(), providerops.Operation{}, model.OutboxJob{}); err != nil {
@@ -77,13 +77,14 @@ func TestWorkerContinuesErrorsAndMarksInterruptedStage(t *testing.T) {
 	c.Providers[0].Enabled = true
 	c.Providers[1].Enabled = true
 	r := &workerRepo{config: c, report: NewReport("report", "150.249.241.62", c)}
-	r.report.Providers[0].Status = "processing"
+	r.report.Checkpoint.Stages[0].Status = "processing"
+	r.report.Checkpoint.Stages[0].Attempted = true
 	first := &fakeProvider{id: "abuseipdb"}
 	second := &fakeProvider{id: "scamalytics", result: ProviderResult{ID: "scamalytics", Status: "success", Complete: true, Facts: Facts{Country: "JP"}}}
 	if err := NewWorker(r, []Provider{first, second}).HandleProviderOperation(context.Background(), providerops.Operation{}, model.OutboxJob{}); err != nil {
 		t.Fatal(err)
 	}
-	if first.calls != 0 || second.calls != 1 || r.report.Status != "partial" || !r.report.RefundRequired || r.report.Providers[0].ErrorCode != "IP_LOOKUP_INTERRUPTED" {
+	if first.calls != 0 || second.calls != 1 || r.report.Status != "partial" || r.report.RefundRequired || r.report.Databases[0].Status != "error" {
 		t.Fatalf("report=%+v", r.report)
 	}
 }

@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/iplookup"
@@ -30,7 +29,7 @@ func refundIPCheckTx(ctx context.Context, tx *sql.Tx, operationID string, now ti
 		if err != nil {
 			return err
 		}
-		if _, err := insertLedgerTx(ctx, tx, user, charge, balance, "ip_lookup_refund", operationID, "Unavailable IP reputation provider", now); err != nil {
+		if _, err := insertLedgerTx(ctx, tx, user, charge, balance, "ip_lookup_refund", operationID, "IP lookup not attempted", now); err != nil {
 			return err
 		}
 	}
@@ -60,18 +59,25 @@ func reconcileStaleIPLookupsTx(ctx context.Context, tx *sql.Tx, now time.Time) e
 		return err
 	}
 	for _, run := range runs {
-		var report iplookup.Report
-		if err := json.Unmarshal([]byte(run.raw), &report); err != nil {
+		report, err := iplookup.DecodeReport([]byte(run.raw))
+		if err != nil {
 			return err
 		}
-		for i := range report.Providers {
-			p := &report.Providers[i]
-			if p.Status == "queued" || p.Status == "processing" {
-				p.Status, p.ErrorCode = "error", "IP_LOOKUP_INTERRUPTED"
+		attempted := iplookup.ReportAttempted(report)
+		if report.Checkpoint != nil {
+			for i := range report.Checkpoint.Stages {
+				stage := &report.Checkpoint.Stages[i]
+				if stage.Status == "queued" || stage.Status == "processing" {
+					stage.Status = "error"
+					report.Checkpoint.Complete = false
+				}
 			}
 		}
 		report = iplookup.Aggregate(report, now)
-		raw, err := json.Marshal(report)
+		if !attempted {
+			report.Status, report.Verdict = "failed", "inconclusive"
+		}
+		raw, err := iplookup.EncodeReport(report)
 		if err != nil {
 			return err
 		}
@@ -97,15 +103,17 @@ func reconcileStaleIPLookupsTx(ctx context.Context, tx *sql.Tx, now time.Time) e
 			return err
 		}
 		for _, id := range checks {
-			if err := refundIPCheckTx(ctx, tx, id, now); err != nil {
-				return err
+			if !attempted {
+				if err := refundIPCheckTx(ctx, tx, id, now); err != nil {
+					return err
+				}
 			}
 			if err := finishIPCheckTx(ctx, tx, id, run.id, report.Status, now); err != nil {
 				return err
 			}
 		}
 	}
-	// Successfully refunded IP runs have already been settled above.
+	// Domain-settled IP receipts must not enter generic failure/compensation handling.
 	_, err = tx.ExecContext(ctx, `DELETE FROM maintenance_operation_candidates WHERE id IN (SELECT operation_id FROM ip_lookup_checks)`)
 	return err
 }

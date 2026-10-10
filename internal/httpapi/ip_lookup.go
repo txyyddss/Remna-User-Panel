@@ -44,11 +44,12 @@ func (s *Server) ipLookupQuote(w http.ResponseWriter, r *http.Request) {
 		s.ipLookupError(w, r, &iplookup.CodeError{Code: "IP_LOOKUP_INVALID_IP"})
 		return
 	}
-	result, err := s.deps.IPLookup.Quote(r.Context(), currentUser(r).ID, input.IP, input.Refresh)
+	result, err := s.deps.IPLookup.PreviewQuote(r.Context(), currentUser(r).ID, input.IP, input.Refresh)
 	if err != nil {
 		s.ipLookupError(w, r, err)
 		return
 	}
+	w.Header().Set("Cache-Control", "no-store")
 	writeJSON(w, http.StatusOK, result)
 }
 

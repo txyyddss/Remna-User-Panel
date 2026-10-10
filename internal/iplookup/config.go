@@ -10,7 +10,7 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 )
 
-// IDs defines the immutable execution order of the built-in providers.
+// IDs defines the built-in providers and the legacy default execution order.
 var IDs = func() []string {
 	ids := []string{}
 	for _, provider := range Registry {
@@ -18,6 +18,11 @@ var IDs = func() []string {
 	}
 	return ids
 }()
+
+// DefaultGeolocationOrder resolves equal or missing location quality.
+func DefaultGeolocationOrder() []string {
+	return []string{"ip2location", "ipapi", "maxmind", "scamalytics", "abuseipdb"}
+}
 
 // CodeError exposes only a stable member-safe error identifier.
 type CodeError struct{ Code string }
@@ -29,14 +34,14 @@ func CredentialKey(id string) string { return "ip_lookup." + id + ".credential" 
 
 // DefaultConfig leaves prices unconfigured and all providers disabled.
 func DefaultConfig() Config {
-	c := Config{Providers: []ProviderConfig{}}
+	c := Config{Providers: []ProviderConfig{}, GeolocationOrder: DefaultGeolocationOrder()}
 	for _, id := range IDs {
 		c.Providers = append(c.Providers, ProviderConfig{ID: id})
 	}
 	return c
 }
 
-// DecodeConfig validates and canonicalizes the provider order.
+// DecodeConfig validates both orders and appends omitted providers disabled.
 func DecodeConfig(raw string) (Config, error) {
 	if raw == "" {
 		return DefaultConfig(), nil
@@ -75,11 +80,26 @@ func DecodeConfig(raw string) (Config, error) {
 		}
 		byID[p.ID] = p
 	}
-	c.Providers = []ProviderConfig{}
 	for _, id := range IDs {
-		p := byID[id]
-		p.ID = id
-		c.Providers = append(c.Providers, p)
+		if _, present := byID[id]; !present {
+			c.Providers = append(c.Providers, ProviderConfig{ID: id})
+		}
+	}
+	if c.GeolocationOrder == nil {
+		c.GeolocationOrder = DefaultGeolocationOrder()
+	}
+	if len(c.GeolocationOrder) != len(DefaultGeolocationOrder()) {
+		return c, &CodeError{"IP_LOOKUP_INVALID_CONFIG"}
+	}
+	geoIDs := map[string]bool{}
+	for _, id := range DefaultGeolocationOrder() {
+		geoIDs[id] = true
+	}
+	for _, id := range c.GeolocationOrder {
+		if !geoIDs[id] {
+			return c, &CodeError{"IP_LOOKUP_INVALID_CONFIG"}
+		}
+		delete(geoIDs, id)
 	}
 	if c.Enabled {
 		if c.LookupFeeTXB == "" || c.RefreshFeeTXB == "" {

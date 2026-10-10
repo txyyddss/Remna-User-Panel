@@ -9,7 +9,7 @@ import { useIPLookupAvailability } from '@/composables/useIPLookupAvailability'
 export function useAdminIPLookup() {
   const session = useSessionStore()
   const availability = useIPLookupAvailability()
-  const settings = reactive<IPLookupAdminSettings>({ enabled: false, lookupFeeTxb: '', refreshFeeTxb: '', providers: [], credentials: {}, configured: {}, comboQuotas: {} })
+  const settings = reactive<IPLookupAdminSettings>({ enabled: false, lookupFeeTxb: '', refreshFeeTxb: '', providers: [], geolocationOrder: ['ip2location', 'ipapi', 'maxmind', 'scamalytics', 'abuseipdb'], credentials: {}, configured: {}, comboQuotas: {} })
   const combos = shallowRef<Combo[]>([])
   const loading = shallowRef(true)
   const busy = shallowRef(false)
@@ -50,7 +50,7 @@ export function useAdminIPLookup() {
     finally { if (!disposed && current === version) busy.value = false }
   }
 
-  watch(() => session.user?.id, () => { saved.value = false; loading.value = true; void load() }, { immediate: true })
+  watch(() => session.user?.id, () => { saved.value = false; busy.value = false; errorCode.value = ''; loading.value = true; void load() }, { immediate: true })
   onScopeDispose(() => { disposed = true; version++ })
   return { settings, combos, loading, busy, errorCode, saved, save, load }
 }

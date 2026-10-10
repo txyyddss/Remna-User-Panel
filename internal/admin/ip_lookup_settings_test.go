@@ -3,6 +3,7 @@ package admin
 import (
 	"context"
 	"encoding/json"
+	"slices"
 	"testing"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/iplookup"
@@ -13,6 +14,38 @@ import (
 type ipSettingsRepo struct {
 	*adminSettingsRepository
 	quotas map[string]*int
+}
+
+func TestIPLookupSettingsPreserveIndependentOrders(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	repo := &ipSettingsRepo{adminSettingsRepository: newAdminSettingsRepository()}
+	service := NewSettingsService(repo, testVault(t))
+	config := iplookup.DefaultConfig()
+	config.Providers[0], config.Providers[3] = config.Providers[3], config.Providers[0]
+	config.GeolocationOrder = []string{"maxmind", "abuseipdb", "scamalytics", "ipapi", "ip2location"}
+	input := iplookup.AdminSettings{Config: config, ComboQuotas: map[string]*int{}}
+	if err := service.PutIPLookupSettings(ctx, "admin", input); err != nil {
+		t.Fatal(err)
+	}
+	view, err := service.IPLookupSettings(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(view.GeolocationOrder, config.GeolocationOrder) {
+		t.Fatalf("geolocation order=%v want=%v", view.GeolocationOrder, config.GeolocationOrder)
+	}
+	if !slices.Equal(view.Providers, config.Providers) {
+		t.Fatalf("check order=%v want=%v", view.Providers, config.Providers)
+	}
+	input.GeolocationOrder = []string{"maxmind", "maxmind"}
+	if err := service.PutIPLookupSettings(ctx, "admin", input); err == nil {
+		t.Fatal("duplicate geolocation providers accepted")
+	}
+	unchanged, err := service.IPLookupSettings(ctx)
+	if err != nil || !slices.Equal(unchanged.GeolocationOrder, config.GeolocationOrder) {
+		t.Fatalf("invalid save changed settings: %v err=%v", unchanged.GeolocationOrder, err)
+	}
 }
 
 func (r *ipSettingsRepo) ListCombos(context.Context, bool) ([]model.Combo, error) {

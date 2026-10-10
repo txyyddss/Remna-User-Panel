@@ -95,6 +95,12 @@ func migrate(ctx context.Context, db *sql.DB) error {
 			_ = tx.Rollback()
 			return fmt.Errorf("apply migration %s: %w", entry.Name(), err)
 		}
+		if entry.Name() == "067_ip_lookup_compact.sql" {
+			if err := compactIPLookupReportsTx(ctx, tx); err != nil {
+				_ = tx.Rollback()
+				return fmt.Errorf("compact IP lookup reports: %w", err)
+			}
+		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO schema_migrations(version, applied_at) VALUES(?, ?)`, entry.Name(), time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
 			_ = tx.Rollback()
 			return fmt.Errorf("record migration %s: %w", entry.Name(), err)

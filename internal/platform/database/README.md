@@ -345,9 +345,16 @@ Retained agreement revisions also qualify returning accounts. `remna_provisionin
 - `ip_lookup_settings.go` atomically saves encrypted settings, combo quotas and the admin audit.
 - `ip_lookup_queries.go` reads fresh quota/pricing quotes and owner-scoped immutable report receipts.
 - `ip_lookup_commands.go` atomically debits quota/TXB and coalesces checks into shared cached or fresh reports.
-- `ip_lookup_completion.go` persists attempt progress and completes or refunds joined requests exactly once.
+- `ip_lookup_completion.go` persists minimal attempt checkpoints and settles joined checks atomically. Contacted-provider outages produce charged, cacheable partial reports; only a never-attempted infrastructure failure restores costs exactly once.
 - `ip_lookup_test.go` covers cache sharing, prices, replays, refunds and purchase quota lifecycle for CI.
 - `ip_lookup_migration_test.go` covers the one-check gift for live members, excluding queued and expired purchases.
 
-- `ip_lookup_refunds.go` centralizes exactly-once cost restoration and closes interrupted shared runs during existing operation maintenance.
-- `ip_lookup_policy_test.go` covers free cached checks, refunds for any outage, and durable receipts across maintenance.
+- `ip_lookup_refunds.go` restores never-attempted costs and closes interrupted shared runs during existing operation maintenance. Attempted calls remain charged and cacheable; IP receipts are excluded from generic compensation after domain settlement.
+- `ip_lookup_cache.go` serves free compact quote previews, preferring exact-IP evidence before the newest completed IPv4 /24 report. IPv6 stays exact-only; parsed completion timestamps avoid RFC3339 text ordering errors. Quote previews create no receipt, debit, or upstream request.
+- Check metadata retains the requested address and cache match independently of the evaluated report address, including after reload. Signed submission fields exclude the display-only cached report.
+- `ip_lookup_compact.go` converts legacy report payloads in bounded migration batches through the core versioned codec. Consolidated facts and minimal pending-stage markers replace per-provider snapshots; historical statuses, receipts, ledger entries, and refunds remain intact.
+- `ip_lookup_cache_test.go` covers free previews, exact-IP precedence, IPv4 /24 boundaries, IPv6 isolation, nanosecond completion ordering, cache arrival during submission, and display fields outside quote signatures in hosted CI.
+- `ip_lookup_compact_test.go` covers migration of legacy provider snapshots, preservation of pending execution markers, and unchanged historical balances, ledger entries, and refunded receipts in hosted CI.
+- `ip_lookup_fixture_test.go` supplies isolated lookup configuration, balances, purchase allowances, signed submissions, and terminal report fixtures for the database regression files.
+- `ip_lookup_maintenance_test.go` covers durable receipts and the distinct settlement of never-attempted jobs versus interrupted, chargeable provider calls in hosted CI.
+- `ip_lookup_policy_test.go` covers free cache reads with available quota, charged partial/refused/all-error reports, repeat settlement, and fractional completion timestamps in hosted CI.

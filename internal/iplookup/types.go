@@ -5,7 +5,7 @@ import "github.com/txyyddss/Remna-User-Panel/internal/model"
 
 const SettingKey = "ip_lookup.config"
 const OperationKind = "ip_reputation_lookup"
-const Version = "residential-v2"
+const Version = "residential-v3"
 
 // ProviderConfig is public configuration; credentials live in the secret vault.
 type ProviderConfig struct {
@@ -16,10 +16,11 @@ type ProviderConfig struct {
 
 // Config contains explicitly configured decimal TXB fees and ordered providers.
 type Config struct {
-	Enabled       bool             `json:"enabled"`
-	LookupFeeTXB  string           `json:"lookupFeeTxb"`
-	RefreshFeeTXB string           `json:"refreshFeeTxb"`
-	Providers     []ProviderConfig `json:"providers"`
+	Enabled          bool             `json:"enabled"`
+	LookupFeeTXB     string           `json:"lookupFeeTxb"`
+	RefreshFeeTXB    string           `json:"refreshFeeTxb"`
+	Providers        []ProviderConfig `json:"providers"`
+	GeolocationOrder []string         `json:"geolocationOrder"`
 }
 
 // CredentialEdit replaces or explicitly clears a write-only credential.
@@ -66,6 +67,16 @@ type Quote struct {
 	Token         string      `json:"token"`
 }
 
+// QuoteResponse adds a free cache preview without changing the signed payload.
+type QuoteResponse struct {
+	Quote
+	CacheMatch   string  `json:"cacheMatch"`
+	CachedReport *Report `json:"cachedReport"`
+}
+
+// QuoteView is the internal name for the member-facing quote projection.
+type QuoteView = QuoteResponse
+
 // Signals keeps unknown booleans distinct from negative evidence.
 type Signals struct {
 	Abuse      *bool `json:"abuse"`
@@ -77,15 +88,16 @@ type Signals struct {
 
 // Facts is the small, source-attributed geographical and network projection.
 type Facts struct {
-	Country     string `json:"country"`
-	Region      string `json:"region"`
-	City        string `json:"city"`
-	ISP         string `json:"isp"`
-	ASN         string `json:"asn"`
-	NetworkType string `json:"networkType"`
+	Country     string   `json:"country"`
+	City        string   `json:"city"`
+	Latitude    *float64 `json:"latitude"`
+	Longitude   *float64 `json:"longitude"`
+	ASN         string   `json:"asn"`
+	ASNName     string   `json:"asnName"`
+	NetworkType string   `json:"networkType"`
 }
 
-// ProviderResult retains parsed evidence, including missing subscription capabilities.
+// ProviderResult is transient parsed evidence, including unknown capabilities.
 type ProviderResult struct {
 	RiskLevel string             `json:"riskLevel"`
 	ID        string             `json:"id"`
@@ -97,6 +109,10 @@ type ProviderResult struct {
 	Scores    map[string]float64 `json:"scores"`
 	Reports   *int               `json:"reports"`
 	Complete  bool               `json:"complete"`
+	Geo       *GeoCandidate      `json:"-"`
+	MaxMind   MaxMindFacts       `json:"-"`
+	Sources   map[string]string  `json:"-"`
+	Details   map[string]string  `json:"-"`
 }
 
 // Report freezes the verdict and original coverage; toggles never rewrite it.
@@ -109,18 +125,24 @@ type Report struct {
 	Reasons        []string          `json:"reasons"`
 	Facts          Facts             `json:"facts"`
 	Sources        map[string]string `json:"sources"`
-	Providers      []ProviderResult  `json:"providers"`
+	Databases      []Database        `json:"databases"`
+	Refusals       []Refusal         `json:"refusals"`
+	MaxMind        MaxMindFacts      `json:"maxmind"`
 	CheckedAt      string            `json:"checkedAt"`
 	PolicyVersion  string            `json:"policyVersion"`
 	ParserVersion  string            `json:"parserVersion"`
+	Checkpoint     *Checkpoint       `json:"-"`
+	Providers      []ProviderResult  `json:"-"` // Legacy in-memory input only; never serialized.
 }
 
 // Check is an owner-scoped paid receipt referencing one shared report.
 type Check struct {
-	Operation model.OperationReceipt `json:"operation"`
-	Report    *Report                `json:"report"`
-	Cached    bool                   `json:"cached"`
-	Charge    model.Money            `json:"charge"`
-	UsedQuota bool                   `json:"usedQuota"`
-	Refunded  bool                   `json:"refunded"`
+	Operation   model.OperationReceipt `json:"operation"`
+	Report      *Report                `json:"report"`
+	Cached      bool                   `json:"cached"`
+	Charge      model.Money            `json:"charge"`
+	UsedQuota   bool                   `json:"usedQuota"`
+	Refunded    bool                   `json:"refunded"`
+	RequestedIP string                 `json:"requestedIP"`
+	CacheMatch  string                 `json:"cacheMatch"`
 }

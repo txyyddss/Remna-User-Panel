@@ -2,6 +2,15 @@
 - `useAdminIPLookup.ts` loads and saves atomic admin settings without retaining saved credentials.
 - `AdminIPLookupPage.vue` composes the standalone settings form, validation and save feedback.
 - `ProviderSettings.vue` edits provider switches, MaxMind account ID and write-only credential changes.
+- `ProviderOrder.vue` supplies accessible 44px up/down controls for two independent lists: the provider execution sequence and geolocation priority.
 - `ComboQuotas.vue` edits the next-term included quota for each core combo.
 
 The feature uses Vue Composition API, existing dark-theme controls and English/Chinese localization. Route views only compose feature components. Async results are scoped to the current member, and scope disposal cancels future polling and quote updates. Browser fixtures exercise these real components through Chrome DevTools MCP. No local automated test suite is required or permitted.
+
+Provider array order defines queue execution order. Geolocation priority defaults to IP2Location, IPAPI, MaxMind, Scamalytics, AbuseIPDB and resolves comparable quality ties or missing quality metadata. Reordering preserves each provider's enabled flag, account ID and credential edit by stable provider ID. Saving uses the existing atomic settings endpoint; each run retains its original configuration snapshot.
+
+Chrome DevTools MCP reviewed the real form at 390px and 1280px in English and
+Chinese on 2026-10-10. A constructed save retained independent reordered lists,
+2.50/3.50 TXB fees, two/zero quotas, account fields and blank credential edits.
+All ordering controls measured 44px; no overflow or console errors appeared.
+These are browser/constructed-handler results, not a production settings write.

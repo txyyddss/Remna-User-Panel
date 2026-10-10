@@ -36,9 +36,15 @@ func parseMaxmind(p *ProviderResult, ip string, o object) error {
 		p.Signals.Proxy = boolean(true)
 	}
 	city := nested(o, "city")
-	p.Facts = Facts{Country: textField(nested(o, "country"), "iso_code"), City: textField(nested(city, "names"), "en"), ISP: textField(traits, "isp"), ASN: textField(traits, "autonomous_system_number"), NetworkType: networkType(textField(traits, "user_type"))}
+	p.Facts = Facts{Country: textField(nested(o, "country"), "iso_code"), City: textField(nested(city, "names"), "en"), ASN: textField(traits, "autonomous_system_number"), NetworkType: networkType(textField(traits, "user_type"))}
+	if p.Facts.NetworkType == "" {
+		p.Facts.NetworkType = networkType(textField(traits, "connection_type"))
+	}
+	if p.Signals.Datacenter != nil && *p.Signals.Datacenter {
+		p.Facts.NetworkType = "datacenter"
+	}
 	addScore(p, traits, "static_ip_score", "static_ip_score")
-	addScore(p, traits, "ip_risk_snapshot", "network_risk_snapshot")
+	addScore(p, traits, "ip_risk_snapshot", "ip_risk_snapshot")
 	p.Complete = allKnown(p.Signals.Datacenter, p.Signals.VPN, p.Signals.Proxy, p.Signals.Tor)
 	return nil
 }
@@ -47,7 +53,7 @@ func parseIPQS(p *ProviderResult, o object) error {
 	if success := flag(o, "success"); success == nil || !*success {
 		return &CodeError{"IP_LOOKUP_PROVIDER_UNAVAILABLE"}
 	}
-	p.Facts = Facts{Country: textField(o, "country_code"), Region: textField(o, "region"), City: textField(o, "city"), ISP: textField(o, "ISP"), ASN: textField(o, "ASN"), NetworkType: networkType(textField(o, "connection_type"))}
+	p.Facts = Facts{Country: textField(o, "country_code"), City: textField(o, "city"), ASN: textField(o, "ASN"), NetworkType: networkType(textField(o, "connection_type"))}
 	if mobile := flag(o, "mobile"); mobile != nil && *mobile {
 		p.Facts.NetworkType = "mobile"
 	}
@@ -76,7 +82,10 @@ func parseIP2(p *ProviderResult, ip string, o object) error {
 		return &CodeError{"IP_LOOKUP_INVALID_RESPONSE"}
 	}
 	proxy := nested(o, "proxy")
-	p.Facts = Facts{Country: textField(o, "country_code"), Region: textField(o, "region_name"), City: textField(o, "city_name"), ISP: textField(o, "isp"), ASN: textField(o, "asn"), NetworkType: networkType(textField(o, "usage_type"))}
+	p.Facts = Facts{Country: textField(o, "country_code"), City: textField(o, "city_name"), ASN: textField(o, "asn"), NetworkType: networkType(textField(o, "usage_type"))}
+	if textField(o, "net_speed") == "SAT" {
+		p.Facts.NetworkType = "satellite"
+	}
 	p.Signals = Signals{Datacenter: flag(proxy, "is_data_center"), VPN: flag(proxy, "is_vpn"), Proxy: flag(o, "is_proxy"), Tor: flag(proxy, "is_tor")}
 	if p.Facts.NetworkType == "datacenter" || textField(proxy, "proxy_type") == "DCH" {
 		p.Signals.Datacenter = boolean(true)

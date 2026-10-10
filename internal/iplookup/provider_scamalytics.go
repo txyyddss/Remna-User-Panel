@@ -56,13 +56,7 @@ func parseScamalytics(p *ProviderResult, ip string, o object) error {
 			p.Signals.Proxy = boolean(true)
 		}
 	}
-	p.Facts = Facts{Country: textField(geo, "ip_country_code"), Region: textField(geo, "ip_state_name"), City: textField(geo, "ip_city"), ISP: textField(main, "scamalytics_isp"), ASN: textField(geo, "asn"), NetworkType: networkType(textField(lite, "usage_type"))}
-	if p.Facts.ISP == "" {
-		p.Facts.ISP = textField(info, "as_name")
-	}
-	if p.Facts.ISP == "" {
-		p.Facts.ISP = textField(geo, "as_name")
-	}
+	p.Facts = Facts{Country: textField(geo, "ip_country_code"), City: textField(geo, "ip_city"), ASN: textField(geo, "asn"), NetworkType: networkType(textField(lite, "usage_type"))}
 	if p.Facts.ASN == "" {
 		p.Facts.ASN = strings.TrimPrefix(textField(info, "asn"), "AS")
 	}

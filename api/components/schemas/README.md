@@ -41,5 +41,5 @@ Schema definitions are grouped into bounded sequential shards. The root componen
 `connectivity.yaml` defines the seven credential-free connectivity configuration, account, attempt, batch, host-result, snapshot and cursor-history contracts. Nullable fields remain present; Remnawave account references are canonical numeric IDs.
 
 `uptime.yaml` describes neutral-gap timelines, the credential-free home summary and member-only subscription host/squad projections, without diagnostic timing or HTTP status fields.
-- `ip-lookup-config.yaml` defines typed IP Lookup configuration, allowance, pricing and submission contracts.
-- `ip-lookup-report.yaml` defines normalized evidence, frozen report and owner-scoped check contracts.
+- `ip-lookup-config.yaml` defines independent provider/geolocation ordering, allowance, signed pricing and response-only free cache previews. Submission uses only the signed quote fields.
+- `ip-lookup-report.yaml` defines compact merged facts, source provenance, refusal evidence, nullable MaxMind fields and owner-scoped receipts with the requested IP and cache match.

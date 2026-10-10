@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 	"time"
 
@@ -11,73 +10,11 @@ import (
 	"github.com/txyyddss/Remna-User-Panel/internal/model"
 )
 
-func ipLookupFixture(t *testing.T, quota int) (*Store, *iplookup.Service, string, string, time.Time) {
-	t.Helper()
-	ctx := context.Background()
-	store := newTestStore(t)
-	user := createTestUser(t, store, 96001)
-	now := time.Now().UTC()
-	combo := saveTestCombo(t, store, "IP check combo", 100, 30)
-	c := iplookup.DefaultConfig()
-	c.Enabled = true
-	c.LookupFeeTXB = "2.50"
-	c.RefreshFeeTXB = "3.50"
-	for i := range c.Providers {
-		c.Providers[i].Enabled = c.Providers[i].ID == "ipapi"
-	}
-	if err := store.SaveIPLookupSettings(ctx, user.ID, c, map[string]string{"ipapi": "test-vault-value"}, map[string]*int{combo.ID: &quota}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := store.AdjustBalance(ctx, user.ID, 10000, "ip-seed:"+user.ID, "seed", now); err != nil {
-		t.Fatal(err)
-	}
-	purchase, err := store.CreatePurchase(ctx, PurchaseInput{UserID: user.ID, ComboID: combo.ID, IdempotencyKey: "ip-purchase"}, now.Add(-time.Hour))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := store.MarkPurchaseSyncResult(ctx, purchase.ID, true, now); err != nil {
-		t.Fatal(err)
-	}
-	return store, iplookup.NewService(store, []byte(strings.Repeat("k", 32))), user.ID, purchase.ID, now
-}
-
-func submitIP(t *testing.T, service *iplookup.Service, user, key string, refresh bool) model.OperationReceipt {
-	t.Helper()
-	ctx := context.Background()
-	q, err := service.Quote(ctx, user, "150.249.241.62", refresh)
-	if err != nil {
-		t.Fatal(err)
-	}
-	op, err := service.Submit(ctx, user, key, q)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return op
-}
-
-func finishIP(t *testing.T, store *Store, operationID string, failed bool) iplookup.Report {
-	t.Helper()
-	ctx := context.Background()
-	r, _, err := store.IPLookupRun(ctx, operationID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	r.Status, r.Verdict = "succeeded", "suitable"
-	if failed {
-		r.Status, r.Verdict = "failed", "inconclusive"
-	}
-	r.CheckedAt = time.Now().UTC().Format(time.RFC3339Nano)
-	if err := store.FinishIPLookupRun(ctx, r, time.Now().UTC()); err != nil {
-		t.Fatal(err)
-	}
-	return r
-}
-
 func TestIPLookupCacheCoalescingQuotaAndPaidRefresh(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	store, service, user, purchase, now := ipLookupFixture(t, 2)
-	q, err := service.Quote(ctx, user, "150.249.241.62", false)
+	q, err := service.Quote(ctx, user, "8.8.8.8", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +48,7 @@ func TestIPLookupCacheCoalescingQuotaAndPaidRefresh(t *testing.T) {
 	if err != nil || !check.Cached || check.Charge.Minor != "0" || check.Report.ID != r1.ID {
 		t.Fatalf("cached check=%+v %v", check, err)
 	}
-	refreshQ, err := service.Quote(ctx, user, "150.249.241.62", true)
+	refreshQ, err := service.Quote(ctx, user, "8.8.8.8", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +79,7 @@ func TestIPLookupCacheCoalescingQuotaAndPaidRefresh(t *testing.T) {
 	}
 }
 
-func TestIPLookupAllFailureRestoresCostExactlyOnce(t *testing.T) {
+func TestIPLookupUnattemptedFailureRestoresCostExactlyOnce(t *testing.T) {
 	t.Parallel()
 	for _, quota := range []int{0, 1} {
 		t.Run(model.TXBMoney(int64(quota)).Minor, func(t *testing.T) {
@@ -169,7 +106,7 @@ func TestIPLookupAllFailureRestoresCostExactlyOnce(t *testing.T) {
 			if err != nil || !check.Refunded || check.Charge.Minor != "0" {
 				t.Fatalf("check=%+v %v", check, err)
 			}
-			q, err := service.Quote(ctx, user, "150.249.241.62", false)
+			q, err := service.Quote(ctx, user, "8.8.8.8", false)
 			if err != nil || q.CacheReportID != "" {
 				t.Fatalf("failed report cached: %+v %v", q, err)
 			}
@@ -177,7 +114,7 @@ func TestIPLookupAllFailureRestoresCostExactlyOnce(t *testing.T) {
 	}
 }
 
-func TestIPLookupRefreshFailureRetainsCacheAndProviderSnapshot(t *testing.T) {
+func TestIPLookupInfrastructureFailureRetainsImmutableCache(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	store, service, user, _, _ := ipLookupFixture(t, 0)
@@ -194,7 +131,7 @@ func TestIPLookupRefreshFailureRetainsCacheAndProviderSnapshot(t *testing.T) {
 	}
 	op := submitIP(t, service, user, "old-cache", false)
 	check, err := service.Check(ctx, user, op.ID)
-	if err != nil || check.Report.ID != original.ID || check.Report.Providers[2].Status != "queued" || check.Report.Providers[0].Status != "disabled" {
+	if err != nil || check.Report.ID != original.ID || check.Report.PolicyVersion != original.PolicyVersion {
 		t.Fatalf("cached snapshot changed: %+v %v", check, err)
 	}
 }

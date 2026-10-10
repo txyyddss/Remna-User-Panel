@@ -21,7 +21,8 @@ func (s *Store) IPLookupRun(ctx context.Context, operationID string) (iplookup.R
 	if err != nil {
 		return report, config, err
 	}
-	if err := json.Unmarshal([]byte(raw), &report); err != nil {
+	report, err = iplookup.DecodeReport([]byte(raw))
+	if err != nil {
 		return report, config, err
 	}
 	config, err = iplookup.DecodeConfig(configJSON)
@@ -32,7 +33,7 @@ func (s *Store) IPLookupRun(ctx context.Context, operationID string) (iplookup.R
 func (s *Store) SaveIPLookupProgress(ctx context.Context, report iplookup.Report) error {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
-	raw, err := json.Marshal(report)
+	raw, err := iplookup.EncodeReport(report)
 	if err != nil {
 		return err
 	}
@@ -50,6 +51,9 @@ func (s *Store) SaveIPLookupProgress(ctx context.Context, report iplookup.Report
 
 // FinishIPLookupRun freezes the report and completes/refunds every joined check atomically.
 func (s *Store) FinishIPLookupRun(ctx context.Context, report iplookup.Report, now time.Time) error {
+	if report.Status == "failed" && iplookup.ReportAttempted(report) {
+		report.Status, report.Verdict = "partial", "inconclusive"
+	}
 	if report.Status != "succeeded" && report.Status != "partial" && report.Status != "failed" {
 		return ErrConflict
 	}
@@ -60,7 +64,7 @@ func (s *Store) FinishIPLookupRun(ctx context.Context, report iplookup.Report, n
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
-	raw, err := json.Marshal(report)
+	raw, err := iplookup.EncodeReport(report)
 	if err != nil {
 		return err
 	}
@@ -75,7 +79,8 @@ func (s *Store) FinishIPLookupRun(ctx context.Context, report iplookup.Report, n
 		if err := tx.QueryRowContext(ctx, `SELECT report_json FROM ip_lookup_reports WHERE id=?`, report.ID).Scan(&stored); err != nil {
 			return err
 		}
-		if err := json.Unmarshal([]byte(stored), &report); err != nil {
+		report, err = iplookup.DecodeReport([]byte(stored))
+		if err != nil {
 			return err
 		}
 	}
@@ -98,7 +103,7 @@ func (s *Store) FinishIPLookupRun(ctx context.Context, report iplookup.Report, n
 		return err
 	}
 	for _, id := range operations {
-		if report.RefundRequired {
+		if report.Status == "failed" {
 			if err := refundIPCheckTx(ctx, tx, id, now); err != nil {
 				return err
 			}
@@ -112,17 +117,20 @@ func (s *Store) FinishIPLookupRun(ctx context.Context, report iplookup.Report, n
 
 func finishIPCheckTx(ctx context.Context, tx *sql.Tx, operationID, reportID, status string, now time.Time) error {
 	var usedQuota int
-	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(json_extract(o.result_json,'$.usedQuota'),c.allowance_id IS NOT NULL) FROM ip_lookup_checks c JOIN provider_operations o ON o.id=c.operation_id WHERE c.operation_id=?`, operationID).Scan(&usedQuota); err != nil {
+	var metadata string
+	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(json_extract(o.result_json,'$.usedQuota'),c.allowance_id IS NOT NULL),o.result_json FROM ip_lookup_checks c JOIN provider_operations o ON o.id=c.operation_id WHERE c.operation_id=?`, operationID).Scan(&usedQuota, &metadata); err != nil {
 		return err
 	}
 	errorCode := ""
 	if status == "failed" {
-		errorCode = "IP_LOOKUP_ALL_PROVIDERS_FAILED"
-		if err := refundIPCheckTx(ctx, tx, operationID, now); err != nil {
-			return err
-		}
+		errorCode = "IP_LOOKUP_FAILED"
 	}
-	resultJSON, err := json.Marshal(map[string]any{"reportId": reportID, "usedQuota": usedQuota == 1})
+	result := map[string]any{}
+	if err := json.Unmarshal([]byte(metadata), &result); err != nil {
+		return err
+	}
+	result["reportId"], result["usedQuota"] = reportID, usedQuota == 1
+	resultJSON, err := json.Marshal(result)
 	if err != nil {
 		return err
 	}

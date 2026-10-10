@@ -55,12 +55,16 @@ func (w *Worker) HandleProviderOperation(ctx context.Context, operation provider
 	if r.Status != "processing" {
 		return w.repository.FinishIPLookupRun(ctx, r, w.now().UTC())
 	}
-	for index := range r.Providers {
-		p := &r.Providers[index]
+	foldLegacy(&r, c)
+	if r.Checkpoint == nil {
+		return &CodeError{"IP_LOOKUP_INVALID_RESPONSE"}
+	}
+	for index := range r.Checkpoint.Stages {
+		p := &r.Checkpoint.Stages[index]
 		if p.Status == "disabled" || p.Status == "skipped" {
 			continue
 		}
-		if len(RiskReasons(*p)) > 0 {
+		if len(r.Refusals) > 0 {
 			skipLater(&r, index)
 			break
 		}
@@ -70,17 +74,17 @@ func (w *Worker) HandleProviderOperation(ctx context.Context, operation provider
 		if err := ctx.Err(); err != nil {
 			return err
 		}
+		result := ProviderResult{ID: p.ID, Status: "error"}
 		if p.Status == "processing" {
-			p.Status, p.ErrorCode = "error", "IP_LOOKUP_INTERRUPTED"
+			// The persisted attempted marker forbids replay after an interrupted call.
+			p.Attempted = true
 		} else {
-			p.Status = "processing"
+			p.Status, p.Attempted = "processing", true
 			if err := w.repository.SaveIPLookupProgress(ctx, r); err != nil {
 				return err
 			}
 			adapter := w.providers[p.ID]
-			if adapter == nil {
-				p.Status, p.ErrorCode = "error", "IP_LOOKUP_PROVIDER_UNAVAILABLE"
-			} else {
+			if adapter != nil {
 				configuration := ProviderConfig{ID: p.ID}
 				for _, candidate := range c.Providers {
 					if candidate.ID == p.ID {
@@ -88,19 +92,18 @@ func (w *Worker) HandleProviderOperation(ctx context.Context, operation provider
 						break
 					}
 				}
-				result, callErr := adapter.Lookup(ctx, r.IP, configuration)
-				if callErr != nil {
-					p.Status, p.ErrorCode = "error", ErrorCode(callErr)
-				} else {
-					*p = result
+				lookup, callErr := adapter.Lookup(ctx, r.IP, configuration)
+				if callErr == nil {
+					result = lookup
+					result.ID = p.ID
 				}
 			}
 		}
-		p.CheckedAt = w.now().UTC().Format(time.RFC3339Nano)
+		RecordProvider(&r, result, c)
 		if err := w.repository.SaveIPLookupProgress(ctx, r); err != nil {
 			return err
 		}
-		if len(RiskReasons(*p)) > 0 {
+		if len(r.Refusals) > 0 {
 			skipLater(&r, index)
 			break
 		}
@@ -110,9 +113,9 @@ func (w *Worker) HandleProviderOperation(ctx context.Context, operation provider
 }
 
 func skipLater(r *Report, index int) {
-	for i := index + 1; i < len(r.Providers); i++ {
-		if r.Providers[i].Status == "queued" {
-			r.Providers[i].Status = "skipped"
+	for i := index + 1; i < len(r.Checkpoint.Stages); i++ {
+		if r.Checkpoint.Stages[i].Status == "queued" {
+			r.Checkpoint.Stages[i].Status = "skipped"
 		}
 	}
 }

@@ -9,10 +9,15 @@ import TxbAmountField from '@/components/common/TxbAmountField.vue'
 import { ipLookupErrorText } from '@/components/ip-lookup/presentation'
 import ProviderSettings from './ProviderSettings.vue'
 import ComboQuotas from './ComboQuotas.vue'
+import ProviderOrder from './ProviderOrder.vue'
 import { useAdminIPLookup } from './useAdminIPLookup'
 
 const { settings, combos, loading, busy, errorCode, saved, save, load } = useAdminIPLookup()
 const { t } = useI18n()
+const checkOrder = computed({
+  get: () => settings.providers.map(provider => provider.id),
+  set: ids => { settings.providers = ids.flatMap(id => settings.providers.filter(provider => provider.id === id)) },
+})
 const schema = computed(() => z.object({
   lookupFeeTxb: z.string().refine(value => !value || /^\d+(\.\d{1,2})?$/.test(value), t('ipLookup.errors.IP_LOOKUP_INVALID_CONFIG')),
   refreshFeeTxb: z.string().refine(value => !value || /^\d+(\.\d{1,2})?$/.test(value), t('ipLookup.errors.IP_LOOKUP_INVALID_CONFIG')),
@@ -32,6 +37,10 @@ const schema = computed(() => z.object({
           <TxbAmountField id="lookup-fee" v-model="settings.lookupFeeTxb" :label="$t('ipLookup.lookupFee')" min-minor="0" />
           <TxbAmountField id="refresh-fee" v-model="settings.refreshFeeTxb" :label="$t('ipLookup.refreshFee')" min-minor="0" />
         </div>
+        <div class="lookup-orders">
+          <ProviderOrder v-model="checkOrder" :title="$t('ipLookup.checkOrder')" :help="$t('ipLookup.checkOrderHelp')" :disabled="busy" />
+          <ProviderOrder v-model="settings.geolocationOrder" :title="$t('ipLookup.geolocationOrder')" :help="$t('ipLookup.geolocationOrderHelp')" :disabled="busy" />
+        </div>
         <ProviderSettings v-model="settings" />
         <ComboQuotas v-model="settings.comboQuotas" :combos="combos" />
         <UButton type="submit" :loading="busy" :disabled="busy" :label="$t('common.save')" class="lookup-save" />
@@ -45,6 +54,7 @@ const schema = computed(() => z.object({
 .admin-ip-lookup { max-width: 1080px; }
 .lookup-settings { display: grid; gap: 1.5rem; }
 .lookup-fees { display: grid; gap: 1rem; }
+.lookup-orders { display: grid; gap: 1.25rem; }
 .lookup-save { justify-self: start; min-height: 44px; }
-@media (min-width: 900px) { .lookup-fees { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 900px) { .lookup-fees, .lookup-orders { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>

@@ -77,7 +77,18 @@ func (s *Store) CreateIPLookupCheck(ctx context.Context, user, key string, q ipl
 	if err != nil {
 		return model.OperationReceipt{}, err
 	}
-	metadata, err := json.Marshal(map[string]any{"reportId": reportID, "usedQuota": fresh.UseQuota})
+	cacheMatch := "none"
+	if cached {
+		var evaluatedIP string
+		if err := tx.QueryRowContext(ctx, `SELECT ip FROM ip_lookup_reports WHERE id=?`, reportID).Scan(&evaluatedIP); err != nil {
+			return model.OperationReceipt{}, err
+		}
+		cacheMatch = "exact"
+		if evaluatedIP != q.IP {
+			cacheMatch = "subnet"
+		}
+	}
+	metadata, err := json.Marshal(map[string]any{"reportId": reportID, "usedQuota": fresh.UseQuota, "requestedIP": q.IP, "cacheMatch": cacheMatch})
 	if err != nil {
 		return model.OperationReceipt{}, err
 	}
@@ -132,7 +143,7 @@ func selectIPRunTx(ctx context.Context, tx *sql.Tx, q, fresh iplookup.Quote, c i
 		return "", false, err
 	}
 	report := iplookup.NewReport(id, q.IP, c)
-	encoded, err := json.Marshal(report)
+	encoded, err := iplookup.EncodeReport(report)
 	if err != nil {
 		return "", false, err
 	}

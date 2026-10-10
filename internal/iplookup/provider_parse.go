@@ -17,6 +17,7 @@ func textField(o object, key string) string {
 			v = n.String()
 		}
 	}
+	v = strings.TrimSpace(v)
 	if v == "N/A" || v == "N\\A" || v == "-" || strings.Contains(strings.ToLower(v), "required") || strings.HasPrefix(strings.ToLower(v), "premium field") {
 		return ""
 	}
@@ -50,14 +51,16 @@ func addScore(p *ProviderResult, o object, key, label string) {
 }
 func networkType(v string) string {
 	switch strings.ToLower(v) {
-	case "residential", "fixed line isp", "isp":
+	case "residential", "fixed line isp", "isp", "cable/dsl":
 		return "residential"
 	case "mobile", "mobile isp", "cellular", "mob", "isp/mob":
 		return "mobile"
-	case "data center", "data center/web hosting/transit", "hosting", "dch", "content delivery network":
+	case "data center", "data center/web hosting/transit", "hosting", "dch", "content delivery network", "content_delivery_network", "cdn":
 		return "datacenter"
-	case "corporate", "commercial", "business", "organization", "education", "government", "university/college/school":
+	case "corporate", "commercial", "business", "organization", "education", "government", "university/college/school", "com", "edu", "gov", "org", "mil", "lib", "college", "school", "military", "library":
 		return "business"
+	case "satellite", "sat":
+		return "satellite"
 	default:
 		return ""
 	}
@@ -93,6 +96,7 @@ func parseProvider(id, ip string, o object) (ProviderResult, error) {
 	if err != nil {
 		return p, err
 	}
+	enrichProvider(&p, o)
 	if !p.Complete {
 		p.Status = "partial"
 		p.ErrorCode = "IP_LOOKUP_MISSING_FIELDS"
@@ -109,7 +113,7 @@ func parseAbuse(p *ProviderResult, ip string, o object) error {
 	if !validReturnedIP(o, "ipAddress", ip) {
 		return &CodeError{"IP_LOOKUP_INVALID_RESPONSE"}
 	}
-	p.Facts = Facts{Country: textField(o, "countryCode"), ISP: textField(o, "isp"), NetworkType: networkType(textField(o, "usageType"))}
+	p.Facts = Facts{Country: textField(o, "countryCode"), NetworkType: networkType(textField(o, "usageType"))}
 	addScore(p, o, "abuseConfidenceScore", "abuse_confidence")
 	if n := numeric(o, "totalReports"); n != nil && *n >= 0 && *n <= 1000000000 {
 		v := int(*n)
@@ -131,15 +135,9 @@ func parseIPAPI(p *ProviderResult, ip string, o object) error {
 		return &CodeError{"IP_LOOKUP_INVALID_RESPONSE"}
 	}
 	asn, company, location := nested(o, "asn"), nested(o, "company"), nested(o, "location")
-	p.Facts = Facts{Country: textField(location, "country_code"), Region: textField(location, "state"), City: textField(location, "city"), ISP: textField(company, "name"), ASN: textField(asn, "asn")}
+	p.Facts = Facts{Country: textField(location, "country_code"), City: textField(location, "city"), ASN: textField(asn, "asn")}
 	p.Signals = Signals{Abuse: flag(o, "is_abuser"), Datacenter: flag(o, "is_datacenter"), VPN: ipapiVPN(o), Proxy: flag(o, "is_proxy"), Tor: flag(o, "is_tor")}
-	if networkType(textField(asn, "type")) == "datacenter" || networkType(textField(company, "type")) == "datacenter" {
-		p.Signals.Datacenter = boolean(true)
-		p.Facts.NetworkType = "datacenter"
-	}
-	if mobile := flag(o, "is_mobile"); mobile != nil && *mobile {
-		p.Facts.NetworkType = "mobile"
-	}
+	p.Facts.NetworkType = ipapiNetwork(o)
 	for label, source := range map[string]object{"company_abuse_ratio": company, "asn_abuse_ratio": asn} {
 		parts := strings.Fields(textField(source, "abuser_score"))
 		if len(parts) > 0 {
@@ -150,6 +148,21 @@ func parseIPAPI(p *ProviderResult, ip string, o object) error {
 	}
 	p.Complete = allKnown(p.Signals.Abuse, p.Signals.Datacenter, p.Signals.VPN, p.Signals.Proxy, p.Signals.Tor)
 	return nil
+}
+
+func ipapiNetwork(o object) string {
+	unknown := false
+	for _, item := range []struct{ key, kind string }{{"is_datacenter", "datacenter"}, {"is_satellite", "satellite"}, {"is_mobile", "mobile"}} {
+		value := flag(o, item.key)
+		if value != nil && *value {
+			return item.kind
+		}
+		unknown = unknown || value == nil
+	}
+	if !unknown {
+		return "residential"
+	}
+	return ""
 }
 
 func ipapiVPN(o object) *bool {

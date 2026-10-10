@@ -1,119 +1,172 @@
 package iplookup
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
-// NewReport reserves the immutable provider selection for one shared run.
+// NewReport reserves the configured stages without storing provider payloads.
 func NewReport(id, ip string, c Config) Report {
-	r := Report{ID: id, IP: ip, Status: "processing", Verdict: "inconclusive", Reasons: []string{}, Sources: map[string]string{}, Providers: []ProviderResult{}, PolicyVersion: Version, ParserVersion: Version}
+	r := Report{ID: id, IP: ip, Status: "processing", Verdict: "inconclusive", Reasons: []string{}, Sources: map[string]string{}, Databases: []Database{}, Refusals: []Refusal{}, PolicyVersion: Version, ParserVersion: Version, Checkpoint: newCheckpoint()}
 	for _, p := range c.Providers {
 		status := "disabled"
 		if p.Enabled {
 			status = "queued"
 		}
-		r.Providers = append(r.Providers, ProviderResult{ID: p.ID, Status: status, Scores: map[string]float64{}})
+		r.Checkpoint.Stages = append(r.Checkpoint.Stages, Stage{ID: p.ID, Status: status})
 	}
 	return r
 }
 
-// RiskReasons identifies only per-IP evidence; network scores are contextual.
-func RiskReasons(p ProviderResult) []string {
-	result := []string{}
-	flags := []struct {
-		name  string
-		value *bool
-	}{{"abuse", p.Signals.Abuse}, {"datacenter", p.Signals.Datacenter}, {"vpn", p.Signals.VPN}, {"proxy", p.Signals.Proxy}, {"tor", p.Signals.Tor}}
-	for _, flag := range flags {
-		if flag.value != nil && *flag.value {
-			result = append(result, p.ID+":"+flag.name)
-		}
-	}
-	if p.Reports != nil && *p.Reports > 0 {
-		result = append(result, p.ID+":abuse_reports")
-	}
-	for _, key := range []string{"abuse_confidence", "fraud_score"} {
-		if key == "fraud_score" && p.RiskLevel == "low" {
-			continue
-		}
-		if p.Scores[key] > 0 {
-			result = append(result, p.ID+":"+key)
-		}
-	}
-	if p.Scores["fraud_score"] <= 0 && (p.RiskLevel == "medium" || p.RiskLevel == "high" || p.RiskLevel == "very_high") {
-		result = append(result, p.ID+":fraud_score")
-	}
-	return result
+func newCheckpoint() *Checkpoint {
+	return &Checkpoint{Stages: []Stage{}, Complete: true, Votes: map[string][]string{}}
 }
 
-// Aggregate freezes one honest verdict with first-available source-attributed facts.
-func Aggregate(r Report, now time.Time) Report {
-	r.Reasons = []string{}
-	r.Sources = map[string]string{}
-	r.Facts = Facts{}
-	r.RefundRequired = false
-	usable, complete, eligible := 0, true, false
-	business := false
-	covered := [5]bool{}
-	for _, p := range r.Providers {
-		if p.Status == "disabled" {
+// RecordProvider completes a stage once and folds its transient normalized evidence.
+func RecordProvider(r *Report, p ProviderResult, c Config) {
+	foldLegacy(r, c)
+	if r.Checkpoint == nil {
+		r.Checkpoint = newCheckpoint()
+	}
+	for i := range r.Checkpoint.Stages {
+		stage := &r.Checkpoint.Stages[i]
+		if stage.ID != p.ID {
 			continue
 		}
-		if p.Status == "error" {
-			r.RefundRequired = true
+		if stage.Status == "success" || stage.Status == "partial" || stage.Status == "error" {
+			return
 		}
-		if p.Status == "success" || p.Status == "partial" {
-			usable++
-			mergeFacts(&r, p)
-			eligible = eligible || p.Facts.NetworkType == "residential" || p.Facts.NetworkType == "mobile"
-			business = business || p.Facts.NetworkType == "business"
-			flags := []*bool{p.Signals.Abuse, p.Signals.Datacenter, p.Signals.VPN, p.Signals.Proxy, p.Signals.Tor}
-			for i, v := range flags {
-				covered[i] = covered[i] || v != nil
-			}
-			r.Reasons = append(r.Reasons, RiskReasons(p)...)
-		}
-		complete = complete && p.Status == "success" && p.Complete
+		stage.Status, stage.Attempted = p.Status, true
+		applyProvider(r, p, c)
+		syncFacts(r)
+		return
 	}
+	r.Checkpoint.Stages = append(r.Checkpoint.Stages, Stage{ID: p.ID, Status: p.Status, Attempted: true})
+	applyProvider(r, p, c)
+	syncFacts(r)
+}
+
+// Aggregate completes the compact verdict; contacted API errors are inconclusive.
+func Aggregate(r Report, now time.Time) Report {
+	foldLegacy(&r, DefaultConfig())
+	if r.Checkpoint == nil {
+		return r
+	}
+	syncFacts(&r)
+	r.RefundRequired = false
 	r.CheckedAt = now.UTC().Format(time.RFC3339Nano)
 	r.Status, r.Verdict = "succeeded", "inconclusive"
-	if usable == 0 {
-		r.Status = "failed"
-		r.Reasons = []string{"all_providers_failed"}
-		return r
-	}
-	if len(r.Reasons) > 0 {
-		r.Verdict = "unsuitable"
-		return r
-	}
-	for _, known := range covered {
-		complete = complete && known
-	}
-	if !complete {
+	r.Reasons = []string{}
+	complete := r.Checkpoint.Complete && r.Checkpoint.Coverage == 31
+	if !r.Checkpoint.Complete || r.Checkpoint.Usable == 0 {
 		r.Status = "partial"
-		r.Reasons = append(r.Reasons, "incomplete_coverage")
 	}
-	eligible = eligible && !business
-	if !eligible {
-		r.Reasons = append(r.Reasons, "residential_unknown")
+	if len(r.Refusals) > 0 {
+		r.Verdict = "unsuitable"
+		for _, item := range r.Refusals {
+			r.Reasons = append(r.Reasons, item.Source+":"+item.Kind)
+		}
+	} else {
+		if !complete {
+			r.Status = "partial"
+			r.Reasons = append(r.Reasons, "incomplete_coverage")
+		}
+		eligible := r.Facts.NetworkType == "residential" || r.Facts.NetworkType == "mobile"
+		if !eligible {
+			r.Reasons = append(r.Reasons, "residential_unknown")
+		}
+		if complete && eligible {
+			r.Verdict = "suitable"
+		}
 	}
-	if complete && eligible {
-		r.Verdict = "suitable"
-	}
+	r.Checkpoint = nil
+	r.Providers = nil
 	return r
 }
 
-func mergeFacts(r *Report, p ProviderResult) {
-	fields := []struct {
-		key    string
-		target *string
-		value  string
-	}{
-		{"country", &r.Facts.Country, p.Facts.Country}, {"region", &r.Facts.Region, p.Facts.Region}, {"city", &r.Facts.City, p.Facts.City},
-		{"isp", &r.Facts.ISP, p.Facts.ISP}, {"asn", &r.Facts.ASN, p.Facts.ASN}, {"networkType", &r.Facts.NetworkType, p.Facts.NetworkType},
+func applyProvider(r *Report, p ProviderResult, c Config) {
+	if r.Checkpoint == nil {
+		r.Checkpoint = newCheckpoint()
 	}
-	for _, f := range fields {
-		if *f.target == "" && f.value != "" {
-			*f.target = f.value
-			r.Sources[f.key] = p.ID
+	state := r.Checkpoint
+	if p.Status != "success" && p.Status != "partial" {
+		state.Complete = false
+		return
+	}
+	state.Usable++
+	state.Complete = state.Complete && p.Status == "success" && p.Complete
+	for i, v := range []*bool{p.Signals.Abuse, p.Signals.Datacenter, p.Signals.VPN, p.Signals.Proxy, p.Signals.Tor} {
+		if v != nil {
+			state.Coverage |= 1 << i
 		}
 	}
+	if kind := p.Facts.NetworkType; kind != "" {
+		state.Votes[kind] = append(state.Votes[kind], source(p, "networkType"))
+	}
+	r.Refusals = append(r.Refusals, providerRefusals(p)...)
+	if p.ID == "maxmind" {
+		r.MaxMind = p.MaxMind
+	}
+	if r.Facts.ASN == "" && p.Facts.ASN != "" {
+		r.Facts.ASN, r.Facts.ASNName = p.Facts.ASN, p.Facts.ASNName
+		r.Sources["asn"] = source(p, "asn")
+		if p.Facts.ASNName != "" {
+			r.Sources["asnName"] = source(p, "asnName")
+		}
+	}
+	if r.Facts.ASN != "" && r.Facts.ASN == p.Facts.ASN && r.Facts.ASNName == "" && p.Facts.ASNName != "" {
+		r.Facts.ASNName = p.Facts.ASNName
+		r.Sources["asnName"] = source(p, "asnName")
+	}
+	if geo := p.Geo; geo != nil && betterGeo(geo, state.Geo, c.GeolocationOrder) {
+		state.Geo = geo
+	}
+	syncFacts(r)
+}
+
+func syncFacts(r *Report) {
+	state := r.Checkpoint
+	if state == nil {
+		return
+	}
+	r.Databases = []Database{}
+	for _, stage := range state.Stages {
+		if stage.Attempted {
+			r.Databases = append(r.Databases, Database{ID: stage.ID, Status: stage.Status})
+		}
+	}
+	r.Facts.NetworkType = ""
+	delete(r.Sources, "networkType")
+	total := 0
+	for _, voters := range state.Votes {
+		total += len(voters)
+	}
+	for kind, voters := range state.Votes {
+		if len(voters)*2 > total {
+			r.Facts.NetworkType = kind
+			r.Sources["networkType"] = strings.Join(voters, ",")
+		}
+	}
+	if geo := state.Geo; geo != nil {
+		r.Facts.Country, r.Facts.City = geo.Country, geo.City
+		r.Facts.Latitude, r.Facts.Longitude = geo.Latitude, geo.Longitude
+		for key, present := range map[string]bool{"country": geo.Country != "", "city": geo.City != "", "latitude": geo.Latitude != nil, "longitude": geo.Longitude != nil} {
+			delete(r.Sources, key)
+			if present {
+				r.Sources[key] = geo.Source
+			}
+		}
+	}
+	for key, present := range map[string]bool{"ip_risk_snapshot": r.MaxMind.IPRiskSnapshot != nil, "static_ip_score": r.MaxMind.StaticIPScore != nil, "user_count": r.MaxMind.UserCount != nil, "user_type": r.MaxMind.UserType != nil} {
+		if present {
+			r.Sources["maxmind."+key] = "maxmind"
+		}
+	}
+}
+
+func source(p ProviderResult, key string) string {
+	if p.Sources[key] != "" {
+		return p.Sources[key]
+	}
+	return p.ID
 }

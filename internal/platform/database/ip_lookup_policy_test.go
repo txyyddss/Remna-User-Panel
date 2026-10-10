@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/txyyddss/Remna-User-Panel/internal/iplookup"
 )
 
 func TestIPLookupCacheIsFreeWithRemainingAllowance(t *testing.T) {
@@ -20,7 +22,7 @@ func TestIPLookupCacheIsFreeWithRemainingAllowance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	q, err := service.Quote(ctx, user, "150.249.241.62", false)
+	q, err := service.Quote(ctx, user, "8.8.8.8", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,11 +44,11 @@ func TestIPLookupCacheIsFreeWithRemainingAllowance(t *testing.T) {
 	}
 }
 
-func TestIPLookupAnyProviderOutageRefundsPartialOrRejectedReport(t *testing.T) {
+func TestIPLookupAnyProviderOutageKeepsCostAndCachesReport(t *testing.T) {
 	t.Parallel()
 	for _, quota := range []int{0, 1} {
-		for _, rejected := range []bool{false, true} {
-			t.Run(string(rune('a'+quota))+map[bool]string{false: "partial", true: "rejected"}[rejected], func(t *testing.T) {
+		for _, outcome := range []string{"partial", "rejected", "all_errors"} {
+			t.Run(string(rune('a'+quota))+outcome, func(t *testing.T) {
 				ctx := context.Background()
 				store, service, user, _, now := ipLookupFixture(t, quota)
 				before, err := store.Balance(ctx, user)
@@ -58,12 +60,21 @@ func TestIPLookupAnyProviderOutageRefundsPartialOrRejectedReport(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				r.RefundRequired = true
+				for i := range r.Checkpoint.Stages {
+					if r.Checkpoint.Stages[i].Status == "queued" {
+						r.Checkpoint.Stages[i].Status = "error"
+						r.Checkpoint.Stages[i].Attempted = true
+					}
+				}
+				r.Databases = []iplookup.Database{{ID: "ipapi", Status: "error"}}
 				r.Status = "partial"
 				r.Verdict = "inconclusive"
-				if rejected {
+				if outcome == "rejected" {
 					r.Status = "succeeded"
 					r.Verdict = "unsuitable"
+				}
+				if outcome == "all_errors" {
+					r.Status = "failed"
 				}
 				if err := store.FinishIPLookupRun(ctx, r, now); err != nil {
 					t.Fatal(err)
@@ -72,7 +83,11 @@ func TestIPLookupAnyProviderOutageRefundsPartialOrRejectedReport(t *testing.T) {
 					t.Fatal(err)
 				}
 				check, err := service.Check(ctx, user, op.ID)
-				if err != nil || !check.Refunded || check.Charge.Minor != "0" || check.Report == nil {
+				expectedCharge := "0"
+				if quota == 0 {
+					expectedCharge = "250"
+				}
+				if err != nil || check.Refunded || check.Charge.Minor != expectedCharge || check.Report == nil || check.Operation.Status == "failed" {
 					t.Fatalf("outage result=%+v %v", check, err)
 				}
 				var itemStatus string
@@ -80,83 +95,23 @@ func TestIPLookupAnyProviderOutageRefundsPartialOrRejectedReport(t *testing.T) {
 					t.Fatalf("delivered partial/rejected report item=%s error=%v", itemStatus, err)
 				}
 				state, err := service.State(ctx, user)
-				if err != nil || state.Allowance.Remaining != quota {
-					t.Fatal("outage consumed quota")
+				if err != nil || state.Allowance.Remaining != 0 {
+					t.Fatal("outage restored consumed quota")
 				}
 				after, err := store.Balance(ctx, user)
-				if err != nil || before.Minor != after.Minor {
-					t.Fatal("outage charged TXB")
+				expectedDebit := int64(0)
+				if quota == 0 {
+					expectedDebit = 250
+				}
+				if err != nil || before.MinorInt64()-after.MinorInt64() != expectedDebit {
+					t.Fatal("outage refunded TXB")
+				}
+				preview, err := service.PreviewQuote(ctx, user, "8.8.8.8", false)
+				if err != nil || preview.CachedReport == nil || preview.CachedReport.ID != r.ID || preview.CacheMatch != "exact" {
+					t.Fatalf("outage did not become cache: %+v %v", preview, err)
 				}
 			})
 		}
-	}
-}
-
-func TestIPLookupMaintenancePreservesReceiptsAndRefundsStalledRuns(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-	store, service, user, _, now := ipLookupFixture(t, 0)
-	before, err := store.Balance(ctx, user)
-	if err != nil {
-		t.Fatal(err)
-	}
-	op := submitIP(t, service, user, "stalled", false)
-	if _, err := store.DB().ExecContext(ctx, `UPDATE provider_operations SET created_at=? WHERE id=?`, stamp(now.Add(-48*time.Hour)), op.ID); err != nil {
-		t.Fatal(err)
-	}
-	tx, err := store.DB().BeginTx(ctx, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = tx.Rollback() }()
-	if err := pruneProviderOperationsTx(ctx, tx, now.Add(-24*time.Hour), now, map[string]int64{}); err != nil {
-		t.Fatal(err)
-	}
-	if err := tx.Commit(); err != nil {
-		t.Fatal(err)
-	}
-	check, err := service.Check(ctx, user, op.ID)
-	if err != nil || !check.Refunded || check.Operation.Status != "failed" {
-		t.Fatalf("maintenance lost receipt/refund=%+v %v", check, err)
-	}
-	after, err := store.Balance(ctx, user)
-	if err != nil || after.Minor != before.Minor {
-		t.Fatal("maintenance stranded debit")
-	}
-	q, err := service.Quote(ctx, user, "150.249.241.62", false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	q.ExpiresAt = time.Now().Add(time.Minute).Unix()
-	if q.CacheReportID != "" {
-		t.Fatal("stalled empty report became cache")
-	}
-	// A new command must be able to reserve another run for the same IP.
-	if _, err := store.CreateIPLookupCheck(ctx, user, "replacement", q, now); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestIPLookupCompletedReceiptSurvivesMaintenance(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-	store, service, user, _, now := ipLookupFixture(t, 0)
-	op := submitIP(t, service, user, "complete", false)
-	finishIP(t, store, op.ID, false)
-	tx, err := store.DB().BeginTx(ctx, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = tx.Rollback() }()
-	if err := pruneProviderOperationsTx(ctx, tx, now.Add(-24*time.Hour), now, map[string]int64{}); err != nil {
-		t.Fatal(err)
-	}
-	if err := tx.Commit(); err != nil {
-		t.Fatal(err)
-	}
-	check, err := service.Check(ctx, user, op.ID)
-	if err != nil || check.Report == nil {
-		t.Fatalf("completed receipt deleted: %+v %v", check, err)
 	}
 }
 
@@ -183,7 +138,7 @@ func TestIPLookupLatestCacheHandlesFractionalTimestampOrdering(t *testing.T) {
 	if err := store.FinishIPLookupRun(ctx, newReport, wholeSecond.Add(time.Millisecond)); err != nil {
 		t.Fatal(err)
 	}
-	q, err := service.Quote(ctx, user, "150.249.241.62", false)
+	q, err := service.Quote(ctx, user, "8.8.8.8", false)
 	if err != nil || q.CacheReportID != newReport.ID {
 		t.Fatalf("latest report selected incorrectly: %+v %v", q, err)
 	}

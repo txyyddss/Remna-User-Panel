@@ -7,7 +7,7 @@ type Descriptor struct {
 	AccountIDRequired bool
 }
 
-// Registry is the fixed-order extension point for queued provider adapters.
+// Registry is the adapter extension point and legacy default check order.
 var Registry = []Descriptor{
 	{ID: "abuseipdb", Capabilities: []string{"abuse", "datacenter", "tor", "reports"}},
 	{ID: "scamalytics", Capabilities: []string{"abuse", "datacenter", "vpn", "proxy", "tor", "fraud_score"}, AccountIDRequired: true},

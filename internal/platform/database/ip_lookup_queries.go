@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"time"
 
 	"github.com/txyyddss/Remna-User-Panel/internal/iplookup"
@@ -72,11 +71,12 @@ func ipQuoteTx(ctx context.Context, tx *sql.Tx, user, ip string, refresh bool, n
 		return q, c, &iplookup.CodeError{Code: "IP_LOOKUP_DISABLED"}
 	}
 	q.ConfigHash = iplookup.ConfigHash(c)
-	// One in-flight run per IP makes insertion order the durable report version order.
-	// RFC3339Nano text ordering would incorrectly rank whole seconds above fractions.
-	err = tx.QueryRowContext(ctx, `SELECT id FROM ip_lookup_reports WHERE ip=? AND status IN ('succeeded','partial') ORDER BY rowid DESC LIMIT 1`, ip).Scan(&q.CacheReportID)
-	if err != nil && err != sql.ErrNoRows {
+	cached, _, err := ipCachedReportTx(ctx, tx, ip, !refresh)
+	if err != nil {
 		return q, c, err
+	}
+	if cached != nil {
+		q.CacheReportID = cached.ID
 	}
 	if refresh && q.CacheReportID == "" {
 		return q, c, &iplookup.CodeError{Code: "IP_LOOKUP_REFRESH_UNAVAILABLE"}
@@ -127,7 +127,7 @@ func (s *Store) IPLookupCheck(ctx context.Context, user, id string) (iplookup.Ch
 	var cached, refunded int
 	var usedQuota int
 	var charge int64
-	err := s.db.QueryRowContext(ctx, `SELECT r.report_json,c.cached,c.refunded,COALESCE(json_extract(o.result_json,'$.usedQuota'),c.allowance_id IS NOT NULL),c.charge_minor FROM ip_lookup_checks c JOIN ip_lookup_reports r ON r.id=c.report_id JOIN provider_operations o ON o.id=c.operation_id WHERE c.operation_id=? AND c.user_id=?`, id, user).Scan(&raw, &cached, &refunded, &usedQuota, &charge)
+	err := s.db.QueryRowContext(ctx, `SELECT r.report_json,c.cached,c.refunded,COALESCE(json_extract(o.result_json,'$.usedQuota'),c.allowance_id IS NOT NULL),c.charge_minor,COALESCE(json_extract(o.result_json,'$.requestedIP'),r.ip),COALESCE(json_extract(o.result_json,'$.cacheMatch'),CASE c.cached WHEN 1 THEN 'exact' ELSE 'none' END) FROM ip_lookup_checks c JOIN ip_lookup_reports r ON r.id=c.report_id JOIN provider_operations o ON o.id=c.operation_id WHERE c.operation_id=? AND c.user_id=?`, id, user).Scan(&raw, &cached, &refunded, &usedQuota, &charge, &result.RequestedIP, &result.CacheMatch)
 	if err == sql.ErrNoRows {
 		return result, ErrNotFound
 	}
@@ -138,12 +138,13 @@ func (s *Store) IPLookupCheck(ctx context.Context, user, id string) (iplookup.Ch
 	if err != nil {
 		return result, err
 	}
-	var report iplookup.Report
-	if err := json.Unmarshal([]byte(raw), &report); err != nil {
+	report, err := iplookup.DecodeReport([]byte(raw))
+	if err != nil {
 		return result, err
 	}
 	if report.Status != "processing" && report.Status != "failed" {
-		result.Report = &report
+		public := iplookup.PublicReport(report)
+		result.Report = &public
 	}
 	result.Cached, result.Refunded, result.UsedQuota = cached == 1, refunded == 1, usedQuota == 1
 	if result.Refunded {
