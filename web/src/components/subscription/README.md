@@ -3,6 +3,10 @@
 `HomeUptimePanel.vue` replaces the home subscription block only for active combos.
 Its subscription entrance stays centered on mobile and desktop; a failed read
 places Retry on a separate row so it does not shift the entrance.
+The entrance is a native button calling the named Vue Router route, following
+the existing Connections action. It has no anchor URL for mobile Telegram to
+open as a new Mini App document; in-memory routing preserves the launch context
+and the shell retains native Back ownership.
 `SubscriptionPage.vue` composes the full subscription URL, existing revoke and
 connections actions, native host links, and squad history. `HostLinkRow.vue`
 owns clipboard feedback and an on-demand QR popup using the installed `qrcode`
@@ -25,3 +29,5 @@ No probe credentials, latency, or numeric HTTP results enter these interfaces.
 English and Chinese copy inherits the host-connectivity locale domain. Views
 reuse the existing premium-dark layout and do not add dependencies.
 `useSubscriptionData.test.ts` covers revocation clearing, obsolete response rejection, visible-page polling and disposal of private state in hosted CI. `UptimeBar.test.ts` covers keyboard inspection and neutral current status after refresh data expires.
+`HomeUptimePanel.test.ts` covers entry navigation during loading, the absence of
+a document link, and preservation of the Telegram launch URL in hosted CI.
