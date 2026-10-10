@@ -72,7 +72,9 @@ func ipQuoteTx(ctx context.Context, tx *sql.Tx, user, ip string, refresh bool, n
 		return q, c, &iplookup.CodeError{Code: "IP_LOOKUP_DISABLED"}
 	}
 	q.ConfigHash = iplookup.ConfigHash(c)
-	err = tx.QueryRowContext(ctx, `SELECT id FROM ip_lookup_reports WHERE ip=? AND status IN ('succeeded','partial') ORDER BY completed_at DESC,rowid DESC LIMIT 1`, ip).Scan(&q.CacheReportID)
+	// One in-flight run per IP makes insertion order the durable report version order.
+	// RFC3339Nano text ordering would incorrectly rank whole seconds above fractions.
+	err = tx.QueryRowContext(ctx, `SELECT id FROM ip_lookup_reports WHERE ip=? AND status IN ('succeeded','partial') ORDER BY rowid DESC LIMIT 1`, ip).Scan(&q.CacheReportID)
 	if err != nil && err != sql.ErrNoRows {
 		return q, c, err
 	}

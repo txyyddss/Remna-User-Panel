@@ -155,3 +155,32 @@ func TestIPLookupCompletedReceiptSurvivesMaintenance(t *testing.T) {
 		t.Fatalf("completed receipt deleted: %+v %v", check, err)
 	}
 }
+
+func TestIPLookupLatestCacheHandlesFractionalTimestampOrdering(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store, service, user, _, now := ipLookupFixture(t, 0)
+	first := submitIP(t, service, user, "whole-second", false)
+	r, _, err := store.IPLookupRun(ctx, first.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.Status, r.Verdict = "succeeded", "suitable"
+	wholeSecond := now.Truncate(time.Second)
+	if err := store.FinishIPLookupRun(ctx, r, wholeSecond); err != nil {
+		t.Fatal(err)
+	}
+	refresh := submitIP(t, service, user, "fractional-refresh", true)
+	newReport, _, err := store.IPLookupRun(ctx, refresh.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newReport.Status, newReport.Verdict = "succeeded", "suitable"
+	if err := store.FinishIPLookupRun(ctx, newReport, wholeSecond.Add(time.Millisecond)); err != nil {
+		t.Fatal(err)
+	}
+	q, err := service.Quote(ctx, user, "150.249.241.62", false)
+	if err != nil || q.CacheReportID != newReport.ID {
+		t.Fatalf("latest report selected incorrectly: %+v %v", q, err)
+	}
+}
