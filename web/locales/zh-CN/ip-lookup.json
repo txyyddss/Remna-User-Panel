@@ -123,7 +123,7 @@
     "refreshPaid": "刷新 · {fee}",
     "processing": "查询中…",
     "empty": "输入 IP",
-    "billingNote": "缓存免费 · API 错误不退款",
+    "billingNote": "缓存免费",
     "cached": "缓存",
     "fresh": "最新",
     "predictionNote": "此结果为信誉评估，不能保证任何 AI 服务的访问权限。",
@@ -157,7 +157,7 @@
     "outageRefund": "已退回",
     "riskLevel": "来源风险等级",
     "riskLevels": {
-      "low": "低风险（通过）",
+      "low": "低风险",
       "medium": "中风险",
       "high": "高风险",
       "very_high": "极高风险"

@@ -123,7 +123,7 @@
     "refreshPaid": "Refresh · {fee}",
     "processing": "Checking…",
     "empty": "Enter an IP",
-    "billingNote": "Cache free · API errors are not refunded",
+    "billingNote": "Cache free",
     "cached": "Cached",
     "fresh": "Fresh",
     "predictionNote": "This is a reputation assessment. It does not guarantee access to any AI service.",
@@ -157,7 +157,7 @@
     "outageRefund": "Restored",
     "riskLevel": "Provider risk level",
     "riskLevels": {
-      "low": "Low (pass)",
+      "low": "Low",
       "medium": "Medium",
       "high": "High",
       "very_high": "Very high"
