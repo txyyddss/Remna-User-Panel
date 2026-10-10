@@ -348,3 +348,6 @@ Retained agreement revisions also qualify returning accounts. `remna_provisionin
 - `ip_lookup_completion.go` persists attempt progress and completes or refunds joined requests exactly once.
 - `ip_lookup_test.go` covers cache sharing, prices, replays, refunds and purchase quota lifecycle for CI.
 - `ip_lookup_migration_test.go` covers the one-check gift for live members, excluding queued and expired purchases.
+
+- `ip_lookup_refunds.go` centralizes exactly-once cost restoration and closes interrupted shared runs during existing operation maintenance.
+- `ip_lookup_policy_test.go` covers free cached checks, refunds for any outage, and durable receipts across maintenance.

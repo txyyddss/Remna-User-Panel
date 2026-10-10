@@ -18,7 +18,7 @@ defineEmits<{ check: []; refresh: [] }>()
         <UInput v-model.trim="ip" class="w-full" inputmode="text" autocomplete="off" :disabled="busy" :placeholder="$t('ipLookup.placeholder')" />
       </UFormField>
       <div class="lookup-actions">
-        <UButton type="submit" :loading="busy" :disabled="busy || !validIp || !quote" :label="quote?.useQuota ? $t('ipLookup.checkIncluded') : $t('ipLookup.checkPaid', { fee: quote ? formatMoney(quote.charge) : state.lookupFee ? formatMoney(state.lookupFee) : '' })" />
+        <UButton type="submit" :loading="busy" :disabled="busy || !validIp || !quote" :label="quote?.cacheReportId ? $t('ipLookup.viewCached') : quote?.useQuota ? $t('ipLookup.checkIncluded') : $t('ipLookup.checkPaid', { fee: quote ? formatMoney(quote.charge) : state.lookupFee ? formatMoney(state.lookupFee) : '' })" />
         <UButton v-if="refreshQuote" type="button" color="neutral" variant="outline" :disabled="busy" :label="$t('ipLookup.refreshPaid', { fee: formatMoney(refreshQuote.charge) })" @click="$emit('refresh')" />
       </div>
     </form>

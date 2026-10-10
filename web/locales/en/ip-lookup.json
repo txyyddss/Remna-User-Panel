@@ -5,7 +5,8 @@
       "ipapi": "IPAPI",
       "maxmind": "MaxMind",
       "ipqs": "IPQS",
-      "ip2location": "IP2Location"
+      "ip2location": "IP2Location",
+      "scamalytics": "Scamalytics"
     },
     "scores": {
       "abuse_confidence": "Abuse confidence",
@@ -13,7 +14,8 @@
       "company_abuse_ratio": "Company network abuse ratio",
       "asn_abuse_ratio": "ASN network abuse ratio",
       "static_ip_score": "Static IP score",
-      "network_risk_snapshot": "Network risk snapshot"
+      "network_risk_snapshot": "Network risk snapshot",
+      "isp_risk_score": "ISP-wide risk score"
     },
     "facts": {
       "country": "Country",
@@ -65,7 +67,7 @@
       "tor": "Tor detected",
       "abuse_reports": "Abuse reports found",
       "abuse_confidence": "Positive IP abuse score",
-      "fraud_score": "Positive IP fraud score",
+      "fraud_score": "Elevated IP fraud risk",
       "all_providers_failed": "All providers failed to return usable data.",
       "incomplete_coverage": "Some required risk checks are unavailable.",
       "residential_unknown": "Residential or mobile ISP status could not be confirmed."
@@ -100,7 +102,7 @@
     "refreshPaid": "Refresh · {fee}",
     "processing": "Checking providers in order…",
     "empty": "Enter an IP address to see its reputation and network details.",
-    "billingNote": "Cached checks also use quota or TXB. Refresh always uses its separate TXB fee.",
+    "billingNote": "Cached results are free. Refresh has a separate TXB fee. Any provider outage restores the lookup cost.",
     "cached": "Cached report",
     "fresh": "Fresh report",
     "predictionNote": "This is a reputation assessment. It does not guarantee access to any AI service.",
@@ -117,7 +119,7 @@
     "refreshFee": "Refresh fee (TXB)",
     "saved": "IP Lookup settings saved.",
     "providerHeading": "Providers",
-    "providerOrder": "AbuseIPDB → IPAPI → MaxMind → IPQS → IP2Location. Checking stops at the first detected risk.",
+    "providerOrder": "AbuseIPDB → Scamalytics → IPAPI → MaxMind → IPQS → IP2Location. Checking stops at the first detected risk.",
     "credentialConfigured": "Credential configured",
     "credentialMissing": "Credential not configured",
     "accountId": "MaxMind account ID",
@@ -127,6 +129,17 @@
     "clearCredential": "Clear saved credential",
     "quotaHeading": "Included IP checks per combo term",
     "quotaHelp": "Applied on the next activation or renewal. Zero gives no included checks; current-term allowances stay unchanged.",
-    "unconfigured": "Not configured"
+    "unconfigured": "Not configured",
+    "scamalyticsUsername": "Scamalytics username",
+    "viewCached": "View cached result",
+    "cachedFree": "Cached result · free",
+    "outageRefund": "Provider outage · quota or TXB restored",
+    "riskLevel": "Provider risk level",
+    "riskLevels": {
+      "low": "Low (pass)",
+      "medium": "Medium",
+      "high": "High",
+      "very_high": "Very high"
+    }
   }
 }

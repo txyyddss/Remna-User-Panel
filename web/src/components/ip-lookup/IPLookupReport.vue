@@ -23,7 +23,7 @@ const report = computed(() => props.check.report)
         <dd>{{ key === 'networkType' && report.facts[key] ? $t(`ipLookup.networkTypes.${report.facts[key]}`) : report.facts[key] || $t('ipLookup.unknown') }}<small v-if="report.sources[key]">{{ providerName(report.sources[key]) }}</small></dd>
       </div>
     </dl>
-    <p class="report-note">{{ $t('ipLookup.checkedAt', { date: new Date(report.checkedAt).toLocaleString() }) }} · {{ check.usedQuota ? $t('ipLookup.usedIncluded') : formatMoney(check.charge) }}</p>
+    <p class="report-note">{{ $t('ipLookup.checkedAt', { date: new Date(report.checkedAt).toLocaleString() }) }} · {{ check.refunded ? $t('ipLookup.outageRefund') : check.cached && check.charge.minor === '0' ? $t('ipLookup.cachedFree') : check.usedQuota ? $t('ipLookup.usedIncluded') : formatMoney(check.charge) }}</p>
     <ProviderDetails v-for="provider in report.providers" :key="provider.id" :provider="provider" />
   </section>
 </template>

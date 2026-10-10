@@ -16,8 +16,8 @@
 
 `Service` accepts only canonical public IPv4/IPv6 addresses and signs two-minute,
 owner-bound pricing quotes. SQLite owns immutable TXB ledger entries, allowances
-bound to activated purchase IDs, paid checks, and versioned shared reports. Every
-ordinary submission consumes quota or TXB, including cache hits. Refresh always
+bound to activated purchase IDs, paid checks, and versioned shared reports. Fresh
+ordinary submissions consume quota or TXB. Cache hits are free. Refresh always
 uses its independent fee. Operation polling never charges.
 
 The existing provider-operation outbox worker executes enabled providers in
@@ -28,7 +28,7 @@ Provider URLs and credentials never enter logs, receipts, or report snapshots.
 
 Reports have no automatic expiry. Cache hits preserve their original policy,
 provider selection and verdict. Fresh partial reports become the latest cache;
-all-provider failures restore each cost once and preserve the previous cache.
+any contacted-provider outage restores each cost once. All-provider failures also preserve the previous cache.
 Provider errors continue; positive per-IP risks stop later checks. Network-wide
 scores are informational. A suitable result requires complete risk coverage and
 residential or mobile ISP evidence; it does not promise service-specific access.
@@ -41,6 +41,7 @@ quota and aggregation do not depend on the provider's wire schema. Document its
 available capabilities and omitted-field semantics before adding normalization.
 
 - [AbuseIPDB check](https://docs.abuseipdb.com/): 90-day report window, no verbose comments.
+- [Scamalytics v3](https://docs.scamalytics.com/ip-fraud-risk-api/v3/): EU node `api12`, account username in the path, per-IP fraud score and Essential/Premium enrichment. ISP-wide scores are contextual and Premium placeholders stay unknown.
 - [IPAPI](https://ipapi.is/developers.html): keyed detection flags and truthy VPN variants.
 - [MaxMind Insights](https://dev.maxmind.com/geoip/docs/web-services/responses/): current anonymizer and deprecated traits compatibility; omitted false flags.
 - [IPQS](https://www.ipqualityscore.com/documentation/proxy-detection-api/response-parameters): strictness 3; unavailable connection type stays unknown.
@@ -75,3 +76,9 @@ successful statuses. API/provider outcomes were constructed, not live-provider
 or deployed-service evidence. Local automated suites were not executed.
 
 The existing core-combo editor also exposed its current quota on both viewports and emitted an explicit zero-quota payload through its real save handler.
+
+- `provider_scamalytics.go` normalizes Scamalytics v3, enrichment flags and per-IP versus ISP-wide scores.
+
+Scamalytics executes after AbuseIPDB and before IPAPI. Existing five-provider report snapshots remain readable, and pending runs match configuration by provider ID rather than array position. Scamalytics low risk passes its score check; medium, high and very high fail. Explicit abuse, hosting, VPN, proxy and Tor detections still fail regardless of a low score classification. Other providers retain their existing per-IP score policy. A contacted-provider error refunds partial or rejected reports as well as total failures; missing optional premium fields remain unknown rather than being considered an outage.
+
+The revised browser review confirmed free cache views preserve the full allowance, partial API outages restore cost, and Scamalytics low risk displays as pass. Its account username and credential controls were added to the standalone settings page.

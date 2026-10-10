@@ -24,6 +24,9 @@ func pruneProviderOperationsTx(ctx context.Context, tx *sql.Tx, cutoff, now time
 	if err := reconcileExpiredPMOperationsTx(ctx, tx, now, counts); err != nil {
 		return err
 	}
+	if err := reconcileStaleIPLookupsTx(ctx, tx, now); err != nil {
+		return err
+	}
 	if err := compensateStaleOperationDebitsTx(ctx, tx, now); err != nil {
 		return err
 	}
@@ -65,7 +68,8 @@ func pruneProviderOperationsTx(ctx context.Context, tx *sql.Tx, cutoff, now time
 		AND NOT EXISTS (SELECT 1 FROM admin_temporary_bans ban
 			WHERE ban.ban_operation_id=operation.id OR ban.unban_operation_id=operation.id)
 		AND NOT EXISTS (SELECT 1 FROM node_compensation_events event
-			WHERE event.provider_operation_id=operation.id)`, stamp(now.Add(-pmReceiptRetention)), stamp(now), stamp(now), stamp(now), stamp(now)); err != nil {
+			WHERE event.provider_operation_id=operation.id)
+		AND NOT EXISTS (SELECT 1 FROM ip_lookup_checks check_record WHERE check_record.operation_id=operation.id)`, stamp(now.Add(-pmReceiptRetention)), stamp(now), stamp(now), stamp(now), stamp(now)); err != nil {
 		return fmt.Errorf("prune processed provider operations: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx, `DROP TABLE maintenance_operation_candidates`); err != nil {

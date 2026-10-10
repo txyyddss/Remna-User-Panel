@@ -52,6 +52,9 @@ func TestProviderRequestsEnterQueueAndKeepSecretsOutOfErrors(t *testing.T) {
 				if id == "ipqs" && r.URL.Query().Get("strictness") != "3" {
 					t.Error("IPQS strictness mismatch")
 				}
+				if id == "scamalytics" && (r.URL.Host != "api12.scamalytics.com" || r.URL.Path != "/v3/123456/" || r.URL.Query().Get("key") != "fixture-secret") {
+					t.Error("Scamalytics v3 contract mismatch")
+				}
 				return &http.Response{StatusCode: 429, Body: io.NopCloser(strings.NewReader(`{"error":"exhausted"}`)), Header: http.Header{}}, nil
 			})}
 			_, err = provider.Lookup(ctx, "150.249.241.62", ProviderConfig{ID: id, AccountID: "123456"})

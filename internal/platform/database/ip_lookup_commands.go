@@ -39,7 +39,8 @@ func (s *Store) CreateIPLookupCheck(ctx context.Context, user, key string, q ipl
 	if err != nil {
 		return model.OperationReceipt{}, err
 	}
-	if q.ExpiresAt <= now.Unix() || fresh.ConfigHash != q.ConfigHash || fresh.Charge.Minor != q.Charge.Minor || fresh.UseQuota != q.UseQuota || (!q.Refresh && (fresh.PurchaseID != q.PurchaseID || fresh.Remaining != q.Remaining)) {
+	becameCached := !q.Refresh && fresh.CacheReportID != ""
+	if q.ExpiresAt <= now.Unix() || fresh.ConfigHash != q.ConfigHash || (!becameCached && (fresh.Charge.Minor != q.Charge.Minor || fresh.UseQuota != q.UseQuota || (!q.Refresh && (fresh.PurchaseID != q.PurchaseID || fresh.Remaining != q.Remaining)))) {
 		return model.OperationReceipt{}, &iplookup.CodeError{Code: "IP_LOOKUP_QUOTE_CHANGED"}
 	}
 	reportID, cached, err := selectIPRunTx(ctx, tx, q, fresh, c, now)
@@ -74,6 +75,13 @@ func (s *Store) CreateIPLookupCheck(ctx context.Context, user, key string, q ipl
 	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO ip_lookup_checks(id,operation_id,user_id,report_id,allowance_id,charge_minor,cached) VALUES(?,?,?,?,?,?,?)`, checkID, op.Receipt.ID, user, reportID, allowance, charge, boolInt(cached))
 	if err != nil {
+		return model.OperationReceipt{}, err
+	}
+	metadata, err := json.Marshal(map[string]any{"reportId": reportID, "usedQuota": fresh.UseQuota})
+	if err != nil {
+		return model.OperationReceipt{}, err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE provider_operations SET result_json=? WHERE id=?`, string(metadata), op.Receipt.ID); err != nil {
 		return model.OperationReceipt{}, err
 	}
 	if cached {

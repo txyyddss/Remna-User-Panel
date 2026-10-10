@@ -81,7 +81,14 @@ func (w *Worker) HandleProviderOperation(ctx context.Context, operation provider
 			if adapter == nil {
 				p.Status, p.ErrorCode = "error", "IP_LOOKUP_PROVIDER_UNAVAILABLE"
 			} else {
-				result, callErr := adapter.Lookup(ctx, r.IP, c.Providers[index])
+				configuration := ProviderConfig{ID: p.ID}
+				for _, candidate := range c.Providers {
+					if candidate.ID == p.ID {
+						configuration = candidate
+						break
+					}
+				}
+				result, callErr := adapter.Lookup(ctx, r.IP, configuration)
 				if callErr != nil {
 					p.Status, p.ErrorCode = "error", ErrorCode(callErr)
 				} else {

@@ -1,14 +1,77 @@
 {
   "ipLookup": {
-    "providers": { "abuseipdb": "AbuseIPDB", "ipapi": "IPAPI", "maxmind": "MaxMind", "ipqs": "IPQS", "ip2location": "IP2Location" },
-    "scores": { "abuse_confidence": "滥用置信度", "fraud_score": "欺诈评分", "company_abuse_ratio": "企业网络滥用比例", "asn_abuse_ratio": "ASN 网络滥用比例", "static_ip_score": "静态 IP 评分", "network_risk_snapshot": "网络风险快照" },
-    "facts": { "country": "国家", "region": "地区", "city": "城市", "isp": "网络提供商", "asn": "自治系统编号", "networkType": "网络类型" },
-    "risks": { "abuse": "滥用", "datacenter": "数据中心 / 托管", "vpn": "VPN", "proxy": "代理", "tor": "Tor" },
-    "networkTypes": { "residential": "住宅网络", "mobile": "移动网络", "business": "商业网络", "datacenter": "数据中心" },
-    "verdicts": { "suitable": "适合 AI 使用", "unsuitable": "不适合 AI 使用", "inconclusive": "暂无法判断适用性" },
-    "statuses": { "disabled": "已禁用", "queued": "等待中", "processing": "查询中", "success": "已查询", "partial": "覆盖不完整", "error": "不可用", "skipped": "检出风险后跳过" },
-    "statusNotes": { "disabled": "生成报告时此来源已禁用。", "queued": "等待查询此来源。", "processing": "正在查询此来源。", "error": "此来源未能返回可用数据。", "skipped": "前面的来源已检出风险，查询已停止。" },
-    "reasons": { "abuse": "检出滥用", "datacenter": "检出数据中心或托管", "vpn": "检出 VPN", "proxy": "检出代理", "tor": "检出 Tor", "abuse_reports": "发现滥用举报", "abuse_confidence": "IP 滥用评分大于零", "fraud_score": "IP 欺诈评分大于零", "all_providers_failed": "所有来源均未返回可用数据。", "incomplete_coverage": "部分必需的风险检查不可用。", "residential_unknown": "无法确认住宅或移动网络类型。" },
+    "providers": {
+      "abuseipdb": "AbuseIPDB",
+      "ipapi": "IPAPI",
+      "maxmind": "MaxMind",
+      "ipqs": "IPQS",
+      "ip2location": "IP2Location",
+      "scamalytics": "Scamalytics"
+    },
+    "scores": {
+      "abuse_confidence": "滥用置信度",
+      "fraud_score": "欺诈评分",
+      "company_abuse_ratio": "企业网络滥用比例",
+      "asn_abuse_ratio": "ASN 网络滥用比例",
+      "static_ip_score": "静态 IP 评分",
+      "network_risk_snapshot": "网络风险快照",
+      "isp_risk_score": "ISP 网络风险评分"
+    },
+    "facts": {
+      "country": "国家",
+      "region": "地区",
+      "city": "城市",
+      "isp": "网络提供商",
+      "asn": "自治系统编号",
+      "networkType": "网络类型"
+    },
+    "risks": {
+      "abuse": "滥用",
+      "datacenter": "数据中心 / 托管",
+      "vpn": "VPN",
+      "proxy": "代理",
+      "tor": "Tor"
+    },
+    "networkTypes": {
+      "residential": "住宅网络",
+      "mobile": "移动网络",
+      "business": "商业网络",
+      "datacenter": "数据中心"
+    },
+    "verdicts": {
+      "suitable": "适合 AI 使用",
+      "unsuitable": "不适合 AI 使用",
+      "inconclusive": "暂无法判断适用性"
+    },
+    "statuses": {
+      "disabled": "已禁用",
+      "queued": "等待中",
+      "processing": "查询中",
+      "success": "已查询",
+      "partial": "覆盖不完整",
+      "error": "不可用",
+      "skipped": "检出风险后跳过"
+    },
+    "statusNotes": {
+      "disabled": "生成报告时此来源已禁用。",
+      "queued": "等待查询此来源。",
+      "processing": "正在查询此来源。",
+      "error": "此来源未能返回可用数据。",
+      "skipped": "前面的来源已检出风险，查询已停止。"
+    },
+    "reasons": {
+      "abuse": "检出滥用",
+      "datacenter": "检出数据中心或托管",
+      "vpn": "检出 VPN",
+      "proxy": "检出代理",
+      "tor": "检出 Tor",
+      "abuse_reports": "发现滥用举报",
+      "abuse_confidence": "IP 滥用评分大于零",
+      "fraud_score": "IP 欺诈风险较高",
+      "all_providers_failed": "所有来源均未返回可用数据。",
+      "incomplete_coverage": "部分必需的风险检查不可用。",
+      "residential_unknown": "无法确认住宅或移动网络类型。"
+    },
     "errors": {
       "IP_LOOKUP_INVALID_IP": "请输入公网 IPv4 或 IPv6 地址。",
       "IP_LOOKUP_DISABLED": "IP 查询当前已禁用。",
@@ -39,7 +102,7 @@
     "refreshPaid": "刷新 · {fee}",
     "processing": "正在依次查询各来源…",
     "empty": "输入 IP 地址，查看其信誉与网络详情。",
-    "billingNote": "命中缓存同样消耗配额或 TXB。刷新始终按独立 TXB 价格收费。",
+    "billingNote": "缓存结果免费。刷新按独立 TXB 价格收费；任一来源不可用时退回查询费用或配额。",
     "cached": "缓存报告",
     "fresh": "最新报告",
     "predictionNote": "此结果为信誉评估，不能保证任何 AI 服务的访问权限。",
@@ -56,7 +119,7 @@
     "refreshFee": "刷新费用（TXB）",
     "saved": "IP 查询设置已保存。",
     "providerHeading": "查询来源",
-    "providerOrder": "AbuseIPDB → IPAPI → MaxMind → IPQS → IP2Location。发现风险后立即停止。",
+    "providerOrder": "AbuseIPDB → Scamalytics → IPAPI → MaxMind → IPQS → IP2Location。发现风险后立即停止。",
     "credentialConfigured": "已配置凭据",
     "credentialMissing": "未配置凭据",
     "accountId": "MaxMind 账户 ID",
@@ -66,6 +129,17 @@
     "clearCredential": "清除已保存凭据",
     "quotaHeading": "每个套餐周期包含的 IP 查询次数",
     "quotaHelp": "下次激活或续费时生效。零表示不含免费查询；当前周期配额不变。",
-    "unconfigured": "未配置"
+    "unconfigured": "未配置",
+    "scamalyticsUsername": "Scamalytics 用户名",
+    "viewCached": "查看缓存结果",
+    "cachedFree": "缓存结果 · 免费",
+    "outageRefund": "来源不可用 · 配额或 TXB 已退回",
+    "riskLevel": "来源风险等级",
+    "riskLevels": {
+      "low": "低风险（通过）",
+      "medium": "中风险",
+      "high": "高风险",
+      "very_high": "极高风险"
+    }
   }
 }

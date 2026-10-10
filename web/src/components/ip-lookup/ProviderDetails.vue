@@ -10,6 +10,7 @@ defineProps<{ provider: IPLookupProvider }>()
     <summary><strong>{{ providerName(provider.id) }}</strong><span>{{ $t(`ipLookup.statuses.${provider.status}`) }}</span></summary>
     <template v-if="provider.status === 'success' || provider.status === 'partial'">
       <dl class="provider-data">
+        <div v-if="provider.riskLevel"><dt>{{ $t('ipLookup.riskLevel') }}</dt><dd>{{ $t(`ipLookup.riskLevels.${provider.riskLevel}`) }}</dd></div>
         <div v-for="key in riskKeys" :key="key"><dt>{{ $t(`ipLookup.risks.${key}`) }}</dt><dd>{{ provider.signals[key] === null ? $t('ipLookup.unknown') : provider.signals[key] ? $t('ipLookup.detected') : $t('ipLookup.notDetected') }}</dd></div>
         <div v-for="key in factKeys" :key="key"><dt>{{ $t(`ipLookup.facts.${key}`) }}</dt><dd>{{ key === 'networkType' && provider.facts[key] ? $t(`ipLookup.networkTypes.${provider.facts[key]}`) : provider.facts[key] || $t('ipLookup.unknown') }}</dd></div>
         <div v-for="(value, key) in provider.scores" :key="key"><dt>{{ $t(`ipLookup.scores.${key}`) }}</dt><dd>{{ value }}</dd></div>

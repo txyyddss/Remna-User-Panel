@@ -81,6 +81,10 @@ func (p *httpProvider) request(ctx context.Context, ip, key string, config Provi
 		endpoint = "https://api.ipapi.is/"
 		query.Set("q", ip)
 		query.Set("key", key)
+	case "scamalytics":
+		endpoint = "https://api12.scamalytics.com/v3/" + url.PathEscape(config.AccountID) + "/"
+		query.Set("ip", ip)
+		query.Set("key", key)
 	case "maxmind":
 		endpoint = "https://geoip.maxmind.com/geoip/v2.1/insights/" + url.PathEscape(ip)
 	case "ipqs":

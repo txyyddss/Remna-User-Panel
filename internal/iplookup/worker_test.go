@@ -54,8 +54,8 @@ func TestWorkerStopsAndDoesNotReplayCompletedStages(t *testing.T) {
 	r := &workerRepo{config: c, report: NewReport("report", "150.249.241.62", c)}
 	r.report.Providers[0] = ProviderResult{ID: "abuseipdb", Status: "success", Complete: true}
 	first := &fakeProvider{id: "abuseipdb"}
-	second := &fakeProvider{id: "ipapi", result: ProviderResult{ID: "ipapi", Status: "partial", Signals: Signals{VPN: boolean(true)}}}
-	later := &fakeProvider{id: "maxmind"}
+	second := &fakeProvider{id: "scamalytics", result: ProviderResult{ID: "scamalytics", Status: "partial", Signals: Signals{VPN: boolean(true)}}}
+	later := &fakeProvider{id: "ipapi"}
 	w := NewWorker(r, []Provider{first, second, later})
 	if err := w.HandleProviderOperation(context.Background(), providerops.Operation{}, model.OutboxJob{}); err != nil {
 		t.Fatal(err)
@@ -79,11 +79,11 @@ func TestWorkerContinuesErrorsAndMarksInterruptedStage(t *testing.T) {
 	r := &workerRepo{config: c, report: NewReport("report", "150.249.241.62", c)}
 	r.report.Providers[0].Status = "processing"
 	first := &fakeProvider{id: "abuseipdb"}
-	second := &fakeProvider{id: "ipapi", result: ProviderResult{ID: "ipapi", Status: "success", Complete: true, Facts: Facts{Country: "JP"}}}
+	second := &fakeProvider{id: "scamalytics", result: ProviderResult{ID: "scamalytics", Status: "success", Complete: true, Facts: Facts{Country: "JP"}}}
 	if err := NewWorker(r, []Provider{first, second}).HandleProviderOperation(context.Background(), providerops.Operation{}, model.OutboxJob{}); err != nil {
 		t.Fatal(err)
 	}
-	if first.calls != 0 || second.calls != 1 || r.report.Status != "partial" || r.report.Providers[0].ErrorCode != "IP_LOOKUP_INTERRUPTED" {
+	if first.calls != 0 || second.calls != 1 || r.report.Status != "partial" || !r.report.RefundRequired || r.report.Providers[0].ErrorCode != "IP_LOOKUP_INTERRUPTED" {
 		t.Fatalf("report=%+v", r.report)
 	}
 }

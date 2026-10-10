@@ -68,6 +68,11 @@ func DecodeConfig(raw string) (Config, error) {
 				return c, &CodeError{"IP_LOOKUP_INVALID_CONFIG"}
 			}
 		}
+		if p.ID == "scamalytics" && p.Enabled {
+			if p.AccountID == "" || len(p.AccountID) > 80 || strings.Trim(p.AccountID, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-") != "" {
+				return c, &CodeError{"IP_LOOKUP_INVALID_CONFIG"}
+			}
+		}
 		byID[p.ID] = p
 	}
 	c.Providers = []ProviderConfig{}

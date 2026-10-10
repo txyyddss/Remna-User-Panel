@@ -5,7 +5,7 @@ import "github.com/txyyddss/Remna-User-Panel/internal/model"
 
 const SettingKey = "ip_lookup.config"
 const OperationKind = "ip_reputation_lookup"
-const Version = "residential-v1"
+const Version = "residential-v2"
 
 // ProviderConfig is public configuration; credentials live in the secret vault.
 type ProviderConfig struct {
@@ -87,6 +87,7 @@ type Facts struct {
 
 // ProviderResult retains parsed evidence, including missing subscription capabilities.
 type ProviderResult struct {
+	RiskLevel string             `json:"riskLevel"`
 	ID        string             `json:"id"`
 	Status    string             `json:"status"`
 	ErrorCode string             `json:"errorCode"`
@@ -100,17 +101,18 @@ type ProviderResult struct {
 
 // Report freezes the verdict and original coverage; toggles never rewrite it.
 type Report struct {
-	ID            string            `json:"id"`
-	IP            string            `json:"ip"`
-	Status        string            `json:"status"`
-	Verdict       string            `json:"verdict"`
-	Reasons       []string          `json:"reasons"`
-	Facts         Facts             `json:"facts"`
-	Sources       map[string]string `json:"sources"`
-	Providers     []ProviderResult  `json:"providers"`
-	CheckedAt     string            `json:"checkedAt"`
-	PolicyVersion string            `json:"policyVersion"`
-	ParserVersion string            `json:"parserVersion"`
+	RefundRequired bool              `json:"refundRequired"`
+	ID             string            `json:"id"`
+	IP             string            `json:"ip"`
+	Status         string            `json:"status"`
+	Verdict        string            `json:"verdict"`
+	Reasons        []string          `json:"reasons"`
+	Facts          Facts             `json:"facts"`
+	Sources        map[string]string `json:"sources"`
+	Providers      []ProviderResult  `json:"providers"`
+	CheckedAt      string            `json:"checkedAt"`
+	PolicyVersion  string            `json:"policyVersion"`
+	ParserVersion  string            `json:"parserVersion"`
 }
 
 // Check is an owner-scoped paid receipt referencing one shared report.

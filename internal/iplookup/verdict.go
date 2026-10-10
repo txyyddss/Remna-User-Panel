@@ -31,9 +31,15 @@ func RiskReasons(p ProviderResult) []string {
 		result = append(result, p.ID+":abuse_reports")
 	}
 	for _, key := range []string{"abuse_confidence", "fraud_score"} {
+		if key == "fraud_score" && p.RiskLevel == "low" {
+			continue
+		}
 		if p.Scores[key] > 0 {
 			result = append(result, p.ID+":"+key)
 		}
+	}
+	if p.Scores["fraud_score"] <= 0 && (p.RiskLevel == "medium" || p.RiskLevel == "high" || p.RiskLevel == "very_high") {
+		result = append(result, p.ID+":fraud_score")
 	}
 	return result
 }
@@ -43,12 +49,16 @@ func Aggregate(r Report, now time.Time) Report {
 	r.Reasons = []string{}
 	r.Sources = map[string]string{}
 	r.Facts = Facts{}
+	r.RefundRequired = false
 	usable, complete, eligible := 0, true, false
 	business := false
 	covered := [5]bool{}
 	for _, p := range r.Providers {
 		if p.Status == "disabled" {
 			continue
+		}
+		if p.Status == "error" {
+			r.RefundRequired = true
 		}
 		if p.Status == "success" || p.Status == "partial" {
 			usable++

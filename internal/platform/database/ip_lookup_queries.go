@@ -99,6 +99,10 @@ func ipQuoteTx(ctx context.Context, tx *sql.Tx, user, ip string, refresh bool, n
 	if q.UseQuota {
 		amount = 0
 	}
+	if !refresh && q.CacheReportID != "" {
+		amount = 0
+		q.UseQuota = false
+	}
 	q.Charge = model.TXBMoney(amount)
 	return q, c, nil
 }
@@ -119,9 +123,9 @@ func (s *Store) IPLookupCheck(ctx context.Context, user, id string) (iplookup.Ch
 	var result iplookup.Check
 	var raw string
 	var cached, refunded int
-	var allowance sql.NullString
+	var usedQuota int
 	var charge int64
-	err := s.db.QueryRowContext(ctx, `SELECT r.report_json,c.cached,c.refunded,c.allowance_id,c.charge_minor FROM ip_lookup_checks c JOIN ip_lookup_reports r ON r.id=c.report_id WHERE c.operation_id=? AND c.user_id=?`, id, user).Scan(&raw, &cached, &refunded, &allowance, &charge)
+	err := s.db.QueryRowContext(ctx, `SELECT r.report_json,c.cached,c.refunded,COALESCE(json_extract(o.result_json,'$.usedQuota'),c.allowance_id IS NOT NULL),c.charge_minor FROM ip_lookup_checks c JOIN ip_lookup_reports r ON r.id=c.report_id JOIN provider_operations o ON o.id=c.operation_id WHERE c.operation_id=? AND c.user_id=?`, id, user).Scan(&raw, &cached, &refunded, &usedQuota, &charge)
 	if err == sql.ErrNoRows {
 		return result, ErrNotFound
 	}
@@ -139,7 +143,7 @@ func (s *Store) IPLookupCheck(ctx context.Context, user, id string) (iplookup.Ch
 	if report.Status != "processing" && report.Status != "failed" {
 		result.Report = &report
 	}
-	result.Cached, result.Refunded, result.UsedQuota = cached == 1, refunded == 1, allowance.Valid
+	result.Cached, result.Refunded, result.UsedQuota = cached == 1, refunded == 1, usedQuota == 1
 	if result.Refunded {
 		charge = 0
 	}

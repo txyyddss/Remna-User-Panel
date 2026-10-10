@@ -64,6 +64,22 @@ describe('IP Lookup request safety', () => {
     wrapper.unmount()
   })
 
+  it('submits a cached free quote without selecting included quota', async () => {
+    const wrapper = mount(Harness)
+    await flushPromises()
+    mocks.quote.mockImplementation(async (_ip: string, refresh: boolean) => ({ ...quote, refresh, cacheReportId: 'cached', useQuota: false, charge: { ...quote.charge, minor: refresh ? '350' : '0' } }))
+    state.ip.value = quote.ip
+    await vi.advanceTimersByTimeAsync(400)
+    expect(state.quote.value?.charge.minor).toBe('0')
+    expect(state.quote.value?.useQuota).toBe(false)
+    expect(state.refreshQuote.value?.charge.minor).toBe('350')
+    mocks.submit.mockResolvedValue({ id: 'operation' })
+    await state.submit()
+    expect(mocks.submit.mock.calls[0]![0].useQuota).toBe(false)
+    expect(mocks.submit.mock.calls[0]![0].charge.minor).toBe('0')
+    wrapper.unmount()
+  })
+
   it('stops polling after the owning view is disposed', async () => {
     const wrapper = mount(Harness)
     await flushPromises()

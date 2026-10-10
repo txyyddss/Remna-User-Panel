@@ -17,7 +17,7 @@ func textField(o object, key string) string {
 			v = n.String()
 		}
 	}
-	if v == "N/A" || v == "N\\A" || v == "-" || strings.Contains(strings.ToLower(v), "required") {
+	if v == "N/A" || v == "N\\A" || v == "-" || strings.Contains(strings.ToLower(v), "required") || strings.HasPrefix(strings.ToLower(v), "premium field") {
 		return ""
 	}
 	if len(v) > 256 {
@@ -79,6 +79,8 @@ func parseProvider(id, ip string, o object) (ProviderResult, error) {
 		err = parseAbuse(&p, ip, nested(o, "data"))
 	case "ipapi":
 		err = parseIPAPI(&p, ip, o)
+	case "scamalytics":
+		err = parseScamalytics(&p, ip, o)
 	case "maxmind":
 		err = parseMaxmind(&p, ip, o)
 	case "ipqs":

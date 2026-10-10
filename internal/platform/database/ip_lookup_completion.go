@@ -98,6 +98,11 @@ func (s *Store) FinishIPLookupRun(ctx context.Context, report iplookup.Report, n
 		return err
 	}
 	for _, id := range operations {
+		if report.RefundRequired {
+			if err := refundIPCheckTx(ctx, tx, id, now); err != nil {
+				return err
+			}
+		}
 		if err := finishIPCheckTx(ctx, tx, id, report.ID, report.Status, now); err != nil {
 			return err
 		}
@@ -106,37 +111,18 @@ func (s *Store) FinishIPLookupRun(ctx context.Context, report iplookup.Report, n
 }
 
 func finishIPCheckTx(ctx context.Context, tx *sql.Tx, operationID, reportID, status string, now time.Time) error {
-	var user string
-	var charge int64
-	var allowance sql.NullString
-	var refunded int
-	if err := tx.QueryRowContext(ctx, `SELECT user_id,charge_minor,allowance_id,refunded FROM ip_lookup_checks WHERE operation_id=?`, operationID).Scan(&user, &charge, &allowance, &refunded); err != nil {
+	var usedQuota int
+	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(json_extract(o.result_json,'$.usedQuota'),c.allowance_id IS NOT NULL) FROM ip_lookup_checks c JOIN provider_operations o ON o.id=c.operation_id WHERE c.operation_id=?`, operationID).Scan(&usedQuota); err != nil {
 		return err
 	}
 	errorCode := ""
 	if status == "failed" {
 		errorCode = "IP_LOOKUP_ALL_PROVIDERS_FAILED"
-		if refunded == 0 {
-			if allowance.Valid {
-				if _, err := tx.ExecContext(ctx, `UPDATE ip_lookup_allowances SET used=used-1 WHERE purchase_id=? AND used>0`, allowance.String); err != nil {
-					return err
-				}
-			}
-			if charge > 0 {
-				balance, err := changeBalanceTx(ctx, tx, user, charge, now)
-				if err != nil {
-					return err
-				}
-				if _, err := insertLedgerTx(ctx, tx, user, charge, balance, "ip_lookup_refund", operationID, "Failed IP reputation check", now); err != nil {
-					return err
-				}
-			}
-			if _, err := tx.ExecContext(ctx, `UPDATE ip_lookup_checks SET refunded=1 WHERE operation_id=?`, operationID); err != nil {
-				return err
-			}
+		if err := refundIPCheckTx(ctx, tx, operationID, now); err != nil {
+			return err
 		}
 	}
-	resultJSON, err := json.Marshal(map[string]string{"reportId": reportID})
+	resultJSON, err := json.Marshal(map[string]any{"reportId": reportID, "usedQuota": usedQuota == 1})
 	if err != nil {
 		return err
 	}

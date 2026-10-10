@@ -22,7 +22,7 @@ func ipLookupFixture(t *testing.T, quota int) (*Store, *iplookup.Service, string
 	c.Enabled = true
 	c.LookupFeeTXB = "2.50"
 	c.RefreshFeeTXB = "3.50"
-	c.Providers[1].Enabled = true
+	for i := range c.Providers { c.Providers[i].Enabled = c.Providers[i].ID=="ipapi" }
 	if err := store.SaveIPLookupSettings(ctx, user.ID, c, map[string]string{"ipapi": "test-vault-value"}, map[string]*int{combo.ID: &quota}); err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestIPLookupCacheCoalescingQuotaAndPaidRefresh(t *testing.T) {
 	finishIP(t, store, first.ID, false)
 	third := submitIP(t, service, user, "cached-paid", false)
 	check, err := service.Check(ctx, user, third.ID)
-	if err != nil || !check.Cached || check.Charge.Minor != "250" || check.Report.ID != r1.ID {
+	if err != nil || !check.Cached || check.Charge.Minor != "0" || check.Report.ID != r1.ID {
 		t.Fatalf("cached check=%+v %v", check, err)
 	}
 	refreshQ, err := service.Quote(ctx, user, "150.249.241.62", true)
@@ -192,7 +192,7 @@ func TestIPLookupRefreshFailureRetainsCacheAndProviderSnapshot(t *testing.T) {
 	}
 	op := submitIP(t, service, user, "old-cache", false)
 	check, err := service.Check(ctx, user, op.ID)
-	if err != nil || check.Report.ID != original.ID || check.Report.Providers[1].Status != "queued" || check.Report.Providers[0].Status != "disabled" {
+	if err != nil || check.Report.ID != original.ID || check.Report.Providers[2].Status != "queued" || check.Report.Providers[0].Status != "disabled" {
 		t.Fatalf("cached snapshot changed: %+v %v", check, err)
 	}
 }
